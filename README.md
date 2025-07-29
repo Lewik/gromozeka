@@ -1,83 +1,25 @@
 # Gromozeka 🤖
 
-**Multi-armed AI agent** - powerful desktop AI assistant built with Kotlin Multiplatform and Claude Code CLI integration.
+**Multi-armed AI agent** - a truly "handy" agent that doesn't just chat, but actually gets things done.
 
-Named after the multi-armed character from "The Mystery of the Third Planet", Gromozeka is not just another chatbot, but a "handy" agent with multiple capabilities for interacting with system, services, and various APIs.
-
-## 🚀 Key Features
-
-- **Rich Tool Ecosystem**: Claude Code CLI integration provides access to extensive tool library
-- **MCP Support**: Model Context Protocol for modular capability extension  
-- **Desktop-First**: JetBrains Compose Desktop UI optimized for developer workflow
-- **Voice Integration**: Speech-to-text input via Spring AI
-- **Streaming Responses**: Real-time chat with live UI updates
-- **Session Persistence**: Context-aware conversations with automatic session management
-- **Plugin Architecture**: Extensible "arms" system for adding new capabilities
+Named after the multi-armed character from "The Mystery of the Third Planet". The goal is to create an AI agent with real "hands": tools for working with systems, APIs, files, services. An agent that can be customized for your needs and is genuinely useful in real work.
 
 ## 🏗️ Architecture
 
 **Core Stack:**
-- **UI**: JetBrains Compose Desktop
+- **UI**: JetBrains Compose Multiplatform
 - **AI Engine**: Claude Code CLI wrapper + Spring AI hybrid approach
-- **Backend**: Kotlin/Spring Boot with SqlDelight for data persistence
-- **Integration**: ProcessBuilder-based streaming wrapper with JSON output parsing
+- **Backend**: Kotlin/Spring Boot
 
-**Key Components:**
-- `ClaudeCodeStreamingWrapper` - Real-time bidirectional communication
-- `SessionListService` - Persistent session management  
-- `McpServers` - MCP server configuration and management
-- `PluginService` - Extensible capability system
-
-## 🔧 Claude Code Integration
-
-This project solves several Claude Code CLI integration challenges:
-
-- **Streaming Mode**: Real-time stdin/stdout communication without hanging
-- **Session Management**: Proper handling of `--resume` and `--continue` flags
-- **Tool Access Control**: Configurable `--allowedTools` for security
-- **MCP Configuration**: Dynamic `--mcp-config` server loading
-- **JSON Output**: Structured response parsing via `--output-format json`
-
-## 🚀 Quick Start
-
-**Prerequisites:**
-- Claude Code CLI installed and configured
-- JDK 17+
-- Gradle 8+
-
-**Run:**
-```bash
-# Build project
-./gradlew build
-
-# Run application
-./gradlew :bot:run
-
-# Run tests  
-./gradlew test
-```
-
-**Configuration:**
-1. Copy `bot/src/jvmMain/resources/application.yaml.dist` to `application.yaml`
-2. Configure your API keys and settings
-3. Customize MCP servers in `src/jvmMain/resources/mcp.json`
-
-## 📚 Documentation
-
-- [docs/](./docs/) - Technical documentation and integration notes
-- [CLAUDE.md](./CLAUDE.md) - Claude Code project configuration
-- [Architecture Overview](./bot/doc/general.puml) - System design diagram
 
 ## 🎯 Philosophy
 
-**Maximum practical utility through integration with real tools.** The agent should not only talk but also perform tasks - work with files, send requests, manage system, integrate with external services.
+**Goal:** Create a truly "handy" agent — not a chatter, but an assistant that actually performs tasks. With real tools, user customization, and maximum practical utility.
 
-**Why Claude Code?** While alternatives like DeepSeek V3 are cheaper per token, Claude Code provides rich out-of-the-box ecosystem (tools, sub-agents, MCP servers, IDE integration) that would be expensive to replicate. The developer experience and built-in capabilities justify the cost.
+**AI-First Development:** This project is developed primarily with AI assistance — not just as a coding tool, but as a philosophy of future development.
 
-## 🧪 Development Status
-
-Research project exploring Claude Code CLI integration patterns and implementing robust streaming wrapper for JVM-based applications. Core functionality working, plugin system in development.
+**About Claude Code:** Chosen as the current foundation due to its rich ecosystem of tools and MCP servers. Not project-defining — can be replaced in the future with more suitable solutions.
 
 ---
 
-*"In the hands of a skilled developer, even the most complex system becomes simple tools"* 🛠️
+*"In the hands of a skilled developer, even the most complex system becomes simple tools"* — Claude 🛠️
