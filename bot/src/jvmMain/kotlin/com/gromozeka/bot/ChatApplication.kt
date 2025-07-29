@@ -84,29 +84,16 @@ fun ApplicationScope.ChatWindow(
     var autoSend by remember { mutableStateOf(true) }
     var attachOpenedFile by remember { mutableStateOf(true) }
 
-    // Session management state
     var showSessionList by remember { mutableStateOf(true) }
     var selectedSession by remember { mutableStateOf<ChatSession?>(null) }
-    var availableSessions by remember { mutableStateOf<List<ChatSession>>(emptyList()) }
     var isRecording by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         theAssistant.init()
-
-        // Load available sessions
-        try {
-            availableSessions = sessionListService.getAvailableSessions()
-            println("Found ${availableSessions.size} available sessions")
-        } catch (e: Exception) {
-            println("Error loading sessions: ${e.message}")
-            e.printStackTrace()
-        }
-
         initialized = true
         scrollState.animateScrollTo(scrollState.maxValue)
     }
     
-    // Listen to streaming wrapper messages
     LaunchedEffect(selectedSession) {
         if (selectedSession != null) {
             println("Setting up streaming wrapper message listener")
@@ -114,7 +101,6 @@ fun ApplicationScope.ChatWindow(
                 println("Received streaming message: $message")
                 when (message) {
                     is ClaudeStreamMessage.AssistantMessage -> {
-                        // Add assistant message to chat history
                         val newMessage = ChatMessage(
                             id = (chatHistory.size + 1).toString(),
                             role = ChatMessage.Role.ASSISTANT,
@@ -171,10 +157,8 @@ fun ApplicationScope.ChatWindow(
         assistantIsThinking = true
         
         if (selectedSession != null) {
-            // Use Claude Code streaming wrapper for selected session
             println("Sending via ClaudeCodeStreamingWrapper")
             
-            // Add user message to chat history
             val userMessage = ChatMessage(
                 id = (chatHistory.size + 1).toString(),
                 role = ChatMessage.Role.USER,
@@ -192,11 +176,9 @@ fun ApplicationScope.ChatWindow(
             
             claudeCodeStreamingWrapper.sendMessage(message)
         } else {
-            // Use regular assistant
             println("Sending via TheAssistant")
             theAssistant.sendMessage(message)
             
-            // Проверяем, есть ли ожидающие инструменты
             if (theAssistant.hasPendingToolCalls()) {
                 pendingToolCalls = theAssistant.getPendingToolCallInfo()
                 showToolCalls = true
@@ -212,7 +194,6 @@ fun ApplicationScope.ChatWindow(
         assistantIsThinking = true
         theAssistant.executeToolCalls()
 
-        // Проверяем, есть ли еще ожидающие инструменты после выполнения
         if (theAssistant.hasPendingToolCalls()) {
             pendingToolCalls = theAssistant.getPendingToolCallInfo()
             showToolCalls = true
@@ -261,7 +242,7 @@ fun ApplicationScope.ChatWindow(
         if (initialized) {
             if (showSessionList) {
                 SessionListScreen(
-                    availableSessions = availableSessions,
+                    sessionListService = sessionListService,
                     onSessionSelected = { session, messages ->
                         selectedSession = session
                         chatHistory = messages

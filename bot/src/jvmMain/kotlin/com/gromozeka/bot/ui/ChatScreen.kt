@@ -46,7 +46,6 @@ fun ChatScreen(
     val scrollState = rememberScrollState()
 
     Column(modifier = Modifier.padding(16.dp).fillMaxSize()) {
-        // Header with navigation and settings
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Button(onClick = onBackToSessionList) {
                 Text("← Выбрать беседу")
@@ -69,7 +68,6 @@ fun ChatScreen(
             }
         }
 
-        // Tool calls card
         if (showToolCalls) {
             ToolCallsCard(
                 pendingToolCalls = pendingToolCalls,
@@ -79,7 +77,6 @@ fun ChatScreen(
             )
         }
 
-        // Chat messages
         Column(modifier = Modifier.weight(1f).verticalScroll(scrollState)) {
             SelectionContainer {
                 Column {
@@ -94,7 +91,6 @@ fun ChatScreen(
 
         Spacer(modifier = Modifier.height(10.dp))
 
-        // Message input
         MessageInput(
             userInput = userInput,
             onUserInputChange = onUserInputChange,
@@ -105,7 +101,6 @@ fun ChatScreen(
 
         Spacer(modifier = Modifier.height(10.dp))
 
-        // Voice controls
         VoiceControls(
             sttService = sttService,
             autoSend = autoSend,

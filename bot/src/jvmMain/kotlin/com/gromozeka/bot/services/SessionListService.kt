@@ -1,6 +1,7 @@
 package com.gromozeka.bot.services
 
 import com.gromozeka.bot.model.ChatSession
+import com.gromozeka.bot.model.ProjectGroup
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import kotlinx.datetime.Instant
@@ -118,4 +119,33 @@ class SessionListService {
      * Decode project path from Claude Code storage format
      */
     private fun String.decodeProjectPath() = replace("-", "/")
+    
+    /**
+     * Get sessions grouped by project with metadata
+     */
+    fun getSessionsGroupedByProject(): List<ProjectGroup> {
+        return getAvailableSessions()
+            .groupBy { it.projectPath }
+            .map { (projectPath, sessions) ->
+                ProjectGroup(
+                    projectPath = projectPath,
+                    projectName = extractProjectName(projectPath),
+                    sessions = sessions.sortedByDescending { it.lastTimestamp }
+                )
+            }
+            .sortedByDescending { group -> 
+                group.lastActivity() 
+            }
+    }
+    
+    /**
+     * Extract project name from path (last segment)
+     */
+    private fun extractProjectName(projectPath: String): String {
+        return when {
+            projectPath.contains("/") -> projectPath.substringAfterLast("/")
+            projectPath.isNotBlank() -> projectPath
+            else -> "Unknown Project"
+        }
+    }
 }
