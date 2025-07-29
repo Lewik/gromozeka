@@ -1,22 +1,13 @@
 package com.gromozeka.bot
 
 import androidx.compose.desktop.ui.tooling.preview.Preview
-import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.selection.SelectionContainer
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.key.Key
-import androidx.compose.ui.input.key.isShiftPressed
-import androidx.compose.ui.input.key.key
-import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.pointer.isPrimaryPressed
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.TextStyle
@@ -29,11 +20,12 @@ import androidx.compose.ui.window.application
 import com.gromozeka.bot.model.ChatMessage
 import com.gromozeka.bot.model.ChatMessageContent
 import com.gromozeka.bot.model.ChatSession
-import com.gromozeka.bot.services.ClaudeCodeSessionMapper
 import com.gromozeka.bot.services.ClaudeCodeStreamingWrapper
 import com.gromozeka.bot.services.ClaudeStreamMessage
 import com.gromozeka.bot.services.SessionListService
 import com.gromozeka.bot.services.SttService
+import com.gromozeka.bot.ui.ChatScreen
+import com.gromozeka.bot.ui.SessionListScreen
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
@@ -44,7 +36,6 @@ import org.springframework.ai.chat.messages.UserMessage
 import org.springframework.beans.factory.getBean
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.builder.SpringApplicationBuilder
-import java.io.File
 
 fun main() {
     System.setProperty("java.awt.headless", "false")
@@ -97,6 +88,7 @@ fun ApplicationScope.ChatWindow(
     var showSessionList by remember { mutableStateOf(true) }
     var selectedSession by remember { mutableStateOf<ChatSession?>(null) }
     var availableSessions by remember { mutableStateOf<List<ChatSession>>(emptyList()) }
+    var isRecording by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         theAssistant.init()
@@ -243,8 +235,6 @@ fun ApplicationScope.ChatWindow(
         }
     }
 
-    var isRecording by remember { mutableStateOf(false) }
-
     val modifierWithPushToTalk = Modifier.pointerInput(Unit) {
         awaitPointerEventScope {
             while (true) {
@@ -270,265 +260,37 @@ fun ApplicationScope.ChatWindow(
     Window(onCloseRequest = ::exitApplication, title = "Chat") {
         if (initialized) {
             if (showSessionList) {
-                // Session selection screen
-                Column(modifier = Modifier.padding(16.dp).fillMaxSize()) {
-                    Text("Выберите беседу", style = MaterialTheme.typography.h5)
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    if (availableSessions.isEmpty()) {
-                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            Text("Нет доступных бесед")
-                        }
-                    } else {
-                        Column(modifier = Modifier.verticalScroll(rememberScrollState()).fillMaxWidth()) {
-                            availableSessions.forEach { session ->
-                                Card(
-                                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).pointerInput(Unit) {
-                                        detectTapGestures {
-                                            selectedSession = session
-                                            // Load session messages
-                                            coroutineScope.launch {
-                                                try {
-                                                    // Load session messages
-                                                    val encodedPath = session.projectPath.replace("/", "-")
-                                                    val sessionFile = File(
-                                                        System.getProperty("user.home"),
-                                                        ".claude/projects/$encodedPath/${session.sessionId}.jsonl"
-                                                    )
-
-                                                    val messages = ClaudeCodeSessionMapper.loadSessionAsChatMessages(
-                                                        sessionFile
-                                                    )
-                                                    chatHistory = messages
-
-                                                    // Start streaming wrapper with session
-                                                    claudeCodeStreamingWrapper.start(
-                                                        sessionId = session.sessionId, projectPath = session.projectPath
-                                                    )
-
-                                                    println("Loaded ${messages.size} messages from session ${session.sessionId}")
-                                                    println("Started streaming wrapper for project: ${session.projectPath}")
-                                                    showSessionList = false
-
-                                                } catch (e: Exception) {
-                                                    println("Error loading session: ${e.message}")
-                                                    e.printStackTrace()
-                                                }
-                                            }
-                                        }
-                                    }, elevation = 2.dp
-                                ) {
-                                    Column(modifier = Modifier.padding(16.dp)) {
-                                        Text(
-                                            text = session.displayPreview(), style = MaterialTheme.typography.body1
-                                        )
-                                        Spacer(modifier = Modifier.height(4.dp))
-                                        Text(
-                                            text = "Проект: ${session.displayProject()}",
-                                            style = MaterialTheme.typography.caption,
-                                            color = MaterialTheme.colors.primary
-                                        )
-                                        Spacer(modifier = Modifier.height(4.dp))
-                                        Row {
-                                            Text(
-                                                text = session.displayTime(), style = MaterialTheme.typography.caption
-                                            )
-                                            Spacer(modifier = Modifier.weight(1f))
-                                            Text(
-                                                text = "${session.messageCount} сообщений",
-                                                style = MaterialTheme.typography.caption
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
+                SessionListScreen(
+                    availableSessions = availableSessions,
+                    onSessionSelected = { session, messages ->
+                        selectedSession = session
+                        chatHistory = messages
+                        showSessionList = false
+                    },
+                    claudeCodeStreamingWrapper = claudeCodeStreamingWrapper,
+                    coroutineScope = coroutineScope
+                )
             } else {
-                // Chat screen
-                Column(modifier = Modifier.padding(16.dp).fillMaxSize()) {
-                    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Button(onClick = { showSessionList = true }) {
-                            Text("← Выбрать беседу")
-                        }
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Chat", style = MaterialTheme.typography.h5)
-                        selectedSession?.let { session ->
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("(${session.displayPreview()})", style = MaterialTheme.typography.caption)
-                        }
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Checkbox(checked = autoSend, onCheckedChange = { autoSend = it })
-                            Text("Отправлять сразу")
-                        }
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Checkbox(checked = attachOpenedFile, onCheckedChange = { attachOpenedFile = it })
-                            Text("Отправлять файл")
-                        }
-                    }
-
-                    // Отображение ожидающих инструментов, если они есть
-                    if (showToolCalls) {
-                        Card(
-                            modifier = Modifier.fillMaxWidth().padding(8.dp),
-                            backgroundColor = MaterialTheme.colors.primary.copy(alpha = 0.1f),
-                            elevation = 4.dp
-                        ) {
-                            Column(modifier = Modifier.padding(16.dp)) {
-                                Text(
-                                    "Инструменты, требующие выполнения:",
-                                    style = MaterialTheme.typography.h6,
-                                    modifier = Modifier.padding(bottom = 8.dp)
-                                )
-
-                                pendingToolCalls.forEach { toolCall ->
-                                    Card(
-                                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                                        backgroundColor = MaterialTheme.colors.surface
-                                    ) {
-                                        Column(modifier = Modifier.padding(8.dp)) {
-                                            Text(
-                                                "Инструмент: ${toolCall["name"]}",
-                                                style = MaterialTheme.typography.subtitle1
-                                            )
-                                            Text(
-                                                "Аргументы: ${toolCall["arguments"]}",
-                                                style = MaterialTheme.typography.body2
-                                            )
-                                        }
-                                    }
-                                }
-
-                                Row(
-                                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                                    horizontalArrangement = Arrangement.End
-                                ) {
-                                    Button(
-                                        onClick = {
-                                            coroutineScope.launch {
-                                                executeToolCalls()
-                                            }
-                                        }, enabled = !assistantIsThinking
-                                    ) {
-                                        Text("Выполнить инструменты")
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    Column(modifier = Modifier.weight(1f).verticalScroll(scrollState)) {
-                        SelectionContainer {
-                            Column {
-                                chatHistory
-                                    .filter { it.metadataType != ChatMessage.MetadataType.IDE_CONTEXT }
-                                    .forEach { message ->
-                                        Row(
-                                            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                                            horizontalArrangement = if (message.role == ChatMessage.Role.USER) Arrangement.End else Arrangement.Start
-                                        ) {
-                                            Column(
-                                                modifier = Modifier
-                                                    .fillMaxWidth(0.85f)
-                                                    .padding(8.dp)
-                                                    .background(
-                                                        color = if (message.role == ChatMessage.Role.USER) MaterialTheme.colors.primary.copy(
-                                                            alpha = 0.1f
-                                                        )
-                                                        else MaterialTheme.colors.surface.copy(alpha = 0.1f),
-                                                        shape = MaterialTheme.shapes.medium
-                                                    )
-                                                    .padding(12.dp)
-                                            ) {
-                                                message.content.forEach { content ->
-                                                    Text(
-                                                        text = content.content,
-                                                        style = MaterialTheme.typography.body2,
-                                                    )
-                                                }
-                                            }
-                                        }
-                                    }
-                            }
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(10.dp))
-
-                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                        OutlinedTextField(
-                            value = userInput,
-                            onValueChange = { userInput = it },
-                            modifier = Modifier
-                                .onPreviewKeyEvent { event ->
-                                    // https://stackoverflow.com/questions/76215993/jetpack-compose-desktop-basictextfield-how-to-shift-enter-to-line-skip
-                                    if (!assistantIsThinking && event.key == Key.Enter && event.isShiftPressed && userInput.isNotBlank()) {
-                                        coroutineScope.launch {
-                                            val text = userInput
-                                            sendMessage(text)
-                                            userInput = ""
-                                        }
-                                        true
-                                    } else {
-                                        false
-                                    }
-
-                                }
-                                .weight(1f),
-                            enabled = !assistantIsThinking,
-                            placeholder = { Text("") },
-                            trailingIcon = {
-                                if (assistantIsThinking) {
-                                    CircularProgressIndicator()
-                                } else {
-                                    IconButton(onClick = {
-                                        coroutineScope.launch {
-                                            val text = userInput
-                                            sendMessage(text)
-                                            userInput = ""
-                                        }
-                                    }) {
-                                        Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Send")
-                                    }
-                                }
-                            }
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                    }
-
-                    Spacer(modifier = Modifier.height(10.dp))
-
-                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                        Spacer(modifier = Modifier.weight(1f))
-
-                        Button(onClick = { coroutineScope.launch { sttService.startRecording() } }) {
-                            Text("🎙 Идёт запись")
-                        }
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Button(onClick = {
-                            coroutineScope.launch {
-                                val text = sttService.stopAndTranscribe()
-                                if (autoSend && text.isNotBlank()) {
-                                    sendMessage(text)
-                                } else {
-                                    userInput = text
-                                }
-                            }
-                        }) {
-                            Text("🛑 Остановить")
-                        }
-                        Spacer(modifier = Modifier.width(8.dp))
-
-                        Button(onClick = {}, modifier = modifierWithPushToTalk) {
-                            Text("🎤 PTT")
-                        }
-                    }
-                }
+                ChatScreen(
+                    selectedSession = selectedSession,
+                    chatHistory = chatHistory,
+                    userInput = userInput,
+                    onUserInputChange = { userInput = it },
+                    assistantIsThinking = assistantIsThinking,
+                    showToolCalls = showToolCalls,
+                    pendingToolCalls = pendingToolCalls,
+                    autoSend = autoSend,
+                    onAutoSendChange = { autoSend = it },
+                    attachOpenedFile = attachOpenedFile,
+                    onAttachOpenedFileChange = { attachOpenedFile = it },
+                    onBackToSessionList = { showSessionList = true },
+                    onSendMessage = sendMessage,
+                    onExecuteToolCalls = executeToolCalls,
+                    sttService = sttService,
+                    coroutineScope = coroutineScope,
+                    modifierWithPushToTalk = modifierWithPushToTalk
+                )
             }
-
         } else {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
