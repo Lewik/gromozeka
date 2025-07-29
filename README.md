@@ -1,48 +1,83 @@
-# Chat
+# Gromozeka 🤖
 
-AI chat application built with Kotlin Multiplatform and JetBrains Compose Desktop, featuring Claude Code CLI integration.
+**Multi-armed AI agent** - powerful desktop AI assistant built with Kotlin Multiplatform and Claude Code CLI integration.
 
-## Features
+Named after the multi-armed character from "The Mystery of the Third Planet", Gromozeka is not just another chatbot, but a "handy" agent with multiple capabilities for interacting with system, services, and various APIs.
 
-- **Desktop UI**: JetBrains Compose Desktop interface
-- **Claude Code Integration**: Direct integration with Claude Code CLI via streaming wrapper
-- **Voice Input**: Speech-to-text functionality
-- **Session Management**: Persistent chat sessions with Claude Code
-- **Real-time Updates**: Streaming responses with live UI updates
+## 🚀 Key Features
 
-## Architecture
+- **Rich Tool Ecosystem**: Claude Code CLI integration provides access to extensive tool library
+- **MCP Support**: Model Context Protocol for modular capability extension  
+- **Desktop-First**: JetBrains Compose Desktop UI optimized for developer workflow
+- **Voice Integration**: Speech-to-text input via Spring AI
+- **Streaming Responses**: Real-time chat with live UI updates
+- **Session Persistence**: Context-aware conversations with automatic session management
+- **Plugin Architecture**: Extensible "arms" system for adding new capabilities
 
-- **Backend**: Kotlin/Spring Boot with Spring AI
-- **Frontend**: JetBrains Compose Desktop
-- **AI Integration**: Claude Code CLI wrapper with streaming support
-- **Session Storage**: Local JSONL files managed by Claude Code
+## 🏗️ Architecture
 
-## Claude Code Integration
+**Core Stack:**
+- **UI**: JetBrains Compose Desktop
+- **AI Engine**: Claude Code CLI wrapper + Spring AI hybrid approach
+- **Backend**: Kotlin/Spring Boot with SqlDelight for data persistence
+- **Integration**: ProcessBuilder-based streaming wrapper with JSON output parsing
 
-This project includes a custom streaming wrapper for Claude Code CLI that solves several integration challenges:
+**Key Components:**
+- `ClaudeCodeStreamingWrapper` - Real-time bidirectional communication
+- `SessionListService` - Persistent session management  
+- `McpServers` - MCP server configuration and management
+- `PluginService` - Extensible capability system
 
-- **ProcessBuilder Hanging**: Fixed issue with `--print` flag hanging in subprocess mode
-- **Session Management**: Proper handling of Claude Code's session behavior
-- **Streaming Mode**: Real-time bidirectional communication via stdin/stdout
-- **Context Preservation**: Automatic session loading and continuation
+## 🔧 Claude Code Integration
 
-See [docs/](./docs/) for detailed technical documentation on Claude Code integration.
+This project solves several Claude Code CLI integration challenges:
 
-## Quick Start
+- **Streaming Mode**: Real-time stdin/stdout communication without hanging
+- **Session Management**: Proper handling of `--resume` and `--continue` flags
+- **Tool Access Control**: Configurable `--allowedTools` for security
+- **MCP Configuration**: Dynamic `--mcp-config` server loading
+- **JSON Output**: Structured response parsing via `--output-format json`
 
+## 🚀 Quick Start
+
+**Prerequisites:**
+- Claude Code CLI installed and configured
+- JDK 17+
+- Gradle 8+
+
+**Run:**
 ```bash
-# Build and run
-./gradlew :chat:run
+# Build project
+./gradlew build
 
-# Run tests
+# Run application
+./gradlew :bot:run
+
+# Run tests  
 ./gradlew test
 ```
 
-## Documentation
+**Configuration:**
+1. Copy `bot/src/jvmMain/resources/application.yaml.dist` to `application.yaml`
+2. Configure your API keys and settings
+3. Customize MCP servers in `src/jvmMain/resources/mcp.json`
 
-- [docs/](./docs/) - Claude Code integration technical notes
-- [CLAUDE.md](./CLAUDE.md) - Project configuration for Claude Code
+## 📚 Documentation
 
-## Development
+- [docs/](./docs/) - Technical documentation and integration notes
+- [CLAUDE.md](./CLAUDE.md) - Claude Code project configuration
+- [Architecture Overview](./bot/doc/general.puml) - System design diagram
 
-Built as a research project to understand Claude Code CLI integration patterns and implement a robust streaming wrapper for JVM-based applications.
+## 🎯 Philosophy
+
+**Maximum practical utility through integration with real tools.** The agent should not only talk but also perform tasks - work with files, send requests, manage system, integrate with external services.
+
+**Why Claude Code?** While alternatives like DeepSeek V3 are cheaper per token, Claude Code provides rich out-of-the-box ecosystem (tools, sub-agents, MCP servers, IDE integration) that would be expensive to replicate. The developer experience and built-in capabilities justify the cost.
+
+## 🧪 Development Status
+
+Research project exploring Claude Code CLI integration patterns and implementing robust streaming wrapper for JVM-based applications. Core functionality working, plugin system in development.
+
+---
+
+*"In the hands of a skilled developer, even the most complex system becomes simple tools"* 🛠️
