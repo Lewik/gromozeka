@@ -1,0 +1,58 @@
+kotlin-sdk
+openai-agent
+openai-agents-python
+openai-java
+
+**/.claude/settings.local.json
+
+# Gradle
+.gradle
+build/
+**/build/
+
+# Kotlin
+.kotlin/
+
+# IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+*.ipr
+*.iws
+out/
+
+# Database files
+*.db
+*.db-*
+*.sqlite
+*.sqlite-*
+
+# Mac OS X
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Logs
+*.log
+logs/
+
+# Dependencies
+/lib-sources/
+
+# Local configuration files
+local.properties
+application-local.properties
+application-local.yml
+application-local.yaml
+
+# Environment files
+.env
+.env.local
+*.env
+
+# API keys and secrets
+**/secrets.properties
+**/api-keys.properties
+**/*-secret.properties
+bot/src/jvmMain/resources/application.yaml
+bot/src/jvmMain/resources/mcp-bup.json

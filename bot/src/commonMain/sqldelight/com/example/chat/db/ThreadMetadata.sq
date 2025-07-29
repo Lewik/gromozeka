@@ -1,0 +1,16 @@
+CREATE TABLE thread_metadata (
+    thread_id TEXT PRIMARY KEY NOT NULL
+);
+
+insertThreadMetadata:
+INSERT INTO thread_metadata(thread_id)
+VALUES (?);
+
+selectAllThreadMetadata:
+SELECT * FROM thread_metadata;
+
+deleteByThreadId:
+DELETE FROM thread_metadata WHERE thread_id = ?;
+
+deleteAllThreadMetadata:
+DELETE FROM thread_metadata;

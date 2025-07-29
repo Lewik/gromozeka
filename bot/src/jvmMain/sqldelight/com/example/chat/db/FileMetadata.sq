@@ -1,0 +1,24 @@
+CREATE TABLE file_metadata (
+    file_id TEXT PRIMARY KEY NOT NULL,
+    sha256 TEXT NOT NULL,
+    relative_path TEXT NOT NULL
+);
+
+insertFileMetadata:
+INSERT INTO file_metadata(file_id, sha256, relative_path)
+VALUES (?, ?, ?);
+
+selectAllFileMetadata:
+SELECT * FROM file_metadata;
+
+selectByRelativePath:
+SELECT * FROM file_metadata WHERE relative_path = ?;
+
+selectByFileId:
+SELECT * FROM file_metadata WHERE file_id = ?;
+
+deleteById:
+DELETE FROM file_metadata WHERE file_id = ?;
+
+deleteAll:
+DELETE FROM file_metadata;

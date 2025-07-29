@@ -1,0 +1,21 @@
+spring:
+  main:
+    web-application-type: none
+  ai:
+    openai:
+      api-key: "${OPENAI_API_KEY}"
+    mcp:
+      client:
+        toolcallback:
+          enabled: true
+        servers:
+          brave:
+            command: brave-mcp-server
+            args: 
+              - --search-only
+              - --mcp-mode
+              - stdio
+            env:
+              BRAVE_API_KEY: "${BRAVE_API_KEY}"
+# Configure the root directory for file operations
+root: "${PROJECT_ROOT:/path/to/your/project}"

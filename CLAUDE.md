@@ -1,0 +1,58 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Project Structure
+
+This is a Kotlin Multiplatform Project (MPP) with the following modules:
+- `bot` - The main application module containing the gromozeka bot application
+- `shared` - A library module with shared code and models
+
+## Build and Test Commands
+
+- Build project: `./gradlew build`
+- Run application: `./gradlew :bot:run`
+- Run all tests: `./gradlew test`
+- Clean build: `./gradlew clean`
+- Compile: `./gradlew compileKotlin`
+
+
+## Project Overview
+
+**Concept**: Gromozeka - multi-armed AI agent (named after the character from "The Mystery of the Third Planet"). This is not just another chatbot, but a "handy" agent with multiple capabilities for interacting with system, services, and various APIs.
+
+**Core Philosophy**: Maximum practical utility through integration with real tools. The agent should not only talk but also perform tasks - work with files, send requests, manage system, integrate with external services.
+
+**Architecture Stack**:
+- **UI**: JetBrains Compose Desktop
+- **AI Integration**: Claude Code CLI wrapper + Spring AI
+- **Core Features**: Text chat, voice input (STT), tool calling, MCP support, session management
+- **Extensibility**: Plugin architecture for adding new "arms" (capabilities)
+
+**Key Differentiators**:
+- Claude Code CLI integration for rich tool ecosystem
+- MCP (Model Context Protocol) for modular capability extension
+- Real-time streaming responses
+- Persistent sessions with context
+- Desktop-first approach for maximum development convenience
+
+**Naming**: "Gromozeka" - internal codename, may be changed for release
+
+## Claude Code Integration Plan
+
+**Research results**: Claude Code provides rich out-of-the-box ecosystem (tools, sub-agents, MCP servers, IDE integration) that would be expensive to replicate. While alternatives like DeepSeek V3 are cheaper per token, Claude Code's developer experience and built-in capabilities justify the cost for this use case.
+
+**Hybrid approach**:
+- **Claude Code CLI wrapper**: For core AI chat functionality, tool calling, MCP integration
+- **Spring AI**: Keep for STT/TTS services and existing voice features
+- **Integration method**: Command line SDK via ProcessBuilder with JSON output parsing
+
+**Key integration points**:
+- `claude -p "prompt" --output-format json` for structured responses
+- `--mcp-config` for MCP server configuration
+- `--allowedTools` for tool access control
+- Session management via `--resume` and `--continue`
+
+See docs/ folder for Claude Code integration documentation.
+
+**Reference examples**: https://github.com/anthropics/anthropic-sdk-python for SDK usage patterns.

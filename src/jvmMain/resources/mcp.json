@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "brave": {
+      "command": "brave-mcp-server",
+      "args": ["--search-only", "--mcp-mode", "stdio"],
+      "env": {
+        "BRAVE_API_KEY": "BSA-IZY4-10R4DOP"
+      }
+    }
+  }
+}
