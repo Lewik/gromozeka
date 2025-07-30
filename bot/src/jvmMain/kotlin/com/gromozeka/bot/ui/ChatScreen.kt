@@ -45,6 +45,27 @@ fun ChatScreen(
     onCheckBalance: () -> Unit
 ) {
     val scrollState = rememberScrollState()
+    var stickyToBottom by remember { mutableStateOf(true) }
+    
+    val isAtBottom by remember {
+        derivedStateOf {
+            scrollState.value >= scrollState.maxValue - 50
+        }
+    }
+    
+    LaunchedEffect(scrollState.value, isAtBottom) {
+        if (isAtBottom) {
+            stickyToBottom = true
+        } else if (scrollState.isScrollInProgress) {
+            stickyToBottom = false
+        }
+    }
+    
+    LaunchedEffect(chatHistory.size) {
+        if (stickyToBottom) {
+            scrollState.animateScrollTo(scrollState.maxValue)
+        }
+    }
 
     Column(modifier = Modifier.padding(16.dp).fillMaxSize()) {
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -70,6 +91,10 @@ fun ChatScreen(
             Spacer(modifier = Modifier.width(8.dp))
             Button(onClick = onCheckBalance) {
                 Text("💰 Баланс")
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            Button(onClick = { stickyToBottom = !stickyToBottom }) {
+                Text("Autoscroll is ${if (stickyToBottom) "ON" else "OFF"}")
             }
         }
 
