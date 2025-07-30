@@ -1,5 +1,6 @@
 package com.gromozeka.bot
 
+import org.springframework.ai.openai.OpenAiAudioSpeechModel
 import org.springframework.ai.openai.OpenAiAudioTranscriptionModel
 import org.springframework.ai.openai.OpenAiChatModel
 import org.springframework.ai.openai.OpenAiChatOptions
@@ -18,6 +19,12 @@ class ModelsConfig {
     fun openAiAudioTranscriptionModel(openAiApiKey: String): OpenAiAudioTranscriptionModel {
         val openAiAudioApi = OpenAiAudioApi.builder().apiKey(openAiApiKey).build()
         return OpenAiAudioTranscriptionModel(openAiAudioApi)
+    }
+
+    @Bean
+    fun openAiAudioSpeechModel(openAiApiKey: String): OpenAiAudioSpeechModel {
+        val openAiAudioApi = OpenAiAudioApi.builder().apiKey(openAiApiKey).build()
+        return OpenAiAudioSpeechModel(openAiAudioApi)
     }
 
     @Bean

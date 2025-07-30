@@ -1,8 +1,8 @@
 package com.gromozeka.bot
 
 import androidx.compose.desktop.ui.tooling.preview.Preview
-import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.*
 import androidx.compose.runtime.*
@@ -12,7 +12,6 @@ import androidx.compose.ui.input.pointer.isPrimaryPressed
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.ApplicationScope
 import androidx.compose.ui.window.Window
@@ -20,11 +19,7 @@ import androidx.compose.ui.window.application
 import com.gromozeka.bot.model.ChatMessage
 import com.gromozeka.bot.model.ChatMessageContent
 import com.gromozeka.bot.model.ChatSession
-import com.gromozeka.bot.services.ClaudeCodeStreamingWrapper
-import com.gromozeka.bot.services.ClaudeStreamMessage
-import com.gromozeka.bot.services.OpenAiBalanceService
-import com.gromozeka.bot.services.SessionListService
-import com.gromozeka.bot.services.SttService
+import com.gromozeka.bot.services.*
 import com.gromozeka.bot.ui.ChatScreen
 import com.gromozeka.bot.ui.SessionListScreen
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -43,6 +38,7 @@ fun main() {
     val context = SpringApplicationBuilder(ChatApplication::class.java).run()
     val theAssistant = context.getBean<TheAssistant>()
     val sttService = context.getBean<SttService>()
+    val ttsService = context.getBean<TtsService>()
     val chatMemory = context.getBean<ChatMemory>()
     val claudeCodeStreamingWrapper = context.getBean<ClaudeCodeStreamingWrapper>()
     val sessionListService = context.getBean<SessionListService>()
@@ -56,7 +52,13 @@ fun main() {
             )
         ) {
             ChatWindow(
-                theAssistant, sttService, chatMemory, claudeCodeStreamingWrapper, sessionListService, openAiBalanceService
+                theAssistant,
+                sttService,
+                ttsService,
+                chatMemory,
+                claudeCodeStreamingWrapper,
+                sessionListService,
+                openAiBalanceService
             )
         }
     }
@@ -67,10 +69,11 @@ fun main() {
 fun ApplicationScope.ChatWindow(
     theAssistant: TheAssistant,
     sttService: SttService,
+    ttsService: TtsService,
     chatMemory: ChatMemory,
     claudeCodeStreamingWrapper: ClaudeCodeStreamingWrapper,
     sessionListService: SessionListService,
-    openAiBalanceService: OpenAiBalanceService
+    openAiBalanceService: OpenAiBalanceService,
 ) {
     val coroutineScope = rememberCoroutineScope()
     val scrollState = rememberScrollState()
@@ -90,7 +93,7 @@ fun ApplicationScope.ChatWindow(
     var showSessionList by remember { mutableStateOf(true) }
     var selectedSession by remember { mutableStateOf<ChatSession?>(null) }
     var isRecording by remember { mutableStateOf(false) }
-    
+
     var showBalanceDialog by remember { mutableStateOf(false) }
     var balanceInfo by remember { mutableStateOf("") }
 
@@ -99,20 +102,20 @@ fun ApplicationScope.ChatWindow(
         initialized = true
         scrollState.animateScrollTo(scrollState.maxValue)
     }
-    
+
     LaunchedEffect(selectedSession) {
         if (selectedSession != null) {
-            println("Setting up streaming wrapper message listener")
             claudeCodeStreamingWrapper.messages.collect { message ->
-                println("Received streaming message: $message")
                 when (message) {
                     is ClaudeStreamMessage.AssistantMessage -> {
+                        val displayText = message.structuredResponse?.fullText ?: message.text
+
                         val newMessage = ChatMessage(
                             id = (chatHistory.size + 1).toString(),
                             role = ChatMessage.Role.ASSISTANT,
                             content = listOf(
                                 ChatMessageContent(
-                                    content = message.text,
+                                    content = displayText,
                                     type = ChatMessageContent.Type.TEXT,
                                     ""
                                 )
@@ -121,15 +124,26 @@ fun ApplicationScope.ChatWindow(
                             metadataType = ChatMessage.MetadataType.NONE
                         )
                         chatHistory = chatHistory + newMessage
-                        println("Added assistant message to history: ${message.text.take(50)}...")
+
+                        // Handle TTS if structured response is available
+                        message.structuredResponse?.let { response ->
+                            if (response.ttsText.isNotBlank()) {
+                                coroutineScope.launch {
+                                    try {
+                                        ttsService.generateAndPlay(response.ttsText, response.voiceTone)
+                                    } catch (e: Exception) {
+                                        e.printStackTrace()
+                                    }
+                                }
+                            }
+                        }
                     }
+
                     is ClaudeStreamMessage.ResultMessage -> {
-                        println("Conversation completed. Cost: $${message.totalCostUsd}, Duration: ${message.durationMs}ms")
                         assistantIsThinking = false
                     }
-                    else -> {
-                        println("Other message type: $message")
-                    }
+
+                    else -> {}
                 }
             }
         }
@@ -159,12 +173,10 @@ fun ApplicationScope.ChatWindow(
     }
 
     val sendMessage: suspend (String) -> Unit = { message ->
-        println("Sending message: $message")
         assistantIsThinking = true
-        
+
         if (selectedSession != null) {
-            println("Sending via ClaudeCodeStreamingWrapper")
-            
+
             val userMessage = ChatMessage(
                 id = (chatHistory.size + 1).toString(),
                 role = ChatMessage.Role.USER,
@@ -179,20 +191,19 @@ fun ApplicationScope.ChatWindow(
                 metadataType = ChatMessage.MetadataType.NONE
             )
             chatHistory = chatHistory + userMessage
-            
+
             claudeCodeStreamingWrapper.sendMessage(message)
         } else {
-            println("Sending via TheAssistant")
             theAssistant.sendMessage(message)
-            
+
             if (theAssistant.hasPendingToolCalls()) {
                 pendingToolCalls = theAssistant.getPendingToolCallInfo()
                 showToolCalls = true
             }
-            
+
             updateChatHistory()
         }
-        
+
         assistantIsThinking = false
     }
 
@@ -289,7 +300,7 @@ fun ApplicationScope.ChatWindow(
                 CircularProgressIndicator()
             }
         }
-        
+
         if (showBalanceDialog) {
             AlertDialog(
                 onDismissRequest = { showBalanceDialog = false },

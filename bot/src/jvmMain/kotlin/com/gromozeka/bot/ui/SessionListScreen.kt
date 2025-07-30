@@ -1,7 +1,6 @@
 package com.gromozeka.bot.ui
 
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -12,7 +11,6 @@ import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import com.gromozeka.bot.model.ChatMessage
 import com.gromozeka.bot.model.ChatSession
@@ -29,7 +27,7 @@ fun SessionListScreen(
     sessionListService: SessionListService,
     onSessionSelected: (ChatSession, List<ChatMessage>) -> Unit,
     claudeCodeStreamingWrapper: ClaudeCodeStreamingWrapper,
-    coroutineScope: CoroutineScope
+    coroutineScope: CoroutineScope,
 ) {
     var projectGroups by remember { mutableStateOf<List<ProjectGroup>>(emptyList()) }
     var expandedProjects by remember { mutableStateOf<Set<String>>(emptySet()) }
@@ -41,7 +39,6 @@ fun SessionListScreen(
             expandedProjects = emptySet() // Projects collapsed by default
             isLoading = false
         } catch (e: Exception) {
-            println("Error loading sessions: ${e.message}")
             e.printStackTrace()
             isLoading = false
         }
@@ -73,8 +70,36 @@ fun SessionListScreen(
                             }
                         }
                     )
-                    
+
                     if (group.projectPath in expandedProjects) {
+                        NewSessionButton(
+                            projectPath = group.projectPath,
+                            onNewSessionClick = { projectPath ->
+                                coroutineScope.launch {
+                                    try {
+                                        claudeCodeStreamingWrapper.start(
+                                            sessionId = null,
+                                            projectPath = projectPath
+                                        )
+
+                                        val newSession = ChatSession(
+                                            sessionId = "new-session",
+                                            projectPath = projectPath,
+                                            firstMessage = "",
+                                            lastTimestamp = kotlinx.datetime.Clock.System.now(),
+                                            messageCount = 0,
+                                            preview = "New Session"
+                                        )
+
+                                        onSessionSelected(newSession, emptyList())
+
+                                    } catch (e: Exception) {
+                                        e.printStackTrace()
+                                    }
+                                }
+                            }
+                        )
+
                         group.sessions.forEach { session ->
                             SessionItem(
                                 session = session,
@@ -87,20 +112,17 @@ fun SessionListScreen(
                                                 ".claude/projects/$encodedPath/${clickedSession.sessionId}.jsonl"
                                             )
 
-                                            val messages = ClaudeCodeSessionMapper.loadSessionAsChatMessages(sessionFile)
+                                            val messages =
+                                                ClaudeCodeSessionMapper.loadSessionAsChatMessages(sessionFile)
 
                                             claudeCodeStreamingWrapper.start(
-                                                sessionId = clickedSession.sessionId, 
+                                                sessionId = clickedSession.sessionId,
                                                 projectPath = clickedSession.projectPath
                                             )
 
-                                            println("Loaded ${messages.size} messages from session ${clickedSession.sessionId}")
-                                            println("Started streaming wrapper for project: ${clickedSession.projectPath}")
-                                            
                                             onSessionSelected(clickedSession, messages)
 
                                         } catch (e: Exception) {
-                                            println("Error loading session: ${e.message}")
                                             e.printStackTrace()
                                         }
                                     }
@@ -119,7 +141,7 @@ fun SessionListScreen(
 private fun ProjectGroupHeader(
     group: ProjectGroup,
     isExpanded: Boolean,
-    onToggleExpanded: () -> Unit
+    onToggleExpanded: () -> Unit,
 ) {
     Card(
         modifier = Modifier
@@ -155,7 +177,7 @@ private fun ProjectGroupHeader(
 private fun SessionItem(
     session: ChatSession,
     onSessionClick: (ChatSession) -> Unit,
-    isGrouped: Boolean = false
+    isGrouped: Boolean = false,
 ) {
     Card(
         modifier = Modifier
@@ -194,6 +216,31 @@ private fun SessionItem(
                     style = MaterialTheme.typography.caption
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun NewSessionButton(
+    projectPath: String,
+    onNewSessionClick: (String) -> Unit,
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 24.dp, top = 4.dp, bottom = 4.dp)
+            .clickable { onNewSessionClick(projectPath) },
+        backgroundColor = MaterialTheme.colors.primary.copy(alpha = 0.1f)
+    ) {
+        Row(
+            modifier = Modifier.padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "+ Новая сессия",
+                style = MaterialTheme.typography.body2,
+                color = MaterialTheme.colors.primary
+            )
         }
     }
 }

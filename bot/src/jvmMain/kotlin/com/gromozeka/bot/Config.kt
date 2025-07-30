@@ -7,16 +7,17 @@ import com.gromozeka.bot.repository.ChatMessageRepository
 import com.gromozeka.bot.repository.FileMetadataRepository
 import com.gromozeka.bot.repository.ThreadMetadataRepository
 import com.gromozeka.bot.services.SttService
+import com.gromozeka.bot.services.TtsService
 import io.ktor.client.*
 import io.ktor.client.engine.cio.*
 import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.serialization.kotlinx.json.*
+import org.springframework.ai.chat.client.ChatClient
 import org.springframework.ai.chat.memory.ChatMemory
 import org.springframework.ai.chat.memory.MessageWindowChatMemory
-import org.springframework.ai.chat.client.ChatClient
+import org.springframework.ai.openai.OpenAiAudioSpeechModel
 import org.springframework.ai.openai.OpenAiAudioTranscriptionModel
 import org.springframework.ai.openai.OpenAiChatModel
-
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import java.io.File
@@ -66,11 +67,15 @@ class Config {
     @Bean
     fun chatMemory() = MessageWindowChatMemory.builder()
         .maxMessages(50)
-            .build()
+        .build()
 
     @Bean
     fun sttService(openAiAudioTranscriptionModel: OpenAiAudioTranscriptionModel) =
         SttService(openAiAudioTranscriptionModel)
+
+    @Bean
+    fun ttsService(openAiAudioSpeechModel: OpenAiAudioSpeechModel) =
+        TtsService(openAiAudioSpeechModel)
 
 //
 //    @Bean
@@ -104,11 +109,11 @@ class Config {
 
     @Bean
     fun chatClient(chatModel: OpenAiChatModel) = ChatClient.builder(chatModel).build()
-    
+
     @Bean
     fun theAssistant(
         chatClient: ChatClient,
-        chatMemory: ChatMemory
+        chatMemory: ChatMemory,
     ) = TheAssistant(
         chatClient,
         chatMemory

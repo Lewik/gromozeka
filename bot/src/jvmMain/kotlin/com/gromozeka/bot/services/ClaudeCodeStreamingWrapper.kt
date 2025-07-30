@@ -22,6 +22,42 @@ class ClaudeCodeStreamingWrapper {
         configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
     }
 
+    private fun loadDefaultSystemPrompt(): String {
+        return this::class.java.getResourceAsStream("/default-system-prompt.md")
+            ?.bufferedReader()
+            ?.readText()
+            ?: ""
+    }
+
+    private fun parseStructuredResponse(textContent: String): StructuredResponse? {
+        return try {
+
+            if (textContent.startsWith("{")) {
+                val jsonData = objectMapper.readValue(textContent, Map::class.java) as Map<String, Any>
+
+                val result = StructuredResponse(
+                    fullText = jsonData["full_text"] as? String 
+                        ?: jsonData["response"] as? String 
+                        ?: textContent,
+                    ttsText = jsonData["tts_text"] as? String 
+                        ?: jsonData["speak"] as? String 
+                        ?: jsonData["voiceResponse"] as? String
+                        ?: "",
+                    voiceTone = jsonData["voice_tone"] as? String 
+                        ?: jsonData["tone"] as? String 
+                        ?: jsonData["emotion"] as? String
+                        ?: "neutral colleague"
+                )
+                result
+            } else {
+                null
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
+    }
+
     private var process: Process? = null
     private var stdinWriter: BufferedWriter? = null
     private var stdoutReader: BufferedReader? = null
@@ -43,17 +79,15 @@ class ClaudeCodeStreamingWrapper {
             currentSessionId = sessionId
             
             // Start Claude Code in interactive mode with specified session through bash
+            val defaultPrompt = loadDefaultSystemPrompt().replace("\"", "\\\"")
             val claudeArgs = if (sessionId != null) {
-                "--output-format stream-json --input-format stream-json --verbose --resume $sessionId"
-            } else {
-                "--output-format stream-json --input-format stream-json --verbose"
+                "--output-format stream-json --input-format stream-json --verbose --resume $sessionId --append-system-prompt \"$defaultPrompt\""
+            } else {  
+                "--output-format stream-json --input-format stream-json --verbose --append-system-prompt \"$defaultPrompt\""
             }
             val command = listOf(
                 "bash", "-c", "claude $claudeArgs"
             )
-            
-            println("Executing: ${command.joinToString(" ")}")
-            println("Working directory: ${projectPath ?: "current directory"}")
             
             val processBuilder = ProcessBuilder(command)
                 .redirectErrorStream(false) // Keep stderr separate for debugging
@@ -77,10 +111,8 @@ class ClaudeCodeStreamingWrapper {
             }
             
             _status.emit(StreamStatus.CONNECTED)
-            println("Claude Code streaming process started successfully")
             
         } catch (e: Exception) {
-            println("Error starting Claude Code streaming: ${e.message}")
             e.printStackTrace()
             _status.emit(StreamStatus.ERROR(e.message ?: "Unknown error"))
         }
@@ -100,7 +132,6 @@ class ClaudeCodeStreamingWrapper {
             )
             
             val jsonLine = objectMapper.writeValueAsString(streamJsonMessage)
-            println("Sending stream-json: $jsonLine")
             
             writer.write("$jsonLine\n")
             writer.flush()
@@ -108,7 +139,6 @@ class ClaudeCodeStreamingWrapper {
             _status.emit(StreamStatus.MESSAGE_SENT)
             
         } catch (e: Exception) {
-            println("Error sending message: ${e.message}")
             e.printStackTrace()
             _status.emit(StreamStatus.ERROR(e.message ?: "Failed to send message"))
         }
@@ -122,8 +152,6 @@ class ClaudeCodeStreamingWrapper {
                 val line = reader.readLine() ?: break
                 if (line.trim().isEmpty()) continue
                 
-                println("Received: $line")
-                
                 try {
                     // Parse JSON line
                     val messageData = objectMapper.readValue(line, Map::class.java) as Map<String, Any>
@@ -131,8 +159,6 @@ class ClaudeCodeStreamingWrapper {
                     _messages.emit(message)
                     
                 } catch (e: Exception) {
-                    println("Error parsing message: ${e.message}")
-                    println("Raw line: $line")
                     e.printStackTrace()
                 }
             }
@@ -140,7 +166,6 @@ class ClaudeCodeStreamingWrapper {
             _status.emit(StreamStatus.DISCONNECTED)
             
         } catch (e: Exception) {
-            println("Error reading output stream: ${e.message}")
             e.printStackTrace()
             _status.emit(StreamStatus.ERROR(e.message ?: "Stream reading error"))
         }
@@ -157,11 +182,14 @@ class ClaudeCodeStreamingWrapper {
             "assistant" -> {
                 val messageData = data["message"] as? Map<String, Any>
                 val content = messageData?.get("content") as? List<Map<String, Any>>
-                val textContent = content?.firstOrNull { it["type"] == "text" }?.get("text") as? String
+                val textContent = content?.firstOrNull { it["type"] == "text" }?.get("text") as? String ?: ""
+                
+                val structuredResponse = parseStructuredResponse(textContent)
                 
                 ClaudeStreamMessage.AssistantMessage(
-                    text = textContent ?: "",
-                    sessionId = data["session_id"] as? String
+                    text = textContent,
+                    sessionId = data["session_id"] as? String,
+                    structuredResponse = structuredResponse
                 )
             }
             "result" -> ClaudeStreamMessage.ResultMessage(
@@ -190,14 +218,18 @@ class ClaudeCodeStreamingWrapper {
             }
             
             _status.emit(StreamStatus.DISCONNECTED)
-            println("Claude Code streaming process stopped")
             
         } catch (e: Exception) {
-            println("Error stopping Claude Code streaming: ${e.message}")
             e.printStackTrace()
         }
     }
 }
+
+data class StructuredResponse(
+    val fullText: String,
+    val ttsText: String,
+    val voiceTone: String
+)
 
 sealed class ClaudeStreamMessage {
     data class SystemMessage(
@@ -207,7 +239,8 @@ sealed class ClaudeStreamMessage {
     
     data class AssistantMessage(
         val text: String,
-        val sessionId: String?
+        val sessionId: String?,
+        val structuredResponse: StructuredResponse? = null
     ) : ClaudeStreamMessage()
     
     data class ResultMessage(
