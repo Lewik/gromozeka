@@ -7,7 +7,9 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -37,6 +39,7 @@ fun ChatScreen(
     attachOpenedFile: Boolean,
     onAttachOpenedFileChange: (Boolean) -> Unit,
     onBackToSessionList: () -> Unit,
+    onNewSession: () -> Unit,
     onSendMessage: suspend (String) -> Unit,
     onExecuteToolCalls: suspend () -> Unit,
     sttService: SttService,
@@ -69,8 +72,11 @@ fun ChatScreen(
 
     Column(modifier = Modifier.padding(16.dp).fillMaxSize()) {
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Button(onClick = onBackToSessionList) {
-                Text("← Выбрать беседу")
+            IconButton(onClick = onBackToSessionList) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Назад")
+            }
+            IconButton(onClick = onNewSession) {
+                Icon(Icons.Filled.Add, contentDescription = "Новая беседа")
             }
             Spacer(modifier = Modifier.width(8.dp))
             Text("Chat", style = MaterialTheme.typography.h5)
@@ -112,8 +118,15 @@ fun ChatScreen(
                 Column {
                     chatHistory
                         .filter { it.metadataType != ChatMessage.MetadataType.IDE_CONTEXT }
-                        .forEach { message ->
+                        .forEachIndexed { index, message ->
                             MessageItem(message = message)
+                            if (index < chatHistory.filter { it.metadataType != ChatMessage.MetadataType.IDE_CONTEXT }.size - 1) {
+                                Divider(
+                                    modifier = Modifier.padding(vertical = 8.dp),
+                                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.2f),
+                                    thickness = 1.dp
+                                )
+                            }
                         }
                 }
             }

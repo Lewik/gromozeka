@@ -101,6 +101,35 @@ fun ApplicationScope.ChatWindow(
         theAssistant.init()
         initialized = true
         scrollState.animateScrollTo(scrollState.maxValue)
+        
+        // Auto-load latest session on startup
+        try {
+            val projectGroups = sessionListService.getSessionsGroupedByProject()
+            val latestSession = projectGroups.flatMap { it.sessions }
+                .sortedByDescending { it.lastTimestamp }
+                .firstOrNull()
+            
+            latestSession?.let { session ->
+                val encodedPath = session.projectPath.replace("/", "-")
+                val sessionFile = java.io.File(
+                    System.getProperty("user.home"),
+                    ".claude/projects/$encodedPath/${session.sessionId}.jsonl"
+                )
+                
+                val messages = ClaudeCodeSessionMapper.loadSessionAsChatMessages(sessionFile)
+                
+                claudeCodeStreamingWrapper.start(
+                    sessionId = session.sessionId,
+                    projectPath = session.projectPath
+                )
+                
+                selectedSession = session
+                chatHistory = messages
+                showSessionList = false
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 
     LaunchedEffect(selectedSession) {
@@ -108,6 +137,10 @@ fun ApplicationScope.ChatWindow(
             claudeCodeStreamingWrapper.messages.collect { message ->
                 when (message) {
                     is ClaudeStreamMessage.AssistantMessage -> {
+                        println("DEBUG: Full AssistantMessage: $message")
+                        println("DEBUG: message.text: ${message.text}")
+                        println("DEBUG: message.structuredResponse: ${message.structuredResponse}")
+                        
                         val displayText = message.structuredResponse?.fullText ?: message.text
 
                         val newMessage = ChatMessage(
@@ -145,6 +178,32 @@ fun ApplicationScope.ChatWindow(
 
                     else -> {}
                 }
+            }
+        }
+    }
+
+    val createNewSession: (String) -> Unit = { projectPath ->
+        coroutineScope.launch {
+            try {
+                claudeCodeStreamingWrapper.start(
+                    sessionId = null,
+                    projectPath = projectPath
+                )
+                
+                val newSession = ChatSession(
+                    sessionId = "new-session",
+                    projectPath = projectPath,
+                    firstMessage = "",
+                    lastTimestamp = kotlinx.datetime.Clock.System.now(),
+                    messageCount = 0,
+                    preview = "New Session"
+                )
+                
+                selectedSession = newSession
+                chatHistory = emptyList()
+                showSessionList = false
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
         }
     }
@@ -255,7 +314,7 @@ fun ApplicationScope.ChatWindow(
         }
     }
 
-    Window(onCloseRequest = ::exitApplication, title = "Chat") {
+    Window(onCloseRequest = ::exitApplication, title = "🤖 Громозека") {
         if (initialized) {
             if (showSessionList) {
                 SessionListScreen(
@@ -266,7 +325,8 @@ fun ApplicationScope.ChatWindow(
                         showSessionList = false
                     },
                     claudeCodeStreamingWrapper = claudeCodeStreamingWrapper,
-                    coroutineScope = coroutineScope
+                    coroutineScope = coroutineScope,
+                    onNewSession = createNewSession
                 )
             } else {
                 ChatScreen(
@@ -282,6 +342,10 @@ fun ApplicationScope.ChatWindow(
                     attachOpenedFile = attachOpenedFile,
                     onAttachOpenedFileChange = { attachOpenedFile = it },
                     onBackToSessionList = { showSessionList = true },
+                    onNewSession = { 
+                        val currentProjectPath = selectedSession?.projectPath ?: "/Users/lewik/code/gromozeka"
+                        createNewSession(currentProjectPath)
+                    },
                     onSendMessage = sendMessage,
                     onExecuteToolCalls = executeToolCalls,
                     sttService = sttService,

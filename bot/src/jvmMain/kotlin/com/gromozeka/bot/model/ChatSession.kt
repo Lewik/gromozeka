@@ -25,7 +25,25 @@ data class ChatSession(
     /**
      * Formatted timestamp for display
      */
-    fun displayTime(): String = lastTimestamp.toString().substringBefore('T')
+    fun displayTime(): String {
+        val now = kotlinx.datetime.Clock.System.now()
+        val duration = now - lastTimestamp
+        val exactTime = lastTimestamp.toString().substring(0, 16).replace('T', ' ')
+        
+        val relativeTime = when {
+            duration.inWholeMinutes < 1 -> "сейчас"
+            duration.inWholeMinutes < 60 -> "${duration.inWholeMinutes}м назад"
+            duration.inWholeHours < 24 -> "${duration.inWholeHours}ч назад"
+            duration.inWholeDays < 7 -> "${duration.inWholeDays}д назад"
+            else -> null
+        }
+        
+        return if (relativeTime != null) {
+            "$exactTime ($relativeTime)"
+        } else {
+            exactTime
+        }
+    }
     
     /**
      * Display project name (last part of path)

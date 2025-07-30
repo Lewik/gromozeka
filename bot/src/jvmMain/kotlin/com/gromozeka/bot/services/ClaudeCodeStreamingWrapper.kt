@@ -154,6 +154,9 @@ class ClaudeCodeStreamingWrapper {
                 
                 try {
                     // Parse JSON line
+                    println("LINE DUMP START")
+                    println(line)
+                    println("LINE DUMP END")
                     val messageData = objectMapper.readValue(line, Map::class.java) as Map<String, Any>
                     val message = parseStreamMessage(messageData)
                     _messages.emit(message)

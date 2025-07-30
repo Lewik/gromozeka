@@ -28,6 +28,7 @@ fun SessionListScreen(
     onSessionSelected: (ChatSession, List<ChatMessage>) -> Unit,
     claudeCodeStreamingWrapper: ClaudeCodeStreamingWrapper,
     coroutineScope: CoroutineScope,
+    onNewSession: (String) -> Unit,
 ) {
     var projectGroups by remember { mutableStateOf<List<ProjectGroup>>(emptyList()) }
     var expandedProjects by remember { mutableStateOf<Set<String>>(emptySet()) }
@@ -58,6 +59,58 @@ fun SessionListScreen(
             }
         } else {
             Column(modifier = Modifier.verticalScroll(rememberScrollState()).fillMaxWidth()) {
+                // Recent sessions section
+                val recentSessions = projectGroups.flatMap { it.sessions }
+                    .sortedByDescending { it.lastTimestamp }
+                    .take(3)
+                
+                if (recentSessions.isNotEmpty()) {
+                    Text(
+                        text = "Последние сессии",
+                        style = MaterialTheme.typography.h6,
+                        modifier = Modifier.padding(vertical = 8.dp)
+                    )
+                    
+                    recentSessions.forEach { session ->
+                        SessionItem(
+                            session = session,
+                            onSessionClick = { clickedSession ->
+                                coroutineScope.launch {
+                                    try {
+                                        val encodedPath = clickedSession.projectPath.replace("/", "-")
+                                        val sessionFile = File(
+                                            System.getProperty("user.home"),
+                                            ".claude/projects/$encodedPath/${clickedSession.sessionId}.jsonl"
+                                        )
+
+                                        val messages =
+                                            ClaudeCodeSessionMapper.loadSessionAsChatMessages(sessionFile)
+
+                                        claudeCodeStreamingWrapper.start(
+                                            sessionId = clickedSession.sessionId,
+                                            projectPath = clickedSession.projectPath
+                                        )
+
+                                        onSessionSelected(clickedSession, messages)
+
+                                    } catch (e: Exception) {
+                                        e.printStackTrace()
+                                    }
+                                }
+                            },
+                            isGrouped = false
+                        )
+                    }
+                    
+                    Divider(modifier = Modifier.padding(vertical = 16.dp))
+                    
+                    Text(
+                        text = "Все проекты",
+                        style = MaterialTheme.typography.h6,
+                        modifier = Modifier.padding(vertical = 8.dp)
+                    )
+                }
+                
                 projectGroups.forEach { group ->
                     ProjectGroupHeader(
                         group = group,
@@ -74,30 +127,7 @@ fun SessionListScreen(
                     if (group.projectPath in expandedProjects) {
                         NewSessionButton(
                             projectPath = group.projectPath,
-                            onNewSessionClick = { projectPath ->
-                                coroutineScope.launch {
-                                    try {
-                                        claudeCodeStreamingWrapper.start(
-                                            sessionId = null,
-                                            projectPath = projectPath
-                                        )
-
-                                        val newSession = ChatSession(
-                                            sessionId = "new-session",
-                                            projectPath = projectPath,
-                                            firstMessage = "",
-                                            lastTimestamp = kotlinx.datetime.Clock.System.now(),
-                                            messageCount = 0,
-                                            preview = "New Session"
-                                        )
-
-                                        onSessionSelected(newSession, emptyList())
-
-                                    } catch (e: Exception) {
-                                        e.printStackTrace()
-                                    }
-                                }
-                            }
+                            onNewSessionClick = onNewSession
                         )
 
                         group.sessions.forEach { session ->
