@@ -7,6 +7,10 @@ import com.gromozeka.bot.repository.ChatMessageRepository
 import com.gromozeka.bot.repository.FileMetadataRepository
 import com.gromozeka.bot.repository.ThreadMetadataRepository
 import com.gromozeka.bot.services.SttService
+import io.ktor.client.*
+import io.ktor.client.engine.cio.*
+import io.ktor.client.plugins.contentnegotiation.*
+import io.ktor.serialization.kotlinx.json.*
 import org.springframework.ai.chat.memory.ChatMemory
 import org.springframework.ai.chat.memory.MessageWindowChatMemory
 import org.springframework.ai.chat.client.ChatClient
@@ -90,6 +94,13 @@ class Config {
 //        threadMetadataRepository: ThreadMetadataRepository,
 //    ) = ThreadService(aiClient, vectorStoreFileService, threadMetadataRepository)
 
+
+    @Bean
+    fun httpClient() = HttpClient(CIO) {
+        install(ContentNegotiation) {
+            json()
+        }
+    }
 
     @Bean
     fun chatClient(chatModel: OpenAiChatModel) = ChatClient.builder(chatModel).build()

@@ -22,6 +22,7 @@ import com.gromozeka.bot.model.ChatMessageContent
 import com.gromozeka.bot.model.ChatSession
 import com.gromozeka.bot.services.ClaudeCodeStreamingWrapper
 import com.gromozeka.bot.services.ClaudeStreamMessage
+import com.gromozeka.bot.services.OpenAiBalanceService
 import com.gromozeka.bot.services.SessionListService
 import com.gromozeka.bot.services.SttService
 import com.gromozeka.bot.ui.ChatScreen
@@ -45,6 +46,7 @@ fun main() {
     val chatMemory = context.getBean<ChatMemory>()
     val claudeCodeStreamingWrapper = context.getBean<ClaudeCodeStreamingWrapper>()
     val sessionListService = context.getBean<SessionListService>()
+    val openAiBalanceService = context.getBean<OpenAiBalanceService>()
     application {
         MaterialTheme(
             typography = Typography(
@@ -54,7 +56,7 @@ fun main() {
             )
         ) {
             ChatWindow(
-                theAssistant, sttService, chatMemory, claudeCodeStreamingWrapper, sessionListService
+                theAssistant, sttService, chatMemory, claudeCodeStreamingWrapper, sessionListService, openAiBalanceService
             )
         }
     }
@@ -68,6 +70,7 @@ fun ApplicationScope.ChatWindow(
     chatMemory: ChatMemory,
     claudeCodeStreamingWrapper: ClaudeCodeStreamingWrapper,
     sessionListService: SessionListService,
+    openAiBalanceService: OpenAiBalanceService
 ) {
     val coroutineScope = rememberCoroutineScope()
     val scrollState = rememberScrollState()
@@ -87,6 +90,9 @@ fun ApplicationScope.ChatWindow(
     var showSessionList by remember { mutableStateOf(true) }
     var selectedSession by remember { mutableStateOf<ChatSession?>(null) }
     var isRecording by remember { mutableStateOf(false) }
+    
+    var showBalanceDialog by remember { mutableStateOf(false) }
+    var balanceInfo by remember { mutableStateOf("") }
 
     LaunchedEffect(Unit) {
         theAssistant.init()
@@ -269,13 +275,32 @@ fun ApplicationScope.ChatWindow(
                     onExecuteToolCalls = executeToolCalls,
                     sttService = sttService,
                     coroutineScope = coroutineScope,
-                    modifierWithPushToTalk = modifierWithPushToTalk
+                    modifierWithPushToTalk = modifierWithPushToTalk,
+                    onCheckBalance = {
+                        coroutineScope.launch {
+                            balanceInfo = openAiBalanceService.checkBalance()
+                            showBalanceDialog = true
+                        }
+                    }
                 )
             }
         } else {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
             }
+        }
+        
+        if (showBalanceDialog) {
+            AlertDialog(
+                onDismissRequest = { showBalanceDialog = false },
+                title = { Text("OpenAI Balance") },
+                text = { Text(balanceInfo) },
+                confirmButton = {
+                    Button(onClick = { showBalanceDialog = false }) {
+                        Text("OK")
+                    }
+                }
+            )
         }
     }
 }

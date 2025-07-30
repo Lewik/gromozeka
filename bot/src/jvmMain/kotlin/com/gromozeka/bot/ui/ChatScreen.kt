@@ -41,7 +41,8 @@ fun ChatScreen(
     onExecuteToolCalls: suspend () -> Unit,
     sttService: SttService,
     coroutineScope: CoroutineScope,
-    modifierWithPushToTalk: Modifier
+    modifierWithPushToTalk: Modifier,
+    onCheckBalance: () -> Unit
 ) {
     val scrollState = rememberScrollState()
 
@@ -65,6 +66,10 @@ fun ChatScreen(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Checkbox(checked = attachOpenedFile, onCheckedChange = onAttachOpenedFileChange)
                 Text("Отправлять файл")
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            Button(onClick = onCheckBalance) {
+                Text("💰 Баланс")
             }
         }
 
