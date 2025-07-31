@@ -19,9 +19,10 @@ import androidx.compose.ui.window.application
 import com.gromozeka.bot.model.ChatMessage
 import com.gromozeka.bot.model.ChatMessageContent
 import com.gromozeka.bot.model.ChatSession
+import com.gromozeka.bot.model.Session
 import com.gromozeka.bot.services.ClaudeCodeStreamingWrapper
 import com.gromozeka.bot.services.OpenAiBalanceService
-import com.gromozeka.bot.services.SessionFileCoordinator
+import com.gromozeka.bot.services.SessionService
 import com.gromozeka.bot.services.SttService
 import com.gromozeka.bot.ui.ChatScreen
 import com.gromozeka.bot.ui.SessionListScreen
@@ -44,7 +45,7 @@ fun main() {
     val context = SpringApplicationBuilder(ChatApplication::class.java).run()
     val sttService = context.getBean<SttService>()
     val claudeCodeStreamingWrapper = context.getBean<ClaudeCodeStreamingWrapper>()
-    val sessionFileCoordinator = context.getBean<SessionFileCoordinator>() // Initialize file monitoring
+    val sessionService = context.getBean<SessionService>()
     val openAiBalanceService = context.getBean<OpenAiBalanceService>()
     application {
         MaterialTheme(
@@ -57,7 +58,7 @@ fun main() {
             ChatWindow(
                 sttService,
                 claudeCodeStreamingWrapper,
-                sessionFileCoordinator,
+                sessionService,
                 openAiBalanceService
             )
         }
@@ -69,7 +70,7 @@ fun main() {
 fun ApplicationScope.ChatWindow(
     sttService: SttService,
     claudeCodeStreamingWrapper: ClaudeCodeStreamingWrapper,
-    sessionFileCoordinator: SessionFileCoordinator,
+    sessionService: SessionService,
     openAiBalanceService: OpenAiBalanceService,
 ) {
     val coroutineScope = rememberCoroutineScope()
@@ -93,6 +94,7 @@ fun ApplicationScope.ChatWindow(
 
     var showSessionList by remember { mutableStateOf(true) }
     var selectedSession by remember { mutableStateOf<ChatSession?>(null) }
+    var currentSession by remember { mutableStateOf<Session?>(null) }
     var isRecording by remember { mutableStateOf(false) }
 
     var showBalanceDialog by remember { mutableStateOf(false) }
@@ -102,10 +104,24 @@ fun ApplicationScope.ChatWindow(
         initialized = true
         scrollState.animateScrollTo(scrollState.maxValue)
     }
+    
+    // Cleanup when composable is disposed
+    DisposableEffect(Unit) {
+        onDispose {
+            currentSession?.stopWatching()
+        }
+    }
 
     val createNewSession: (String) -> Unit = { projectPath ->
         coroutineScope.launch {
             try {
+                // Stop existing session watching
+                currentSession?.stopWatching()
+                currentSession = null
+                
+                // Stop existing Claude Code process if running
+                claudeCodeStreamingWrapper.stop()
+                
                 // Set up callback to capture real session ID
                 claudeCodeStreamingWrapper.onSessionIdCaptured = { realSessionId ->
                     println("[ChatApp] Captured real session ID via callback: $realSessionId")
@@ -114,8 +130,15 @@ fun ApplicationScope.ChatWindow(
                     selectedSession = selectedSession?.copy(sessionId = realSessionId)
                     println("[ChatApp] Updated selectedSession with real ID: $realSessionId")
 
-                    // Set up coordinator with real session ID
-                    sessionFileCoordinator.setChatHistory(realSessionId, chatHistory)
+                    // Get the new session and start watching it
+                    sessionService.getSession(realSessionId, projectPath)?.let { newSession ->
+                        currentSession = newSession
+                        sessionService.startWatchingSession(newSession, coroutineScope) { updatedMessages ->
+                            chatHistory.clear()
+                            chatHistory.addAll(updatedMessages)
+                        }
+                        println("[ChatApp] Started watching new session file: ${newSession.getFilePath()}")
+                    } ?: println("[ChatApp] Warning: Could not find new session file for $realSessionId")
                 }
 
                 claudeCodeStreamingWrapper.start(
@@ -134,7 +157,6 @@ fun ApplicationScope.ChatWindow(
 
                 selectedSession = newSession
                 chatHistory.clear()
-                // Don't set coordinator yet - wait for real sessionId from streaming callback
                 showSessionList = false
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -204,12 +226,22 @@ fun ApplicationScope.ChatWindow(
         if (initialized) {
             if (showSessionList) {
                 SessionListScreen(
-                    sessionFileCoordinator = sessionFileCoordinator,
-                    onSessionSelected = { session, messages ->
+                    sessionService = sessionService,
+                    onSessionSelected = { session, messages, sessionObj ->
+                        // Stop current session watching if any
+                        currentSession?.stopWatching()
+                        
                         selectedSession = session
+                        currentSession = sessionObj
                         chatHistory.clear()
                         chatHistory.addAll(messages)
-                        sessionFileCoordinator.setChatHistory(session.sessionId, chatHistory)
+                        
+                        // Start watching the selected session
+                        sessionService.startWatchingSession(sessionObj, coroutineScope) { updatedMessages ->
+                            chatHistory.clear()
+                            chatHistory.addAll(updatedMessages)
+                        }
+                        
                         showSessionList = false
                     },
                     claudeCodeStreamingWrapper = claudeCodeStreamingWrapper,

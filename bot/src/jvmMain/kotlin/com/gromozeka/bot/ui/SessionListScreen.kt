@@ -15,14 +15,15 @@ import androidx.compose.ui.unit.dp
 import com.gromozeka.bot.model.ChatMessage
 import com.gromozeka.bot.model.ChatSession
 import com.gromozeka.bot.model.ProjectGroup
+import com.gromozeka.bot.model.Session
 import com.gromozeka.bot.services.ClaudeCodeStreamingWrapper
-import com.gromozeka.bot.services.SessionFileCoordinator
+import com.gromozeka.bot.services.SessionService
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 @Composable
 fun SessionListScreen(
-    sessionFileCoordinator: SessionFileCoordinator,
-    onSessionSelected: (ChatSession, List<ChatMessage>) -> Unit,
+    sessionService: SessionService,
+    onSessionSelected: (ChatSession, List<ChatMessage>, Session) -> Unit,
     claudeCodeStreamingWrapper: ClaudeCodeStreamingWrapper,
     coroutineScope: CoroutineScope,
     onNewSession: (String) -> Unit,
@@ -33,7 +34,7 @@ fun SessionListScreen(
     
     // Lazy load sessions list on first composition
     LaunchedEffect(Unit) {
-        projectGroups = sessionFileCoordinator.loadSessionsList()
+        projectGroups = sessionService.loadAllSessions()
         isLoading = false
     }
 
@@ -69,7 +70,7 @@ fun SessionListScreen(
                             onSessionClick = { clickedSession ->
                                 coroutineScope.handleSessionClick(
                                     clickedSession,
-                                    sessionFileCoordinator,
+                                    sessionService,
                                     claudeCodeStreamingWrapper,
                                     onSessionSelected
                                 )
@@ -112,7 +113,7 @@ fun SessionListScreen(
                                 onSessionClick = { clickedSession ->
                                     coroutineScope.handleSessionClick(
                                         clickedSession,
-                                        sessionFileCoordinator,
+                                        sessionService,
                                         claudeCodeStreamingWrapper,
                                         onSessionSelected
                                     )
@@ -237,20 +238,45 @@ private fun NewSessionButton(
 
 private fun CoroutineScope.handleSessionClick(
     clickedSession: ChatSession,
-    sessionFileCoordinator: SessionFileCoordinator,
+    sessionService: SessionService,
     claudeCodeStreamingWrapper: ClaudeCodeStreamingWrapper,
-    onSessionSelected: (ChatSession, List<ChatMessage>) -> Unit
+    onSessionSelected: (ChatSession, List<ChatMessage>, Session) -> Unit
 ) {
     launch {
         try {
-            val messages = sessionFileCoordinator.getSessionMessages(clickedSession.sessionId)
+            // Get the Session object
+            val session = sessionService.getSession(clickedSession.sessionId, clickedSession.projectPath)
+            if (session == null) {
+                println("[SessionListScreen] Warning: Could not find session file for ${clickedSession.sessionId}")
+                return@launch
+            }
+            
+            // Load messages
+            val messages = session.getMessages()
+
+            // Stop existing Claude Code process if running
+            claudeCodeStreamingWrapper.stop()
+            
+            // Set up callback to handle new session ID when resuming
+            claudeCodeStreamingWrapper.onSessionIdCaptured = { realSessionId ->
+                println("[SessionListScreen] Captured real session ID for resumed session: $realSessionId")
+                
+                // Get the new session object and start watching it
+                sessionService.getSession(realSessionId, clickedSession.projectPath)?.let { newSession ->
+                    sessionService.startWatchingSession(newSession, this@launch) { updatedMessages ->
+                        // This callback will be handled by the ChatScreen that receives the session
+                        println("[SessionListScreen] New session file updated with ${updatedMessages.size} messages")
+                    }
+                    println("[SessionListScreen] Started watching new session file after resume: ${newSession.getFilePath()}")
+                } ?: println("[SessionListScreen] Warning: Could not find new session file for resumed session $realSessionId")
+            }
 
             claudeCodeStreamingWrapper.start(
                 sessionId = clickedSession.sessionId,
                 projectPath = clickedSession.projectPath
             )
 
-            onSessionSelected(clickedSession, messages)
+            onSessionSelected(clickedSession, messages, session)
 
         } catch (e: Exception) {
             e.printStackTrace()
