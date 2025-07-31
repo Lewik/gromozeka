@@ -1,13 +1,11 @@
 package com.gromozeka.bot.services
 
+import com.gromozeka.bot.utils.ClaudeCodePaths
 import com.gromozeka.bot.utils.decodeProjectPath
 import com.gromozeka.bot.utils.isSessionFile
-import com.gromozeka.bot.utils.ClaudeCodePaths
 import kotlinx.coroutines.*
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.asSharedFlow
-import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.flow.*
 import org.springframework.stereotype.Service
 import java.io.File
 import java.nio.file.FileSystems
@@ -15,6 +13,7 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardWatchEventKinds.*
 import java.nio.file.WatchService
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -23,10 +22,33 @@ class FileWatcherService {
 
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private var watchService: WatchService? = null
-    private val _fileEvents = MutableSharedFlow<FileChangeEvent>()
-    val fileEvents: Flow<FileChangeEvent> = _fileEvents
-        .asSharedFlow()
-        .debounce(300.milliseconds)
+    private val _fileEvents = MutableSharedFlow<FileChangeEvent>(
+        replay = 0,
+        extraBufferCapacity = 64,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST
+    )
+
+    private val fileFlowsMap = ConcurrentHashMap<String, MutableSharedFlow<FileChangeEvent>>()
+
+    val fileEvents: Flow<FileChangeEvent> = channelFlow {
+        _fileEvents.collect { event ->
+            val filename = event.file.name
+            val fileFlow = fileFlowsMap
+                .getOrPut(filename) {
+                    MutableSharedFlow<FileChangeEvent>()
+                        .also { flow ->
+                            launch {
+                                flow
+                                    .asSharedFlow()
+                                    .conflate()
+                                    .debounce(300.milliseconds)
+                                    .collect { send(it) }
+                            }
+                        }
+                }
+            fileFlow.emit(event)
+        }
+    }
 
     fun startWatching() {
         scope.launch {
