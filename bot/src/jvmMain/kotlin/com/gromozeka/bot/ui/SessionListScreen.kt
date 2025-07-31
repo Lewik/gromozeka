@@ -17,33 +17,22 @@ import com.gromozeka.bot.model.ChatSession
 import com.gromozeka.bot.model.ProjectGroup
 import com.gromozeka.bot.services.ClaudeCodeSessionMapper
 import com.gromozeka.bot.services.ClaudeCodeStreamingWrapper
-import com.gromozeka.bot.services.SessionListService
+import com.gromozeka.bot.services.SessionFileCoordinator
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import java.io.File
 
 @Composable
 fun SessionListScreen(
-    sessionListService: SessionListService,
+    sessionFileCoordinator: SessionFileCoordinator,
     onSessionSelected: (ChatSession, List<ChatMessage>) -> Unit,
     claudeCodeStreamingWrapper: ClaudeCodeStreamingWrapper,
     coroutineScope: CoroutineScope,
     onNewSession: (String) -> Unit,
 ) {
-    var projectGroups by remember { mutableStateOf<List<ProjectGroup>>(emptyList()) }
+    val projectGroups by sessionFileCoordinator.getSessionsFlow().collectAsState()
     var expandedProjects by remember { mutableStateOf<Set<String>>(emptySet()) }
-    var isLoading by remember { mutableStateOf(true) }
-
-    LaunchedEffect(Unit) {
-        try {
-            projectGroups = sessionListService.getSessionsGroupedByProject()
-            expandedProjects = emptySet() // Projects collapsed by default
-            isLoading = false
-        } catch (e: Exception) {
-            e.printStackTrace()
-            isLoading = false
-        }
-    }
+    val isLoading = projectGroups.isEmpty()
 
     Column(modifier = Modifier.padding(16.dp).fillMaxSize()) {
         Text("Выберите беседу", style = MaterialTheme.typography.h5)
@@ -83,8 +72,7 @@ fun SessionListScreen(
                                             ".claude/projects/$encodedPath/${clickedSession.sessionId}.jsonl"
                                         )
 
-                                        val messages =
-                                            ClaudeCodeSessionMapper.loadSessionAsChatMessages(sessionFile)
+                                        val messages = sessionFileCoordinator.getSessionMessages(clickedSession.sessionId)
 
                                         claudeCodeStreamingWrapper.start(
                                             sessionId = clickedSession.sessionId,
@@ -142,8 +130,7 @@ fun SessionListScreen(
                                                 ".claude/projects/$encodedPath/${clickedSession.sessionId}.jsonl"
                                             )
 
-                                            val messages =
-                                                ClaudeCodeSessionMapper.loadSessionAsChatMessages(sessionFile)
+                                            val messages = sessionFileCoordinator.getSessionMessages(clickedSession.sessionId)
 
                                             claudeCodeStreamingWrapper.start(
                                                 sessionId = clickedSession.sessionId,

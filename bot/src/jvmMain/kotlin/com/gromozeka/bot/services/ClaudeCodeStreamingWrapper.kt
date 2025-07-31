@@ -21,6 +21,9 @@ class ClaudeCodeStreamingWrapper {
         registerKotlinModule()
         configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
     }
+    
+    // Callback for when real session ID is captured
+    var onSessionIdCaptured: ((String) -> Unit)? = null
 
     private fun loadDefaultSystemPrompt(): String {
         return this::class.java.getResourceAsStream("/default-system-prompt.md")
@@ -69,7 +72,6 @@ class ClaudeCodeStreamingWrapper {
     private val _status = MutableSharedFlow<StreamStatus>()
     val status: SharedFlow<StreamStatus> = _status.asSharedFlow()
 
-    // Current session ID
     private var currentSessionId: String? = null
 
     suspend fun start(sessionId: String? = null, projectPath: String? = null) = withContext(Dispatchers.IO) {
@@ -78,7 +80,6 @@ class ClaudeCodeStreamingWrapper {
             
             currentSessionId = sessionId
             
-            // Start Claude Code in interactive mode with specified session through bash
             val defaultPrompt = loadDefaultSystemPrompt().replace("\"", "\\\"")
             val claudeArgs = if (sessionId != null) {
                 "--output-format stream-json --input-format stream-json --verbose --resume $sessionId --append-system-prompt \"$defaultPrompt\""
@@ -90,9 +91,8 @@ class ClaudeCodeStreamingWrapper {
             )
             
             val processBuilder = ProcessBuilder(command)
-                .redirectErrorStream(false) // Keep stderr separate for debugging
+                .redirectErrorStream(false)
             
-            // Set working directory if projectPath is provided
             if (projectPath != null) {
                 processBuilder.directory(File(projectPath))
             }
@@ -101,11 +101,9 @@ class ClaudeCodeStreamingWrapper {
             
             val proc = process ?: throw IllegalStateException("Failed to start process")
             
-            // Setup streams
             stdinWriter = BufferedWriter(OutputStreamWriter(proc.outputStream))
             stdoutReader = BufferedReader(proc.inputStream.reader())
             
-            // Start reading output in background
             readJob = CoroutineScope(Dispatchers.IO).launch {
                 readOutputStream()
             }
@@ -122,7 +120,6 @@ class ClaudeCodeStreamingWrapper {
         try {
             val writer = stdinWriter ?: throw IllegalStateException("Process not started")
             
-            // Create stream-json formatted input
             val streamJsonMessage = mapOf(
                 "type" to "user",
                 "message" to mapOf(
@@ -153,13 +150,18 @@ class ClaudeCodeStreamingWrapper {
                 if (line.trim().isEmpty()) continue
                 
                 try {
-                    // Parse JSON line
-                    println("LINE DUMP START")
+                    println("=== CLAUDE CODE LIVE STREAM (NOT USED IN UI) ===")
                     println(line)
-                    println("LINE DUMP END")
+                    println("=== END LIVE STREAM ===")
                     val messageData = objectMapper.readValue(line, Map::class.java) as Map<String, Any>
                     val message = parseStreamMessage(messageData)
-                    _messages.emit(message)
+//                    _messages.emit(message)
+                    
+                    // Capture session ID from SystemMessage
+                    if (message is ClaudeStreamMessage.SystemMessage && message.sessionId != null) {
+                        println("[ClaudeCodeStreamingWrapper] Captured session ID: ${message.sessionId}")
+                        onSessionIdCaptured?.invoke(message.sessionId)
+                    }
                     
                 } catch (e: Exception) {
                     e.printStackTrace()

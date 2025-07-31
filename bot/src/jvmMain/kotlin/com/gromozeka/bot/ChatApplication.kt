@@ -16,6 +16,8 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.ApplicationScope
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
+import java.io.File
+import com.gromozeka.bot.utils.ClaudeCodePaths
 import com.gromozeka.bot.model.ChatMessage
 import com.gromozeka.bot.model.ChatMessageContent
 import com.gromozeka.bot.model.ChatSession
@@ -32,16 +34,24 @@ import org.springframework.ai.chat.messages.UserMessage
 import org.springframework.beans.factory.getBean
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.builder.SpringApplicationBuilder
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 
 fun main() {
     System.setProperty("java.awt.headless", "false")
+    
+    // Check Claude Code is installed
+    if (!ClaudeCodePaths.PROJECTS_DIR.exists()) {
+        throw IllegalStateException("Claude Code not installed - directory does not exist: ${ClaudeCodePaths.PROJECTS_DIR.absolutePath}")
+    }
+    
     val context = SpringApplicationBuilder(ChatApplication::class.java).run()
     val theAssistant = context.getBean<TheAssistant>()
     val sttService = context.getBean<SttService>()
     val ttsService = context.getBean<TtsService>()
     val chatMemory = context.getBean<ChatMemory>()
     val claudeCodeStreamingWrapper = context.getBean<ClaudeCodeStreamingWrapper>()
-    val sessionListService = context.getBean<SessionListService>()
+    val sessionFileCoordinator = context.getBean<SessionFileCoordinator>() // Initialize file monitoring
     val openAiBalanceService = context.getBean<OpenAiBalanceService>()
     application {
         MaterialTheme(
@@ -57,7 +67,7 @@ fun main() {
                 ttsService,
                 chatMemory,
                 claudeCodeStreamingWrapper,
-                sessionListService,
+                sessionFileCoordinator,
                 openAiBalanceService
             )
         }
@@ -72,15 +82,21 @@ fun ApplicationScope.ChatWindow(
     ttsService: TtsService,
     chatMemory: ChatMemory,
     claudeCodeStreamingWrapper: ClaudeCodeStreamingWrapper,
-    sessionListService: SessionListService,
+    sessionFileCoordinator: SessionFileCoordinator,
     openAiBalanceService: OpenAiBalanceService,
 ) {
     val coroutineScope = rememberCoroutineScope()
     val scrollState = rememberScrollState()
 
     var initialized by remember { mutableStateOf(false) }
+    
+    val objectMapper = remember { 
+        ObjectMapper().apply { 
+            registerKotlinModule() 
+        } 
+    }
     var userInput by remember { mutableStateOf("") }
-    var chatHistory by remember { mutableStateOf(listOf<ChatMessage>()) }
+    val chatHistory = remember { mutableStateListOf<ChatMessage>() }
     var loadedSessionFile by remember { mutableStateOf<String?>(null) }
 
     var assistantIsThinking by remember { mutableStateOf(false) }
@@ -104,19 +120,13 @@ fun ApplicationScope.ChatWindow(
         
         // Auto-load latest session on startup
         try {
-            val projectGroups = sessionListService.getSessionsGroupedByProject()
+            val projectGroups = sessionFileCoordinator.getSessionsFlow().value
             val latestSession = projectGroups.flatMap { it.sessions }
                 .sortedByDescending { it.lastTimestamp }
                 .firstOrNull()
             
             latestSession?.let { session ->
-                val encodedPath = session.projectPath.replace("/", "-")
-                val sessionFile = java.io.File(
-                    System.getProperty("user.home"),
-                    ".claude/projects/$encodedPath/${session.sessionId}.jsonl"
-                )
-                
-                val messages = ClaudeCodeSessionMapper.loadSessionAsChatMessages(sessionFile)
+                val messages = sessionFileCoordinator.getSessionMessages(session.sessionId)
                 
                 claudeCodeStreamingWrapper.start(
                     sessionId = session.sessionId,
@@ -124,7 +134,9 @@ fun ApplicationScope.ChatWindow(
                 )
                 
                 selectedSession = session
-                chatHistory = messages
+                chatHistory.clear()
+                chatHistory.addAll(messages)
+                sessionFileCoordinator.setChatHistory(session.sessionId, chatHistory)
                 showSessionList = false
             }
         } catch (e: Exception) {
@@ -132,66 +144,32 @@ fun ApplicationScope.ChatWindow(
         }
     }
 
-    LaunchedEffect(selectedSession) {
-        if (selectedSession != null) {
-            claudeCodeStreamingWrapper.messages.collect { message ->
-                when (message) {
-                    is ClaudeStreamMessage.AssistantMessage -> {
-                        println("DEBUG: Full AssistantMessage: $message")
-                        println("DEBUG: message.text: ${message.text}")
-                        println("DEBUG: message.structuredResponse: ${message.structuredResponse}")
-                        
-                        val displayText = message.structuredResponse?.fullText ?: message.text
+    // Removed LaunchedEffect for messageUpdatesFlow - now using direct list updates
 
-                        val newMessage = ChatMessage(
-                            id = (chatHistory.size + 1).toString(),
-                            role = ChatMessage.Role.ASSISTANT,
-                            content = listOf(
-                                ChatMessageContent(
-                                    content = displayText,
-                                    type = ChatMessageContent.Type.TEXT,
-                                    ""
-                                )
-                            ),
-                            timestamp = Clock.System.now(),
-                            metadataType = ChatMessage.MetadataType.NONE
-                        )
-                        chatHistory = chatHistory + newMessage
-
-                        // Handle TTS if structured response is available
-                        message.structuredResponse?.let { response ->
-                            if (response.ttsText.isNotBlank()) {
-                                coroutineScope.launch {
-                                    try {
-                                        ttsService.generateAndPlay(response.ttsText, response.voiceTone)
-                                    } catch (e: Exception) {
-                                        e.printStackTrace()
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    is ClaudeStreamMessage.ResultMessage -> {
-                        assistantIsThinking = false
-                    }
-
-                    else -> {}
-                }
-            }
-        }
-    }
+    // Removed old LaunchedEffect - now using direct list updates via FileWatcher
 
     val createNewSession: (String) -> Unit = { projectPath ->
         coroutineScope.launch {
             try {
+                // Set up callback to capture real session ID
+                claudeCodeStreamingWrapper.onSessionIdCaptured = { realSessionId ->
+                    println("[ChatApp] Captured real session ID via callback: $realSessionId")
+                    
+                    // Update selectedSession with real ID
+                    selectedSession = selectedSession?.copy(sessionId = realSessionId)
+                    println("[ChatApp] Updated selectedSession with real ID: $realSessionId")
+                    
+                    // Set up coordinator with real session ID
+                    sessionFileCoordinator.setChatHistory(realSessionId, chatHistory)
+                }
+                
                 claudeCodeStreamingWrapper.start(
                     sessionId = null,
                     projectPath = projectPath
                 )
                 
                 val newSession = ChatSession(
-                    sessionId = "new-session",
+                    sessionId = "new-session", // Temporary ID, will be updated when real sessionId is captured
                     projectPath = projectPath,
                     firstMessage = "",
                     lastTimestamp = kotlinx.datetime.Clock.System.now(),
@@ -200,7 +178,8 @@ fun ApplicationScope.ChatWindow(
                 )
                 
                 selectedSession = newSession
-                chatHistory = emptyList()
+                chatHistory.clear()
+                // Don't set coordinator yet - wait for real sessionId from streaming callback
                 showSessionList = false
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -209,7 +188,7 @@ fun ApplicationScope.ChatWindow(
     }
 
     val updateChatHistory = {
-        chatHistory = chatMemory.get("conversationId").mapIndexed { i, message ->
+        val messages = chatMemory.get("conversationId").mapIndexed { i, message ->
             ChatMessage(
                 id = i.toString(),
                 role = when (message) {
@@ -229,6 +208,8 @@ fun ApplicationScope.ChatWindow(
                 metadataType = ChatMessage.MetadataType.NONE,
             )
         }
+        chatHistory.clear()
+        chatHistory.addAll(messages)
     }
 
     val sendMessage: suspend (String) -> Unit = { message ->
@@ -249,7 +230,7 @@ fun ApplicationScope.ChatWindow(
                 timestamp = Clock.System.now(),
                 metadataType = ChatMessage.MetadataType.NONE
             )
-            chatHistory = chatHistory + userMessage
+            chatHistory.add(userMessage)
 
             claudeCodeStreamingWrapper.sendMessage(message)
         } else {
@@ -318,10 +299,12 @@ fun ApplicationScope.ChatWindow(
         if (initialized) {
             if (showSessionList) {
                 SessionListScreen(
-                    sessionListService = sessionListService,
+                    sessionFileCoordinator = sessionFileCoordinator,
                     onSessionSelected = { session, messages ->
                         selectedSession = session
-                        chatHistory = messages
+                        chatHistory.clear()
+                        chatHistory.addAll(messages)
+                        sessionFileCoordinator.setChatHistory(session.sessionId, chatHistory)
                         showSessionList = false
                     },
                     claudeCodeStreamingWrapper = claudeCodeStreamingWrapper,

@@ -84,8 +84,12 @@ object ClaudeCodeSessionMapper {
         return when (type) {
             "text" -> {
                 val text = element["text"]?.jsonPrimitive?.content ?: return null
+                
+                // Try to parse structured response format
+                val displayText = parseStructuredResponse(text) ?: text
+                
                 ChatMessageContent(
-                    content = text,
+                    content = displayText,
                     type = ChatMessageContent.Type.TEXT,
                     annotationsJson = ""
                 )
@@ -122,6 +126,22 @@ object ClaudeCodeSessionMapper {
             }
             
             else -> null
+        }
+    }
+    
+    /**
+     * Parse structured response format from text content
+     */
+    private fun parseStructuredResponse(textContent: String): String? {
+        return try {
+            if (textContent.startsWith("{") && textContent.contains("full_text")) {
+                val json = Json.parseToJsonElement(textContent)
+                if (json is JsonObject) {
+                    json["full_text"]?.jsonPrimitive?.content
+                } else null
+            } else null
+        } catch (e: Exception) {
+            null
         }
     }
     
