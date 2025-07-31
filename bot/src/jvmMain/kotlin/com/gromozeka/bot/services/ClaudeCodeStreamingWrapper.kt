@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import org.springframework.stereotype.Service
+import jakarta.annotation.PreDestroy
 import java.io.BufferedReader
 import java.io.BufferedWriter
 import java.io.File
@@ -16,6 +17,8 @@ import java.io.OutputStreamWriter
 
 @Service
 class ClaudeCodeStreamingWrapper {
+
+    private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     private val objectMapper = ObjectMapper().apply {
         registerKotlinModule()
@@ -104,7 +107,7 @@ class ClaudeCodeStreamingWrapper {
             stdinWriter = BufferedWriter(OutputStreamWriter(proc.outputStream))
             stdoutReader = BufferedReader(proc.inputStream.reader())
             
-            readJob = CoroutineScope(Dispatchers.IO).launch {
+            readJob = scope.launch {
                 readOutputStream()
             }
             
@@ -227,6 +230,11 @@ class ClaudeCodeStreamingWrapper {
         } catch (e: Exception) {
             e.printStackTrace()
         }
+    }
+
+    @PreDestroy
+    fun cleanup() {
+        scope.cancel()
     }
 }
 

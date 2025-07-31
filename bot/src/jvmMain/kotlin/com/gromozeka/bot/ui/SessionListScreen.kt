@@ -15,13 +15,10 @@ import androidx.compose.ui.unit.dp
 import com.gromozeka.bot.model.ChatMessage
 import com.gromozeka.bot.model.ChatSession
 import com.gromozeka.bot.model.ProjectGroup
-import com.gromozeka.bot.services.ClaudeCodeSessionMapper
 import com.gromozeka.bot.services.ClaudeCodeStreamingWrapper
 import com.gromozeka.bot.services.SessionFileCoordinator
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
-import java.io.File
-
 @Composable
 fun SessionListScreen(
     sessionFileCoordinator: SessionFileCoordinator,
@@ -70,27 +67,12 @@ fun SessionListScreen(
                         SessionItem(
                             session = session,
                             onSessionClick = { clickedSession ->
-                                coroutineScope.launch {
-                                    try {
-                                        val encodedPath = clickedSession.projectPath.replace("/", "-")
-                                        val sessionFile = File(
-                                            System.getProperty("user.home"),
-                                            ".claude/projects/$encodedPath/${clickedSession.sessionId}.jsonl"
-                                        )
-
-                                        val messages = sessionFileCoordinator.getSessionMessages(clickedSession.sessionId)
-
-                                        claudeCodeStreamingWrapper.start(
-                                            sessionId = clickedSession.sessionId,
-                                            projectPath = clickedSession.projectPath
-                                        )
-
-                                        onSessionSelected(clickedSession, messages)
-
-                                    } catch (e: Exception) {
-                                        e.printStackTrace()
-                                    }
-                                }
+                                coroutineScope.handleSessionClick(
+                                    clickedSession,
+                                    sessionFileCoordinator,
+                                    claudeCodeStreamingWrapper,
+                                    onSessionSelected
+                                )
                             },
                             isGrouped = false
                         )
@@ -128,27 +110,12 @@ fun SessionListScreen(
                             SessionItem(
                                 session = session,
                                 onSessionClick = { clickedSession ->
-                                    coroutineScope.launch {
-                                        try {
-                                            val encodedPath = clickedSession.projectPath.replace("/", "-")
-                                            val sessionFile = File(
-                                                System.getProperty("user.home"),
-                                                ".claude/projects/$encodedPath/${clickedSession.sessionId}.jsonl"
-                                            )
-
-                                            val messages = sessionFileCoordinator.getSessionMessages(clickedSession.sessionId)
-
-                                            claudeCodeStreamingWrapper.start(
-                                                sessionId = clickedSession.sessionId,
-                                                projectPath = clickedSession.projectPath
-                                            )
-
-                                            onSessionSelected(clickedSession, messages)
-
-                                        } catch (e: Exception) {
-                                            e.printStackTrace()
-                                        }
-                                    }
+                                    coroutineScope.handleSessionClick(
+                                        clickedSession,
+                                        sessionFileCoordinator,
+                                        claudeCodeStreamingWrapper,
+                                        onSessionSelected
+                                    )
                                 },
                                 isGrouped = true
                             )
@@ -264,6 +231,29 @@ private fun NewSessionButton(
                 style = MaterialTheme.typography.body2,
                 color = MaterialTheme.colors.primary
             )
+        }
+    }
+}
+
+private fun CoroutineScope.handleSessionClick(
+    clickedSession: ChatSession,
+    sessionFileCoordinator: SessionFileCoordinator,
+    claudeCodeStreamingWrapper: ClaudeCodeStreamingWrapper,
+    onSessionSelected: (ChatSession, List<ChatMessage>) -> Unit
+) {
+    launch {
+        try {
+            val messages = sessionFileCoordinator.getSessionMessages(clickedSession.sessionId)
+
+            claudeCodeStreamingWrapper.start(
+                sessionId = clickedSession.sessionId,
+                projectPath = clickedSession.projectPath
+            )
+
+            onSessionSelected(clickedSession, messages)
+
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
     }
 }

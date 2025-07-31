@@ -188,8 +188,7 @@ private fun MessageInput(
                 .onPreviewKeyEvent { event ->
                     if (!assistantIsThinking && event.key == Key.Enter && event.isShiftPressed && userInput.isNotBlank()) {
                         coroutineScope.launch {
-                            val text = userInput
-                            onSendMessage(text)
+                            onSendMessage(userInput)
                             onUserInputChange("")
                         }
                         true
@@ -206,8 +205,7 @@ private fun MessageInput(
                 } else {
                     IconButton(onClick = {
                         coroutineScope.launch {
-                            val text = userInput
-                            onSendMessage(text)
+                            onSendMessage(userInput)
                             onUserInputChange("")
                         }
                     }) {
