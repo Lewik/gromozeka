@@ -2,146 +2,48 @@ package com.gromozeka.bot.services
 
 import com.gromozeka.bot.model.*
 import com.gromozeka.bot.utils.ClaudeCodePaths
-import com.gromozeka.bot.utils.decodeProjectPath
 import com.gromozeka.bot.utils.isSessionFile
-import com.gromozeka.bot.utils.sha256
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.SharedFlow
-import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import org.springframework.stereotype.Service
 import java.io.File
 
 @Service
 class SessionCacheService {
 
-    private val _sessionsFlow = MutableStateFlow<List<ProjectGroup>>(emptyList())
-    val sessionsFlow: StateFlow<List<ProjectGroup>> = _sessionsFlow.asStateFlow()
 
-    private val fileCache = mutableMapOf<String, List<SessionLineRecord>>()
     private val sessionMetadataCache = mutableMapOf<String, ChatSession>()
+    private val activeSessionCache = mutableMapOf<String, List<ChatMessage>>()
+    private var currentActiveSessionId: String? = null
 
+    private val metadataExtractor = SessionMetadataExtractor()
     private val claudeCodeSessionMapper = ClaudeCodeSessionMapper
 
-    suspend fun refreshAll() {
-        fileCache.clear()
+    suspend fun loadSessionsList(): List<ProjectGroup> {
         sessionMetadataCache.clear()
 
-        ClaudeCodePaths.PROJECTS_DIR
-            .listFiles { it.isDirectory }
-            .forEach { projectDir ->
-                projectDir
-                    .listFiles { it.isSessionFile() }
-                    .forEach { loadSessionFile(it) }
-            }
-
-        updateSessionsFlow()
-    }
-
-    suspend fun updateFile(sessionFile: File) {
-        val sessionId = sessionFile.name.removeSuffix(".jsonl")
-        val oldMessages = getSessionMessages(sessionId)
-        
-        loadSessionFile(sessionFile)
-        updateSessionsFlow()
-        
-        val newMessages = getSessionMessages(sessionId)
-        println("[SessionCacheService] updateFile for session $sessionId: old=${oldMessages.size}, new=${newMessages.size}")
-
-    }
-
-    suspend fun removeSession(file: File) {
-        fileCache.remove(file.name)
-        val sessionId = file.name.removeSuffix(".jsonl")
-        sessionMetadataCache.remove(sessionId)
-        updateSessionsFlow()
-    }
-
-    fun compareFile(file: File, newFileContent: List<String>): FileComparison {
-        val oldRecords = fileCache[file.name] ?: emptyList()
-        val oldHashes = oldRecords.associate { it.lineNumber to it.contentHash }
-
-        val newRecords = newFileContent.mapIndexed { index, line ->
-            SessionLineRecord(
-                fileName = file.name,
-                lineNumber = index,
-                contentHash = line.sha256(),
-                jsonContent = line,
-                parsedMessage = safeParseMessage(line)
-            )
+        // Process everything in parallel
+        val metadataResults = coroutineScope {
+            ClaudeCodePaths.PROJECTS_DIR
+                .listFiles { it.isDirectory }
+                ?.flatMap { projectDir ->
+                    listOf(async(Dispatchers.IO) {
+                        projectDir.listFiles { it.isSessionFile() }
+                            ?.map { sessionFile ->
+                                metadataExtractor.extractMetadata(sessionFile)
+                            }?.filterNotNull() ?: emptyList()
+                    })
+                }?.map { it.await() }?.flatten() ?: emptyList()
         }
 
-        val newHashes = newRecords.associate { it.lineNumber to it.contentHash }
-
-        return FileComparison(
-            newLines = newRecords.filter { it.lineNumber >= oldRecords.size },
-            modifiedLines = newRecords.filter { record ->
-                oldHashes[record.lineNumber] != record.contentHash
-            },
-            deletedLineNumbers = oldRecords.filter { record ->
-                !newHashes.containsKey(record.lineNumber)
-            }.map { it.lineNumber }
-        )
-    }
-
-    fun getSessionMessages(sessionId: String): List<ChatMessage> {
-        val fileName = "$sessionId.jsonl"
-        return fileCache[fileName]?.mapNotNull { it.parsedMessage } ?: emptyList()
-    }
-
-    private fun loadSessionFile(sessionFile: File) {
-        try {
-
-            val lineRecords = sessionFile
-                .readLines()
-                .mapIndexed { index, line ->
-                    SessionLineRecord(
-                        fileName = sessionFile.name,
-                        lineNumber = index,
-                        contentHash = line.sha256(),
-                        jsonContent = line,
-                        parsedMessage = safeParseMessage(line)
-                    )
-                }
-
-            fileCache[sessionFile.name] = lineRecords
-
-            createSessionMetadata(sessionFile, lineRecords)
-
-        } catch (e: Exception) {
-            println("Error loading session file ${sessionFile.name}: ${e.message}")
+        // Collect results  
+        metadataResults.forEach { metadata ->
+            sessionMetadataCache[metadata.sessionId] = metadata
         }
-    }
 
-    private fun createSessionMetadata(
-        sessionFile: File,
-        lineRecords: List<SessionLineRecord>,
-    ) {
-        val sessionId = sessionFile.name.removeSuffix(".jsonl")
-        val messages = lineRecords.mapNotNull { it.parsedMessage }
-
-        if (messages.isEmpty()) return
-
-        val firstMessage =
-            messages.firstOrNull { it.role == ChatMessage.Role.USER }?.content?.firstOrNull()?.content ?: ""
-        val lastTimestamp = messages.maxOfOrNull { it.timestamp } ?: return
-
-        val session = ChatSession(
-            sessionId = sessionId,
-            projectPath = sessionFile.parentFile.decodeProjectPath(),
-            firstMessage = firstMessage,
-            lastTimestamp = lastTimestamp,
-            messageCount = messages.size,
-            preview = firstMessage.ifBlank { "Empty session" }
-        )
-
-        sessionMetadataCache[sessionId] = session
-    }
-
-    private fun updateSessionsFlow() {
-        val projectGroups = sessionMetadataCache.values
+        // Return project groups directly instead of using flow
+        return sessionMetadataCache.values
             .groupBy { it.projectPath }
             .map { (projectPath, sessions) ->
                 ProjectGroup(
@@ -153,9 +55,71 @@ class SessionCacheService {
             .sortedByDescending { group ->
                 group.lastActivity()
             }
-
-        _sessionsFlow.value = projectGroups
     }
+
+    suspend fun updateFile(sessionFile: File) {
+        val sessionId = sessionFile.name.removeSuffix(".jsonl")
+
+        // Update metadata
+        metadataExtractor.extractMetadata(sessionFile)?.let { metadata ->
+            sessionMetadataCache[metadata.sessionId] = metadata
+        }
+
+        // Clear active cache if this session is currently active
+        if (currentActiveSessionId == sessionId) {
+            activeSessionCache.remove(sessionId)
+        }
+
+    }
+
+    suspend fun removeSession(file: File) {
+        val sessionId = file.name.removeSuffix(".jsonl")
+        sessionMetadataCache.remove(sessionId)
+        activeSessionCache.remove(sessionId)
+        if (currentActiveSessionId == sessionId) {
+            currentActiveSessionId = null
+        }
+    }
+
+
+    fun getSessionMessages(sessionId: String): List<ChatMessage> {
+        // Check if session is already in active cache
+        activeSessionCache[sessionId]?.let { return it }
+
+        // Load session on demand
+        val sessionFile = findSessionFile(sessionId) ?: return emptyList()
+
+        val messages = loadFullSessionMessages(sessionFile)
+
+        // Clear previous active session to save memory
+        currentActiveSessionId?.let { activeSessionCache.remove(it) }
+
+        // Cache new active session
+        activeSessionCache[sessionId] = messages
+        currentActiveSessionId = sessionId
+
+        return messages
+    }
+
+    private fun findSessionFile(sessionId: String): File? {
+        return ClaudeCodePaths.PROJECTS_DIR
+            .listFiles { it.isDirectory }
+            ?.flatMap { projectDir ->
+                projectDir.listFiles { it.isSessionFile() }?.toList() ?: emptyList()
+            }
+            ?.find { it.name == "$sessionId.jsonl" }
+    }
+
+    private fun loadFullSessionMessages(sessionFile: File): List<ChatMessage> {
+        return try {
+            sessionFile.readLines()
+                .mapNotNull { line -> safeParseMessage(line) }
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
+
 
     private fun safeParseMessage(jsonLine: String): ChatMessage? {
         return try {
@@ -168,8 +132,7 @@ class SessionCacheService {
                 }
             }.firstOrNull()
 
-        } catch (e: Exception) {
-            println("Failed to parse JSON line: ${jsonLine.take(50)}... Error: ${e.message}")
+        } catch (_: Exception) {
             null
         }
     }

@@ -18,7 +18,6 @@ import androidx.compose.ui.input.key.isShiftPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.unit.dp
-import com.gromozeka.bot.TheAssistant
 import com.gromozeka.bot.model.ChatMessage
 import com.gromozeka.bot.model.ChatSession
 import com.gromozeka.bot.services.SttService
@@ -32,8 +31,6 @@ fun ChatScreen(
     userInput: String,
     onUserInputChange: (String) -> Unit,
     assistantIsThinking: Boolean,
-    showToolCalls: Boolean,
-    pendingToolCalls: List<Map<String, String>>,
     autoSend: Boolean,
     onAutoSendChange: (Boolean) -> Unit,
     attachOpenedFile: Boolean,
@@ -41,21 +38,20 @@ fun ChatScreen(
     onBackToSessionList: () -> Unit,
     onNewSession: () -> Unit,
     onSendMessage: suspend (String) -> Unit,
-    onExecuteToolCalls: suspend () -> Unit,
     sttService: SttService,
     coroutineScope: CoroutineScope,
     modifierWithPushToTalk: Modifier,
-    onCheckBalance: () -> Unit
+    onCheckBalance: () -> Unit,
 ) {
     val scrollState = rememberScrollState()
     var stickyToBottom by remember { mutableStateOf(true) }
-    
+
     val isAtBottom by remember {
         derivedStateOf {
             scrollState.value >= scrollState.maxValue - 50
         }
     }
-    
+
     LaunchedEffect(scrollState.value, isAtBottom) {
         if (isAtBottom) {
             stickyToBottom = true
@@ -63,7 +59,7 @@ fun ChatScreen(
             stickyToBottom = false
         }
     }
-    
+
     LaunchedEffect(chatHistory.size) {
         if (stickyToBottom) {
             scrollState.animateScrollTo(scrollState.maxValue)
@@ -102,15 +98,6 @@ fun ChatScreen(
             Button(onClick = { stickyToBottom = !stickyToBottom }) {
                 Text("Autoscroll is ${if (stickyToBottom) "ON" else "OFF"}")
             }
-        }
-
-        if (showToolCalls) {
-            ToolCallsCard(
-                pendingToolCalls = pendingToolCalls,
-                assistantIsThinking = assistantIsThinking,
-                onExecuteToolCalls = onExecuteToolCalls,
-                coroutineScope = coroutineScope
-            )
         }
 
         Column(modifier = Modifier.weight(1f).verticalScroll(scrollState)) {
@@ -166,9 +153,9 @@ private fun MessageItem(message: ChatMessage) {
                 .fillMaxWidth(0.85f)
                 .padding(8.dp)
                 .background(
-                    color = if (message.role == ChatMessage.Role.USER) 
+                    color = if (message.role == ChatMessage.Role.USER)
                         MaterialTheme.colors.primary.copy(alpha = 0.1f)
-                    else 
+                    else
                         MaterialTheme.colors.surface.copy(alpha = 0.1f),
                     shape = MaterialTheme.shapes.medium
                 )
@@ -184,61 +171,6 @@ private fun MessageItem(message: ChatMessage) {
     }
 }
 
-@Composable
-private fun ToolCallsCard(
-    pendingToolCalls: List<Map<String, String>>,
-    assistantIsThinking: Boolean,
-    onExecuteToolCalls: suspend () -> Unit,
-    coroutineScope: CoroutineScope
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth().padding(8.dp),
-        backgroundColor = MaterialTheme.colors.primary.copy(alpha = 0.1f),
-        elevation = 4.dp
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                "Инструменты, требующие выполнения:",
-                style = MaterialTheme.typography.h6,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
-
-            pendingToolCalls.forEach { toolCall ->
-                Card(
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                    backgroundColor = MaterialTheme.colors.surface
-                ) {
-                    Column(modifier = Modifier.padding(8.dp)) {
-                        Text(
-                            "Инструмент: ${toolCall["name"]}",
-                            style = MaterialTheme.typography.subtitle1
-                        )
-                        Text(
-                            "Аргументы: ${toolCall["arguments"]}",
-                            style = MaterialTheme.typography.body2
-                        )
-                    }
-                }
-            }
-
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                horizontalArrangement = Arrangement.End
-            ) {
-                Button(
-                    onClick = {
-                        coroutineScope.launch {
-                            onExecuteToolCalls()
-                        }
-                    },
-                    enabled = !assistantIsThinking
-                ) {
-                    Text("Выполнить инструменты")
-                }
-            }
-        }
-    }
-}
 
 @Composable
 private fun MessageInput(
@@ -246,7 +178,7 @@ private fun MessageInput(
     onUserInputChange: (String) -> Unit,
     assistantIsThinking: Boolean,
     onSendMessage: suspend (String) -> Unit,
-    coroutineScope: CoroutineScope
+    coroutineScope: CoroutineScope,
 ) {
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
         OutlinedTextField(
@@ -295,7 +227,7 @@ private fun VoiceControls(
     onSendMessage: suspend (String) -> Unit,
     onUserInputChange: (String) -> Unit,
     coroutineScope: CoroutineScope,
-    modifierWithPushToTalk: Modifier
+    modifierWithPushToTalk: Modifier,
 ) {
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
         Spacer(modifier = Modifier.weight(1f))

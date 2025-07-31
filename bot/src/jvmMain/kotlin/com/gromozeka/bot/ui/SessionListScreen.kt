@@ -30,9 +30,15 @@ fun SessionListScreen(
     coroutineScope: CoroutineScope,
     onNewSession: (String) -> Unit,
 ) {
-    val projectGroups by sessionFileCoordinator.getSessionsFlow().collectAsState()
+    var projectGroups by remember { mutableStateOf<List<ProjectGroup>>(emptyList()) }
     var expandedProjects by remember { mutableStateOf<Set<String>>(emptySet()) }
-    val isLoading = projectGroups.isEmpty()
+    var isLoading by remember { mutableStateOf(true) }
+    
+    // Lazy load sessions list on first composition
+    LaunchedEffect(Unit) {
+        projectGroups = sessionFileCoordinator.loadSessionsList()
+        isLoading = false
+    }
 
     Column(modifier = Modifier.padding(16.dp).fillMaxSize()) {
         Text("Выберите беседу", style = MaterialTheme.typography.h5)

@@ -18,10 +18,6 @@ class SessionFileCoordinator(
     @PostConstruct
     fun initialize() {
         scope.launch {
-            println("Loading all session files into cache...")
-            sessionCacheService.refreshAll()
-            println("Session cache initialized")
-
             fileWatcherService.startWatching()
 
             fileWatcherService.fileEvents.collect { event ->
@@ -85,16 +81,12 @@ class SessionFileCoordinator(
                 return
             }
 
-            val comparison = sessionCacheService.compareFile(event.file, newContent)
-
-            if (comparison.newLines.isNotEmpty() || comparison.modifiedLines.isNotEmpty()) {
-                println("Detected ${comparison.newLines.size} new lines and ${comparison.modifiedLines.size} modified lines in ${event.file.name}")
-                sessionCacheService.updateFile(event.file)
-                
-                // Update current chat history if this is the active session
-                val sessionId = event.file.name.removeSuffix(".jsonl")
-                updateCurrentChatHistory(sessionId)
-            }
+            // File was modified - update it
+            sessionCacheService.updateFile(event.file)
+            
+            // Update current chat history if this is the active session
+            val sessionId = event.file.name.removeSuffix(".jsonl")
+            updateCurrentChatHistory(sessionId)
 
         } catch (e: Exception) {
             println("Error processing modified file ${event.file.name}: ${e.message}")
@@ -131,7 +123,7 @@ class SessionFileCoordinator(
         return braceCount == 0
     }
 
-    fun getSessionsFlow() = sessionCacheService.sessionsFlow
+    suspend fun loadSessionsList() = sessionCacheService.loadSessionsList()
 
     fun getSessionMessages(sessionId: String) = sessionCacheService.getSessionMessages(sessionId)
 
