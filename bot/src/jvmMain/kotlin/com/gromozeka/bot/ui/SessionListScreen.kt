@@ -14,7 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.gromozeka.bot.model.ChatSession
 import com.gromozeka.bot.model.ProjectGroup
-import com.gromozeka.bot.model.Session
+import com.gromozeka.bot.model.SessionJsonl
 import com.gromozeka.shared.domain.message.ChatMessage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -22,7 +22,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Dispatchers
 @Composable
 fun SessionListScreen(
-    onSessionSelected: (ChatSession, List<ChatMessage>, Session) -> Unit,
+    onSessionSelected: (ChatSession, List<ChatMessage>, SessionJsonl) -> Unit,
     coroutineScope: CoroutineScope,
     onNewSession: (String) -> Unit,
 ) {
@@ -33,9 +33,9 @@ fun SessionListScreen(
     // Lazy load sessions list on first composition
     LaunchedEffect(Unit) {
         projectGroups = withContext(Dispatchers.IO) {
-            val sessions = Session.loadAllSessions()
+            val sessionJsonls = SessionJsonl.loadAllSessions()
             // Group sessions by project path
-            sessions.groupBy { it.projectPath }
+            sessionJsonls.groupBy { it.projectPath }
                 .map { (projectPath, projectSessions) ->
                     ProjectGroup(
                         projectPath = projectPath,
@@ -254,17 +254,17 @@ private fun NewSessionButton(
 
 private fun CoroutineScope.handleSessionClick(
     clickedSession: ChatSession,
-    onSessionSelected: (ChatSession, List<ChatMessage>, Session) -> Unit
+    onSessionSelected: (ChatSession, List<ChatMessage>, SessionJsonl) -> Unit
 ) {
     launch {
         try {
             // Get the Session object and load messages
-            val session = Session(clickedSession.sessionId, clickedSession.projectPath)
-            session.loadInitialData() // Load metadata and messages into StateFlow
-            val messages = session.messages.value
+            val sessionJsonl = SessionJsonl(clickedSession.sessionId, clickedSession.projectPath)
+            sessionJsonl.loadInitialData() // Load metadata and messages into StateFlow
+            val messages = sessionJsonl.messages.value
             
             // Pass session to parent - it will handle Claude process management
-            onSessionSelected(clickedSession, messages, session)
+            onSessionSelected(clickedSession, messages, sessionJsonl)
 
         } catch (e: Exception) {
             e.printStackTrace()

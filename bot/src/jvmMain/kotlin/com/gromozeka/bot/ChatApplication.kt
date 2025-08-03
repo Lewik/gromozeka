@@ -17,14 +17,13 @@ import androidx.compose.ui.window.ApplicationScope
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import com.gromozeka.bot.model.ChatSession
-import com.gromozeka.bot.model.Session
+import com.gromozeka.bot.model.SessionJsonl
 import com.gromozeka.shared.domain.message.ChatMessage
 import com.gromozeka.bot.services.OpenAiBalanceService
 import com.gromozeka.bot.services.SttService
 import com.gromozeka.bot.ui.ChatScreen
 import com.gromozeka.bot.ui.SessionListScreen
 import com.gromozeka.bot.utils.ClaudeCodePaths
-import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
@@ -87,7 +86,7 @@ fun ApplicationScope.ChatWindow(
 
     var showSessionList by remember { mutableStateOf(true) }
     var selectedSession by remember { mutableStateOf<ChatSession?>(null) }
-    var currentSession by remember { mutableStateOf<Session?>(null) }
+    var currentSessionJsonl by remember { mutableStateOf<SessionJsonl?>(null) }
     var isRecording by remember { mutableStateOf(false) }
 
     var showBalanceDialog by remember { mutableStateOf(false) }
@@ -99,8 +98,8 @@ fun ApplicationScope.ChatWindow(
     }
     
     // Subscribe to current session's message updates
-    LaunchedEffect(currentSession) {
-        currentSession?.let { session ->
+    LaunchedEffect(currentSessionJsonl) {
+        currentSessionJsonl?.let { session ->
             session.messages.collectLatest { updatedMessages ->
                 chatHistory.clear()
                 chatHistory.addAll(updatedMessages)
@@ -109,8 +108,8 @@ fun ApplicationScope.ChatWindow(
     }
     
     // Subscribe to current session's sessionId changes
-    LaunchedEffect(currentSession) {
-        currentSession?.let { session ->
+    LaunchedEffect(currentSessionJsonl) {
+        currentSessionJsonl?.let { session ->
             session.sessionId.collectLatest { newSessionId ->
                 // Update UI automatically when sessionId changes
                 selectedSession = selectedSession?.copy(sessionId = newSessionId)
@@ -120,8 +119,8 @@ fun ApplicationScope.ChatWindow(
     }
     
     // Subscribe to current session's events
-    LaunchedEffect(currentSession) {
-        currentSession?.let { session ->
+    LaunchedEffect(currentSessionJsonl) {
+        currentSessionJsonl?.let { session ->
             session.events.collectLatest { event ->
                 when (event) {
                     is com.gromozeka.bot.model.SessionEvent.MessagesUpdated -> {
@@ -145,7 +144,7 @@ fun ApplicationScope.ChatWindow(
     DisposableEffect(Unit) {
         onDispose {
             coroutineScope.launch {
-                currentSession?.stop()
+                currentSessionJsonl?.stop()
             }
         }
     }
@@ -154,13 +153,13 @@ fun ApplicationScope.ChatWindow(
         coroutineScope.launch {
             try {
                 // Stop existing session if running
-                currentSession?.stop()
-                currentSession = null
+                currentSessionJsonl?.stop()
+                currentSessionJsonl = null
                 
                 // Create and start new active session
-                val activeSession = Session("new-session", projectPath)
-                activeSession.start(coroutineScope)
-                currentSession = activeSession
+                val activeSessionJsonl = SessionJsonl("new-session", projectPath)
+                activeSessionJsonl.start(coroutineScope)
+                currentSessionJsonl = activeSessionJsonl
 
                 selectedSession = ChatSession(
                     sessionId = "new-session", // Temporary ID, will be updated when real sessionId is captured
@@ -182,7 +181,7 @@ fun ApplicationScope.ChatWindow(
     val sendMessage: suspend (String) -> Unit = { message ->
         println("[ChatApp] SEND MESSAGE CALLED: $message")
         try {
-            currentSession?.sendMessage(message)
+            currentSessionJsonl?.sendMessage(message)
         } catch (e: Exception) {
             println("[ChatApp] Failed to send message: ${e.message}")
             e.printStackTrace()
@@ -223,12 +222,12 @@ fun ApplicationScope.ChatWindow(
                 SessionListScreen(
                     onSessionSelected = { session, messages, sessionObj ->
                         // Stop current session if any
-                        currentSession?.let { currentSess ->
+                        currentSessionJsonl?.let { currentSess ->
                             coroutineScope.launch { currentSess.stop() }
                         }
                         
                         selectedSession = session
-                        currentSession = sessionObj
+                        currentSessionJsonl = sessionObj
                         chatHistory.clear()
                         chatHistory.addAll(messages)
                         showSessionList = false
@@ -247,7 +246,7 @@ fun ApplicationScope.ChatWindow(
                     onAutoSendChange = { autoSend = it },
                     onBackToSessionList = { 
                         coroutineScope.launch { 
-                            currentSession?.stop() 
+                            currentSessionJsonl?.stop()
                         }
                         showSessionList = true 
                     },

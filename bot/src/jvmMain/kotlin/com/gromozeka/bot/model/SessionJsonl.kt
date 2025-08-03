@@ -21,7 +21,7 @@ import java.nio.file.Files
 import java.time.LocalDateTime
 
 @OptIn(kotlinx.coroutines.FlowPreview::class)
-class Session(
+class SessionJsonl(
     initialSessionId: String,
     val projectPath: String,
 ) {
@@ -532,7 +532,7 @@ class Session(
     }
 
     companion object {
-        suspend fun loadAllSessions(): List<Session> = withContext(Dispatchers.IO) {
+        suspend fun loadAllSessions(): List<SessionJsonl> = withContext(Dispatchers.IO) {
             val projectsDir = ClaudeCodePaths.PROJECTS_DIR
             if (!projectsDir.exists()) {
                 return@withContext emptyList()
@@ -550,9 +550,9 @@ class Session(
                         val sessionId = file.nameWithoutExtension
                         val projectPath = file.parentFile?.decodeProjectPath()
                             ?: throw IllegalArgumentException("Cannot determine project path for file: ${file.path}")
-                        val session = Session(sessionId, projectPath)
-                        session.loadInitialData() // Load metadata and messages
-                        session
+                        val sessionJsonl = SessionJsonl(sessionId, projectPath)
+                        sessionJsonl.loadInitialData() // Load metadata and messages
+                        sessionJsonl
                     } catch (e: Exception) {
                         println("Error loading session from file ${file.path}: ${e.message}")
                         null
