@@ -20,15 +20,15 @@ import java.io.File
 class Config {
 
 
-    @Bean
-    fun chatDatabase(): ChatDatabase {
-        val dbFile = File("chat.db")
-        val driver = JdbcSqliteDriver("jdbc:sqlite:${dbFile.absolutePath}")
-        if (!dbFile.exists()) {
-            ChatDatabase.Schema.create(driver)
-        }
-        return ChatDatabase(driver)
-    }
+    // @Bean
+    // fun chatDatabase(): ChatDatabase {
+    //     val dbFile = File("chat.db")
+    //     val driver = JdbcSqliteDriver("jdbc:sqlite:${dbFile.absolutePath}")
+    //     if (!dbFile.exists()) {
+    //         ChatDatabase.Schema.create(driver)
+    //     }
+    //     return ChatDatabase(driver)
+    // }
 
 
     @Bean
