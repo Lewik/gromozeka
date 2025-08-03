@@ -2,12 +2,14 @@ package com.gromozeka.bot
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
+import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import java.io.File
 
 class JsonStructureAnalysisTest {
 
     @Test
+    @Disabled("Research test - creates files. Run manually when needed.")
     fun discoverAllClaudeJsonStructures() {
         val analyzer = JsonStructureAnalyzer()
         val analysisResults = analyzer.analyzeByTypeAndGroup()
@@ -42,6 +44,7 @@ class JsonStructureAnalysisTest {
     }
     
     @Test
+    @Disabled("Research test - creates files. Run manually when needed.")
     fun discoverJsonStructuresWithoutMessage() {
         val analyzer = JsonStructureAnalyzer()
         val analysisResults = analyzer.analyzeByTypeAndGroupWithoutMessage()
