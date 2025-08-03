@@ -16,18 +16,16 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.ApplicationScope
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
-import com.gromozeka.bot.model.ChatMessage
-import com.gromozeka.bot.model.ChatMessageContent
 import com.gromozeka.bot.model.ChatSession
 import com.gromozeka.bot.model.Session
-import com.gromozeka.bot.services.ClaudeCodeStreamingWrapper
+import com.gromozeka.shared.domain.message.ChatMessage
 import com.gromozeka.bot.services.OpenAiBalanceService
-import com.gromozeka.bot.services.SessionService
 import com.gromozeka.bot.services.SttService
 import com.gromozeka.bot.ui.ChatScreen
 import com.gromozeka.bot.ui.SessionListScreen
 import com.gromozeka.bot.utils.ClaudeCodePaths
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 import org.springframework.beans.factory.getBean
@@ -44,8 +42,6 @@ fun main() {
 
     val context = SpringApplicationBuilder(ChatApplication::class.java).run()
     val sttService = context.getBean<SttService>()
-    val claudeCodeStreamingWrapper = context.getBean<ClaudeCodeStreamingWrapper>()
-    val sessionService = context.getBean<SessionService>()
     val openAiBalanceService = context.getBean<OpenAiBalanceService>()
     application {
         MaterialTheme(
@@ -57,8 +53,6 @@ fun main() {
         ) {
             ChatWindow(
                 sttService,
-                claudeCodeStreamingWrapper,
-                sessionService,
                 openAiBalanceService
             )
         }
@@ -69,8 +63,6 @@ fun main() {
 @Preview
 fun ApplicationScope.ChatWindow(
     sttService: SttService,
-    claudeCodeStreamingWrapper: ClaudeCodeStreamingWrapper,
-    sessionService: SessionService,
     openAiBalanceService: OpenAiBalanceService,
 ) {
     val coroutineScope = rememberCoroutineScope()
@@ -85,12 +77,10 @@ fun ApplicationScope.ChatWindow(
 //    }
     var userInput by remember { mutableStateOf("") }
     val chatHistory = remember { mutableStateListOf<ChatMessage>() }
-    var loadedSessionFile by remember { mutableStateOf<String?>(null) }
 
-    var assistantIsThinking by remember { mutableStateOf(false) }
+    val assistantIsThinking = false // Временно деактивировано
 
     var autoSend by remember { mutableStateOf(true) }
-    var attachOpenedFile by remember { mutableStateOf(true) }
 
     var showSessionList by remember { mutableStateOf(true) }
     var selectedSession by remember { mutableStateOf<ChatSession?>(null) }
@@ -105,48 +95,71 @@ fun ApplicationScope.ChatWindow(
         scrollState.animateScrollTo(scrollState.maxValue)
     }
     
+    // Subscribe to current session's message updates
+    LaunchedEffect(currentSession) {
+        currentSession?.let { session ->
+            session.messages.collectLatest { updatedMessages ->
+                chatHistory.clear()
+                chatHistory.addAll(updatedMessages)
+            }
+        }
+    }
+    
+    // Subscribe to current session's sessionId changes
+    LaunchedEffect(currentSession) {
+        currentSession?.let { session ->
+            session.sessionId.collectLatest { newSessionId ->
+                // Update UI automatically when sessionId changes
+                selectedSession = selectedSession?.copy(sessionId = newSessionId)
+                println("[ChatApp] UI updated with new session ID: $newSessionId")
+            }
+        }
+    }
+    
+    // Subscribe to current session's events
+    LaunchedEffect(currentSession) {
+        currentSession?.let { session ->
+            session.events.collectLatest { event ->
+                when (event) {
+                    is com.gromozeka.bot.model.SessionEvent.MessagesUpdated -> {
+                        println("[ChatApp] Messages updated: ${event.messageCount} messages")
+                    }
+                    is com.gromozeka.bot.model.SessionEvent.Error -> {
+                        println("[ChatApp] Session error: ${event.message}")
+                    }
+                    is com.gromozeka.bot.model.SessionEvent.SessionIdChangedOnStart -> {
+                        println("[ChatApp] Session ID changed to: ${event.newSessionId}")
+                        // UI is automatically updated via sessionId StateFlow subscription above
+                        // No manual session replacement needed!
+                    }
+                    else -> println("[ChatApp] Session event: $event")
+                }
+            }
+        }
+    }
+    
     // Cleanup when composable is disposed
     DisposableEffect(Unit) {
         onDispose {
-            currentSession?.stopWatching()
+            coroutineScope.launch {
+                currentSession?.stop()
+            }
         }
     }
 
     val createNewSession: (String) -> Unit = { projectPath ->
         coroutineScope.launch {
             try {
-                // Stop existing session watching
-                currentSession?.stopWatching()
+                // Stop existing session if running
+                currentSession?.stop()
                 currentSession = null
                 
-                // Stop existing Claude Code process if running
-                claudeCodeStreamingWrapper.stop()
-                
-                // Set up callback to capture real session ID
-                claudeCodeStreamingWrapper.onSessionIdCaptured = { realSessionId ->
-                    println("[ChatApp] Captured real session ID via callback: $realSessionId")
+                // Create and start new active session
+                val activeSession = Session("new-session", projectPath)
+                activeSession.start(coroutineScope)
+                currentSession = activeSession
 
-                    // Update selectedSession with real ID
-                    selectedSession = selectedSession?.copy(sessionId = realSessionId)
-                    println("[ChatApp] Updated selectedSession with real ID: $realSessionId")
-
-                    // Get the new session and start watching it
-                    sessionService.getSession(realSessionId, projectPath)?.let { newSession ->
-                        currentSession = newSession
-                        sessionService.startWatchingSession(newSession, coroutineScope) { updatedMessages ->
-                            chatHistory.clear()
-                            chatHistory.addAll(updatedMessages)
-                        }
-                        println("[ChatApp] Started watching new session file: ${newSession.getFilePath()}")
-                    } ?: println("[ChatApp] Warning: Could not find new session file for $realSessionId")
-                }
-
-                claudeCodeStreamingWrapper.start(
-                    sessionId = null,
-                    projectPath = projectPath
-                )
-
-                val newSession = ChatSession(
+                selectedSession = ChatSession(
                     sessionId = "new-session", // Temporary ID, will be updated when real sessionId is captured
                     projectPath = projectPath,
                     firstMessage = "",
@@ -154,8 +167,6 @@ fun ApplicationScope.ChatWindow(
                     messageCount = 0,
                     preview = "New Session"
                 )
-
-                selectedSession = newSession
                 chatHistory.clear()
                 showSessionList = false
             } catch (e: Exception) {
@@ -166,38 +177,19 @@ fun ApplicationScope.ChatWindow(
 
 
     val sendMessage: suspend (String) -> Unit = { message ->
-        assistantIsThinking = true
-
-        val userMessage = ChatMessage(
-            id = (chatHistory.size + 1).toString(),
-            role = ChatMessage.Role.USER,
-            content = listOf(
-                ChatMessageContent(
-                    content = message,
-                    type = ChatMessageContent.Type.TEXT,
-                    ""
-                )
-            ),
-            timestamp = Clock.System.now(),
-            metadataType = ChatMessage.MetadataType.NONE
-        )
-        chatHistory.add(userMessage)
-
-        claudeCodeStreamingWrapper.sendMessage(message)
-
-
-        assistantIsThinking = false
+        println("[ChatApp] SEND MESSAGE CALLED: $message")
+        try {
+            currentSession?.sendMessage(message)
+        } catch (e: Exception) {
+            println("[ChatApp] Failed to send message: ${e.message}")
+            e.printStackTrace()
+        }
     }
 
 
-    LaunchedEffect(loadedSessionFile) {
-        if (loadedSessionFile != null) {
-            snapshotFlow { scrollState.maxValue }
-                .distinctUntilChanged()
-                .collect { max ->
-                    scrollState.animateScrollTo(max)
-                }
-        }
+    // Auto-scroll to bottom when messages change
+    LaunchedEffect(chatHistory.size) {
+        scrollState.animateScrollTo(scrollState.maxValue)
     }
 
     val modifierWithPushToTalk = Modifier.pointerInput(Unit) {
@@ -226,25 +218,18 @@ fun ApplicationScope.ChatWindow(
         if (initialized) {
             if (showSessionList) {
                 SessionListScreen(
-                    sessionService = sessionService,
                     onSessionSelected = { session, messages, sessionObj ->
-                        // Stop current session watching if any
-                        currentSession?.stopWatching()
+                        // Stop current session if any
+                        currentSession?.let { currentSess ->
+                            coroutineScope.launch { currentSess.stop() }
+                        }
                         
                         selectedSession = session
                         currentSession = sessionObj
                         chatHistory.clear()
                         chatHistory.addAll(messages)
-                        
-                        // Start watching the selected session
-                        sessionService.startWatchingSession(sessionObj, coroutineScope) { updatedMessages ->
-                            chatHistory.clear()
-                            chatHistory.addAll(updatedMessages)
-                        }
-                        
                         showSessionList = false
                     },
-                    claudeCodeStreamingWrapper = claudeCodeStreamingWrapper,
                     coroutineScope = coroutineScope,
                     onNewSession = createNewSession
                 )
@@ -257,9 +242,12 @@ fun ApplicationScope.ChatWindow(
                     assistantIsThinking = assistantIsThinking,
                     autoSend = autoSend,
                     onAutoSendChange = { autoSend = it },
-                    attachOpenedFile = attachOpenedFile,
-                    onAttachOpenedFileChange = { attachOpenedFile = it },
-                    onBackToSessionList = { showSessionList = true },
+                    onBackToSessionList = { 
+                        coroutineScope.launch { 
+                            currentSession?.stop() 
+                        }
+                        showSessionList = true 
+                    },
                     onNewSession = {
                         val currentProjectPath = selectedSession?.projectPath ?: "/Users/lewik/code/gromozeka"
                         createNewSession(currentProjectPath)

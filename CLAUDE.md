@@ -7,14 +7,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This is a Kotlin Multiplatform Project (MPP) with the following modules:
 - `bot` - The main application module containing the gromozeka bot application
 - `shared` - A library module with shared code and models
+- `docs/` - Project documentation including architectural decisions and philosophy
 
 ## Build and Test Commands
 
 - Build project: `./gradlew build`
 - Run application: `./gradlew :bot:run`
-- Run all tests: `./gradlew test`
+- Run all tests: `./gradlew :bot:jvmTest` (JVM tests) or `./gradlew :bot:allTests` (all platforms)
 - Clean build: `./gradlew clean`
 - Compile: `./gradlew compileKotlin`
+
+**IMPORTANT**: Always run tests after making changes: `./gradlew :bot:allTests -q` (quiet mode for KMP)
 
 
 ## Project Overview
@@ -84,3 +87,311 @@ Issues serve as our **shared project notebook** and **reference base**:
 **Language**: All GitHub Issues must be created in English (titles, descriptions, comments).
 
 **Purpose**: Issues = our persistent development memory that Claude Code can access when needed.
+
+## Architecture & Design Philosophy
+
+### Core Concept
+
+Gromozeka is a multi-armed AI agent designed as a **desktop-first application** for individual developers. Unlike traditional chatbots, Gromozeka emphasizes **practical utility through real tool integration**.
+
+**Scope**: Personal development tool with desktop-first architecture. Current implementation optimized for single-user, local environment. Future: thin client architecture with "brain" running on capable hardware (desktop/server) and UI clients (mobile/lightweight desktop) connecting remotely.
+
+### Architectural Principles
+
+#### 1. Single Source of Truth: File-Based Architecture
+
+**Decision**: Parse only session files, not streaming output.
+
+**Rationale**:
+- **Reliability first**: Claude Code writes to disk immediately (no buffering) to prevent data loss on crash/Ctrl+C
+- **Single parser**: Easier to maintain than dual parser system (streaming vs file)
+- **Complete data**: Files contain full metadata that streaming may omit
+- **Audit trail**: All interactions automatically persisted for debugging
+- **Consistency**: Same parsing logic for both historical and new messages
+
+**Performance analysis**:
+- Session size limited by Claude's context window (auto-compaction)
+- Typical file read time ≈ 1ms on SSD for context-sized files
+- FileWatcher delay = 200ms (protection against partial writes)
+- **Total latency acceptable** for human interaction speeds
+
+**Memory management**:
+- No unbounded growth: Claude's auto-compaction limits session size
+- Context boundaries provide natural memory limits
+- Desktop scope: even worst-case memory usage is manageable
+
+**Trade-offs accepted**:
+- Minimal latency vs streaming (but human-imperceptible)
+- FileWatcher complexity (but robust error handling added)
+- Must handle partial file writes (delay + retry logic)
+
+#### 2. Backend-Driven State Management
+
+**Decision**: Kotlin backend manages all state, UI is purely reactive.
+
+**Rationale**:
+- Centralized state management via `Session` class (refactored from coordinator anti-pattern)
+- Kotlin Flow for reactive updates (StateFlow/SharedFlow)
+- Clear separation of concerns
+- Easier to test business logic
+
+**Current implementation**: `Session.kt` encapsulates all session logic - process management, file watching, state updates, and lifecycle.
+
+#### 3. Claude Code Engine Focus
+
+**Decision**: Architecture optimized specifically for Claude Code engine integration.
+
+**Rationale**:
+- Claude Code has unique session file format (.jsonl) and CLI behavior
+- Claude Code's immediate file writes enable our FileWatcher approach
+- Claude Code's auto-compaction provides natural session boundaries
+- Other LLM engines would require completely different integration strategies
+- Better to build one engine integration excellently than many poorly
+- Future LLM engines = separate wrappers with engine-specific architectures
+
+**Engine-specific design decisions**:
+- Session ID extraction from Claude's `init` messages
+- FileWatcher monitoring of `~/.claude/projects/` directory structure
+- Parsing Claude's specific JSONL message format
+- Resume behavior handling (new file creation)
+
+### Technical Decisions
+
+#### File Monitoring Strategy
+
+```
+Claude Process → Writes JSONL → FileWatcher detects → Parser reads → UI updates
+```
+
+**Why not streaming?**
+- **Dual parser complexity**: Stream and file formats typically differ, requiring separate parsers
+- **Processing inconsistency**: Historical messages often parsed differently than real-time ones
+- **Maintenance overhead**: Multiple parsing paths increase complexity
+- **Persistence guarantee**: Files are the only reliable storage that survives crashes
+- **Simpler architecture**: Single parsing path reduces edge cases
+
+#### Claude Code Session Management
+
+**Engine-specific behavior**:
+1. **New Session**: Start Claude CLI → Extract session ID from `init` message → Monitor new .jsonl file
+2. **Resume Session**: Claude CLI creates new file (not reuse old) → Update FileWatcher to new file via callback
+3. **Session ID Mismatch Fix**: Always set up `onSessionIdCaptured` to handle Claude's file creation behavior
+
+**Key insight**: Claude Code CLI always creates new files on resume, never appends to existing ones.
+
+#### Error Handling
+
+- Graceful FileWatcher recovery on crash
+- Null-safety throughout Kotlin code
+- Partial JSON line protection in parser
+
+### Implementation Guidelines
+
+1. **Prefer file-based truth** over in-memory state
+2. **Handle edge cases** (partial writes, crashes, race conditions)  
+3. **Embrace Claude Code engine specifics** - leverage its unique behavior and .jsonl format
+4. **Test with real Claude-generated session files** not mocked data
+5. **Document engine-specific behaviors** and non-obvious decisions in code
+
+### Validation Strategy
+
+**"Validate in practice, not in CI":**
+- FileWatcher behavior varies by platform - manual validation more reliable than flaky automated tests
+- External process timing cannot be reliably tested in unit tests
+- Focus automated testing on pure functions (parsers, data transformations)
+- System integration behavior validated through real usage
+
+### Future Considerations
+
+#### Phase 1: Desktop Maturity
+- **Performance**: Incremental file reading for very large sessions
+- **Multi-session**: Better support for concurrent sessions  
+- **Plugin system**: For adding new "arms" (capabilities)
+
+#### Phase 2: Client-Server Architecture
+- **Remote UI clients**: Mobile apps, lightweight desktop clients
+- **Network protocol**: Stream session updates to remote clients (WebSocket/gRPC)
+- **"Brain" separation**: Core logic + Claude Code engine integration runs on powerful hardware
+- **Multi-client support**: Same session accessible from multiple devices
+- **Alternative LLM engines**: Separate wrappers with engine-specific architectures and protocols
+
+**X-Server inspiration**: UI rendering on client, all computation on server.
+
+### Philosophy Summary
+
+> "Parse once, parse right. The file is the truth, streaming is just a preview."
+
+This approach prioritizes **reliability** and **consistency** over streaming speed. Key insights:
+
+- **Desktop scope**: Single-user environment allows simpler, more robust solutions
+- **Natural boundaries**: Context limits prevent unbounded resource growth  
+- **Single parser advantage**: Unified processing path reduces complexity
+- **Pragmatic validation**: Manual testing more reliable than flaky automated tests for system behavior
+- **Developer confidence**: Every interaction automatically saved and debuggable
+
+For a desktop developer tool, having consistent and trustworthy state management is more valuable than optimizing for theoretical edge cases that don't occur in practice.
+
+## Claude Code CLI Working Notes
+
+### Session Files Location
+
+Claude Code stores session files in project-specific directories:
+- **Base path**: `~/.claude/projects/`
+- **Project directories**: Named with escaped paths (e.g., `-Users-lewik-code-gromozeka/`)
+- **Session files**: Individual `.jsonl` files with UUID names inside project directories
+
+**Example structure**:
+```
+~/.claude/projects/
+├── -Users-lewik-code-gromozeka/
+│   ├── 00f8f214-a5c5-40cf-a07e-4a3b383a94e9.jsonl
+│   ├── 01408712-7950-4d1f-9d80-46126637f418.jsonl
+│   └── ...
+└── -Users-lewik-code-another-project/
+    ├── session-uuid-1.jsonl
+    └── session-uuid-2.jsonl
+```
+
+### Session File Format
+
+- **Format**: JSONL (JSON Lines) - one JSON object per line
+- **Content**: Each line represents a message exchange
+- **Metadata**: Includes timestamps, message types, tool calls, etc.
+- **Auto-compaction**: Claude automatically manages session size via context window limits
+
+### Key Behavioral Notes
+
+- **File creation**: Claude Code always creates new files on `--resume`, never appends
+- **Immediate writes**: No buffering - files updated immediately for crash safety  
+- **Session ID extraction**: Must monitor `init` messages to get proper session ID
+- **FileWatcher timing**: 300ms debounce + conflate (updated from 200ms)
+
+## Current Implementation Details
+
+### Core Architecture Components
+
+#### Session.kt - The Central Hub
+**Responsibilities**: Process management, file watching, state management, lifecycle control
+- **Thread safety**: Mutex protection for all mutable operations
+- **Reactive updates**: StateFlow for metadata/messages, SharedFlow for events
+- **File monitoring**: KFS Watch with 300ms debounce and conflation by filename
+- **Process lifecycle**: Graceful shutdown with 1s timeout before force kill
+
+**Key pattern**: Single class encapsulating all session logic (replaced coordinator anti-pattern)
+
+#### Data Models Architecture
+
+**Current state**: Dual serialization approach (transitional)
+- **kotlinx.serialization**: New models (`ClaudeLogEntry`, `ChatMessage`)
+- **Jackson**: Legacy models (`ToolCall`, `ToolResult`)
+
+**ClaudeLogEntry hierarchy**:
+```kotlin
+sealed class ClaudeLogEntry {
+    SummaryEntry                    // Claude's auto-summaries
+    sealed class BaseEntry {        // All real entries
+        UserEntry                   // User messages  
+        AssistantEntry             // Claude responses
+        SystemEntry                // System notifications
+    }
+}
+```
+
+**Unified output model** (`ChatMessage`):
+- Engine-agnostic representation in shared module
+- ContentItem hierarchy for different message types
+- LlmSpecificMetadata for engine-specific data
+
+#### Tool Integration
+
+**Claude Code tools support**:
+- Read, Edit, Bash, Grep, WebSearch, WebFetch, TodoWrite, Task (subagents)
+- Type-safe mapping via ClaudeCodeToolCallData/ClaudeCodeToolResultData
+- Generic fallback for MCP and unknown tools
+
+**MCP compatibility**: Basic structure ready, but `McpToolResultParser` contains TODO stubs
+
+### Critical Implementation Notes
+
+#### JSON Parsing Complexity
+**ClaudeMessageContentSerializer** handles multiple formats:
+1. Simple strings: `"text"`
+2. Claude objects: `{"type": "text", "content": "..."}`  
+3. Gromozeka JSON: `{"fullText": "...", "ttsText": "..."}`
+4. Arrays: `[{"type": "text", "text": "..."}]`
+5. Unknown JSON: fallback to `UnknownJsonContent`
+
+**Performance consideration**: Multi-step type checking in serializer may be slow for large sessions
+
+#### File Monitoring Pattern
+```kotlin
+directoryWatcher.onEventFlow
+    .filter { File(it.path).name == "$sessionId.jsonl" }
+    .filter { it.event in setOf(KfsEvent.Create, KfsEvent.Modify) }
+    .debounce(300)  // Wait for write completion
+    .conflate()     // Take only latest if multiple changes queued
+```
+
+#### Session ID Handling
+**Critical behavior**: Claude Code CLI always creates new files on resume
+- Monitor stdout for session ID in init messages
+- Update FileWatcher path via `onSessionIdCaptured` callback
+- Handle session ID mismatch gracefully
+
+### Known Issues and Trade-offs
+
+#### Architectural Debt
+1. **Mixed serialization**: Jackson vs kotlinx.serialization in same project
+2. **Session class size**: ~500 lines handling multiple concerns
+3. **Error handling**: Generic exception catching in some places
+4. **File parsing**: Full file re-read on each change (not incremental)
+
+#### Performance Considerations
+- **Memory**: All messages loaded in memory (bounded by Claude's context window)
+- **Parsing**: JSON deserialization on every file change
+- **UI updates**: Full message list updates (not incremental)
+
+#### Race Conditions Protected
+- **Mutex in Session**: All mutable operations protected
+- **Process lifecycle**: Start/stop operations atomic
+- **File watching**: Debounce prevents partial read issues
+
+### Development Guidelines
+
+#### When Working with Sessions
+1. Always use `sessionMutex.withLock` for mutable operations
+2. Test session behavior with real Claude Code processes, not mocks
+3. Handle session ID changes via `onSessionIdCaptured` callback
+4. Expect nullable fields everywhere (Claude format is unstable)
+
+#### When Adding New Tools
+1. Add to `ClaudeCodeToolCallData` sealed class
+2. Update `ClaudeLogEntryMapper.mapToolCall()`
+3. Test with real Claude Code tool execution
+4. Provide Generic fallback for unknown tools
+
+#### When Modifying File Parsing
+1. Test with real .jsonl files from `~/.claude/projects/`
+2. Handle partial writes via debounce timing
+3. Ensure graceful degradation for unknown JSON formats
+4. Validate with different session sizes
+
+### Future Improvement Areas
+
+#### Short-term Optimizations
+- Migrate to single serialization library (kotlinx.serialization)
+- Implement incremental file reading for large sessions
+- Split Session class into smaller, focused components
+- Add proper error recovery and retry mechanisms
+
+#### Long-term Architecture
+- Plugin system for new "arms" (capabilities)
+- Multi-engine support with separate wrappers
+- Client-server architecture for remote access
+- Performance monitoring and optimization
+
+# important-instruction-reminders
+Do what has been asked; nothing more, nothing less.
+NEVER create files unless they're absolutely necessary for achieving your goal.
+ALWAYS prefer editing an existing file to creating a new one.
+NEVER proactively create documentation files (*.md) or README files. Only create documentation files if explicitly requested by the User.

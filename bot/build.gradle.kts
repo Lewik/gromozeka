@@ -43,6 +43,8 @@ kotlin {
                 implementation(libs.sqldelight.sqlite.driver)
                 implementation(libs.sqldelight.coroutines.extensions)
                 implementation(libs.sqldelight.primitive.adapters)
+                
+                implementation(libs.kfswatch)
             }
         }
         
@@ -51,6 +53,11 @@ kotlin {
                 implementation(libs.spring.boot.starter.test)
                 implementation(libs.junit.jupiter)
                 implementation(libs.junit.platform.launcher)
+                implementation(libs.mockk)
+                implementation(libs.kotest.runner.junit5)
+                implementation(libs.kotest.assertions.core)
+                implementation(libs.kotest.assertions.json)
+                implementation(libs.kotlinx.serialization.json)
             }
         }
     }

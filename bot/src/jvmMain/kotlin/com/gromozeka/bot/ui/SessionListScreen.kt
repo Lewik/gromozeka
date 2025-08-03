@@ -12,19 +12,17 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.gromozeka.bot.model.ChatMessage
 import com.gromozeka.bot.model.ChatSession
 import com.gromozeka.bot.model.ProjectGroup
 import com.gromozeka.bot.model.Session
-import com.gromozeka.bot.services.ClaudeCodeStreamingWrapper
-import com.gromozeka.bot.services.SessionService
+import com.gromozeka.shared.domain.message.ChatMessage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Dispatchers
 @Composable
 fun SessionListScreen(
-    sessionService: SessionService,
     onSessionSelected: (ChatSession, List<ChatMessage>, Session) -> Unit,
-    claudeCodeStreamingWrapper: ClaudeCodeStreamingWrapper,
     coroutineScope: CoroutineScope,
     onNewSession: (String) -> Unit,
 ) {
@@ -34,7 +32,29 @@ fun SessionListScreen(
     
     // Lazy load sessions list on first composition
     LaunchedEffect(Unit) {
-        projectGroups = sessionService.loadAllSessions()
+        projectGroups = withContext(Dispatchers.IO) {
+            val sessions = Session.loadAllSessions()
+            // Group sessions by project path
+            sessions.groupBy { it.projectPath }
+                .map { (projectPath, projectSessions) ->
+                    ProjectGroup(
+                        projectPath = projectPath,
+                        projectName = projectPath, // TODO: decode project name properly
+                        sessions = projectSessions.map { session ->
+                            // Convert Session to ChatSession for backward compatibility
+                            val metadata = session.metadata.value
+                            ChatSession(
+                                sessionId = session.sessionId.value,
+                                projectPath = session.projectPath,
+                                firstMessage = metadata?.title ?: "Empty Session",
+                                lastTimestamp = kotlinx.datetime.Instant.fromEpochSeconds(metadata?.lastModified?.toEpochSecond(java.time.ZoneOffset.UTC) ?: 0),
+                                messageCount = metadata?.messageCount ?: 0,
+                                preview = metadata?.title ?: "Empty Session"
+                            )
+                        }
+                    )
+                }
+        }
         isLoading = false
     }
 
@@ -70,8 +90,6 @@ fun SessionListScreen(
                             onSessionClick = { clickedSession ->
                                 coroutineScope.handleSessionClick(
                                     clickedSession,
-                                    sessionService,
-                                    claudeCodeStreamingWrapper,
                                     onSessionSelected
                                 )
                             },
@@ -113,8 +131,6 @@ fun SessionListScreen(
                                 onSessionClick = { clickedSession ->
                                     coroutineScope.handleSessionClick(
                                         clickedSession,
-                                        sessionService,
-                                        claudeCodeStreamingWrapper,
                                         onSessionSelected
                                     )
                                 },
@@ -238,44 +254,16 @@ private fun NewSessionButton(
 
 private fun CoroutineScope.handleSessionClick(
     clickedSession: ChatSession,
-    sessionService: SessionService,
-    claudeCodeStreamingWrapper: ClaudeCodeStreamingWrapper,
     onSessionSelected: (ChatSession, List<ChatMessage>, Session) -> Unit
 ) {
     launch {
         try {
-            // Get the Session object
-            val session = sessionService.getSession(clickedSession.sessionId, clickedSession.projectPath)
-            if (session == null) {
-                println("[SessionListScreen] Warning: Could not find session file for ${clickedSession.sessionId}")
-                return@launch
-            }
+            // Get the Session object and load messages
+            val session = Session(clickedSession.sessionId, clickedSession.projectPath)
+            session.loadInitialData() // Load metadata and messages into StateFlow
+            val messages = session.messages.value
             
-            // Load messages
-            val messages = session.getMessages()
-
-            // Stop existing Claude Code process if running
-            claudeCodeStreamingWrapper.stop()
-            
-            // Set up callback to handle new session ID when resuming
-            claudeCodeStreamingWrapper.onSessionIdCaptured = { realSessionId ->
-                println("[SessionListScreen] Captured real session ID for resumed session: $realSessionId")
-                
-                // Get the new session object and start watching it
-                sessionService.getSession(realSessionId, clickedSession.projectPath)?.let { newSession ->
-                    sessionService.startWatchingSession(newSession, this@launch) { updatedMessages ->
-                        // This callback will be handled by the ChatScreen that receives the session
-                        println("[SessionListScreen] New session file updated with ${updatedMessages.size} messages")
-                    }
-                    println("[SessionListScreen] Started watching new session file after resume: ${newSession.getFilePath()}")
-                } ?: println("[SessionListScreen] Warning: Could not find new session file for resumed session $realSessionId")
-            }
-
-            claudeCodeStreamingWrapper.start(
-                sessionId = clickedSession.sessionId,
-                projectPath = clickedSession.projectPath
-            )
-
+            // Pass session to parent - it will handle Claude process management
             onSessionSelected(clickedSession, messages, session)
 
         } catch (e: Exception) {

@@ -1,5 +1,6 @@
 package com.gromozeka.bot.ui
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -17,10 +18,15 @@ import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.isShiftPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
-import com.gromozeka.bot.model.ChatMessage
 import com.gromozeka.bot.model.ChatSession
 import com.gromozeka.bot.services.SttService
+import com.gromozeka.shared.domain.message.ChatMessage
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.contentOrNull
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
@@ -33,8 +39,6 @@ fun ChatScreen(
     assistantIsThinking: Boolean,
     autoSend: Boolean,
     onAutoSendChange: (Boolean) -> Unit,
-    attachOpenedFile: Boolean,
-    onAttachOpenedFileChange: (Boolean) -> Unit,
     onBackToSessionList: () -> Unit,
     onNewSession: () -> Unit,
     onSendMessage: suspend (String) -> Unit,
@@ -86,11 +90,6 @@ fun ChatScreen(
                 Text("Отправлять сразу")
             }
             Spacer(modifier = Modifier.width(8.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Checkbox(checked = attachOpenedFile, onCheckedChange = onAttachOpenedFileChange)
-                Text("Отправлять файл")
-            }
-            Spacer(modifier = Modifier.width(8.dp))
             Button(onClick = onCheckBalance) {
                 Text("💰 Баланс")
             }
@@ -104,10 +103,9 @@ fun ChatScreen(
             SelectionContainer {
                 Column {
                     chatHistory
-                        .filter { it.metadataType != ChatMessage.MetadataType.IDE_CONTEXT }
                         .forEachIndexed { index, message ->
                             MessageItem(message = message)
-                            if (index < chatHistory.filter { it.metadataType != ChatMessage.MetadataType.IDE_CONTEXT }.size - 1) {
+                            if (index < chatHistory.size - 1) {
                                 Divider(
                                     modifier = Modifier.padding(vertical = 8.dp),
                                     color = MaterialTheme.colors.onSurface.copy(alpha = 0.2f),
@@ -146,14 +144,14 @@ fun ChatScreen(
 private fun MessageItem(message: ChatMessage) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-        horizontalArrangement = if (message.role == ChatMessage.Role.USER) Arrangement.End else Arrangement.Start
+        horizontalArrangement = if (message.messageType == ChatMessage.MessageType.USER) Arrangement.End else Arrangement.Start
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth(0.85f)
                 .padding(8.dp)
                 .background(
-                    color = if (message.role == ChatMessage.Role.USER)
+                    color = if (message.messageType == ChatMessage.MessageType.USER)
                         MaterialTheme.colors.primary.copy(alpha = 0.1f)
                     else
                         MaterialTheme.colors.surface.copy(alpha = 0.1f),
@@ -162,15 +160,128 @@ private fun MessageItem(message: ChatMessage) {
                 .padding(12.dp)
         ) {
             message.content.forEach { content ->
+                when (content) {
+                    is ChatMessage.ContentItem.Message -> {
+                        Text(
+                            text = content.text,
+                            style = MaterialTheme.typography.body2,
+                        )
+                    }
+                    is ChatMessage.ContentItem.ToolCall -> {
+                        Text(
+                            text = "🔧 Tool: ${content.call::class.simpleName}",
+                            style = MaterialTheme.typography.caption,
+                            color = MaterialTheme.colors.primary
+                        )
+                    }
+                    is ChatMessage.ContentItem.ToolResult -> {
+                        Text(
+                            text = "📊 Tool Result",
+                            style = MaterialTheme.typography.caption,
+                            color = if (content.isError) MaterialTheme.colors.error else MaterialTheme.colors.secondary
+                        )
+                    }
+                    is ChatMessage.ContentItem.Thinking -> {
+                        Text(
+                            text = "🤔 ${content.thinking}",
+                            style = MaterialTheme.typography.caption,
+                            color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
+                        )
+                    }
+                    is ChatMessage.ContentItem.System -> {
+                        Text(
+                            text = "⚙️ ${content.content}",
+                            style = MaterialTheme.typography.caption,
+                            color = MaterialTheme.colors.onSurface.copy(alpha = 0.8f)
+                        )
+                    }
+                    is ChatMessage.ContentItem.Media -> {
+                        Text(
+                            text = "📎 Media: ${content.mimeType}",
+                            style = MaterialTheme.typography.caption,
+                            color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
+                        )
+                    }
+                    is ChatMessage.ContentItem.GromozekaMessage -> {
+                        GromozekaMessageTemplate(content)
+                    }
+                    is ChatMessage.ContentItem.UnknownJson -> {
+                        Column {
+                            Text(
+                                text = jsonPrettyPrint(content.json),
+                                style = MaterialTheme.typography.body2,
+                                fontFamily = FontFamily.Monospace
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "⚠️ Не удалось распарсить структуру",
+                                style = MaterialTheme.typography.caption,
+                                color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun GromozekaMessageTemplate(data: ChatMessage.ContentItem.GromozekaMessage) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        backgroundColor = MaterialTheme.colors.secondary.copy(alpha = 0.1f),
+        border = BorderStroke(1.dp, MaterialTheme.colors.secondary.copy(alpha = 0.3f))
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp)
+        ) {
+            // Заголовок с иконкой
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(bottom = 8.dp)
+            ) {
                 Text(
-                    text = content.content,
-                    style = MaterialTheme.typography.body2,
+                    text = "🤖",
+                    style = MaterialTheme.typography.h6
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Громозека",
+                    style = MaterialTheme.typography.subtitle1,
+                    color = MaterialTheme.colors.secondary
+                )
+            }
+            
+            // Отображаем основной контент
+            Text(
+                text = data.fullText,
+                style = MaterialTheme.typography.body2
+            )
+            
+            // Дополнительная информация мелким шрифтом
+            if (data.ttsText != null || data.voiceTone != null) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = buildString {
+                        data.ttsText?.let { append("🗣️ TTS: $it ") }
+                        data.voiceTone?.let { append("🎭 Tone: $it") }
+                    },
+                    style = MaterialTheme.typography.caption,
+                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
                 )
             }
         }
     }
 }
 
+
+private fun jsonPrettyPrint(json: JsonElement): String {
+    return json.toString().let { jsonString ->
+        // Простой pretty print
+        jsonString.replace(",", ",\n").replace("{", "{\n").replace("}", "\n}")
+    }
+}
 
 @Composable
 private fun MessageInput(

@@ -1,32 +1,26 @@
 package com.gromozeka.bot.services
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties
-import com.fasterxml.jackson.databind.DeserializationFeature
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.module.kotlin.registerKotlinModule
-import kotlinx.coroutines.*
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.SharedFlow
-import kotlinx.coroutines.flow.asSharedFlow
-import org.springframework.stereotype.Service
 import jakarta.annotation.PreDestroy
+import kotlinx.coroutines.*
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import java.io.BufferedReader
 import java.io.BufferedWriter
 import java.io.File
 import java.io.OutputStreamWriter
 
-@Service
 class ClaudeCodeStreamingWrapper {
 
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
-
-    private val objectMapper = ObjectMapper().apply {
-        registerKotlinModule()
-        configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
-    }
     
-    // Callback for when real session ID is captured
-    var onSessionIdCaptured: ((String) -> Unit)? = null
+    @OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+    private val json = Json {
+        explicitNulls = true
+        encodeDefaults = true
+    }
 
     private fun loadDefaultSystemPrompt(): String {
         return this::class.java.getResourceAsStream("/default-system-prompt.md")
@@ -35,179 +29,124 @@ class ClaudeCodeStreamingWrapper {
             ?: ""
     }
 
-    private fun parseStructuredResponse(textContent: String): StructuredResponse? {
-        return try {
-
-            if (textContent.startsWith("{")) {
-                val jsonData = objectMapper.readValue(textContent, Map::class.java) as Map<String, Any>
-
-                val result = StructuredResponse(
-                    fullText = jsonData["full_text"] as? String 
-                        ?: jsonData["response"] as? String 
-                        ?: textContent,
-                    ttsText = jsonData["tts_text"] as? String 
-                        ?: jsonData["speak"] as? String 
-                        ?: jsonData["voiceResponse"] as? String
-                        ?: "",
-                    voiceTone = jsonData["voice_tone"] as? String 
-                        ?: jsonData["tone"] as? String 
-                        ?: jsonData["emotion"] as? String
-                        ?: "neutral colleague"
-                )
-                result
-            } else {
-                null
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
-            null
-        }
-    }
-
     private var process: Process? = null
     private var stdinWriter: BufferedWriter? = null
     private var stdoutReader: BufferedReader? = null
     private var readJob: Job? = null
-    
-    private val _messages = MutableSharedFlow<ClaudeStreamMessage>()
-    val messages: SharedFlow<ClaudeStreamMessage> = _messages.asSharedFlow()
-    
-    private val _status = MutableSharedFlow<StreamStatus>()
-    val status: SharedFlow<StreamStatus> = _status.asSharedFlow()
+
 
     private var currentSessionId: String? = null
 
-    suspend fun start(sessionId: String? = null, projectPath: String? = null) = withContext(Dispatchers.IO) {
+    suspend fun start(
+        projectPath: String? = null,
+        onSessionIdCaptured: (String) -> Unit = { },
+    ) = withContext(Dispatchers.IO) {
         try {
             println("=== STARTING CLAUDE CODE STREAMING WRAPPER ===")
-            
-            currentSessionId = sessionId
-            
+
+            currentSessionId = null
+
             val defaultPrompt = loadDefaultSystemPrompt().replace("\"", "\\\"")
-            val claudeArgs = if (sessionId != null) {
-                "--output-format stream-json --input-format stream-json --verbose --resume $sessionId --append-system-prompt \"$defaultPrompt\""
-            } else {  
-                "--output-format stream-json --input-format stream-json --verbose --append-system-prompt \"$defaultPrompt\""
-            }
+            // Возвращаем как было - с дублированием, но рабочее
             val command = listOf(
-                "bash", "-c", "claude $claudeArgs"
+                "claude",
+                "--output-format", "stream-json",
+                "--input-format", "stream-json", 
+                "--verbose",
+                "--append-system-prompt", defaultPrompt
             )
             
+            println("[ClaudeCodeStreamingWrapper] EXECUTING COMMAND: ${command.joinToString(" ")}")
+            println("[ClaudeCodeStreamingWrapper] FULL COMMAND: $command")
+
             val processBuilder = ProcessBuilder(command)
                 .redirectErrorStream(false)
             
+            // Устанавливаем переменную окружения как в Python SDK для headless режима
+            val env = processBuilder.environment()
+            env["CLAUDE_CODE_ENTRYPOINT"] = "sdk-py"
+
             if (projectPath != null) {
                 processBuilder.directory(File(projectPath))
             }
-            
+
             process = processBuilder.start()
-            
+
             val proc = process ?: throw IllegalStateException("Failed to start process")
-            
+
             stdinWriter = BufferedWriter(OutputStreamWriter(proc.outputStream))
             stdoutReader = BufferedReader(proc.inputStream.reader())
-            
+
             readJob = scope.launch {
-                readOutputStream()
+                readOutputStream(onSessionIdCaptured)
             }
-            
-            _status.emit(StreamStatus.CONNECTED)
-            
+
+
         } catch (e: Exception) {
             e.printStackTrace()
-            _status.emit(StreamStatus.ERROR(e.message ?: "Unknown error"))
         }
     }
 
-    suspend fun sendMessage(message: String) = withContext(Dispatchers.IO) {
+    suspend fun sendMessage(message: String, sessionId: String? = null) = withContext(Dispatchers.IO) {
         try {
-            val writer = stdinWriter ?: throw IllegalStateException("Process not started")
+            val proc = process
+            println("[ClaudeCodeStreamingWrapper] Process alive before sending: ${proc?.isAlive()}")
             
-            val streamJsonMessage = mapOf(
-                "type" to "user",
-                "message" to mapOf(
-                    "role" to "user",
-                    "content" to message
-                )
+            val actualSessionId = sessionId ?: currentSessionId ?: "default"
+            val streamJsonMessage = UserInputMessage(
+                type = "user",
+                message = UserInputMessage.Content(
+                    role = "user",
+                    content = message
+                ),
+                session_id = actualSessionId,
+                parent_tool_use_id = null
             )
-            
-            val jsonLine = objectMapper.writeValueAsString(streamJsonMessage)
-            
+
+            val jsonLine = json.encodeToString(streamJsonMessage)
+            println("[ClaudeCodeStreamingWrapper] Writing to stdin: $jsonLine")
+            println("[ClaudeCodeStreamingWrapper] Session ID used: $actualSessionId")
+
+            val writer = stdinWriter ?: throw IllegalStateException("Process not started")
             writer.write("$jsonLine\n")
             writer.flush()
             
-            _status.emit(StreamStatus.MESSAGE_SENT)
-            
+            // Проверяем через небольшую задержку
+            delay(1000)
+            println("[ClaudeCodeStreamingWrapper] Process alive after sending: ${proc?.isAlive()}")
+
         } catch (e: Exception) {
             e.printStackTrace()
-            _status.emit(StreamStatus.ERROR(e.message ?: "Failed to send message"))
         }
     }
 
-    private suspend fun readOutputStream() {
+    private suspend fun readOutputStream(onSessionIdCaptured: (String) -> Unit) {
         try {
             val reader = stdoutReader ?: return
-            
+
             while (true) {
                 val line = reader.readLine() ?: break
                 if (line.trim().isEmpty()) continue
-                
+
                 try {
-                    println("=== CLAUDE CODE LIVE STREAM (NOT USED IN UI) ===")
+                    println("=== CLAUDE CODE LIVE STREAM ===")
                     println(line)
                     println("=== END LIVE STREAM ===")
-                    val messageData = objectMapper.readValue(line, Map::class.java) as Map<String, Any>
-                    val message = parseStreamMessage(messageData)
-//                    _messages.emit(message)
-                    
-                    // Capture session ID from SystemMessage
-                    if (message is ClaudeStreamMessage.SystemMessage && message.sessionId != null) {
-                        println("[ClaudeCodeStreamingWrapper] Captured session ID: ${message.sessionId}")
-                        onSessionIdCaptured?.invoke(message.sessionId)
+
+                    // Extract session ID from JSON
+                    extractSessionId(line)?.let { sessionId ->
+                        println("[ClaudeCodeStreamingWrapper] Captured session ID: $sessionId")
+                        onSessionIdCaptured(sessionId)
                     }
-                    
+
                 } catch (e: Exception) {
                     e.printStackTrace()
                 }
             }
-            
-            _status.emit(StreamStatus.DISCONNECTED)
-            
+
+
         } catch (e: Exception) {
             e.printStackTrace()
-            _status.emit(StreamStatus.ERROR(e.message ?: "Stream reading error"))
-        }
-    }
-
-    private fun parseStreamMessage(data: Map<String, Any>): ClaudeStreamMessage {
-        val type = data["type"] as? String ?: "unknown"
-        
-        return when (type) {
-            "system" -> ClaudeStreamMessage.SystemMessage(
-                subtype = data["subtype"] as? String,
-                sessionId = data["session_id"] as? String
-            )
-            "assistant" -> {
-                val messageData = data["message"] as? Map<String, Any>
-                val content = messageData?.get("content") as? List<Map<String, Any>>
-                val textContent = content?.firstOrNull { it["type"] == "text" }?.get("text") as? String ?: ""
-                
-                val structuredResponse = parseStructuredResponse(textContent)
-                
-                ClaudeStreamMessage.AssistantMessage(
-                    text = textContent,
-                    sessionId = data["session_id"] as? String,
-                    structuredResponse = structuredResponse
-                )
-            }
-            "result" -> ClaudeStreamMessage.ResultMessage(
-                isError = data["is_error"] as? Boolean ?: false,
-                sessionId = data["session_id"] as? String,
-                totalCostUsd = data["total_cost_usd"] as? Double,
-                durationMs = data["duration_ms"] as? Int,
-                numTurns = data["num_turns"] as? Int
-            )
-            else -> ClaudeStreamMessage.UnknownMessage(type, data)
         }
     }
 
@@ -217,19 +156,50 @@ class ClaudeCodeStreamingWrapper {
             stdinWriter?.close()
             stdoutReader?.close()
             process?.destroy()
-            
+
             // Wait a bit for graceful shutdown
             delay(1000)
-            
+
             if (process?.isAlive == true) {
                 process?.destroyForcibly()
             }
-            
-            _status.emit(StreamStatus.DISCONNECTED)
-            
+
+
         } catch (e: Exception) {
             e.printStackTrace()
         }
+    }
+
+    private fun extractSessionId(jsonLine: String) = try {
+        val jsonObject = Json.parseToJsonElement(jsonLine) as? JsonObject
+        val type = jsonObject?.get("type")?.jsonPrimitive?.content
+        val subtype = jsonObject?.get("subtype")?.jsonPrimitive?.content
+        if (type == "system" && subtype == "init") {
+            val sessionId = jsonObject["session_id"]?.jsonPrimitive?.content
+            if (sessionId != null) {
+                currentSessionId = sessionId
+                println("[ClaudeCodeStreamingWrapper] Updated currentSessionId to: $sessionId")
+            }
+            sessionId
+        } else {
+            null
+        }
+    } catch (e: Exception) {
+        null
+    }
+
+    @Serializable
+    data class UserInputMessage(
+        val type: String,
+        val message: Content,
+        val session_id: String = "default",
+        val parent_tool_use_id: String? = null
+    ) {
+        @Serializable
+        data class Content(
+            val role: String,
+            val content: String,
+        )
     }
 
     @PreDestroy
@@ -238,41 +208,3 @@ class ClaudeCodeStreamingWrapper {
     }
 }
 
-data class StructuredResponse(
-    val fullText: String,
-    val ttsText: String,
-    val voiceTone: String
-)
-
-sealed class ClaudeStreamMessage {
-    data class SystemMessage(
-        val subtype: String?,
-        val sessionId: String?
-    ) : ClaudeStreamMessage()
-    
-    data class AssistantMessage(
-        val text: String,
-        val sessionId: String?,
-        val structuredResponse: StructuredResponse? = null
-    ) : ClaudeStreamMessage()
-    
-    data class ResultMessage(
-        val isError: Boolean,
-        val sessionId: String?,
-        val totalCostUsd: Double?,
-        val durationMs: Int?,
-        val numTurns: Int?
-    ) : ClaudeStreamMessage()
-    
-    data class UnknownMessage(
-        val type: String,
-        val data: Map<String, Any>
-    ) : ClaudeStreamMessage()
-}
-
-sealed class StreamStatus {
-    object CONNECTED : StreamStatus()
-    object DISCONNECTED : StreamStatus()
-    object MESSAGE_SENT : StreamStatus()
-    data class ERROR(val message: String) : StreamStatus()
-}
