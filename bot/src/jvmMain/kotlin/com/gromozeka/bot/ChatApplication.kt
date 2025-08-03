@@ -31,6 +31,7 @@ import kotlinx.datetime.Clock
 import org.springframework.beans.factory.getBean
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.builder.SpringApplicationBuilder
+import org.springframework.boot.WebApplicationType
 
 fun main() {
     System.setProperty("java.awt.headless", "false")
@@ -40,7 +41,9 @@ fun main() {
         throw IllegalStateException("Claude Code not installed - directory does not exist: ${ClaudeCodePaths.PROJECTS_DIR.absolutePath}")
     }
 
-    val context = SpringApplicationBuilder(ChatApplication::class.java).run()
+    val context = SpringApplicationBuilder(ChatApplication::class.java)
+        .web(WebApplicationType.NONE)
+        .run()
     val sttService = context.getBean<SttService>()
     val openAiBalanceService = context.getBean<OpenAiBalanceService>()
     application {
