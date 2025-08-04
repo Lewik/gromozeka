@@ -11,9 +11,7 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.SerializationException
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.*
 import com.gromozeka.bot.model.StreamMessage
 import java.io.BufferedReader
 import java.io.BufferedWriter
@@ -44,6 +42,13 @@ class ClaudeCodeStreamingWrapper {
 
 
     private var currentSessionId: String? = null
+    
+    // Unified stream broadcasting with buffer for late subscribers
+    private val _streamMessages = MutableSharedFlow<StreamMessage>(
+        replay = 100,  // Keep last 100 messages for late subscribers
+        extraBufferCapacity = 100  // Buffer capacity for fast emission
+    )
+    val streamMessages: SharedFlow<StreamMessage> = _streamMessages.asSharedFlow()
 
     suspend fun start(
         projectPath: String? = null,
@@ -64,8 +69,16 @@ class ClaudeCodeStreamingWrapper {
                 "--append-system-prompt", defaultPrompt
             )
             
-            println("[ClaudeCodeStreamingWrapper] EXECUTING COMMAND: ${command.joinToString(" ")}")
-            println("[ClaudeCodeStreamingWrapper] FULL COMMAND: $command")
+            // Truncate system prompt for cleaner logs
+            val truncatedCommand = command.mapIndexed { index, arg ->
+                if (index > 0 && command.getOrNull(index - 1) == "--append-system-prompt" && arg.length > 100) {
+                    "<SYSTEM_PROMPT_TRUNCATED_${arg.length}_CHARS>"
+                } else {
+                    arg
+                }
+            }
+            println("[ClaudeCodeStreamingWrapper] EXECUTING COMMAND: ${truncatedCommand.joinToString(" ")}")
+            println("[ClaudeCodeStreamingWrapper] FULL COMMAND: $truncatedCommand")
 
             val processBuilder = ProcessBuilder(command)
                 .redirectErrorStream(false)
@@ -128,22 +141,7 @@ class ClaudeCodeStreamingWrapper {
         }
     }
 
-    fun streamOutput(): Flow<StreamMessage> = flow {
-        val reader = stdoutReader ?: return@flow
-        
-        try {
-            reader.useLines { lines ->
-                lines.forEach { line ->
-                    if (line.trim().isNotEmpty()) {
-                        val streamMessage = parseStreamMessage(line)
-                        emit(streamMessage)
-                    }
-                }
-            }
-        } catch (e: Exception) {
-            println("[ClaudeCodeStreamingWrapper] Stream error: ${e.message}")
-        }
-    }.flowOn(Dispatchers.IO)
+    fun streamOutput(): Flow<StreamMessage> = streamMessages
 
     private fun parseStreamMessage(jsonLine: String): StreamMessage {
         return try {
@@ -178,6 +176,13 @@ class ClaudeCodeStreamingWrapper {
                     println(line)
                     println("=== END LIVE STREAM ===")
 
+                    // Parse and broadcast stream message
+                    val streamMessage = parseStreamMessage(line)
+                    println("[ClaudeWrapper] *** EMITTING STREAM MESSAGE: ${streamMessage.type}")
+                    
+                    _streamMessages.emit(streamMessage)
+                    
+                    // Extract session ID for callback
                     extractSessionId(line)?.let { sessionId ->
                         println("[ClaudeCodeStreamingWrapper] Captured session ID: $sessionId")
                         onSessionIdCaptured(sessionId)

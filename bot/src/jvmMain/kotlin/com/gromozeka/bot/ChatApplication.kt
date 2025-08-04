@@ -17,7 +17,8 @@ import androidx.compose.ui.window.ApplicationScope
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import com.gromozeka.bot.model.ChatSession
-import com.gromozeka.bot.model.SessionJsonl
+import com.gromozeka.bot.model.Session
+import com.gromozeka.bot.services.ClaudeCodeStreamingWrapper
 import com.gromozeka.shared.domain.message.ChatMessage
 import com.gromozeka.bot.services.OpenAiBalanceService
 import com.gromozeka.bot.services.SttService
@@ -33,6 +34,7 @@ import org.springframework.boot.builder.SpringApplicationBuilder
 import org.springframework.boot.WebApplicationType
 
 fun main() {
+    println("[GROMOZEKA] Starting application...")
     System.setProperty("java.awt.headless", "false")
 
     // Check Claude Code is installed
@@ -40,11 +42,14 @@ fun main() {
         throw IllegalStateException("Claude Code not installed - directory does not exist: ${ClaudeCodePaths.PROJECTS_DIR.absolutePath}")
     }
 
+    println("[GROMOZEKA] Initializing Spring context...")
     val context = SpringApplicationBuilder(ChatApplication::class.java)
         .web(WebApplicationType.NONE)
         .run()
+    println("[GROMOZEKA] Spring context initialized successfully")
     val sttService = context.getBean<SttService>()
     val openAiBalanceService = context.getBean<OpenAiBalanceService>()
+    println("[GROMOZEKA] Starting Compose Desktop UI...")
     application {
         MaterialTheme(
             typography = Typography(
@@ -86,7 +91,7 @@ fun ApplicationScope.ChatWindow(
 
     var showSessionList by remember { mutableStateOf(true) }
     var selectedSession by remember { mutableStateOf<ChatSession?>(null) }
-    var currentSessionJsonl by remember { mutableStateOf<SessionJsonl?>(null) }
+    var currentSession by remember { mutableStateOf<Session?>(null) }
     var isRecording by remember { mutableStateOf(false) }
 
     var showBalanceDialog by remember { mutableStateOf(false) }
@@ -97,39 +102,46 @@ fun ApplicationScope.ChatWindow(
         scrollState.animateScrollTo(scrollState.maxValue)
     }
     
-    // Subscribe to current session's message updates
-    LaunchedEffect(currentSessionJsonl) {
-        currentSessionJsonl?.let { session ->
-            session.messages.collectLatest { updatedMessages ->
-                chatHistory.clear()
-                chatHistory.addAll(updatedMessages)
+    // Subscribe to current session's message stream (true streaming)
+    LaunchedEffect(currentSession) {
+        currentSession?.let { session ->
+            session.messageStream.collect { newMessage ->
+                println("[ChatApp] Received streaming message: ${newMessage.messageType}")
+                chatHistory.add(newMessage)  // Incremental updates
             }
         }
     }
     
+    // Clear history when switching sessions
+    LaunchedEffect(currentSession) {
+        chatHistory.clear()
+    }
+    
     // Subscribe to current session's sessionId changes
-    LaunchedEffect(currentSessionJsonl) {
-        currentSessionJsonl?.let { session ->
+    LaunchedEffect(currentSession) {
+        currentSession?.let { session ->
             session.sessionId.collectLatest { newSessionId ->
-                // Update UI automatically when sessionId changes
-                selectedSession = selectedSession?.copy(sessionId = newSessionId)
-                println("[ChatApp] UI updated with new session ID: $newSessionId")
+                // Update UI automatically when sessionId changes (handle nullable sessionId)
+                newSessionId?.let { id ->
+                    selectedSession = selectedSession?.copy(sessionId = id)
+                    println("[ChatApp] UI updated with new session ID: $id")
+                }
             }
         }
     }
     
     // Subscribe to current session's events
-    LaunchedEffect(currentSessionJsonl) {
-        currentSessionJsonl?.let { session ->
+    LaunchedEffect(currentSession) {
+        currentSession?.let { session ->
             session.events.collectLatest { event ->
                 when (event) {
-                    is com.gromozeka.bot.model.SessionEvent.MessagesUpdated -> {
+                    is com.gromozeka.bot.model.StreamSessionEvent.MessagesUpdated -> {
                         println("[ChatApp] Messages updated: ${event.messageCount} messages")
                     }
-                    is com.gromozeka.bot.model.SessionEvent.Error -> {
+                    is com.gromozeka.bot.model.StreamSessionEvent.Error -> {
                         println("[ChatApp] Session error: ${event.message}")
                     }
-                    is com.gromozeka.bot.model.SessionEvent.SessionIdChangedOnStart -> {
+                    is com.gromozeka.bot.model.StreamSessionEvent.SessionIdChangedOnStart -> {
                         println("[ChatApp] Session ID changed to: ${event.newSessionId}")
                         // UI is automatically updated via sessionId StateFlow subscription above
                         // No manual session replacement needed!
@@ -144,7 +156,7 @@ fun ApplicationScope.ChatWindow(
     DisposableEffect(Unit) {
         onDispose {
             coroutineScope.launch {
-                currentSessionJsonl?.stop()
+                currentSession?.stop()
             }
         }
     }
@@ -153,13 +165,14 @@ fun ApplicationScope.ChatWindow(
         coroutineScope.launch {
             try {
                 // Stop existing session if running
-                currentSessionJsonl?.stop()
-                currentSessionJsonl = null
+                currentSession?.stop()
+                currentSession = null
                 
                 // Create and start new active session
-                val activeSessionJsonl = SessionJsonl("new-session", projectPath)
-                activeSessionJsonl.start(coroutineScope)
-                currentSessionJsonl = activeSessionJsonl
+                val claudeWrapper = ClaudeCodeStreamingWrapper()
+                val activeSession = Session(projectPath, claudeWrapper)
+                activeSession.start(coroutineScope)
+                currentSession = activeSession
 
                 selectedSession = ChatSession(
                     sessionId = "new-session", // Temporary ID, will be updated when real sessionId is captured
@@ -181,7 +194,7 @@ fun ApplicationScope.ChatWindow(
     val sendMessage: suspend (String) -> Unit = { message ->
         println("[ChatApp] SEND MESSAGE CALLED: $message")
         try {
-            currentSessionJsonl?.sendMessage(message)
+            currentSession?.sendMessage(message)
         } catch (e: Exception) {
             println("[ChatApp] Failed to send message: ${e.message}")
             e.printStackTrace()
@@ -216,18 +229,21 @@ fun ApplicationScope.ChatWindow(
         }
     }
 
-    Window(onCloseRequest = ::exitApplication, title = "🤖 Громозека") {
+    Window(onCloseRequest = { 
+        println("[GROMOZEKA] Application window closing - stopping all sessions...")
+        exitApplication() 
+    }, title = "🤖 Громозека") {
         if (initialized) {
             if (showSessionList) {
                 SessionListScreen(
                     onSessionSelected = { session, messages, sessionObj ->
                         // Stop current session if any
-                        currentSessionJsonl?.let { currentSess ->
+                        currentSession?.let { currentSess ->
                             coroutineScope.launch { currentSess.stop() }
                         }
                         
                         selectedSession = session
-                        currentSessionJsonl = sessionObj
+                        currentSession = sessionObj
                         chatHistory.clear()
                         chatHistory.addAll(messages)
                         showSessionList = false
@@ -246,7 +262,7 @@ fun ApplicationScope.ChatWindow(
                     onAutoSendChange = { autoSend = it },
                     onBackToSessionList = { 
                         coroutineScope.launch { 
-                            currentSessionJsonl?.stop()
+                            currentSession?.stop()
                         }
                         showSessionList = true 
                     },

@@ -37,6 +37,17 @@ class Session(
     private val _metadata = MutableStateFlow<StreamSessionMetadata?>(null)
     val metadata: StateFlow<StreamSessionMetadata?> = _metadata.asStateFlow()
     
+    // True streaming architecture - individual messages flow
+    private val _messageStream = MutableSharedFlow<ChatMessage>(
+        replay = 1000,  // Keep last 1000 messages for late subscribers
+        extraBufferCapacity = 1000
+    )
+    val messageStream: SharedFlow<ChatMessage> = _messageStream.asSharedFlow()
+    
+    // Legacy compatibility - keep for metadata generation
+    private val messageAccumulator = mutableListOf<ChatMessage>()
+    
+    // For UI compatibility - derives from stream 
     private val _messages = MutableStateFlow<List<ChatMessage>>(emptyList())
     val messages: StateFlow<List<ChatMessage>> = _messages.asStateFlow()
     
@@ -55,8 +66,7 @@ class Session(
     private var streamCollectionJob: Job? = null
     private val sessionMutex = Mutex()
     
-    // === Message accumulator ===
-    private val messageAccumulator = mutableListOf<ChatMessage>()
+    // Message accumulator moved up to StateFlow section
     
     // === Performance optimization jobs ===
     private var metadataUpdateJob: Job? = null
@@ -77,7 +87,12 @@ class Session(
         try {
             println("[Session] Starting session for project: $projectPath")
             
-            // === Phase 1: Claude Process Startup ===
+            // === Phase 1: Stream Collection Startup (FIRST!) ===
+            println("[Session] *** ABOUT TO CALL startStreamCollection()")
+            startStreamCollection(scope)
+            println("[Session] *** FINISHED startStreamCollection() call")
+            
+            // === Phase 2: Claude Process Startup (AFTER subscription!) ===
             claudeWrapper.start(
                 projectPath = projectPath,
                 onSessionIdCaptured = { capturedSessionId ->
@@ -89,9 +104,6 @@ class Session(
                     }
                 }
             )
-            
-            // === Phase 2: Stream Collection Startup ===
-            startStreamCollection(scope)
             
             // === Phase 3: Mark as Active ===
             _sessionState.value = SessionState.ACTIVE
@@ -115,24 +127,32 @@ class Session(
     /**
      * Send a message through the Claude Code CLI process
      */
-    suspend fun sendMessage(message: String) {
-        // Validate state under lock
-        sessionMutex.withLock {
-            require(_sessionState.value == SessionState.ACTIVE) { 
-                "Session is not active. Current state: ${_sessionState.value}" 
-            }
+    suspend fun sendMessage(message: String) = sessionMutex.withLock {
+        require(_sessionState.value == SessionState.ACTIVE) { 
+            "Session is not active. Current state: ${_sessionState.value}" 
         }
         
-        // Actual network call вне lock (может быть медленно)
         try {
             println("[Session] Sending message: ${message.take(100)}${if (message.length > 100) "..." else ""}")
+            
+            // Create and emit user message to UI immediately
+            val userMessage = ChatMessage(
+                messageType = ChatMessage.MessageType.USER,
+                content = listOf(ChatMessage.ContentItem.Message(message)),
+                timestamp = Clock.System.now(),
+                uuid = java.util.UUID.randomUUID().toString(),
+                llmSpecificMetadata = null
+            )
+            
+            println("[Session] *** EMITTING USER MESSAGE TO STREAM")
+            _messageStream.emit(userMessage)
+            messageAccumulator.add(userMessage)
+            _messages.value = messageAccumulator.toList()
+            
             claudeWrapper.sendMessage(message)
         } catch (e: Exception) {
-            // Handle error with lock только для state update
-            sessionMutex.withLock {
-                println("[Session] Failed to send message: ${e.message}")
-                _events.tryEmit(StreamSessionEvent.Error("Send failed: ${e.message}"))
-            }
+            println("[Session] Failed to send message: ${e.message}")
+            _events.tryEmit(StreamSessionEvent.Error("Send failed: ${e.message}"))
             throw e
         }
     }
@@ -215,25 +235,25 @@ class Session(
         streamCollectionJob = scope.launch {
             try {
                 println("[Session] Starting stream collection...")
+                println("[Session] *** SUBSCRIBING TO claudeWrapper.streamOutput()")
                 
                 claudeWrapper.streamOutput()
                     .flowOn(Dispatchers.IO)           // Stream parsing на IO thread
                     .catch { exception ->             // Handle stream-level errors
+                        println("[Session] *** STREAM ERROR: ${exception.message}")
                         handleStreamError(exception)
                     }
                     .collect { streamMessage ->       // Collect каждое StreamMessage
-                        withContext(Dispatchers.Main) { // Switch to Main для UI updates
-                            handleStreamMessage(streamMessage)
-                        }
+                        println("[Session] *** GOT STREAM MESSAGE FROM FLOW: ${streamMessage.type}")
+                        // StateFlow updates are thread-safe, no dispatcher switching needed
+                        handleStreamMessage(streamMessage)
                     }
                     
             } catch (e: Exception) {
                 println("[Session] Critical stream error: ${e.message}")
-                withContext(Dispatchers.Main) {
-                    sessionMutex.withLock {
-                        _sessionState.value = SessionState.ERROR
-                        _events.tryEmit(StreamSessionEvent.Error("Stream collection failed: ${e.message}"))
-                    }
+                sessionMutex.withLock {
+                    _sessionState.value = SessionState.ERROR
+                    _events.tryEmit(StreamSessionEvent.Error("Stream collection failed: ${e.message}"))
                 }
             }
         }
@@ -241,7 +261,7 @@ class Session(
     
     private suspend fun handleStreamMessage(streamMessage: StreamMessage) = sessionMutex.withLock {
         try {
-            println("[Session] Processing stream message: ${streamMessage.type}")
+            println("[Session] *** PROCESSING STREAM MESSAGE: ${streamMessage.type}")
             
             when (streamMessage) {
                 is StreamMessage.SystemStreamMessage -> {
@@ -292,7 +312,10 @@ class Session(
         
         val chatMessage = StreamToChatMessageMapper.mapToChatMessage(message)
         
-        // Assistant messages могут быть streaming (partial updates)
+        // True streaming - emit each message update
+        _messageStream.emit(chatMessage)
+        
+        // Legacy: Assistant messages могут быть streaming (partial updates)
         val existingIndex = findExistingAssistantMessage(chatMessage)
         
         if (existingIndex != -1) {
@@ -303,7 +326,10 @@ class Session(
             messageAccumulator.add(chatMessage)
         }
         
-        // Batch UI updates для streaming messages
+        // Update legacy StateFlow
+        _messages.value = messageAccumulator.toList()
+        
+        // Batch UI updates для streaming messages (legacy)
         scheduleAssistantUpdate()
     }
     
@@ -327,6 +353,11 @@ class Session(
     }
     
     private suspend fun addMessageToAccumulator(chatMessage: ChatMessage) {
+        // True streaming - emit individual message
+        println("[Session] *** EMITTING MESSAGE TO STREAM: ${chatMessage.messageType}")
+        _messageStream.emit(chatMessage)
+        
+        // Legacy compatibility - also maintain list
         messageAccumulator.add(chatMessage)
         _messages.value = messageAccumulator.toList() // Immutable copy
     }

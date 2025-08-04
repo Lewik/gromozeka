@@ -17,7 +17,7 @@ data class ChatMessage(
     val messageType: MessageType,
     val content: List<ContentItem>,
     val timestamp: Instant,
-    val llmSpecificMetadata: LlmSpecificMetadata,
+    val llmSpecificMetadata: LlmSpecificMetadata?,
     
     // Development context at root level
     val gitBranch: String? = null,
