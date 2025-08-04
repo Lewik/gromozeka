@@ -14,7 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.gromozeka.bot.model.ChatSession
 import com.gromozeka.bot.model.ProjectGroup
-import com.gromozeka.bot.model.SessionJsonl
+import com.gromozeka.bot.model.Session
 import com.gromozeka.shared.domain.message.ChatMessage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -22,124 +22,46 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Dispatchers
 @Composable
 fun SessionListScreen(
-    onSessionSelected: (ChatSession, List<ChatMessage>, SessionJsonl) -> Unit,
+    onSessionSelected: (ChatSession, List<ChatMessage>, Session) -> Unit,
     coroutineScope: CoroutineScope,
     onNewSession: (String) -> Unit,
 ) {
-    var projectGroups by remember { mutableStateOf<List<ProjectGroup>>(emptyList()) }
-    var expandedProjects by remember { mutableStateOf<Set<String>>(emptySet()) }
-    var isLoading by remember { mutableStateOf(true) }
-    
-    // Lazy load sessions list on first composition
-    LaunchedEffect(Unit) {
-        projectGroups = withContext(Dispatchers.IO) {
-            val sessionJsonls = SessionJsonl.loadAllSessions()
-            // Group sessions by project path
-            sessionJsonls.groupBy { it.projectPath }
-                .map { (projectPath, projectSessions) ->
-                    ProjectGroup(
-                        projectPath = projectPath,
-                        projectName = projectPath, // TODO: decode project name properly
-                        sessions = projectSessions.map { session ->
-                            // Convert Session to ChatSession for backward compatibility
-                            val metadata = session.metadata.value
-                            ChatSession(
-                                sessionId = session.sessionId.value,
-                                projectPath = session.projectPath,
-                                firstMessage = metadata?.title ?: "Empty Session",
-                                lastTimestamp = kotlinx.datetime.Instant.fromEpochSeconds(metadata?.lastModified?.toEpochSecond(java.time.ZoneOffset.UTC) ?: 0),
-                                messageCount = metadata?.messageCount ?: 0,
-                                preview = metadata?.title ?: "Empty Session"
-                            )
-                        }
-                    )
-                }
-        }
-        isLoading = false
-    }
+    // Временно отключаем загрузку существующих сессий - будет реализовано в отдельной таске
+    // var projectGroups by remember { mutableStateOf<List<ProjectGroup>>(emptyList()) }
+    // var expandedProjects by remember { mutableStateOf<Set<String>>(emptySet()) }
+    var isLoading by remember { mutableStateOf(false) } // Сразу показываем UI
 
     Column(modifier = Modifier.padding(16.dp).fillMaxSize()) {
         Text("Выберите беседу", style = MaterialTheme.typography.h5)
         Spacer(modifier = Modifier.height(16.dp))
 
-        if (isLoading) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
+        // Временная упрощенная версия - только кнопка создания новой сессии
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = "Streaming Session Test",
+                style = MaterialTheme.typography.h6,
+                modifier = Modifier.padding(bottom = 16.dp)
+            )
+            
+            Button(
+                onClick = { 
+                    // Используем тестовую папку gromozeka для новых сессий
+                    onNewSession("/Users/lewik/code/gromozeka/dev")
+                },
+                modifier = Modifier.padding(8.dp)
+            ) {
+                Text("Новая сессия (gromozeka/dev)")
             }
-        } else if (projectGroups.isEmpty()) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("Нет доступных бесед")
-            }
-        } else {
-            Column(modifier = Modifier.verticalScroll(rememberScrollState()).fillMaxWidth()) {
-                // Recent sessions section
-                val recentSessions = projectGroups.flatMap { it.sessions }
-                    .sortedByDescending { it.lastTimestamp }
-                    .take(3)
-                
-                if (recentSessions.isNotEmpty()) {
-                    Text(
-                        text = "Последние сессии",
-                        style = MaterialTheme.typography.h6,
-                        modifier = Modifier.padding(vertical = 8.dp)
-                    )
-                    
-                    recentSessions.forEach { session ->
-                        SessionItem(
-                            session = session,
-                            onSessionClick = { clickedSession ->
-                                coroutineScope.handleSessionClick(
-                                    clickedSession,
-                                    onSessionSelected
-                                )
-                            },
-                            isGrouped = false
-                        )
-                    }
-                    
-                    Divider(modifier = Modifier.padding(vertical = 16.dp))
-                    
-                    Text(
-                        text = "Все проекты",
-                        style = MaterialTheme.typography.h6,
-                        modifier = Modifier.padding(vertical = 8.dp)
-                    )
-                }
-                
-                projectGroups.forEach { group ->
-                    ProjectGroupHeader(
-                        group = group,
-                        isExpanded = group.projectPath in expandedProjects,
-                        onToggleExpanded = {
-                            expandedProjects = if (group.projectPath in expandedProjects) {
-                                expandedProjects - group.projectPath
-                            } else {
-                                expandedProjects + group.projectPath
-                            }
-                        }
-                    )
-
-                    if (group.projectPath in expandedProjects) {
-                        NewSessionButton(
-                            projectPath = group.projectPath,
-                            onNewSessionClick = onNewSession
-                        )
-
-                        group.sessions.forEach { session ->
-                            SessionItem(
-                                session = session,
-                                onSessionClick = { clickedSession ->
-                                    coroutineScope.handleSessionClick(
-                                        clickedSession,
-                                        onSessionSelected
-                                    )
-                                },
-                                isGrouped = true
-                            )
-                        }
-                    }
-                }
-            }
+            
+            Text(
+                text = "Загрузка существующих сессий будет добавлена в отдельной таске",
+                style = MaterialTheme.typography.caption,
+                modifier = Modifier.padding(top = 16.dp)
+            )
         }
     }
 }
@@ -252,22 +174,24 @@ private fun NewSessionButton(
     }
 }
 
+// Временно закомментировано - будет восстановлено когда добавим загрузку истории
+/*
 private fun CoroutineScope.handleSessionClick(
     clickedSession: ChatSession,
-    onSessionSelected: (ChatSession, List<ChatMessage>, SessionJsonl) -> Unit
+    onSessionSelected: (ChatSession, List<ChatMessage>, Session) -> Unit
 ) {
     launch {
         try {
-            // Get the Session object and load messages
-            val sessionJsonl = SessionJsonl(clickedSession.sessionId, clickedSession.projectPath)
-            sessionJsonl.loadInitialData() // Load metadata and messages into StateFlow
-            val messages = sessionJsonl.messages.value
+            // TODO: Create Session and load existing history from files
+            val claudeWrapper = ClaudeCodeStreamingWrapper()
+            val session = Session(clickedSession.projectPath, claudeWrapper)
             
-            // Pass session to parent - it will handle Claude process management
-            onSessionSelected(clickedSession, messages, sessionJsonl)
+            // Pass session to parent - it will handle Claude process management  
+            onSessionSelected(clickedSession, emptyList(), session)
 
         } catch (e: Exception) {
             e.printStackTrace()
         }
     }
 }
+*/

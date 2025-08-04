@@ -20,6 +20,8 @@ import java.io.File
 import java.nio.file.Files
 import java.time.LocalDateTime
 
+@Deprecated("Replaced by streaming Session. Kept for fallback.")
+@Suppress("UNUSED")
 @OptIn(kotlinx.coroutines.FlowPreview::class)
 class SessionJsonl(
     initialSessionId: String,
