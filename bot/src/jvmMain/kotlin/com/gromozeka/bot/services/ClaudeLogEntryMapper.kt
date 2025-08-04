@@ -1,8 +1,10 @@
 package com.gromozeka.bot.services
 
 import com.gromozeka.bot.model.ClaudeLogEntry
+import com.gromozeka.bot.model.GromozekaJson
 import com.gromozeka.shared.domain.message.*
 import kotlinx.datetime.Instant
+import kotlinx.serialization.*
 import kotlinx.serialization.json.*
 
 /**
@@ -410,7 +412,7 @@ object ClaudeLogEntryMapper {
                 val description = input.jsonObject["description"]?.jsonPrimitive?.content ?: ""
                 val prompt = input.jsonObject["prompt"]?.jsonPrimitive?.content ?: ""
                 val subagentType = input.jsonObject["subagent_type"]?.jsonPrimitive?.content ?: ""
-                ClaudeCodeToolCallData.Subagent(description, prompt, subagentType)
+                ClaudeCodeToolCallData.Task(description, prompt, subagentType)
             }
             
             else -> {
@@ -427,25 +429,26 @@ object ClaudeLogEntryMapper {
         }
         
         return try {
-            val jsonElement = Json.parseToJsonElement(text)
-            if (jsonElement is JsonObject && jsonElement.containsKey("fullText")) {
-                // Это Громозека JSON!
-                val fullText = jsonElement["fullText"]?.jsonPrimitive?.content ?: ""
-                val ttsText = jsonElement["ttsText"]?.jsonPrimitive?.content
-                val voiceTone = jsonElement["voiceTone"]?.jsonPrimitive?.content
-                listOf(ChatMessage.ContentItem.GromozekaMessage(
-                    fullText = fullText,
-                    ttsText = ttsText,
-                    voiceTone = voiceTone
-                ))
-            } else {
-                // Обычный JSON - как UnknownJson
+            // Try to deserialize as GromozekaJson first
+            val gromozekaData = Json.decodeFromString<GromozekaJson>(text)
+            listOf(ChatMessage.ContentItem.GromozekaMessage(
+                fullText = gromozekaData.fullText,
+                ttsText = gromozekaData.ttsText,
+                voiceTone = gromozekaData.voiceTone
+            ))
+        } catch (e: SerializationException) {
+            // Not a Gromozeka format, try as generic JSON
+            try {
+                val jsonElement = Json.parseToJsonElement(text)
                 listOf(ChatMessage.ContentItem.UnknownJson(jsonElement))
+            } catch (e: Exception) {
+                println("[ClaudeLogEntryMapper] Failed to parse text as JSON: ${e.message}")
+                println("  Text: ${text.take(200)}${if (text.length > 200) "..." else ""}")
+                // Not valid JSON at all - treat as plain text
+                listOf(ChatMessage.ContentItem.Message(text))
             }
         } catch (e: Exception) {
-            println("[ClaudeLogEntryMapper] Failed to parse text as JSON: ${e.message}")
-            println("  Text: ${text.take(200)}${if (text.length > 200) "..." else ""}")
-            // Не JSON - обычный текст
+            // Any other error - treat as plain text
             listOf(ChatMessage.ContentItem.Message(text))
         }
     }

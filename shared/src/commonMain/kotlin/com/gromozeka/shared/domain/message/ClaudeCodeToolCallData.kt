@@ -14,7 +14,7 @@ sealed class ClaudeCodeToolCallData : ToolCallData() {
      */
     @Serializable
     data class Read(
-        val filePath: String,
+        @SerialName("file_path") val filePath: String,
         val offset: Int? = null,
         val limit: Int? = null
     ) : ClaudeCodeToolCallData()
@@ -24,10 +24,10 @@ sealed class ClaudeCodeToolCallData : ToolCallData() {
      */
     @Serializable
     data class Edit(
-        val filePath: String,
-        val oldString: String,
-        val newString: String,
-        val replaceAll: Boolean = false
+        @SerialName("file_path") val filePath: String,
+        @SerialName("old_string") val oldString: String,
+        @SerialName("new_string") val newString: String,
+        @SerialName("replace_all") val replaceAll: Boolean = false
     ) : ClaudeCodeToolCallData()
     
     /**
@@ -48,8 +48,8 @@ sealed class ClaudeCodeToolCallData : ToolCallData() {
         val pattern: String,
         val path: String? = null,
         val glob: String? = null,
-        val outputMode: String? = null,
-        val caseInsensitive: Boolean? = null,
+        @SerialName("output_mode") val outputMode: String? = null,
+        @SerialName("-i") val caseInsensitive: Boolean? = null,
         val multiline: Boolean? = null
     ) : ClaudeCodeToolCallData()
     
@@ -67,8 +67,8 @@ sealed class ClaudeCodeToolCallData : ToolCallData() {
     @Serializable
     data class WebSearch(
         val query: String,
-        val allowedDomains: List<String>? = null,
-        val blockedDomains: List<String>? = null
+        @SerialName("allowed_domains") val allowedDomains: List<String>? = null,
+        @SerialName("blocked_domains") val blockedDomains: List<String>? = null
     ) : ClaudeCodeToolCallData()
     
     /**
@@ -81,12 +81,12 @@ sealed class ClaudeCodeToolCallData : ToolCallData() {
     ) : ClaudeCodeToolCallData()
     
     /**
-     * Subagent operation
+     * Task operation (subagent)
      */
     @Serializable
-    data class Subagent(
+    data class Task(
         val description: String,
         val prompt: String,
-        val subagentType: String
+        @SerialName("subagent_type") val subagentType: String
     ) : ClaudeCodeToolCallData()
 }
