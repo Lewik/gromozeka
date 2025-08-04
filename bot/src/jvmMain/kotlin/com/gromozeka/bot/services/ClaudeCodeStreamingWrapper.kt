@@ -7,6 +7,14 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.SerializationException
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
+import com.gromozeka.bot.model.StreamMessage
 import java.io.BufferedReader
 import java.io.BufferedWriter
 import java.io.File
@@ -120,6 +128,43 @@ class ClaudeCodeStreamingWrapper {
         }
     }
 
+    fun streamOutput(): Flow<StreamMessage> = flow {
+        val reader = stdoutReader ?: return@flow
+        
+        try {
+            reader.useLines { lines ->
+                lines.forEach { line ->
+                    if (line.trim().isNotEmpty()) {
+                        val streamMessage = parseStreamMessage(line)
+                        emit(streamMessage)
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            println("[ClaudeCodeStreamingWrapper] Stream error: ${e.message}")
+        }
+    }.flowOn(Dispatchers.IO)
+
+    private fun parseStreamMessage(jsonLine: String): StreamMessage {
+        return try {
+            Json.decodeFromString<StreamMessage>(jsonLine)
+        } catch (e: SerializationException) {
+            try {
+                StreamMessage.SystemStreamMessage(
+                    subtype = "parse_error",
+                    data = Json.parseToJsonElement(jsonLine) as JsonObject,
+                    sessionId = null
+                )
+            } catch (e: Exception) {
+                StreamMessage.SystemStreamMessage(
+                    subtype = "raw_output", 
+                    data = buildJsonObject { put("raw_line", JsonPrimitive(jsonLine)) },
+                    sessionId = null
+                )
+            }
+        }
+    }
+
     private suspend fun readOutputStream(onSessionIdCaptured: (String) -> Unit) {
         try {
             val reader = stdoutReader ?: return
@@ -133,7 +178,6 @@ class ClaudeCodeStreamingWrapper {
                     println(line)
                     println("=== END LIVE STREAM ===")
 
-                    // Extract session ID from JSON
                     extractSessionId(line)?.let { sessionId ->
                         println("[ClaudeCodeStreamingWrapper] Captured session ID: $sessionId")
                         onSessionIdCaptured(sessionId)
@@ -143,7 +187,6 @@ class ClaudeCodeStreamingWrapper {
                     e.printStackTrace()
                 }
             }
-
 
         } catch (e: Exception) {
             e.printStackTrace()
