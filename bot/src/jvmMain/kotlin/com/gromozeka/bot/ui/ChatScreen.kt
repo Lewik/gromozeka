@@ -25,11 +25,9 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import com.gromozeka.bot.model.ChatSession
 import com.gromozeka.bot.services.SttService
+import com.gromozeka.bot.services.TtsService
 import com.gromozeka.shared.domain.message.ChatMessage
 import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.contentOrNull
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
@@ -46,6 +44,7 @@ fun ChatScreen(
     onNewSession: () -> Unit,
     onSendMessage: suspend (String) -> Unit,
     sttService: SttService,
+    ttsService: TtsService,
     coroutineScope: CoroutineScope,
     modifierWithPushToTalk: Modifier,
     onCheckBalance: () -> Unit,
@@ -72,6 +71,7 @@ fun ChatScreen(
             scrollState.animateScrollTo(scrollState.maxValue)
         }
     }
+
 
     Column(modifier = Modifier.padding(16.dp).fillMaxSize()) {
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {

@@ -23,6 +23,7 @@ import com.gromozeka.shared.domain.message.ChatMessage
 import com.gromozeka.bot.services.OpenAiBalanceService
 import com.gromozeka.bot.services.SttService
 import com.gromozeka.bot.services.StreamLogger
+import com.gromozeka.bot.services.TtsService
 import com.gromozeka.bot.ui.ChatScreen
 import com.gromozeka.bot.ui.SessionListScreen
 import com.gromozeka.bot.utils.ClaudeCodePaths
@@ -53,6 +54,7 @@ fun main() {
         .run()
     println("[GROMOZEKA] Spring context initialized successfully")
     val sttService = context.getBean<SttService>()
+    val ttsService = context.getBean<TtsService>()
     val openAiBalanceService = context.getBean<OpenAiBalanceService>()
     println("[GROMOZEKA] Starting Compose Desktop UI...")
     application {
@@ -65,6 +67,7 @@ fun main() {
         ) {
             ChatWindow(
                 sttService,
+                ttsService,
                 openAiBalanceService
             )
         }
@@ -75,6 +78,7 @@ fun main() {
 @Preview
 fun ApplicationScope.ChatWindow(
     sttService: SttService,
+    ttsService: TtsService,
     openAiBalanceService: OpenAiBalanceService,
 ) {
     val coroutineScope = rememberCoroutineScope()
@@ -112,7 +116,41 @@ fun ApplicationScope.ChatWindow(
         currentSession?.let { session ->
             session.messageStream.collect { newMessage ->
                 println("[ChatApp] Received streaming message: ${newMessage.messageType}")
+                println("[ChatApp] Message content: ${newMessage.content.size} items, first: ${newMessage.content.firstOrNull()?.javaClass?.simpleName}")
                 chatHistory.add(newMessage)  // Incremental updates
+                println("[ChatApp] ChatHistory now has ${chatHistory.size} messages, last is ${chatHistory.lastOrNull()?.messageType}")
+                
+                // TTS для ASSISTANT сообщений
+                if (newMessage.messageType == ChatMessage.MessageType.ASSISTANT) {
+                    println("[ChatApp] Processing TTS for assistant message")
+                    val content = newMessage.content.firstOrNull()
+                    println("[ChatApp] TTS Content type: ${content?.javaClass?.simpleName}")
+                    
+                    val structured = when (content) {
+                        is ChatMessage.ContentItem.Message -> content.structured
+                        is ChatMessage.ContentItem.IntermediateMessage -> content.structured
+                        is ChatMessage.ContentItem.FinalResultMessage -> content.structured
+                        is ChatMessage.ContentItem.SystemStructuredMessage -> content.structured
+                        else -> null
+                    }
+                    
+                    if (structured != null) {
+                        val ttsText = structured.ttsText
+                        println("[ChatApp] TTS text: '$ttsText'")
+                        if (!ttsText.isNullOrBlank()) {
+                            println("[ChatApp] Starting TTS playback...")
+                            coroutineScope.launch {
+                                try {
+                                    ttsService.generateAndPlay(ttsText, structured.voiceTone ?: "neutral colleague")
+                                    println("[ChatApp] TTS playback completed")
+                                } catch (e: Exception) {
+                                    println("TTS error: ${e.message}")
+                                    e.printStackTrace()
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -291,6 +329,7 @@ fun ApplicationScope.ChatWindow(
                     },
                     onSendMessage = sendMessage,
                     sttService = sttService,
+                    ttsService = ttsService,
                     coroutineScope = coroutineScope,
                     modifierWithPushToTalk = modifierWithPushToTalk,
                     onCheckBalance = {

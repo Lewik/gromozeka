@@ -19,6 +19,8 @@ This is a Kotlin Multiplatform Project (MPP) with the following modules:
 
 **IMPORTANT**: Always run tests after making changes: `./gradlew :bot:allTests -q` (quiet mode for KMP)
 
+**CRITICAL**: Never run `./gradlew :bot:run` unless user explicitly requests it or gives consent. Always ask permission before starting the application.
+
 
 ## Project Overview
 
