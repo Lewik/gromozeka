@@ -252,6 +252,20 @@ fun ApplicationScope.ChatWindow(
                         chatHistory.clear()
                         chatHistory.addAll(messages)
                         showSessionList = false
+                        
+                        // Start the session with resume capability
+                        coroutineScope.launch {
+                            try {
+                                // Pass the old session ID for history loading
+                                sessionObj.start(coroutineScope, resumeSessionId = session.sessionId)
+                                
+                                // Session started successfully
+                                println("[ChatApplication] Session started with resume for: ${session.sessionId}")
+                            } catch (e: Exception) {
+                                println("[ChatApplication] Failed to start session: ${e.message}")
+                                e.printStackTrace()
+                            }
+                        }
                     },
                     coroutineScope = coroutineScope,
                     onNewSession = createNewSession

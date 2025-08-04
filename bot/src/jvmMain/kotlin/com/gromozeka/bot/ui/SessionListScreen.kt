@@ -15,6 +15,8 @@ import androidx.compose.ui.unit.dp
 import com.gromozeka.bot.model.ChatSession
 import com.gromozeka.bot.model.ProjectGroup
 import com.gromozeka.bot.model.Session
+import com.gromozeka.bot.services.ClaudeCodeStreamingWrapper
+import com.gromozeka.bot.services.SessionJsonlService
 import com.gromozeka.shared.domain.message.ChatMessage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -26,42 +28,117 @@ fun SessionListScreen(
     coroutineScope: CoroutineScope,
     onNewSession: (String) -> Unit,
 ) {
-    // Временно отключаем загрузку существующих сессий - будет реализовано в отдельной таске
-    // var projectGroups by remember { mutableStateOf<List<ProjectGroup>>(emptyList()) }
-    // var expandedProjects by remember { mutableStateOf<Set<String>>(emptySet()) }
-    var isLoading by remember { mutableStateOf(false) } // Сразу показываем UI
+    var allSessions by remember { mutableStateOf<List<ChatSession>>(emptyList()) }
+    var projectGroups by remember { mutableStateOf<List<ProjectGroup>>(emptyList()) }
+    var expandedProjects by remember { mutableStateOf<Set<String>>(emptySet()) }
+    var isLoading by remember { mutableStateOf(true) }
+    
+    // Load sessions on first composition
+    LaunchedEffect(Unit) {
+        isLoading = true
+        try {
+            val sessionJsonlService = SessionJsonlService()
+            val loadedSessions = sessionJsonlService.loadAllSessions()
+            allSessions = loadedSessions
+            
+            // Group sessions by project
+            val groupedProjects = loadedSessions
+                .groupBy { it.projectPath }
+                .map { (projectPath, sessions) ->
+                    val projectName = projectPath.substringAfterLast("/")
+                    ProjectGroup(
+                        projectPath = projectPath,
+                        projectName = projectName,
+                        sessions = sessions
+                    )
+                }
+            
+            projectGroups = groupedProjects.sortedByDescending { projectGroup ->
+                projectGroup.sessionCount()
+            }
+                
+            println("[SessionListScreen] Loaded ${loadedSessions.size} sessions in ${projectGroups.size} projects")
+        } catch (e: Exception) {
+            println("[SessionListScreen] Error loading sessions: ${e.message}")
+            e.printStackTrace()
+        } finally {
+            isLoading = false
+        }
+    }
 
     Column(modifier = Modifier.padding(16.dp).fillMaxSize()) {
         Text("Выберите беседу", style = MaterialTheme.typography.h5)
         Spacer(modifier = Modifier.height(16.dp))
 
         // Временная упрощенная версия - только кнопка создания новой сессии
-        Column(
-            modifier = Modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(
-                text = "Streaming Session Test",
-                style = MaterialTheme.typography.h6,
-                modifier = Modifier.padding(bottom = 16.dp)
-            )
-            
-            Button(
-                onClick = { 
-                    // Используем тестовую папку gromozeka для новых сессий
-                    onNewSession("/Users/lewik/code/gromozeka/dev")
-                },
-                modifier = Modifier.padding(8.dp)
+        if (isLoading) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
             ) {
-                Text("Новая сессия (gromozeka/dev)")
+                CircularProgressIndicator()
             }
-            
-            Text(
-                text = "Загрузка существующих сессий будет добавлена в отдельной таске",
-                style = MaterialTheme.typography.caption,
-                modifier = Modifier.padding(top = 16.dp)
-            )
+        } else {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+            ) {
+                if (projectGroups.isEmpty()) {
+                    // No sessions found - show new session button
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                text = "Нет сохраненных сессий",
+                                style = MaterialTheme.typography.h6,
+                                modifier = Modifier.padding(bottom = 16.dp)
+                            )
+                            Button(
+                                onClick = { onNewSession("/Users/lewik/code/gromozeka/dev") }
+                            ) {
+                                Text("Создать новую сессию")
+                            }
+                        }
+                    }
+                } else {
+                    // Show grouped sessions
+                    projectGroups.forEach { group ->
+                        ProjectGroupHeader(
+                            group = group,
+                            isExpanded = expandedProjects.contains(group.projectPath),
+                            onToggleExpanded = {
+                                expandedProjects = if (expandedProjects.contains(group.projectPath)) {
+                                    expandedProjects - group.projectPath
+                                } else {
+                                    expandedProjects + group.projectPath
+                                }
+                            }
+                        )
+                        
+                        if (expandedProjects.contains(group.projectPath)) {
+                            // New session button first
+                            NewSessionButton(
+                                projectPath = group.projectPath,
+                                onNewSessionClick = onNewSession
+                            )
+                            
+                            // Then existing sessions
+                            group.sessions.forEach { session ->
+                                SessionItem(
+                                    session = session,
+                                    onSessionClick = { clickedSession ->
+                                        coroutineScope.handleSessionClick(clickedSession, onSessionSelected)
+                                    },
+                                    isGrouped = true
+                                )
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -174,19 +251,19 @@ private fun NewSessionButton(
     }
 }
 
-// Временно закомментировано - будет восстановлено когда добавим загрузку истории
-/*
+// Resume existing session - create new Session with historical data loading
 private fun CoroutineScope.handleSessionClick(
     clickedSession: ChatSession,
     onSessionSelected: (ChatSession, List<ChatMessage>, Session) -> Unit
 ) {
     launch {
         try {
-            // TODO: Create Session and load existing history from files
+            // Create new Session that will load history during start
             val claudeWrapper = ClaudeCodeStreamingWrapper()
             val session = Session(clickedSession.projectPath, claudeWrapper)
             
             // Pass session to parent - it will handle Claude process management  
+            // The parent will call session.start() with resumeSessionId
             onSessionSelected(clickedSession, emptyList(), session)
 
         } catch (e: Exception) {
@@ -194,4 +271,3 @@ private fun CoroutineScope.handleSessionClick(
         }
     }
 }
-*/

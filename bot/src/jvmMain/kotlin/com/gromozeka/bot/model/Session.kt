@@ -1,6 +1,7 @@
 package com.gromozeka.bot.model
 
 import com.gromozeka.bot.services.ClaudeCodeStreamingWrapper
+import com.gromozeka.bot.services.SessionJsonlService
 import com.gromozeka.bot.services.StreamToChatMessageMapper
 import com.gromozeka.shared.domain.message.ChatMessage
 import kotlinx.coroutines.*
@@ -66,6 +67,10 @@ class Session(
     private var streamCollectionJob: Job? = null
     private val sessionMutex = Mutex()
     
+    // === Services ===
+    private val sessionJsonlService = SessionJsonlService()
+    private var historicalMessagesLoaded = false
+    
     // Message accumulator moved up to StateFlow section
     
     // === Performance optimization jobs ===
@@ -75,8 +80,10 @@ class Session(
     
     /**
      * Start the session: launch Claude Code CLI process and begin stream collection
+     * @param scope CoroutineScope for session lifecycle
+     * @param resumeSessionId Optional session ID to load historical messages from
      */
-    suspend fun start(scope: CoroutineScope) = sessionMutex.withLock {
+    suspend fun start(scope: CoroutineScope, resumeSessionId: String? = null) = sessionMutex.withLock {
         require(_sessionState.value == SessionState.INACTIVE) { 
             "Session is already active or starting. Current state: ${_sessionState.value}" 
         }
@@ -86,6 +93,15 @@ class Session(
         
         try {
             println("[Session] Starting session for project: $projectPath")
+            
+            // === Phase 0: Load historical messages if resuming ===
+            resumeSessionId?.let { oldSessionId ->
+                if (!historicalMessagesLoaded) {
+                    println("[Session] Loading historical messages from session: $oldSessionId")
+                    loadHistoricalMessages(oldSessionId)
+                    historicalMessagesLoaded = true
+                }
+            }
             
             // === Phase 1: Stream Collection Startup (FIRST!) ===
             println("[Session] *** ABOUT TO CALL startStreamCollection()")
@@ -506,6 +522,41 @@ class Session(
             // Don't throw - we're already in error recovery
         }
     }
+    
+    /**
+     * Load historical messages from a previous session when resuming.
+     * This is called before starting the Claude process to populate the UI with context.
+     */
+    private suspend fun loadHistoricalMessages(oldSessionId: String) {
+        try {
+            val historicalMessages = sessionJsonlService.loadMessagesFromSession(oldSessionId, projectPath)
+            
+            if (historicalMessages.isNotEmpty()) {
+                println("[Session] Loaded ${historicalMessages.size} historical messages")
+                
+                // Add to accumulator and emit to streams
+                messageAccumulator.addAll(historicalMessages)
+                _messages.value = messageAccumulator.toList()
+                
+                // Emit each historical message to stream
+                historicalMessages.forEach { message ->
+                    _messageStream.emit(message)
+                }
+                
+                // Update metadata based on historical messages
+                scheduleMetadataUpdate()
+                
+                _events.tryEmit(StreamSessionEvent.HistoricalMessagesLoaded(historicalMessages.size))
+            } else {
+                println("[Session] No historical messages found for session: $oldSessionId")
+            }
+            
+        } catch (e: Exception) {
+            println("[Session] Failed to load historical messages: ${e.message}")
+            _events.tryEmit(StreamSessionEvent.Warning("Failed to load history: ${e.message}"))
+            // Don't throw - continue with session start
+        }
+    }
 }
 
 /**
@@ -543,6 +594,7 @@ sealed class StreamSessionEvent {
     data object StreamReconnected : StreamSessionEvent()
     data object AutoRestarted : StreamSessionEvent()
     data class SessionIdChangedOnStart(val newSessionId: String) : StreamSessionEvent()
+    data class HistoricalMessagesLoaded(val messageCount: Int) : StreamSessionEvent()
 }
 
 /**

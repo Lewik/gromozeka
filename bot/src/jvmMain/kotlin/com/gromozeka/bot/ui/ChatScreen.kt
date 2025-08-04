@@ -16,9 +16,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.isShiftPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import com.gromozeka.bot.model.ChatSession
@@ -319,7 +321,8 @@ private fun MessageInput(
             onValueChange = onUserInputChange,
             modifier = Modifier
                 .onPreviewKeyEvent { event ->
-                    if (!assistantIsThinking && event.key == Key.Enter && event.isShiftPressed && userInput.isNotBlank()) {
+                    if (!assistantIsThinking && event.key == Key.Enter && event.isShiftPressed && event.type == KeyEventType.KeyDown && userInput.isNotBlank()) {
+                        println("🚀 Shift+Enter KeyDown detected, sending message: '$userInput'")
                         coroutineScope.launch {
                             onSendMessage(userInput)
                             onUserInputChange("")
@@ -337,6 +340,7 @@ private fun MessageInput(
                     CircularProgressIndicator()
                 } else {
                     IconButton(onClick = {
+                        println("📤 Send button clicked, sending message: '$userInput'")
                         coroutineScope.launch {
                             onSendMessage(userInput)
                             onUserInputChange("")
