@@ -63,6 +63,16 @@ data class ChatMessage(
     }
     
     /**
+     * Structured text data for TTS and voice synthesis
+     */
+    @Serializable
+    data class StructuredText(
+        val fullText: String,
+        val ttsText: String? = null,
+        val voiceTone: String? = null
+    )
+    
+    /**
      * Content item hierarchy with support for nested content
      */
     @Serializable
@@ -73,15 +83,7 @@ data class ChatMessage(
         data class Message(
             val text: String,
             val structured: StructuredText? = null
-        ) : ContentItem() {
-            
-            @Serializable
-            data class StructuredText(
-                val fullText: String,
-                val ttsText: String? = null,
-                val voiceTone: String? = null
-            )
-        }
+        ) : ContentItem()
         
         @Serializable
         data class ToolCall(
@@ -125,10 +127,21 @@ data class ChatMessage(
         }
         
         @Serializable
-        data class GromozekaMessage(
-            val fullText: String,
-            val ttsText: String? = null,
-            val voiceTone: String? = null
+        data class IntermediateMessage(
+            val text: String,
+            val structured: StructuredText? = null
+        ) : ContentItem()
+        
+        @Serializable  
+        data class FinalResultMessage(
+            val text: String,
+            val structured: StructuredText? = null
+        ) : ContentItem()
+        
+        @Serializable
+        data class SystemStructuredMessage(
+            val text: String,
+            val structured: StructuredText? = null
         ) : ContentItem()
         
         @Serializable

@@ -92,27 +92,52 @@ object StreamToChatMessageMapper {
             ChatMessage.ContentItem.System.SystemLevel.INFO
         }
         
-        val contentText = buildString {
-            append("Result (${message.subtype}): ")
-            if (message.result != null) {
-                append(message.result)
-            } else {
-                append("${message.numTurns} turns, ")
-                append("${message.durationMs}ms total, ")
-                message.totalCostUsd?.let { append("$%.6f, ".format(it)) }
-                message.usage?.let { 
-                    append("${it.inputTokens} in / ${it.outputTokens} out tokens")
+        // Parse result content based on subtype
+        val content = when (message.subtype) {
+            "success" -> {
+                // Try to parse result as Gromozeka JSON if present
+                if (message.result != null) {
+                    parseResultAsGromozeka(message.result)
+                } else {
+                    // No result content, show statistics
+                    listOf(createResultStatisticsContent(message, level))
                 }
             }
+            "error" -> {
+                // Show error message
+                val errorText = message.result ?: "Unknown error occurred"
+                listOf(
+                    ChatMessage.ContentItem.System(
+                        level = ChatMessage.ContentItem.System.SystemLevel.ERROR,
+                        content = "Error: $errorText",
+                        toolUseId = null
+                    )
+                )
+            }
+            else -> {
+                // Other subtypes (error_max_turns, error_during_execution, etc.)
+                val resultText = buildString {
+                    append("Result (${message.subtype}): ")
+                    if (message.result != null) {
+                        append(message.result)
+                    } else {
+                        append("${message.numTurns} turns, ")
+                        append("${message.durationMs}ms total, ")
+                        message.totalCostUsd?.let { append("$%.6f, ".format(it)) }
+                        message.usage?.let { 
+                            append("${it.inputTokens} in / ${it.outputTokens} out tokens")
+                        }
+                    }
+                }
+                listOf(
+                    ChatMessage.ContentItem.System(
+                        level = level,
+                        content = resultText,
+                        toolUseId = null
+                    )
+                )
+            }
         }
-        
-        val content = listOf(
-            ChatMessage.ContentItem.System(
-                level = level,
-                content = contentText,
-                toolUseId = null
-            )
-        )
         
         return ChatMessage(
             uuid = generateUuid(),
@@ -237,10 +262,13 @@ object StreamToChatMessageMapper {
         return try {
             // Try to deserialize as GromozekaJson first
             val gromozekaData = Json.decodeFromString<GromozekaJson>(text)
-            ChatMessage.ContentItem.GromozekaMessage(
-                fullText = gromozekaData.fullText,
-                ttsText = gromozekaData.ttsText,
-                voiceTone = gromozekaData.voiceTone
+            ChatMessage.ContentItem.IntermediateMessage(
+                text = gromozekaData.fullText,
+                structured = ChatMessage.StructuredText(
+                    fullText = gromozekaData.fullText,
+                    ttsText = gromozekaData.ttsText,
+                    voiceTone = gromozekaData.voiceTone
+                )
             )
         } catch (e: SerializationException) {
             // Not a Gromozeka format, try as generic JSON
@@ -290,6 +318,56 @@ object StreamToChatMessageMapper {
             outputTokens = usage.outputTokens,
             cacheCreationTokens = usage.cacheCreationInputTokens,
             cacheReadTokens = usage.cacheReadInputTokens
+        )
+    }
+    
+    private fun parseResultAsGromozeka(resultText: String): List<ChatMessage.ContentItem> {
+        return try {
+            // Try to parse result as Gromozeka JSON
+            val gromozekaData = Json.decodeFromString<GromozekaJson>(resultText)
+            listOf(
+                ChatMessage.ContentItem.FinalResultMessage(
+                    text = gromozekaData.fullText,
+                    structured = ChatMessage.StructuredText(
+                        fullText = gromozekaData.fullText,
+                        ttsText = gromozekaData.ttsText,
+                        voiceTone = gromozekaData.voiceTone
+                    )
+                )
+            )
+        } catch (e: SerializationException) {
+            // If not Gromozeka JSON, try to parse as generic JSON
+            try {
+                val jsonElement = Json.parseToJsonElement(resultText)
+                listOf(ChatMessage.ContentItem.UnknownJson(jsonElement))
+            } catch (jsonParseException: Exception) {
+                // If not JSON at all, treat as plain text
+                listOf(ChatMessage.ContentItem.Message(resultText))
+            }
+        } catch (e: Exception) {
+            // Any other error - treat as plain text
+            listOf(ChatMessage.ContentItem.Message(resultText))
+        }
+    }
+    
+    private fun createResultStatisticsContent(
+        message: StreamMessage.ResultStreamMessage,
+        level: ChatMessage.ContentItem.System.SystemLevel
+    ): ChatMessage.ContentItem.System {
+        val statisticsText = buildString {
+            append("Result (${message.subtype}): ")
+            append("${message.numTurns} turns, ")
+            append("${message.durationMs}ms total, ")
+            message.totalCostUsd?.let { append("$%.6f, ".format(it)) }
+            message.usage?.let { 
+                append("${it.inputTokens} in / ${it.outputTokens} out tokens")
+            }
+        }
+        
+        return ChatMessage.ContentItem.System(
+            level = level,
+            content = statisticsText,
+            toolUseId = null
         )
     }
     

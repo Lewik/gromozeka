@@ -3,6 +3,7 @@ package com.gromozeka.bot.ui
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.ui.draw.alpha
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
@@ -202,8 +203,14 @@ private fun MessageItem(message: ChatMessage) {
                             color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
                         )
                     }
-                    is ChatMessage.ContentItem.GromozekaMessage -> {
-                        GromozekaMessageTemplate(content)
+                    is ChatMessage.ContentItem.IntermediateMessage -> {
+                        StructuredMessageTemplate(content, isIntermediate = true)
+                    }
+                    is ChatMessage.ContentItem.FinalResultMessage -> {
+                        StructuredMessageTemplate(content, isIntermediate = false)
+                    }
+                    is ChatMessage.ContentItem.SystemStructuredMessage -> {
+                        StructuredMessageTemplate(content, isIntermediate = false)
                     }
                     is ChatMessage.ContentItem.UnknownJson -> {
                         Column {
@@ -227,11 +234,30 @@ private fun MessageItem(message: ChatMessage) {
 }
 
 @Composable
-private fun GromozekaMessageTemplate(data: ChatMessage.ContentItem.GromozekaMessage) {
+private fun StructuredMessageTemplate(
+    data: ChatMessage.ContentItem, 
+    isIntermediate: Boolean
+) {
+    // Extract structured data from different message types
+    val (text, structured) = when (data) {
+        is ChatMessage.ContentItem.IntermediateMessage -> data.text to data.structured
+        is ChatMessage.ContentItem.FinalResultMessage -> data.text to data.structured
+        is ChatMessage.ContentItem.SystemStructuredMessage -> data.text to data.structured
+        else -> return // Shouldn't happen, but safe fallback
+    }
+    
+    val alpha = if (isIntermediate) 0.6f else 1.0f
+    val titleText = when (data) {
+        is ChatMessage.ContentItem.IntermediateMessage -> "🔄 Обработка..."
+        is ChatMessage.ContentItem.FinalResultMessage -> "🤖 Громозека"
+        is ChatMessage.ContentItem.SystemStructuredMessage -> "⚙️ Система"
+        else -> "🤖 Громозека"
+    }
+    
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        backgroundColor = MaterialTheme.colors.secondary.copy(alpha = 0.1f),
-        border = BorderStroke(1.dp, MaterialTheme.colors.secondary.copy(alpha = 0.3f))
+        modifier = Modifier.fillMaxWidth().alpha(alpha),
+        backgroundColor = MaterialTheme.colors.secondary.copy(alpha = if (isIntermediate) 0.05f else 0.1f),
+        border = BorderStroke(1.dp, MaterialTheme.colors.secondary.copy(alpha = if (isIntermediate) 0.2f else 0.3f))
     ) {
         Column(
             modifier = Modifier.padding(12.dp)
@@ -242,33 +268,29 @@ private fun GromozekaMessageTemplate(data: ChatMessage.ContentItem.GromozekaMess
                 modifier = Modifier.padding(bottom = 8.dp)
             ) {
                 Text(
-                    text = "🤖",
-                    style = MaterialTheme.typography.h6
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "Громозека",
+                    text = titleText,
                     style = MaterialTheme.typography.subtitle1,
-                    color = MaterialTheme.colors.secondary
+                    color = MaterialTheme.colors.secondary.copy(alpha = alpha)
                 )
             }
             
             // Отображаем основной контент
             Text(
-                text = data.fullText,
-                style = MaterialTheme.typography.body2
+                text = text,
+                style = MaterialTheme.typography.body2,
+                color = MaterialTheme.colors.onSurface.copy(alpha = alpha)
             )
             
             // Дополнительная информация мелким шрифтом
-            if (data.ttsText != null || data.voiceTone != null) {
+            if (structured != null && (structured.ttsText != null || structured.voiceTone != null)) {
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = buildString {
-                        data.ttsText?.let { append("🗣️ TTS: $it ") }
-                        data.voiceTone?.let { append("🎭 Tone: $it") }
+                        structured.ttsText?.let { append("🗣️ TTS: $it ") }
+                        structured.voiceTone?.let { append("🎭 Tone: $it") }
                     },
                     style = MaterialTheme.typography.caption,
-                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
+                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f * alpha)
                 )
             }
         }

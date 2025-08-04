@@ -151,14 +151,17 @@ object ClaudeLogEntryMapper {
                 }
             }
             is ClaudeLogEntry.ClaudeMessageContent.GromozekaJsonContent -> {
-                // Десериализуем JsonObject напрямую в GromozekaMessage
+                // Десериализуем JsonObject напрямую в IntermediateMessage (для legacy session данных)
                 val fullText = content.data["fullText"]?.jsonPrimitive?.content ?: ""
                 val ttsText = content.data["ttsText"]?.jsonPrimitive?.content
                 val voiceTone = content.data["voiceTone"]?.jsonPrimitive?.content
-                listOf(ChatMessage.ContentItem.GromozekaMessage(
-                    fullText = fullText,
-                    ttsText = ttsText,
-                    voiceTone = voiceTone
+                listOf(ChatMessage.ContentItem.IntermediateMessage(
+                    text = fullText,
+                    structured = ChatMessage.StructuredText(
+                        fullText = fullText,
+                        ttsText = ttsText,
+                        voiceTone = voiceTone
+                    )
                 ))
             }
             is ClaudeLogEntry.ClaudeMessageContent.UnknownJsonContent -> {
@@ -431,10 +434,13 @@ object ClaudeLogEntryMapper {
         return try {
             // Try to deserialize as GromozekaJson first
             val gromozekaData = Json.decodeFromString<GromozekaJson>(text)
-            listOf(ChatMessage.ContentItem.GromozekaMessage(
-                fullText = gromozekaData.fullText,
-                ttsText = gromozekaData.ttsText,
-                voiceTone = gromozekaData.voiceTone
+            listOf(ChatMessage.ContentItem.IntermediateMessage(
+                text = gromozekaData.fullText,
+                structured = ChatMessage.StructuredText(
+                    fullText = gromozekaData.fullText,
+                    ttsText = gromozekaData.ttsText,
+                    voiceTone = gromozekaData.voiceTone
+                )
             ))
         } catch (e: SerializationException) {
             // Not a Gromozeka format, try as generic JSON
