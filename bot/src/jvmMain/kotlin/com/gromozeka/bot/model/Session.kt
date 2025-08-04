@@ -538,9 +538,10 @@ class Session(
                 messageAccumulator.addAll(historicalMessages)
                 _messages.value = messageAccumulator.toList()
                 
-                // Emit each historical message to stream
+                // Emit each historical message to stream, marked as historical
                 historicalMessages.forEach { message ->
-                    _messageStream.emit(message)
+                    val historicalMessage = message.copy(isHistorical = true)
+                    _messageStream.emit(historicalMessage)
                 }
                 
                 // Update metadata based on historical messages

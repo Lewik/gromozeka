@@ -120,9 +120,9 @@ fun ApplicationScope.ChatWindow(
                 chatHistory.add(newMessage)  // Incremental updates
                 println("[ChatApp] ChatHistory now has ${chatHistory.size} messages, last is ${chatHistory.lastOrNull()?.messageType}")
                 
-                // TTS для ASSISTANT сообщений
-                if (newMessage.messageType == ChatMessage.MessageType.ASSISTANT) {
-                    println("[ChatApp] Processing TTS for assistant message")
+                // TTS для ASSISTANT сообщений (только новых, не исторических)
+                if (newMessage.messageType == ChatMessage.MessageType.ASSISTANT && !newMessage.isHistorical) {
+                    println("[ChatApp] Processing TTS for new assistant message")
                     val content = newMessage.content.firstOrNull()
                     println("[ChatApp] TTS Content type: ${content?.javaClass?.simpleName}")
                     
@@ -150,6 +150,8 @@ fun ApplicationScope.ChatWindow(
                             }
                         }
                     }
+                } else if (newMessage.messageType == ChatMessage.MessageType.ASSISTANT && newMessage.isHistorical) {
+                    println("[ChatApp] Skipping TTS for historical assistant message")
                 }
             }
         }

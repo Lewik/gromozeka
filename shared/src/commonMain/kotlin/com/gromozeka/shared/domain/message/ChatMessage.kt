@@ -22,6 +22,9 @@ data class ChatMessage(
     // Development context at root level
     val gitBranch: String? = null,
     val cwd: String? = null,
+    
+    // Indicates if this message is loaded from historical data (prevents TTS replay)
+    val isHistorical: Boolean = false,
 ) {
 
     @Serializable
