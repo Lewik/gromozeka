@@ -440,14 +440,24 @@ object ClaudeLogEntryMapper {
             // Not a Gromozeka format, try as generic JSON
             try {
                 val jsonElement = Json.parseToJsonElement(text)
+                println("[ClaudeLogEntryMapper] PARSE: Text is not Gromozeka JSON, fallback to UnknownJson")
+                println("  Text preview: ${text.take(100)}${if (text.length > 100) "..." else ""}")
                 listOf(ChatMessage.ContentItem.UnknownJson(jsonElement))
-            } catch (e: Exception) {
-                println("[ClaudeLogEntryMapper] Failed to parse text as JSON: ${e.message}")
-                println("  Text: ${text.take(200)}${if (text.length > 200) "..." else ""}")
+            } catch (jsonParseException: Exception) {
+                println("[ClaudeLogEntryMapper] PARSE ERROR: Failed to parse text as JSON")
+                println("  SerializationException: ${e.message}")
+                println("  JsonParseException: ${jsonParseException.message}")
+                println("  Text full content: $text")
+                println("  Text length: ${text.length}")
+                println("  Text starts with: ${text.take(50)}")
+                println("  Text ends with: ${text.takeLast(50)}")
                 // Not valid JSON at all - treat as plain text
                 listOf(ChatMessage.ContentItem.Message(text))
             }
         } catch (e: Exception) {
+            println("[ClaudeLogEntryMapper] UNEXPECTED ERROR in parseTextContentForGromozeka: ${e.javaClass.simpleName}: ${e.message}")
+            println("  Text: $text")
+            println("  Stack trace: ${e.stackTraceToString()}")
             // Any other error - treat as plain text
             listOf(ChatMessage.ContentItem.Message(text))
         }

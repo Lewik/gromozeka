@@ -221,7 +221,10 @@ object StreamToChatMessageMapper {
             }
         } catch (e: Exception) {
             // Fallback to generic if deserialization fails
-            println("[StreamToChatMessageMapper] Failed to deserialize tool call '$name': ${e.message}")
+            println("[StreamToChatMessageMapper] TOOL CALL PARSE ERROR: Failed to deserialize tool call '$name'")
+            println("  Exception: ${e.javaClass.simpleName}: ${e.message}")
+            println("  Input JSON: $input")
+            println("  Stack trace: ${e.stackTraceToString()}")
             ToolCallData.Generic(name, input)
         }
     }
@@ -243,12 +246,20 @@ object StreamToChatMessageMapper {
             // Not a Gromozeka format, try as generic JSON
             try {
                 val jsonElement = Json.parseToJsonElement(text)
+                println("[StreamToChatMessageMapper] PARSE: Text is not Gromozeka JSON, fallback to UnknownJson")
+                println("  Text preview: ${text.take(100)}${if (text.length > 100) "..." else ""}")
                 ChatMessage.ContentItem.UnknownJson(jsonElement)
-            } catch (e: Exception) {
-                // Not valid JSON at all
+            } catch (jsonParseException: Exception) {
+                println("[StreamToChatMessageMapper] PARSE ERROR: Failed to parse text as JSON")
+                println("  SerializationException: ${e.message}")
+                println("  JsonParseException: ${jsonParseException.message}")
+                println("  Text full content: $text")
                 ChatMessage.ContentItem.Message(text)
             }
         } catch (e: Exception) {
+            println("[StreamToChatMessageMapper] UNEXPECTED ERROR in parseTextForGromozeka: ${e.javaClass.simpleName}: ${e.message}")
+            println("  Text: $text")
+            println("  Stack trace: ${e.stackTraceToString()}")
             // Any other error - treat as plain text
             ChatMessage.ContentItem.Message(text)
         }

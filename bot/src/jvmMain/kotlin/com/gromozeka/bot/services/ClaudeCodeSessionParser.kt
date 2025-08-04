@@ -22,18 +22,36 @@ class ClaudeCodeSessionParser {
     fun parseJsonLine(line: String): ClaudeCodeSessionEntryV1_0? {
         if (line.isBlank()) return null
         
-        val jsonObject = json.parseToJsonElement(line).jsonObject
-        val type = jsonObject["type"]?.jsonPrimitive?.content
-        
-        return when (type) {
-            "summary" -> {
-                json.decodeFromString<ClaudeCodeSessionEntryV1_0.Summary>(line)
+        try {
+            val jsonObject = json.parseToJsonElement(line).jsonObject
+            val type = jsonObject["type"]?.jsonPrimitive?.content
+            
+            println("[ClaudeCodeSessionParser] Parsing JSONL line, type: $type")
+            
+            return when (type) {
+                "summary" -> {
+                    println("[ClaudeCodeSessionParser] Decoding as Summary")
+                    json.decodeFromString<ClaudeCodeSessionEntryV1_0.Summary>(line)
+                }
+                "user", "assistant" -> {
+                    println("[ClaudeCodeSessionParser] Decoding as Message (type: $type)")
+                    json.decodeFromString<ClaudeCodeSessionEntryV1_0.Message>(line)
+                }
+                null -> {
+                    println("[ClaudeCodeSessionParser] ERROR: Missing 'type' field in JSON")
+                    println("  Line: $line")
+                    throw IllegalArgumentException("Missing 'type' field in JSON")
+                }
+                else -> {
+                    println("[ClaudeCodeSessionParser] ERROR: Unknown entry type: $type")
+                    println("  Line: $line")
+                    throw IllegalArgumentException("Unknown entry type: $type")
+                }
             }
-            "user", "assistant" -> {
-                json.decodeFromString<ClaudeCodeSessionEntryV1_0.Message>(line)
-            }
-            null -> throw IllegalArgumentException("Missing 'type' field in JSON")
-            else -> throw IllegalArgumentException("Unknown entry type: $type")
+        } catch (e: Exception) {
+            println("[ClaudeCodeSessionParser] Exception in parseJsonLine: ${e.javaClass.simpleName}: ${e.message}")
+            println("  Line: $line")
+            throw e
         }
     }
     
@@ -52,7 +70,13 @@ class ClaudeCodeSessionParser {
                 try {
                     parseJsonLine(line)
                 } catch (e: Exception) {
-                    println("Error parsing line ${index + 1}: ${e.message}")
+                    println("[ClaudeCodeSessionParser] JSONL PARSE ERROR at line ${index + 1}")
+                    println("  Exception: ${e.javaClass.simpleName}: ${e.message}")
+                    println("  Line content: $line")
+                    println("  Line length: ${line.length}")
+                    if (e.stackTrace.isNotEmpty()) {
+                        println("  Stack trace: ${e.stackTraceToString()}")
+                    }
                     // Log but continue parsing other lines
                     null
                 }

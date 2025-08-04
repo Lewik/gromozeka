@@ -16,9 +16,18 @@ sealed class StreamMessage {
     @SerialName("system")
     data class SystemStreamMessage(
         val subtype: String,
-        val data: JsonObject,
         @SerialName("session_id")
         val sessionId: String? = null,
+        val cwd: String? = null,
+        val tools: List<String>? = null,
+        @SerialName("mcp_servers")
+        val mcpServers: List<String>? = null,
+        val model: String? = null,
+        val permissionMode: String? = null,
+        @SerialName("slash_commands")
+        val slashCommands: List<String>? = null,
+        val apiKeySource: String? = null,
+        val data: JsonObject? = null,  // Fallback for other fields
         override val type: String = "system"
     ) : StreamMessage()
 
@@ -39,6 +48,8 @@ sealed class StreamMessage {
         val message: StreamMessageContent,
         @SerialName("session_id")
         val sessionId: String,
+        @SerialName("parent_tool_use_id")
+        val parentToolUseId: String? = null,
         override val type: String = "assistant"
     ) : StreamMessage()
 
@@ -81,6 +92,7 @@ sealed class StreamMessageContent {
     @SerialName("assistant")
     data class AssistantContent(
         val id: String? = null,
+        val type: String? = null, // Claude adds "type": "message" field
         val model: String? = null,
         val content: List<StreamContentItem>,
         @SerialName("stop_reason")
@@ -162,6 +174,8 @@ data class UsageInfo(
     val cacheCreationInputTokens: Int? = null,
     @SerialName("cache_read_input_tokens")
     val cacheReadInputTokens: Int? = null,
+    @SerialName("server_tool_use")
+    val serverToolUse: JsonObject? = null, // Contains web_search_requests, etc.
     @SerialName("service_tier")
     val serviceTier: String? = null
 )

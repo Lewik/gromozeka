@@ -39,6 +39,7 @@ class ClaudeCodeStreamingWrapper {
     private var stdinWriter: BufferedWriter? = null
     private var stdoutReader: BufferedReader? = null
     private var readJob: Job? = null
+    private var streamLogger: StreamLogger? = null
 
 
     private var currentSessionId: String? = null
@@ -87,10 +88,14 @@ class ClaudeCodeStreamingWrapper {
             val env = processBuilder.environment()
             env["CLAUDE_CODE_ENTRYPOINT"] = "sdk-py"
 
+            val actualProjectPath = projectPath ?: System.getProperty("user.dir")
             if (projectPath != null) {
                 processBuilder.directory(File(projectPath))
             }
 
+            // Initialize stream logger for this project
+            streamLogger = StreamLogger(actualProjectPath)
+            
             process = processBuilder.start()
 
             val proc = process ?: throw IllegalStateException("Failed to start process")
@@ -145,8 +150,14 @@ class ClaudeCodeStreamingWrapper {
 
     private fun parseStreamMessage(jsonLine: String): StreamMessage {
         return try {
-            Json.decodeFromString<StreamMessage>(jsonLine)
+            val parsed = Json.decodeFromString<StreamMessage>(jsonLine)
+            println("[ClaudeCodeStreamingWrapper] Successfully parsed StreamMessage: ${parsed.type}")
+            parsed
         } catch (e: SerializationException) {
+            println("[ClaudeCodeStreamingWrapper] STREAM PARSE ERROR: Failed to deserialize StreamMessage")
+            println("  Exception: ${e.javaClass.simpleName}: ${e.message}")
+            println("  JSON line: $jsonLine")
+            println("  Stack trace: ${e.stackTraceToString()}")
             try {
                 StreamMessage.SystemStreamMessage(
                     subtype = "parse_error",
@@ -154,12 +165,23 @@ class ClaudeCodeStreamingWrapper {
                     sessionId = null
                 )
             } catch (e: Exception) {
+                println("[ClaudeCodeStreamingWrapper] SECONDARY ERROR: Failed to parse as JsonObject")
+                println("  Exception: ${e.javaClass.simpleName}: ${e.message}")
                 StreamMessage.SystemStreamMessage(
                     subtype = "raw_output", 
                     data = buildJsonObject { put("raw_line", JsonPrimitive(jsonLine)) },
                     sessionId = null
                 )
             }
+        } catch (e: Exception) {
+            println("[ClaudeCodeStreamingWrapper] UNEXPECTED ERROR in parseStreamMessage: ${e.javaClass.simpleName}: ${e.message}")
+            println("  JSON line: $jsonLine")
+            println("  Stack trace: ${e.stackTraceToString()}")
+            StreamMessage.SystemStreamMessage(
+                subtype = "raw_output", 
+                data = buildJsonObject { put("raw_line", JsonPrimitive(jsonLine)) },
+                sessionId = null
+            )
         }
     }
 
@@ -182,14 +204,18 @@ class ClaudeCodeStreamingWrapper {
                     
                     _streamMessages.emit(streamMessage)
                     
-                    // Extract session ID for callback
+                    // Extract session ID for callback and update logger
                     extractSessionId(line)?.let { sessionId ->
                         println("[ClaudeCodeStreamingWrapper] Captured session ID: $sessionId")
+                        streamLogger?.updateSessionId(sessionId)
                         onSessionIdCaptured(sessionId)
                     }
 
                 } catch (e: Exception) {
                     e.printStackTrace()
+                } finally {
+                    // Log raw JSONL line after all processing (guaranteed)
+                    streamLogger?.logLine(line)
                 }
             }
 
@@ -203,6 +229,7 @@ class ClaudeCodeStreamingWrapper {
             readJob?.cancel()
             stdinWriter?.close()
             stdoutReader?.close()
+            streamLogger?.close()  // Close logger before destroying process
             process?.destroy()
 
             // Wait a bit for graceful shutdown
@@ -215,6 +242,8 @@ class ClaudeCodeStreamingWrapper {
 
         } catch (e: Exception) {
             e.printStackTrace()
+        } finally {
+            streamLogger = null
         }
     }
 

@@ -22,6 +22,7 @@ import com.gromozeka.bot.services.ClaudeCodeStreamingWrapper
 import com.gromozeka.shared.domain.message.ChatMessage
 import com.gromozeka.bot.services.OpenAiBalanceService
 import com.gromozeka.bot.services.SttService
+import com.gromozeka.bot.services.StreamLogger
 import com.gromozeka.bot.ui.ChatScreen
 import com.gromozeka.bot.ui.SessionListScreen
 import com.gromozeka.bot.utils.ClaudeCodePaths
@@ -37,6 +38,10 @@ fun main() {
     println("[GROMOZEKA] Starting application...")
     System.setProperty("java.awt.headless", "false")
 
+    // Clean up old stream logs on startup
+    println("[GROMOZEKA] Cleaning up old stream logs...")
+    StreamLogger.cleanupOldLogs()
+    
     // Check Claude Code is installed
     if (!ClaudeCodePaths.PROJECTS_DIR.exists()) {
         throw IllegalStateException("Claude Code not installed - directory does not exist: ${ClaudeCodePaths.PROJECTS_DIR.absolutePath}")
