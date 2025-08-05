@@ -277,7 +277,7 @@ fun ApplicationScope.ChatWindow(
     Window(onCloseRequest = { 
         println("[GROMOZEKA] Application window closing - stopping all sessions...")
         exitApplication() 
-    }, title = "🤖 Громозека") {
+    }, title = "🤖 Громозека${selectedSession?.projectPath?.let { " • $it" } ?: ""}") {
         if (initialized) {
             if (showSessionList) {
                 SessionListScreen(
