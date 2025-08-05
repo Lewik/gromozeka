@@ -149,7 +149,8 @@ fun SessionListScreen(
                                 } else {
                                     expandedProjects + group.projectPath
                                 }
-                            }
+                            },
+                            onNewSessionClick = onNewSession
                         )
                         
                         if (expandedProjects.contains(group.projectPath)) {
@@ -182,12 +183,12 @@ private fun ProjectGroupHeader(
     group: ProjectGroup,
     isExpanded: Boolean,
     onToggleExpanded: () -> Unit,
+    onNewSessionClick: (String) -> Unit,
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 2.dp)
-            .clickable { onToggleExpanded() },
+            .padding(vertical = 2.dp),
         backgroundColor = MaterialTheme.colors.primary.copy(alpha = 0.1f),
         elevation = 2.dp
     ) {
@@ -197,14 +198,22 @@ private fun ProjectGroupHeader(
         ) {
             Icon(
                 imageVector = if (isExpanded) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowRight,
-                contentDescription = if (isExpanded) "Свернуть" else "Развернуть"
+                contentDescription = if (isExpanded) "Свернуть" else "Развернуть",
+                modifier = Modifier.clickable { onToggleExpanded() }
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
                 text = group.displayName(),
-                style = MaterialTheme.typography.h6
+                style = MaterialTheme.typography.h6,
+                modifier = Modifier.clickable { onToggleExpanded() }
             )
             Spacer(modifier = Modifier.weight(1f))
+            Button(
+                onClick = { onNewSessionClick(group.projectPath) },
+                modifier = Modifier.padding(end = 8.dp)
+            ) {
+                Text("+ Новая")
+            }
             Text(
                 text = "${group.sessionCount()} сессий",
                 style = MaterialTheme.typography.caption
