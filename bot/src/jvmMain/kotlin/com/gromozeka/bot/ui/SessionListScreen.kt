@@ -104,6 +104,40 @@ fun SessionListScreen(
                         }
                     }
                 } else {
+                    // Show recent sessions first
+                    val recentSessions = allSessions
+                        .sortedByDescending { it.lastTimestamp }
+                        .take(3)
+                    
+                    if (recentSessions.isNotEmpty()) {
+                        Text(
+                            text = "Последние сессии",
+                            style = MaterialTheme.typography.h6,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+                        
+                        recentSessions.forEach { session ->
+                            SessionItem(
+                                session = session,
+                                onSessionClick = { clickedSession ->
+                                    coroutineScope.handleSessionClick(clickedSession, onSessionSelected)
+                                },
+                                isGrouped = false
+                            )
+                        }
+                        
+                        Divider(
+                            modifier = Modifier.padding(vertical = 16.dp),
+                            color = MaterialTheme.colors.onSurface.copy(alpha = 0.12f)
+                        )
+                        
+                        Text(
+                            text = "Все проекты",
+                            style = MaterialTheme.typography.h6,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+                    }
+                    
                     // Show grouped sessions
                     projectGroups.forEach { group ->
                         ProjectGroupHeader(
