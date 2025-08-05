@@ -235,7 +235,7 @@ class StreamToChatMessageMapperTest : FunSpec({
         
         val systemContent = result.content[0] as ChatMessage.ContentItem.System
         systemContent.level shouldBe ChatMessage.ContentItem.System.SystemLevel.ERROR
-        systemContent.content shouldBe "Result (error): API timeout occurred"
+        systemContent.content shouldBe "Error: API timeout occurred"
     }
     
     test("mapper should handle ResultStreamMessage success") {
@@ -274,12 +274,12 @@ class StreamToChatMessageMapperTest : FunSpec({
         val result = StreamToChatMessageMapper.mapToChatMessage(userMessage)
         result shouldNotBe null
         result!!.content shouldHaveSize 1
-        result.content[0] should beInstanceOf<ChatMessage.ContentItem.GromozekaMessage>()
+        result.content[0] should beInstanceOf<ChatMessage.ContentItem.IntermediateMessage>()
         
-        val gromozekaContent = result.content[0] as ChatMessage.ContentItem.GromozekaMessage
-        gromozekaContent.fullText shouldBe "Привет от Громозеки!"
-        gromozekaContent.ttsText shouldBe "Привет!"
-        gromozekaContent.voiceTone shouldBe "friendly"
+        val gromozekaContent = result.content[0] as ChatMessage.ContentItem.IntermediateMessage
+        gromozekaContent.structured?.fullText shouldBe "Привет от Громозеки!"
+        gromozekaContent.structured?.ttsText shouldBe "Привет!"
+        gromozekaContent.structured?.voiceTone shouldBe "friendly"
     }
     
     test("mapper should handle unknown JSON as UnknownJson") {

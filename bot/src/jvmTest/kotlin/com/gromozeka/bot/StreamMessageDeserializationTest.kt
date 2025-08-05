@@ -25,8 +25,8 @@ class StreamMessageDeserializationTest {
         assertEquals("system", message.type)
         assertEquals("init", message.subtype)
         assertEquals("00f8f214-a5c5-40cf-a07e-4a3b383a94e9", message.sessionId)
-        assertTrue(message.data.containsKey("model"))
-        assertEquals("claude-3-5-sonnet-20241022", message.data["model"]?.toString()?.removeSurrounding("\""))
+        assertTrue(message.data?.containsKey("model") == true)
+        assertEquals("claude-3-5-sonnet-20241022", message.data?.get("model")?.toString()?.removeSurrounding("\""))
     }
 
     @Test
@@ -39,7 +39,7 @@ class StreamMessageDeserializationTest {
         assertEquals("system", message.type)
         assertEquals("error", message.subtype)
         assertNull(message.sessionId)
-        assertTrue(message.data.containsKey("error"))
+        assertTrue(message.data?.containsKey("error") == true)
     }
 
     @Test

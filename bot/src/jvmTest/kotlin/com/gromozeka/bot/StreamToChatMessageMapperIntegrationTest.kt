@@ -161,7 +161,7 @@ class StreamToChatMessageMapperIntegrationTest : FunSpec({
         
         val systemContent = result.content[0] as ChatMessage.ContentItem.System
         systemContent.level shouldBe ChatMessage.ContentItem.System.SystemLevel.ERROR
-        systemContent.content shouldBe "Result (error): API rate limit exceeded"
+        systemContent.content shouldBe "Error: API rate limit exceeded"
     }
     
     test("integration test with real StreamMessageTestData - tool result string content") {

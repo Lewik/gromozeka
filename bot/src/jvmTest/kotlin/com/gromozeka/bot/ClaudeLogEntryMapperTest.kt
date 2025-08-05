@@ -212,10 +212,10 @@ class ClaudeLogEntryMapperTest : FunSpec({
         val result = ClaudeLogEntryMapper.mapToChatMessage(userEntry)
         result shouldNotBe null
         result!!.content shouldHaveSize 1
-        result.content[0] should beInstanceOf<ChatMessage.ContentItem.GromozekaMessage>()
+        result.content[0] should beInstanceOf<ChatMessage.ContentItem.IntermediateMessage>()
         
-        val gromozekaContent = result.content[0] as ChatMessage.ContentItem.GromozekaMessage
-        gromozekaContent.fullText shouldBe "Привет от Громозеки!"
+        val gromozekaContent = result.content[0] as ChatMessage.ContentItem.IntermediateMessage
+        gromozekaContent.structured?.fullText shouldBe "Привет от Громозеки!"
     }
     
     test("mapper should handle unknown JSON content") {
@@ -281,11 +281,11 @@ class ClaudeLogEntryMapperTest : FunSpec({
         val result = ClaudeLogEntryMapper.mapToChatMessage(assistantEntry)
         result shouldNotBe null
         result!!.content shouldHaveSize 1
-        result.content[0] should beInstanceOf<ChatMessage.ContentItem.GromozekaMessage>()
+        result.content[0] should beInstanceOf<ChatMessage.ContentItem.IntermediateMessage>()
         
-        val gromozekaContent = result.content[0] as ChatMessage.ContentItem.GromozekaMessage
-        gromozekaContent.fullText shouldBe "Ответ Громозеки"
-        gromozekaContent.ttsText shouldBe "Короткий ответ"
-        gromozekaContent.voiceTone shouldBe "friendly"
+        val gromozekaContent = result.content[0] as ChatMessage.ContentItem.IntermediateMessage
+        gromozekaContent.structured?.fullText shouldBe "Ответ Громозеки"
+        gromozekaContent.structured?.ttsText shouldBe "Короткий ответ"
+        gromozekaContent.structured?.voiceTone shouldBe "friendly"
     }
 })

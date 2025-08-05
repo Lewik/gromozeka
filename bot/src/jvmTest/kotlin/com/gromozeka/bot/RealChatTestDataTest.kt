@@ -54,8 +54,8 @@ class RealChatTestDataTest : FunSpec({
                                         println("Found potential Gromozeka JSON in message: ${contentItem.text.take(100)}...")
                                     }
                                 }
-                                is ChatMessage.ContentItem.GromozekaMessage -> {
-                                    println("Successfully parsed Gromozeka message: ${contentItem.fullText}")
+                                is ChatMessage.ContentItem.IntermediateMessage -> {
+                                    println("Successfully parsed Gromozeka message: ${contentItem.structured?.fullText ?: contentItem.text}")
                                 }
                                 is ChatMessage.ContentItem.UnknownJson -> {
                                     println("Unknown JSON content: ${contentItem.json}")
