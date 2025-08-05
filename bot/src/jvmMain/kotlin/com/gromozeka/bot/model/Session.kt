@@ -47,6 +47,10 @@ class Session(
     private val _sessionState = MutableStateFlow(SessionState.INACTIVE)
     val sessionState: StateFlow<SessionState> = _sessionState.asStateFlow()
 
+    // Waiting for response indicator
+    private val _isWaitingForResponse = MutableStateFlow(false)
+    val isWaitingForResponse: StateFlow<Boolean> = _isWaitingForResponse.asStateFlow()
+
     // === Internal State ===
     private var sessionScope: CoroutineScope? = null
     private var streamCollectionJob: Job? = null
@@ -145,6 +149,8 @@ class Session(
                 )
             )
 
+            // Set waiting for response flag
+            _isWaitingForResponse.value = true
 
             if (firstMessageSent) {
                 println("[Session] Buffering message")
@@ -216,6 +222,7 @@ class Session(
 
             // === Phase 4: Reset State ===
             _sessionState.value = SessionState.INACTIVE
+            _isWaitingForResponse.value = false
             sessionScope = null
 
             // Note: не очищаем messageAccumulator - сохраняем для history
@@ -228,6 +235,7 @@ class Session(
 
             // Force cleanup даже при ошибках
             _sessionState.value = SessionState.ERROR
+            _isWaitingForResponse.value = false
             sessionScope = null
 
             // Don't throw - обеспечиваем что cleanup завершается
@@ -282,6 +290,11 @@ class Session(
     private suspend fun handleOutputStreamMessage(streamMessage: StreamMessage) = sessionMutex.withLock {
         try {
             println("[Session] *** PROCESSING STREAM MESSAGE: ${streamMessage.type}")
+
+            // Reset waiting flag only when we receive the final result
+            if (streamMessage is StreamMessage.ResultStreamMessage) {
+                _isWaitingForResponse.value = false
+            }
 
             when (streamMessage) {
                 is StreamMessage.SystemStreamMessage -> handleSystemMessage(streamMessage)

@@ -38,6 +38,7 @@ fun ChatScreen(
     userInput: String,
     onUserInputChange: (String) -> Unit,
     assistantIsThinking: Boolean,
+    isWaitingForResponse: Boolean,
     autoSend: Boolean,
     onAutoSendChange: (Boolean) -> Unit,
     onBackToSessionList: () -> Unit,
@@ -121,6 +122,29 @@ fun ChatScreen(
         }
 
         Spacer(modifier = Modifier.height(10.dp))
+
+        // Waiting for response indicator
+        if (isWaitingForResponse) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 8.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(16.dp),
+                    strokeWidth = 2.dp,
+                    color = MaterialTheme.colors.primary
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    "Ожидание ответа от Claude...",
+                    style = MaterialTheme.typography.body2,
+                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+                )
+            }
+        }
 
         MessageInput(
             userInput = userInput,

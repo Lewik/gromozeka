@@ -101,6 +101,7 @@ fun ApplicationScope.ChatWindow(
     var showSessionList by remember { mutableStateOf(true) }
     var selectedSession by remember { mutableStateOf<ChatSession?>(null) }
     var currentSession by remember { mutableStateOf<Session?>(null) }
+    val isWaitingForResponse by currentSession?.isWaitingForResponse?.collectAsState() ?: remember { mutableStateOf(false) }
     var isRecording by remember { mutableStateOf(false) }
 
     var showBalanceDialog by remember { mutableStateOf(false) }
@@ -317,6 +318,7 @@ fun ApplicationScope.ChatWindow(
                     userInput = userInput,
                     onUserInputChange = { userInput = it },
                     assistantIsThinking = assistantIsThinking,
+                    isWaitingForResponse = isWaitingForResponse,
                     autoSend = autoSend,
                     onAutoSendChange = { autoSend = it },
                     onBackToSessionList = { 
