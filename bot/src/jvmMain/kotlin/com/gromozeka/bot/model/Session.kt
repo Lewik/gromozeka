@@ -168,6 +168,38 @@ class Session(
         }
     }
 
+    /**
+     * Send interrupt signal to Claude Code CLI
+     */
+    suspend fun sendInterrupt(): Boolean = sessionMutex.withLock {
+        require(_sessionState.value == SessionState.ACTIVE) {
+            "Cannot interrupt inactive session. Current state: ${_sessionState.value}"
+        }
+        
+        return try {
+            println("[Session] Sending interrupt request...")
+            
+            // Generate unique request ID
+            val requestId = "req_${System.currentTimeMillis()}_${kotlin.random.Random.nextInt(10000)}"
+            
+            val controlRequest = StreamMessage.ControlRequestMessage(
+                requestId = requestId,
+                request = ControlRequest(subtype = "interrupt")
+            )
+            
+            claudeWrapper.sendControlMessage(controlRequest)
+            
+            _events.emit(StreamSessionEvent.InterruptSent)
+            println("[Session] Interrupt sent successfully")
+            
+            true
+        } catch (e: Exception) {
+            println("[Session] Interrupt failed: ${e.message}")
+            _events.emit(StreamSessionEvent.Error("Interrupt failed: ${e.message}"))
+            false
+        }
+    }
+
     // processBufferedMessages is now handled automatically by messageBufferJob
 
     /**
@@ -301,6 +333,8 @@ class Session(
                 is StreamMessage.UserStreamMessage -> Unit
                 is StreamMessage.AssistantStreamMessage -> Unit
                 is StreamMessage.ResultStreamMessage -> Unit
+                is StreamMessage.ControlResponseMessage -> handleControlResponse(streamMessage)
+                is StreamMessage.ControlRequestMessage -> Unit // We don't expect to receive control requests
             }
 
             val chatMessage = StreamToChatMessageMapper.mapToChatMessage(streamMessage)
@@ -331,6 +365,26 @@ class Session(
 
             sessionScope!!.launchInoutStreamCollection()
 
+        }
+    }
+
+    private suspend fun handleControlResponse(response: StreamMessage.ControlResponseMessage) {
+        println("[Session] Control response received: request_id=${response.response.requestId}, subtype=${response.response.subtype}")
+        
+        when (response.response.subtype) {
+            "success" -> {
+                // Reset waiting flag for interrupt acknowledgment
+                _isWaitingForResponse.value = false
+                _events.emit(StreamSessionEvent.InterruptAcknowledged)
+                println("[Session] Interrupt acknowledged successfully")
+            }
+            "error" -> {
+                _events.emit(StreamSessionEvent.Error("Interrupt error: ${response.response.error}"))
+                println("[Session] Interrupt error: ${response.response.error}")
+            }
+            else -> {
+                println("[Session] Unknown control response subtype: ${response.response.subtype}")
+            }
         }
     }
 
@@ -464,6 +518,8 @@ sealed class StreamSessionEvent {
     data object AutoRestarted : StreamSessionEvent()
     data class SessionIdChangedOnStart(val newSessionId: String) : StreamSessionEvent()
     data class HistoricalMessagesLoaded(val messageCount: Int) : StreamSessionEvent()
+    data object InterruptSent : StreamSessionEvent()
+    data object InterruptAcknowledged : StreamSessionEvent()
 }
 
 /**

@@ -19,6 +19,8 @@ object StreamToChatMessageMapper {
             is StreamMessage.UserStreamMessage -> mapUserMessage(streamMessage)
             is StreamMessage.AssistantStreamMessage -> mapAssistantMessage(streamMessage)
             is StreamMessage.ResultStreamMessage -> mapResultMessage(streamMessage)
+            is StreamMessage.ControlRequestMessage -> mapControlRequestMessage(streamMessage)
+            is StreamMessage.ControlResponseMessage -> mapControlResponseMessage(streamMessage)
         }
     }
     
@@ -368,6 +370,59 @@ object StreamToChatMessageMapper {
             level = level,
             content = statisticsText,
             toolUseId = null
+        )
+    }
+    
+    private fun mapControlRequestMessage(message: StreamMessage.ControlRequestMessage): ChatMessage {
+        val content = listOf(
+            ChatMessage.ContentItem.System(
+                level = ChatMessage.ContentItem.System.SystemLevel.INFO,
+                content = "Control request sent: ${message.request.subtype} (ID: ${message.requestId})",
+                toolUseId = null
+            )
+        )
+        
+        return ChatMessage(
+            uuid = generateUuid(),
+            parentUuid = null,
+            messageType = ChatMessage.MessageType.SYSTEM,
+            content = content,
+            timestamp = Clock.System.now(),
+            llmSpecificMetadata = createStreamMetadata(
+                sessionId = "control"
+            )
+        )
+    }
+    
+    private fun mapControlResponseMessage(message: StreamMessage.ControlResponseMessage): ChatMessage {
+        val level = when (message.response.subtype) {
+            "error" -> ChatMessage.ContentItem.System.SystemLevel.ERROR
+            else -> ChatMessage.ContentItem.System.SystemLevel.INFO
+        }
+        
+        val responseText = when (message.response.subtype) {
+            "success" -> "Control request acknowledged: Interrupt processed successfully"
+            "error" -> "Control request error: ${message.response.error}"
+            else -> "Control response: ${message.response.subtype}"
+        }
+        
+        val content = listOf(
+            ChatMessage.ContentItem.System(
+                level = level,
+                content = responseText,
+                toolUseId = null
+            )
+        )
+        
+        return ChatMessage(
+            uuid = generateUuid(),
+            parentUuid = null,
+            messageType = ChatMessage.MessageType.SYSTEM,
+            content = content,
+            timestamp = Clock.System.now(),
+            llmSpecificMetadata = createStreamMetadata(
+                sessionId = "control"
+            )
         )
     }
     

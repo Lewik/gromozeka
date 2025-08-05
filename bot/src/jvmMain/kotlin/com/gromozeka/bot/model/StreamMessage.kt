@@ -73,6 +73,22 @@ sealed class StreamMessage {
         val result: String? = null,
         override val type: String = "result"
     ) : StreamMessage()
+
+    @Serializable
+    @SerialName("control_request")
+    data class ControlRequestMessage(
+        @SerialName("request_id")
+        val requestId: String,
+        val request: ControlRequest,
+        override val type: String = "control_request"
+    ) : StreamMessage()
+
+    @Serializable
+    @SerialName("control_response")
+    data class ControlResponseMessage(
+        val response: ControlResponse,
+        override val type: String = "control_response"
+    ) : StreamMessage()
 }
 
 @OptIn(ExperimentalSerializationApi::class)
@@ -247,3 +263,16 @@ object ContentResultUnionSerializer : KSerializer<ContentResultUnion> {
         }
     }
 }
+
+@Serializable
+data class ControlRequest(
+    val subtype: String // "interrupt", "cancel", etc.
+)
+
+@Serializable
+data class ControlResponse(
+    @SerialName("request_id")
+    val requestId: String,
+    val subtype: String, // "success", "error", etc.
+    val error: String? = null
+)

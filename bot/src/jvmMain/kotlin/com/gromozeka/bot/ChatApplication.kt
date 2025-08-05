@@ -332,6 +332,9 @@ fun ApplicationScope.ChatWindow(
                         createNewSession(currentProjectPath)
                     },
                     onSendMessage = sendMessage,
+                    onInterrupt = {
+                        currentSession?.sendInterrupt() ?: false
+                    },
                     sttService = sttService,
                     ttsService = ttsService,
                     coroutineScope = coroutineScope,

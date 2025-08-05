@@ -44,6 +44,7 @@ fun ChatScreen(
     onBackToSessionList: () -> Unit,
     onNewSession: () -> Unit,
     onSendMessage: suspend (String) -> Unit,
+    onInterrupt: suspend () -> Unit,
     sttService: SttService,
     ttsService: TtsService,
     coroutineScope: CoroutineScope,
@@ -143,6 +144,18 @@ fun ChatScreen(
                     style = MaterialTheme.typography.body2,
                     color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
                 )
+                Spacer(modifier = Modifier.width(16.dp))
+                Button(
+                    onClick = { 
+                        coroutineScope.launch { 
+                            onInterrupt() 
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(backgroundColor = MaterialTheme.colors.error),
+                    modifier = Modifier.height(32.dp)
+                ) {
+                    Text("Прервать", style = MaterialTheme.typography.button)
+                }
             }
         }
 

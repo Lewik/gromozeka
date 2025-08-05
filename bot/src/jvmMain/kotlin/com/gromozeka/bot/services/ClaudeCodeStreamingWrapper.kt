@@ -136,12 +136,56 @@ class ClaudeCodeStreamingWrapper {
         }
     }
 
+    suspend fun sendControlMessage(controlMessage: StreamMessage.ControlRequestMessage) = withContext(Dispatchers.IO) {
+        try {
+            val proc = process
+            if (proc == null || !proc.isAlive) {
+                throw IllegalStateException("Claude process is not running")
+            }
+            
+            val writer = stdinWriter
+            if (writer == null) {
+                throw IllegalStateException("stdin writer not available")
+            }
+            
+            // Create control request structure as per Claude Code CLI protocol
+            val controlRequestJson = buildJsonObject {
+                put("type", "control_request")
+                put("request_id", controlMessage.requestId)
+                putJsonObject("request") {
+                    put("subtype", controlMessage.request.subtype)
+                }
+            }
+            
+            val jsonLine = controlRequestJson.toString()
+            println("[ClaudeWrapper] Sending control message: $jsonLine")
+            
+            writer.write("$jsonLine\n")
+            writer.flush()
+        } catch (e: Exception) {
+            println("[ClaudeWrapper] Control message failed: ${e.message}")
+            throw e
+        }
+    }
+
     fun streamOutput(): Flow<StreamMessage> = streamMessages
 
     private fun parseStreamMessage(jsonLine: String): StreamMessage {
         return try {
             val parsed = Json.decodeFromString<StreamMessage>(jsonLine)
             println("[ClaudeCodeStreamingWrapper] Successfully parsed StreamMessage: ${parsed.type}")
+            
+            // Special logging for control messages
+            when (parsed) {
+                is StreamMessage.ControlResponseMessage -> {
+                    println("[ClaudeWrapper] Control response received: request_id=${parsed.response.requestId}, subtype=${parsed.response.subtype}, error=${parsed.response.error}")
+                }
+                is StreamMessage.ControlRequestMessage -> {
+                    println("[ClaudeWrapper] Control request parsed: request_id=${parsed.requestId}, subtype=${parsed.request.subtype}")
+                }
+                else -> {}
+            }
+            
             parsed
         } catch (e: SerializationException) {
             println("[ClaudeCodeStreamingWrapper] STREAM PARSE ERROR: Failed to deserialize StreamMessage")
