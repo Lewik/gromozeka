@@ -114,7 +114,7 @@ fun ApplicationScope.ChatWindow(
     // Subscribe to current session's message stream (true streaming)
     LaunchedEffect(currentSession) {
         currentSession?.let { session ->
-            session.messageStream.collect { newMessage ->
+            session.messageOutputStream.collect { newMessage ->
                 println("[ChatApp] Received streaming message: ${newMessage.messageType}")
                 println("[ChatApp] Message content: ${newMessage.content.size} items, first: ${newMessage.content.firstOrNull()?.javaClass?.simpleName}")
                 chatHistory.add(newMessage)  // Incremental updates

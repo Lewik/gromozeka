@@ -11,11 +11,13 @@ This is a Kotlin Multiplatform Project (MPP) with the following modules:
 
 ## Build and Test Commands
 
-- Build project: `./gradlew build`
+- Build project: `./gradlew :bot:build`
 - Run application: `./gradlew :bot:run`
-- Run all tests: `./gradlew :bot:jvmTest` (JVM tests) or `./gradlew :bot:allTests` (all platforms)
+- Run all tests: `./gradlew :bot:allTests -q || ./gradlew :bot:allTests`
 - Clean build: `./gradlew clean`
-- Compile: `./gradlew compileKotlin`
+- Compilation check: `./gradlew :bot:compileKotlinJvm -q || ./gradlew :bot:compileKotlinJvm`
+
+**Gradle optimization**: Always use quiet mode first (`-q`) for token efficiency, then full output only if errors occur.
 
 **IMPORTANT**: Always run tests after making changes: `./gradlew :bot:allTests -q` (quiet mode for KMP)
 
@@ -114,7 +116,7 @@ Gromozeka is a multi-armed AI agent designed as a **desktop-first application** 
 **Performance analysis**:
 - Session size limited by Claude's context window (auto-compaction)
 - Typical file read time ≈ 1ms on SSD for context-sized files
-- FileWatcher delay = 200ms (protection against partial writes)
+- Stream processing delay = 200ms (protection against partial writes)
 - **Total latency acceptable** for human interaction speeds
 
 **Memory management**:
@@ -124,7 +126,7 @@ Gromozeka is a multi-armed AI agent designed as a **desktop-first application** 
 
 **Trade-offs accepted**:
 - Minimal latency vs streaming (but human-imperceptible)
-- FileWatcher complexity (but robust error handling added)
+- Stream processing complexity (but robust error handling added)
 - Must handle partial file writes (delay + retry logic)
 
 #### 2. Backend-Driven State Management
@@ -137,7 +139,7 @@ Gromozeka is a multi-armed AI agent designed as a **desktop-first application** 
 - Clear separation of concerns
 - Easier to test business logic
 
-**Current implementation**: `Session.kt` encapsulates all session logic - process management, file watching, state updates, and lifecycle.
+**Current implementation**: `Session.kt` encapsulates all session logic - process management, streaming, state updates, and lifecycle.
 
 #### 3. Claude Code Engine Focus
 
@@ -145,7 +147,7 @@ Gromozeka is a multi-armed AI agent designed as a **desktop-first application** 
 
 **Rationale**:
 - Claude Code has unique session file format (.jsonl) and CLI behavior
-- Claude Code's immediate file writes enable our FileWatcher approach
+- Claude Code's immediate file writes enable reliable streaming approach
 - Claude Code's auto-compaction provides natural session boundaries
 - Other LLM engines would require completely different integration strategies
 - Better to build one engine integration excellently than many poorly
@@ -153,16 +155,16 @@ Gromozeka is a multi-armed AI agent designed as a **desktop-first application** 
 
 **Engine-specific design decisions**:
 - Session ID extraction from Claude's `init` messages
-- FileWatcher monitoring of `~/.claude/projects/` directory structure
+- Session file monitoring of `~/.claude/projects/` directory structure
 - Parsing Claude's specific JSONL message format
 - Resume behavior handling (new file creation)
 
 ### Technical Decisions
 
-#### File Monitoring Strategy
+#### Stream Processing Strategy
 
 ```
-Claude Process → Writes JSONL → FileWatcher detects → Parser reads → UI updates
+Claude Process → Writes JSONL → Stream reads → Parser processes → UI updates
 ```
 
 **Why not streaming?**
@@ -176,14 +178,14 @@ Claude Process → Writes JSONL → FileWatcher detects → Parser reads → UI 
 
 **Engine-specific behavior**:
 1. **New Session**: Start Claude CLI → Extract session ID from `init` message → Monitor new .jsonl file
-2. **Resume Session**: Claude CLI creates new file (not reuse old) → Update FileWatcher to new file via callback
+2. **Resume Session**: Claude CLI creates new file (not reuse old) → Update stream monitoring to new file via callback
 3. **Session ID Mismatch Fix**: Always set up `onSessionIdCaptured` to handle Claude's file creation behavior
 
 **Key insight**: Claude Code CLI always creates new files on resume, never appends to existing ones.
 
 #### Error Handling
 
-- Graceful FileWatcher recovery on crash
+- Graceful stream recovery on crash
 - Null-safety throughout Kotlin code
 - Partial JSON line protection in parser
 
@@ -198,7 +200,7 @@ Claude Process → Writes JSONL → FileWatcher detects → Parser reads → UI 
 ### Validation Strategy
 
 **"Validate in practice, not in CI":**
-- FileWatcher behavior varies by platform - manual validation more reliable than flaky automated tests
+- Stream behavior varies by platform - manual validation more reliable than flaky automated tests
 - External process timing cannot be reliably tested in unit tests
 - Focus automated testing on pure functions (parsers, data transformations)
 - System integration behavior validated through real usage
@@ -266,17 +268,31 @@ Claude Code stores session files in project-specific directories:
 - **File creation**: Claude Code always creates new files on `--resume`, never appends
 - **Immediate writes**: No buffering - files updated immediately for crash safety  
 - **Session ID extraction**: Must monitor `init` messages to get proper session ID
-- **FileWatcher timing**: 300ms debounce + conflate (updated from 200ms)
+- **Stream timing**: 300ms debounce + conflate (updated from 200ms)
+
+## Claude Code
+### Resume Behavior
+
+Claude Code CLI resume behavior with `--resume <old-session-id>`:
+1. **Historical context loading**: Claude loads the conversation history from the old session ID as it should
+2. **New session ID creation**: However, Claude creates a **NEW** session ID for the resumed session (like copying session with new id)
+3. **Init message contains new ID**: The `init` message will contain the NEW session ID, not the old one
+4. **Implementation consequence**: Load history from old ID, but use new ID for current session operations
+
+This dual-ID behavior is critical for proper session management in Gromozeka:
+- Historical messages come from `<old-session-id>.jsonl`
+- Current session operations use `<new-session-id>.jsonl`
+- Session state must handle this ID transition gracefully
 
 ## Current Implementation Details
 
 ### Core Architecture Components
 
 #### Session.kt - The Central Hub
-**Responsibilities**: Process management, file watching, state management, lifecycle control
+**Responsibilities**: Process management, stream monitoring, state management, lifecycle control
 - **Thread safety**: Mutex protection for all mutable operations
 - **Reactive updates**: StateFlow for metadata/messages, SharedFlow for events
-- **File monitoring**: KFS Watch with 300ms debounce and conflation by filename
+- **Stream processing**: Real-time stdout monitoring with 300ms debounce
 - **Process lifecycle**: Graceful shutdown with 1s timeout before force kill
 
 **Key pattern**: Single class encapsulating all session logic (replaced coordinator anti-pattern)
@@ -325,19 +341,18 @@ sealed class ClaudeLogEntry {
 
 **Performance consideration**: Multi-step type checking in serializer may be slow for large sessions
 
-#### File Monitoring Pattern
+#### Stream Processing Pattern
 ```kotlin
-directoryWatcher.onEventFlow
-    .filter { File(it.path).name == "$sessionId.jsonl" }
-    .filter { it.event in setOf(KfsEvent.Create, KfsEvent.Modify) }
-    .debounce(300)  // Wait for write completion
-    .conflate()     // Take only latest if multiple changes queued
+stdoutReader.readLine() // Read JSON lines from Claude process
+    ?.let { parseStreamMessage(it) } // Parse Claude messages
+    ?.let { _streamMessages.emit(it) } // Emit to message stream
+    // Debounce and conflation handled at UI level
 ```
 
 #### Session ID Handling
 **Critical behavior**: Claude Code CLI always creates new files on resume
 - Monitor stdout for session ID in init messages
-- Update FileWatcher path via `onSessionIdCaptured` callback
+- Update stream monitoring via `onSessionIdCaptured` callback
 - Handle session ID mismatch gracefully
 
 ### Known Issues and Trade-offs
@@ -356,7 +371,7 @@ directoryWatcher.onEventFlow
 #### Race Conditions Protected
 - **Mutex in Session**: All mutable operations protected
 - **Process lifecycle**: Start/stop operations atomic
-- **File watching**: Debounce prevents partial read issues
+- **Stream processing**: Debounce prevents partial read issues
 
 ### Development Guidelines
 
