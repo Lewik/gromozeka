@@ -1,18 +1,16 @@
 package com.gromozeka.bot.services
 
+import com.gromozeka.bot.model.StreamMessage
 import jakarta.annotation.PreDestroy
 import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.jsonPrimitive
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.SerializationException
-import kotlinx.coroutines.flow.*
-import com.gromozeka.bot.model.StreamMessage
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.*
 import java.io.BufferedReader
 import java.io.BufferedWriter
 import java.io.File
@@ -21,7 +19,7 @@ import java.io.OutputStreamWriter
 class ClaudeCodeStreamingWrapper {
 
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
-    
+
     @OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
     private val json = Json {
         explicitNulls = true
@@ -38,12 +36,12 @@ class ClaudeCodeStreamingWrapper {
     private var process: Process? = null
     private var stdinWriter: BufferedWriter? = null
     private var stdoutReader: BufferedReader? = null
+    private var stderrReader: BufferedReader? = null
     private var readJob: Job? = null
+    private var stderrJob: Job? = null
     private var streamLogger: StreamLogger? = null
 
 
-    private var currentSessionId: String? = null
-    
     // Unified stream broadcasting with buffer for late subscribers
     private val _streamMessages = MutableSharedFlow<StreamMessage>(
         replay = 100,  // Keep last 100 messages for late subscribers
@@ -53,23 +51,21 @@ class ClaudeCodeStreamingWrapper {
 
     suspend fun start(
         projectPath: String? = null,
-        onSessionIdCaptured: (String) -> Unit = { },
     ) = withContext(Dispatchers.IO) {
         try {
             println("=== STARTING CLAUDE CODE STREAMING WRAPPER ===")
 
-            currentSessionId = null
 
             val defaultPrompt = loadDefaultSystemPrompt().replace("\"", "\\\"")
             // Возвращаем как было - с дублированием, но рабочее
             val command = listOf(
                 "claude",
                 "--output-format", "stream-json",
-                "--input-format", "stream-json", 
+                "--input-format", "stream-json",
                 "--verbose",
                 "--append-system-prompt", defaultPrompt
             )
-            
+
             // Truncate system prompt for cleaner logs
             val truncatedCommand = command.mapIndexed { index, arg ->
                 if (index > 0 && command.getOrNull(index - 1) == "--append-system-prompt" && arg.length > 100) {
@@ -83,10 +79,10 @@ class ClaudeCodeStreamingWrapper {
 
             val processBuilder = ProcessBuilder(command)
                 .redirectErrorStream(false)
-            
+
             // Устанавливаем переменную окружения как в Python SDK для headless режима
             val env = processBuilder.environment()
-            env["CLAUDE_CODE_ENTRYPOINT"] = "sdk-py"
+//            env["CLAUDE_CODE_ENTRYPOINT"] = "sdk-py"
 
             val actualProjectPath = projectPath ?: System.getProperty("user.dir")
             if (projectPath != null) {
@@ -95,52 +91,46 @@ class ClaudeCodeStreamingWrapper {
 
             // Initialize stream logger for this project
             streamLogger = StreamLogger(actualProjectPath)
-            
+
             process = processBuilder.start()
 
             val proc = process ?: throw IllegalStateException("Failed to start process")
+            println("[ClaudeCodeStreamingWrapper] Process started with PID: ${proc.pid()}")
 
             stdinWriter = BufferedWriter(OutputStreamWriter(proc.outputStream))
             stdoutReader = BufferedReader(proc.inputStream.reader())
+            stderrReader = BufferedReader(proc.errorStream.reader())
 
-            readJob = scope.launch {
-                readOutputStream(onSessionIdCaptured)
-            }
-
+            readJob = scope.launchReadOutputStream()
+            stderrJob = scope.launchReadErrorStream()
 
         } catch (e: Exception) {
             e.printStackTrace()
         }
     }
 
-    suspend fun sendMessage(message: String, sessionId: String? = null) = withContext(Dispatchers.IO) {
+    suspend fun sendMessage(message: String, sessionId: String) = withContext(Dispatchers.IO) {
         try {
             val proc = process
             println("[ClaudeCodeStreamingWrapper] Process alive before sending: ${proc?.isAlive()}")
-            
-            val actualSessionId = sessionId ?: currentSessionId ?: "default"
+
             val streamJsonMessage = UserInputMessage(
                 type = "user",
                 message = UserInputMessage.Content(
                     role = "user",
                     content = message
                 ),
-                session_id = actualSessionId,
+                session_id = sessionId,
                 parent_tool_use_id = null
             )
 
             val jsonLine = json.encodeToString(streamJsonMessage)
             println("[ClaudeCodeStreamingWrapper] Writing to stdin: $jsonLine")
-            println("[ClaudeCodeStreamingWrapper] Session ID used: $actualSessionId")
+            println("[ClaudeCodeStreamingWrapper] Session ID used: $sessionId")
 
             val writer = stdinWriter ?: throw IllegalStateException("Process not started")
             writer.write("$jsonLine\n")
             writer.flush()
-            
-            // Проверяем через небольшую задержку
-            delay(1000)
-            println("[ClaudeCodeStreamingWrapper] Process alive after sending: ${proc?.isAlive()}")
-
         } catch (e: Exception) {
             e.printStackTrace()
         }
@@ -168,7 +158,7 @@ class ClaudeCodeStreamingWrapper {
                 println("[ClaudeCodeStreamingWrapper] SECONDARY ERROR: Failed to parse as JsonObject")
                 println("  Exception: ${e.javaClass.simpleName}: ${e.message}")
                 StreamMessage.SystemStreamMessage(
-                    subtype = "raw_output", 
+                    subtype = "raw_output",
                     data = buildJsonObject { put("raw_line", JsonPrimitive(jsonLine)) },
                     sessionId = null
                 )
@@ -178,16 +168,17 @@ class ClaudeCodeStreamingWrapper {
             println("  JSON line: $jsonLine")
             println("  Stack trace: ${e.stackTraceToString()}")
             StreamMessage.SystemStreamMessage(
-                subtype = "raw_output", 
+                subtype = "raw_output",
                 data = buildJsonObject { put("raw_line", JsonPrimitive(jsonLine)) },
                 sessionId = null
             )
         }
     }
 
-    private suspend fun readOutputStream(onSessionIdCaptured: (String) -> Unit) {
+    private suspend fun CoroutineScope.launchReadOutputStream() = launch {
         try {
-            val reader = stdoutReader ?: return
+            val reader = stdoutReader
+            require(reader != null) { "Reader was null" }
 
             while (true) {
                 val line = reader.readLine() ?: break
@@ -201,16 +192,8 @@ class ClaudeCodeStreamingWrapper {
                     // Parse and broadcast stream message
                     val streamMessage = parseStreamMessage(line)
                     println("[ClaudeWrapper] *** EMITTING STREAM MESSAGE: ${streamMessage.type}")
-                    
-                    _streamMessages.emit(streamMessage)
-                    
-                    // Extract session ID for callback and update logger
-                    extractSessionId(line)?.let { sessionId ->
-                        println("[ClaudeCodeStreamingWrapper] Captured session ID: $sessionId")
-                        streamLogger?.updateSessionId(sessionId)
-                        onSessionIdCaptured(sessionId)
-                    }
 
+                    _streamMessages.emit(streamMessage)
                 } catch (e: Exception) {
                     e.printStackTrace()
                 } finally {
@@ -224,11 +207,31 @@ class ClaudeCodeStreamingWrapper {
         }
     }
 
+    private suspend fun CoroutineScope.launchReadErrorStream() = launch {
+        try {
+            val reader = stderrReader
+            require(reader != null) { "Stderr reader was null" }
+
+            while (true) {
+                val line = reader.readLine() ?: break
+                if (line.trim().isEmpty()) continue
+
+                println("[ClaudeCodeStreamingWrapper] STDERR: $line")
+            }
+
+        } catch (e: Exception) {
+            println("[ClaudeCodeStreamingWrapper] Error reading stderr: ${e.message}")
+            e.printStackTrace()
+        }
+    }
+
     suspend fun stop() = withContext(Dispatchers.IO) {
         try {
             readJob?.cancel()
+            stderrJob?.cancel()
             stdinWriter?.close()
             stdoutReader?.close()
+            stderrReader?.close()
             streamLogger?.close()  // Close logger before destroying process
             process?.destroy()
 
@@ -253,10 +256,6 @@ class ClaudeCodeStreamingWrapper {
         val subtype = jsonObject?.get("subtype")?.jsonPrimitive?.content
         if (type == "system" && subtype == "init") {
             val sessionId = jsonObject["session_id"]?.jsonPrimitive?.content
-            if (sessionId != null) {
-                currentSessionId = sessionId
-                println("[ClaudeCodeStreamingWrapper] Updated currentSessionId to: $sessionId")
-            }
             sessionId
         } else {
             null
@@ -269,8 +268,8 @@ class ClaudeCodeStreamingWrapper {
     data class UserInputMessage(
         val type: String,
         val message: Content,
-        val session_id: String = "default",
-        val parent_tool_use_id: String? = null
+        val session_id: String,
+        val parent_tool_use_id: String? = null,
     ) {
         @Serializable
         data class Content(
@@ -281,6 +280,7 @@ class ClaudeCodeStreamingWrapper {
 
     @PreDestroy
     fun cleanup() {
+        println("CLEARING STREAM")
         scope.cancel()
     }
 }
