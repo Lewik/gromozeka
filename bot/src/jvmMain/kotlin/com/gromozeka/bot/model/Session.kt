@@ -28,6 +28,7 @@ class Session(
     val projectPath: String,
     private val claudeWrapper: ClaudeCodeStreamingWrapper,
     private val sessionJsonlService: SessionJsonlService,
+    private val claudeModel: String? = null
 ) {
 
     // === StateFlow for external consumption ===
@@ -94,7 +95,7 @@ class Session(
             }
             scope.launchOutputStreamCollection()
 
-            claudeWrapper.start(projectPath = projectPath)
+            claudeWrapper.start(projectPath = projectPath, model = claudeModel)
 
 //            // === Phase 3: Start message buffer processing ===
 //            messageInputBufferJob = scope.launch {

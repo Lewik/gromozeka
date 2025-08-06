@@ -51,20 +51,30 @@ class ClaudeCodeStreamingWrapper {
 
     suspend fun start(
         projectPath: String? = null,
+        model: String? = null
     ) = withContext(Dispatchers.IO) {
         try {
             println("=== STARTING CLAUDE CODE STREAMING WRAPPER ===")
 
 
             val defaultPrompt = loadDefaultSystemPrompt().replace("\"", "\\\"")
-            // Возвращаем как было - с дублированием, но рабочее
-            val command = listOf(
+            val command = mutableListOf(
                 "claude",
-                "--output-format", "stream-json",
-                "--input-format", "stream-json",
+                "--output-format",
+                "stream-json",
+                "--input-format",
+                "stream-json",
                 "--verbose",
-                "--append-system-prompt", defaultPrompt
+                "--append-system-prompt",
+                defaultPrompt
             )
+            
+            // Add model parameter if specified
+            if (!model.isNullOrBlank()) {
+                command.add("--model")
+                command.add(model)
+                println("[ClaudeCodeStreamingWrapper] Using model: $model")
+            }
 
             // Truncate system prompt for cleaner logs
             val truncatedCommand = command.mapIndexed { index, arg ->

@@ -7,7 +7,8 @@ data class Settings(
     val claudeProjectPath: String? = null,
     val enableTts: Boolean = true,
     val enableStt: Boolean = true,
-    val autoSend: Boolean = true
+    val autoSend: Boolean = true,
+    val claudeModel: String = "sonnet"
 )
 
 @Serializable

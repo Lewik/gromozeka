@@ -229,7 +229,7 @@ fun ApplicationScope.ChatWindow(
                 
                 // Create and start new active session
                 val claudeWrapper = ClaudeCodeStreamingWrapper()
-                val activeSession = Session(projectPath, claudeWrapper, sessionJsonlService)
+                val activeSession = Session(projectPath, claudeWrapper, sessionJsonlService, settingsService.settings.claudeModel)
                 activeSession.start(coroutineScope)
                 currentSession = activeSession
 
