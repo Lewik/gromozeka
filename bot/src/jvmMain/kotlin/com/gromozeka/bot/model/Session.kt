@@ -2,7 +2,9 @@ package com.gromozeka.bot.model
 
 import com.gromozeka.bot.services.ClaudeCodeStreamingWrapper
 import com.gromozeka.bot.services.SessionJsonlService
+import com.gromozeka.bot.services.SoundNotificationService
 import com.gromozeka.bot.services.StreamToChatMessageMapper
+import com.gromozeka.bot.utils.ChatMessageSoundDetector
 import com.gromozeka.shared.domain.message.ChatMessage
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
@@ -28,6 +30,7 @@ class Session(
     val projectPath: String,
     private val claudeWrapper: ClaudeCodeStreamingWrapper,
     private val sessionJsonlService: SessionJsonlService,
+    private val soundNotificationService: SoundNotificationService,
     private val claudeModel: String? = null,
 ) {
 
@@ -94,6 +97,7 @@ class Session(
                 historicalMessagesLoaded = true
             }
             scope.launchOutputStreamCollection()
+            scope.launchSoundNotificationCollection()
 
             claudeWrapper.start(projectPath = projectPath, model = claudeModel)
 
@@ -481,6 +485,29 @@ class Session(
         } catch (e: Exception) {
             println("[Session] Failed to load historical messages: ${e.message}")
             _events.emit(StreamSessionEvent.Warning("Failed to load history: ${e.message}"))
+        }
+    }
+    
+    private fun CoroutineScope.launchSoundNotificationCollection() {
+        launch {
+            messageOutputStream
+                .collect { chatMessage ->
+                    try {
+                        when {
+                            ChatMessageSoundDetector.shouldPlayErrorSound(chatMessage) -> {
+                                println("[Session] Playing error sound for message type: ${chatMessage.messageType}")
+                                soundNotificationService.playErrorSound()
+                            }
+                            ChatMessageSoundDetector.shouldPlayMessageSound(chatMessage) -> {
+                                println("[Session] Playing message sound for message type: ${chatMessage.messageType}")
+                                soundNotificationService.playMessageSound()
+                            }
+                        }
+                    } catch (e: Exception) {
+                        // Silently ignore sound errors - don't let them affect session functionality
+                        println("[Session] Sound notification error: ${e.message}")
+                    }
+                }
         }
     }
 }

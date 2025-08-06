@@ -20,6 +20,7 @@ import com.gromozeka.bot.services.*
 import com.gromozeka.bot.ui.ChatScreen
 import com.gromozeka.bot.ui.SessionListScreen
 import com.gromozeka.bot.ui.pttGestures
+import com.gromozeka.bot.ui.onEscape
 import com.gromozeka.shared.domain.message.ChatMessage
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
@@ -317,92 +318,102 @@ fun ApplicationScope.ChatWindow(
             ttsQueueService.shutdown()
             exitApplication()
         },
-        title = "🤖 Громозека${if (settingsService.mode == com.gromozeka.bot.settings.AppMode.DEV) " [DEV]" else ""}${selectedSession?.projectPath?.let { " • $it" } ?: ""}") {
-        if (initialized) {
-            if (showSessionList) {
-                SessionListScreen(
-                    onSessionSelected = { session, messages, sessionObj ->
-                        // Stop current session if any
-                        currentSession?.let { currentSess ->
-                            coroutineScope.launch { currentSess.stop() }
-                        }
-
-                        selectedSession = session
-                        currentSession = sessionObj
-                        chatHistory.clear()
-                        chatHistory.addAll(messages)
-                        showSessionList = false
-
-                        // Start the session with resume capability
-                        coroutineScope.launch {
-                            try {
-                                // Pass the old session ID for history loading
-                                sessionObj.start(coroutineScope, resumeSessionId = session.sessionId)
-
-                                // Session started successfully
-                                println("[ChatApplication] Session started with resume for: ${session.sessionId}")
-                            } catch (e: Exception) {
-                                println("[ChatApplication] Failed to start session: ${e.message}")
-                                e.printStackTrace()
+        title = "🤖 Громозека${if (settingsService.mode == com.gromozeka.bot.settings.AppMode.DEV) " [DEV]" else ""}${selectedSession?.projectPath?.let { " • $it" } ?: ""}"
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .onEscape(
+                    handler = unifiedPTTHandler,
+                    coroutineScope = coroutineScope
+                )
+        ) {
+            if (initialized) {
+                if (showSessionList) {
+                    SessionListScreen(
+                        onSessionSelected = { session, messages, sessionObj ->
+                            // Stop current session if any
+                            currentSession?.let { currentSess ->
+                                coroutineScope.launch { currentSess.stop() }
                             }
-                        }
-                    },
-                    coroutineScope = coroutineScope,
-                    onNewSession = createNewSession,
-                    sessionJsonlService = sessionJsonlService,
-                    context = context
-                )
-            } else {
-                ChatScreen(
-                    selectedSession = selectedSession,
-                    chatHistory = chatHistory,
-                    userInput = userInput,
-                    onUserInputChange = { userInput = it },
-                    assistantIsThinking = assistantIsThinking,
-                    isWaitingForResponse = isWaitingForResponse,
-                    autoSend = autoSend,
-                    onAutoSendChange = { autoSend = it },
-                    onBackToSessionList = {
-                        coroutineScope.launch {
-                            currentSession?.stop()
-                        }
-                        showSessionList = true
-                    },
-                    onNewSession = {
-                        val currentProjectPath = selectedSession?.projectPath ?: "/Users/lewik/code/gromozeka"
-                        createNewSession(currentProjectPath)
-                    },
-                    onSendMessage = sendMessage,
-                    sttService = sttService,
-                    ttsService = ttsService,
-                    coroutineScope = coroutineScope,
-                    modifierWithPushToTalk = modifierWithPushToTalk,
-                    onCheckBalance = {
-                        coroutineScope.launch {
-                            balanceInfo = openAiBalanceService.checkBalance()
-                            showBalanceDialog = true
-                        }
-                    },
-                    isDev = settingsService.mode == com.gromozeka.bot.settings.AppMode.DEV
-                )
-            }
-        } else {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
-            }
-        }
 
-        if (showBalanceDialog) {
-            AlertDialog(
-                onDismissRequest = { showBalanceDialog = false },
-                title = { Text("OpenAI Balance") },
-                text = { Text(balanceInfo) },
-                confirmButton = {
-                    Button(onClick = { showBalanceDialog = false }) {
-                        Text("OK")
-                    }
+                            selectedSession = session
+                            currentSession = sessionObj
+                            chatHistory.clear()
+                            chatHistory.addAll(messages)
+                            showSessionList = false
+
+                            // Start the session with resume capability
+                            coroutineScope.launch {
+                                try {
+                                    // Pass the old session ID for history loading
+                                    sessionObj.start(coroutineScope, resumeSessionId = session.sessionId)
+
+                                    // Session started successfully
+                                    println("[ChatApplication] Session started with resume for: ${session.sessionId}")
+                                } catch (e: Exception) {
+                                    println("[ChatApplication] Failed to start session: ${e.message}")
+                                    e.printStackTrace()
+                                }
+                            }
+                        },
+                        coroutineScope = coroutineScope,
+                        onNewSession = createNewSession,
+                        sessionJsonlService = sessionJsonlService,
+                        context = context
+                    )
+                } else {
+                    ChatScreen(
+                        selectedSession = selectedSession,
+                        chatHistory = chatHistory,
+                        userInput = userInput,
+                        onUserInputChange = { userInput = it },
+                        assistantIsThinking = assistantIsThinking,
+                        isWaitingForResponse = isWaitingForResponse,
+                        autoSend = autoSend,
+                        onAutoSendChange = { autoSend = it },
+                        onBackToSessionList = {
+                            coroutineScope.launch {
+                                currentSession?.stop()
+                            }
+                            showSessionList = true
+                        },
+                        onNewSession = {
+                            val currentProjectPath = selectedSession?.projectPath ?: "/Users/lewik/code/gromozeka"
+                            createNewSession(currentProjectPath)
+                        },
+                        onSendMessage = sendMessage,
+                        sttService = sttService,
+                        ttsService = ttsService,
+                        coroutineScope = coroutineScope,
+                        modifierWithPushToTalk = modifierWithPushToTalk,
+                        onCheckBalance = {
+                            coroutineScope.launch {
+                                balanceInfo = openAiBalanceService.checkBalance()
+                                showBalanceDialog = true
+                            }
+                        },
+                        isDev = settingsService.mode == com.gromozeka.bot.settings.AppMode.DEV
+                    )
                 }
-            )
+            } else {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
+            }
+
+            if (showBalanceDialog) {
+                AlertDialog(
+                    onDismissRequest = { showBalanceDialog = false },
+                    title = { Text("OpenAI Balance") },
+                    text = { Text(balanceInfo) },
+                    confirmButton = {
+                        Button(onClick = { showBalanceDialog = false }) {
+                            Text("OK")
+                        }
+                    }
+                )
+            }
         }
     }
 }

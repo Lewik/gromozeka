@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service
 class SessionService(
     private val claudeCodeStreamingWrapper: ClaudeCodeStreamingWrapper,
     private val sessionJsonlService: SessionJsonlService,
+    private val soundNotificationService: SoundNotificationService,
     private val settingsService: SettingsService,
 ) {
 
@@ -18,6 +19,7 @@ class SessionService(
             projectPath = projectPath,
             claudeWrapper = claudeCodeStreamingWrapper,
             sessionJsonlService = sessionJsonlService,
+            soundNotificationService = soundNotificationService,
             claudeModel = claudeModel,
         )
     }

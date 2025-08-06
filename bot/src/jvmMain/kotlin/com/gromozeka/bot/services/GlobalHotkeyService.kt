@@ -15,10 +15,10 @@ import java.util.logging.Logger
 class GlobalHotkeyService {
     
     companion object {
-        // Hardcoded hotkey: Left Shift + ` (backtick)
-        private const val HOTKEY_LEFT_SHIFT_KEYCODE = NativeKeyEvent.VC_SHIFT
-        private const val HOTKEY_BACKTICK_KEYCODE = 41
-        private const val HOTKEY_LEFT_SHIFT_MASK = NativeKeyEvent.SHIFT_L_MASK
+        // Global hotkey: Fn + Control
+        private const val HOTKEY_FN_KEYCODE = 63  // macOS fn key code (0x3F)
+        private const val HOTKEY_CTRL_KEYCODE = NativeKeyEvent.VC_CONTROL
+        private const val HOTKEY_CTRL_MASK = NativeKeyEvent.CTRL_L_MASK
     }
     
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -35,7 +35,13 @@ class GlobalHotkeyService {
     
     private val keyListener = object : NativeKeyListener {
         override fun nativeKeyPressed(e: NativeKeyEvent) {
+            // Debug logging for fn+ctrl key detection
+            if (e.keyCode == HOTKEY_FN_KEYCODE || e.keyCode == HOTKEY_CTRL_KEYCODE) {
+                println("[HOTKEY] Key detected: keyCode=${e.keyCode}, modifiers=${e.modifiers}")
+            }
+            
             if (isTargetHotkey(e)) {
+                println("[HOTKEY] Fn+Control hotkey pressed")
                 serviceScope.launch {
                     gestureDetector?.onKeyDown()
                 }
@@ -53,13 +59,15 @@ class GlobalHotkeyService {
     }
     
     private fun isTargetHotkey(event: NativeKeyEvent): Boolean {
-        val leftShiftPressed = (event.modifiers and HOTKEY_LEFT_SHIFT_MASK) != 0
-        return leftShiftPressed && event.keyCode == HOTKEY_BACKTICK_KEYCODE
+        // Check for Fn + Control (both modifiers pressed)
+        val ctrlPressed = (event.modifiers and HOTKEY_CTRL_MASK) != 0
+        return (event.keyCode == HOTKEY_FN_KEYCODE || event.keyCode == HOTKEY_CTRL_KEYCODE) && ctrlPressed
     }
     
     private fun isPartOfHotkey(event: NativeKeyEvent): Boolean {
-        // Any of the hotkey combination keys: Left Shift or backtick
-        return event.keyCode == HOTKEY_LEFT_SHIFT_KEYCODE || event.keyCode == HOTKEY_BACKTICK_KEYCODE
+        // Any of the hotkey combination keys: Fn or Control
+        return event.keyCode == HOTKEY_FN_KEYCODE ||
+               event.keyCode == HOTKEY_CTRL_KEYCODE
     }
     
     
@@ -73,7 +81,7 @@ class GlobalHotkeyService {
             GlobalScreen.registerNativeHook()
             GlobalScreen.addNativeKeyListener(keyListener)
             isRegistered = true
-            println("[HOTKEY] Global hotkey service initialized (Left Shift + `)")
+            println("[HOTKEY] Global hotkey service initialized (Fn+Control)")
             return true
         } catch (ex: NativeHookException) {
             println("[HOTKEY] Failed to register native hook: ${ex.message}")
