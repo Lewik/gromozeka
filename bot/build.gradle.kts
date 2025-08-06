@@ -43,6 +43,8 @@ kotlin {
                 implementation(libs.sqldelight.sqlite.driver)
                 implementation(libs.sqldelight.coroutines.extensions)
                 implementation(libs.sqldelight.primitive.adapters)
+                
+                implementation(libs.jnativehook)
             }
         }
         

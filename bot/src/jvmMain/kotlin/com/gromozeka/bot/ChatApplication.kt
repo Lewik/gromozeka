@@ -59,6 +59,15 @@ fun main() {
     val ttsService = context.getBean<TtsService>()
     val openAiBalanceService = context.getBean<OpenAiBalanceService>()
     val sessionJsonlService = context.getBean<SessionJsonlService>()
+    val globalHotkeyService = context.getBean<GlobalHotkeyService>()
+    
+    // Инициализируем hotkey service если включен в настройках
+    if (settingsService.settings.globalPttHotkeyEnabled) {
+        globalHotkeyService.initialize()
+        println("[GROMOZEKA] Global hotkey service enabled")
+    } else {
+        println("[GROMOZEKA] Global hotkey service disabled in settings")
+    }
     println("[GROMOZEKA] Starting Compose Desktop UI...")
     application {
         MaterialTheme(
@@ -74,6 +83,7 @@ fun main() {
                 openAiBalanceService,
                 settingsService,
                 sessionJsonlService,
+                globalHotkeyService,
                 context
             )
         }
@@ -88,6 +98,7 @@ fun ApplicationScope.ChatWindow(
     openAiBalanceService: OpenAiBalanceService,
     settingsService: SettingsService,
     sessionJsonlService: SessionJsonlService,
+    globalHotkeyService: GlobalHotkeyService,
     context: org.springframework.context.ConfigurableApplicationContext,
 ) {
     val coroutineScope = rememberCoroutineScope()
@@ -269,6 +280,23 @@ fun ApplicationScope.ChatWindow(
         scrollState.animateScrollTo(scrollState.maxValue)
     }
 
+    val isGlobalHotkeyPressed by globalHotkeyService.hotkeyPressed.collectAsState()
+    
+    LaunchedEffect(isGlobalHotkeyPressed) {
+        if (isGlobalHotkeyPressed && !isRecording) {
+            isRecording = true
+            sttService.startRecording()
+        } else if (!isGlobalHotkeyPressed && isRecording) {
+            isRecording = false
+            val text = sttService.stopAndTranscribe()
+            if (autoSend && text.isNotBlank()) {
+                sendMessage(text)
+            } else {
+                userInput = text
+            }
+        }
+    }
+    
     val modifierWithPushToTalk = Modifier.pointerInput(Unit) {
         awaitPointerEventScope {
             while (true) {
@@ -294,6 +322,7 @@ fun ApplicationScope.ChatWindow(
     Window(
         onCloseRequest = {
             println("[GROMOZEKA] Application window closing - stopping all sessions...")
+            globalHotkeyService.shutdown()
             exitApplication()
         },
         title = "🤖 Громозека${if (settingsService.mode == com.gromozeka.bot.settings.AppMode.DEV) " [DEV]" else ""}${selectedSession?.projectPath?.let { " • $it" } ?: ""}") {

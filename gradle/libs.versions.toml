@@ -14,6 +14,7 @@ mockk = "1.13.8"
 kotest = "5.8.0"
 kotlinx-datetime = "0.6.2"
 kotlinx-serialization = "1.6.3"
+jnativehook = "2.2.1"
 
 [libraries]
 # Ktor
@@ -44,6 +45,9 @@ jackson-module-kotlin = { module = "com.fasterxml.jackson.module:jackson-module-
 sqldelight-sqlite-driver = { module = "app.cash.sqldelight:sqlite-driver", version.ref = "sqldelight" }
 sqldelight-coroutines-extensions = { module = "app.cash.sqldelight:coroutines-extensions", version.ref = "sqldelight" }
 sqldelight-primitive-adapters = { module = "app.cash.sqldelight:primitive-adapters", version.ref = "sqldelight" }
+
+# JNativeHook
+jnativehook = { module = "com.github.kwhat:jnativehook", version.ref = "jnativehook" }
 
 
 # Testing
