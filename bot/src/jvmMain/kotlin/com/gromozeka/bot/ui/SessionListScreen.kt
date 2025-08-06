@@ -16,6 +16,7 @@ import com.gromozeka.bot.model.ChatSession
 import com.gromozeka.bot.model.ProjectGroup
 import com.gromozeka.bot.model.Session
 import com.gromozeka.bot.services.ClaudeCodeStreamingWrapper
+import com.gromozeka.bot.services.SessionService
 import com.gromozeka.bot.services.SessionJsonlService
 import com.gromozeka.shared.domain.message.ChatMessage
 import kotlinx.coroutines.CoroutineScope
@@ -305,8 +306,8 @@ private fun CoroutineScope.handleSessionClick(
     launch {
         try {
             // Create new Session that will load history during start
-            val claudeWrapper = context.getBean(ClaudeCodeStreamingWrapper::class.java)
-            val session = Session(clickedSession.projectPath, claudeWrapper, sessionJsonlService)
+            val sessionService = context.getBean(SessionService::class.java)
+            val session = sessionService.createSession(clickedSession.projectPath)
             
             // Pass session to parent - it will handle Claude process management  
             // The parent will call session.start() with resumeSessionId

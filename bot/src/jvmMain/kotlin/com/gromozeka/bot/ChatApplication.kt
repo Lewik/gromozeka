@@ -19,6 +19,7 @@ import androidx.compose.ui.window.application
 import com.gromozeka.bot.model.ChatSession
 import com.gromozeka.bot.model.Session
 import com.gromozeka.bot.services.ClaudeCodeStreamingWrapper
+import com.gromozeka.bot.services.SessionService
 import com.gromozeka.shared.domain.message.ChatMessage
 import com.gromozeka.bot.services.OpenAiBalanceService
 import com.gromozeka.bot.services.SessionJsonlService
@@ -98,6 +99,7 @@ fun ApplicationScope.ChatWindow(
 ) {
     val coroutineScope = rememberCoroutineScope()
     val scrollState = rememberScrollState()
+    val sessionService = remember { context.getBean(SessionService::class.java) }
 
     var initialized by remember { mutableStateOf(false) }
 
@@ -230,8 +232,7 @@ fun ApplicationScope.ChatWindow(
                 currentSession = null
                 
                 // Create and start new active session
-                val claudeWrapper = context.getBean(ClaudeCodeStreamingWrapper::class.java)
-                val activeSession = Session(projectPath, claudeWrapper, sessionJsonlService, settingsService.settings.claudeModel)
+                val activeSession = sessionService.createSession(projectPath)
                 activeSession.start(coroutineScope)
                 currentSession = activeSession
 
