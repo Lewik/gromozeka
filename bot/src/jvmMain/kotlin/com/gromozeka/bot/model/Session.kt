@@ -303,7 +303,7 @@ class Session(
             .launchIn(this)
     }
 
-    private fun CoroutineScope.launchInoutStreamCollection() {
+    private fun CoroutineScope.launchInputStreamCollection() {
         println("[Session] Starting input stream collection...")
         _messageInputBuffer
             .onEach { message ->
@@ -319,7 +319,7 @@ class Session(
                         }
                     }
                 }
-                println("[Session] Giving up on message after 3 attempts: ${message.take(50)}...")
+                throw RuntimeException("Failed to send buffered message after 3 attempts: ${message.take(50)}...")
             }
             .launchIn(this)
     }
@@ -371,7 +371,7 @@ class Session(
             println("[Session] Session initialized with ID: ${message.sessionId}")
             println("[Session] Buffered messages will now be processed automatically")
 
-            sessionScope!!.launchInoutStreamCollection()
+            sessionScope!!.launchInputStreamCollection()
 
         }
     }
