@@ -1,6 +1,5 @@
 package com.gromozeka.bot.services
 
-import com.gromozeka.bot.services.SettingsService
 import com.gromozeka.bot.model.ChatSession
 import com.gromozeka.bot.model.ClaudeLogEntry
 import com.gromozeka.bot.model.StreamSessionMetadata
@@ -13,7 +12,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.withContext
-import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toInstant
 import kotlinx.datetime.toLocalDateTime
@@ -28,14 +26,14 @@ import java.io.File
  */
 @Service
 class SessionJsonlService(
-    private val settingsService: SettingsService
+    private val settingsService: SettingsService,
 ) {
-    
+
     private val json = Json {
         ignoreUnknownKeys = true
         coerceInputValues = false
     }
-    
+
     /**
      * Load messages from a specific session file.
      * @param sessionId The session ID (filename without .jsonl extension)
@@ -43,22 +41,22 @@ class SessionJsonlService(
      * @return List of ChatMessage from the session, empty if file doesn't exist or errors occur
      */
     suspend fun loadMessagesFromSession(
-        sessionId: String, 
-        projectPath: String
+        sessionId: String,
+        projectPath: String,
     ): List<ChatMessage> = withContext(Dispatchers.IO) {
         val sessionFile = findSessionFile(sessionId, projectPath)
         if (sessionFile == null || !sessionFile.exists()) {
             println("[SessionJsonlService] Session file not found for ID: $sessionId")
             return@withContext emptyList()
         }
-        
+
         try {
             val lines = sessionFile.readLines()
             if (lines.isEmpty()) {
                 println("[SessionJsonlService] Session file is empty: $sessionId")
                 return@withContext emptyList()
             }
-            
+
             // Parse all Claude log entries first
             val claudeEntries = lines.mapIndexedNotNull { index, line ->
                 try {
@@ -74,16 +72,16 @@ class SessionJsonlService(
                     null
                 }
             }
-            
+
             // Apply deduplication to fix Claude Code CLI bug with stream-json
             val deduplicatedEntries = SessionDeduplicator.deduplicate(claudeEntries)
-            
+
             // Log deduplication stats if duplicates were found
             if (deduplicatedEntries.size < claudeEntries.size) {
                 val stats = SessionDeduplicator.getDeduplicationStats(claudeEntries, deduplicatedEntries)
                 println("[SessionJsonlService] Deduplicated ${stats.duplicatesRemoved} duplicate entries (${stats.userDuplicates} user, ${stats.assistantDuplicates} assistant)")
             }
-            
+
             // Convert deduplicated entries to chat messages
             val messages = deduplicatedEntries.mapNotNull { claudeEntry ->
                 try {
@@ -93,10 +91,10 @@ class SessionJsonlService(
                     null
                 }
             }
-            
+
             println("[SessionJsonlService] Successfully loaded ${messages.size} messages from session $sessionId")
             return@withContext messages
-            
+
         } catch (e: Exception) {
             println("[SessionJsonlService] Error loading messages for session $sessionId: ${e.message}")
             println("  Session file: ${sessionFile.absolutePath}")
@@ -106,7 +104,7 @@ class SessionJsonlService(
             return@withContext emptyList()
         }
     }
-    
+
     /**
      * Load metadata from a specific session file.
      * @param sessionId The session ID (filename without .jsonl extension)
@@ -115,19 +113,19 @@ class SessionJsonlService(
      */
     suspend fun loadMetadataFromSession(
         sessionId: String,
-        projectPath: String
+        projectPath: String,
     ): StreamSessionMetadata? = withContext(Dispatchers.IO) {
         val sessionFile = findSessionFile(sessionId, projectPath)
         if (sessionFile == null || !sessionFile.exists()) {
             println("[SessionJsonlService] Session file not found for metadata: $sessionId")
             return@withContext null
         }
-        
+
         try {
             val lines = sessionFile.readLines()
             val fileLastModified = kotlinx.datetime.Instant.fromEpochMilliseconds(sessionFile.lastModified())
                 .toLocalDateTime(TimeZone.currentSystemDefault())
-            
+
             if (lines.isEmpty()) {
                 return@withContext StreamSessionMetadata(
                     sessionId = sessionId,
@@ -137,7 +135,7 @@ class SessionJsonlService(
                     messageCount = 0
                 )
             }
-            
+
             // Parse first few messages to generate title
             val messages = lines.take(3).mapIndexedNotNull { index, line ->
                 try {
@@ -148,9 +146,9 @@ class SessionJsonlService(
                     null
                 }
             }
-            
+
             val title = generateSessionTitle(messages)
-            
+
             return@withContext StreamSessionMetadata(
                 sessionId = sessionId,
                 projectPath = projectPath,
@@ -158,13 +156,13 @@ class SessionJsonlService(
                 lastModified = fileLastModified,
                 messageCount = lines.size
             )
-            
+
         } catch (e: Exception) {
             println("[SessionJsonlService] Error loading metadata for session $sessionId: ${e.message}")
             return@withContext null
         }
     }
-    
+
     /**
      * Find session file by ID and project path.
      */
@@ -172,7 +170,7 @@ class SessionJsonlService(
         val encodedProjectPath = projectPath.encodeProjectPath()
         val projectDir = File(settingsService.getClaudeProjectsDir(), encodedProjectPath)
         val sessionFile = projectDir.resolve("$sessionId.jsonl")
-        
+
         return if (sessionFile.exists()) {
             sessionFile
         } else {
@@ -180,13 +178,13 @@ class SessionJsonlService(
             null
         }
     }
-    
+
     /**
      * Generate session title from first messages.
      */
     private fun generateSessionTitle(messages: List<ChatMessage>): String {
         val firstUserMessage = messages.firstOrNull { it.messageType == ChatMessage.MessageType.USER }
-        
+
         return when {
             firstUserMessage != null -> {
                 val contentText = firstUserMessage.content
@@ -195,6 +193,7 @@ class SessionJsonlService(
                 val content = contentText.take(50)
                 if (contentText.length > 50) "$content..." else content
             }
+
             messages.isNotEmpty() -> {
                 val contentText = messages.first().content
                     .filterIsInstance<ChatMessage.ContentItem.Message>()
@@ -202,10 +201,11 @@ class SessionJsonlService(
                 val content = contentText.take(50)
                 if (contentText.length > 50) "$content..." else content
             }
+
             else -> "Empty Session"
         }
     }
-    
+
     /**
      * Load all sessions from Claude Code's projects directory
      * @return List of ChatSession objects representing all available sessions
@@ -216,14 +216,14 @@ class SessionJsonlService(
             println("[SessionJsonlService] Projects directory doesn't exist: ${projectsDir.absolutePath}")
             return@withContext emptyList()
         }
-        
+
         // Find all session files across all projects
         val sessionFiles = projectsDir.walkTopDown()
             .filter { it.isFile && it.extension == "jsonl" && it.isSessionFile() }
             .toList()
-            
+
         println("[SessionJsonlService] Found ${sessionFiles.size} session files")
-        
+
         // Load sessions in parallel
         val sessions = sessionFiles.map { file ->
             async {
@@ -231,10 +231,10 @@ class SessionJsonlService(
                     val sessionId = file.nameWithoutExtension
                     val projectPath = file.parentFile?.decodeProjectPath()
                         ?: throw IllegalArgumentException("Cannot determine project path for file: ${file.path}")
-                        
+
                     // Load metadata to get title and message count
                     val metadata = loadMetadataFromSession(sessionId, projectPath)
-                    
+
                     if (metadata != null) {
                         ChatSession(
                             sessionId = sessionId,
@@ -253,7 +253,7 @@ class SessionJsonlService(
                 }
             }
         }.awaitAll().filterNotNull()
-        
+
         println("[SessionJsonlService] Successfully loaded ${sessions.size} sessions")
         return@withContext sessions.sortedByDescending { it.lastTimestamp }
     }

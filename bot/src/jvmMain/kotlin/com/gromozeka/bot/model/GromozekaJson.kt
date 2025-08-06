@@ -9,5 +9,5 @@ import kotlinx.serialization.Serializable
 data class GromozekaJson(
     val fullText: String,
     val ttsText: String? = null,
-    val voiceTone: String? = null
+    val voiceTone: String? = null,
 )

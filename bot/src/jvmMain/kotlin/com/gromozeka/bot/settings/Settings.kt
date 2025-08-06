@@ -8,7 +8,7 @@ data class Settings(
     val enableTts: Boolean = true,
     val enableStt: Boolean = true,
     val autoSend: Boolean = true,
-    val claudeModel: String = "sonnet"
+    val claudeModel: String = "sonnet",
 )
 
 @Serializable

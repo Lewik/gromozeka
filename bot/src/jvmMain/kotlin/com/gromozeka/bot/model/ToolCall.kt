@@ -6,7 +6,7 @@ import com.fasterxml.jackson.databind.JsonNode
 
 /**
  * Represents a tool call in Claude Code session files.
- * 
+ *
  * Based on analysis of real session files, supporting all observed tool types
  * with type-safe parameters for common tools and generic fallback for others.
  */
@@ -29,15 +29,17 @@ import com.fasterxml.jackson.databind.JsonNode
     JsonSubTypes.Type(value = ToolCall.LSTool::class, name = "LS"),
     JsonSubTypes.Type(value = ToolCall.GlobTool::class, name = "Glob"),
     JsonSubTypes.Type(value = ToolCall.WriteTool::class, name = "Write"),
-    JsonSubTypes.Type(value = ToolCall.GenericTool::class, names = [
-        "mcp__ide__getDiagnostics",
-        "mcp__voice-mode__converse"
-    ])
+    JsonSubTypes.Type(
+        value = ToolCall.GenericTool::class, names = [
+            "mcp__ide__getDiagnostics",
+            "mcp__voice-mode__converse"
+        ]
+    )
 )
 sealed class ToolCall {
     abstract val id: String
     abstract val name: String
-    
+
     /**
      * File editing tool - most frequently used
      * Params: file_path, old_string, new_string, replace_all?
@@ -48,9 +50,9 @@ sealed class ToolCall {
         val file_path: String,
         val old_string: String,
         val new_string: String,
-        val replace_all: Boolean = false
+        val replace_all: Boolean = false,
     ) : ToolCall()
-    
+
     /**
      * File reading tool
      * Params: file_path, offset?, limit?
@@ -60,9 +62,9 @@ sealed class ToolCall {
         override val name: String = "Read",
         val file_path: String,
         val offset: Int? = null,
-        val limit: Int? = null
+        val limit: Int? = null,
     ) : ToolCall()
-    
+
     /**
      * Bash command execution tool
      * Params: command, description?, timeout?
@@ -72,9 +74,9 @@ sealed class ToolCall {
         override val name: String = "Bash",
         val command: String,
         val description: String? = null,
-        val timeout: Long? = null
+        val timeout: Long? = null,
     ) : ToolCall()
-    
+
     /**
      * Todo list management tool
      * Params: todos[] (array of todo items)
@@ -82,16 +84,16 @@ sealed class ToolCall {
     data class TodoWriteTool(
         override val id: String,
         override val name: String = "TodoWrite",
-        val todos: List<TodoItem>
+        val todos: List<TodoItem>,
     ) : ToolCall() {
         data class TodoItem(
             val id: String,
             val content: String,
             val status: String, // "pending" | "in_progress" | "completed"
-            val priority: String // "high" | "medium" | "low"
+            val priority: String, // "high" | "medium" | "low"
         )
     }
-    
+
     /**
      * Text search tool with many options
      * Params: pattern, path?, output_mode?, context options, filters
@@ -110,9 +112,9 @@ sealed class ToolCall {
         val glob: String? = null,
         val type: String? = null,
         val head_limit: Int? = null,
-        val multiline: Boolean? = null
+        val multiline: Boolean? = null,
     ) : ToolCall()
-    
+
     /**
      * Multiple file edits in one operation
      * Params: file_path, edits[]
@@ -121,15 +123,15 @@ sealed class ToolCall {
         override val id: String,
         override val name: String = "MultiEdit",
         val file_path: String,
-        val edits: List<EditOperation>
+        val edits: List<EditOperation>,
     ) : ToolCall() {
         data class EditOperation(
             val old_string: String,
             val new_string: String,
-            val replace_all: Boolean = false
+            val replace_all: Boolean = false,
         )
     }
-    
+
     /**
      * Web content fetching with AI processing
      * Params: url, prompt
@@ -138,9 +140,9 @@ sealed class ToolCall {
         override val id: String,
         override val name: String = "WebFetch",
         val url: String,
-        val prompt: String
+        val prompt: String,
     ) : ToolCall()
-    
+
     /**
      * Web search tool
      * Params: query, domain filters
@@ -150,9 +152,9 @@ sealed class ToolCall {
         override val name: String = "WebSearch",
         val query: String,
         val allowed_domains: List<String>? = null,
-        val blocked_domains: List<String>? = null
+        val blocked_domains: List<String>? = null,
     ) : ToolCall()
-    
+
     /**
      * Task execution tool
      * Params: description, prompt
@@ -161,9 +163,9 @@ sealed class ToolCall {
         override val id: String,
         override val name: String = "Task",
         val description: String,
-        val prompt: String
+        val prompt: String,
     ) : ToolCall()
-    
+
     /**
      * Directory listing tool
      * Params: path, ignore?
@@ -172,9 +174,9 @@ sealed class ToolCall {
         override val id: String,
         override val name: String = "LS",
         val path: String,
-        val ignore: List<String>? = null
+        val ignore: List<String>? = null,
     ) : ToolCall()
-    
+
     /**
      * File pattern matching tool
      * Params: pattern, path?
@@ -183,9 +185,9 @@ sealed class ToolCall {
         override val id: String,
         override val name: String = "Glob",
         val pattern: String,
-        val path: String? = null
+        val path: String? = null,
     ) : ToolCall()
-    
+
     /**
      * File writing tool
      * Params: file_path, content
@@ -194,9 +196,9 @@ sealed class ToolCall {
         override val id: String,
         override val name: String = "Write",
         val file_path: String,
-        val content: String
+        val content: String,
     ) : ToolCall()
-    
+
     /**
      * Generic fallback for MCP tools and unknown tools
      * Stores raw input parameters as JsonNode for flexibility
@@ -204,6 +206,6 @@ sealed class ToolCall {
     data class GenericTool(
         override val id: String,
         override val name: String,
-        val input: JsonNode
+        val input: JsonNode,
     ) : ToolCall()
 }

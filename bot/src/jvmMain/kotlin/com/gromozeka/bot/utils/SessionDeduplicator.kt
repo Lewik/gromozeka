@@ -1,17 +1,16 @@
 package com.gromozeka.bot.utils
 
 import com.gromozeka.bot.model.ClaudeLogEntry
-import kotlinx.serialization.json.*
 
 /**
  * Utility for deduplicating session messages caused by Claude Code CLI bug
  * where stream-json input format creates duplicate entries in session files.
  */
 object SessionDeduplicator {
-    
+
     /**
      * Remove duplicate entries using chain-based deduplication.
-     * 
+     *
      * Strategy:
      * 1. Build conversation chains using parentUuid links
      * 2. Identify duplicate chains by finding assistant messages with same message.id
@@ -22,20 +21,20 @@ object SessionDeduplicator {
         // Always keep non-BaseEntry items
         val nonBaseEntries = entries.filterNot { it is ClaudeLogEntry.BaseEntry }
         val baseEntries = entries.filterIsInstance<ClaudeLogEntry.BaseEntry>()
-        
+
         // Build conversation chains
         val chains = buildConversationChains(baseEntries)
-        
+
         // Find and remove duplicate chains
         val canonicalChains = removeDuplicateChains(chains)
-        
+
         // Flatten back to list and sort by timestamp
         val deduplicatedEntries = (nonBaseEntries + canonicalChains.flatten())
             .sortedBy { extractTimestamp(it) }
-        
+
         return deduplicatedEntries
     }
-    
+
     /**
      * Build conversation chains by following parentUuid links
      */
@@ -43,66 +42,66 @@ object SessionDeduplicator {
         val entryByUuid = entries.associateBy { it.uuid }
         val visited = mutableSetOf<String>()
         val chains = mutableListOf<List<ClaudeLogEntry.BaseEntry>>()
-        
+
         // Find chain starting points (entries with parentUuid=null or non-existent parent)
         val chainStarts = entries.filter { entry ->
             entry.parentUuid == null || entryByUuid[entry.parentUuid] == null
         }
-        
+
         // Build each chain
         for (start in chainStarts) {
             if (start.uuid in visited) continue
-            
+
             val chain = buildChainFromStart(start, entryByUuid, visited)
             if (chain.isNotEmpty()) {
                 chains.add(chain)
             }
         }
-        
+
         return chains
     }
-    
+
     /**
      * Build a single chain starting from given entry
      */
     private fun buildChainFromStart(
         start: ClaudeLogEntry.BaseEntry,
         entryByUuid: Map<String, ClaudeLogEntry.BaseEntry>,
-        visited: MutableSet<String>
+        visited: MutableSet<String>,
     ): List<ClaudeLogEntry.BaseEntry> {
         val chain = mutableListOf<ClaudeLogEntry.BaseEntry>()
         var current: ClaudeLogEntry.BaseEntry? = start
-        
+
         while (current != null && current.uuid !in visited) {
             visited.add(current.uuid)
             chain.add(current)
-            
+
             // Find next entry in chain (entry that has current as parent)
             current = entryByUuid.values.find { it.parentUuid == current!!.uuid }
         }
-        
+
         return chain
     }
-    
+
     /**
      * Remove duplicate chains by keeping the longest one for each duplicate group
      */
     private fun removeDuplicateChains(chains: List<List<ClaudeLogEntry.BaseEntry>>): List<List<ClaudeLogEntry.BaseEntry>> {
         // Group chains by assistant message IDs they contain
         val chainsByAssistantIds = mutableMapOf<Set<String>, MutableList<List<ClaudeLogEntry.BaseEntry>>>()
-        
+
         for (chain in chains) {
             val assistantIds = chain
                 .filterIsInstance<ClaudeLogEntry.AssistantEntry>()
                 .mapNotNull { extractAssistantMessageId(it) }
                 .toSet()
-            
+
             if (assistantIds.isNotEmpty()) {
                 // Check if this chain overlaps with existing groups
                 val overlappingGroups = chainsByAssistantIds.keys.filter { existingIds ->
                     assistantIds.intersect(existingIds).isNotEmpty()
                 }
-                
+
                 if (overlappingGroups.isEmpty()) {
                     // New unique chain
                     chainsByAssistantIds[assistantIds] = mutableListOf(chain)
@@ -121,14 +120,14 @@ object SessionDeduplicator {
                 chainsByAssistantIds[emptySet()] = mutableListOf(chain)
             }
         }
-        
+
         // For each group, keep the longest chain
         return chainsByAssistantIds.values.map { duplicateChains ->
             duplicateChains.maxByOrNull { it.size } ?: duplicateChains.first()
         }
     }
-    
-    
+
+
     /**
      * Extract assistant message ID for deduplication comparison
      */
@@ -139,9 +138,8 @@ object SessionDeduplicator {
             null
         }
     }
-    
-    
-    
+
+
     /**
      * Extract timestamp from any log entry type
      */
@@ -153,7 +151,7 @@ object SessionDeduplicator {
             is ClaudeLogEntry.SystemEntry -> entry.timestamp
         }
     }
-    
+
     /**
      * Statistics about deduplication results
      */
@@ -162,28 +160,28 @@ object SessionDeduplicator {
         val deduplicatedCount: Int,
         val duplicatesRemoved: Int,
         val userDuplicates: Int,
-        val assistantDuplicates: Int
+        val assistantDuplicates: Int,
     )
-    
+
     /**
      * Get statistics about the deduplication operation
      */
     fun getDeduplicationStats(
         original: List<ClaudeLogEntry>,
-        deduplicated: List<ClaudeLogEntry>
+        deduplicated: List<ClaudeLogEntry>,
     ): DeduplicationStats {
         val originalBaseEntries = original.filterIsInstance<ClaudeLogEntry.BaseEntry>()
         val deduplicatedBaseEntries = deduplicated.filterIsInstance<ClaudeLogEntry.BaseEntry>()
-        
+
         val originalUserEntries = originalBaseEntries.filterIsInstance<ClaudeLogEntry.UserEntry>()
         val originalAssistantEntries = originalBaseEntries.filterIsInstance<ClaudeLogEntry.AssistantEntry>()
-        
+
         val deduplicatedUserEntries = deduplicatedBaseEntries.filterIsInstance<ClaudeLogEntry.UserEntry>()
         val deduplicatedAssistantEntries = deduplicatedBaseEntries.filterIsInstance<ClaudeLogEntry.AssistantEntry>()
-        
+
         val userDuplicates = originalUserEntries.size - deduplicatedUserEntries.size
         val assistantDuplicates = originalAssistantEntries.size - deduplicatedAssistantEntries.size
-        
+
         return DeduplicationStats(
             originalCount = original.size,
             deduplicatedCount = deduplicated.size,

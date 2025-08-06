@@ -21,7 +21,7 @@ sealed class ClaudeLogEntry {
     data class SummaryEntry(
         val leafUuid: String,
         val summary: String,
-        override val type: String = "summary"
+        override val type: String = "summary",
     ) : ClaudeLogEntry()
 
     sealed class BaseEntry : ClaudeLogEntry() {
@@ -52,7 +52,7 @@ sealed class ClaudeLogEntry {
         val isMeta: Boolean? = null,
         val message: Message? = null,
         val toolUseResult: JsonElement? = null,
-        override val type: String = "user"
+        override val type: String = "user",
     ) : BaseEntry()
 
     @Serializable
@@ -70,7 +70,7 @@ sealed class ClaudeLogEntry {
         val requestId: String? = null,
         val message: Message? = null,
         val toolUseResult: JsonElement? = null,
-        override val type: String = "assistant"
+        override val type: String = "assistant",
     ) : BaseEntry()
 
     @Serializable
@@ -90,7 +90,7 @@ sealed class ClaudeLogEntry {
         val level: String,
         @SerialName("toolUseID")
         val toolUseId: String? = null,
-        override val type: String = "system"
+        override val type: String = "system",
     ) : BaseEntry()
 
     @OptIn(ExperimentalSerializationApi::class)
@@ -103,7 +103,7 @@ sealed class ClaudeLogEntry {
         @SerialName("user")
         data class UserMessage(
             val content: ClaudeMessageContent,
-            override val role: String = "user"
+            override val role: String = "user",
         ) : Message()
 
         @Serializable
@@ -118,7 +118,7 @@ sealed class ClaudeLogEntry {
             val stopSequence: String?,
             val type: String,
             val usage: UsageInfo,
-            override val role: String = "assistant"
+            override val role: String = "assistant",
         ) : Message()
     }
 
@@ -127,22 +127,22 @@ sealed class ClaudeLogEntry {
 
         @Serializable
         data class StringContent(
-            val content: String
+            val content: String,
         ) : ClaudeMessageContent()
 
         @Serializable
         data class ArrayContent(
-            val content: List<UserContentItem>
+            val content: List<UserContentItem>,
         ) : ClaudeMessageContent()
-        
+
         @Serializable
         data class GromozekaJsonContent(
-            val data: JsonObject
+            val data: JsonObject,
         ) : ClaudeMessageContent()
-        
+
         @Serializable
         data class UnknownJsonContent(
-            val json: JsonElement
+            val json: JsonElement,
         ) : ClaudeMessageContent()
     }
 
@@ -156,7 +156,7 @@ sealed class ClaudeLogEntry {
         @SerialName("text")
         data class TextItem(
             val text: String,
-            override val type: String = "text"
+            override val type: String = "text",
         ) : UserContentItem()
 
         @Serializable
@@ -165,7 +165,7 @@ sealed class ClaudeLogEntry {
             val content: ToolResultContent,
             @SerialName("tool_use_id")
             val toolUseId: String,
-            override val type: String = "tool_result"
+            override val type: String = "tool_result",
         ) : UserContentItem()
     }
 
@@ -181,14 +181,14 @@ sealed class ClaudeLogEntry {
             val content: String,
             @SerialName("is_error")
             val isError: Boolean? = null,
-            override val type: String = "string"
+            override val type: String = "string",
         ) : ToolResultContent()
 
         @Serializable
         @SerialName("array")
         data class ArrayToolResult(
             val content: List<UserContentItem.TextItem>,
-            override val type: String = "array"
+            override val type: String = "array",
         ) : ToolResultContent()
     }
 
@@ -202,7 +202,7 @@ sealed class ClaudeLogEntry {
         @SerialName("text")
         data class TextContent(
             val text: String,
-            override val type: String = "text"
+            override val type: String = "text",
         ) : AssistantContent()
 
         @Serializable
@@ -211,7 +211,7 @@ sealed class ClaudeLogEntry {
             val id: String,
             val name: String,
             val input: JsonElement,
-            override val type: String = "tool_use"
+            override val type: String = "tool_use",
         ) : AssistantContent()
 
         @Serializable
@@ -219,7 +219,7 @@ sealed class ClaudeLogEntry {
         data class ThinkingContent(
             val signature: String,
             val thinking: String,
-            override val type: String = "thinking"
+            override val type: String = "thinking",
         ) : AssistantContent()
     }
 
@@ -234,23 +234,23 @@ sealed class ClaudeLogEntry {
         @SerialName("output_tokens")
         val outputTokens: Int,
         @SerialName("service_tier")
-        val serviceTier: String? = null
+        val serviceTier: String? = null,
     )
 }
 
 @OptIn(ExperimentalSerializationApi::class)
 object ClaudeMessageContentSerializer : KSerializer<ClaudeLogEntry.ClaudeMessageContent> {
     override val descriptor = buildClassSerialDescriptor("ClaudeMessageContent")
-    
+
     override fun deserialize(decoder: Decoder): ClaudeLogEntry.ClaudeMessageContent {
         val element = decoder.decodeSerializableValue(JsonElement.serializer())
-        
+
         return when {
             // 1. Быстрая проверка - строка?
             element is JsonPrimitive && element.isString -> {
                 ClaudeLogEntry.ClaudeMessageContent.StringContent(element.content)
             }
-            
+
             // 2. Объект с type discriminator (Claude формат)
             element is JsonObject && element.containsKey("type") -> {
                 when (element["type"]?.jsonPrimitive?.content) {
@@ -258,16 +258,18 @@ object ClaudeMessageContentSerializer : KSerializer<ClaudeLogEntry.ClaudeMessage
                         val content = element["content"]?.jsonPrimitive?.content ?: ""
                         ClaudeLogEntry.ClaudeMessageContent.StringContent(content)
                     }
+
                     "array" -> {
-                        val content = element["content"]?.jsonArray?.map { 
+                        val content = element["content"]?.jsonArray?.map {
                             Json.decodeFromJsonElement<ClaudeLogEntry.UserContentItem>(it)
                         } ?: emptyList()
                         ClaudeLogEntry.ClaudeMessageContent.ArrayContent(content)
                     }
+
                     else -> ClaudeLogEntry.ClaudeMessageContent.UnknownJsonContent(element)
                 }
             }
-            
+
             // 3. Объект без type - пытаемся десериализовать в Громозека формат
             element is JsonObject -> {
                 try {
@@ -279,11 +281,11 @@ object ClaudeMessageContentSerializer : KSerializer<ClaudeLogEntry.ClaudeMessage
                     ClaudeLogEntry.ClaudeMessageContent.UnknownJsonContent(element)
                 }
             }
-            
+
             // 4. Массив - пытаемся как Claude array
             element is JsonArray -> {
                 try {
-                    val content = element.map { 
+                    val content = element.map {
                         Json.decodeFromJsonElement<ClaudeLogEntry.UserContentItem>(it)
                     }
                     ClaudeLogEntry.ClaudeMessageContent.ArrayContent(content)
@@ -291,29 +293,35 @@ object ClaudeMessageContentSerializer : KSerializer<ClaudeLogEntry.ClaudeMessage
                     ClaudeLogEntry.ClaudeMessageContent.UnknownJsonContent(element)
                 }
             }
-            
+
             // 5. Fallback
             else -> ClaudeLogEntry.ClaudeMessageContent.UnknownJsonContent(element)
         }
     }
-    
+
     override fun serialize(encoder: Encoder, value: ClaudeLogEntry.ClaudeMessageContent) {
         when (value) {
             is ClaudeLogEntry.ClaudeMessageContent.StringContent -> {
                 encoder.encodeString(value.content)
             }
+
             is ClaudeLogEntry.ClaudeMessageContent.ArrayContent -> {
-                encoder.encodeSerializableValue(ListSerializer(ClaudeLogEntry.UserContentItem.serializer()), value.content)
+                encoder.encodeSerializableValue(
+                    ListSerializer(ClaudeLogEntry.UserContentItem.serializer()),
+                    value.content
+                )
             }
+
             is ClaudeLogEntry.ClaudeMessageContent.GromozekaJsonContent -> {
                 encoder.encodeSerializableValue(JsonObject.serializer(), value.data)
             }
+
             is ClaudeLogEntry.ClaudeMessageContent.UnknownJsonContent -> {
                 encoder.encodeSerializableValue(JsonElement.serializer(), value.json)
             }
         }
     }
-    
+
     private fun parseAsGromozekaJson(obj: JsonObject) {
         // Проверяем что есть обязательное поле fullText
         if (!obj.containsKey("fullText")) {

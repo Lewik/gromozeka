@@ -1,7 +1,7 @@
 package com.gromozeka.bot
 
 object StreamMessageTestData {
-    
+
     val systemInitMessage = """{
         "type": "system",
         "subtype": "init",
@@ -11,7 +11,7 @@ object StreamMessageTestData {
         },
         "session_id": "00f8f214-a5c5-40cf-a07e-4a3b383a94e9"
     }"""
-    
+
     val systemErrorMessage = """{
         "type": "system",
         "subtype": "error",
@@ -20,7 +20,7 @@ object StreamMessageTestData {
             "code": 500
         }
     }"""
-    
+
     val userStringMessage = """{
         "type": "user",
         "message": {
@@ -29,7 +29,7 @@ object StreamMessageTestData {
         },
         "session_id": "00f8f214-a5c5-40cf-a07e-4a3b383a94e9"
     }"""
-    
+
     val userArrayMessage = """{
         "type": "user",
         "message": {
@@ -49,7 +49,7 @@ object StreamMessageTestData {
         "session_id": "00f8f214-a5c5-40cf-a07e-4a3b383a94e9",
         "parent_tool_use_id": "tool_456"
     }"""
-    
+
     val assistantTextMessage = """{
         "type": "assistant",
         "message": {
@@ -70,7 +70,7 @@ object StreamMessageTestData {
         },
         "session_id": "00f8f214-a5c5-40cf-a07e-4a3b383a94e9"
     }"""
-    
+
     val assistantToolUseMessage = """{
         "type": "assistant",
         "message": {
@@ -99,7 +99,7 @@ object StreamMessageTestData {
         },
         "session_id": "00f8f214-a5c5-40cf-a07e-4a3b383a94e9"
     }"""
-    
+
     val assistantThinkingMessage = """{
         "type": "assistant",
         "message": {
@@ -126,7 +126,7 @@ object StreamMessageTestData {
         },
         "session_id": "00f8f214-a5c5-40cf-a07e-4a3b383a94e9"
     }"""
-    
+
     val resultSuccessMessage = """{
         "type": "result",
         "subtype": "success",
@@ -144,7 +144,7 @@ object StreamMessageTestData {
             "service_tier": "standard"
         }
     }"""
-    
+
     val resultErrorMessage = """{
         "type": "result",
         "subtype": "error",
@@ -159,7 +159,7 @@ object StreamMessageTestData {
             "output_tokens": 0
         }
     }"""
-    
+
     val toolResultStringContent = """{
         "type": "user",
         "message": {
@@ -174,7 +174,7 @@ object StreamMessageTestData {
         },
         "session_id": "00f8f214-a5c5-40cf-a07e-4a3b383a94e9"
     }"""
-    
+
     val toolResultArrayContent = """{
         "type": "user",
         "message": {
@@ -199,7 +199,7 @@ object StreamMessageTestData {
         },
         "session_id": "00f8f214-a5c5-40cf-a07e-4a3b383a94e9"
     }"""
-    
+
     val complexAssistantMessage = """{
         "type": "assistant",
         "message": {
@@ -247,7 +247,7 @@ object StreamMessageTestData {
         },
         "session_id": "00f8f214-a5c5-40cf-a07e-4a3b383a94e9"
     }"""
-    
+
     val malformedJson = """{
         "type": "user",
         "message": {
@@ -255,7 +255,7 @@ object StreamMessageTestData {
             "content": "Missing closing brace"
         }
     """
-    
+
     val unknownMessageType = """{
         "type": "unknown_type",
         "data": "This should not deserialize to any known type"

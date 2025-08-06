@@ -6,7 +6,7 @@ import com.fasterxml.jackson.databind.JsonNode
 
 /**
  * Represents tool execution results in Claude Code session files.
- * 
+ *
  * Based on analysis of real session files, supporting different result formats
  * for different tool types with proper error handling.
  */
@@ -28,7 +28,7 @@ sealed class ToolResult {
     abstract val tool_use_id: String
     abstract val is_error: Boolean
     abstract val content: String?
-    
+
     /**
      * Bash command execution result
      * Contains stdout, stderr, exit info
@@ -40,11 +40,11 @@ sealed class ToolResult {
         val stdout: String,
         val stderr: String,
         val interrupted: Boolean = false,
-        val isImage: Boolean = false
+        val isImage: Boolean = false,
     ) : ToolResult() {
         val toolType: String = "Bash"
     }
-    
+
     /**
      * File operation results (Read, Edit, Write, MultiEdit)
      * Contains file content or operation status
@@ -54,11 +54,11 @@ sealed class ToolResult {
         override val is_error: Boolean,
         override val content: String?,
         val file_path: String? = null,
-        val operation: String? = null // "read" | "edit" | "write" | "multiedit"
+        val operation: String? = null, // "read" | "edit" | "write" | "multiedit"
     ) : ToolResult() {
         val toolType: String = "File"
     }
-    
+
     /**
      * Search operation results (Grep, Glob, LS)
      * Contains search results in various formats
@@ -69,11 +69,11 @@ sealed class ToolResult {
         override val content: String?,
         val matches_count: Int? = null,
         val files_found: List<String>? = null,
-        val search_type: String? = null // "grep" | "glob" | "ls"
+        val search_type: String? = null, // "grep" | "glob" | "ls"
     ) : ToolResult() {
         val toolType: String = "Search"
     }
-    
+
     /**
      * Web-related tool results (WebFetch, WebSearch)
      * Contains web content or search results
@@ -84,11 +84,11 @@ sealed class ToolResult {
         override val content: String?,
         val url: String? = null,
         val results_count: Int? = null,
-        val operation: String? = null // "fetch" | "search"
+        val operation: String? = null, // "fetch" | "search"
     ) : ToolResult() {
         val toolType: String = "Web"
     }
-    
+
     /**
      * MCP (Model Context Protocol) tool results
      * For tools like mcp__ide__getDiagnostics, mcp__voice-mode__converse
@@ -99,11 +99,11 @@ sealed class ToolResult {
         override val content: String?,
         val mcp_server: String? = null,
         val mcp_method: String? = null,
-        val data: JsonNode? = null
+        val data: JsonNode? = null,
     ) : ToolResult() {
         val toolType: String = "MCP"
     }
-    
+
     /**
      * Generic fallback for unknown or complex tool results
      * Stores raw result data as JsonNode for flexibility
@@ -112,7 +112,7 @@ sealed class ToolResult {
         override val tool_use_id: String,
         override val is_error: Boolean,
         override val content: String?,
-        val raw_data: JsonNode? = null
+        val raw_data: JsonNode? = null,
     ) : ToolResult() {
         val toolType: String = "Generic"
     }
@@ -122,18 +122,24 @@ sealed class ToolResult {
  * Utility functions for working with tool results
  */
 object ToolResultUtils {
-    
+
     /**
      * Creates appropriate ToolResult based on tool name and result data
      */
-    fun createFromToolName(toolName: String, toolUseId: String, isError: Boolean, content: String?, additionalData: Map<String, Any>? = null): ToolResult {
+    fun createFromToolName(
+        toolName: String,
+        toolUseId: String,
+        isError: Boolean,
+        content: String?,
+        additionalData: Map<String, Any>? = null,
+    ): ToolResult {
         return when (toolName) {
             "Bash" -> {
                 val stdout = additionalData?.get("stdout") as? String ?: ""
                 val stderr = additionalData?.get("stderr") as? String ?: ""
                 val interrupted = additionalData?.get("interrupted") as? Boolean ?: false
                 val isImage = additionalData?.get("isImage") as? Boolean ?: false
-                
+
                 ToolResult.BashResult(
                     tool_use_id = toolUseId,
                     is_error = isError,
@@ -144,7 +150,7 @@ object ToolResultUtils {
                     isImage = isImage
                 )
             }
-            
+
             "Edit", "Read", "Write", "MultiEdit" -> {
                 ToolResult.FileResult(
                     tool_use_id = toolUseId,
@@ -154,7 +160,7 @@ object ToolResultUtils {
                     operation = toolName.lowercase()
                 )
             }
-            
+
             "Grep", "Glob", "LS" -> {
                 ToolResult.SearchResult(
                     tool_use_id = toolUseId,
@@ -165,7 +171,7 @@ object ToolResultUtils {
                     search_type = toolName.lowercase()
                 )
             }
-            
+
             "WebFetch", "WebSearch" -> {
                 ToolResult.WebResult(
                     tool_use_id = toolUseId,
@@ -176,7 +182,7 @@ object ToolResultUtils {
                     operation = if (toolName == "WebFetch") "fetch" else "search"
                 )
             }
-            
+
             else -> {
                 if (toolName.startsWith("mcp__")) {
                     val parts = toolName.split("__")

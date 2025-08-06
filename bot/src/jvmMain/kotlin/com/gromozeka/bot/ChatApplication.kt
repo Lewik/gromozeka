@@ -18,29 +18,22 @@ import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import com.gromozeka.bot.model.ChatSession
 import com.gromozeka.bot.model.Session
-import com.gromozeka.bot.services.ClaudeCodeStreamingWrapper
-import com.gromozeka.bot.services.SessionService
-import com.gromozeka.shared.domain.message.ChatMessage
-import com.gromozeka.bot.services.OpenAiBalanceService
-import com.gromozeka.bot.services.SessionJsonlService
-import com.gromozeka.bot.services.SttService
-import com.gromozeka.bot.services.StreamLogger
-import com.gromozeka.bot.services.TtsService
+import com.gromozeka.bot.services.*
 import com.gromozeka.bot.ui.ChatScreen
 import com.gromozeka.bot.ui.SessionListScreen
-import com.gromozeka.bot.services.SettingsService
+import com.gromozeka.shared.domain.message.ChatMessage
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 import org.springframework.beans.factory.getBean
+import org.springframework.boot.WebApplicationType
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.builder.SpringApplicationBuilder
-import org.springframework.boot.WebApplicationType
 import java.io.File
 
 fun main() {
     System.setProperty("java.awt.headless", "false")
-    
+
     // Check Claude Code is installed before starting
     val claudeProjectsDir = File(System.getProperty("user.home"), ".claude/projects")
     if (!claudeProjectsDir.exists()) {
@@ -57,11 +50,11 @@ fun main() {
         .web(WebApplicationType.NONE)
         .run()
     println("[GROMOZEKA] Spring context initialized successfully")
-    
+
     val settingsService = context.getBean<SettingsService>()
     settingsService.initialize()
     println("[GROMOZEKA] Starting application in ${settingsService.mode.name} mode...")
-    
+
     val sttService = context.getBean<SttService>()
     val ttsService = context.getBean<TtsService>()
     val openAiBalanceService = context.getBean<OpenAiBalanceService>()
@@ -95,7 +88,7 @@ fun ApplicationScope.ChatWindow(
     openAiBalanceService: OpenAiBalanceService,
     settingsService: SettingsService,
     sessionJsonlService: SessionJsonlService,
-    context: org.springframework.context.ConfigurableApplicationContext
+    context: org.springframework.context.ConfigurableApplicationContext,
 ) {
     val coroutineScope = rememberCoroutineScope()
     val scrollState = rememberScrollState()
@@ -118,7 +111,11 @@ fun ApplicationScope.ChatWindow(
     var showSessionList by remember { mutableStateOf(true) }
     var selectedSession by remember { mutableStateOf<ChatSession?>(null) }
     var currentSession by remember { mutableStateOf<Session?>(null) }
-    val isWaitingForResponse by currentSession?.isWaitingForResponse?.collectAsState() ?: remember { mutableStateOf(false) }
+    val isWaitingForResponse by currentSession?.isWaitingForResponse?.collectAsState() ?: remember {
+        mutableStateOf(
+            false
+        )
+    }
     var isRecording by remember { mutableStateOf(false) }
 
     var showBalanceDialog by remember { mutableStateOf(false) }
@@ -128,7 +125,7 @@ fun ApplicationScope.ChatWindow(
         initialized = true
         scrollState.animateScrollTo(scrollState.maxValue)
     }
-    
+
     // Subscribe to current session's message stream (true streaming)
     LaunchedEffect(currentSession) {
         currentSession?.let { session ->
@@ -137,13 +134,13 @@ fun ApplicationScope.ChatWindow(
                 println("[ChatApp] Message content: ${newMessage.content.size} items, first: ${newMessage.content.firstOrNull()?.javaClass?.simpleName}")
                 chatHistory.add(newMessage)  // Incremental updates
                 println("[ChatApp] ChatHistory now has ${chatHistory.size} messages, last is ${chatHistory.lastOrNull()?.messageType}")
-                
+
                 // TTS для ASSISTANT сообщений (только новых, не исторических)
                 if (newMessage.messageType == ChatMessage.MessageType.ASSISTANT && !newMessage.isHistorical) {
                     println("[ChatApp] Processing TTS for new assistant message")
                     val content = newMessage.content.firstOrNull()
                     println("[ChatApp] TTS Content type: ${content?.javaClass?.simpleName}")
-                    
+
                     val structured = when (content) {
                         is ChatMessage.ContentItem.Message -> content.structured
                         is ChatMessage.ContentItem.IntermediateMessage -> content.structured
@@ -151,7 +148,7 @@ fun ApplicationScope.ChatWindow(
                         is ChatMessage.ContentItem.SystemStructuredMessage -> content.structured
                         else -> null
                     }
-                    
+
                     if (structured != null) {
                         val ttsText = structured.ttsText
                         println("[ChatApp] TTS text: '$ttsText'")
@@ -174,12 +171,12 @@ fun ApplicationScope.ChatWindow(
             }
         }
     }
-    
+
     // Clear history when switching sessions
     LaunchedEffect(currentSession) {
         chatHistory.clear()
     }
-    
+
     // Subscribe to current session's sessionId changes
     LaunchedEffect(currentSession) {
         currentSession?.let { session ->
@@ -192,7 +189,7 @@ fun ApplicationScope.ChatWindow(
             }
         }
     }
-    
+
     // Subscribe to current session's events
     LaunchedEffect(currentSession) {
         currentSession?.let { session ->
@@ -201,20 +198,23 @@ fun ApplicationScope.ChatWindow(
                     is com.gromozeka.bot.model.StreamSessionEvent.MessagesUpdated -> {
                         println("[ChatApp] Messages updated: ${event.messageCount} messages")
                     }
+
                     is com.gromozeka.bot.model.StreamSessionEvent.Error -> {
                         println("[ChatApp] Session error: ${event.message}")
                     }
+
                     is com.gromozeka.bot.model.StreamSessionEvent.SessionIdChangedOnStart -> {
                         println("[ChatApp] Session ID changed to: ${event.newSessionId}")
                         // UI is automatically updated via sessionId StateFlow subscription above
                         // No manual session replacement needed!
                     }
+
                     else -> println("[ChatApp] Session event: $event")
                 }
             }
         }
     }
-    
+
     // Cleanup when composable is disposed
     DisposableEffect(Unit) {
         onDispose {
@@ -230,7 +230,7 @@ fun ApplicationScope.ChatWindow(
                 // Stop existing session if running
                 currentSession?.stop()
                 currentSession = null
-                
+
                 // Create and start new active session
                 val activeSession = sessionService.createSession(projectPath)
                 activeSession.start(coroutineScope)
@@ -291,10 +291,12 @@ fun ApplicationScope.ChatWindow(
         }
     }
 
-    Window(onCloseRequest = { 
-        println("[GROMOZEKA] Application window closing - stopping all sessions...")
-        exitApplication() 
-    }, title = "🤖 Громозека${if (settingsService.mode == com.gromozeka.bot.settings.AppMode.DEV) " [DEV]" else ""}${selectedSession?.projectPath?.let { " • $it" } ?: ""}") {
+    Window(
+        onCloseRequest = {
+            println("[GROMOZEKA] Application window closing - stopping all sessions...")
+            exitApplication()
+        },
+        title = "🤖 Громозека${if (settingsService.mode == com.gromozeka.bot.settings.AppMode.DEV) " [DEV]" else ""}${selectedSession?.projectPath?.let { " • $it" } ?: ""}") {
         if (initialized) {
             if (showSessionList) {
                 SessionListScreen(
@@ -303,19 +305,19 @@ fun ApplicationScope.ChatWindow(
                         currentSession?.let { currentSess ->
                             coroutineScope.launch { currentSess.stop() }
                         }
-                        
+
                         selectedSession = session
                         currentSession = sessionObj
                         chatHistory.clear()
                         chatHistory.addAll(messages)
                         showSessionList = false
-                        
+
                         // Start the session with resume capability
                         coroutineScope.launch {
                             try {
                                 // Pass the old session ID for history loading
                                 sessionObj.start(coroutineScope, resumeSessionId = session.sessionId)
-                                
+
                                 // Session started successfully
                                 println("[ChatApplication] Session started with resume for: ${session.sessionId}")
                             } catch (e: Exception) {
@@ -339,11 +341,11 @@ fun ApplicationScope.ChatWindow(
                     isWaitingForResponse = isWaitingForResponse,
                     autoSend = autoSend,
                     onAutoSendChange = { autoSend = it },
-                    onBackToSessionList = { 
-                        coroutineScope.launch { 
+                    onBackToSessionList = {
+                        coroutineScope.launch {
                             currentSession?.stop()
                         }
-                        showSessionList = true 
+                        showSessionList = true
                     },
                     onNewSession = {
                         val currentProjectPath = selectedSession?.projectPath ?: "/Users/lewik/code/gromozeka"

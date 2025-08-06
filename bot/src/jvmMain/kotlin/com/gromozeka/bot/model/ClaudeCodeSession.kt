@@ -9,15 +9,15 @@ import kotlinx.serialization.json.JsonElement
  * Uses strict parsing - any extra or missing fields will cause serialization errors
  */
 sealed class ClaudeCodeSessionEntryV1_0 {
-    
+
     @Serializable
     @SerialName("summary")
     data class Summary(
         val type: String,
         val summary: String,
-        val leafUuid: String
+        val leafUuid: String,
     ) : ClaudeCodeSessionEntryV1_0()
-    
+
     @Serializable
     data class Message(
         val type: String,
@@ -34,7 +34,7 @@ sealed class ClaudeCodeSessionEntryV1_0 {
         val requestId: String? = null,
         val toolUseResult: JsonElement? = null,
         val isCompactSummary: Boolean? = null,
-        val isMeta: Boolean? = null
+        val isMeta: Boolean? = null,
     ) : ClaudeCodeSessionEntryV1_0()
 }
 
@@ -47,9 +47,9 @@ data class MessageContent(
     val model: String? = null,
     @SerialName("stop_reason")
     val stopReason: String? = null,
-    @SerialName("stop_sequence") 
+    @SerialName("stop_sequence")
     val stopSequence: String? = null,
-    val usage: Usage? = null
+    val usage: Usage? = null,
 )
 
 @Serializable
@@ -62,7 +62,7 @@ data class ContentItem(
     @SerialName("tool_use_id")
     val toolUseId: String? = null,
     @SerialName("is_error")
-    val isError: Boolean? = null
+    val isError: Boolean? = null,
 )
 
 @Serializable
@@ -76,7 +76,7 @@ data class Usage(
     @SerialName("output_tokens")
     val outputTokens: Int,
     @SerialName("service_tier")
-    val serviceTier: String
+    val serviceTier: String,
 )
 
 @Serializable
@@ -89,7 +89,7 @@ data class ToolUseResult(
     val file: FileResult? = null,
     val mode: String? = null,
     val filenames: List<String>? = null,
-    val numFiles: Int? = null
+    val numFiles: Int? = null,
 )
 
 @Serializable
@@ -98,5 +98,5 @@ data class FileResult(
     val content: String,
     val numLines: Int,
     val startLine: Int,
-    val totalLines: Int
+    val totalLines: Int,
 )

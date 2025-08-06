@@ -15,34 +15,32 @@ import androidx.compose.ui.unit.dp
 import com.gromozeka.bot.model.ChatSession
 import com.gromozeka.bot.model.ProjectGroup
 import com.gromozeka.bot.model.Session
-import com.gromozeka.bot.services.ClaudeCodeStreamingWrapper
-import com.gromozeka.bot.services.SessionService
 import com.gromozeka.bot.services.SessionJsonlService
+import com.gromozeka.bot.services.SessionService
 import com.gromozeka.shared.domain.message.ChatMessage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import kotlinx.coroutines.Dispatchers
+
 @Composable
 fun SessionListScreen(
     onSessionSelected: (ChatSession, List<ChatMessage>, Session) -> Unit,
     coroutineScope: CoroutineScope,
     onNewSession: (String) -> Unit,
     sessionJsonlService: SessionJsonlService,
-    context: org.springframework.context.ConfigurableApplicationContext
+    context: org.springframework.context.ConfigurableApplicationContext,
 ) {
     var allSessions by remember { mutableStateOf<List<ChatSession>>(emptyList()) }
     var projectGroups by remember { mutableStateOf<List<ProjectGroup>>(emptyList()) }
     var expandedProjects by remember { mutableStateOf<Set<String>>(emptySet()) }
     var isLoading by remember { mutableStateOf(true) }
-    
+
     // Load sessions on first composition
     LaunchedEffect(Unit) {
         isLoading = true
         try {
             val loadedSessions = sessionJsonlService.loadAllSessions()
             allSessions = loadedSessions
-            
+
             // Group sessions by project
             val groupedProjects = loadedSessions
                 .groupBy { it.projectPath }
@@ -54,11 +52,11 @@ fun SessionListScreen(
                         sessions = sessions
                     )
                 }
-            
+
             projectGroups = groupedProjects.sortedByDescending { projectGroup ->
                 projectGroup.sessionCount()
             }
-                
+
             println("[SessionListScreen] Loaded ${loadedSessions.size} sessions in ${projectGroups.size} projects")
         } catch (e: Exception) {
             println("[SessionListScreen] Error loading sessions: ${e.message}")
@@ -110,36 +108,41 @@ fun SessionListScreen(
                     val recentSessions = allSessions
                         .sortedByDescending { it.lastTimestamp }
                         .take(3)
-                    
+
                     if (recentSessions.isNotEmpty()) {
                         Text(
                             text = "Последние сессии",
                             style = MaterialTheme.typography.h6,
                             modifier = Modifier.padding(bottom = 8.dp)
                         )
-                        
+
                         recentSessions.forEach { session ->
                             SessionItem(
                                 session = session,
                                 onSessionClick = { clickedSession ->
-                                    coroutineScope.handleSessionClick(clickedSession, onSessionSelected, sessionJsonlService, context)
+                                    coroutineScope.handleSessionClick(
+                                        clickedSession,
+                                        onSessionSelected,
+                                        sessionJsonlService,
+                                        context
+                                    )
                                 },
                                 isGrouped = false
                             )
                         }
-                        
+
                         Divider(
                             modifier = Modifier.padding(vertical = 16.dp),
                             color = MaterialTheme.colors.onSurface.copy(alpha = 0.12f)
                         )
-                        
+
                         Text(
                             text = "Все проекты",
                             style = MaterialTheme.typography.h6,
                             modifier = Modifier.padding(bottom = 8.dp)
                         )
                     }
-                    
+
                     // Show grouped sessions
                     projectGroups.forEach { group ->
                         ProjectGroupHeader(
@@ -154,20 +157,25 @@ fun SessionListScreen(
                             },
                             onNewSessionClick = onNewSession
                         )
-                        
+
                         if (expandedProjects.contains(group.projectPath)) {
                             // New session button first
                             NewSessionButton(
                                 projectPath = group.projectPath,
                                 onNewSessionClick = onNewSession
                             )
-                            
+
                             // Then existing sessions
                             group.sessions.forEach { session ->
                                 SessionItem(
                                     session = session,
                                     onSessionClick = { clickedSession ->
-                                        coroutineScope.handleSessionClick(clickedSession, onSessionSelected, sessionJsonlService, context)
+                                        coroutineScope.handleSessionClick(
+                                            clickedSession,
+                                            onSessionSelected,
+                                            sessionJsonlService,
+                                            context
+                                        )
                                     },
                                     isGrouped = true
                                 )
@@ -301,14 +309,14 @@ private fun CoroutineScope.handleSessionClick(
     clickedSession: ChatSession,
     onSessionSelected: (ChatSession, List<ChatMessage>, Session) -> Unit,
     sessionJsonlService: SessionJsonlService,
-    context: org.springframework.context.ConfigurableApplicationContext
+    context: org.springframework.context.ConfigurableApplicationContext,
 ) {
     launch {
         try {
             // Create new Session that will load history during start
             val sessionService = context.getBean(SessionService::class.java)
             val session = sessionService.createSession(clickedSession.projectPath)
-            
+
             // Pass session to parent - it will handle Claude process management  
             // The parent will call session.start() with resumeSessionId
             onSessionSelected(clickedSession, emptyList(), session)

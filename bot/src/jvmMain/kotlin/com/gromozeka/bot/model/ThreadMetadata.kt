@@ -4,5 +4,5 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class ThreadMetadata(
-    val threadId: String
+    val threadId: String,
 )

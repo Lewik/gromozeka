@@ -9,11 +9,11 @@ import java.io.File
 
 class ClaudeCodeSessionParser {
 
-    private val json = Json { 
+    private val json = Json {
         ignoreUnknownKeys = false // strict parsing - fail on unknown fields
         isLenient = false
     }
-    
+
     /**
      * Parse a single JSONL line into a session entry
      * @throws IllegalArgumentException if version doesn't match or type is unknown
@@ -21,27 +21,30 @@ class ClaudeCodeSessionParser {
      */
     fun parseJsonLine(line: String): ClaudeCodeSessionEntryV1_0? {
         if (line.isBlank()) return null
-        
+
         try {
             val jsonObject = json.parseToJsonElement(line).jsonObject
             val type = jsonObject["type"]?.jsonPrimitive?.content
-            
+
             println("[ClaudeCodeSessionParser] Parsing JSONL line, type: $type")
-            
+
             return when (type) {
                 "summary" -> {
                     println("[ClaudeCodeSessionParser] Decoding as Summary")
                     json.decodeFromString<ClaudeCodeSessionEntryV1_0.Summary>(line)
                 }
+
                 "user", "assistant" -> {
                     println("[ClaudeCodeSessionParser] Decoding as Message (type: $type)")
                     json.decodeFromString<ClaudeCodeSessionEntryV1_0.Message>(line)
                 }
+
                 null -> {
                     println("[ClaudeCodeSessionParser] ERROR: Missing 'type' field in JSON")
                     println("  Line: $line")
                     throw IllegalArgumentException("Missing 'type' field in JSON")
                 }
+
                 else -> {
                     println("[ClaudeCodeSessionParser] ERROR: Unknown entry type: $type")
                     println("  Line: $line")
@@ -54,7 +57,7 @@ class ClaudeCodeSessionParser {
             throw e
         }
     }
-    
+
     /**
      * Parse entire session file
      * @return List of successfully parsed entries
@@ -64,7 +67,7 @@ class ClaudeCodeSessionParser {
         if (!file.exists()) {
             throw IllegalArgumentException("Session file does not exist: ${file.absolutePath}")
         }
-        
+
         return file.readLines()
             .mapIndexedNotNull { index, line ->
                 try {
@@ -82,7 +85,7 @@ class ClaudeCodeSessionParser {
                 }
             }
     }
-    
+
     /**
      * Parse session file strictly - fail on any parsing error
      */
@@ -90,7 +93,7 @@ class ClaudeCodeSessionParser {
         if (!file.exists()) {
             throw IllegalArgumentException("Session file does not exist: ${file.absolutePath}")
         }
-        
+
         return file.readLines()
             .mapIndexed { index, line ->
                 try {

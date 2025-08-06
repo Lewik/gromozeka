@@ -11,7 +11,7 @@ data class ChatSession(
     val firstMessage: String,
     val lastTimestamp: Instant,
     val messageCount: Int,
-    val preview: String
+    val preview: String,
 ) {
     /**
      * Formatted preview for display in session list
@@ -21,7 +21,7 @@ data class ChatSession(
     } else {
         preview
     }
-    
+
     /**
      * Formatted timestamp for display
      */
@@ -29,7 +29,7 @@ data class ChatSession(
         val now = kotlinx.datetime.Clock.System.now()
         val duration = now - lastTimestamp
         val exactTime = lastTimestamp.toString().substring(0, 16).replace('T', ' ')
-        
+
         val relativeTime = when {
             duration.inWholeMinutes < 1 -> "сейчас"
             duration.inWholeMinutes < 60 -> "${duration.inWholeMinutes}м назад"
@@ -37,14 +37,14 @@ data class ChatSession(
             duration.inWholeDays < 7 -> "${duration.inWholeDays}д назад"
             else -> null
         }
-        
+
         return if (relativeTime != null) {
             "$exactTime ($relativeTime)"
         } else {
             exactTime
         }
     }
-    
+
     /**
      * Display project name (last part of path)
      */

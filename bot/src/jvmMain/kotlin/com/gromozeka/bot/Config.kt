@@ -1,7 +1,5 @@
 package com.gromozeka.bot
 
-import app.cash.sqldelight.driver.jdbc.sqlite.JdbcSqliteDriver
-import com.gromozeka.bot.db.ChatDatabase
 import com.gromozeka.bot.services.SttService
 import com.gromozeka.bot.services.TtsService
 import io.ktor.client.*
@@ -14,7 +12,6 @@ import org.springframework.ai.openai.OpenAiAudioTranscriptionModel
 import org.springframework.ai.openai.OpenAiChatModel
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
-import java.io.File
 
 @Configuration
 class Config {

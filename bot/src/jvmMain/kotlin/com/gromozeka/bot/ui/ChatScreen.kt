@@ -3,7 +3,6 @@ package com.gromozeka.bot.ui
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.ui.draw.alpha
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
@@ -15,21 +14,17 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.key.Key
-import androidx.compose.ui.input.key.KeyEventType
-import androidx.compose.ui.input.key.isShiftPressed
-import androidx.compose.ui.input.key.key
-import androidx.compose.ui.input.key.onPreviewKeyEvent
-import androidx.compose.ui.input.key.type
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.input.key.*
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import com.gromozeka.bot.model.ChatSession
 import com.gromozeka.bot.services.SttService
 import com.gromozeka.bot.services.TtsService
 import com.gromozeka.shared.domain.message.ChatMessage
-import kotlinx.serialization.json.JsonElement
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.JsonElement
 
 @Composable
 fun ChatScreen(
@@ -146,9 +141,9 @@ fun ChatScreen(
                 )
                 Spacer(modifier = Modifier.width(16.dp))
                 Button(
-                    onClick = { 
-                        coroutineScope.launch { 
-                            onInterrupt() 
+                    onClick = {
+                        coroutineScope.launch {
+                            onInterrupt()
                         }
                     },
                     colors = ButtonDefaults.buttonColors(backgroundColor = MaterialTheme.colors.error),
@@ -207,6 +202,7 @@ private fun MessageItem(message: ChatMessage) {
                             style = MaterialTheme.typography.body2,
                         )
                     }
+
                     is ChatMessage.ContentItem.ToolCall -> {
                         Text(
                             text = "🔧 Tool: ${content.call::class.simpleName}",
@@ -214,6 +210,7 @@ private fun MessageItem(message: ChatMessage) {
                             color = MaterialTheme.colors.primary
                         )
                     }
+
                     is ChatMessage.ContentItem.ToolResult -> {
                         Text(
                             text = "📊 Tool Result",
@@ -221,6 +218,7 @@ private fun MessageItem(message: ChatMessage) {
                             color = if (content.isError) MaterialTheme.colors.error else MaterialTheme.colors.secondary
                         )
                     }
+
                     is ChatMessage.ContentItem.Thinking -> {
                         Text(
                             text = "🤔 ${content.thinking}",
@@ -228,6 +226,7 @@ private fun MessageItem(message: ChatMessage) {
                             color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
                         )
                     }
+
                     is ChatMessage.ContentItem.System -> {
                         Text(
                             text = "⚙️ ${content.content}",
@@ -235,6 +234,7 @@ private fun MessageItem(message: ChatMessage) {
                             color = MaterialTheme.colors.onSurface.copy(alpha = 0.8f)
                         )
                     }
+
                     is ChatMessage.ContentItem.Media -> {
                         Text(
                             text = "📎 Media: ${content.mimeType}",
@@ -242,15 +242,19 @@ private fun MessageItem(message: ChatMessage) {
                             color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
                         )
                     }
+
                     is ChatMessage.ContentItem.IntermediateMessage -> {
                         StructuredMessageTemplate(content, isIntermediate = true)
                     }
+
                     is ChatMessage.ContentItem.FinalResultMessage -> {
                         StructuredMessageTemplate(content, isIntermediate = false)
                     }
+
                     is ChatMessage.ContentItem.SystemStructuredMessage -> {
                         StructuredMessageTemplate(content, isIntermediate = false)
                     }
+
                     is ChatMessage.ContentItem.UnknownJson -> {
                         Column {
                             Text(
@@ -274,8 +278,8 @@ private fun MessageItem(message: ChatMessage) {
 
 @Composable
 private fun StructuredMessageTemplate(
-    data: ChatMessage.ContentItem, 
-    isIntermediate: Boolean
+    data: ChatMessage.ContentItem,
+    isIntermediate: Boolean,
 ) {
     // Extract structured data from different message types
     val (text, structured) = when (data) {
@@ -284,7 +288,7 @@ private fun StructuredMessageTemplate(
         is ChatMessage.ContentItem.SystemStructuredMessage -> data.text to data.structured
         else -> return // Shouldn't happen, but safe fallback
     }
-    
+
     val alpha = if (isIntermediate) 0.6f else 1.0f
     val titleText = when (data) {
         is ChatMessage.ContentItem.IntermediateMessage -> "🔄 Обработка..."
@@ -292,7 +296,7 @@ private fun StructuredMessageTemplate(
         is ChatMessage.ContentItem.SystemStructuredMessage -> "⚙️ Система"
         else -> "🤖 Громозека"
     }
-    
+
     Card(
         modifier = Modifier.fillMaxWidth().alpha(alpha),
         backgroundColor = MaterialTheme.colors.secondary.copy(alpha = if (isIntermediate) 0.05f else 0.1f),
@@ -312,14 +316,14 @@ private fun StructuredMessageTemplate(
                     color = MaterialTheme.colors.secondary.copy(alpha = alpha)
                 )
             }
-            
+
             // Отображаем основной контент
             Text(
                 text = text,
                 style = MaterialTheme.typography.body2,
                 color = MaterialTheme.colors.onSurface.copy(alpha = alpha)
             )
-            
+
             // Дополнительная информация мелким шрифтом
             if (structured != null && (structured.ttsText != null || structured.voiceTone != null)) {
                 Spacer(modifier = Modifier.height(4.dp))

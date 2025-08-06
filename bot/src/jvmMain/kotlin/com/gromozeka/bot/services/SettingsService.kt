@@ -55,7 +55,7 @@ class SettingsService {
     private fun determineMode(): AppMode {
         val modeEnv = System.getenv("GROMOZEKA_MODE")
         println("[SettingsService] Environment variable GROMOZEKA_MODE = $modeEnv")
-        
+
         return when (modeEnv?.lowercase()) {
             "dev", "development" -> AppMode.DEV
             "prod", "production" -> AppMode.PROD

@@ -7,9 +7,9 @@ import org.springframework.stereotype.Service
 class SessionService(
     private val claudeCodeStreamingWrapper: ClaudeCodeStreamingWrapper,
     private val sessionJsonlService: SessionJsonlService,
-    private val settingsService: SettingsService
+    private val settingsService: SettingsService,
 ) {
-    
+
     fun createSession(
         projectPath: String,
         claudeModel: String = settingsService.settings.claudeModel,

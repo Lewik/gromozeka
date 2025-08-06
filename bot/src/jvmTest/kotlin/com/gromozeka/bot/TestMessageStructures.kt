@@ -20,7 +20,7 @@ sealed class TestMessageContent {
     @SerialName("text")
     data class Text(
         val text: String,
-        override val type: String = "text"
+        override val type: String = "text",
     ) : TestMessageContent()
 
     @Serializable
@@ -29,7 +29,7 @@ sealed class TestMessageContent {
         val id: String,
         val name: String,
         val input: JsonElement,
-        override val type: String = "tool_use"
+        override val type: String = "tool_use",
     ) : TestMessageContent()
 
     @Serializable
@@ -38,7 +38,7 @@ sealed class TestMessageContent {
         val tool_use_id: String,
         val content: JsonElement? = null,
         val is_error: Boolean? = null,
-        override val type: String = "tool_result"
+        override val type: String = "tool_result",
     ) : TestMessageContent()
 
     @Serializable
@@ -46,7 +46,7 @@ sealed class TestMessageContent {
     data class Thinking(
         val thinking: String,
         val signature: String,
-        override val type: String = "thinking"
+        override val type: String = "thinking",
     ) : TestMessageContent()
 }
 
@@ -58,7 +58,7 @@ data class TestMessage(
     val model: String? = null,
     val stop_reason: String? = null,
     val stop_sequence: String? = null,
-    val usage: JsonElement? = null
+    val usage: JsonElement? = null,
 )
 
 @Serializable
@@ -68,5 +68,5 @@ data class TestLogEntry(
     val uuid: String,
     val sessionId: String? = null,
     val message: TestMessage? = null,
-    val toolUseResult: JsonElement? = null
+    val toolUseResult: JsonElement? = null,
 )

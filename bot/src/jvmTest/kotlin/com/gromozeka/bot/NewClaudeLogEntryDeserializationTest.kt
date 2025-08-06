@@ -1,13 +1,9 @@
 package com.gromozeka.bot
 
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.decodeFromString
-import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
+import org.junit.jupiter.api.Test
 
 class NewClaudeLogEntryDeserializationTest {
 
@@ -62,7 +58,7 @@ class NewClaudeLogEntryDeserializationTest {
             },
             "toolUseResult": {"result": "success"}
         }"""
-        
+
         val entry = json.decodeFromString<TestLogEntry>(entryJson)
         assertNotNull(entry)
         assertEquals("user", entry.type)
@@ -89,7 +85,7 @@ class NewClaudeLogEntryDeserializationTest {
                 "model": "claude-3-5-sonnet-20241022"
             }
         }"""
-        
+
         val entry = json.decodeFromString<TestLogEntry>(entryJson)
         assertNotNull(entry)
         assertEquals("assistant", entry.type)

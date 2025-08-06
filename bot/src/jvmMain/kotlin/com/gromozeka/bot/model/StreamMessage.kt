@@ -2,8 +2,9 @@ package com.gromozeka.bot.model
 
 import kotlinx.serialization.*
 import kotlinx.serialization.builtins.ListSerializer
-import kotlinx.serialization.descriptors.*
-import kotlinx.serialization.encoding.*
+import kotlinx.serialization.descriptors.buildClassSerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.*
 
 @OptIn(ExperimentalSerializationApi::class)
@@ -28,7 +29,7 @@ sealed class StreamMessage {
         val slashCommands: List<String>? = null,
         val apiKeySource: String? = null,
         val data: JsonObject? = null,  // Fallback for other fields
-        override val type: String = "system"
+        override val type: String = "system",
     ) : StreamMessage()
 
     @Serializable
@@ -39,7 +40,7 @@ sealed class StreamMessage {
         val sessionId: String,
         @SerialName("parent_tool_use_id")
         val parentToolUseId: String? = null,
-        override val type: String = "user"
+        override val type: String = "user",
     ) : StreamMessage()
 
     @Serializable
@@ -50,7 +51,7 @@ sealed class StreamMessage {
         val sessionId: String,
         @SerialName("parent_tool_use_id")
         val parentToolUseId: String? = null,
-        override val type: String = "assistant"
+        override val type: String = "assistant",
     ) : StreamMessage()
 
     @Serializable
@@ -71,7 +72,7 @@ sealed class StreamMessage {
         val totalCostUsd: Double? = null,
         val usage: UsageInfo? = null,
         val result: String? = null,
-        override val type: String = "result"
+        override val type: String = "result",
     ) : StreamMessage()
 
     @Serializable
@@ -80,14 +81,14 @@ sealed class StreamMessage {
         @SerialName("request_id")
         val requestId: String,
         val request: ControlRequest,
-        override val type: String = "control_request"
+        override val type: String = "control_request",
     ) : StreamMessage()
 
     @Serializable
     @SerialName("control_response")
     data class ControlResponseMessage(
         val response: ControlResponse,
-        override val type: String = "control_response"
+        override val type: String = "control_response",
     ) : StreamMessage()
 }
 
@@ -101,7 +102,7 @@ sealed class StreamMessageContent {
     @SerialName("user")
     data class UserContent(
         val content: ContentItemsUnion,
-        override val role: String = "user"
+        override val role: String = "user",
     ) : StreamMessageContent()
 
     @Serializable
@@ -116,7 +117,7 @@ sealed class StreamMessageContent {
         @SerialName("stop_sequence")
         val stopSequence: String? = null,
         val usage: UsageInfo? = null,
-        override val role: String = "assistant"
+        override val role: String = "assistant",
     ) : StreamMessageContent()
 }
 
@@ -130,7 +131,7 @@ sealed class StreamContentItem {
     @SerialName("text")
     data class TextItem(
         val text: String,
-        override val type: String = "text"
+        override val type: String = "text",
     ) : StreamContentItem()
 
     @Serializable
@@ -139,7 +140,7 @@ sealed class StreamContentItem {
         val id: String,
         val name: String,
         val input: JsonElement,
-        override val type: String = "tool_use"
+        override val type: String = "tool_use",
     ) : StreamContentItem()
 
     @Serializable
@@ -150,7 +151,7 @@ sealed class StreamContentItem {
         val content: ContentResultUnion? = null,
         @SerialName("is_error")
         val isError: Boolean? = null,
-        override val type: String = "tool_result"
+        override val type: String = "tool_result",
     ) : StreamContentItem()
 
     @Serializable
@@ -158,7 +159,7 @@ sealed class StreamContentItem {
     data class ThinkingItem(
         val thinking: String,
         val signature: String? = null,
-        override val type: String = "thinking"
+        override val type: String = "thinking",
     ) : StreamContentItem()
 }
 
@@ -193,7 +194,7 @@ data class UsageInfo(
     @SerialName("server_tool_use")
     val serverToolUse: JsonObject? = null, // Contains web_search_requests, etc.
     @SerialName("service_tier")
-    val serviceTier: String? = null
+    val serviceTier: String? = null,
 )
 
 object ContentItemsUnionSerializer : KSerializer<ContentItemsUnion> {
@@ -205,12 +206,14 @@ object ContentItemsUnionSerializer : KSerializer<ContentItemsUnion> {
         return when {
             element is JsonPrimitive && element.isString ->
                 ContentItemsUnion.StringContent(element.content)
+
             element is JsonArray -> {
                 val items = element.map {
                     Json.decodeFromJsonElement<StreamContentItem>(it)
                 }
                 ContentItemsUnion.ArrayContent(items)
             }
+
             else -> throw SerializationException("Invalid ContentItemsUnion format: expected string or array")
         }
     }
@@ -220,6 +223,7 @@ object ContentItemsUnionSerializer : KSerializer<ContentItemsUnion> {
             is ContentItemsUnion.StringContent -> {
                 encoder.encodeString(value.content)
             }
+
             is ContentItemsUnion.ArrayContent -> {
                 encoder.encodeSerializableValue(
                     ListSerializer(StreamContentItem.serializer()),
@@ -239,12 +243,14 @@ object ContentResultUnionSerializer : KSerializer<ContentResultUnion> {
         return when {
             element is JsonPrimitive && element.isString ->
                 ContentResultUnion.StringResult(element.content)
+
             element is JsonArray -> {
                 val items = element.map {
                     Json.decodeFromJsonElement<StreamContentItem>(it)
                 }
                 ContentResultUnion.ArrayResult(items)
             }
+
             else -> throw SerializationException("Invalid ContentResultUnion format: expected string or array")
         }
     }
@@ -254,6 +260,7 @@ object ContentResultUnionSerializer : KSerializer<ContentResultUnion> {
             is ContentResultUnion.StringResult -> {
                 encoder.encodeString(value.content)
             }
+
             is ContentResultUnion.ArrayResult -> {
                 encoder.encodeSerializableValue(
                     ListSerializer(StreamContentItem.serializer()),
@@ -266,7 +273,7 @@ object ContentResultUnionSerializer : KSerializer<ContentResultUnion> {
 
 @Serializable
 data class ControlRequest(
-    val subtype: String // "interrupt", "cancel", etc.
+    val subtype: String, // "interrupt", "cancel", etc.
 )
 
 @Serializable
@@ -274,5 +281,5 @@ data class ControlResponse(
     @SerialName("request_id")
     val requestId: String,
     val subtype: String, // "success", "error", etc.
-    val error: String? = null
+    val error: String? = null,
 )

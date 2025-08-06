@@ -20,7 +20,7 @@ import java.io.OutputStreamWriter
 
 @Component
 class ClaudeCodeStreamingWrapper(
-    private val settingsService: SettingsService
+    private val settingsService: SettingsService,
 ) {
 
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
@@ -36,14 +36,14 @@ class ClaudeCodeStreamingWrapper(
             ?.bufferedReader()
             ?.readText()
             ?: ""
-        
+
         return if (settingsService.mode == AppMode.DEV) {
             println("[ClaudeCodeStreamingWrapper] DEV mode detected - loading additional DEV prompt")
             val devPrompt = this::class.java.getResourceAsStream("/dev-mode-prompt.md")
                 ?.bufferedReader()
                 ?.readText()
                 ?: ""
-            
+
             if (devPrompt.isNotEmpty()) {
                 println("[ClaudeCodeStreamingWrapper] DEV prompt loaded successfully (${devPrompt.length} chars)")
                 "$basePrompt\n\n$devPrompt"
@@ -75,7 +75,7 @@ class ClaudeCodeStreamingWrapper(
 
     suspend fun start(
         projectPath: String? = null,
-        model: String? = null
+        model: String? = null,
     ) = withContext(Dispatchers.IO) {
         try {
             println("=== STARTING CLAUDE CODE STREAMING WRAPPER ===")
@@ -92,7 +92,7 @@ class ClaudeCodeStreamingWrapper(
                 "--append-system-prompt",
                 defaultPrompt
             )
-            
+
             // Add model parameter if specified
             if (!model.isNullOrBlank()) {
                 command.add("--model")
@@ -176,12 +176,12 @@ class ClaudeCodeStreamingWrapper(
             if (proc == null || !proc.isAlive) {
                 throw IllegalStateException("Claude process is not running")
             }
-            
+
             val writer = stdinWriter
             if (writer == null) {
                 throw IllegalStateException("stdin writer not available")
             }
-            
+
             // Create control request structure as per Claude Code CLI protocol
             val controlRequestJson = buildJsonObject {
                 put("type", "control_request")
@@ -190,10 +190,10 @@ class ClaudeCodeStreamingWrapper(
                     put("subtype", controlMessage.request.subtype)
                 }
             }
-            
+
             val jsonLine = controlRequestJson.toString()
             println("[ClaudeWrapper] Sending control message: $jsonLine")
-            
+
             writer.write("$jsonLine\n")
             writer.flush()
         } catch (e: Exception) {
@@ -208,18 +208,20 @@ class ClaudeCodeStreamingWrapper(
         return try {
             val parsed = Json.decodeFromString<StreamMessage>(jsonLine)
             println("[ClaudeCodeStreamingWrapper] Successfully parsed StreamMessage: ${parsed.type}")
-            
+
             // Special logging for control messages
             when (parsed) {
                 is StreamMessage.ControlResponseMessage -> {
                     println("[ClaudeWrapper] Control response received: request_id=${parsed.response.requestId}, subtype=${parsed.response.subtype}, error=${parsed.response.error}")
                 }
+
                 is StreamMessage.ControlRequestMessage -> {
                     println("[ClaudeWrapper] Control request parsed: request_id=${parsed.requestId}, subtype=${parsed.request.subtype}")
                 }
+
                 else -> {}
             }
-            
+
             parsed
         } catch (e: SerializationException) {
             println("[ClaudeCodeStreamingWrapper] STREAM PARSE ERROR: Failed to deserialize StreamMessage")

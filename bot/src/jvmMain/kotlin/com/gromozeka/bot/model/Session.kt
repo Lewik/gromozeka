@@ -28,7 +28,7 @@ class Session(
     val projectPath: String,
     private val claudeWrapper: ClaudeCodeStreamingWrapper,
     private val sessionJsonlService: SessionJsonlService,
-    private val claudeModel: String? = null
+    private val claudeModel: String? = null,
 ) {
 
     // === StateFlow for external consumption ===
@@ -176,23 +176,23 @@ class Session(
         require(_sessionState.value == SessionState.ACTIVE) {
             "Cannot interrupt inactive session. Current state: ${_sessionState.value}"
         }
-        
+
         return try {
             println("[Session] Sending interrupt request...")
-            
+
             // Generate unique request ID
             val requestId = "req_${System.currentTimeMillis()}_${kotlin.random.Random.nextInt(10000)}"
-            
+
             val controlRequest = StreamMessage.ControlRequestMessage(
                 requestId = requestId,
                 request = ControlRequest(subtype = "interrupt")
             )
-            
+
             claudeWrapper.sendControlMessage(controlRequest)
-            
+
             _events.emit(StreamSessionEvent.InterruptSent)
             println("[Session] Interrupt sent successfully")
-            
+
             true
         } catch (e: Exception) {
             println("[Session] Interrupt failed: ${e.message}")
@@ -371,7 +371,7 @@ class Session(
 
     private suspend fun handleControlResponse(response: StreamMessage.ControlResponseMessage) {
         println("[Session] Control response received: request_id=${response.response.requestId}, subtype=${response.response.subtype}")
-        
+
         when (response.response.subtype) {
             "success" -> {
                 // Reset waiting flag for interrupt acknowledgment
@@ -379,10 +379,12 @@ class Session(
                 _events.emit(StreamSessionEvent.InterruptAcknowledged)
                 println("[Session] Interrupt acknowledged successfully")
             }
+
             "error" -> {
                 _events.emit(StreamSessionEvent.Error("Interrupt error: ${response.response.error}"))
                 println("[Session] Interrupt error: ${response.response.error}")
             }
+
             else -> {
                 println("[Session] Unknown control response subtype: ${response.response.subtype}")
             }

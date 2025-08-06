@@ -1,19 +1,17 @@
 package com.gromozeka.bot
 
 import com.gromozeka.bot.model.ClaudeLogEntry
-import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.JsonPrimitive
 import org.junit.jupiter.api.Test
 
 class WhenExhaustiveTest {
-    
+
     @Test
     fun `when expression should be exhaustive with sealed class hierarchy`() {
         val entries = listOf<ClaudeLogEntry>(
             ClaudeLogEntry.SummaryEntry("leaf123", "test summary"),
             ClaudeLogEntry.UserEntry(
                 cwd = "/test",
-                gitBranch = "main", 
+                gitBranch = "main",
                 sessionId = "session123",
                 timestamp = "2025-01-01T00:00:00Z",
                 userType = "human",
@@ -26,7 +24,7 @@ class WhenExhaustiveTest {
             ClaudeLogEntry.AssistantEntry(
                 cwd = "/test",
                 gitBranch = "main",
-                sessionId = "session123", 
+                sessionId = "session123",
                 timestamp = "2025-01-01T00:00:01Z",
                 userType = "ai",
                 uuid = "assistant123",
@@ -39,7 +37,7 @@ class WhenExhaustiveTest {
                 cwd = "/test",
                 gitBranch = "main",
                 sessionId = "session123",
-                timestamp = "2025-01-01T00:00:02Z", 
+                timestamp = "2025-01-01T00:00:02Z",
                 userType = "system",
                 uuid = "system123",
                 version = "1.0",
@@ -50,7 +48,7 @@ class WhenExhaustiveTest {
                 level = "info"
             )
         )
-        
+
         entries.forEach { entry ->
             // Этот when должен компилироваться без ошибок exhaustiveness
             val result = when (entry) {
@@ -59,7 +57,7 @@ class WhenExhaustiveTest {
                 is ClaudeLogEntry.AssistantEntry -> "assistant: ${entry.requestId}"
                 is ClaudeLogEntry.SystemEntry -> "system: ${entry.content}"
             }
-            
+
             println("Processed: $result")
         }
     }
