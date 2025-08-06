@@ -1,6 +1,9 @@
 package com.gromozeka.bot.services
 
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.withContext
 import org.springframework.ai.openai.OpenAiAudioSpeechModel
 import org.springframework.ai.openai.OpenAiAudioSpeechOptions
 import org.springframework.ai.openai.api.OpenAiAudioApi
@@ -63,8 +66,8 @@ class TtsService(private val openAiAudioSpeechModel: OpenAiAudioSpeechModel) {
         }
     }
 
-    suspend fun generateAndPlay(text: String, voiceTone: String = "neutral colleague") {
-        val audioFile = generateSpeech(text, voiceTone)
+    suspend fun generateAndPlay(task: TTSQueueService.Task) {
+        val audioFile = generateSpeech(task.text, task.tone)
         audioFile?.let {
             playAudio(it)
             it.delete() // cleanup temp file

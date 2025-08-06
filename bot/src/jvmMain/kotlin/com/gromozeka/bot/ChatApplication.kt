@@ -19,8 +19,8 @@ import com.gromozeka.bot.model.Session
 import com.gromozeka.bot.services.*
 import com.gromozeka.bot.ui.ChatScreen
 import com.gromozeka.bot.ui.SessionListScreen
-import com.gromozeka.bot.ui.pttGestures
 import com.gromozeka.bot.ui.onEscape
+import com.gromozeka.bot.ui.pttGestures
 import com.gromozeka.shared.domain.message.ChatMessage
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
@@ -61,11 +61,11 @@ fun main() {
     val openAiBalanceService = context.getBean<OpenAiBalanceService>()
     val sessionJsonlService = context.getBean<SessionJsonlService>()
     val globalHotkeyService = context.getBean<GlobalHotkeyService>()
-    
+
     // Explicit startup of TTS queue service
     ttsQueueService.start()
     println("[GROMOZEKA] TTS queue service started")
-    
+
     // Initialize hotkey service if enabled in settings
     if (settingsService.settings.globalPttHotkeyEnabled) {
         globalHotkeyService.initialize()
@@ -172,9 +172,7 @@ fun ApplicationScope.ChatWindow(
                         println("[ChatApp] TTS text: '$ttsText'")
                         if (!ttsText.isNullOrBlank()) {
                             println("[ChatApp] Enqueueing TTS: '$ttsText'")
-                            // TODO: In the future, we can pass voiceTone to TTSQueueService
-                            // For now, use simple text without considering voice tone
-                            ttsQueueService.enqueue(ttsText)
+                            ttsQueueService.enqueue(TTSQueueService.Task(ttsText, structured.voiceTone ?: ""))
                         }
                     }
                 } else if (newMessage.messageType == ChatMessage.MessageType.ASSISTANT && newMessage.isHistorical) {
@@ -288,7 +286,7 @@ fun ApplicationScope.ChatWindow(
             ttsQueueService = ttsQueueService,
             autoSend = autoSend,
             onTextReceived = { text -> userInput = text },
-            onSendMessage = { text -> 
+            onSendMessage = { text ->
                 coroutineScope.launch { sendMessage(text) }
             },
             onInterrupt = {
@@ -296,15 +294,15 @@ fun ApplicationScope.ChatWindow(
             }
         )
     }
-    
+
     // Update recording state from unified handler
     isRecording = unifiedPTTHandler.isRecording()
-    
+
     // Configure global hotkey handler
     LaunchedEffect(Unit) {
         globalHotkeyService.setGestureHandler(unifiedPTTHandler)
     }
-    
+
     // Create modifier with unified logic
     val modifierWithPushToTalk = Modifier.pttGestures(
         handler = unifiedPTTHandler,

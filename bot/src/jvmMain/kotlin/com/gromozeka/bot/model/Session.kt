@@ -433,9 +433,7 @@ class Session(
                 if (_sessionState.value == SessionState.ACTIVE) {
                     // Restart stream collection
                     streamCollectionJob?.cancel()
-                    sessionScope?.let { scope ->
-                        scope.launchOutputStreamCollection()
-                    }
+                    sessionScope?.launchOutputStreamCollection()
 
                     _events.emit(StreamSessionEvent.StreamReconnected)
                 }
@@ -494,6 +492,7 @@ class Session(
     private fun CoroutineScope.launchSoundNotificationCollection() {
         launch {
             messageOutputStream
+                .filter { message -> !message.isHistorical }
                 .collect { chatMessage ->
                     try {
                         when {

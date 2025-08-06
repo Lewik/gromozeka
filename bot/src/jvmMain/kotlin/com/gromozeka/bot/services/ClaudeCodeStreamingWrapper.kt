@@ -69,7 +69,7 @@ class ClaudeCodeStreamingWrapper(
 
     // Unified stream broadcasting with buffer for late subscribers
     private val _streamMessages = MutableSharedFlow<StreamMessagePacket>(
-        replay = 100,  // Keep last 100 messages for late subscribers
+        replay = 0,  // No replay to prevent cross-session message contamination
         extraBufferCapacity = 100  // Buffer capacity for fast emission
     )
     val streamMessages: SharedFlow<StreamMessagePacket> = _streamMessages.asSharedFlow()
