@@ -21,12 +21,13 @@ import com.gromozeka.bot.model.Session
 import com.gromozeka.bot.services.ClaudeCodeStreamingWrapper
 import com.gromozeka.shared.domain.message.ChatMessage
 import com.gromozeka.bot.services.OpenAiBalanceService
+import com.gromozeka.bot.services.SessionJsonlService
 import com.gromozeka.bot.services.SttService
 import com.gromozeka.bot.services.StreamLogger
 import com.gromozeka.bot.services.TtsService
 import com.gromozeka.bot.ui.ChatScreen
 import com.gromozeka.bot.ui.SessionListScreen
-import com.gromozeka.bot.utils.ClaudeCodePaths
+import com.gromozeka.bot.services.SettingsService
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
@@ -34,28 +35,36 @@ import org.springframework.beans.factory.getBean
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.builder.SpringApplicationBuilder
 import org.springframework.boot.WebApplicationType
+import java.io.File
 
 fun main() {
-    println("[GROMOZEKA] Starting application...")
     System.setProperty("java.awt.headless", "false")
+    
+    // Check Claude Code is installed before starting
+    val claudeProjectsDir = File(System.getProperty("user.home"), ".claude/projects")
+    if (!claudeProjectsDir.exists()) {
+        throw IllegalStateException("Claude Code not installed - directory does not exist: ${claudeProjectsDir.absolutePath}")
+    }
+    println("[GROMOZEKA] Claude Code installation verified")
 
     // Clean up old stream logs on startup
     println("[GROMOZEKA] Cleaning up old stream logs...")
     StreamLogger.cleanupOldLogs()
-    
-    // Check Claude Code is installed
-    if (!ClaudeCodePaths.PROJECTS_DIR.exists()) {
-        throw IllegalStateException("Claude Code not installed - directory does not exist: ${ClaudeCodePaths.PROJECTS_DIR.absolutePath}")
-    }
 
     println("[GROMOZEKA] Initializing Spring context...")
     val context = SpringApplicationBuilder(ChatApplication::class.java)
         .web(WebApplicationType.NONE)
         .run()
     println("[GROMOZEKA] Spring context initialized successfully")
+    
+    val settingsService = context.getBean<SettingsService>()
+    settingsService.initialize()
+    println("[GROMOZEKA] Starting application in ${settingsService.mode.name} mode...")
+    
     val sttService = context.getBean<SttService>()
     val ttsService = context.getBean<TtsService>()
     val openAiBalanceService = context.getBean<OpenAiBalanceService>()
+    val sessionJsonlService = context.getBean<SessionJsonlService>()
     println("[GROMOZEKA] Starting Compose Desktop UI...")
     application {
         MaterialTheme(
@@ -68,7 +77,9 @@ fun main() {
             ChatWindow(
                 sttService,
                 ttsService,
-                openAiBalanceService
+                openAiBalanceService,
+                settingsService,
+                sessionJsonlService
             )
         }
     }
@@ -80,6 +91,8 @@ fun ApplicationScope.ChatWindow(
     sttService: SttService,
     ttsService: TtsService,
     openAiBalanceService: OpenAiBalanceService,
+    settingsService: SettingsService,
+    sessionJsonlService: SessionJsonlService,
 ) {
     val coroutineScope = rememberCoroutineScope()
     val scrollState = rememberScrollState()
@@ -216,7 +229,7 @@ fun ApplicationScope.ChatWindow(
                 
                 // Create and start new active session
                 val claudeWrapper = ClaudeCodeStreamingWrapper()
-                val activeSession = Session(projectPath, claudeWrapper)
+                val activeSession = Session(projectPath, claudeWrapper, sessionJsonlService)
                 activeSession.start(coroutineScope)
                 currentSession = activeSession
 
@@ -278,7 +291,7 @@ fun ApplicationScope.ChatWindow(
     Window(onCloseRequest = { 
         println("[GROMOZEKA] Application window closing - stopping all sessions...")
         exitApplication() 
-    }, title = "🤖 Громозека${selectedSession?.projectPath?.let { " • $it" } ?: ""}") {
+    }, title = "🤖 Громозека${if (settingsService.mode == com.gromozeka.bot.settings.AppMode.DEV) " [DEV]" else ""}${selectedSession?.projectPath?.let { " • $it" } ?: ""}") {
         if (initialized) {
             if (showSessionList) {
                 SessionListScreen(
@@ -309,7 +322,8 @@ fun ApplicationScope.ChatWindow(
                         }
                     },
                     coroutineScope = coroutineScope,
-                    onNewSession = createNewSession
+                    onNewSession = createNewSession,
+                    sessionJsonlService = sessionJsonlService
                 )
             } else {
                 ChatScreen(

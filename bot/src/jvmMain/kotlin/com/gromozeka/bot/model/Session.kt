@@ -27,6 +27,7 @@ import kotlin.time.Duration.Companion.milliseconds
 class Session(
     val projectPath: String,
     private val claudeWrapper: ClaudeCodeStreamingWrapper,
+    private val sessionJsonlService: SessionJsonlService,
 ) {
 
     // === StateFlow for external consumption ===
@@ -61,8 +62,7 @@ class Session(
     private var firstMessageSent = false
     private val _messageInputBuffer = MutableSharedFlow<String>(extraBufferCapacity = 1000)
 
-    // === Services ===
-    private val sessionJsonlService = SessionJsonlService()
+    // === Historical Messages ===
     private var historicalMessagesLoaded = false
 
     // Message accumulator moved up to StateFlow section

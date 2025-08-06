@@ -27,6 +27,7 @@ fun SessionListScreen(
     onSessionSelected: (ChatSession, List<ChatMessage>, Session) -> Unit,
     coroutineScope: CoroutineScope,
     onNewSession: (String) -> Unit,
+    sessionJsonlService: SessionJsonlService,
 ) {
     var allSessions by remember { mutableStateOf<List<ChatSession>>(emptyList()) }
     var projectGroups by remember { mutableStateOf<List<ProjectGroup>>(emptyList()) }
@@ -37,7 +38,6 @@ fun SessionListScreen(
     LaunchedEffect(Unit) {
         isLoading = true
         try {
-            val sessionJsonlService = SessionJsonlService()
             val loadedSessions = sessionJsonlService.loadAllSessions()
             allSessions = loadedSessions
             
@@ -120,7 +120,7 @@ fun SessionListScreen(
                             SessionItem(
                                 session = session,
                                 onSessionClick = { clickedSession ->
-                                    coroutineScope.handleSessionClick(clickedSession, onSessionSelected)
+                                    coroutineScope.handleSessionClick(clickedSession, onSessionSelected, sessionJsonlService)
                                 },
                                 isGrouped = false
                             )
@@ -165,7 +165,7 @@ fun SessionListScreen(
                                 SessionItem(
                                     session = session,
                                     onSessionClick = { clickedSession ->
-                                        coroutineScope.handleSessionClick(clickedSession, onSessionSelected)
+                                        coroutineScope.handleSessionClick(clickedSession, onSessionSelected, sessionJsonlService)
                                     },
                                     isGrouped = true
                                 )
@@ -297,13 +297,14 @@ private fun NewSessionButton(
 // Resume existing session - create new Session with historical data loading
 private fun CoroutineScope.handleSessionClick(
     clickedSession: ChatSession,
-    onSessionSelected: (ChatSession, List<ChatMessage>, Session) -> Unit
+    onSessionSelected: (ChatSession, List<ChatMessage>, Session) -> Unit,
+    sessionJsonlService: SessionJsonlService
 ) {
     launch {
         try {
             // Create new Session that will load history during start
             val claudeWrapper = ClaudeCodeStreamingWrapper()
-            val session = Session(clickedSession.projectPath, claudeWrapper)
+            val session = Session(clickedSession.projectPath, claudeWrapper, sessionJsonlService)
             
             // Pass session to parent - it will handle Claude process management  
             // The parent will call session.start() with resumeSessionId

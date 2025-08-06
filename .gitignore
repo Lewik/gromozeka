@@ -56,3 +56,6 @@ application-local.yaml
 **/*-secret.properties
 bot/src/jvmMain/resources/application.yaml
 bot/src/jvmMain/resources/mcp-bup.json
+
+# Development data - should not be in git
+bot/dev-data/.gromozeka/

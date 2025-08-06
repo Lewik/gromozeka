@@ -1,9 +1,9 @@
 package com.gromozeka.bot.services
 
+import com.gromozeka.bot.services.SettingsService
 import com.gromozeka.bot.model.ChatSession
 import com.gromozeka.bot.model.ClaudeLogEntry
 import com.gromozeka.bot.model.StreamSessionMetadata
-import com.gromozeka.bot.utils.ClaudeCodePaths
 import com.gromozeka.bot.utils.SessionDeduplicator
 import com.gromozeka.bot.utils.decodeProjectPath
 import com.gromozeka.bot.utils.encodeProjectPath
@@ -19,13 +19,17 @@ import kotlinx.datetime.toInstant
 import kotlinx.datetime.toLocalDateTime
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
+import org.springframework.stereotype.Service
 import java.io.File
 
 /**
  * Service for loading messages and metadata from Claude Code session JSONL files.
  * Extracted from SessionJsonl to provide stateless historical data loading.
  */
-class SessionJsonlService {
+@Service
+class SessionJsonlService(
+    private val settingsService: SettingsService
+) {
     
     private val json = Json {
         ignoreUnknownKeys = true
@@ -166,7 +170,7 @@ class SessionJsonlService {
      */
     private fun findSessionFile(sessionId: String, projectPath: String): File? {
         val encodedProjectPath = projectPath.encodeProjectPath()
-        val projectDir = File(ClaudeCodePaths.PROJECTS_DIR, encodedProjectPath)
+        val projectDir = File(settingsService.getClaudeProjectsDir(), encodedProjectPath)
         val sessionFile = projectDir.resolve("$sessionId.jsonl")
         
         return if (sessionFile.exists()) {
@@ -207,7 +211,7 @@ class SessionJsonlService {
      * @return List of ChatSession objects representing all available sessions
      */
     suspend fun loadAllSessions(): List<ChatSession> = withContext(Dispatchers.IO) {
-        val projectsDir = ClaudeCodePaths.PROJECTS_DIR
+        val projectsDir = settingsService.getClaudeProjectsDir()
         if (!projectsDir.exists()) {
             println("[SessionJsonlService] Projects directory doesn't exist: ${projectsDir.absolutePath}")
             return@withContext emptyList()

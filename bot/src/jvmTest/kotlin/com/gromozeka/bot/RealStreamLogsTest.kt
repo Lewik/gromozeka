@@ -134,6 +134,8 @@ class RealStreamLogsTest {
             is StreamMessage.UserStreamMessage -> "sessionId=${streamMessage.sessionId}"
             is StreamMessage.AssistantStreamMessage -> "sessionId=${streamMessage.sessionId}"
             is StreamMessage.ResultStreamMessage -> "subtype=${streamMessage.subtype}, error=${streamMessage.isError}"
+            is StreamMessage.ControlRequestMessage -> "control_request"
+            is StreamMessage.ControlResponseMessage -> "control_response"
         }
     }
 }
