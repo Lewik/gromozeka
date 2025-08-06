@@ -37,15 +37,13 @@ class SettingsServiceTest : FunSpec({
         settings.enableTts shouldBe true
         settings.enableStt shouldBe true
         settings.autoSend shouldBe true
-        settings.claudeProjectPath shouldBe null
     }
 
     test("should save and load settings from file") {
         val customSettings = Settings(
             enableTts = false,
             enableStt = false,
-            autoSend = false,
-            claudeProjectPath = "/test/path"
+            autoSend = false
         )
 
         service.saveSettings(customSettings)
@@ -59,7 +57,6 @@ class SettingsServiceTest : FunSpec({
         loaded.enableTts shouldBe false
         loaded.enableStt shouldBe false
         loaded.autoSend shouldBe false
-        loaded.claudeProjectPath shouldBe "/test/path"
     }
 
     // Note: Testing environment variables is challenging in JVM
@@ -111,7 +108,6 @@ class SettingsServiceTest : FunSpec({
         settingsFile.writeText(
             """
             {
-                "claudeProjectPath": "/new/path",
                 "enableTts": false,
                 "enableStt": true,
                 "autoSend": true
@@ -122,7 +118,6 @@ class SettingsServiceTest : FunSpec({
         // Reload
         service.reloadSettings()
 
-        service.settings.claudeProjectPath shouldBe "/new/path"
         service.settings.enableTts shouldBe false
     }
 

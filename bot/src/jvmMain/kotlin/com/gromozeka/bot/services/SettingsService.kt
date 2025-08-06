@@ -104,11 +104,6 @@ class SettingsService {
 
     private fun createDefaultSettings(): Settings {
         val defaults = Settings(
-            claudeProjectPath = if (mode == AppMode.DEV) {
-                File(System.getProperty("user.dir")).absolutePath
-            } else {
-                null
-            },
             enableTts = true,
             enableStt = true,
             autoSend = true
