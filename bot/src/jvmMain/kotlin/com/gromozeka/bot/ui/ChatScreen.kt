@@ -16,7 +16,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.input.key.*
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -74,7 +73,7 @@ fun ChatScreen(
     }
 
 
-    Column(modifier = Modifier.padding(16.dp).fillMaxSize()) {
+    Column(modifier = Modifier.fillMaxSize()) {
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onBackToSessionList) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Назад")
@@ -82,22 +81,17 @@ fun ChatScreen(
             IconButton(onClick = onNewSession) {
                 Icon(Icons.Filled.Add, contentDescription = "Новая беседа")
             }
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("Chat", style = MaterialTheme.typography.h5)
+            Text("Chat")
             selectedSession?.let { session ->
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("(${session.displayPreview()})", style = MaterialTheme.typography.caption)
+                    Text("(${session.displayPreview()})")
             }
-            Spacer(modifier = Modifier.width(8.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Checkbox(checked = autoSend, onCheckedChange = onAutoSendChange)
                 Text("Отправлять сразу")
             }
-            Spacer(modifier = Modifier.width(8.dp))
             Button(onClick = onCheckBalance) {
                 Text("💰 Баланс")
             }
-            Spacer(modifier = Modifier.width(8.dp))
             Button(onClick = { stickyToBottom = !stickyToBottom }) {
                 Text("Autoscroll is ${if (stickyToBottom) "ON" else "OFF"}")
             }
@@ -113,39 +107,19 @@ fun ChatScreen(
                                 onShowJson = { json -> jsonToShow = json }
                             )
                             if (index < chatHistory.size - 1) {
-                                Divider(
-                                    modifier = Modifier.padding(vertical = 8.dp),
-                                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.2f),
-                                    thickness = 1.dp
-                                )
+                                Divider()
                             }
                         }
                 }
             }
         }
 
-        Spacer(modifier = Modifier.height(10.dp))
 
         // Waiting for response indicator
         if (isWaitingForResponse) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 8.dp),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(16.dp),
-                    strokeWidth = 2.dp,
-                    color = MaterialTheme.colors.primary
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    "Ожидание ответа от Claude...",
-                    style = MaterialTheme.typography.body2,
-                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
-                )
+            Row {
+                CircularProgressIndicator()
+                    Text("Ожидание ответа от Claude...")
             }
         }
 
@@ -157,7 +131,6 @@ fun ChatScreen(
             coroutineScope = coroutineScope
         )
 
-        Spacer(modifier = Modifier.height(10.dp))
 
         VoiceControls(
             sttService = sttService,
@@ -185,79 +158,46 @@ private fun MessageItem(
     onShowJson: (String) -> Unit = {},
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = if (message.messageType == ChatMessage.MessageType.USER) Arrangement.End else Arrangement.Start
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth(0.85f)
-                .padding(8.dp)
-                .background(
-                    color = if (message.messageType == ChatMessage.MessageType.USER)
-                        MaterialTheme.colors.primary.copy(alpha = 0.1f)
-                    else
-                        MaterialTheme.colors.surface.copy(alpha = 0.1f),
-                    shape = MaterialTheme.shapes.medium
-                )
-                .padding(12.dp)
         ) {
             // Show original JSON button if available  
             message.originalJson?.let { originalJson ->
                 Button(
-                    onClick = { onShowJson(originalJson) },
-                    modifier = Modifier.padding(bottom = 8.dp)
+                    onClick = { onShowJson(originalJson) }
                 ) {
-                    Text("🔍 JSON", style = MaterialTheme.typography.caption)
+                    Text("🔍 JSON")
                 }
             }
 
             message.content.forEach { content ->
                 when (content) {
                     is ChatMessage.ContentItem.Message -> {
-                        Text(
-                            text = content.text,
-                            style = MaterialTheme.typography.body2,
-                        )
+                        Text(text = content.text)
                     }
 
                     is ChatMessage.ContentItem.ToolCall -> {
-                        Text(
-                            text = "🔧 Tool: ${content.call::class.simpleName}",
-                            style = MaterialTheme.typography.caption,
-                            color = MaterialTheme.colors.primary
-                        )
+                        Text(text = "🔧 Tool: ${content.call::class.simpleName}")
                     }
 
                     is ChatMessage.ContentItem.ToolResult -> {
-                        Text(
-                            text = "📊 Tool Result",
-                            style = MaterialTheme.typography.caption,
-                            color = if (content.isError) MaterialTheme.colors.error else MaterialTheme.colors.secondary
-                        )
+                        Text(text = "📊 Tool Result")
                     }
 
                     is ChatMessage.ContentItem.Thinking -> {
-                        Text(
-                            text = "🤔 ${content.thinking}",
-                            style = MaterialTheme.typography.caption,
-                            color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
-                        )
+                        Text(text = "🤔 ${content.thinking}")
                     }
 
                     is ChatMessage.ContentItem.System -> {
-                        Text(
-                            text = "⚙️ ${content.content}",
-                            style = MaterialTheme.typography.caption,
-                            color = MaterialTheme.colors.onSurface.copy(alpha = 0.8f)
-                        )
+                        Text(text = "⚙️ ${content.content}")
                     }
 
                     is ChatMessage.ContentItem.Media -> {
-                        Text(
-                            text = "📎 Media: ${content.mimeType}",
-                            style = MaterialTheme.typography.caption,
-                            color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
-                        )
+                        Text(text = "📎 Media: ${content.mimeType}")
                     }
 
                     is ChatMessage.ContentItem.IntermediateMessage -> {
@@ -274,17 +214,8 @@ private fun MessageItem(
 
                     is ChatMessage.ContentItem.UnknownJson -> {
                         Column {
-                            Text(
-                                text = jsonPrettyPrint(content.json),
-                                style = MaterialTheme.typography.body2,
-                                fontFamily = FontFamily.Monospace
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                text = "⚠️ Не удалось распарсить структуру",
-                                style = MaterialTheme.typography.caption,
-                                color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
-                            )
+                            Text(text = jsonPrettyPrint(content.json))
+                            Text(text = "⚠️ Не удалось распарсить структуру")
                         }
                     }
                 }
@@ -306,7 +237,6 @@ private fun StructuredMessageTemplate(
         else -> return // Shouldn't happen, but safe fallback
     }
 
-    val alpha = if (isIntermediate) 0.6f else 1.0f
     val titleText = when (data) {
         is ChatMessage.ContentItem.IntermediateMessage -> "🔄 Обработка..."
         is ChatMessage.ContentItem.FinalResultMessage -> "🤖 Громозека"
@@ -314,43 +244,18 @@ private fun StructuredMessageTemplate(
         else -> "🤖 Громозека"
     }
 
-    Card(
-        modifier = Modifier.fillMaxWidth().alpha(alpha),
-        backgroundColor = MaterialTheme.colors.secondary.copy(alpha = if (isIntermediate) 0.05f else 0.1f),
-        border = BorderStroke(1.dp, MaterialTheme.colors.secondary.copy(alpha = if (isIntermediate) 0.2f else 0.3f))
-    ) {
-        Column(
-            modifier = Modifier.padding(12.dp)
-        ) {
-            // Header with icon
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(bottom = 8.dp)
-            ) {
-                Text(
-                    text = titleText,
-                    style = MaterialTheme.typography.subtitle1,
-                    color = MaterialTheme.colors.secondary.copy(alpha = alpha)
-                )
+    Card {
+        Column {
+            Row {
+                Text(text = titleText)
             }
-
-            // Display main content
-            Text(
-                text = text,
-                style = MaterialTheme.typography.body2,
-                color = MaterialTheme.colors.onSurface.copy(alpha = alpha)
-            )
-
-            // Additional information in small font
+            Text(text = text)
             if (structured != null && (structured.ttsText != null || structured.voiceTone != null)) {
-                Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = buildString {
                         structured.ttsText?.let { append("🗣️ TTS: $it ") }
                         structured.voiceTone?.let { append("🎭 Tone: $it") }
-                    },
-                    style = MaterialTheme.typography.caption,
-                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f * alpha)
+                    }
                 )
             }
         }
@@ -415,7 +320,7 @@ private fun MessageInput(
                 }
             }
         )
-        Spacer(modifier = Modifier.width(8.dp))
+        Spacer(modifier = Modifier.width(4.dp))
     }
 }
 
@@ -439,7 +344,6 @@ private fun VoiceControls(
             }) {
                 Text("🗣 Скороговорка")
             }
-            Spacer(modifier = Modifier.width(8.dp))
         }
 
         Spacer(modifier = Modifier.weight(1f))
@@ -447,7 +351,7 @@ private fun VoiceControls(
         Button(onClick = { coroutineScope.launch { sttService.startRecording() } }) {
             Text("🎙 Идёт запись")
         }
-        Spacer(modifier = Modifier.width(8.dp))
+        Spacer(modifier = Modifier.width(4.dp))
         Button(onClick = {
             coroutineScope.launch {
                 val text = sttService.stopAndTranscribe()
@@ -460,7 +364,7 @@ private fun VoiceControls(
         }) {
             Text("🛑 Остановить")
         }
-        Spacer(modifier = Modifier.width(8.dp))
+        Spacer(modifier = Modifier.width(4.dp))
 
         Button(onClick = {}, modifier = modifierWithPushToTalk) {
             Text("🎤 PTT")
@@ -480,23 +384,11 @@ private fun JsonDialog(
         ),
 
         ) {
-        Card(
-            modifier = Modifier.fillMaxSize(),
-            elevation = 8.dp
-        ) {
+        Card {
             Column {
                 // Header with title and close button
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        "Original JSON",
-                        style = MaterialTheme.typography.h6
-                    )
+                Row {
+                    Text("Original JSON")
                     Button(onClick = onDismiss) {
                         Text("✕")
                     }
@@ -505,19 +397,8 @@ private fun JsonDialog(
                 Divider()
 
                 // Scrollable content with selection support
-                SelectionContainer(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(16.dp)
-                ) {
-                    Text(
-                        text = jsonPrettyPrint(json),
-                        style = MaterialTheme.typography.caption,
-                        fontFamily = FontFamily.Monospace,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .verticalScroll(rememberScrollState())
-                    )
+                SelectionContainer {
+                    Text(text = jsonPrettyPrint(json))
                 }
             }
         }

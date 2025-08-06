@@ -66,9 +66,8 @@ fun SessionListScreen(
         }
     }
 
-    Column(modifier = Modifier.padding(16.dp).fillMaxSize()) {
-        Text("Выберите беседу", style = MaterialTheme.typography.h5)
-        Spacer(modifier = Modifier.height(16.dp))
+    Column(modifier = Modifier.fillMaxSize()) {
+        Text("Выберите беседу")
 
         // Temporary simplified version - only new session button
         if (isLoading) {
@@ -91,11 +90,7 @@ fun SessionListScreen(
                         contentAlignment = Alignment.Center
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(
-                                text = "Нет сохраненных сессий",
-                                style = MaterialTheme.typography.h6,
-                                modifier = Modifier.padding(bottom = 16.dp)
-                            )
+                            Text(text = "Нет сохраненных сессий")
                             Button(
                                 onClick = { onNewSession("/Users/lewik/code/gromozeka/dev") }
                             ) {
@@ -110,11 +105,7 @@ fun SessionListScreen(
                         .take(3)
 
                     if (recentSessions.isNotEmpty()) {
-                        Text(
-                            text = "Последние сессии",
-                            style = MaterialTheme.typography.h6,
-                            modifier = Modifier.padding(bottom = 8.dp)
-                        )
+                        Text(text = "Последние сессии")
 
                         recentSessions.forEach { session ->
                             SessionItem(
@@ -131,16 +122,9 @@ fun SessionListScreen(
                             )
                         }
 
-                        Divider(
-                            modifier = Modifier.padding(vertical = 16.dp),
-                            color = MaterialTheme.colors.onSurface.copy(alpha = 0.12f)
-                        )
+                        Divider()
 
-                        Text(
-                            text = "Все проекты",
-                            style = MaterialTheme.typography.h6,
-                            modifier = Modifier.padding(bottom = 8.dp)
-                        )
+                        Text(text = "Все проекты")
                     }
 
                     // Show grouped sessions
@@ -195,39 +179,22 @@ private fun ProjectGroupHeader(
     onToggleExpanded: () -> Unit,
     onNewSessionClick: (String) -> Unit,
 ) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 2.dp),
-        backgroundColor = MaterialTheme.colors.primary.copy(alpha = 0.1f),
-        elevation = 2.dp
-    ) {
-        Row(
-            modifier = Modifier.padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
+    Card {
+        Row {
             Icon(
                 imageVector = if (isExpanded) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowRight,
                 contentDescription = if (isExpanded) "Свернуть" else "Развернуть",
                 modifier = Modifier.clickable { onToggleExpanded() }
             )
-            Spacer(modifier = Modifier.width(8.dp))
             Text(
                 text = group.displayName(),
-                style = MaterialTheme.typography.h6,
                 modifier = Modifier.clickable { onToggleExpanded() }
             )
             Spacer(modifier = Modifier.weight(1f))
-            Button(
-                onClick = { onNewSessionClick(group.projectPath) },
-                modifier = Modifier.padding(end = 8.dp)
-            ) {
+            Button(onClick = { onNewSessionClick(group.projectPath) }) {
                 Text("+ Новая")
             }
-            Text(
-                text = "${group.sessionCount()} сессий",
-                style = MaterialTheme.typography.caption
-            )
+            Text(text = "${group.sessionCount()} сессий")
         }
     }
 }
@@ -241,39 +208,17 @@ private fun SessionItem(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(
-                start = if (isGrouped) 24.dp else 0.dp,
-                top = 2.dp,
-                bottom = 2.dp,
-                end = 0.dp
-            )
-            .clickable { onSessionClick(session) },
-        elevation = if (isGrouped) 1.dp else 2.dp
+            .clickable { onSessionClick(session) }
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Text(
-                text = session.displayPreview(),
-                style = MaterialTheme.typography.body1
-            )
+        Column {
+            Text(text = session.displayPreview())
             if (!isGrouped) {
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "Проект: ${session.displayProject()}",
-                    style = MaterialTheme.typography.caption,
-                    color = MaterialTheme.colors.primary
-                )
+                Text(text = "Проект: ${session.displayProject()}")
             }
-            Spacer(modifier = Modifier.height(4.dp))
             Row {
-                Text(
-                    text = session.displayTime(),
-                    style = MaterialTheme.typography.caption
-                )
+                Text(text = session.displayTime())
                 Spacer(modifier = Modifier.weight(1f))
-                Text(
-                    text = "${session.messageCount} сообщений",
-                    style = MaterialTheme.typography.caption
-                )
+                Text(text = "${session.messageCount} сообщений")
             }
         }
     }
@@ -287,19 +232,10 @@ private fun NewSessionButton(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(start = 24.dp, top = 4.dp, bottom = 4.dp)
-            .clickable { onNewSessionClick(projectPath) },
-        backgroundColor = MaterialTheme.colors.primary.copy(alpha = 0.1f)
+            .clickable { onNewSessionClick(projectPath) }
     ) {
-        Row(
-            modifier = Modifier.padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "+ Новая сессия",
-                style = MaterialTheme.typography.body2,
-                color = MaterialTheme.colors.primary
-            )
+        Row {
+            Text(text = "+ Новая сессия")
         }
     }
 }

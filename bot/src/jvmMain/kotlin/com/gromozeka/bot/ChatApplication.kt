@@ -8,9 +8,6 @@ import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.ApplicationScope
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
@@ -75,13 +72,7 @@ fun main() {
     }
     println("[GROMOZEKA] Starting Compose Desktop UI...")
     application {
-        MaterialTheme(
-            typography = Typography(
-                defaultFontFamily = FontFamily.SansSerif,
-                body1 = TextStyle(fontSize = 12.sp),
-                h5 = TextStyle(fontSize = 14.sp)
-            )
-        ) {
+        MaterialTheme {
             ChatWindow(
                 sttService,
                 ttsService,
