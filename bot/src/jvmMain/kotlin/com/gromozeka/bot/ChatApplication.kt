@@ -8,8 +8,6 @@ import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.pointer.isPrimaryPressed
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.sp
@@ -21,6 +19,7 @@ import com.gromozeka.bot.model.Session
 import com.gromozeka.bot.services.*
 import com.gromozeka.bot.ui.ChatScreen
 import com.gromozeka.bot.ui.SessionListScreen
+import com.gromozeka.bot.ui.pttGestures
 import com.gromozeka.shared.domain.message.ChatMessage
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
@@ -57,9 +56,14 @@ fun main() {
 
     val sttService = context.getBean<SttService>()
     val ttsService = context.getBean<TtsService>()
+    val ttsQueueService = context.getBean<TTSQueueService>()
     val openAiBalanceService = context.getBean<OpenAiBalanceService>()
     val sessionJsonlService = context.getBean<SessionJsonlService>()
     val globalHotkeyService = context.getBean<GlobalHotkeyService>()
+    
+    // Явный запуск TTS queue service
+    ttsQueueService.start()
+    println("[GROMOZEKA] TTS queue service started")
     
     // Инициализируем hotkey service если включен в настройках
     if (settingsService.settings.globalPttHotkeyEnabled) {
@@ -80,6 +84,7 @@ fun main() {
             ChatWindow(
                 sttService,
                 ttsService,
+                ttsQueueService,
                 openAiBalanceService,
                 settingsService,
                 sessionJsonlService,
@@ -95,6 +100,7 @@ fun main() {
 fun ApplicationScope.ChatWindow(
     sttService: SttService,
     ttsService: TtsService,
+    ttsQueueService: TTSQueueService,
     openAiBalanceService: OpenAiBalanceService,
     settingsService: SettingsService,
     sessionJsonlService: SessionJsonlService,
@@ -164,16 +170,10 @@ fun ApplicationScope.ChatWindow(
                         val ttsText = structured.ttsText
                         println("[ChatApp] TTS text: '$ttsText'")
                         if (!ttsText.isNullOrBlank()) {
-                            println("[ChatApp] Starting TTS playback...")
-                            coroutineScope.launch {
-                                try {
-                                    ttsService.generateAndPlay(ttsText, structured.voiceTone ?: "neutral colleague")
-                                    println("[ChatApp] TTS playback completed")
-                                } catch (e: Exception) {
-                                    println("TTS error: ${e.message}")
-                                    e.printStackTrace()
-                                }
-                            }
+                            println("[ChatApp] Enqueueing TTS: '$ttsText'")
+                            // TODO: В будущем можно передавать voiceTone в TTSQueueService
+                            // Пока используем простой текст без учета голосового тона
+                            ttsQueueService.enqueue(ttsText)
                         }
                     }
                 } else if (newMessage.messageType == ChatMessage.MessageType.ASSISTANT && newMessage.isHistorical) {
@@ -280,49 +280,41 @@ fun ApplicationScope.ChatWindow(
         scrollState.animateScrollTo(scrollState.maxValue)
     }
 
-    val isGlobalHotkeyPressed by globalHotkeyService.hotkeyPressed.collectAsState()
-    
-    LaunchedEffect(isGlobalHotkeyPressed) {
-        if (isGlobalHotkeyPressed && !isRecording) {
-            isRecording = true
-            sttService.startRecording()
-        } else if (!isGlobalHotkeyPressed && isRecording) {
-            isRecording = false
-            val text = sttService.stopAndTranscribe()
-            if (autoSend && text.isNotBlank()) {
-                sendMessage(text)
-            } else {
-                userInput = text
+    // Унифицированный PTT Handler для hotkey и UI кнопки
+    val unifiedPTTHandler = remember {
+        UnifiedPTTHandler(
+            sttService = sttService,
+            ttsQueueService = ttsQueueService,
+            autoSend = autoSend,
+            onTextReceived = { text -> userInput = text },
+            onSendMessage = { text -> 
+                coroutineScope.launch { sendMessage(text) }
+            },
+            onInterrupt = {
+                currentSession?.sendInterrupt() ?: false
             }
-        }
+        )
     }
     
-    val modifierWithPushToTalk = Modifier.pointerInput(Unit) {
-        awaitPointerEventScope {
-            while (true) {
-                val event = awaitPointerEvent()
-                if (event.buttons.isPrimaryPressed && !isRecording) {
-                    isRecording = true
-                    coroutineScope.launch { sttService.startRecording() }
-                } else if (!event.buttons.isPrimaryPressed && isRecording) {
-                    isRecording = false
-                    coroutineScope.launch {
-                        val text = sttService.stopAndTranscribe()
-                        if (autoSend && text.isNotBlank()) {
-                            sendMessage(text)
-                        } else {
-                            userInput = text
-                        }
-                    }
-                }
-            }
-        }
+    // Обновляем состояние записи из unified handler
+    isRecording = unifiedPTTHandler.isRecording()
+    
+    // Настраиваем global hotkey handler
+    LaunchedEffect(Unit) {
+        globalHotkeyService.setGestureHandler(unifiedPTTHandler)
     }
+    
+    // Создаем modifier с унифицированной логикой
+    val modifierWithPushToTalk = Modifier.pttGestures(
+        handler = unifiedPTTHandler,
+        coroutineScope = coroutineScope
+    )
 
     Window(
         onCloseRequest = {
             println("[GROMOZEKA] Application window closing - stopping all sessions...")
             globalHotkeyService.shutdown()
+            ttsQueueService.shutdown()
             exitApplication()
         },
         title = "🤖 Громозека${if (settingsService.mode == com.gromozeka.bot.settings.AppMode.DEV) " [DEV]" else ""}${selectedSession?.projectPath?.let { " • $it" } ?: ""}") {
@@ -381,9 +373,6 @@ fun ApplicationScope.ChatWindow(
                         createNewSession(currentProjectPath)
                     },
                     onSendMessage = sendMessage,
-                    onInterrupt = {
-                        currentSession?.sendInterrupt() ?: false
-                    },
                     sttService = sttService,
                     ttsService = ttsService,
                     coroutineScope = coroutineScope,
@@ -393,7 +382,8 @@ fun ApplicationScope.ChatWindow(
                             balanceInfo = openAiBalanceService.checkBalance()
                             showBalanceDialog = true
                         }
-                    }
+                    },
+                    isDev = settingsService.mode == com.gromozeka.bot.settings.AppMode.DEV
                 )
             }
         } else {

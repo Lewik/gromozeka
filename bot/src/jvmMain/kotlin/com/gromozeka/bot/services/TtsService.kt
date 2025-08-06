@@ -1,7 +1,6 @@
 package com.gromozeka.bot.services
 
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.*
 import org.springframework.ai.openai.OpenAiAudioSpeechModel
 import org.springframework.ai.openai.OpenAiAudioSpeechOptions
 import org.springframework.ai.openai.api.OpenAiAudioApi
@@ -42,14 +41,25 @@ class TtsService(private val openAiAudioSpeechModel: OpenAiAudioSpeechModel) {
     }
 
     suspend fun playAudio(audioFile: File) = withContext(Dispatchers.IO) {
+        var process: Process? = null
         try {
-            val process = ProcessBuilder("afplay", audioFile.absolutePath)
+            process = ProcessBuilder("afplay", audioFile.absolutePath)
                 .start()
 
-            process.waitFor()
+            // Cancellation-aware waiting
+            while (process.isAlive) {
+                ensureActive() // Проверяем cancellation
+                Thread.sleep(50) // Короткие интервалы для быстрого отклика
+            }
 
+        } catch (e: CancellationException) {
+            println("[TTS] Audio playback cancelled")
+            process?.destroyForcibly() // Убиваем afplay процесс
+            throw e
         } catch (e: Exception) {
             e.printStackTrace()
+        } finally {
+            process?.takeIf { it.isAlive }?.destroyForcibly()
         }
     }
 

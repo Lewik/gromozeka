@@ -39,12 +39,12 @@ fun ChatScreen(
     onBackToSessionList: () -> Unit,
     onNewSession: () -> Unit,
     onSendMessage: suspend (String) -> Unit,
-    onInterrupt: suspend () -> Unit,
     sttService: SttService,
     ttsService: TtsService,
     coroutineScope: CoroutineScope,
     modifierWithPushToTalk: Modifier,
     onCheckBalance: () -> Unit,
+    isDev: Boolean = false,
 ) {
     val scrollState = rememberScrollState()
     var stickyToBottom by remember { mutableStateOf(true) }
@@ -139,18 +139,6 @@ fun ChatScreen(
                     style = MaterialTheme.typography.body2,
                     color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
                 )
-                Spacer(modifier = Modifier.width(16.dp))
-                Button(
-                    onClick = {
-                        coroutineScope.launch {
-                            onInterrupt()
-                        }
-                    },
-                    colors = ButtonDefaults.buttonColors(backgroundColor = MaterialTheme.colors.error),
-                    modifier = Modifier.height(32.dp)
-                ) {
-                    Text("Прервать", style = MaterialTheme.typography.button)
-                }
             }
         }
 
@@ -170,7 +158,8 @@ fun ChatScreen(
             onSendMessage = onSendMessage,
             onUserInputChange = onUserInputChange,
             coroutineScope = coroutineScope,
-            modifierWithPushToTalk = modifierWithPushToTalk
+            modifierWithPushToTalk = modifierWithPushToTalk,
+            isDev = isDev
         )
     }
 }
@@ -404,8 +393,21 @@ private fun VoiceControls(
     onUserInputChange: (String) -> Unit,
     coroutineScope: CoroutineScope,
     modifierWithPushToTalk: Modifier,
+    isDev: Boolean = false,
 ) {
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+        // Кнопка для режима разработки - первая в ряду
+        if (isDev) {
+            Button(onClick = {
+                coroutineScope.launch {
+                    onSendMessage("Расскажи скороговорку")
+                }
+            }) {
+                Text("🗣 Скороговорка")
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+        }
+        
         Spacer(modifier = Modifier.weight(1f))
 
         Button(onClick = { coroutineScope.launch { sttService.startRecording() } }) {

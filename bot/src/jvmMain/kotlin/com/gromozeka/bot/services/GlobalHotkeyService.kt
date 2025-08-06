@@ -4,8 +4,9 @@ import com.github.kwhat.jnativehook.GlobalScreen
 import com.github.kwhat.jnativehook.NativeHookException
 import com.github.kwhat.jnativehook.keyboard.NativeKeyEvent
 import com.github.kwhat.jnativehook.keyboard.NativeKeyListener
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
 import org.springframework.stereotype.Service
 import java.util.logging.Level
 import java.util.logging.Logger
@@ -19,22 +20,34 @@ class GlobalHotkeyService {
         private const val HOTKEY_BACKTICK_KEYCODE = 41
         private const val HOTKEY_LEFT_SHIFT_MASK = NativeKeyEvent.SHIFT_L_MASK
     }
-    private val _hotkeyPressed = MutableStateFlow(false)
-    val hotkeyPressed: StateFlow<Boolean> = _hotkeyPressed
+    
+    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private var gestureDetector: PTTGestureDetector? = null
+    
+    private val _gestureEvents = MutableSharedFlow<PTTGestureEvent>()
+    val gestureEvents: SharedFlow<PTTGestureEvent> = _gestureEvents
     
     private var isRegistered = false
+    
+    fun setGestureHandler(handler: PTTGestureHandler) {
+        gestureDetector = PTTGestureDetector(handler, serviceScope)
+    }
     
     private val keyListener = object : NativeKeyListener {
         override fun nativeKeyPressed(e: NativeKeyEvent) {
             if (isTargetHotkey(e)) {
-                _hotkeyPressed.value = true
+                serviceScope.launch {
+                    gestureDetector?.onKeyDown()
+                }
             }
         }
         
         override fun nativeKeyReleased(e: NativeKeyEvent) {
-            // Выключаем микрофон при отпускании ЛЮБОЙ клавиши из комбинации
+            // Отпускание ЛЮБОЙ клавиши из комбинации
             if (isPartOfHotkey(e)) {
-                _hotkeyPressed.value = false
+                serviceScope.launch {
+                    gestureDetector?.onKeyUp()
+                }
             }
         }
     }
@@ -72,13 +85,22 @@ class GlobalHotkeyService {
     fun shutdown() {
         if (isRegistered) {
             try {
+                gestureDetector?.reset()
                 GlobalScreen.removeNativeKeyListener(keyListener)
                 GlobalScreen.unregisterNativeHook()
                 isRegistered = false
+                serviceScope.cancel()
                 println("[HOTKEY] Global hotkey service shutdown")
             } catch (ex: NativeHookException) {
                 println("[HOTKEY] Failed to unregister native hook: ${ex.message}")
             }
         }
     }
+}
+
+sealed class PTTGestureEvent {
+    object SingleClick : PTTGestureEvent()
+    object DoubleClick : PTTGestureEvent()
+    data class PTTStart(val mode: PTTMode) : PTTGestureEvent()
+    data class PTTStop(val mode: PTTMode) : PTTGestureEvent()
 }

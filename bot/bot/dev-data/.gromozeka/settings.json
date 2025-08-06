@@ -2,5 +2,7 @@
     "claudeProjectPath": "/Users/lewik/code/gromozeka/dev/bot",
     "enableTts": true,
     "enableStt": true,
-    "autoSend": true
+    "autoSend": true,
+    "claudeModel": "sonnet",
+    "globalPttHotkeyEnabled": false
 }
