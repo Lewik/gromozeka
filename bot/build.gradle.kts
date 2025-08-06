@@ -24,6 +24,7 @@ kotlin {
                 implementation(libs.spring.ai.starter.mcp.client)
                 
                 implementation(compose.desktop.currentOs)
+                implementation(compose.material3)
                 implementation(libs.spring.boot.starter)
                 
                 implementation(project(":shared"))
