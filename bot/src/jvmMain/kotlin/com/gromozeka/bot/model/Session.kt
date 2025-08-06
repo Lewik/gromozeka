@@ -289,9 +289,9 @@ class Session(
                 println("[Session] *** STREAM ERROR: ${exception.message}")
                 this@Session.handleStreamError(exception)
             }
-            .onEach { streamMessage ->
-                println("[Session] *** GOT STREAM MESSAGE FROM FLOW: ${streamMessage.type}")
-                this@Session.handleOutputStreamMessage(streamMessage)
+            .onEach { streamMessagePacket ->
+                println("[Session] *** GOT STREAM MESSAGE FROM FLOW: ${streamMessagePacket.streamMessage.type}")
+                this@Session.handleOutputStreamMessage(streamMessagePacket)
             }
             .catch { e ->
                 println("[Session] Critical stream error: ${e.message}")
@@ -324,8 +324,9 @@ class Session(
             .launchIn(this)
     }
 
-    private suspend fun handleOutputStreamMessage(streamMessage: StreamMessage) = sessionMutex.withLock {
+    private suspend fun handleOutputStreamMessage(streamMessagePacket: StreamMessagePacket) = sessionMutex.withLock {
         try {
+            val streamMessage = streamMessagePacket.streamMessage
             println("[Session] *** PROCESSING STREAM MESSAGE: ${streamMessage.type}")
 
             // Reset waiting flag only when we receive the final result
@@ -342,7 +343,9 @@ class Session(
                 is StreamMessage.ControlRequestMessage -> Unit // We don't expect to receive control requests
             }
 
-            val chatMessage = StreamToChatMessageMapper.mapToChatMessage(streamMessage)
+            val chatMessage = StreamToChatMessageMapper
+                .mapToChatMessage(streamMessagePacket.streamMessage)
+                .copy(originalJson = streamMessagePacket.originalJson)
             _messageOutputStream.emit(chatMessage)
 
         } catch (e: Exception) {

@@ -25,6 +25,9 @@ data class ChatMessage(
     
     // Indicates if this message is loaded from historical data (prevents TTS replay)
     val isHistorical: Boolean = false,
+    
+    // Original JSON from LLM stream for debugging (when showOriginalJson setting enabled)
+    val originalJson: String? = null,
 ) {
 
     @Serializable

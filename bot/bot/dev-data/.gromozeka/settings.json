@@ -4,5 +4,6 @@
     "enableStt": true,
     "autoSend": true,
     "claudeModel": "sonnet",
-    "globalPttHotkeyEnabled": false
+    "globalPttHotkeyEnabled": false,
+    "showOriginalJson": true
 }

@@ -10,6 +10,7 @@ data class Settings(
     val autoSend: Boolean = true,
     val claudeModel: String = "sonnet",
     val globalPttHotkeyEnabled: Boolean = false,
+    val showOriginalJson: Boolean = false,
 )
 
 @Serializable

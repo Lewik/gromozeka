@@ -18,12 +18,15 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.gromozeka.bot.model.ChatSession
 import com.gromozeka.bot.services.SttService
 import com.gromozeka.bot.services.TtsService
 import com.gromozeka.shared.domain.message.ChatMessage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.Json.Default.parseToJsonElement
 import kotlinx.serialization.json.JsonElement
 
 @Composable
@@ -48,6 +51,7 @@ fun ChatScreen(
 ) {
     val scrollState = rememberScrollState()
     var stickyToBottom by remember { mutableStateOf(true) }
+    var jsonToShow by remember { mutableStateOf<String?>(null) }
 
     val isAtBottom by remember {
         derivedStateOf {
@@ -104,7 +108,10 @@ fun ChatScreen(
                 Column {
                     chatHistory
                         .forEachIndexed { index, message ->
-                            MessageItem(message = message)
+                            MessageItem(
+                                message = message,
+                                onShowJson = { json -> jsonToShow = json }
+                            )
                             if (index < chatHistory.size - 1) {
                                 Divider(
                                     modifier = Modifier.padding(vertical = 8.dp),
@@ -162,10 +169,21 @@ fun ChatScreen(
             isDev = isDev
         )
     }
+
+    // JSON Dialog at top level to avoid hierarchy issues
+    jsonToShow?.let { json ->
+        JsonDialog(
+            json = json,
+            onDismiss = { jsonToShow = null }
+        )
+    }
 }
 
 @Composable
-private fun MessageItem(message: ChatMessage) {
+private fun MessageItem(
+    message: ChatMessage,
+    onShowJson: (String) -> Unit = {},
+) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
         horizontalArrangement = if (message.messageType == ChatMessage.MessageType.USER) Arrangement.End else Arrangement.Start
@@ -183,6 +201,16 @@ private fun MessageItem(message: ChatMessage) {
                 )
                 .padding(12.dp)
         ) {
+            // Show original JSON button if available  
+            message.originalJson?.let { originalJson ->
+                Button(
+                    onClick = { onShowJson(originalJson) },
+                    modifier = Modifier.padding(bottom = 8.dp)
+                ) {
+                    Text("🔍 JSON", style = MaterialTheme.typography.caption)
+                }
+            }
+
             message.content.forEach { content ->
                 when (content) {
                     is ChatMessage.ContentItem.Message -> {
@@ -330,11 +358,17 @@ private fun StructuredMessageTemplate(
 }
 
 
-private fun jsonPrettyPrint(json: JsonElement): String {
-    return json.toString().let { jsonString ->
-        // Simple pretty print
-        jsonString.replace(",", ",\n").replace("{", "{\n").replace("}", "\n}")
-    }
+private val prettyJson = kotlinx.serialization.json.Json {
+    prettyPrint = true
+}
+
+private fun jsonPrettyPrint(json: JsonElement) = prettyJson.encodeToString(JsonElement.serializer(), json)
+
+private fun jsonPrettyPrint(jsonString: String): String = try {
+    val json = parseToJsonElement(jsonString)
+    jsonPrettyPrint(json)
+} catch (e: Exception) {
+    jsonString // Return as-is if can't parse
 }
 
 @Composable
@@ -407,7 +441,7 @@ private fun VoiceControls(
             }
             Spacer(modifier = Modifier.width(8.dp))
         }
-        
+
         Spacer(modifier = Modifier.weight(1f))
 
         Button(onClick = { coroutineScope.launch { sttService.startRecording() } }) {
@@ -430,6 +464,62 @@ private fun VoiceControls(
 
         Button(onClick = {}, modifier = modifierWithPushToTalk) {
             Text("🎤 PTT")
+        }
+    }
+}
+
+@Composable
+private fun JsonDialog(
+    json: String,
+    onDismiss: () -> Unit,
+) {
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false
+        ),
+
+        ) {
+        Card(
+            modifier = Modifier.fillMaxSize(),
+            elevation = 8.dp
+        ) {
+            Column {
+                // Header with title and close button
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        "Original JSON",
+                        style = MaterialTheme.typography.h6
+                    )
+                    Button(onClick = onDismiss) {
+                        Text("✕")
+                    }
+                }
+
+                Divider()
+
+                // Scrollable content with selection support
+                SelectionContainer(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(16.dp)
+                ) {
+                    Text(
+                        text = jsonPrettyPrint(json),
+                        style = MaterialTheme.typography.caption,
+                        fontFamily = FontFamily.Monospace,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .verticalScroll(rememberScrollState())
+                    )
+                }
+            }
         }
     }
 }

@@ -1,6 +1,7 @@
 package com.gromozeka.bot.services
 
 import com.gromozeka.bot.model.StreamMessage
+import com.gromozeka.bot.model.StreamMessagePacket
 import com.gromozeka.bot.settings.AppMode
 import jakarta.annotation.PreDestroy
 import kotlinx.coroutines.*
@@ -67,11 +68,11 @@ class ClaudeCodeStreamingWrapper(
 
 
     // Unified stream broadcasting with buffer for late subscribers
-    private val _streamMessages = MutableSharedFlow<StreamMessage>(
+    private val _streamMessages = MutableSharedFlow<StreamMessagePacket>(
         replay = 100,  // Keep last 100 messages for late subscribers
         extraBufferCapacity = 100  // Buffer capacity for fast emission
     )
-    val streamMessages: SharedFlow<StreamMessage> = _streamMessages.asSharedFlow()
+    val streamMessages: SharedFlow<StreamMessagePacket> = _streamMessages.asSharedFlow()
 
     suspend fun start(
         projectPath: String? = null,
@@ -202,9 +203,16 @@ class ClaudeCodeStreamingWrapper(
         }
     }
 
-    fun streamOutput(): Flow<StreamMessage> = streamMessages
+    fun streamOutput(): Flow<StreamMessagePacket> = streamMessages
 
-    private fun parseStreamMessage(jsonLine: String): StreamMessage {
+    private fun parseStreamMessage(jsonLine: String): StreamMessagePacket {
+
+        val originalJson = if (settingsService.settings.showOriginalJson) {
+            jsonLine
+        } else {
+            null
+        }
+
         return try {
             val parsed = Json.decodeFromString<StreamMessage>(jsonLine)
             println("[ClaudeCodeStreamingWrapper] Successfully parsed StreamMessage: ${parsed.type}")
@@ -222,13 +230,13 @@ class ClaudeCodeStreamingWrapper(
                 else -> {}
             }
 
-            parsed
+            StreamMessagePacket(parsed, originalJson)
         } catch (e: SerializationException) {
             println("[ClaudeCodeStreamingWrapper] STREAM PARSE ERROR: Failed to deserialize StreamMessage")
             println("  Exception: ${e.javaClass.simpleName}: ${e.message}")
             println("  JSON line: $jsonLine")
             println("  Stack trace: ${e.stackTraceToString()}")
-            try {
+            val fallbackMessage = try {
                 StreamMessage.SystemStreamMessage(
                     subtype = "parse_error",
                     data = Json.parseToJsonElement(jsonLine) as JsonObject,
@@ -243,15 +251,19 @@ class ClaudeCodeStreamingWrapper(
                     sessionId = null
                 )
             }
+            
+            StreamMessagePacket(fallbackMessage, originalJson)
         } catch (e: Exception) {
             println("[ClaudeCodeStreamingWrapper] UNEXPECTED ERROR in parseStreamMessage: ${e.javaClass.simpleName}: ${e.message}")
             println("  JSON line: $jsonLine")
             println("  Stack trace: ${e.stackTraceToString()}")
-            StreamMessage.SystemStreamMessage(
-                subtype = "raw_output",
-                data = buildJsonObject { put("raw_line", JsonPrimitive(jsonLine)) },
+            val fallbackMessage = StreamMessage.SystemStreamMessage(
+                subtype = "error",
+                data = buildJsonObject { put("error", JsonPrimitive(e.message ?: "Unknown error")) },
                 sessionId = null
             )
+            
+            StreamMessagePacket(fallbackMessage, originalJson)
         }
     }
 
@@ -270,10 +282,10 @@ class ClaudeCodeStreamingWrapper(
                     println("=== END LIVE STREAM ===")
 
                     // Parse and broadcast stream message
-                    val streamMessage = parseStreamMessage(line)
-                    println("[ClaudeWrapper] *** EMITTING STREAM MESSAGE: ${streamMessage.type}")
+                    val streamMessagePacket = parseStreamMessage(line)
+                    println("[ClaudeWrapper] *** EMITTING STREAM MESSAGE: ${streamMessagePacket.streamMessage.type}")
 
-                    _streamMessages.emit(streamMessage)
+                    _streamMessages.emit(streamMessagePacket)
                 } catch (e: Exception) {
                     e.printStackTrace()
                 } finally {

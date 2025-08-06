@@ -283,3 +283,12 @@ data class ControlResponse(
     val subtype: String, // "success", "error", etc.
     val error: String? = null,
 )
+
+/**
+ * Wrapper for StreamMessage that preserves original JSON for debugging purposes.
+ * Allows passing both parsed StreamMessage and raw JSON through the processing pipeline.
+ */
+data class StreamMessagePacket(
+    val streamMessage: StreamMessage,
+    val originalJson: String?
+)
