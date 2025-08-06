@@ -9,6 +9,7 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.springframework.stereotype.Service
 import java.io.File
+import java.util.*
 
 @Service
 class SettingsService {
@@ -92,7 +93,9 @@ class SettingsService {
 
     private fun loadSettings(): Settings = if (settingsFile.exists()) {
         try {
-            json.decodeFromString<Settings>(settingsFile.readText())
+            val settings = json.decodeFromString<Settings>(settingsFile.readText())
+            validateSettings(settings)
+            settings
         } catch (e: Exception) {
             println("[SettingsService] Failed to load settings: ${e.message}")
             createDefaultSettings()
@@ -117,6 +120,7 @@ class SettingsService {
 
     fun saveSettings(settings: Settings) {
         requireInitialized()
+        validateSettings(settings) // Fail fast on invalid settings
         // Always save to file in both modes
         settingsFile.writeText(json.encodeToString(settings))
         _settingsFlow.value = settings
@@ -170,5 +174,42 @@ class SettingsService {
         if (!initialized) {
             throw IllegalStateException("SettingsService not initialized. Call initialize() first.")
         }
+    }
+
+    /**
+     * Validates settings for correctness and fail-fast behavior
+     */
+    private fun validateSettings(settings: Settings) {
+        validateLanguageCode(settings.sttMainLanguage)
+    }
+
+    /**
+     * Validates ISO 639-1 and 639-3 language codes
+     * Fail fast if invalid - OpenAI models won't understand invalid codes
+     */
+    private fun validateLanguageCode(languageCode: String) {
+        require(languageCode.isNotBlank()) { 
+            "STT language code cannot be blank" 
+        }
+
+        // Check if it's a valid ISO language code using Java's Locale
+        val isValidIso639_1 = try {
+            val locale = Locale.forLanguageTag(languageCode)
+            locale.language.isNotBlank() && locale.language != "und"
+        } catch (e: Exception) {
+            false
+        }
+
+        // Additional check for 2-letter and 3-letter codes (ISO 639-1 and 639-3)
+        val isValidLength = languageCode.length in 2..3
+        val isAlphabetic = languageCode.all { it.isLetter() }
+
+        require(isValidIso639_1 && isValidLength && isAlphabetic) {
+            "Invalid STT language code: '$languageCode'. " +
+            "Must be a valid ISO 639-1 (2-letter) or ISO 639-3 (3-letter) code. " +
+            "Examples: 'en', 'ru', 'zh', 'es', 'fra', 'deu'"
+        }
+
+        println("[SettingsService] STT language code validated: '$languageCode'")
     }
 }

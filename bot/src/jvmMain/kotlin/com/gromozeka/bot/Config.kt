@@ -1,5 +1,6 @@
 package com.gromozeka.bot
 
+import com.gromozeka.bot.services.SettingsService
 import com.gromozeka.bot.services.SttService
 import com.gromozeka.bot.services.TtsService
 import io.ktor.client.*
@@ -29,8 +30,10 @@ class Config {
 
 
     @Bean
-    fun sttService(openAiAudioTranscriptionModel: OpenAiAudioTranscriptionModel) =
-        SttService(openAiAudioTranscriptionModel)
+    fun sttService(
+        openAiAudioTranscriptionModel: OpenAiAudioTranscriptionModel,
+        settingsService: SettingsService
+    ) = SttService(openAiAudioTranscriptionModel, settingsService)
 
     @Bean
     fun ttsService(openAiAudioSpeechModel: OpenAiAudioSpeechModel) =

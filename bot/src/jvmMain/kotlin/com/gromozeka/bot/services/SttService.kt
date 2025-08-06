@@ -8,11 +8,16 @@ import org.springframework.ai.openai.OpenAiAudioTranscriptionModel
 import org.springframework.ai.openai.OpenAiAudioTranscriptionOptions
 import org.springframework.ai.openai.api.OpenAiAudioApi.TranscriptResponseFormat
 import org.springframework.core.io.FileSystemResource
+import org.springframework.stereotype.Service
 import java.io.File
 import javax.sound.sampled.*
 
 
-class SttService(private val openAiAudioTranscriptionModel: OpenAiAudioTranscriptionModel) {
+@Service
+class SttService(
+    private val openAiAudioTranscriptionModel: OpenAiAudioTranscriptionModel,
+    private val settingsService: SettingsService,
+) {
     private lateinit var outputFile: File
     private var line: TargetDataLine? = null
 
@@ -40,6 +45,7 @@ class SttService(private val openAiAudioTranscriptionModel: OpenAiAudioTranscrip
             val transcriptionOptions = OpenAiAudioTranscriptionOptions.builder()
                 .responseFormat(TranscriptResponseFormat.TEXT)
                 .temperature(0f)
+                .language(settingsService.settings.sttMainLanguage)
                 .build()
 
 
