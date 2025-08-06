@@ -1,6 +1,7 @@
 package com.gromozeka.bot.services
 
 import com.gromozeka.bot.model.StreamMessage
+import com.gromozeka.bot.settings.AppMode
 import jakarta.annotation.PreDestroy
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.Flow
@@ -11,12 +12,16 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.*
+import org.springframework.stereotype.Component
 import java.io.BufferedReader
 import java.io.BufferedWriter
 import java.io.File
 import java.io.OutputStreamWriter
 
-class ClaudeCodeStreamingWrapper {
+@Component
+class ClaudeCodeStreamingWrapper(
+    private val settingsService: SettingsService
+) {
 
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
@@ -27,10 +32,29 @@ class ClaudeCodeStreamingWrapper {
     }
 
     private fun loadDefaultSystemPrompt(): String {
-        return this::class.java.getResourceAsStream("/default-system-prompt.md")
+        val basePrompt = this::class.java.getResourceAsStream("/default-system-prompt.md")
             ?.bufferedReader()
             ?.readText()
             ?: ""
+        
+        return if (settingsService.mode == AppMode.DEV) {
+            println("[ClaudeCodeStreamingWrapper] DEV mode detected - loading additional DEV prompt")
+            val devPrompt = this::class.java.getResourceAsStream("/dev-mode-prompt.md")
+                ?.bufferedReader()
+                ?.readText()
+                ?: ""
+            
+            if (devPrompt.isNotEmpty()) {
+                println("[ClaudeCodeStreamingWrapper] DEV prompt loaded successfully (${devPrompt.length} chars)")
+                "$basePrompt\n\n$devPrompt"
+            } else {
+                println("[ClaudeCodeStreamingWrapper] WARNING: DEV prompt file empty or not found")
+                basePrompt
+            }
+        } else {
+            println("[ClaudeCodeStreamingWrapper] PROD mode - using base prompt only")
+            basePrompt
+        }
     }
 
     private var process: Process? = null

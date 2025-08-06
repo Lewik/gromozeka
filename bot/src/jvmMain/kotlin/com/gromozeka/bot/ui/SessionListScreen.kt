@@ -28,6 +28,7 @@ fun SessionListScreen(
     coroutineScope: CoroutineScope,
     onNewSession: (String) -> Unit,
     sessionJsonlService: SessionJsonlService,
+    context: org.springframework.context.ConfigurableApplicationContext
 ) {
     var allSessions by remember { mutableStateOf<List<ChatSession>>(emptyList()) }
     var projectGroups by remember { mutableStateOf<List<ProjectGroup>>(emptyList()) }
@@ -120,7 +121,7 @@ fun SessionListScreen(
                             SessionItem(
                                 session = session,
                                 onSessionClick = { clickedSession ->
-                                    coroutineScope.handleSessionClick(clickedSession, onSessionSelected, sessionJsonlService)
+                                    coroutineScope.handleSessionClick(clickedSession, onSessionSelected, sessionJsonlService, context)
                                 },
                                 isGrouped = false
                             )
@@ -165,7 +166,7 @@ fun SessionListScreen(
                                 SessionItem(
                                     session = session,
                                     onSessionClick = { clickedSession ->
-                                        coroutineScope.handleSessionClick(clickedSession, onSessionSelected, sessionJsonlService)
+                                        coroutineScope.handleSessionClick(clickedSession, onSessionSelected, sessionJsonlService, context)
                                     },
                                     isGrouped = true
                                 )
@@ -298,12 +299,13 @@ private fun NewSessionButton(
 private fun CoroutineScope.handleSessionClick(
     clickedSession: ChatSession,
     onSessionSelected: (ChatSession, List<ChatMessage>, Session) -> Unit,
-    sessionJsonlService: SessionJsonlService
+    sessionJsonlService: SessionJsonlService,
+    context: org.springframework.context.ConfigurableApplicationContext
 ) {
     launch {
         try {
             // Create new Session that will load history during start
-            val claudeWrapper = ClaudeCodeStreamingWrapper()
+            val claudeWrapper = context.getBean(ClaudeCodeStreamingWrapper::class.java)
             val session = Session(clickedSession.projectPath, claudeWrapper, sessionJsonlService)
             
             // Pass session to parent - it will handle Claude process management  

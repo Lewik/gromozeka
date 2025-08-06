@@ -79,7 +79,8 @@ fun main() {
                 ttsService,
                 openAiBalanceService,
                 settingsService,
-                sessionJsonlService
+                sessionJsonlService,
+                context
             )
         }
     }
@@ -93,6 +94,7 @@ fun ApplicationScope.ChatWindow(
     openAiBalanceService: OpenAiBalanceService,
     settingsService: SettingsService,
     sessionJsonlService: SessionJsonlService,
+    context: org.springframework.context.ConfigurableApplicationContext
 ) {
     val coroutineScope = rememberCoroutineScope()
     val scrollState = rememberScrollState()
@@ -228,7 +230,7 @@ fun ApplicationScope.ChatWindow(
                 currentSession = null
                 
                 // Create and start new active session
-                val claudeWrapper = ClaudeCodeStreamingWrapper()
+                val claudeWrapper = context.getBean(ClaudeCodeStreamingWrapper::class.java)
                 val activeSession = Session(projectPath, claudeWrapper, sessionJsonlService, settingsService.settings.claudeModel)
                 activeSession.start(coroutineScope)
                 currentSession = activeSession
@@ -323,7 +325,8 @@ fun ApplicationScope.ChatWindow(
                     },
                     coroutineScope = coroutineScope,
                     onNewSession = createNewSession,
-                    sessionJsonlService = sessionJsonlService
+                    sessionJsonlService = sessionJsonlService,
+                    context = context
                 )
             } else {
                 ChatScreen(
