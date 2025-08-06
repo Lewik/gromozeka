@@ -235,11 +235,11 @@ class Session(
                 println("[Session] Canceling stream collection...")
                 job.cancel()
 
-                // Wait для graceful cancellation
+                // Wait for graceful cancellation
                 try {
-                    job.join() // Wait до завершения
+                    job.join() // Wait until completion
                 } catch (e: CancellationException) {
-                    // Expected при cancel
+                    // Expected when canceling
                 }
 
                 streamCollectionJob = null
@@ -250,7 +250,7 @@ class Session(
                 claudeWrapper.stop()
             } catch (e: Exception) {
                 println("[Session] Error stopping Claude process: ${e.message}")
-                // Continue - не блокируем shutdown на ошибке процесса
+                // Continue - don't block shutdown on process error
             }
 
             // === Phase 4: Reset State ===
@@ -258,7 +258,7 @@ class Session(
             _isWaitingForResponse.value = false
             sessionScope = null
 
-            // Note: не очищаем messageAccumulator - сохраняем для history
+            // Note: don't clear messageAccumulator - preserve for history
 
             _events.emit(StreamSessionEvent.Stopped)
             println("[Session] Session stopped successfully")
@@ -266,12 +266,12 @@ class Session(
         } catch (e: Exception) {
             println("[Session] Error during stop: ${e.message}")
 
-            // Force cleanup даже при ошибках
+            // Force cleanup even on errors
             _sessionState.value = SessionState.ERROR
             _isWaitingForResponse.value = false
             sessionScope = null
 
-            // Don't throw - обеспечиваем что cleanup завершается
+            // Don't throw - ensure cleanup completes
         }
     }
 
@@ -489,11 +489,11 @@ class Session(
  * Session states for lifecycle management
  */
 enum class SessionState {
-    INACTIVE,       // Начальное состояние
-    STARTING,       // Процесс запуска (создание process, подключение stream)
-    ACTIVE,         // Активная сессия (stream collecting, можно отправлять сообщения)
-    STOPPING,       // Процесс остановки (graceful shutdown)
-    ERROR          // Ошибка (требует cleanup и возможно restart)
+    INACTIVE,       // Initial state
+    STARTING,       // Startup process (creating process, connecting stream)
+    ACTIVE,         // Active session (stream collecting, can send messages)
+    STOPPING,       // Stop process (graceful shutdown)
+    ERROR          // Error (requires cleanup and possibly restart)
 }
 
 /**

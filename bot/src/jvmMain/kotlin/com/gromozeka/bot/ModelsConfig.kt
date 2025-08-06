@@ -35,8 +35,8 @@ class ModelsConfig {
 
 //        val model = "gpt-4.1"
 //        val model = OpenAiApi.ChatModel.GPT_4_O
-        val model = OpenAiApi.ChatModel.GPT_4_O_MINI  //туповато и дешево
-////            .model("gpt-4.5-preview") //ДОРОГО!!! и ооооочень долго
+        val model = OpenAiApi.ChatModel.GPT_4_O_MINI  // somewhat dumb and cheap
+////            .model("gpt-4.5-preview") // EXPENSIVE!!! and very slow
         return OpenAiChatModel.builder()
             .openAiApi(openAiApi)
             .defaultOptions(OpenAiChatOptions.builder().model(model).build())

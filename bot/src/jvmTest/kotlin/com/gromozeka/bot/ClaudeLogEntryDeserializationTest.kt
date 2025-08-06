@@ -10,7 +10,7 @@ import java.io.File
 class ClaudeLogEntryDeserializationTest : FunSpec({
 
     val json = Json {
-        ignoreUnknownKeys = false // строгая десериализация
+        ignoreUnknownKeys = false // strict deserialization
         coerceInputValues = false
     }
 
@@ -90,7 +90,7 @@ class ClaudeLogEntryDeserializationTest : FunSpec({
                         val entry = json.decodeFromString<ClaudeLogEntry>(line)
                         successCount++
 
-                        // проверяем что получили правильный тип
+                        // verify that we received the correct type
                         entry should beInstanceOf<ClaudeLogEntry>()
 
                         when (entry) {
@@ -115,7 +115,7 @@ class ClaudeLogEntryDeserializationTest : FunSpec({
                     } catch (e: Exception) {
                         println("Failed to parse line in ${file.name}: ${e.message}")
                         println("Line: $line")
-                        // Временно не бросаем исключения чтобы увидеть все ошибки
+                        // Temporarily don't throw exceptions to see all errors
                         // if (totalLines <= 5) { 
                         //     throw e
                         // }

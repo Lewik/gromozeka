@@ -23,7 +23,7 @@ class PTTGestureDetector(
                 firstPressTime = now
                 state = PTTState.FIRST_DOWN
                 
-                // Если держим долго - это single hold
+                // If holding long - this is single hold
                 timeoutJob = coroutineScope.launch {
                     delay(shortClickThreshold)
                     if (state == PTTState.FIRST_DOWN) {
@@ -35,11 +35,11 @@ class PTTGestureDetector(
             
             PTTState.WAITING_SECOND_DOWN -> {
                 if (now - firstPressTime < doubleClickWindow.inWholeMilliseconds) {
-                    // Второе нажатие в пределах окна
+                    // Second press within window
                     timeoutJob?.cancel()
                     state = PTTState.SECOND_DOWN
                     
-                    // Если держим - это double hold
+                    // If holding - this is double hold
                     timeoutJob = coroutineScope.launch {
                         delay(shortClickThreshold)
                         if (state == PTTState.SECOND_DOWN) {
@@ -48,7 +48,7 @@ class PTTGestureDetector(
                         }
                     }
                 } else {
-                    // Слишком поздно, начинаем заново
+                    // Too late, start over
                     firstPressTime = now
                     state = PTTState.FIRST_DOWN
                     
@@ -63,8 +63,8 @@ class PTTGestureDetector(
             }
             
             else -> {
-                // В состояниях FIRST_DOWN, SECOND_DOWN, SINGLE_HOLDING, DOUBLE_HOLDING
-                // игнорируем дополнительные нажатия
+                // In states FIRST_DOWN, SECOND_DOWN, SINGLE_HOLDING, DOUBLE_HOLDING
+                // ignore additional presses
             }
         }
     }
@@ -78,7 +78,7 @@ class PTTGestureDetector(
                 timeoutJob?.cancel()
                 
                 if (holdDuration < shortClickThreshold.inWholeMilliseconds) {
-                    // Быстрое нажатие, ждем второго
+                    // Quick press, waiting for second
                     state = PTTState.WAITING_SECOND_DOWN
                     
                     timeoutJob = coroutineScope.launch {
@@ -89,7 +89,7 @@ class PTTGestureDetector(
                         }
                     }
                 } else {
-                    // Это был single hold, но отпустили
+                    // This was single hold, but released
                     state = PTTState.IDLE
                 }
             }
@@ -98,11 +98,11 @@ class PTTGestureDetector(
                 timeoutJob?.cancel()
                 
                 if (holdDuration < shortClickThreshold.inWholeMilliseconds) {
-                    // Быстрый double click
+                    // Quick double click
                     state = PTTState.IDLE
                     handler.onDoubleClick()
                 } else {
-                    // Это был double hold, но отпустили
+                    // This was double hold, but released
                     state = PTTState.IDLE
                 }
             }
@@ -118,7 +118,7 @@ class PTTGestureDetector(
             }
             
             else -> {
-                // В других состояниях игнорируем UP события
+                // In other states ignore UP events
             }
         }
     }

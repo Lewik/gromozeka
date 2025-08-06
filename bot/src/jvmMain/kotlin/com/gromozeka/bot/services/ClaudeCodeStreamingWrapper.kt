@@ -114,7 +114,7 @@ class ClaudeCodeStreamingWrapper(
             val processBuilder = ProcessBuilder(command)
                 .redirectErrorStream(false)
 
-            // Устанавливаем переменную окружения как в Python SDK для headless режима
+            // Set environment variable like in Python SDK for headless mode
             val env = processBuilder.environment()
 //            env["CLAUDE_CODE_ENTRYPOINT"] = "sdk-py"
 

@@ -70,7 +70,7 @@ fun SessionListScreen(
         Text("Выберите беседу", style = MaterialTheme.typography.h5)
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Временная упрощенная версия - только кнопка создания новой сессии
+        // Temporary simplified version - only new session button
         if (isLoading) {
             Box(
                 modifier = Modifier.fillMaxSize(),

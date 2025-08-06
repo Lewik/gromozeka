@@ -154,7 +154,7 @@ object ClaudeLogEntryMapper {
             }
 
             is ClaudeLogEntry.ClaudeMessageContent.GromozekaJsonContent -> {
-                // Десериализуем JsonObject напрямую в IntermediateMessage (для legacy session данных)
+                // Deserialize JsonObject directly into IntermediateMessage (for legacy session data)
                 val fullText = content.data["fullText"]?.jsonPrimitive?.content ?: ""
                 val ttsText = content.data["ttsText"]?.jsonPrimitive?.content
                 val voiceTone = content.data["voiceTone"]?.jsonPrimitive?.content
@@ -211,7 +211,7 @@ object ClaudeLogEntryMapper {
     private fun parseAssistantContent(content: ClaudeLogEntry.AssistantContent): List<ChatMessage.ContentItem> {
         return when (content) {
             is ClaudeLogEntry.AssistantContent.TextContent -> {
-                // Проверяем, содержит ли текст JSON Громозеки
+                // Check if text contains Gromozeka JSON
                 parseTextContentForGromozeka(content.text)
             }
 
@@ -443,7 +443,7 @@ object ClaudeLogEntryMapper {
     }
 
     private fun parseTextContentForGromozeka(text: String): List<ChatMessage.ContentItem> {
-        // Быстрая проверка - похоже на JSON?
+        // Quick check - looks like JSON?
         if (!text.trim().startsWith("{") || !text.trim().endsWith("}")) {
             return listOf(ChatMessage.ContentItem.Message(text))
         }

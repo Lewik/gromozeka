@@ -21,15 +21,15 @@ fun Modifier.pttGestures(
         awaitEachGesture {
             val down = awaitFirstDown(pass = PointerEventPass.Initial)
             
-            // Уведомляем о нажатии
+            // Notify about press
             coroutineScope.launch {
                 gestureDetector.onKeyDown()
             }
             
-            // Ждем отпускания
+            // Wait for release
             val up = waitForUpOrCancellation(pass = PointerEventPass.Initial)
             
-            // Уведомляем об отпускании
+            // Notify about release
             coroutineScope.launch {
                 gestureDetector.onKeyUp()
             }

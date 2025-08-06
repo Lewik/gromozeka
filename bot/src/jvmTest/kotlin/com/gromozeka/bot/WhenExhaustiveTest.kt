@@ -50,7 +50,7 @@ class WhenExhaustiveTest {
         )
 
         entries.forEach { entry ->
-            // Этот when должен компилироваться без ошибок exhaustiveness
+            // This when should compile without exhaustiveness errors
             val result = when (entry) {
                 is ClaudeLogEntry.SummaryEntry -> "summary: ${entry.summary}"
                 is ClaudeLogEntry.UserEntry -> "user: ${entry.uuid}"

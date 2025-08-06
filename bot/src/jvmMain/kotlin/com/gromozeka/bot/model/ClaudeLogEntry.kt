@@ -246,12 +246,12 @@ object ClaudeMessageContentSerializer : KSerializer<ClaudeLogEntry.ClaudeMessage
         val element = decoder.decodeSerializableValue(JsonElement.serializer())
 
         return when {
-            // 1. Быстрая проверка - строка?
+            // 1. Quick check - string?
             element is JsonPrimitive && element.isString -> {
                 ClaudeLogEntry.ClaudeMessageContent.StringContent(element.content)
             }
 
-            // 2. Объект с type discriminator (Claude формат)
+            // 2. Object with type discriminator (Claude format)
             element is JsonObject && element.containsKey("type") -> {
                 when (element["type"]?.jsonPrimitive?.content) {
                     "string" -> {
@@ -270,19 +270,19 @@ object ClaudeMessageContentSerializer : KSerializer<ClaudeLogEntry.ClaudeMessage
                 }
             }
 
-            // 3. Объект без type - пытаемся десериализовать в Громозека формат
+            // 3. Object without type - try to deserialize into Gromozeka format
             element is JsonObject -> {
                 try {
-                    // Пытаемся распарсить как валидный Громозека JSON
+                    // Try to parse as valid Gromozeka JSON
                     parseAsGromozekaJson(element)
                     ClaudeLogEntry.ClaudeMessageContent.GromozekaJsonContent(element)
                 } catch (e: Exception) {
-                    // Если не получилось - fallback
+                    // If failed - fallback
                     ClaudeLogEntry.ClaudeMessageContent.UnknownJsonContent(element)
                 }
             }
 
-            // 4. Массив - пытаемся как Claude array
+            // 4. Array - try as Claude array
             element is JsonArray -> {
                 try {
                     val content = element.map {
@@ -323,7 +323,7 @@ object ClaudeMessageContentSerializer : KSerializer<ClaudeLogEntry.ClaudeMessage
     }
 
     private fun parseAsGromozekaJson(obj: JsonObject) {
-        // Проверяем что есть обязательное поле fullText
+        // Check that required fullText field exists
         if (!obj.containsKey("fullText")) {
             throw IllegalArgumentException("Missing required fullText field")
         }

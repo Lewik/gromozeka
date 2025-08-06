@@ -33,20 +33,20 @@ class RealChatTestDataTest : FunSpec({
             if (line.trim().isNotEmpty()) {
                 totalLines++
                 try {
-                    // 1. Парсинг ClaudeLogEntry
+                    // 1. Parsing ClaudeLogEntry
                     val entry = json.decodeFromString<ClaudeLogEntry>(line.trim())
                     successCount++
 
-                    // 2. Маппинг в ChatMessage
+                    // 2. Mapping to ChatMessage
                     val chatMessage = ClaudeLogEntryMapper.mapToChatMessage(entry)
                     if (chatMessage != null) {
                         mappedCount++
 
-                        // 3. Проверяем есть ли JSON контент от Громозеки
+                        // 3. Check if there's JSON content from Gromozeka
                         chatMessage.content.forEach { contentItem ->
                             when (contentItem) {
                                 is ChatMessage.ContentItem.Message -> {
-                                    // Проверяем содержит ли JSON
+                                    // Check if it contains JSON
                                     if (contentItem.text.contains("{") && contentItem.text.contains("fullText")) {
                                         println("Found potential Gromozeka JSON in message: ${contentItem.text.take(100)}...")
                                     }
@@ -83,7 +83,7 @@ class RealChatTestDataTest : FunSpec({
             errors.take(3).forEach { println("  $it") }
         }
 
-        // Тест считается успешным если парсится больше 80% строк
+        // Test is considered successful if more than 80% of lines are parsed
         val successRate = successCount * 100.0 / totalLines
         successRate shouldBeGreaterThanOrEqualTo 80.0
     }

@@ -48,13 +48,13 @@ class TtsService(private val openAiAudioSpeechModel: OpenAiAudioSpeechModel) {
 
             // Cancellation-aware waiting
             while (process.isAlive) {
-                ensureActive() // Проверяем cancellation
-                Thread.sleep(50) // Короткие интервалы для быстрого отклика
+                ensureActive() // Check cancellation
+                Thread.sleep(50) // Short intervals for quick response
             }
 
         } catch (e: CancellationException) {
             println("[TTS] Audio playback cancelled")
-            process?.destroyForcibly() // Убиваем afplay процесс
+            process?.destroyForcibly() // Kill afplay process
             throw e
         } catch (e: Exception) {
             e.printStackTrace()

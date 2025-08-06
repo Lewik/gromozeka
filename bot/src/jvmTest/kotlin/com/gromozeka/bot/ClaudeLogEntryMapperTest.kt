@@ -145,8 +145,8 @@ class ClaudeLogEntryMapperTest : FunSpec({
     }
 
     test("mapper should handle tool calls in assistant messages") {
-        // Создаем mock AssistantEntry с tool_use в content
-        // (полную структуру делать лень, проверим что маппер не падает на базовых кейсах)
+        // Create mock AssistantEntry with tool_use in content
+        // (too lazy to create full structure, let's check that mapper doesn't crash on basic cases)
 
         val assistantEntry = ClaudeLogEntry.AssistantEntry(
             cwd = "/test",
@@ -159,7 +159,7 @@ class ClaudeLogEntryMapperTest : FunSpec({
             isSidechain = false,
             parentUuid = null,
             requestId = "req-123",
-            message = null // TODO: нет желания создавать полную структуру для теста
+            message = null // TODO: no desire to create full structure for test
         )
 
         val result = ClaudeLogEntryMapper.mapToChatMessage(assistantEntry)

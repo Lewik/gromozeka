@@ -61,11 +61,11 @@ fun main() {
     val sessionJsonlService = context.getBean<SessionJsonlService>()
     val globalHotkeyService = context.getBean<GlobalHotkeyService>()
     
-    // Явный запуск TTS queue service
+    // Explicit startup of TTS queue service
     ttsQueueService.start()
     println("[GROMOZEKA] TTS queue service started")
     
-    // Инициализируем hotkey service если включен в настройках
+    // Initialize hotkey service if enabled in settings
     if (settingsService.settings.globalPttHotkeyEnabled) {
         globalHotkeyService.initialize()
         println("[GROMOZEKA] Global hotkey service enabled")
@@ -121,7 +121,7 @@ fun ApplicationScope.ChatWindow(
     var userInput by remember { mutableStateOf("") }
     val chatHistory = remember { mutableStateListOf<ChatMessage>() }
 
-    val assistantIsThinking = false // Временно деактивировано
+    val assistantIsThinking = false // Temporarily deactivated
 
     var autoSend by remember { mutableStateOf(true) }
 
@@ -152,7 +152,7 @@ fun ApplicationScope.ChatWindow(
                 chatHistory.add(newMessage)  // Incremental updates
                 println("[ChatApp] ChatHistory now has ${chatHistory.size} messages, last is ${chatHistory.lastOrNull()?.messageType}")
 
-                // TTS для ASSISTANT сообщений (только новых, не исторических)
+                // TTS for ASSISTANT messages (only new ones, not historical)
                 if (newMessage.messageType == ChatMessage.MessageType.ASSISTANT && !newMessage.isHistorical) {
                     println("[ChatApp] Processing TTS for new assistant message")
                     val content = newMessage.content.firstOrNull()
@@ -171,8 +171,8 @@ fun ApplicationScope.ChatWindow(
                         println("[ChatApp] TTS text: '$ttsText'")
                         if (!ttsText.isNullOrBlank()) {
                             println("[ChatApp] Enqueueing TTS: '$ttsText'")
-                            // TODO: В будущем можно передавать voiceTone в TTSQueueService
-                            // Пока используем простой текст без учета голосового тона
+                            // TODO: In the future, we can pass voiceTone to TTSQueueService
+                            // For now, use simple text without considering voice tone
                             ttsQueueService.enqueue(ttsText)
                         }
                     }
@@ -280,7 +280,7 @@ fun ApplicationScope.ChatWindow(
         scrollState.animateScrollTo(scrollState.maxValue)
     }
 
-    // Унифицированный PTT Handler для hotkey и UI кнопки
+    // Unified PTT Handler for hotkey and UI button
     val unifiedPTTHandler = remember {
         UnifiedPTTHandler(
             sttService = sttService,
@@ -296,15 +296,15 @@ fun ApplicationScope.ChatWindow(
         )
     }
     
-    // Обновляем состояние записи из unified handler
+    // Update recording state from unified handler
     isRecording = unifiedPTTHandler.isRecording()
     
-    // Настраиваем global hotkey handler
+    // Configure global hotkey handler
     LaunchedEffect(Unit) {
         globalHotkeyService.setGestureHandler(unifiedPTTHandler)
     }
     
-    // Создаем modifier с унифицированной логикой
+    // Create modifier with unified logic
     val modifierWithPushToTalk = Modifier.pttGestures(
         handler = unifiedPTTHandler,
         coroutineScope = coroutineScope

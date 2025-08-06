@@ -15,7 +15,7 @@ import java.util.logging.Logger
 class GlobalHotkeyService {
     
     companion object {
-        // Хардкод hotkey: Left Shift + ` (backtick)
+        // Hardcoded hotkey: Left Shift + ` (backtick)
         private const val HOTKEY_LEFT_SHIFT_KEYCODE = NativeKeyEvent.VC_SHIFT
         private const val HOTKEY_BACKTICK_KEYCODE = 41
         private const val HOTKEY_LEFT_SHIFT_MASK = NativeKeyEvent.SHIFT_L_MASK
@@ -43,7 +43,7 @@ class GlobalHotkeyService {
         }
         
         override fun nativeKeyReleased(e: NativeKeyEvent) {
-            // Отпускание ЛЮБОЙ клавиши из комбинации
+            // Release of ANY key from combination
             if (isPartOfHotkey(e)) {
                 serviceScope.launch {
                     gestureDetector?.onKeyUp()
@@ -58,7 +58,7 @@ class GlobalHotkeyService {
     }
     
     private fun isPartOfHotkey(event: NativeKeyEvent): Boolean {
-        // Любая из клавиш hotkey комбинации: Left Shift или backtick
+        // Any of the hotkey combination keys: Left Shift or backtick
         return event.keyCode == HOTKEY_LEFT_SHIFT_KEYCODE || event.keyCode == HOTKEY_BACKTICK_KEYCODE
     }
     

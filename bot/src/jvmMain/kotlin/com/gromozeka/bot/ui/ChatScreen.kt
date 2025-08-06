@@ -294,7 +294,7 @@ private fun StructuredMessageTemplate(
         Column(
             modifier = Modifier.padding(12.dp)
         ) {
-            // Заголовок с иконкой
+            // Header with icon
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.padding(bottom = 8.dp)
@@ -306,14 +306,14 @@ private fun StructuredMessageTemplate(
                 )
             }
 
-            // Отображаем основной контент
+            // Display main content
             Text(
                 text = text,
                 style = MaterialTheme.typography.body2,
                 color = MaterialTheme.colors.onSurface.copy(alpha = alpha)
             )
 
-            // Дополнительная информация мелким шрифтом
+            // Additional information in small font
             if (structured != null && (structured.ttsText != null || structured.voiceTone != null)) {
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
@@ -332,7 +332,7 @@ private fun StructuredMessageTemplate(
 
 private fun jsonPrettyPrint(json: JsonElement): String {
     return json.toString().let { jsonString ->
-        // Простой pretty print
+        // Simple pretty print
         jsonString.replace(",", ",\n").replace("{", "{\n").replace("}", "\n}")
     }
 }
@@ -396,7 +396,7 @@ private fun VoiceControls(
     isDev: Boolean = false,
 ) {
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-        // Кнопка для режима разработки - первая в ряду
+        // Development mode button - first in row
         if (isDev) {
             Button(onClick = {
                 coroutineScope.launch {

@@ -315,7 +315,7 @@ fun padStructureFields(structure: String): String {
 fun padStructureFieldsInGroup(structures: List<String>): List<String> {
     if (structures.isEmpty()) return structures
 
-    // Собираем все поля из всех структур в группе
+    // Collect all fields from all structures in the group
     val allFields = mutableSetOf<String>()
 
     structures.forEach { structure ->
@@ -329,10 +329,10 @@ fun padStructureFieldsInGroup(structures: List<String>): List<String> {
         }
     }
 
-    // Находим максимальную длину поля среди всех структур группы
+    // Find maximum field length among all structures in the group
     val maxKeyLength = allFields.maxOfOrNull { it.length } ?: 0
 
-    // Применяем единый паддинг ко всем структурам
+    // Apply uniform padding to all structures
     return structures.map { structure ->
         if (!structure.startsWith("Object{") || !structure.endsWith("}")) {
             structure
