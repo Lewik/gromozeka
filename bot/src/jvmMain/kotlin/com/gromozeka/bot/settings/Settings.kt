@@ -9,6 +9,7 @@ data class Settings(
     val autoSend: Boolean = true,
     val claudeModel: String = "sonnet",
     val globalPttHotkeyEnabled: Boolean = false,
+    val muteSystemAudioDuringPTT: Boolean = true,
     val showOriginalJson: Boolean = false,
     // STT language code - supports ISO 639-1 (e.g., "en", "ru") and 639-3 codes for GPT-4o models
     val sttMainLanguage: String = "en",

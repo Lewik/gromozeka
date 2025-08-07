@@ -1,5 +1,6 @@
 package com.gromozeka.bot
 
+import com.gromozeka.bot.services.AudioMuteManager
 import com.gromozeka.bot.services.SettingsService
 import com.gromozeka.bot.services.SttService
 import com.gromozeka.bot.services.TtsService
@@ -32,8 +33,9 @@ class Config {
     @Bean
     fun sttService(
         openAiAudioTranscriptionModel: OpenAiAudioTranscriptionModel,
-        settingsService: SettingsService
-    ) = SttService(openAiAudioTranscriptionModel, settingsService)
+        settingsService: SettingsService,
+        audioMuteManager: AudioMuteManager
+    ) = SttService(openAiAudioTranscriptionModel, settingsService, audioMuteManager)
 
     @Bean
     fun ttsService(openAiAudioSpeechModel: OpenAiAudioSpeechModel) =

@@ -11,6 +11,10 @@ This is a Kotlin Multiplatform Project (MPP) with the following modules:
 
 ## Build and Test Commands
 
+**Primary development workflow** (compile + test):
+- `./gradlew :bot:compileKotlinJvm -q && ./gradlew :bot:allTests -q`
+
+**Individual commands** (for reference):
 - Build project: `./gradlew :bot:build`
 - Run application: `./gradlew :bot:run`
 - Run all tests: `./gradlew :bot:allTests -q || ./gradlew :bot:allTests`
@@ -19,7 +23,7 @@ This is a Kotlin Multiplatform Project (MPP) with the following modules:
 
 **Gradle optimization**: Always use quiet mode first (`-q`) for token efficiency, then full output only if errors occur.
 
-**IMPORTANT**: Always run tests after making changes: `./gradlew :bot:allTests -q` (quiet mode for KMP)
+**Workflow rationale**: The combined command provides quick compilation feedback first, then comprehensive test validation, with clear diagnostic separation.
 
 **CRITICAL**: Never run `./gradlew :bot:run` unless user explicitly requests it or gives consent. Always ask permission before starting the application.
 

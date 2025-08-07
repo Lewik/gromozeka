@@ -372,7 +372,6 @@ fun ApplicationScope.ChatWindow(
                             createNewSession(currentProjectPath)
                         },
                         onSendMessage = sendMessage,
-                        sttService = sttService,
                         ttsService = ttsService,
                         coroutineScope = coroutineScope,
                         modifierWithPushToTalk = modifierWithPushToTalk,

@@ -17,11 +17,16 @@ import javax.sound.sampled.*
 class SttService(
     private val openAiAudioTranscriptionModel: OpenAiAudioTranscriptionModel,
     private val settingsService: SettingsService,
+    private val audioMuteManager: AudioMuteManager,
 ) {
     private lateinit var outputFile: File
     private var line: TargetDataLine? = null
 
     suspend fun startRecording() = withContext(Dispatchers.IO) {
+        if (settingsService.settings.muteSystemAudioDuringPTT) {
+            audioMuteManager.muteIfNeeded()
+        }
+        
         outputFile = File.createTempFile("recorded", ".wav")
 
         val format = AudioFormat(16000f, 16, 1, true, true)
@@ -40,6 +45,10 @@ class SttService(
     suspend fun stopAndTranscribe(): String = withContext(Dispatchers.IO) {
         line?.stop()
         line?.close()
+        
+        if (settingsService.settings.muteSystemAudioDuringPTT) {
+            audioMuteManager.restoreOriginalState()
+        }
 
         val text = try {
             val transcriptionOptions = OpenAiAudioTranscriptionOptions.builder()

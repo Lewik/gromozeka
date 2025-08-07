@@ -20,7 +20,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.gromozeka.bot.model.ChatSession
-import com.gromozeka.bot.services.SttService
 import com.gromozeka.bot.services.TtsService
 import com.gromozeka.shared.domain.message.ChatMessage
 import kotlinx.coroutines.CoroutineScope
@@ -41,7 +40,6 @@ fun ChatScreen(
     onBackToSessionList: () -> Unit,
     onNewSession: () -> Unit,
     onSendMessage: suspend (String) -> Unit,
-    sttService: SttService,
     ttsService: TtsService,
     coroutineScope: CoroutineScope,
     modifierWithPushToTalk: Modifier,
@@ -133,7 +131,6 @@ fun ChatScreen(
 
 
         VoiceControls(
-            sttService = sttService,
             autoSend = autoSend,
             onSendMessage = onSendMessage,
             onUserInputChange = onUserInputChange,
@@ -326,7 +323,6 @@ private fun MessageInput(
 
 @Composable
 private fun VoiceControls(
-    sttService: SttService,
     autoSend: Boolean,
     onSendMessage: suspend (String) -> Unit,
     onUserInputChange: (String) -> Unit,
@@ -347,24 +343,6 @@ private fun VoiceControls(
         }
 
         Spacer(modifier = Modifier.weight(1f))
-
-        Button(onClick = { coroutineScope.launch { sttService.startRecording() } }) {
-            Text("🎙 Идёт запись")
-        }
-        Spacer(modifier = Modifier.width(4.dp))
-        Button(onClick = {
-            coroutineScope.launch {
-                val text = sttService.stopAndTranscribe()
-                if (autoSend && text.isNotBlank()) {
-                    onSendMessage(text)
-                } else {
-                    onUserInputChange(text)
-                }
-            }
-        }) {
-            Text("🛑 Остановить")
-        }
-        Spacer(modifier = Modifier.width(4.dp))
 
         Button(onClick = {}, modifier = modifierWithPushToTalk) {
             Text("🎤 PTT")
