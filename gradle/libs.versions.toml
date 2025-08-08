@@ -15,6 +15,7 @@ kotest = "5.8.0"
 kotlinx-datetime = "0.6.2"
 kotlinx-serialization = "1.6.3"
 jnativehook = "2.2.1"
+batik = "1.19"
 
 [libraries]
 # Ktor
@@ -49,6 +50,9 @@ sqldelight-primitive-adapters = { module = "app.cash.sqldelight:primitive-adapte
 # JNativeHook
 jnativehook = { module = "com.github.kwhat:jnativehook", version.ref = "jnativehook" }
 
+# Batik (for SVG to PNG conversion)
+batik-transcoder = { module = "org.apache.xmlgraphics:batik-transcoder", version.ref = "batik" }
+batik-codec = { module = "org.apache.xmlgraphics:batik-codec", version.ref = "batik" }
 
 # Testing
 junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit" }

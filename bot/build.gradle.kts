@@ -46,6 +46,10 @@ kotlin {
                 implementation(libs.sqldelight.primitive.adapters)
                 
                 implementation(libs.jnativehook)
+                
+                // Batik for logo generation task
+                implementation(libs.batik.transcoder)
+                implementation(libs.batik.codec)
             }
         }
         
@@ -59,6 +63,10 @@ kotlin {
                 implementation(libs.kotest.assertions.core)
                 implementation(libs.kotest.assertions.json)
                 implementation(libs.kotlinx.serialization.json)
+                
+                // Batik for SVG to PNG conversion (build-time only)
+                implementation(libs.batik.transcoder)
+                implementation(libs.batik.codec)
             }
         }
     }
@@ -91,5 +99,25 @@ sqldelight {
 compose.desktop {
     application {
         mainClass = "com.gromozeka.bot.ChatApplicationKt"
+        jvmArgs += listOf(
+            "-Xdock:icon=src/jvmMain/resources/logos/logo-256x256.png",
+            "-Xdock:name=Gromozeka"
+        )
     }
+}
+
+tasks.register<Test>("convertLogo") {
+    description = "Run only the logo generation test"
+    group = "build"
+    
+    useJUnitPlatform()
+    filter {
+        includeTestsMatching("com.gromozeka.bot.LogoGenerationTest.generateLogos")
+    }
+    
+    testClassesDirs = kotlin.jvm().compilations["test"].output.classesDirs
+    classpath = kotlin.jvm().compilations["test"].runtimeDependencyFiles
+    
+    inputs.file("src/jvmMain/resources/logo.svg")
+    outputs.dir("src/jvmMain/resources/logos")
 }

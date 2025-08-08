@@ -8,6 +8,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.window.ApplicationScope
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
@@ -307,7 +308,8 @@ fun ApplicationScope.ChatWindow(
             ttsQueueService.shutdown()
             exitApplication()
         },
-        title = "🤖 Громозека${if (settingsService.mode == com.gromozeka.bot.settings.AppMode.DEV) " [DEV]" else ""}${selectedSession?.projectPath?.let { " • $it" } ?: ""}"
+        title = "🤖 Громозека${if (settingsService.mode == com.gromozeka.bot.settings.AppMode.DEV) " [DEV]" else ""}${selectedSession?.projectPath?.let { " • $it" } ?: ""}",
+        icon = painterResource("logos/logo-256x256.png")
     ) {
         Box(
             modifier = Modifier
