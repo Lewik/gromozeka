@@ -3,11 +3,13 @@ package com.gromozeka.bot
 import androidx.compose.desktop.ui.tooling.preview.Preview
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.window.ApplicationScope
 import androidx.compose.ui.window.Window
@@ -16,6 +18,8 @@ import com.gromozeka.bot.model.ChatSession
 import com.gromozeka.bot.model.Session
 import com.gromozeka.bot.services.*
 import com.gromozeka.bot.ui.ChatScreen
+import com.gromozeka.bot.ui.CompactButton
+import com.gromozeka.bot.ui.GromozekaTheme
 import com.gromozeka.bot.ui.SessionListScreen
 import com.gromozeka.bot.ui.onEscape
 import com.gromozeka.bot.ui.pttGestures
@@ -73,7 +77,7 @@ fun main() {
     }
     println("[GROMOZEKA] Starting Compose Desktop UI...")
     application {
-        MaterialTheme {
+        GromozekaTheme {
             ChatWindow(
                 sttService,
                 ttsService,
@@ -314,6 +318,7 @@ fun ApplicationScope.ChatWindow(
         Box(
             modifier = Modifier
                 .fillMaxSize()
+                .padding(16.dp)
                 .onEscape(
                     handler = unifiedPTTHandler,
                     coroutineScope = coroutineScope
@@ -398,7 +403,7 @@ fun ApplicationScope.ChatWindow(
                     title = { Text("OpenAI Balance") },
                     text = { Text(balanceInfo) },
                     confirmButton = {
-                        Button(onClick = { showBalanceDialog = false }) {
+                        CompactButton(onClick = { showBalanceDialog = false }) {
                             Text("OK")
                         }
                     }

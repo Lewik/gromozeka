@@ -87,10 +87,10 @@ fun ChatScreen(
                 Checkbox(checked = autoSend, onCheckedChange = onAutoSendChange)
                 Text("Отправлять сразу")
             }
-            Button(onClick = onCheckBalance) {
+            CompactButton(onClick = onCheckBalance) {
                 Text("💰 Баланс")
             }
-            Button(onClick = { stickyToBottom = !stickyToBottom }) {
+            CompactButton(onClick = { stickyToBottom = !stickyToBottom }) {
                 Text("Autoscroll is ${if (stickyToBottom) "ON" else "OFF"}")
             }
         }
@@ -164,7 +164,7 @@ private fun MessageItem(
         ) {
             // Show original JSON button if available  
             message.originalJson?.let { originalJson ->
-                Button(
+                CompactButton(
                     onClick = { onShowJson(originalJson) }
                 ) {
                     Text("🔍 JSON")
@@ -333,7 +333,7 @@ private fun VoiceControls(
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
         // Development mode button - first in row
         if (isDev) {
-            Button(onClick = {
+            CompactButton(onClick = {
                 coroutineScope.launch {
                     onSendMessage("Расскажи скороговорку")
                 }
@@ -344,7 +344,7 @@ private fun VoiceControls(
 
         Spacer(modifier = Modifier.weight(1f))
 
-        Button(onClick = {}, modifier = modifierWithPushToTalk) {
+        CompactButton(onClick = {}, modifier = modifierWithPushToTalk) {
             Text("🎤 PTT")
         }
     }
@@ -367,7 +367,7 @@ private fun JsonDialog(
                 // Header with title and close button
                 Row {
                     Text("Original JSON")
-                    Button(onClick = onDismiss) {
+                    CompactButton(onClick = onDismiss) {
                         Text("✕")
                     }
                 }

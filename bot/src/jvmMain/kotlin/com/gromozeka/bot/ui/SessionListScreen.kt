@@ -1,5 +1,6 @@
 package com.gromozeka.bot.ui
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -11,15 +12,37 @@ import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.gromozeka.bot.model.ChatSession
-import com.gromozeka.bot.model.ProjectGroup
 import com.gromozeka.bot.model.Session
 import com.gromozeka.bot.services.SessionJsonlService
 import com.gromozeka.bot.services.SessionService
 import com.gromozeka.shared.domain.message.ChatMessage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import kotlinx.datetime.Instant
+import io.github.vinceglb.filekit.compose.rememberDirectoryPickerLauncher
+
+private data class ProjectGroup(
+    val projectPath: String,
+    val projectName: String,
+    val sessions: List<ChatSession>,
+    val latestSession: ChatSession?,
+    val formattedTime: String,
+)
+
+private fun formatRelativeTime(timestamp: Instant): String {
+    val now = kotlinx.datetime.Clock.System.now()
+    val duration = now - timestamp
+    return when {
+        duration.inWholeMinutes < 1 -> "сейчас"
+        duration.inWholeMinutes < 60 -> "${duration.inWholeMinutes}м назад"
+        duration.inWholeHours < 24 -> "${duration.inWholeHours}ч назад"
+        duration.inWholeDays < 7 -> "${duration.inWholeDays}д назад"
+        else -> timestamp.toString().substring(0, 16).replace('T', ' ')
+    }
+}
 
 @Composable
 fun SessionListScreen(
@@ -29,33 +52,42 @@ fun SessionListScreen(
     sessionJsonlService: SessionJsonlService,
     context: org.springframework.context.ConfigurableApplicationContext,
 ) {
-    var allSessions by remember { mutableStateOf<List<ChatSession>>(emptyList()) }
     var projectGroups by remember { mutableStateOf<List<ProjectGroup>>(emptyList()) }
     var expandedProjects by remember { mutableStateOf<Set<String>>(emptySet()) }
     var isLoading by remember { mutableStateOf(true) }
+    
+    // Directory picker for new sessions
+    val directoryPicker = rememberDirectoryPickerLauncher { directory ->
+        directory?.let { dir ->
+            dir.path?.let { path ->
+                onNewSession(path)
+            }
+        }
+    }
 
     // Load sessions on first composition
     LaunchedEffect(Unit) {
         isLoading = true
         try {
             val loadedSessions = sessionJsonlService.loadAllSessions()
-            allSessions = loadedSessions
 
             // Group sessions by project
             val groupedProjects = loadedSessions
                 .groupBy { it.projectPath }
                 .map { (projectPath, sessions) ->
                     val projectName = projectPath.substringAfterLast("/")
+                    val latestSession = sessions.maxByOrNull { it.lastTimestamp }
+                    val formattedTime = latestSession?.let { formatRelativeTime(it.lastTimestamp) } ?: ""
                     ProjectGroup(
                         projectPath = projectPath,
                         projectName = projectName,
-                        sessions = sessions
+                        sessions = sessions,
+                        latestSession = latestSession,
+                        formattedTime = formattedTime
                     )
                 }
 
-            projectGroups = groupedProjects.sortedByDescending { projectGroup ->
-                projectGroup.sessionCount()
-            }
+            projectGroups = groupedProjects.sortedByDescending { it.latestSession?.lastTimestamp }
 
             println("[SessionListScreen] Loaded ${loadedSessions.size} sessions in ${projectGroups.size} projects")
         } catch (e: Exception) {
@@ -67,9 +99,25 @@ fun SessionListScreen(
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        Text("Выберите беседу")
+        // Header with new session button
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Проекты",
+                style = MaterialTheme.typography.headlineSmall
+            )
+            CompactButton(
+                onClick = { directoryPicker.launch() }
+            ) {
+                Text("Новая сессия")
+            }
+        }
 
-        // Temporary simplified version - only new session button
         if (isLoading) {
             Box(
                 modifier = Modifier.fillMaxSize(),
@@ -84,50 +132,18 @@ fun SessionListScreen(
                     .verticalScroll(rememberScrollState())
             ) {
                 if (projectGroups.isEmpty()) {
-                    // No sessions found - show new session button
+                    // No sessions found - show message
                     Box(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
                     ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(text = "Нет сохраненных сессий")
-                            Button(
-                                onClick = { onNewSession("/Users/lewik/code/gromozeka/dev") }
-                            ) {
-                                Text("Создать новую сессию")
-                            }
-                        }
+                        Text(
+                            text = "Нет сохраненных проектов\nНажмите \"Новая сессия\" для начала работы",
+                            textAlign = TextAlign.Center
+                        )
                     }
                 } else {
-                    // Show recent sessions first
-                    val recentSessions = allSessions
-                        .sortedByDescending { it.lastTimestamp }
-                        .take(3)
-
-                    if (recentSessions.isNotEmpty()) {
-                        Text(text = "Последние сессии")
-
-                        recentSessions.forEach { session ->
-                            SessionItem(
-                                session = session,
-                                onSessionClick = { clickedSession ->
-                                    coroutineScope.handleSessionClick(
-                                        clickedSession,
-                                        onSessionSelected,
-                                        sessionJsonlService,
-                                        context
-                                    )
-                                },
-                                isGrouped = false
-                            )
-                        }
-
-                        Divider()
-
-                        Text(text = "Все проекты")
-                    }
-
-                    // Show grouped sessions
+                    // Show grouped sessions sorted by last activity
                     projectGroups.forEach { group ->
                         ProjectGroupHeader(
                             group = group,
@@ -139,32 +155,16 @@ fun SessionListScreen(
                                     expandedProjects + group.projectPath
                                 }
                             },
-                            onNewSessionClick = onNewSession
-                        )
-
-                        if (expandedProjects.contains(group.projectPath)) {
-                            // New session button first
-                            NewSessionButton(
-                                projectPath = group.projectPath,
-                                onNewSessionClick = onNewSession
-                            )
-
-                            // Then existing sessions
-                            group.sessions.forEach { session ->
-                                SessionItem(
-                                    session = session,
-                                    onSessionClick = { clickedSession ->
-                                        coroutineScope.handleSessionClick(
-                                            clickedSession,
-                                            onSessionSelected,
-                                            sessionJsonlService,
-                                            context
-                                        )
-                                    },
-                                    isGrouped = true
+                            onNewSessionClick = onNewSession,
+                            onSessionClick = { clickedSession ->
+                                coroutineScope.handleSessionClick(
+                                    clickedSession,
+                                    onSessionSelected,
+                                    sessionJsonlService,
+                                    context
                                 )
                             }
-                        }
+                        )
                     }
                 }
             }
@@ -178,23 +178,85 @@ private fun ProjectGroupHeader(
     isExpanded: Boolean,
     onToggleExpanded: () -> Unit,
     onNewSessionClick: (String) -> Unit,
+    onSessionClick: (ChatSession) -> Unit,
 ) {
-    Card {
-        Row {
-            Icon(
-                imageVector = if (isExpanded) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowRight,
-                contentDescription = if (isExpanded) "Свернуть" else "Развернуть",
-                modifier = Modifier.clickable { onToggleExpanded() }
-            )
-            Text(
-                text = group.displayName(),
-                modifier = Modifier.clickable { onToggleExpanded() }
-            )
-            Spacer(modifier = Modifier.weight(1f))
-            Button(onClick = { onNewSessionClick(group.projectPath) }) {
-                Text("+ Новая")
+    CompactCard(
+        modifier = Modifier.padding(vertical = 4.dp)
+    ) {
+        Column {
+            // Header row
+            Row(
+                modifier = Modifier.padding(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // 1. Кнопка раскрытия
+                Icon(
+                    imageVector = if (isExpanded) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowRight,
+                    contentDescription = if (isExpanded) "Свернуть" else "Развернуть",
+                    modifier = Modifier.clickable { onToggleExpanded() }
+                )
+                
+                Spacer(modifier = Modifier.width(8.dp))
+                
+                // 2. Column 1 - информация о проекте
+                Column(
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(text = group.projectName)
+                    Text(text = group.projectPath)
+                    Text(text = "${group.sessions.size} сессий")
+                }
+                
+                Spacer(modifier = Modifier.width(8.dp))
+                
+                // 3. Кнопка "Новая"
+                CompactButton(onClick = { onNewSessionClick(group.projectPath) }) {
+                    Text("Новая")
+                }
+                
+                Spacer(modifier = Modifier.width(12.dp))
+                
+                // 4. Column 2 - информация о последней сессии
+                group.latestSession?.let { latestSession ->
+                    Column(
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text(text = latestSession.displayPreview())
+                        Text(text = "${latestSession.messageCount} сообщений")
+                        Text(text = group.formattedTime)
+                    }
+                    
+                    Spacer(modifier = Modifier.width(8.dp))
+                    
+                    // 5. Кнопка "Продолжить"
+                    CompactButton(onClick = { onSessionClick(latestSession) }) {
+                        Text("Продолжить")
+                    }
+                } ?: run {
+                    // Если нет сессий - пустой Column
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(text = "Нет сессий")
+                        Text(text = "")
+                        Text(text = "")
+                    }
+                }
             }
-            Text(text = "${group.sessionCount()} сессий")
+            
+            // Expanded content
+            if (isExpanded) {
+                Column(
+                    modifier = Modifier.padding(start = 32.dp, end = 12.dp, bottom = 8.dp)
+                ) {
+                    group.sessions.forEach { session ->
+                        SessionItem(
+                            session = session,
+                            onSessionClick = onSessionClick,
+                            isGrouped = true,
+                            modifier = Modifier.padding(vertical = 4.dp)
+                        )
+                    }
+                }
+            }
         }
     }
 }
@@ -204,41 +266,64 @@ private fun SessionItem(
     session: ChatSession,
     onSessionClick: (ChatSession) -> Unit,
     isGrouped: Boolean = false,
+    modifier: Modifier = Modifier,
 ) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onSessionClick(session) }
+    CompactCard(
+        modifier = modifier.fillMaxWidth()
     ) {
-        Column {
-            Text(text = session.displayPreview())
-            if (!isGrouped) {
-                Text(text = "Проект: ${session.displayProject()}")
+        Row(
+            modifier = Modifier.padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Левый блок со строками
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                // Первая строка: название слева, время справа
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = session.displayPreview(),
+                        modifier = Modifier.weight(1f)
+                    )
+                    Text(
+                        text = session.displayTime()
+                    )
+                }
+                
+                Spacer(modifier = Modifier.height(4.dp))
+                
+                // Вторая строка: полный путь слева (только если не в группе), количество сообщений справа
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (!isGrouped) {
+                        Text(
+                            text = session.displayProject(),
+                            modifier = Modifier.weight(1f)
+                        )
+                    } else {
+                        Spacer(modifier = Modifier.weight(1f))
+                    }
+                    Text(
+                        text = "${session.messageCount} сообщений"
+                    )
+                }
             }
-            Row {
-                Text(text = session.displayTime())
-                Spacer(modifier = Modifier.weight(1f))
-                Text(text = "${session.messageCount} сообщений")
+            
+            Spacer(modifier = Modifier.width(12.dp))
+            
+            // Правый блок с кнопкой
+            CompactButton(
+                onClick = { onSessionClick(session) }
+            ) {
+                Text("Продолжить")
             }
         }
     }
 }
 
-@Composable
-private fun NewSessionButton(
-    projectPath: String,
-    onNewSessionClick: (String) -> Unit,
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onNewSessionClick(projectPath) }
-    ) {
-        Row {
-            Text(text = "+ Новая сессия")
-        }
-    }
-}
 
 // Resume existing session - create new Session with historical data loading
 private fun CoroutineScope.handleSessionClick(

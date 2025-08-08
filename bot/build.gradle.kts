@@ -27,6 +27,10 @@ kotlin {
                 implementation(compose.material3)
                 implementation(libs.spring.boot.starter)
                 
+                // FileKit for file picker
+                implementation(libs.filekit.core)
+                implementation(libs.filekit.compose)
+                
                 implementation(project(":shared"))
                 
                 implementation(libs.kotlin.reflect)

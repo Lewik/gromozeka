@@ -16,6 +16,7 @@ kotlinx-datetime = "0.6.2"
 kotlinx-serialization = "1.6.3"
 jnativehook = "2.2.1"
 batik = "1.19"
+filekit = "0.8.2"
 
 [libraries]
 # Ktor
@@ -53,6 +54,10 @@ jnativehook = { module = "com.github.kwhat:jnativehook", version.ref = "jnativeh
 # Batik (for SVG to PNG conversion)
 batik-transcoder = { module = "org.apache.xmlgraphics:batik-transcoder", version.ref = "batik" }
 batik-codec = { module = "org.apache.xmlgraphics:batik-codec", version.ref = "batik" }
+
+# FileKit (file picker)
+filekit-core = { module = "io.github.vinceglb:filekit-core", version.ref = "filekit" }
+filekit-compose = { module = "io.github.vinceglb:filekit-compose", version.ref = "filekit" }
 
 # Testing
 junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit" }
