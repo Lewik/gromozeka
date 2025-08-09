@@ -44,9 +44,6 @@ object ChatMessageSoundDetector {
                 // Only if it contains tool results (not actual user input)
                 message.content.any { it is ChatMessage.ContentItem.ToolResult }
             }
-            
-            // Tool calls themselves (from assistant)
-            ChatMessage.Role.TOOL -> true
         }
     }
 }

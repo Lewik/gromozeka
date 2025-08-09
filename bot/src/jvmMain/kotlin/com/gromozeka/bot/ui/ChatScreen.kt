@@ -164,7 +164,6 @@ private fun MessageItem(
                         is ChatMessage.ContentItem.ToolResult -> "⚡"
                         is ChatMessage.ContentItem.Thinking -> "🤔"
                         is ChatMessage.ContentItem.System -> "⚙️"
-                        is ChatMessage.ContentItem.Media -> "📎"
                         is ChatMessage.ContentItem.IntermediateMessage -> "🤖"
                         is ChatMessage.ContentItem.FinalResultMessage -> "📦"
                         is ChatMessage.ContentItem.UnknownJson -> "⚠️"
@@ -193,10 +192,6 @@ private fun MessageItem(
 
                     is ChatMessage.ContentItem.System -> {
                         Text(text = "⚙️ ${content.content}")
-                    }
-
-                    is ChatMessage.ContentItem.Media -> {
-                        Text(text = "📎 Media: ${content.mimeType}")
                     }
 
                     is ChatMessage.ContentItem.IntermediateMessage -> {

@@ -31,7 +31,7 @@ data class ChatMessage(
 
     @Serializable
     enum class Role {
-        USER, ASSISTANT, SYSTEM, TOOL
+        USER, ASSISTANT, SYSTEM
     }
     
     /**
@@ -106,13 +106,6 @@ data class ChatMessage(
         data class Thinking(
             val signature: String,
             val thinking: String
-        ) : ContentItem()
-        
-        @Serializable
-        data class Media(
-            val mimeType: String,
-            val data: String, // base64 or URL
-            val caption: String? = null
         ) : ContentItem()
         
         @Serializable
