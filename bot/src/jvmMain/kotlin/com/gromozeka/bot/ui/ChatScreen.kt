@@ -41,7 +41,6 @@ fun ChatScreen(
     ttsService: TtsService,
     coroutineScope: CoroutineScope,
     modifierWithPushToTalk: Modifier,
-    onCheckBalance: () -> Unit,
     isDev: Boolean = false,
 ) {
     val scrollState = rememberScrollState()
@@ -76,9 +75,6 @@ fun ChatScreen(
             }
             IconButton(onClick = onNewSession) {
                 Icon(Icons.Filled.Add, contentDescription = "Новая беседа")
-            }
-            CompactButton(onClick = onCheckBalance) {
-                Text("💰 Баланс")
             }
         }
 

@@ -60,7 +60,6 @@ fun main() {
     val sttService = context.getBean<SttService>()
     val ttsService = context.getBean<TtsService>()
     val ttsQueueService = context.getBean<TTSQueueService>()
-    val openAiBalanceService = context.getBean<OpenAiBalanceService>()
     val sessionJsonlService = context.getBean<SessionJsonlService>()
     val globalHotkeyService = context.getBean<GlobalHotkeyService>()
 
@@ -82,7 +81,6 @@ fun main() {
                 sttService,
                 ttsService,
                 ttsQueueService,
-                openAiBalanceService,
                 settingsService,
                 sessionJsonlService,
                 globalHotkeyService,
@@ -98,7 +96,6 @@ fun ApplicationScope.ChatWindow(
     sttService: SttService,
     ttsService: TtsService,
     ttsQueueService: TTSQueueService,
-    openAiBalanceService: OpenAiBalanceService,
     settingsService: SettingsService,
     sessionJsonlService: SessionJsonlService,
     globalHotkeyService: GlobalHotkeyService,
@@ -132,8 +129,6 @@ fun ApplicationScope.ChatWindow(
     }
     var isRecording by remember { mutableStateOf(false) }
 
-    var showBalanceDialog by remember { mutableStateOf(false) }
-    var balanceInfo by remember { mutableStateOf("") }
 
     LaunchedEffect(Unit) {
         initialized = true
@@ -379,12 +374,6 @@ fun ApplicationScope.ChatWindow(
                         ttsService = ttsService,
                         coroutineScope = coroutineScope,
                         modifierWithPushToTalk = modifierWithPushToTalk,
-                        onCheckBalance = {
-                            coroutineScope.launch {
-                                balanceInfo = openAiBalanceService.checkBalance()
-                                showBalanceDialog = true
-                            }
-                        },
                         isDev = settingsService.mode == com.gromozeka.bot.settings.AppMode.DEV
                     )
                 }
@@ -394,18 +383,6 @@ fun ApplicationScope.ChatWindow(
                 }
             }
 
-            if (showBalanceDialog) {
-                AlertDialog(
-                    onDismissRequest = { showBalanceDialog = false },
-                    title = { Text("OpenAI Balance") },
-                    text = { Text(balanceInfo) },
-                    confirmButton = {
-                        CompactButton(onClick = { showBalanceDialog = false }) {
-                            Text("OK")
-                        }
-                    }
-                )
-            }
         }
     }
 }
