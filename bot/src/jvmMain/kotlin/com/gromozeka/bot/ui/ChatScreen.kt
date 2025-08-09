@@ -4,6 +4,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
@@ -22,6 +23,7 @@ import androidx.compose.ui.window.DialogProperties
 import com.gromozeka.bot.model.ChatSession
 import com.gromozeka.bot.services.TtsService
 import com.gromozeka.shared.domain.message.ChatMessage
+import com.mikepenz.markdown.m3.Markdown
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json.Default.parseToJsonElement
@@ -79,19 +81,8 @@ fun ChatScreen(
             IconButton(onClick = onNewSession) {
                 Icon(Icons.Filled.Add, contentDescription = "Новая беседа")
             }
-            Text("Chat")
-            selectedSession?.let { session ->
-                    Text("(${session.displayPreview()})")
-            }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Checkbox(checked = autoSend, onCheckedChange = onAutoSendChange)
-                Text("Отправлять сразу")
-            }
             CompactButton(onClick = onCheckBalance) {
                 Text("💰 Баланс")
-            }
-            CompactButton(onClick = { stickyToBottom = !stickyToBottom }) {
-                Text("Autoscroll is ${if (stickyToBottom) "ON" else "OFF"}")
             }
         }
 
@@ -156,25 +147,41 @@ private fun MessageItem(
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = if (message.messageType == ChatMessage.MessageType.USER) Arrangement.End else Arrangement.Start
+//        horizontalArrangement = if (message.messageType == ChatMessage.MessageType.USER) Arrangement.End else Arrangement.Start
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth(0.85f)
         ) {
-            // Show original JSON button if available  
-            message.originalJson?.let { originalJson ->
-                CompactButton(
-                    onClick = { onShowJson(originalJson) }
+            // Header row with JSON button and type info
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                CompactIconButton(
+                    onClick = { onShowJson(message.originalJson ?: "No JSON available") }
                 ) {
-                    Text("🔍 JSON")
+                    Text("{}")
                 }
+                
+                Text("${message.messageType} | ${message.content.joinToString(", ") { content ->
+                    val icon = when (content) {
+                        is ChatMessage.ContentItem.Message -> ""
+                        is ChatMessage.ContentItem.ToolCall -> "🔧"
+                        is ChatMessage.ContentItem.ToolResult -> "⚡"
+                        is ChatMessage.ContentItem.Thinking -> "🤔"
+                        is ChatMessage.ContentItem.System -> "⚙️"
+                        is ChatMessage.ContentItem.Media -> "📎"
+                        is ChatMessage.ContentItem.IntermediateMessage -> "🤖"
+                        is ChatMessage.ContentItem.FinalResultMessage -> "📦"
+                        is ChatMessage.ContentItem.SystemStructuredMessage -> "⚙️"
+                        is ChatMessage.ContentItem.UnknownJson -> "⚠️"
+                    }
+                    "$icon${content::class.simpleName}"
+                }}")
             }
 
             message.content.forEach { content ->
                 when (content) {
                     is ChatMessage.ContentItem.Message -> {
-                        Text(text = content.text)
+                        Markdown(content = content.text)
                     }
 
                     is ChatMessage.ContentItem.ToolCall -> {
@@ -235,8 +242,8 @@ private fun StructuredMessageTemplate(
     }
 
     val titleText = when (data) {
-        is ChatMessage.ContentItem.IntermediateMessage -> "🔄 Обработка..."
-        is ChatMessage.ContentItem.FinalResultMessage -> "🤖 Громозека"
+        is ChatMessage.ContentItem.IntermediateMessage -> "🤖 Громозека"
+        is ChatMessage.ContentItem.FinalResultMessage -> "📦 Результат"
         is ChatMessage.ContentItem.SystemStructuredMessage -> "⚙️ Система"
         else -> "🤖 Громозека"
     }
@@ -246,7 +253,7 @@ private fun StructuredMessageTemplate(
             Row {
                 Text(text = titleText)
             }
-            Text(text = text)
+            Markdown(content = text)
             if (structured != null && (structured.ttsText != null || structured.voiceTone != null)) {
                 Text(
                     text = buildString {
