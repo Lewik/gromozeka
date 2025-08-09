@@ -1,7 +1,6 @@
 package com.gromozeka.bot.services
 
 import com.gromozeka.bot.model.ClaudeLogEntry
-import com.gromozeka.bot.model.GromozekaJson
 import com.gromozeka.shared.domain.message.*
 import kotlinx.datetime.Instant
 import kotlinx.serialization.SerializationException
@@ -26,7 +25,7 @@ object ClaudeLogEntryMapper {
 
         // Add message content if present
         entry.message?.let { message ->
-            val messageContent = extractMessageFromMessage(message)
+            val messageContent = message.toContentItems()
             content.addAll(messageContent)
         }
 
@@ -44,7 +43,7 @@ object ClaudeLogEntryMapper {
         return ChatMessage(
             uuid = entry.uuid,
             parentUuid = entry.parentUuid,
-            messageType = ChatMessage.MessageType.USER,
+            role = ChatMessage.Role.USER,
             content = content,
             timestamp = Instant.parse(entry.timestamp),
             llmSpecificMetadata = ChatMessage.LlmSpecificMetadata.ClaudeCodeSessionFileEntry(
@@ -65,7 +64,7 @@ object ClaudeLogEntryMapper {
 
         // Add message content if present
         entry.message?.let { message ->
-            val messageContent = extractMessageFromMessage(message)
+            val messageContent = message.toContentItems()
             content.addAll(messageContent)
         }
 
@@ -77,7 +76,7 @@ object ClaudeLogEntryMapper {
         return ChatMessage(
             uuid = entry.uuid,
             parentUuid = entry.parentUuid,
-            messageType = ChatMessage.MessageType.ASSISTANT,
+            role = ChatMessage.Role.ASSISTANT,
             content = content,
             timestamp = Instant.parse(entry.timestamp),
             llmSpecificMetadata = ChatMessage.LlmSpecificMetadata.ClaudeCodeSessionFileEntry(
@@ -112,7 +111,7 @@ object ClaudeLogEntryMapper {
         return ChatMessage(
             uuid = entry.uuid,
             parentUuid = entry.parentUuid,
-            messageType = ChatMessage.MessageType.SYSTEM,
+            role = ChatMessage.Role.SYSTEM,
             content = content,
             timestamp = Instant.parse(entry.timestamp),
             llmSpecificMetadata = ChatMessage.LlmSpecificMetadata.ClaudeCodeSessionFileEntry(
@@ -127,50 +126,43 @@ object ClaudeLogEntryMapper {
         )
     }
 
-    private fun extractMessageFromMessage(message: ClaudeLogEntry.Message): List<ChatMessage.ContentItem> {
-        return when (message) {
+    private fun ClaudeLogEntry.Message.toContentItems(): List<ChatMessage.ContentItem> {
+        return when (this) {
             is ClaudeLogEntry.Message.UserMessage -> {
-                extractContentFromClaudeMessageContent(message.content)
+                extractContentFromClaudeMessageContent(this.content)
             }
 
             is ClaudeLogEntry.Message.AssistantMessage -> {
-                message.content.flatMap { assistantContent ->
+                this.content.flatMap { assistantContent ->
                     parseAssistantContent(assistantContent)
                 }
             }
         }
     }
 
-    private fun extractContentFromClaudeMessageContent(content: ClaudeLogEntry.ClaudeMessageContent): List<ChatMessage.ContentItem> {
+    private fun extractContentFromClaudeMessageContent(content: ClaudeLogEntry.Message.UserMessage.Content): List<ChatMessage.ContentItem> {
         return when (content) {
-            is ClaudeLogEntry.ClaudeMessageContent.StringContent -> {
+            is ClaudeLogEntry.Message.UserMessage.Content.StringContent -> {
                 listOf(ChatMessage.ContentItem.Message(content.content))
             }
 
-            is ClaudeLogEntry.ClaudeMessageContent.ArrayContent -> {
+            is ClaudeLogEntry.Message.UserMessage.Content.ArrayContent -> {
                 content.content.flatMap { userContentItem ->
                     parseUserContentItem(userContentItem)
                 }
             }
 
-            is ClaudeLogEntry.ClaudeMessageContent.GromozekaJsonContent -> {
-                // Deserialize JsonObject directly into IntermediateMessage (for legacy session data)
-                val fullText = content.data["fullText"]?.jsonPrimitive?.content ?: ""
-                val ttsText = content.data["ttsText"]?.jsonPrimitive?.content
-                val voiceTone = content.data["voiceTone"]?.jsonPrimitive?.content
+            is ClaudeLogEntry.Message.UserMessage.Content.GromozekaJsonContent -> {
+                // Deserialize JsonObject directly into StructuredText
+                val structured = Json.decodeFromJsonElement<ChatMessage.StructuredText>(content.data)
                 listOf(
                     ChatMessage.ContentItem.IntermediateMessage(
-                        text = fullText,
-                        structured = ChatMessage.StructuredText(
-                            fullText = fullText,
-                            ttsText = ttsText,
-                            voiceTone = voiceTone
-                        )
+                        structured = structured
                     )
                 )
             }
 
-            is ClaudeLogEntry.ClaudeMessageContent.UnknownJsonContent -> {
+            is ClaudeLogEntry.Message.UserMessage.Content.UnknownJsonContent -> {
                 listOf(ChatMessage.ContentItem.UnknownJson(content.json))
             }
         }
@@ -183,7 +175,16 @@ object ClaudeLogEntryMapper {
             }
 
             is ClaudeLogEntry.UserContentItem.ToolResultItem -> {
-                val toolResult = parseToolResultContent(item.content)
+                val toolResult = when (item.content) {
+                    is ClaudeLogEntry.ToolResultContent.StringToolResult -> {
+                        ClaudeCodeToolResultData.Read(item.content.content)
+                    }
+
+                    is ClaudeLogEntry.ToolResultContent.ArrayToolResult -> {
+                        val textContent = item.content.content.joinToString("\n") { it.text }
+                        ClaudeCodeToolResultData.Read(textContent)
+                    }
+                }
                 listOf(
                     ChatMessage.ContentItem.ToolResult(
                         toolUseId = item.toolUseId,
@@ -195,18 +196,6 @@ object ClaudeLogEntryMapper {
         }
     }
 
-    private fun parseToolResultContent(content: ClaudeLogEntry.ToolResultContent): ToolResultData {
-        return when (content) {
-            is ClaudeLogEntry.ToolResultContent.StringToolResult -> {
-                ClaudeCodeToolResultData.Read(content.content)
-            }
-
-            is ClaudeLogEntry.ToolResultContent.ArrayToolResult -> {
-                val textContent = content.content.joinToString("\n") { it.text }
-                ClaudeCodeToolResultData.Read(textContent)
-            }
-        }
-    }
 
     private fun parseAssistantContent(content: ClaudeLogEntry.AssistantContent): List<ChatMessage.ContentItem> {
         return when (content) {
@@ -336,13 +325,7 @@ object ClaudeLogEntryMapper {
         // Try to determine tool type from content structure
         val result = when {
             content is JsonObject && content.containsKey("stdout") -> {
-                // Bash result
-                val stdout = content["stdout"]?.jsonPrimitive?.content
-                val stderr = content["stderr"]?.jsonPrimitive?.content
-                val interrupted = content["interrupted"]?.jsonPrimitive?.boolean ?: false
-                val isImage = content["isImage"]?.jsonPrimitive?.boolean ?: false
-
-                ClaudeCodeToolResultData.Bash(stdout, stderr, interrupted, isImage)
+                Json.decodeFromJsonElement<ClaudeCodeToolResultData.Bash>(content)
             }
 
             content is JsonPrimitive -> {
@@ -449,16 +432,11 @@ object ClaudeLogEntryMapper {
         }
 
         return try {
-            // Try to deserialize as GromozekaJson first
-            val gromozekaData = Json.decodeFromString<GromozekaJson>(text)
+            // Try to deserialize as StructuredText first
+            val structured = Json.decodeFromString<ChatMessage.StructuredText>(text)
             listOf(
                 ChatMessage.ContentItem.IntermediateMessage(
-                    text = gromozekaData.fullText,
-                    structured = ChatMessage.StructuredText(
-                        fullText = gromozekaData.fullText,
-                        ttsText = gromozekaData.ttsText,
-                        voiceTone = gromozekaData.voiceTone
-                    )
+                    structured = structured
                 )
             )
         } catch (e: SerializationException) {

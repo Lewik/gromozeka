@@ -102,9 +102,34 @@ sealed class ClaudeLogEntry {
         @Serializable
         @SerialName("user")
         data class UserMessage(
-            val content: ClaudeMessageContent,
+            val content: Content,
             override val role: String = "user",
-        ) : Message()
+        ) : Message() {
+            
+            @Serializable(with = UserMessageContentSerializer::class)
+            sealed class Content {
+
+                @Serializable
+                data class StringContent(
+                    val content: String,
+                ) : Content()
+
+                @Serializable
+                data class ArrayContent(
+                    val content: List<UserContentItem>,
+                ) : Content()
+
+                @Serializable
+                data class GromozekaJsonContent(
+                    val data: JsonObject,
+                ) : Content()
+
+                @Serializable
+                data class UnknownJsonContent(
+                    val json: JsonElement,
+                ) : Content()
+            }
+        }
 
         @Serializable
         @SerialName("assistant")
@@ -122,29 +147,6 @@ sealed class ClaudeLogEntry {
         ) : Message()
     }
 
-    @Serializable(with = ClaudeMessageContentSerializer::class)
-    sealed class ClaudeMessageContent {
-
-        @Serializable
-        data class StringContent(
-            val content: String,
-        ) : ClaudeMessageContent()
-
-        @Serializable
-        data class ArrayContent(
-            val content: List<UserContentItem>,
-        ) : ClaudeMessageContent()
-
-        @Serializable
-        data class GromozekaJsonContent(
-            val data: JsonObject,
-        ) : ClaudeMessageContent()
-
-        @Serializable
-        data class UnknownJsonContent(
-            val json: JsonElement,
-        ) : ClaudeMessageContent()
-    }
 
     @OptIn(ExperimentalSerializationApi::class)
     @Serializable
@@ -239,16 +241,16 @@ sealed class ClaudeLogEntry {
 }
 
 @OptIn(ExperimentalSerializationApi::class)
-object ClaudeMessageContentSerializer : KSerializer<ClaudeLogEntry.ClaudeMessageContent> {
-    override val descriptor = buildClassSerialDescriptor("ClaudeMessageContent")
+object UserMessageContentSerializer : KSerializer<ClaudeLogEntry.Message.UserMessage.Content> {
+    override val descriptor = buildClassSerialDescriptor("UserMessage.Content")
 
-    override fun deserialize(decoder: Decoder): ClaudeLogEntry.ClaudeMessageContent {
+    override fun deserialize(decoder: Decoder): ClaudeLogEntry.Message.UserMessage.Content {
         val element = decoder.decodeSerializableValue(JsonElement.serializer())
 
         return when {
             // 1. Quick check - string?
             element is JsonPrimitive && element.isString -> {
-                ClaudeLogEntry.ClaudeMessageContent.StringContent(element.content)
+                ClaudeLogEntry.Message.UserMessage.Content.StringContent(element.content)
             }
 
             // 2. Object with type discriminator (Claude format)
@@ -256,29 +258,29 @@ object ClaudeMessageContentSerializer : KSerializer<ClaudeLogEntry.ClaudeMessage
                 when (element["type"]?.jsonPrimitive?.content) {
                     "string" -> {
                         val content = element["content"]?.jsonPrimitive?.content ?: ""
-                        ClaudeLogEntry.ClaudeMessageContent.StringContent(content)
+                        ClaudeLogEntry.Message.UserMessage.Content.StringContent(content)
                     }
 
                     "array" -> {
                         val content = element["content"]?.jsonArray?.map {
                             Json.decodeFromJsonElement<ClaudeLogEntry.UserContentItem>(it)
                         } ?: emptyList()
-                        ClaudeLogEntry.ClaudeMessageContent.ArrayContent(content)
+                        ClaudeLogEntry.Message.UserMessage.Content.ArrayContent(content)
                     }
 
-                    else -> ClaudeLogEntry.ClaudeMessageContent.UnknownJsonContent(element)
+                    else -> ClaudeLogEntry.Message.UserMessage.Content.UnknownJsonContent(element)
                 }
             }
 
             // 3. Object without type - try to deserialize into Gromozeka format
             element is JsonObject -> {
                 try {
-                    // Try to parse as valid Gromozeka JSON
-                    parseAsGromozekaJson(element)
-                    ClaudeLogEntry.ClaudeMessageContent.GromozekaJsonContent(element)
+                    // Try to parse as valid StructuredText JSON
+                    parseAsStructuredText(element)
+                    ClaudeLogEntry.Message.UserMessage.Content.GromozekaJsonContent(element)
                 } catch (e: Exception) {
                     // If failed - fallback
-                    ClaudeLogEntry.ClaudeMessageContent.UnknownJsonContent(element)
+                    ClaudeLogEntry.Message.UserMessage.Content.UnknownJsonContent(element)
                 }
             }
 
@@ -288,41 +290,41 @@ object ClaudeMessageContentSerializer : KSerializer<ClaudeLogEntry.ClaudeMessage
                     val content = element.map {
                         Json.decodeFromJsonElement<ClaudeLogEntry.UserContentItem>(it)
                     }
-                    ClaudeLogEntry.ClaudeMessageContent.ArrayContent(content)
+                    ClaudeLogEntry.Message.UserMessage.Content.ArrayContent(content)
                 } catch (e: Exception) {
-                    ClaudeLogEntry.ClaudeMessageContent.UnknownJsonContent(element)
+                    ClaudeLogEntry.Message.UserMessage.Content.UnknownJsonContent(element)
                 }
             }
 
             // 5. Fallback
-            else -> ClaudeLogEntry.ClaudeMessageContent.UnknownJsonContent(element)
+            else -> ClaudeLogEntry.Message.UserMessage.Content.UnknownJsonContent(element)
         }
     }
 
-    override fun serialize(encoder: Encoder, value: ClaudeLogEntry.ClaudeMessageContent) {
+    override fun serialize(encoder: Encoder, value: ClaudeLogEntry.Message.UserMessage.Content) {
         when (value) {
-            is ClaudeLogEntry.ClaudeMessageContent.StringContent -> {
+            is ClaudeLogEntry.Message.UserMessage.Content.StringContent -> {
                 encoder.encodeString(value.content)
             }
 
-            is ClaudeLogEntry.ClaudeMessageContent.ArrayContent -> {
+            is ClaudeLogEntry.Message.UserMessage.Content.ArrayContent -> {
                 encoder.encodeSerializableValue(
                     ListSerializer(ClaudeLogEntry.UserContentItem.serializer()),
                     value.content
                 )
             }
 
-            is ClaudeLogEntry.ClaudeMessageContent.GromozekaJsonContent -> {
+            is ClaudeLogEntry.Message.UserMessage.Content.GromozekaJsonContent -> {
                 encoder.encodeSerializableValue(JsonObject.serializer(), value.data)
             }
 
-            is ClaudeLogEntry.ClaudeMessageContent.UnknownJsonContent -> {
+            is ClaudeLogEntry.Message.UserMessage.Content.UnknownJsonContent -> {
                 encoder.encodeSerializableValue(JsonElement.serializer(), value.json)
             }
         }
     }
 
-    private fun parseAsGromozekaJson(obj: JsonObject) {
+    private fun parseAsStructuredText(obj: JsonObject) {
         // Check that required fullText field exists
         if (!obj.containsKey("fullText")) {
             throw IllegalArgumentException("Missing required fullText field")

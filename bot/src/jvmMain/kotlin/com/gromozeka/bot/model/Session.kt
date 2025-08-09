@@ -146,7 +146,7 @@ class Session(
             println("[Session] *** EMITTING USER MESSAGE TO STREAM")
             _messageOutputStream.emit(
                 ChatMessage(
-                    messageType = ChatMessage.MessageType.USER,
+                    role = ChatMessage.Role.USER,
                     content = listOf(ChatMessage.ContentItem.Message(message)),
                     timestamp = Clock.System.now(),
                     uuid = java.util.UUID.randomUUID().toString(),
@@ -187,7 +187,7 @@ class Session(
             // Generate unique request ID
             val requestId = "req_${System.currentTimeMillis()}_${kotlin.random.Random.nextInt(10000)}"
 
-            val controlRequest = StreamMessage.ControlRequestMessage(
+            val controlRequest = StreamMessage.ControlRequest(
                 requestId = requestId,
                 request = ControlRequest(subtype = "interrupt")
             )
@@ -330,17 +330,17 @@ class Session(
             println("[Session] *** PROCESSING STREAM MESSAGE: ${streamMessage.type}")
 
             // Reset waiting flag only when we receive the final result
-            if (streamMessage is StreamMessage.ResultStreamMessage) {
+            if (streamMessage is StreamMessage.Result) {
                 _isWaitingForResponse.value = false
             }
 
             when (streamMessage) {
-                is StreamMessage.SystemStreamMessage -> handleSystemMessage(streamMessage)
-                is StreamMessage.UserStreamMessage -> Unit
-                is StreamMessage.AssistantStreamMessage -> Unit
-                is StreamMessage.ResultStreamMessage -> Unit
-                is StreamMessage.ControlResponseMessage -> handleControlResponse(streamMessage)
-                is StreamMessage.ControlRequestMessage -> Unit // We don't expect to receive control requests
+                is StreamMessage.System -> handleSystemMessage(streamMessage)
+                is StreamMessage.User -> Unit
+                is StreamMessage.Assistant -> Unit
+                is StreamMessage.Result -> Unit
+                is StreamMessage.ControlResponse -> handleControlResponse(streamMessage)
+                is StreamMessage.ControlRequest -> Unit // We don't expect to receive control requests
             }
 
             val chatMessage = StreamToChatMessageMapper
@@ -354,7 +354,7 @@ class Session(
         }
     }
 
-    private suspend fun handleSystemMessage(message: StreamMessage.SystemStreamMessage) {
+    private suspend fun handleSystemMessage(message: StreamMessage.System) {
         // Handle session ID updates and initialization
         if (message.subtype == "init") {
             require(!sessionInitialized)
@@ -376,7 +376,7 @@ class Session(
         }
     }
 
-    private suspend fun handleControlResponse(response: StreamMessage.ControlResponseMessage) {
+    private suspend fun handleControlResponse(response: StreamMessage.ControlResponse) {
         println("[Session] Control response received: request_id=${response.response.requestId}, subtype=${response.response.subtype}")
 
         when (response.response.subtype) {
@@ -497,11 +497,11 @@ class Session(
                     try {
                         when {
                             ChatMessageSoundDetector.shouldPlayErrorSound(chatMessage) -> {
-                                println("[Session] Playing error sound for message type: ${chatMessage.messageType}")
+                                println("[Session] Playing error sound for message type: ${chatMessage.role}")
                                 soundNotificationService.playErrorSound()
                             }
                             ChatMessageSoundDetector.shouldPlayMessageSound(chatMessage) -> {
-                                println("[Session] Playing message sound for message type: ${chatMessage.messageType}")
+                                println("[Session] Playing message sound for message type: ${chatMessage.role}")
                                 soundNotificationService.playMessageSound()
                             }
                         }

@@ -1,10 +1,7 @@
 package com.gromozeka.bot.ui
 
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
@@ -15,7 +12,6 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -161,7 +157,7 @@ private fun MessageItem(
                     Text("{}")
                 }
                 
-                Text("${message.messageType} | ${message.content.joinToString(", ") { content ->
+                Text("${message.role} | ${message.content.joinToString(", ") { content ->
                     val icon = when (content) {
                         is ChatMessage.ContentItem.Message -> ""
                         is ChatMessage.ContentItem.ToolCall -> "🔧"
@@ -171,7 +167,6 @@ private fun MessageItem(
                         is ChatMessage.ContentItem.Media -> "📎"
                         is ChatMessage.ContentItem.IntermediateMessage -> "🤖"
                         is ChatMessage.ContentItem.FinalResultMessage -> "📦"
-                        is ChatMessage.ContentItem.SystemStructuredMessage -> "⚙️"
                         is ChatMessage.ContentItem.UnknownJson -> "⚠️"
                     }
                     "$icon${content::class.simpleName}"
@@ -212,10 +207,6 @@ private fun MessageItem(
                         StructuredMessageTemplate(content, isIntermediate = false)
                     }
 
-                    is ChatMessage.ContentItem.SystemStructuredMessage -> {
-                        StructuredMessageTemplate(content, isIntermediate = false)
-                    }
-
                     is ChatMessage.ContentItem.UnknownJson -> {
                         Column {
                             Text(text = jsonPrettyPrint(content.json))
@@ -235,16 +226,14 @@ private fun StructuredMessageTemplate(
 ) {
     // Extract structured data from different message types
     val (text, structured) = when (data) {
-        is ChatMessage.ContentItem.IntermediateMessage -> data.text to data.structured
-        is ChatMessage.ContentItem.FinalResultMessage -> data.text to data.structured
-        is ChatMessage.ContentItem.SystemStructuredMessage -> data.text to data.structured
+        is ChatMessage.ContentItem.IntermediateMessage -> data.structured.fullText to data.structured
+        is ChatMessage.ContentItem.FinalResultMessage -> data.structured.fullText to data.structured
         else -> return // Shouldn't happen, but safe fallback
     }
 
     val titleText = when (data) {
         is ChatMessage.ContentItem.IntermediateMessage -> "🤖 Громозека"
         is ChatMessage.ContentItem.FinalResultMessage -> "📦 Результат"
-        is ChatMessage.ContentItem.SystemStructuredMessage -> "⚙️ Система"
         else -> "🤖 Громозека"
     }
 

@@ -16,20 +16,20 @@ object StreamToChatMessageMapper {
 
     fun mapToChatMessage(streamMessage: StreamMessage): ChatMessage {
         return when (streamMessage) {
-            is StreamMessage.SystemStreamMessage -> mapSystemMessage(streamMessage)
-            is StreamMessage.UserStreamMessage -> mapUserMessage(streamMessage)
-            is StreamMessage.AssistantStreamMessage -> mapAssistantMessage(streamMessage)
-            is StreamMessage.ResultStreamMessage -> mapResultMessage(streamMessage)
-            is StreamMessage.ControlRequestMessage -> mapControlRequestMessage(streamMessage)
-            is StreamMessage.ControlResponseMessage -> mapControlResponseMessage(streamMessage)
+            is StreamMessage.System -> mapSystemMessage(streamMessage)
+            is StreamMessage.User -> mapUserMessage(streamMessage)
+            is StreamMessage.Assistant -> mapAssistantMessage(streamMessage)
+            is StreamMessage.Result -> mapResultMessage(streamMessage)
+            is StreamMessage.ControlRequest -> mapControlRequestMessage(streamMessage)
+            is StreamMessage.ControlResponse -> mapControlResponseMessage(streamMessage)
         }
     }
 
-    private fun mapSystemMessage(message: StreamMessage.SystemStreamMessage): ChatMessage {
+    private fun mapSystemMessage(message: StreamMessage.System): ChatMessage {
         val level = when (message.subtype) {
             "error" -> ChatMessage.ContentItem.System.SystemLevel.ERROR
             "warning" -> ChatMessage.ContentItem.System.SystemLevel.WARNING
-            else -> ChatMessage.ContentItem.System.SystemLevel.INFO
+            else -> ChatMessage.ContentItem.System.SystemLevel.INFO //todo unknown level
         }
 
         val content = listOf(
@@ -43,7 +43,7 @@ object StreamToChatMessageMapper {
         return ChatMessage(
             uuid = generateUuid(),
             parentUuid = null,
-            messageType = ChatMessage.MessageType.SYSTEM,
+            role = ChatMessage.Role.SYSTEM,
             content = content,
             timestamp = Clock.System.now(),
             llmSpecificMetadata = createStreamMetadata(
@@ -52,13 +52,13 @@ object StreamToChatMessageMapper {
         )
     }
 
-    private fun mapUserMessage(message: StreamMessage.UserStreamMessage): ChatMessage {
-        val content = mapStreamMessageContent(message.message)
+    private fun mapUserMessage(message: StreamMessage.User): ChatMessage {
+        val content = mapUserContent(message.message)
 
         return ChatMessage(
             uuid = generateUuid(),
             parentUuid = null,
-            messageType = ChatMessage.MessageType.USER,
+            role = ChatMessage.Role.USER,
             content = content,
             timestamp = Clock.System.now(),
             llmSpecificMetadata = createStreamMetadata(
@@ -67,28 +67,27 @@ object StreamToChatMessageMapper {
         )
     }
 
-    private fun mapAssistantMessage(message: StreamMessage.AssistantStreamMessage): ChatMessage {
-        val assistantContent = message.message as StreamMessageContent.AssistantContent
-        val contentItems = assistantContent.content.flatMap { item ->
+    private fun mapAssistantMessage(message: StreamMessage.Assistant): ChatMessage {
+        val contentItems = message.message.content.flatMap { item ->
             mapStreamContentItem(item)
         }
 
         return ChatMessage(
             uuid = generateUuid(),
             parentUuid = null,
-            messageType = ChatMessage.MessageType.ASSISTANT,
+            role = ChatMessage.Role.ASSISTANT,
             content = contentItems,
             timestamp = Clock.System.now(),
             llmSpecificMetadata = createStreamMetadata(
                 sessionId = message.sessionId,
-                model = assistantContent.model,
-                usage = assistantContent.usage,
-                stopReason = assistantContent.stopReason
+                model = message.message.model,
+                usage = message.message.usage,
+                stopReason = message.message.stopReason
             )
         )
     }
 
-    private fun mapResultMessage(message: StreamMessage.ResultStreamMessage): ChatMessage {
+    private fun mapResultMessage(message: StreamMessage.Result): ChatMessage {
         val level = if (message.isError) {
             ChatMessage.ContentItem.System.SystemLevel.ERROR
         } else {
@@ -147,7 +146,7 @@ object StreamToChatMessageMapper {
         return ChatMessage(
             uuid = generateUuid(),
             parentUuid = null,
-            messageType = ChatMessage.MessageType.SYSTEM,
+            role = ChatMessage.Role.SYSTEM,
             content = content,
             timestamp = Clock.System.now(),
             llmSpecificMetadata = createStreamMetadata(
@@ -157,26 +156,14 @@ object StreamToChatMessageMapper {
         )
     }
 
-    private fun mapStreamMessageContent(content: StreamMessageContent): List<ChatMessage.ContentItem> {
-        return when (content) {
-            is StreamMessageContent.UserContent -> {
-                mapContentItemsUnion(content.content)
-            }
-
-            is StreamMessageContent.AssistantContent -> {
-                content.content.flatMap { mapStreamContentItem(it) }
-            }
-        }
-    }
-
-    private fun mapContentItemsUnion(union: ContentItemsUnion): List<ChatMessage.ContentItem> {
-        return when (union) {
+    private fun mapUserContent(content: StreamMessageContent.User): List<ChatMessage.ContentItem> {
+        return when (content.content) {
             is ContentItemsUnion.StringContent -> {
-                listOf(parseTextForGromozeka(union.content))
+                listOf(parseTextForGromozeka(content.content.content))
             }
 
             is ContentItemsUnion.ArrayContent -> {
-                union.items.flatMap { mapStreamContentItem(it) }
+                content.content.items.flatMap { mapStreamContentItem(it) }
             }
         }
     }
@@ -269,15 +256,10 @@ object StreamToChatMessageMapper {
         }
 
         return try {
-            // Try to deserialize as GromozekaJson first
-            val gromozekaData = Json.decodeFromString<GromozekaJson>(text)
+            // Try to deserialize as StructuredText first
+            val structured = Json.decodeFromString<ChatMessage.StructuredText>(text)
             ChatMessage.ContentItem.IntermediateMessage(
-                text = gromozekaData.fullText,
-                structured = ChatMessage.StructuredText(
-                    fullText = gromozekaData.fullText,
-                    ttsText = gromozekaData.ttsText,
-                    voiceTone = gromozekaData.voiceTone
-                )
+                structured = structured
             )
         } catch (e: SerializationException) {
             // Not a Gromozeka format, try as generic JSON
@@ -332,16 +314,11 @@ object StreamToChatMessageMapper {
 
     private fun parseResultAsGromozeka(resultText: String): List<ChatMessage.ContentItem> {
         return try {
-            // Try to parse result as Gromozeka JSON
-            val gromozekaData = Json.decodeFromString<GromozekaJson>(resultText)
+            // Try to parse result as StructuredText
+            val structured = Json.decodeFromString<ChatMessage.StructuredText>(resultText)
             listOf(
                 ChatMessage.ContentItem.FinalResultMessage(
-                    text = gromozekaData.fullText,
-                    structured = ChatMessage.StructuredText(
-                        fullText = gromozekaData.fullText,
-                        ttsText = gromozekaData.ttsText,
-                        voiceTone = gromozekaData.voiceTone
-                    )
+                    structured = structured
                 )
             )
         } catch (e: SerializationException) {
@@ -360,7 +337,7 @@ object StreamToChatMessageMapper {
     }
 
     private fun createResultStatisticsContent(
-        message: StreamMessage.ResultStreamMessage,
+        message: StreamMessage.Result,
         level: ChatMessage.ContentItem.System.SystemLevel,
     ): ChatMessage.ContentItem.System {
         val statisticsText = buildString {
@@ -380,7 +357,7 @@ object StreamToChatMessageMapper {
         )
     }
 
-    private fun mapControlRequestMessage(message: StreamMessage.ControlRequestMessage): ChatMessage {
+    private fun mapControlRequestMessage(message: StreamMessage.ControlRequest): ChatMessage {
         val content = listOf(
             ChatMessage.ContentItem.System(
                 level = ChatMessage.ContentItem.System.SystemLevel.INFO,
@@ -392,7 +369,7 @@ object StreamToChatMessageMapper {
         return ChatMessage(
             uuid = generateUuid(),
             parentUuid = null,
-            messageType = ChatMessage.MessageType.SYSTEM,
+            role = ChatMessage.Role.SYSTEM,
             content = content,
             timestamp = Clock.System.now(),
             llmSpecificMetadata = createStreamMetadata(
@@ -401,7 +378,7 @@ object StreamToChatMessageMapper {
         )
     }
 
-    private fun mapControlResponseMessage(message: StreamMessage.ControlResponseMessage): ChatMessage {
+    private fun mapControlResponseMessage(message: StreamMessage.ControlResponse): ChatMessage {
         val level = when (message.response.subtype) {
             "error" -> ChatMessage.ContentItem.System.SystemLevel.ERROR
             else -> ChatMessage.ContentItem.System.SystemLevel.INFO
@@ -424,7 +401,7 @@ object StreamToChatMessageMapper {
         return ChatMessage(
             uuid = generateUuid(),
             parentUuid = null,
-            messageType = ChatMessage.MessageType.SYSTEM,
+            role = ChatMessage.Role.SYSTEM,
             content = content,
             timestamp = Clock.System.now(),
             llmSpecificMetadata = createStreamMetadata(

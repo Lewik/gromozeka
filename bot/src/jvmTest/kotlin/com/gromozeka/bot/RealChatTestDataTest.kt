@@ -53,7 +53,7 @@ class RealChatTestDataTest : FunSpec({
                                 }
 
                                 is ChatMessage.ContentItem.IntermediateMessage -> {
-                                    println("Successfully parsed Gromozeka message: ${contentItem.structured?.fullText ?: contentItem.text}")
+                                    println("Successfully parsed Gromozeka message: ${contentItem.structured.fullText}")
                                 }
 
                                 is ChatMessage.ContentItem.UnknownJson -> {

@@ -18,8 +18,8 @@ class StreamMessageDeserializationTest {
     fun `deserialize system init message`() {
         val message = json.decodeFromString<StreamMessage>(StreamMessageTestData.systemInitMessage)
 
-        assertTrue(message is StreamMessage.SystemStreamMessage)
-        message as StreamMessage.SystemStreamMessage
+        assertTrue(message is StreamMessage.System)
+        message as StreamMessage.System
 
         assertEquals("system", message.type)
         assertEquals("init", message.subtype)
@@ -32,8 +32,8 @@ class StreamMessageDeserializationTest {
     fun `deserialize system error message`() {
         val message = json.decodeFromString<StreamMessage>(StreamMessageTestData.systemErrorMessage)
 
-        assertTrue(message is StreamMessage.SystemStreamMessage)
-        message as StreamMessage.SystemStreamMessage
+        assertTrue(message is StreamMessage.System)
+        message as StreamMessage.System
 
         assertEquals("system", message.type)
         assertEquals("error", message.subtype)
@@ -45,15 +45,15 @@ class StreamMessageDeserializationTest {
     fun `deserialize user message with string content`() {
         val message = json.decodeFromString<StreamMessage>(StreamMessageTestData.userStringMessage)
 
-        assertTrue(message is StreamMessage.UserStreamMessage)
-        message as StreamMessage.UserStreamMessage
+        assertTrue(message is StreamMessage.User)
+        message as StreamMessage.User
 
         assertEquals("user", message.type)
         assertEquals("00f8f214-a5c5-40cf-a07e-4a3b383a94e9", message.sessionId)
         assertNull(message.parentToolUseId)
 
-        assertTrue(message.message is StreamMessageContent.UserContent)
-        val userContent = message.message as StreamMessageContent.UserContent
+        assertTrue(message.message is StreamMessageContent.User)
+        val userContent = message.message as StreamMessageContent.User
         assertTrue(userContent.content is ContentItemsUnion.StringContent)
 
         val stringContent = userContent.content as ContentItemsUnion.StringContent
@@ -64,12 +64,12 @@ class StreamMessageDeserializationTest {
     fun `deserialize user message with array content`() {
         val message = json.decodeFromString<StreamMessage>(StreamMessageTestData.userArrayMessage)
 
-        assertTrue(message is StreamMessage.UserStreamMessage)
-        message as StreamMessage.UserStreamMessage
+        assertTrue(message is StreamMessage.User)
+        message as StreamMessage.User
 
         assertEquals("tool_456", message.parentToolUseId)
 
-        val userContent = message.message as StreamMessageContent.UserContent
+        val userContent = message.message as StreamMessageContent.User
         assertTrue(userContent.content is ContentItemsUnion.ArrayContent)
 
         val arrayContent = userContent.content as ContentItemsUnion.ArrayContent
@@ -91,10 +91,10 @@ class StreamMessageDeserializationTest {
     fun `deserialize assistant text message`() {
         val message = json.decodeFromString<StreamMessage>(StreamMessageTestData.assistantTextMessage)
 
-        assertTrue(message is StreamMessage.AssistantStreamMessage)
-        message as StreamMessage.AssistantStreamMessage
+        assertTrue(message is StreamMessage.Assistant)
+        message as StreamMessage.Assistant
 
-        val assistantContent = message.message as StreamMessageContent.AssistantContent
+        val assistantContent = message.message as StreamMessageContent.Assistant
         assertEquals("msg_123", assistantContent.id)
         assertEquals("claude-3-5-sonnet-20241022", assistantContent.model)
         assertEquals("end_turn", assistantContent.stopReason)
@@ -112,10 +112,10 @@ class StreamMessageDeserializationTest {
     fun `deserialize assistant tool use message`() {
         val message = json.decodeFromString<StreamMessage>(StreamMessageTestData.assistantToolUseMessage)
 
-        assertTrue(message is StreamMessage.AssistantStreamMessage)
-        message as StreamMessage.AssistantStreamMessage
+        assertTrue(message is StreamMessage.Assistant)
+        message as StreamMessage.Assistant
 
-        val assistantContent = message.message as StreamMessageContent.AssistantContent
+        val assistantContent = message.message as StreamMessageContent.Assistant
         assertEquals("tool_use", assistantContent.stopReason)
         assertEquals(2, assistantContent.content.size)
 
@@ -132,10 +132,10 @@ class StreamMessageDeserializationTest {
     fun `deserialize assistant thinking message`() {
         val message = json.decodeFromString<StreamMessage>(StreamMessageTestData.assistantThinkingMessage)
 
-        assertTrue(message is StreamMessage.AssistantStreamMessage)
-        message as StreamMessage.AssistantStreamMessage
+        assertTrue(message is StreamMessage.Assistant)
+        message as StreamMessage.Assistant
 
-        val assistantContent = message.message as StreamMessageContent.AssistantContent
+        val assistantContent = message.message as StreamMessageContent.Assistant
         assertEquals(2, assistantContent.content.size)
 
         val thinkingItem = assistantContent.content[0] as StreamContentItem.ThinkingItem
@@ -153,8 +153,8 @@ class StreamMessageDeserializationTest {
     fun `deserialize result success message`() {
         val message = json.decodeFromString<StreamMessage>(StreamMessageTestData.resultSuccessMessage)
 
-        assertTrue(message is StreamMessage.ResultStreamMessage)
-        message as StreamMessage.ResultStreamMessage
+        assertTrue(message is StreamMessage.Result)
+        message as StreamMessage.Result
 
         assertEquals("result", message.type)
         assertEquals("success", message.subtype)
@@ -175,8 +175,8 @@ class StreamMessageDeserializationTest {
     fun `deserialize result error message`() {
         val message = json.decodeFromString<StreamMessage>(StreamMessageTestData.resultErrorMessage)
 
-        assertTrue(message is StreamMessage.ResultStreamMessage)
-        message as StreamMessage.ResultStreamMessage
+        assertTrue(message is StreamMessage.Result)
+        message as StreamMessage.Result
 
         assertEquals("error", message.subtype)
         assertTrue(message.isError)
@@ -188,10 +188,10 @@ class StreamMessageDeserializationTest {
     fun `deserialize tool result with string content`() {
         val message = json.decodeFromString<StreamMessage>(StreamMessageTestData.toolResultStringContent)
 
-        assertTrue(message is StreamMessage.UserStreamMessage)
-        message as StreamMessage.UserStreamMessage
+        assertTrue(message is StreamMessage.User)
+        message as StreamMessage.User
 
-        val userContent = message.message as StreamMessageContent.UserContent
+        val userContent = message.message as StreamMessageContent.User
         val arrayContent = userContent.content as ContentItemsUnion.ArrayContent
 
         val toolResultItem = arrayContent.items[0] as StreamContentItem.ToolResultItem
@@ -207,10 +207,10 @@ class StreamMessageDeserializationTest {
     fun `deserialize tool result with array content`() {
         val message = json.decodeFromString<StreamMessage>(StreamMessageTestData.toolResultArrayContent)
 
-        assertTrue(message is StreamMessage.UserStreamMessage)
-        message as StreamMessage.UserStreamMessage
+        assertTrue(message is StreamMessage.User)
+        message as StreamMessage.User
 
-        val userContent = message.message as StreamMessageContent.UserContent
+        val userContent = message.message as StreamMessageContent.User
         val arrayContent = userContent.content as ContentItemsUnion.ArrayContent
 
         val toolResultItem = arrayContent.items[0] as StreamContentItem.ToolResultItem
@@ -230,10 +230,10 @@ class StreamMessageDeserializationTest {
     fun `deserialize complex assistant message`() {
         val message = json.decodeFromString<StreamMessage>(StreamMessageTestData.complexAssistantMessage)
 
-        assertTrue(message is StreamMessage.AssistantStreamMessage)
-        message as StreamMessage.AssistantStreamMessage
+        assertTrue(message is StreamMessage.Assistant)
+        message as StreamMessage.Assistant
 
-        val assistantContent = message.message as StreamMessageContent.AssistantContent
+        val assistantContent = message.message as StreamMessageContent.Assistant
         assertEquals(5, assistantContent.content.size)
 
         // Check thinking block
@@ -282,8 +282,8 @@ class StreamMessageDeserializationTest {
         }"""
 
         val message = json.decodeFromString<StreamMessage>(emptyStringMessage)
-        assertTrue(message is StreamMessage.UserStreamMessage)
-        val userContent = (message as StreamMessage.UserStreamMessage).message as StreamMessageContent.UserContent
+        assertTrue(message is StreamMessage.User)
+        val userContent = (message as StreamMessage.User).message as StreamMessageContent.User
         assertTrue(userContent.content is ContentItemsUnion.StringContent)
         assertEquals("", (userContent.content as ContentItemsUnion.StringContent).content)
     }
@@ -308,8 +308,8 @@ class StreamMessageDeserializationTest {
         }"""
 
         val message = json.decodeFromString<StreamMessage>(fullUsageMessage)
-        assertTrue(message is StreamMessage.ResultStreamMessage)
-        val resultMessage = message as StreamMessage.ResultStreamMessage
+        assertTrue(message is StreamMessage.Result)
+        val resultMessage = message as StreamMessage.Result
 
         assertNotNull(resultMessage.usage)
         assertEquals(50, resultMessage.usage?.inputTokens)

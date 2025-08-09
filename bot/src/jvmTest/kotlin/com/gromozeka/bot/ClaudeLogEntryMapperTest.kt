@@ -22,7 +22,7 @@ class ClaudeLogEntryMapperTest : FunSpec({
         coerceInputValues = false
     }
 
-    fun parseSessionFiles(): List<ClaudeLogEntry> {
+    fun parseSessionFiles(): Sequence<ClaudeLogEntry> {
         val projectsDir = File("/Users/lewik/.claude/projects")
 
         val brokenFiles = setOf(
@@ -30,27 +30,25 @@ class ClaudeLogEntryMapperTest : FunSpec({
             "c1d25871-c2f7-48cc-80f0-14cd75e45ac7.jsonl"
         )
 
-        val allSessionFiles = projectsDir.walkTopDown()
+        return projectsDir.walkTopDown()
             .filter { it.isFile && it.extension == "jsonl" }
             .filter { it.name !in brokenFiles }
-            .toList()
-
-        val entries = mutableListOf<ClaudeLogEntry>()
-
-        allSessionFiles.forEach { file ->
-            file.readLines().forEach { line ->
-                if (line.trim().isNotEmpty()) {
-                    try {
-                        val entry = json.decodeFromString<ClaudeLogEntry>(line)
-                        entries.add(entry)
-                    } catch (e: Exception) {
-                        // Skip parsing errors
+            .flatMap { file ->
+                sequence {
+                    file.useLines { lines ->
+                        lines.forEach { line ->
+                            if (line.trim().isNotEmpty()) {
+                                try {
+                                    val entry = json.decodeFromString<ClaudeLogEntry>(line)
+                                    yield(entry)
+                                } catch (e: Exception) {
+                                    // Skip parsing errors
+                                }
+                            }
+                        }
                     }
                 }
             }
-        }
-
-        return entries
     }
 
     test("parsing + mapping integration test") {
@@ -92,13 +90,13 @@ class ClaudeLogEntryMapperTest : FunSpec({
             isSidechain = false,
             parentUuid = null,
             message = ClaudeLogEntry.Message.UserMessage(
-                content = ClaudeLogEntry.ClaudeMessageContent.StringContent("Hello world")
+                content = ClaudeLogEntry.Message.UserMessage.Content.StringContent("Hello world")
             )
         )
 
         val result = ClaudeLogEntryMapper.mapToChatMessage(userEntry)
         result shouldNotBe null
-        result!!.messageType shouldBe ChatMessage.MessageType.USER
+        result!!.role shouldBe ChatMessage.Role.USER
         result.uuid shouldBe "user-uuid"
         result.cwd shouldBe "/test"
         result.gitBranch shouldBe "main"
@@ -125,7 +123,7 @@ class ClaudeLogEntryMapperTest : FunSpec({
 
         val result = ClaudeLogEntryMapper.mapToChatMessage(systemEntry)
         result shouldNotBe null
-        result!!.messageType shouldBe ChatMessage.MessageType.SYSTEM
+        result!!.role shouldBe ChatMessage.Role.SYSTEM
         result.content shouldHaveSize 1
 
         val systemContent = result.content[0] as ChatMessage.ContentItem.System
@@ -164,7 +162,7 @@ class ClaudeLogEntryMapperTest : FunSpec({
 
         val result = ClaudeLogEntryMapper.mapToChatMessage(assistantEntry)
         result shouldNotBe null
-        result!!.messageType shouldBe ChatMessage.MessageType.ASSISTANT
+        result!!.role shouldBe ChatMessage.Role.ASSISTANT
         result.uuid shouldBe "assistant-uuid"
 
         val metadata = result.llmSpecificMetadata as ChatMessage.LlmSpecificMetadata.ClaudeCodeSessionFileEntry
@@ -205,7 +203,7 @@ class ClaudeLogEntryMapperTest : FunSpec({
             timestamp = "2025-08-01T10:00:00Z", userType = "human", uuid = "user-uuid",
             version = "1.0", isSidechain = false, parentUuid = null,
             message = ClaudeLogEntry.Message.UserMessage(
-                content = ClaudeLogEntry.ClaudeMessageContent.GromozekaJsonContent(gromozekaJson)
+                content = ClaudeLogEntry.Message.UserMessage.Content.GromozekaJsonContent(gromozekaJson)
             )
         )
 
@@ -231,7 +229,7 @@ class ClaudeLogEntryMapperTest : FunSpec({
             timestamp = "2025-08-01T10:00:00Z", userType = "human", uuid = "user-uuid",
             version = "1.0", isSidechain = false, parentUuid = null,
             message = ClaudeLogEntry.Message.UserMessage(
-                content = ClaudeLogEntry.ClaudeMessageContent.UnknownJsonContent(unknownJson)
+                content = ClaudeLogEntry.Message.UserMessage.Content.UnknownJsonContent(unknownJson)
             )
         )
 
@@ -244,28 +242,28 @@ class ClaudeLogEntryMapperTest : FunSpec({
         unknownContent.json should beInstanceOf<JsonObject>()
     }
 
-    test("ClaudeMessageContent deserializer should handle string content") {
+    test("UserMessage.Content deserializer should handle string content") {
         val jsonString = "\"Простой текст\""
-        val content = Json.decodeFromString<ClaudeLogEntry.ClaudeMessageContent>(jsonString)
-        content should beInstanceOf<ClaudeLogEntry.ClaudeMessageContent.StringContent>()
-        (content as ClaudeLogEntry.ClaudeMessageContent.StringContent).content shouldBe "Простой текст"
+        val content = Json.decodeFromString<ClaudeLogEntry.Message.UserMessage.Content>(jsonString)
+        content should beInstanceOf<ClaudeLogEntry.Message.UserMessage.Content.StringContent>()
+        (content as ClaudeLogEntry.Message.UserMessage.Content.StringContent).content shouldBe "Простой текст"
     }
 
-    test("ClaudeMessageContent deserializer should handle Gromozeka format") {
+    test("UserMessage.Content deserializer should handle Gromozeka format") {
         val gromozekaJsonString =
             """{"fullText": "Ответ Громозеки", "ttsText": "Ответ Громозеки", "voiceTone": "friendly"}"""
-        val content = Json.decodeFromString<ClaudeLogEntry.ClaudeMessageContent>(gromozekaJsonString)
-        content should beInstanceOf<ClaudeLogEntry.ClaudeMessageContent.GromozekaJsonContent>()
+        val content = Json.decodeFromString<ClaudeLogEntry.Message.UserMessage.Content>(gromozekaJsonString)
+        content should beInstanceOf<ClaudeLogEntry.Message.UserMessage.Content.GromozekaJsonContent>()
 
-        val gromozekaContent = content as ClaudeLogEntry.ClaudeMessageContent.GromozekaJsonContent
+        val gromozekaContent = content as ClaudeLogEntry.Message.UserMessage.Content.GromozekaJsonContent
         gromozekaContent.data["fullText"]?.jsonPrimitive?.content shouldBe "Ответ Громозеки"
         gromozekaContent.data["voiceTone"]?.jsonPrimitive?.content shouldBe "friendly"
     }
 
-    test("ClaudeMessageContent deserializer should fallback to unknown") {
+    test("UserMessage.Content deserializer should fallback to unknown") {
         val weirdJsonString = """{"some_weird_field": [1, 2, 3], "nested": {"unknown": true}}"""
-        val content = Json.decodeFromString<ClaudeLogEntry.ClaudeMessageContent>(weirdJsonString)
-        content should beInstanceOf<ClaudeLogEntry.ClaudeMessageContent.UnknownJsonContent>()
+        val content = Json.decodeFromString<ClaudeLogEntry.Message.UserMessage.Content>(weirdJsonString)
+        content should beInstanceOf<ClaudeLogEntry.Message.UserMessage.Content.UnknownJsonContent>()
     }
 
     test("mapper should parse Gromozeka JSON from text content") {

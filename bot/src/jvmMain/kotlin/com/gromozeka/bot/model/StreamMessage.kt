@@ -15,7 +15,7 @@ sealed class StreamMessage {
 
     @Serializable
     @SerialName("system")
-    data class SystemStreamMessage(
+    data class System(
         val subtype: String,
         @SerialName("session_id")
         val sessionId: String? = null,
@@ -34,8 +34,8 @@ sealed class StreamMessage {
 
     @Serializable
     @SerialName("user")
-    data class UserStreamMessage(
-        val message: StreamMessageContent,
+    data class User(
+        val message: StreamMessageContent.User,
         @SerialName("session_id")
         val sessionId: String,
         @SerialName("parent_tool_use_id")
@@ -45,8 +45,8 @@ sealed class StreamMessage {
 
     @Serializable
     @SerialName("assistant")
-    data class AssistantStreamMessage(
-        val message: StreamMessageContent,
+    data class Assistant(
+        val message: StreamMessageContent.Assistant,
         @SerialName("session_id")
         val sessionId: String,
         @SerialName("parent_tool_use_id")
@@ -56,7 +56,7 @@ sealed class StreamMessage {
 
     @Serializable
     @SerialName("result")
-    data class ResultStreamMessage(
+    data class Result(
         val subtype: String,
         @SerialName("duration_ms")
         val durationMs: Int,
@@ -77,17 +77,17 @@ sealed class StreamMessage {
 
     @Serializable
     @SerialName("control_request")
-    data class ControlRequestMessage(
+    data class ControlRequest(
         @SerialName("request_id")
         val requestId: String,
-        val request: ControlRequest,
+        val request: com.gromozeka.bot.model.ControlRequest,
         override val type: String = "control_request",
     ) : StreamMessage()
 
     @Serializable
     @SerialName("control_response")
-    data class ControlResponseMessage(
-        val response: ControlResponse,
+    data class ControlResponse(
+        val response: com.gromozeka.bot.model.ControlResponse,
         override val type: String = "control_response",
     ) : StreamMessage()
 }
@@ -100,14 +100,14 @@ sealed class StreamMessageContent {
 
     @Serializable
     @SerialName("user")
-    data class UserContent(
+    data class User(
         val content: ContentItemsUnion,
         override val role: String = "user",
     ) : StreamMessageContent()
 
     @Serializable
     @SerialName("assistant")
-    data class AssistantContent(
+    data class Assistant(
         val id: String? = null,
         val type: String? = null, // Claude adds "type": "message" field
         val model: String? = null,

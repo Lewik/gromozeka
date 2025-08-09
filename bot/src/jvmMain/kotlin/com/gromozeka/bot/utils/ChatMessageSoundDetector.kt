@@ -32,21 +32,21 @@ object ChatMessageSoundDetector {
         // Skip if this is an error (error sound takes precedence)
         if (shouldPlayErrorSound(message)) return false
         
-        return when (message.messageType) {
+        return when (message.role) {
             // Assistant messages
-            ChatMessage.MessageType.ASSISTANT -> true
+            ChatMessage.Role.ASSISTANT -> true
             
             // System messages (non-error)
-            ChatMessage.MessageType.SYSTEM -> true
+            ChatMessage.Role.SYSTEM -> true
             
             // Tool results (non-error) - these are typically user type but not actual user input
-            ChatMessage.MessageType.USER -> {
+            ChatMessage.Role.USER -> {
                 // Only if it contains tool results (not actual user input)
                 message.content.any { it is ChatMessage.ContentItem.ToolResult }
             }
             
             // Tool calls themselves (from assistant)
-            ChatMessage.MessageType.TOOL -> true
+            ChatMessage.Role.TOOL -> true
         }
     }
 }

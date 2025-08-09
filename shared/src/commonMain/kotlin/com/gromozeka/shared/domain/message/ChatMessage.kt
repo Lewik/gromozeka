@@ -4,7 +4,6 @@ import kotlinx.datetime.Instant
 import kotlinx.serialization.*
 import kotlinx.serialization.json.JsonClassDiscriminator
 import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.JsonObject
 
 /**
  * Internal message representation for gromozeka.
@@ -14,7 +13,7 @@ import kotlinx.serialization.json.JsonObject
 data class ChatMessage(
     val uuid: String, //todo real uuid type
     val parentUuid: String? = null, //todo real uuid type
-    val messageType: MessageType,
+    val role: Role,
     val content: List<ContentItem>,
     val timestamp: Instant,
     val llmSpecificMetadata: LlmSpecificMetadata?,
@@ -31,7 +30,7 @@ data class ChatMessage(
 ) {
 
     @Serializable
-    enum class MessageType {
+    enum class Role {
         USER, ASSISTANT, SYSTEM, TOOL
     }
     
@@ -88,7 +87,6 @@ data class ChatMessage(
         @Serializable
         data class Message(
             val text: String,
-            val structured: StructuredText? = null
         ) : ContentItem()
         
         @Serializable
@@ -134,21 +132,14 @@ data class ChatMessage(
         
         @Serializable
         data class IntermediateMessage(
-            val text: String,
-            val structured: StructuredText? = null
+            val structured: StructuredText
         ) : ContentItem()
         
         @Serializable  
         data class FinalResultMessage(
-            val text: String,
-            val structured: StructuredText? = null
+            val structured: StructuredText
         ) : ContentItem()
         
-        @Serializable
-        data class SystemStructuredMessage(
-            val text: String,
-            val structured: StructuredText? = null
-        ) : ContentItem()
         
         @Serializable
         data class UnknownJson(

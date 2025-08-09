@@ -22,7 +22,7 @@ class StreamToChatMessageMapperIntegrationTest : FunSpec({
 
         val result = StreamToChatMessageMapper.mapToChatMessage(message)
         result shouldNotBe null
-        result.messageType shouldBe ChatMessage.MessageType.SYSTEM
+        result.role shouldBe ChatMessage.Role.SYSTEM
         result.content[0] should beInstanceOf<ChatMessage.ContentItem.System>()
 
         val systemContent = result.content[0] as ChatMessage.ContentItem.System
@@ -35,7 +35,7 @@ class StreamToChatMessageMapperIntegrationTest : FunSpec({
 
         val result = StreamToChatMessageMapper.mapToChatMessage(message)
         result shouldNotBe null
-        result.messageType shouldBe ChatMessage.MessageType.SYSTEM
+        result.role shouldBe ChatMessage.Role.SYSTEM
         result.content[0] should beInstanceOf<ChatMessage.ContentItem.System>()
 
         val systemContent = result.content[0] as ChatMessage.ContentItem.System
@@ -48,7 +48,7 @@ class StreamToChatMessageMapperIntegrationTest : FunSpec({
 
         val result = StreamToChatMessageMapper.mapToChatMessage(message)
         result shouldNotBe null
-        result!!.messageType shouldBe ChatMessage.MessageType.USER
+        result!!.role shouldBe ChatMessage.Role.USER
         result.content.size shouldBe 1
         result.content[0] should beInstanceOf<ChatMessage.ContentItem.Message>()
 
@@ -61,7 +61,7 @@ class StreamToChatMessageMapperIntegrationTest : FunSpec({
 
         val result = StreamToChatMessageMapper.mapToChatMessage(message)
         result shouldNotBe null
-        result!!.messageType shouldBe ChatMessage.MessageType.USER
+        result!!.role shouldBe ChatMessage.Role.USER
         result.content.size shouldBe 2
 
         result.content[0] should beInstanceOf<ChatMessage.ContentItem.Message>()
@@ -79,7 +79,7 @@ class StreamToChatMessageMapperIntegrationTest : FunSpec({
 
         val result = StreamToChatMessageMapper.mapToChatMessage(message)
         result shouldNotBe null
-        result!!.messageType shouldBe ChatMessage.MessageType.ASSISTANT
+        result!!.role shouldBe ChatMessage.Role.ASSISTANT
         result.content.size shouldBe 1
         result.content[0] should beInstanceOf<ChatMessage.ContentItem.Message>()
 
@@ -99,7 +99,7 @@ class StreamToChatMessageMapperIntegrationTest : FunSpec({
 
         val result = StreamToChatMessageMapper.mapToChatMessage(message)
         result shouldNotBe null
-        result!!.messageType shouldBe ChatMessage.MessageType.ASSISTANT
+        result!!.role shouldBe ChatMessage.Role.ASSISTANT
         result.content.size shouldBe 2
 
         result.content[0] should beInstanceOf<ChatMessage.ContentItem.Message>()
@@ -120,7 +120,7 @@ class StreamToChatMessageMapperIntegrationTest : FunSpec({
 
         val result = StreamToChatMessageMapper.mapToChatMessage(message)
         result shouldNotBe null
-        result!!.messageType shouldBe ChatMessage.MessageType.ASSISTANT
+        result!!.role shouldBe ChatMessage.Role.ASSISTANT
         result.content.size shouldBe 2
 
         result.content[0] should beInstanceOf<ChatMessage.ContentItem.Thinking>()
@@ -142,7 +142,7 @@ class StreamToChatMessageMapperIntegrationTest : FunSpec({
 
         val result = StreamToChatMessageMapper.mapToChatMessage(message)
         result shouldNotBe null
-        result.messageType shouldBe ChatMessage.MessageType.SYSTEM
+        result.role shouldBe ChatMessage.Role.SYSTEM
         result.content[0] should beInstanceOf<ChatMessage.ContentItem.System>()
 
         val systemContent = result.content[0] as ChatMessage.ContentItem.System
@@ -155,7 +155,7 @@ class StreamToChatMessageMapperIntegrationTest : FunSpec({
 
         val result = StreamToChatMessageMapper.mapToChatMessage(message)
         result shouldNotBe null
-        result!!.messageType shouldBe ChatMessage.MessageType.SYSTEM
+        result!!.role shouldBe ChatMessage.Role.SYSTEM
         result.content.size shouldBe 1
         result.content[0] should beInstanceOf<ChatMessage.ContentItem.System>()
 
@@ -169,7 +169,7 @@ class StreamToChatMessageMapperIntegrationTest : FunSpec({
 
         val result = StreamToChatMessageMapper.mapToChatMessage(message)
         result shouldNotBe null
-        result!!.messageType shouldBe ChatMessage.MessageType.USER
+        result!!.role shouldBe ChatMessage.Role.USER
         result.content.size shouldBe 1
         result.content[0] should beInstanceOf<ChatMessage.ContentItem.ToolResult>()
 
@@ -183,7 +183,7 @@ class StreamToChatMessageMapperIntegrationTest : FunSpec({
 
         val result = StreamToChatMessageMapper.mapToChatMessage(message)
         result shouldNotBe null
-        result!!.messageType shouldBe ChatMessage.MessageType.USER
+        result!!.role shouldBe ChatMessage.Role.USER
         result.content.size shouldBe 1
         result.content[0] should beInstanceOf<ChatMessage.ContentItem.ToolResult>()
 
@@ -197,7 +197,7 @@ class StreamToChatMessageMapperIntegrationTest : FunSpec({
 
         val result = StreamToChatMessageMapper.mapToChatMessage(message)
         result shouldNotBe null
-        result!!.messageType shouldBe ChatMessage.MessageType.ASSISTANT
+        result!!.role shouldBe ChatMessage.Role.ASSISTANT
         result.content.size shouldBe 5
 
         result.content[0] should beInstanceOf<ChatMessage.ContentItem.Thinking>()

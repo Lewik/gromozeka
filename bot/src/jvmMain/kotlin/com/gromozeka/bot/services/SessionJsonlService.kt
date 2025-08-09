@@ -183,7 +183,7 @@ class SessionJsonlService(
      * Generate session title from first messages.
      */
     private fun generateSessionTitle(messages: List<ChatMessage>): String {
-        val firstUserMessage = messages.firstOrNull { it.messageType == ChatMessage.MessageType.USER }
+        val firstUserMessage = messages.firstOrNull { it.role == ChatMessage.Role.USER }
 
         return when {
             firstUserMessage != null -> {

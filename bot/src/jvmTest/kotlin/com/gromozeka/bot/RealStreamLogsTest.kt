@@ -116,7 +116,7 @@ class RealStreamLogsTest {
                 assertNotNull(chatMessage.uuid)
                 assertTrue(chatMessage.content.isNotEmpty())
 
-                println("Line $index: ${streamMessage::class.simpleName} -> ${chatMessage.messageType}")
+                println("Line $index: ${streamMessage::class.simpleName} -> ${chatMessage.role}")
 
             } catch (e: Exception) {
                 println("Line $index: MAPPING ERROR - ${e.message}")
@@ -132,12 +132,12 @@ class RealStreamLogsTest {
 
     private fun getMessageInfo(streamMessage: StreamMessage): String {
         return when (streamMessage) {
-            is StreamMessage.SystemStreamMessage -> "subtype=${streamMessage.subtype}"
-            is StreamMessage.UserStreamMessage -> "sessionId=${streamMessage.sessionId}"
-            is StreamMessage.AssistantStreamMessage -> "sessionId=${streamMessage.sessionId}"
-            is StreamMessage.ResultStreamMessage -> "subtype=${streamMessage.subtype}, error=${streamMessage.isError}"
-            is StreamMessage.ControlRequestMessage -> "control_request"
-            is StreamMessage.ControlResponseMessage -> "control_response"
+            is StreamMessage.System -> "subtype=${streamMessage.subtype}"
+            is StreamMessage.User -> "sessionId=${streamMessage.sessionId}"
+            is StreamMessage.Assistant -> "sessionId=${streamMessage.sessionId}"
+            is StreamMessage.Result -> "subtype=${streamMessage.subtype}, error=${streamMessage.isError}"
+            is StreamMessage.ControlRequest -> "control_request"
+            is StreamMessage.ControlResponse -> "control_response"
         }
     }
 }

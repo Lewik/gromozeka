@@ -144,22 +144,20 @@ fun ApplicationScope.ChatWindow(
     LaunchedEffect(currentSession) {
         currentSession?.let { session ->
             session.messageOutputStream.collect { newMessage ->
-                println("[ChatApp] Received streaming message: ${newMessage.messageType}")
+                println("[ChatApp] Received streaming message: ${newMessage.role}")
                 println("[ChatApp] Message content: ${newMessage.content.size} items, first: ${newMessage.content.firstOrNull()?.javaClass?.simpleName}")
                 chatHistory.add(newMessage)  // Incremental updates
-                println("[ChatApp] ChatHistory now has ${chatHistory.size} messages, last is ${chatHistory.lastOrNull()?.messageType}")
+                println("[ChatApp] ChatHistory now has ${chatHistory.size} messages, last is ${chatHistory.lastOrNull()?.role}")
 
                 // TTS for ASSISTANT messages (only new ones, not historical)
-                if (newMessage.messageType == ChatMessage.MessageType.ASSISTANT && !newMessage.isHistorical) {
+                if (newMessage.role == ChatMessage.Role.ASSISTANT && !newMessage.isHistorical) {
                     println("[ChatApp] Processing TTS for new assistant message")
                     val content = newMessage.content.firstOrNull()
                     println("[ChatApp] TTS Content type: ${content?.javaClass?.simpleName}")
 
                     val structured = when (content) {
-                        is ChatMessage.ContentItem.Message -> content.structured
                         is ChatMessage.ContentItem.IntermediateMessage -> content.structured
                         is ChatMessage.ContentItem.FinalResultMessage -> content.structured
-                        is ChatMessage.ContentItem.SystemStructuredMessage -> content.structured
                         else -> null
                     }
 
@@ -171,7 +169,7 @@ fun ApplicationScope.ChatWindow(
                             ttsQueueService.enqueue(TTSQueueService.Task(ttsText, structured.voiceTone ?: ""))
                         }
                     }
-                } else if (newMessage.messageType == ChatMessage.MessageType.ASSISTANT && newMessage.isHistorical) {
+                } else if (newMessage.role == ChatMessage.Role.ASSISTANT && newMessage.isHistorical) {
                     println("[ChatApp] Skipping TTS for historical assistant message")
                 }
             }
