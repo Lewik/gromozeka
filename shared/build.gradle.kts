@@ -24,7 +24,6 @@ kotlin {
         
         val jvmMain by getting {
             dependencies {
-                implementation(platform(libs.ktor.bom.get().toString()))
                 implementation(libs.ktor.client.core)
             }
         }

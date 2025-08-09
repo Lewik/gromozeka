@@ -49,7 +49,7 @@ class Config {
     }
 
     @Bean
-    fun chatClient(chatModel: OpenAiChatModel) = ChatClient.builder(chatModel).build()
+    fun chatClient(chatModel: OpenAiChatModel) = ChatClient.create(chatModel)
 
 
 }

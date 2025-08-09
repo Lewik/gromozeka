@@ -9,11 +9,13 @@ plugins {
     alias(libs.plugins.sqldelight)
 }
 
+// Force Kotlin version override for Spring Boot 3.4.4 (uses 1.9.25 by default)
+extra["kotlin.version"] = "2.2.0"
+
 kotlin {
     jvmToolchain(17)
     
     jvm {
-        withJava()
     }
     
     sourceSets {
@@ -21,10 +23,12 @@ kotlin {
             dependencies {
                 implementation(libs.spring.ai.openai)
                 implementation(libs.spring.ai.anthropic)
+                implementation(libs.spring.ai.starter.model.openai)
                 implementation(libs.spring.ai.starter.mcp.client)
                 
                 implementation(compose.desktop.currentOs)
                 implementation(compose.material3)
+                implementation(compose.materialIconsExtended)
                 implementation(libs.spring.boot.starter)
                 
                 // FileKit for file picker
@@ -40,7 +44,6 @@ kotlin {
                 implementation(libs.kotlin.reflect)
                 implementation(libs.kotlinx.datetime)
                 
-                implementation(platform(libs.ktor.bom.get().toString()))
                 implementation(libs.ktor.client.core)
                 implementation(libs.ktor.client.cio)
                 implementation(libs.ktor.client.auth)
