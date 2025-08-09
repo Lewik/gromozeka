@@ -45,14 +45,14 @@ class RealChatTestDataTest : FunSpec({
                         // 3. Check if there's JSON content from Gromozeka
                         chatMessage.content.forEach { contentItem ->
                             when (contentItem) {
-                                is ChatMessage.ContentItem.Message -> {
+                                is ChatMessage.ContentItem.UserMessage -> {
                                     // Check if it contains JSON
                                     if (contentItem.text.contains("{") && contentItem.text.contains("fullText")) {
                                         println("Found potential Gromozeka JSON in message: ${contentItem.text.take(100)}...")
                                     }
                                 }
 
-                                is ChatMessage.ContentItem.IntermediateMessage -> {
+                                is ChatMessage.ContentItem.AssistantMessage -> {
                                     println("Successfully parsed Gromozeka message: ${contentItem.structured.fullText}")
                                 }
 

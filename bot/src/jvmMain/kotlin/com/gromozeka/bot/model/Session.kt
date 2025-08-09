@@ -147,7 +147,7 @@ class Session(
             _messageOutputStream.emit(
                 ChatMessage(
                     role = ChatMessage.Role.USER,
-                    content = listOf(ChatMessage.ContentItem.Message(message)),
+                    content = listOf(ChatMessage.ContentItem.UserMessage(message)),
                     timestamp = Clock.System.now(),
                     uuid = java.util.UUID.randomUUID().toString(),
                     llmSpecificMetadata = null

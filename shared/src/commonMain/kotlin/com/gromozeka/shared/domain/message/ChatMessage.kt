@@ -86,10 +86,11 @@ data class ChatMessage(
     sealed class ContentItem {
         
         @Serializable
-        data class Message(
+        @SerialName("Message")
+        data class UserMessage(
             val text: String,
         ) : ContentItem()
-        
+
         @Serializable
         data class ToolCall(
             val id: String,
@@ -125,14 +126,11 @@ data class ChatMessage(
         }
         
         @Serializable
-        data class IntermediateMessage(
+        @SerialName("IntermediateMessage")
+        data class AssistantMessage(
             val structured: StructuredText
         ) : ContentItem()
         
-        @Serializable  
-        data class FinalResultMessage(
-            val structured: StructuredText
-        ) : ContentItem()
         
         
         @Serializable

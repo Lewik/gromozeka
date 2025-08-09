@@ -248,7 +248,7 @@ object StreamToChatMessageMapper {
             
             try {
                 val structured = Json.decodeFromJsonElement<ChatMessage.StructuredText>(jsonElement)
-                ChatMessage.ContentItem.IntermediateMessage(structured = structured)
+                ChatMessage.ContentItem.AssistantMessage(structured = structured)
             } catch (_: SerializationException) {
                 // Not a Gromozeka format, return as generic JSON
                 println("[StreamToChatMessageMapper] PARSE: Text is not Gromozeka JSON, fallback to UnknownJson")
@@ -256,7 +256,7 @@ object StreamToChatMessageMapper {
                 ChatMessage.ContentItem.UnknownJson(jsonElement)
             }
         } catch (_: Exception) {
-            ChatMessage.ContentItem.Message(text)
+            ChatMessage.ContentItem.UserMessage(text)
         }
     }
 
@@ -275,13 +275,13 @@ object StreamToChatMessageMapper {
                     voiceTone = null,
                     wasConverted = true  // Mark as automatically converted
                 )
-                return ChatMessage.ContentItem.IntermediateMessage(structured = structured)
+                return ChatMessage.ContentItem.AssistantMessage(structured = structured)
             }
             
             try {
                 // Try to parse as StructuredText (already in correct format)
                 val structured = Json.decodeFromJsonElement<ChatMessage.StructuredText>(jsonElement)
-                ChatMessage.ContentItem.IntermediateMessage(structured = structured)
+                ChatMessage.ContentItem.AssistantMessage(structured = structured)
             } catch (_: SerializationException) {
                 // Not a Gromozeka format, return as generic JSON
                 println("[StreamToChatMessageMapper] ASSISTANT: Text is not Gromozeka JSON, fallback to UnknownJson")
@@ -298,7 +298,7 @@ object StreamToChatMessageMapper {
                 voiceTone = null,
                 wasConverted = true  // Mark as automatically converted
             )
-            ChatMessage.ContentItem.IntermediateMessage(structured = structured)
+            ChatMessage.ContentItem.AssistantMessage(structured = structured)
         }
     }
 
@@ -336,16 +336,19 @@ object StreamToChatMessageMapper {
             val jsonElement = Json.parseToJsonElement(resultText)
             
             try {
-                // Try to decode as StructuredText
                 val structured = Json.decodeFromJsonElement<ChatMessage.StructuredText>(jsonElement)
-                listOf(ChatMessage.ContentItem.FinalResultMessage(structured = structured))
+                listOf(ChatMessage.ContentItem.System(
+                    level = ChatMessage.ContentItem.System.SystemLevel.INFO,
+                    content = structured.fullText,
+                    toolUseId = null
+                ))
             } catch (_: SerializationException) {
                 // Not a Gromozeka format, return as generic JSON
                 listOf(ChatMessage.ContentItem.UnknownJson(jsonElement))
             }
         } catch (_: Exception) {
             // Not valid JSON at all - treat as plain text
-            listOf(ChatMessage.ContentItem.Message(resultText))
+            listOf(ChatMessage.ContentItem.UserMessage(resultText))
         }
     }
 

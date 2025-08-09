@@ -101,7 +101,7 @@ class ClaudeLogEntryMapperTest : FunSpec({
         result.cwd shouldBe "/test"
         result.gitBranch shouldBe "main"
         result.content shouldHaveSize 1
-        result.content[0] should beInstanceOf<ChatMessage.ContentItem.Message>()
+        result.content[0] should beInstanceOf<ChatMessage.ContentItem.UserMessage>()
     }
 
     test("mapper should handle SystemEntry") {
@@ -210,9 +210,9 @@ class ClaudeLogEntryMapperTest : FunSpec({
         val result = ClaudeLogEntryMapper.mapToChatMessage(userEntry)
         result shouldNotBe null
         result!!.content shouldHaveSize 1
-        result.content[0] should beInstanceOf<ChatMessage.ContentItem.IntermediateMessage>()
+        result.content[0] should beInstanceOf<ChatMessage.ContentItem.AssistantMessage>()
 
-        val gromozekaContent = result.content[0] as ChatMessage.ContentItem.IntermediateMessage
+        val gromozekaContent = result.content[0] as ChatMessage.ContentItem.AssistantMessage
         gromozekaContent.structured?.fullText shouldBe "Привет от Громозеки!"
     }
 
@@ -287,9 +287,9 @@ class ClaudeLogEntryMapperTest : FunSpec({
         val result = ClaudeLogEntryMapper.mapToChatMessage(assistantEntry)
         result shouldNotBe null
         result!!.content shouldHaveSize 1
-        result.content[0] should beInstanceOf<ChatMessage.ContentItem.IntermediateMessage>()
+        result.content[0] should beInstanceOf<ChatMessage.ContentItem.AssistantMessage>()
 
-        val gromozekaContent = result.content[0] as ChatMessage.ContentItem.IntermediateMessage
+        val gromozekaContent = result.content[0] as ChatMessage.ContentItem.AssistantMessage
         gromozekaContent.structured?.fullText shouldBe "Ответ Громозеки"
         gromozekaContent.structured?.ttsText shouldBe "Короткий ответ"
         gromozekaContent.structured?.voiceTone shouldBe "friendly"

@@ -188,7 +188,7 @@ class SessionJsonlService(
         return when {
             firstUserMessage != null -> {
                 val contentText = firstUserMessage.content
-                    .filterIsInstance<ChatMessage.ContentItem.Message>()
+                    .filterIsInstance<ChatMessage.ContentItem.UserMessage>()
                     .joinToString(" ") { it.text }
                 val content = contentText.take(50)
                 if (contentText.length > 50) "$content..." else content
@@ -196,7 +196,7 @@ class SessionJsonlService(
 
             messages.isNotEmpty() -> {
                 val contentText = messages.first().content
-                    .filterIsInstance<ChatMessage.ContentItem.Message>()
+                    .filterIsInstance<ChatMessage.ContentItem.UserMessage>()
                     .joinToString(" ") { it.text }
                 val content = contentText.take(50)
                 if (contentText.length > 50) "$content..." else content

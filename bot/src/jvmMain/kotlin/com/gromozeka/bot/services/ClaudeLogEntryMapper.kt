@@ -37,7 +37,7 @@ object ClaudeLogEntryMapper {
 
         // If no content, add empty message
         if (content.isEmpty()) {
-            content.add(ChatMessage.ContentItem.Message(""))
+            content.add(ChatMessage.ContentItem.UserMessage(""))
         }
 
         return ChatMessage(
@@ -70,7 +70,7 @@ object ClaudeLogEntryMapper {
 
         // If no content, add empty message
         if (content.isEmpty()) {
-            content.add(ChatMessage.ContentItem.Message(""))
+            content.add(ChatMessage.ContentItem.UserMessage(""))
         }
 
         return ChatMessage(
@@ -143,7 +143,7 @@ object ClaudeLogEntryMapper {
     private fun extractContentFromClaudeMessageContent(content: ClaudeLogEntry.Message.UserMessage.Content): List<ChatMessage.ContentItem> {
         return when (content) {
             is ClaudeLogEntry.Message.UserMessage.Content.StringContent -> {
-                listOf(ChatMessage.ContentItem.Message(content.content))
+                listOf(ChatMessage.ContentItem.UserMessage(content.content))
             }
 
             is ClaudeLogEntry.Message.UserMessage.Content.ArrayContent -> {
@@ -156,7 +156,7 @@ object ClaudeLogEntryMapper {
                 // Deserialize JsonObject directly into StructuredText
                 val structured = Json.decodeFromJsonElement<ChatMessage.StructuredText>(content.data)
                 listOf(
-                    ChatMessage.ContentItem.IntermediateMessage(
+                    ChatMessage.ContentItem.AssistantMessage(
                         structured = structured
                     )
                 )
@@ -171,7 +171,7 @@ object ClaudeLogEntryMapper {
     private fun parseUserContentItem(item: ClaudeLogEntry.UserContentItem): List<ChatMessage.ContentItem> {
         return when (item) {
             is ClaudeLogEntry.UserContentItem.TextItem -> {
-                listOf(ChatMessage.ContentItem.Message(item.text))
+                listOf(ChatMessage.ContentItem.UserMessage(item.text))
             }
 
             is ClaudeLogEntry.UserContentItem.ToolResultItem -> {
@@ -231,12 +231,12 @@ object ClaudeLogEntryMapper {
 
             is JsonPrimitive -> {
                 // Simple text message
-                content.add(ChatMessage.ContentItem.Message(messageJson.content))
+                content.add(ChatMessage.ContentItem.UserMessage(messageJson.content))
             }
 
             else -> {
                 // Unknown format, add as text
-                content.add(ChatMessage.ContentItem.Message(messageJson.toString()))
+                content.add(ChatMessage.ContentItem.UserMessage(messageJson.toString()))
             }
         }
 
@@ -245,7 +245,7 @@ object ClaudeLogEntryMapper {
 
     private fun parseMessageItem(item: JsonElement): List<ChatMessage.ContentItem> {
         if (item !is JsonObject) {
-            return listOf(ChatMessage.ContentItem.Message(item.toString()))
+            return listOf(ChatMessage.ContentItem.UserMessage(item.toString()))
         }
 
         val type = item["type"]?.jsonPrimitive?.content
@@ -253,7 +253,7 @@ object ClaudeLogEntryMapper {
         return when (type) {
             "text" -> {
                 val text = item["text"]?.jsonPrimitive?.content ?: ""
-                listOf(ChatMessage.ContentItem.Message(text))
+                listOf(ChatMessage.ContentItem.UserMessage(text))
             }
 
             "tool_use" -> {
@@ -273,7 +273,7 @@ object ClaudeLogEntryMapper {
 
             else -> {
                 // Unknown type, add as text
-                listOf(ChatMessage.ContentItem.Message(item.toString()))
+                listOf(ChatMessage.ContentItem.UserMessage(item.toString()))
             }
         }
     }
@@ -428,14 +428,14 @@ object ClaudeLogEntryMapper {
     private fun parseTextContentForGromozeka(text: String): List<ChatMessage.ContentItem> {
         // Quick check - looks like JSON?
         if (!text.trim().startsWith("{") || !text.trim().endsWith("}")) {
-            return listOf(ChatMessage.ContentItem.Message(text))
+            return listOf(ChatMessage.ContentItem.UserMessage(text))
         }
 
         return try {
             // Try to deserialize as StructuredText first
             val structured = Json.decodeFromString<ChatMessage.StructuredText>(text)
             listOf(
-                ChatMessage.ContentItem.IntermediateMessage(
+                ChatMessage.ContentItem.AssistantMessage(
                     structured = structured
                 )
             )
@@ -455,14 +455,14 @@ object ClaudeLogEntryMapper {
                 println("  Text starts with: ${text.take(50)}")
                 println("  Text ends with: ${text.takeLast(50)}")
                 // Not valid JSON at all - treat as plain text
-                listOf(ChatMessage.ContentItem.Message(text))
+                listOf(ChatMessage.ContentItem.UserMessage(text))
             }
         } catch (e: Exception) {
             println("[ClaudeLogEntryMapper] UNEXPECTED ERROR in parseTextContentForGromozeka: ${e.javaClass.simpleName}: ${e.message}")
             println("  Text: $text")
             println("  Stack trace: ${e.stackTraceToString()}")
             // Any other error - treat as plain text
-            listOf(ChatMessage.ContentItem.Message(text))
+            listOf(ChatMessage.ContentItem.UserMessage(text))
         }
     }
 }

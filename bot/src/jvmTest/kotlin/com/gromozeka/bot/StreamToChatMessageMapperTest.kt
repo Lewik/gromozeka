@@ -101,10 +101,10 @@ class StreamToChatMessageMapperTest : FunSpec({
         result shouldNotBe null
         result!!.role shouldBe ChatMessage.Role.USER
         result.content shouldHaveSize 1
-        result.content[0] should beInstanceOf<ChatMessage.ContentItem.Message>()
+        result.content[0] should beInstanceOf<ChatMessage.ContentItem.UserMessage>()
 
-        val messageContent = result.content[0] as ChatMessage.ContentItem.Message
-        messageContent.text shouldBe "Hello Claude!"
+        val userMessageContent = result.content[0] as ChatMessage.ContentItem.UserMessage
+        userMessageContent.text shouldBe "Hello Claude!"
     }
 
     test("mapper should handle UserStreamJsonLine with array content") {
@@ -127,7 +127,7 @@ class StreamToChatMessageMapperTest : FunSpec({
         result shouldNotBe null
         result!!.content shouldHaveSize 2
 
-        result.content[0] should beInstanceOf<ChatMessage.ContentItem.Message>()
+        result.content[0] should beInstanceOf<ChatMessage.ContentItem.UserMessage>()
         result.content[1] should beInstanceOf<ChatMessage.ContentItem.ToolResult>()
 
         val toolResult = result.content[1] as ChatMessage.ContentItem.ToolResult
@@ -155,9 +155,9 @@ class StreamToChatMessageMapperTest : FunSpec({
         result shouldNotBe null
         result!!.role shouldBe ChatMessage.Role.ASSISTANT
         result.content shouldHaveSize 1
-        result.content[0] should beInstanceOf<ChatMessage.ContentItem.IntermediateMessage>()  // Now converts to StructuredText
+        result.content[0] should beInstanceOf<ChatMessage.ContentItem.AssistantMessage>()  // Now converts to StructuredText
 
-        val messageContent = result.content[0] as ChatMessage.ContentItem.IntermediateMessage
+        val messageContent = result.content[0] as ChatMessage.ContentItem.AssistantMessage
         messageContent.structured.fullText shouldBe "I can help you with that!"
         messageContent.structured.wasConverted shouldBe true  // Marked as auto-converted
 
@@ -196,7 +196,7 @@ class StreamToChatMessageMapperTest : FunSpec({
         result shouldNotBe null
         result!!.content shouldHaveSize 2
 
-        result.content[0] should beInstanceOf<ChatMessage.ContentItem.IntermediateMessage>()  // Now converts to StructuredText
+        result.content[0] should beInstanceOf<ChatMessage.ContentItem.AssistantMessage>()  // Now converts to StructuredText
         result.content[1] should beInstanceOf<ChatMessage.ContentItem.ToolCall>()
 
         val toolCall = result.content[1] as ChatMessage.ContentItem.ToolCall
@@ -227,7 +227,7 @@ class StreamToChatMessageMapperTest : FunSpec({
         result!!.content shouldHaveSize 2
 
         result.content[0] should beInstanceOf<ChatMessage.ContentItem.Thinking>()
-        result.content[1] should beInstanceOf<ChatMessage.ContentItem.IntermediateMessage>()  // Now converts to StructuredText
+        result.content[1] should beInstanceOf<ChatMessage.ContentItem.AssistantMessage>()  // Now converts to StructuredText
 
         val thinking = result.content[0] as ChatMessage.ContentItem.Thinking
         thinking.thinking shouldBe "The user wants me to analyze this code."
@@ -292,9 +292,9 @@ class StreamToChatMessageMapperTest : FunSpec({
         val result = StreamToChatMessageMapper.mapToChatMessage(userMessage)
         result shouldNotBe null
         result!!.content shouldHaveSize 1
-        result.content[0] should beInstanceOf<ChatMessage.ContentItem.IntermediateMessage>()
+        result.content[0] should beInstanceOf<ChatMessage.ContentItem.AssistantMessage>()
 
-        val gromozekaContent = result.content[0] as ChatMessage.ContentItem.IntermediateMessage
+        val gromozekaContent = result.content[0] as ChatMessage.ContentItem.AssistantMessage
         gromozekaContent.structured?.fullText shouldBe "Привет от Громозеки!"
         gromozekaContent.structured?.ttsText shouldBe "Привет!"
         gromozekaContent.structured?.voiceTone shouldBe "friendly"
@@ -332,10 +332,10 @@ class StreamToChatMessageMapperTest : FunSpec({
         val result = StreamToChatMessageMapper.mapToChatMessage(userMessage)
         result shouldNotBe null
         result!!.content shouldHaveSize 1
-        result.content[0] should beInstanceOf<ChatMessage.ContentItem.Message>()
+        result.content[0] should beInstanceOf<ChatMessage.ContentItem.UserMessage>()
 
-        val messageContent = result.content[0] as ChatMessage.ContentItem.Message
-        messageContent.text shouldBe malformedJson
+        val userMessageContent = result.content[0] as ChatMessage.ContentItem.UserMessage
+        userMessageContent.text shouldBe malformedJson
     }
 
     test("mapper should handle all Claude Code tool types") {
@@ -577,8 +577,8 @@ class StreamToChatMessageMapperTest : FunSpec({
         
         // Check content was converted
         result!!.content shouldHaveSize 1
-        result.content[0] should beInstanceOf<ChatMessage.ContentItem.IntermediateMessage>()
-        val messageContent = result.content[0] as ChatMessage.ContentItem.IntermediateMessage
+        result.content[0] should beInstanceOf<ChatMessage.ContentItem.AssistantMessage>()
+        val messageContent = result.content[0] as ChatMessage.ContentItem.AssistantMessage
         messageContent.structured.fullText shouldBe "Test"
         messageContent.structured.wasConverted shouldBe true
 
@@ -607,9 +607,9 @@ class StreamToChatMessageMapperTest : FunSpec({
         result shouldNotBe null
         result.role shouldBe ChatMessage.Role.ASSISTANT
         result.content shouldHaveSize 1
-        result.content[0] should beInstanceOf<ChatMessage.ContentItem.IntermediateMessage>()
+        result.content[0] should beInstanceOf<ChatMessage.ContentItem.AssistantMessage>()
 
-        val messageContent = result.content[0] as ChatMessage.ContentItem.IntermediateMessage
+        val messageContent = result.content[0] as ChatMessage.ContentItem.AssistantMessage
         messageContent.structured shouldNotBe null
         messageContent.structured.fullText shouldBe "This is plain text response from Claude"
         messageContent.structured.ttsText shouldBe null
@@ -631,9 +631,9 @@ class StreamToChatMessageMapperTest : FunSpec({
         val result = StreamToChatMessageMapper.mapToChatMessage(assistantMessage)
         result shouldNotBe null
         result.content shouldHaveSize 1
-        result.content[0] should beInstanceOf<ChatMessage.ContentItem.IntermediateMessage>()
+        result.content[0] should beInstanceOf<ChatMessage.ContentItem.AssistantMessage>()
 
-        val messageContent = result.content[0] as ChatMessage.ContentItem.IntermediateMessage
+        val messageContent = result.content[0] as ChatMessage.ContentItem.AssistantMessage
         messageContent.structured shouldNotBe null
         messageContent.structured.fullText shouldBe "Structured response"
         messageContent.structured.ttsText shouldBe "Structured"
@@ -678,8 +678,8 @@ class StreamToChatMessageMapperTest : FunSpec({
         
         // Both should be converted to StructuredText
         result.content.forEach { item ->
-            item should beInstanceOf<ChatMessage.ContentItem.IntermediateMessage>()
-            val structured = (item as ChatMessage.ContentItem.IntermediateMessage).structured
+            item should beInstanceOf<ChatMessage.ContentItem.AssistantMessage>()
+            val structured = (item as ChatMessage.ContentItem.AssistantMessage).structured
             structured.wasConverted shouldBe true
         }
     }

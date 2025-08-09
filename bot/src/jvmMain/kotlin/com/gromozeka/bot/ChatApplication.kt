@@ -156,8 +156,7 @@ fun ApplicationScope.ChatWindow(
                     println("[ChatApp] TTS Content type: ${content?.javaClass?.simpleName}")
 
                     val structured = when (content) {
-                        is ChatMessage.ContentItem.IntermediateMessage -> content.structured
-                        is ChatMessage.ContentItem.FinalResultMessage -> content.structured
+                        is ChatMessage.ContentItem.AssistantMessage -> content.structured
                         else -> null
                     }
 

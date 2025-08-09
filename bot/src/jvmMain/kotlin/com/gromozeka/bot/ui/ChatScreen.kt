@@ -159,13 +159,12 @@ private fun MessageItem(
                 
                 Text("${message.role} | ${message.content.joinToString(", ") { content ->
                     val icon = when (content) {
-                        is ChatMessage.ContentItem.Message -> ""
+                        is ChatMessage.ContentItem.UserMessage -> ""
                         is ChatMessage.ContentItem.ToolCall -> "🔧"
                         is ChatMessage.ContentItem.ToolResult -> "⚡"
                         is ChatMessage.ContentItem.Thinking -> "🤔"
                         is ChatMessage.ContentItem.System -> "⚙️"
-                        is ChatMessage.ContentItem.IntermediateMessage -> "🤖"
-                        is ChatMessage.ContentItem.FinalResultMessage -> "📦"
+                        is ChatMessage.ContentItem.AssistantMessage -> "🤖"
                         is ChatMessage.ContentItem.UnknownJson -> "⚠️"
                     }
                     "$icon${content::class.simpleName}"
@@ -174,7 +173,7 @@ private fun MessageItem(
 
             message.content.forEach { content ->
                 when (content) {
-                    is ChatMessage.ContentItem.Message -> {
+                    is ChatMessage.ContentItem.UserMessage -> {
                         Markdown(content = content.text)
                     }
 
@@ -194,13 +193,10 @@ private fun MessageItem(
                         Text(text = "⚙️ ${content.content}")
                     }
 
-                    is ChatMessage.ContentItem.IntermediateMessage -> {
+                    is ChatMessage.ContentItem.AssistantMessage -> {
                         StructuredMessageTemplate(content, isIntermediate = true)
                     }
 
-                    is ChatMessage.ContentItem.FinalResultMessage -> {
-                        StructuredMessageTemplate(content, isIntermediate = false)
-                    }
 
                     is ChatMessage.ContentItem.UnknownJson -> {
                         Column {
@@ -221,14 +217,12 @@ private fun StructuredMessageTemplate(
 ) {
     // Extract structured data from different message types
     val (text, structured) = when (data) {
-        is ChatMessage.ContentItem.IntermediateMessage -> data.structured.fullText to data.structured
-        is ChatMessage.ContentItem.FinalResultMessage -> data.structured.fullText to data.structured
+        is ChatMessage.ContentItem.AssistantMessage -> data.structured.fullText to data.structured
         else -> return // Shouldn't happen, but safe fallback
     }
 
     val titleText = when (data) {
-        is ChatMessage.ContentItem.IntermediateMessage -> "🤖 Громозека"
-        is ChatMessage.ContentItem.FinalResultMessage -> "📦 Результат"
+        is ChatMessage.ContentItem.AssistantMessage -> "🤖 Громозека"
         else -> "🤖 Громозека"
     }
 
