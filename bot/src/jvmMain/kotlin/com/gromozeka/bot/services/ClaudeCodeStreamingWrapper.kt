@@ -19,6 +19,10 @@ import java.io.BufferedReader
 import java.io.BufferedWriter
 import java.io.File
 import java.io.OutputStreamWriter
+import java.time.LocalDateTime
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.util.*
 
 @Component
 class ClaudeCodeStreamingWrapper(
@@ -39,7 +43,7 @@ class ClaudeCodeStreamingWrapper(
             ?.readText()
             ?: ""
 
-        return if (settingsService.mode == AppMode.DEV) {
+        var prompt = if (settingsService.mode == AppMode.DEV) {
             println("[ClaudeCodeStreamingWrapper] DEV mode detected - loading additional DEV prompt")
             val devPrompt = this::class.java.getResourceAsStream("/dev-mode-prompt.md")
                 ?.bufferedReader()
@@ -57,6 +61,32 @@ class ClaudeCodeStreamingWrapper(
             println("[ClaudeCodeStreamingWrapper] PROD mode - using base prompt only")
             basePrompt
         }
+
+        // Add current time to prompt if enabled
+        if (settingsService.settings.includeCurrentTime) {
+            val now = LocalDateTime.now()
+            val zoneId = ZoneId.systemDefault()
+            val zoneOffset = zoneId.rules.getOffset(now)
+            
+            val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+            val timeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss")
+            val dayOfWeek = now.dayOfWeek.toString().lowercase()
+                .replaceFirstChar { it.uppercase() }
+            
+            val envBlock = """
+                
+                <env>
+                Today's date: ${now.format(dateFormatter)}
+                Current time: ${now.format(timeFormatter)} ${zoneId.id} (UTC${zoneOffset})
+                Day of week: $dayOfWeek
+                </env>
+            """.trimIndent()
+            
+            prompt = "$prompt\n$envBlock"
+            println("[ClaudeCodeStreamingWrapper] Added current time to prompt: ${now.format(dateFormatter)} ${now.format(timeFormatter)} ${zoneId.id}")
+        }
+
+        return prompt
     }
 
     private var process: Process? = null

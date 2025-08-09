@@ -13,6 +13,7 @@ data class Settings(
     val showOriginalJson: Boolean = false,
     // STT language code - supports ISO 639-1 (e.g., "en", "ru") and 639-3 codes for GPT-4o models
     val sttMainLanguage: String = "en",
+    val includeCurrentTime: Boolean = true,
 )
 
 @Serializable
