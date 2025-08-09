@@ -155,7 +155,9 @@ class ClaudeCodeStreamingWrapper(
                 type = "user",
                 message = UserInputMessage.Content(
                     role = "user",
-                    content = message
+                    content = UserInputMessage.Content.UserInput(
+                        text = message
+                    )
                 ),
                 session_id = sessionId,
                 parent_tool_use_id = null
@@ -368,8 +370,13 @@ class ClaudeCodeStreamingWrapper(
         @Serializable
         data class Content(
             val role: String,
-            val content: String,
-        )
+            val content: UserInput,
+        ) {
+            @Serializable
+            data class UserInput(
+                val text: String
+            )
+        }
     }
 
     @PreDestroy
