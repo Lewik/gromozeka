@@ -24,8 +24,8 @@ class StreamToChatMessageMapperTest : FunSpec({
         isLenient = true
     }
 
-    test("mapper should handle SystemStreamMessage init") {
-        val systemInit = StreamMessage.System(
+    test("mapper should handle SystemStreamJsonLine init") {
+        val systemInit = StreamJsonLine.System(
             subtype = "init",
             data = JsonObject(
                 mapOf(
@@ -47,8 +47,8 @@ class StreamToChatMessageMapperTest : FunSpec({
         systemContent.content.contains("init") shouldBe true
     }
 
-    test("mapper should handle SystemStreamMessage error") {
-        val systemError = StreamMessage.System(
+    test("mapper should handle SystemStreamJsonLine error") {
+        val systemError = StreamJsonLine.System(
             subtype = "error",
             data = JsonObject(
                 mapOf(
@@ -68,8 +68,8 @@ class StreamToChatMessageMapperTest : FunSpec({
         systemContent.content.contains("error") shouldBe true
     }
 
-    test("mapper should handle SystemStreamMessage other subtypes") {
-        val systemOther = StreamMessage.System(
+    test("mapper should handle SystemStreamJsonLine other subtypes") {
+        val systemOther = StreamJsonLine.System(
             subtype = "notification",
             data = JsonObject(
                 mapOf(
@@ -89,8 +89,8 @@ class StreamToChatMessageMapperTest : FunSpec({
         systemContent.level shouldBe ChatMessage.ContentItem.System.SystemLevel.INFO
     }
 
-    test("mapper should handle UserStreamMessage with string content") {
-        val userMessage = StreamMessage.User(
+    test("mapper should handle UserStreamJsonLine with string content") {
+        val userMessage = StreamJsonLine.User(
             message = StreamMessageContent.User(
                 content = ContentItemsUnion.StringContent("Hello Claude!")
             ),
@@ -107,13 +107,13 @@ class StreamToChatMessageMapperTest : FunSpec({
         messageContent.text shouldBe "Hello Claude!"
     }
 
-    test("mapper should handle UserStreamMessage with array content") {
-        val userMessage = StreamMessage.User(
+    test("mapper should handle UserStreamJsonLine with array content") {
+        val userMessage = StreamJsonLine.User(
             message = StreamMessageContent.User(
                 content = ContentItemsUnion.ArrayContent(
                     listOf(
-                        StreamContentItem.TextItem("Please run:"),
-                        StreamContentItem.ToolResultItem(
+                        ContentBlock.TextBlock("Please run:"),
+                        ContentBlock.ToolResultBlock(
                             toolUseId = "tool_123",
                             content = ContentResultUnion.StringResult("Command output")
                         )
@@ -134,13 +134,13 @@ class StreamToChatMessageMapperTest : FunSpec({
         toolResult.toolUseId shouldBe "tool_123"
     }
 
-    test("mapper should handle AssistantStreamMessage with text") {
-        val assistantMessage = StreamMessage.Assistant(
+    test("mapper should handle AssistantStreamJsonLine with text") {
+        val assistantMessage = StreamJsonLine.Assistant(
             message = StreamMessageContent.Assistant(
                 id = "msg_123",
                 model = "claude-3-5-sonnet-20241022",
                 content = listOf(
-                    StreamContentItem.TextItem("I can help you with that!")
+                    ContentBlock.TextBlock("I can help you with that!")
                 ),
                 stopReason = "end_turn",
                 usage = UsageInfo(
@@ -165,7 +165,7 @@ class StreamToChatMessageMapperTest : FunSpec({
         metadata.usage!!.outputTokens shouldBe 15
     }
 
-    test("mapper should handle AssistantStreamMessage with tool use") {
+    test("mapper should handle AssistantStreamJsonLine with tool use") {
         val toolInput = JsonObject(
             mapOf(
                 "command" to JsonPrimitive("pwd"),
@@ -173,11 +173,11 @@ class StreamToChatMessageMapperTest : FunSpec({
             )
         )
 
-        val assistantMessage = StreamMessage.Assistant(
+        val assistantMessage = StreamJsonLine.Assistant(
             message = StreamMessageContent.Assistant(
                 content = listOf(
-                    StreamContentItem.TextItem("I'll check the current directory."),
-                    StreamContentItem.ToolUseItem(
+                    ContentBlock.TextBlock("I'll check the current directory."),
+                    ContentBlock.ToolUseBlock(
                         id = "tool_789",
                         name = "Bash",
                         input = toolInput
@@ -204,15 +204,15 @@ class StreamToChatMessageMapperTest : FunSpec({
         bashCall.description shouldBe "Get current directory"
     }
 
-    test("mapper should handle AssistantStreamMessage with thinking") {
-        val assistantMessage = StreamMessage.Assistant(
+    test("mapper should handle AssistantStreamJsonLine with thinking") {
+        val assistantMessage = StreamJsonLine.Assistant(
             message = StreamMessageContent.Assistant(
                 content = listOf(
-                    StreamContentItem.ThinkingItem(
+                    ContentBlock.ThinkingItem(
                         thinking = "The user wants me to analyze this code.",
                         signature = "thinking_123"
                     ),
-                    StreamContentItem.TextItem("Let me analyze that for you.")
+                    ContentBlock.TextBlock("Let me analyze that for you.")
                 )
             ),
             sessionId = "test-session"
@@ -230,8 +230,8 @@ class StreamToChatMessageMapperTest : FunSpec({
         thinking.signature shouldBe "thinking_123"
     }
 
-    test("mapper should handle ResultStreamMessage error") {
-        val resultMessage = StreamMessage.Result(
+    test("mapper should handle ResultStreamJsonLine error") {
+        val resultMessage = StreamJsonLine.Result(
             subtype = "error",
             durationMs = 1000,
             durationApiMs = 800,
@@ -252,8 +252,8 @@ class StreamToChatMessageMapperTest : FunSpec({
         systemContent.content shouldBe "Error: API timeout occurred"
     }
 
-    test("mapper should handle ResultStreamMessage success") {
-        val resultMessage = StreamMessage.Result(
+    test("mapper should handle ResultStreamJsonLine success") {
+        val resultMessage = StreamJsonLine.Result(
             subtype = "success",
             durationMs = 2500,
             durationApiMs = 1800,
@@ -278,7 +278,7 @@ class StreamToChatMessageMapperTest : FunSpec({
     test("mapper should detect Gromozeka JSON in text content") {
         val gromozekaJson = """{"fullText": "Привет от Громозеки!", "ttsText": "Привет!", "voiceTone": "friendly"}"""
 
-        val userMessage = StreamMessage.User(
+        val userMessage = StreamJsonLine.User(
             message = StreamMessageContent.User(
                 content = ContentItemsUnion.StringContent(gromozekaJson)
             ),
@@ -299,7 +299,7 @@ class StreamToChatMessageMapperTest : FunSpec({
     test("mapper should handle unknown JSON as UnknownJson") {
         val unknownJson = """{"weird_field": "strange_value", "nested": {"data": 42}}"""
 
-        val userMessage = StreamMessage.User(
+        val userMessage = StreamJsonLine.User(
             message = StreamMessageContent.User(
                 content = ContentItemsUnion.StringContent(unknownJson)
             ),
@@ -318,7 +318,7 @@ class StreamToChatMessageMapperTest : FunSpec({
     test("mapper should handle malformed JSON as regular text") {
         val malformedJson = """{"incomplete": "json"""
 
-        val userMessage = StreamMessage.User(
+        val userMessage = StreamJsonLine.User(
             message = StreamMessageContent.User(
                 content = ContentItemsUnion.StringContent(malformedJson)
             ),
@@ -384,10 +384,10 @@ class StreamToChatMessageMapperTest : FunSpec({
         )
 
         tools.forEach { (toolName, toolInput) ->
-            val assistantMessage = StreamMessage.Assistant(
+            val assistantMessage = StreamJsonLine.Assistant(
                 message = StreamMessageContent.Assistant(
                     content = listOf(
-                        StreamContentItem.ToolUseItem(
+                        ContentBlock.ToolUseBlock(
                             id = "tool_$toolName",
                             name = toolName,
                             input = toolInput
@@ -419,10 +419,10 @@ class StreamToChatMessageMapperTest : FunSpec({
     }
 
     test("mapper should handle unknown tool as Generic") {
-        val assistantMessage = StreamMessage.Assistant(
+        val assistantMessage = StreamJsonLine.Assistant(
             message = StreamMessageContent.Assistant(
                 content = listOf(
-                    StreamContentItem.ToolUseItem(
+                    ContentBlock.ToolUseBlock(
                         id = "tool_unknown",
                         name = "UnknownTool",
                         input = JsonObject(
@@ -449,11 +449,11 @@ class StreamToChatMessageMapperTest : FunSpec({
     }
 
     test("mapper should handle tool result with string content") {
-        val userMessage = StreamMessage.User(
+        val userMessage = StreamJsonLine.User(
             message = StreamMessageContent.User(
                 content = ContentItemsUnion.ArrayContent(
                     listOf(
-                        StreamContentItem.ToolResultItem(
+                        ContentBlock.ToolResultBlock(
                             toolUseId = "tool_123",
                             content = ContentResultUnion.StringResult("/Users/test/current/dir"),
                             isError = false
@@ -479,16 +479,16 @@ class StreamToChatMessageMapperTest : FunSpec({
     }
 
     test("mapper should handle tool result with array content") {
-        val userMessage = StreamMessage.User(
+        val userMessage = StreamJsonLine.User(
             message = StreamMessageContent.User(
                 content = ContentItemsUnion.ArrayContent(
                     listOf(
-                        StreamContentItem.ToolResultItem(
+                        ContentBlock.ToolResultBlock(
                             toolUseId = "tool_456",
                             content = ContentResultUnion.ArrayResult(
                                 listOf(
-                                    StreamContentItem.TextItem("Line 1"),
-                                    StreamContentItem.TextItem("Line 2")
+                                    ContentBlock.TextBlock("Line 1"),
+                                    ContentBlock.TextBlock("Line 2")
                                 )
                             )
                         )
@@ -511,11 +511,11 @@ class StreamToChatMessageMapperTest : FunSpec({
     }
 
     test("mapper should handle null tool result content") {
-        val userMessage = StreamMessage.User(
+        val userMessage = StreamJsonLine.User(
             message = StreamMessageContent.User(
                 content = ContentItemsUnion.ArrayContent(
                     listOf(
-                        StreamContentItem.ToolResultItem(
+                        ContentBlock.ToolResultBlock(
                             toolUseId = "tool_null",
                             content = null
                         )
@@ -531,14 +531,11 @@ class StreamToChatMessageMapperTest : FunSpec({
         result.content[0] should beInstanceOf<ChatMessage.ContentItem.ToolResult>()
 
         val toolResult = result.content[0] as ChatMessage.ContentItem.ToolResult
-        toolResult.result should beInstanceOf<ClaudeCodeToolResultData.Read>()
-
-        val readResult = toolResult.result as ClaudeCodeToolResultData.Read
-        readResult.content shouldBe ""
+        toolResult.result should beInstanceOf<ClaudeCodeToolResultData.NullResult>()
     }
 
     test("mapper should generate unique UUIDs") {
-        val userMessage = StreamMessage.User(
+        val userMessage = StreamJsonLine.User(
             message = StreamMessageContent.User(
                 content = ContentItemsUnion.StringContent("Test message")
             ),
@@ -554,11 +551,11 @@ class StreamToChatMessageMapperTest : FunSpec({
     }
 
     test("mapper should preserve session metadata") {
-        val assistantMessage = StreamMessage.Assistant(
+        val assistantMessage = StreamJsonLine.Assistant(
             message = StreamMessageContent.Assistant(
                 id = "msg_test",
                 model = "claude-3-5-sonnet-20241022",
-                content = listOf(StreamContentItem.TextItem("Test")),
+                content = listOf(ContentBlock.TextBlock("Test")),
                 stopReason = "end_turn",
                 usage = UsageInfo(
                     inputTokens = 50,

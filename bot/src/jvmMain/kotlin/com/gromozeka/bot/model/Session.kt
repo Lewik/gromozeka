@@ -187,7 +187,7 @@ class Session(
             // Generate unique request ID
             val requestId = "req_${System.currentTimeMillis()}_${kotlin.random.Random.nextInt(10000)}"
 
-            val controlRequest = StreamMessage.ControlRequest(
+            val controlRequest = StreamJsonLine.ControlRequest(
                 requestId = requestId,
                 request = ControlRequest(subtype = "interrupt")
             )
@@ -291,7 +291,7 @@ class Session(
             }
             .onEach { streamMessagePacket ->
                 println("[Session] *** GOT STREAM MESSAGE FROM FLOW: ${streamMessagePacket.streamMessage.type}")
-                this@Session.handleOutputStreamMessage(streamMessagePacket)
+                this@Session.handleOutputStreamJsonLine(streamMessagePacket)
             }
             .catch { e ->
                 println("[Session] Critical stream error: ${e.message}")
@@ -324,23 +324,23 @@ class Session(
             .launchIn(this)
     }
 
-    private suspend fun handleOutputStreamMessage(streamMessagePacket: StreamMessagePacket) = sessionMutex.withLock {
+    private suspend fun handleOutputStreamJsonLine(streamMessagePacket: StreamJsonLinePacket) = sessionMutex.withLock {
         try {
             val streamMessage = streamMessagePacket.streamMessage
             println("[Session] *** PROCESSING STREAM MESSAGE: ${streamMessage.type}")
 
             // Reset waiting flag only when we receive the final result
-            if (streamMessage is StreamMessage.Result) {
+            if (streamMessage is StreamJsonLine.Result) {
                 _isWaitingForResponse.value = false
             }
 
             when (streamMessage) {
-                is StreamMessage.System -> handleSystemMessage(streamMessage)
-                is StreamMessage.User -> Unit
-                is StreamMessage.Assistant -> Unit
-                is StreamMessage.Result -> Unit
-                is StreamMessage.ControlResponse -> handleControlResponse(streamMessage)
-                is StreamMessage.ControlRequest -> Unit // We don't expect to receive control requests
+                is StreamJsonLine.System -> handleSystemMessage(streamMessage)
+                is StreamJsonLine.User -> Unit
+                is StreamJsonLine.Assistant -> Unit
+                is StreamJsonLine.Result -> Unit
+                is StreamJsonLine.ControlResponse -> handleControlResponse(streamMessage)
+                is StreamJsonLine.ControlRequest -> Unit // We don't expect to receive control requests
             }
 
             val chatMessage = StreamToChatMessageMapper
@@ -354,7 +354,7 @@ class Session(
         }
     }
 
-    private suspend fun handleSystemMessage(message: StreamMessage.System) {
+    private suspend fun handleSystemMessage(message: StreamJsonLine.System) {
         // Handle session ID updates and initialization
         if (message.subtype == "init") {
             require(!sessionInitialized)
@@ -376,7 +376,7 @@ class Session(
         }
     }
 
-    private suspend fun handleControlResponse(response: StreamMessage.ControlResponse) {
+    private suspend fun handleControlResponse(response: StreamJsonLine.ControlResponse) {
         println("[Session] Control response received: request_id=${response.response.requestId}, subtype=${response.response.subtype}")
 
         when (response.response.subtype) {

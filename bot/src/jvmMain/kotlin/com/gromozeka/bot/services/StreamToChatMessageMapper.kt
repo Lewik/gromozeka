@@ -1,7 +1,10 @@
 package com.gromozeka.bot.services
 
 import com.gromozeka.bot.model.*
-import com.gromozeka.shared.domain.message.*
+import com.gromozeka.shared.domain.message.ChatMessage
+import com.gromozeka.shared.domain.message.ClaudeCodeToolCallData
+import com.gromozeka.shared.domain.message.ClaudeCodeToolResultData
+import com.gromozeka.shared.domain.message.ToolCallData
 import kotlinx.datetime.Clock
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
@@ -10,22 +13,22 @@ import kotlinx.serialization.json.decodeFromJsonElement
 import java.util.*
 
 /**
- * Maps StreamMessage to ChatMessage for UI consumption
+ * Maps StreamJsonLine to ChatMessage for UI consumption
  */
 object StreamToChatMessageMapper {
 
-    fun mapToChatMessage(streamMessage: StreamMessage): ChatMessage {
+    fun mapToChatMessage(streamMessage: StreamJsonLine): ChatMessage {
         return when (streamMessage) {
-            is StreamMessage.System -> mapSystemMessage(streamMessage)
-            is StreamMessage.User -> mapUserMessage(streamMessage)
-            is StreamMessage.Assistant -> mapAssistantMessage(streamMessage)
-            is StreamMessage.Result -> mapResultMessage(streamMessage)
-            is StreamMessage.ControlRequest -> mapControlRequestMessage(streamMessage)
-            is StreamMessage.ControlResponse -> mapControlResponseMessage(streamMessage)
+            is StreamJsonLine.System -> mapSystemMessage(streamMessage)
+            is StreamJsonLine.User -> mapUserMessage(streamMessage)
+            is StreamJsonLine.Assistant -> mapAssistantMessage(streamMessage)
+            is StreamJsonLine.Result -> mapResultMessage(streamMessage)
+            is StreamJsonLine.ControlRequest -> mapControlRequestMessage(streamMessage)
+            is StreamJsonLine.ControlResponse -> mapControlResponseMessage(streamMessage)
         }
     }
 
-    private fun mapSystemMessage(message: StreamMessage.System): ChatMessage {
+    private fun mapSystemMessage(message: StreamJsonLine.System): ChatMessage {
         val level = when (message.subtype) {
             "error" -> ChatMessage.ContentItem.System.SystemLevel.ERROR
             "warning" -> ChatMessage.ContentItem.System.SystemLevel.WARNING
@@ -52,8 +55,16 @@ object StreamToChatMessageMapper {
         )
     }
 
-    private fun mapUserMessage(message: StreamMessage.User): ChatMessage {
-        val content = mapUserContent(message.message)
+    private fun mapUserMessage(message: StreamJsonLine.User): ChatMessage {
+        val content = when (message.message.content) {
+            is ContentItemsUnion.StringContent -> {
+                listOf(parseText(message.message.content.content))
+            }
+
+            is ContentItemsUnion.ArrayContent -> {
+                message.message.content.items.map { mapStreamContentItem(it) }
+            }
+        }
 
         return ChatMessage(
             uuid = generateUuid(),
@@ -67,9 +78,9 @@ object StreamToChatMessageMapper {
         )
     }
 
-    private fun mapAssistantMessage(message: StreamMessage.Assistant): ChatMessage {
+    private fun mapAssistantMessage(message: StreamJsonLine.Assistant): ChatMessage {
         val contentItems = message.message.content.flatMap { item ->
-            mapStreamContentItem(item)
+            listOf(mapStreamContentItem(item))
         }
 
         return ChatMessage(
@@ -87,7 +98,7 @@ object StreamToChatMessageMapper {
         )
     }
 
-    private fun mapResultMessage(message: StreamMessage.Result): ChatMessage {
+    private fun mapResultMessage(message: StreamJsonLine.Result): ChatMessage {
         val level = if (message.isError) {
             ChatMessage.ContentItem.System.SystemLevel.ERROR
         } else {
@@ -156,70 +167,42 @@ object StreamToChatMessageMapper {
         )
     }
 
-    private fun mapUserContent(content: StreamMessageContent.User): List<ChatMessage.ContentItem> {
-        return when (content.content) {
-            is ContentItemsUnion.StringContent -> {
-                listOf(parseTextForGromozeka(content.content.content))
-            }
 
-            is ContentItemsUnion.ArrayContent -> {
-                content.content.items.flatMap { mapStreamContentItem(it) }
-            }
-        }
+    private fun mapStreamContentItem(item: ContentBlock) = when (item) {
+        is ContentBlock.TextBlock -> parseText(item.text)
+
+        is ContentBlock.ToolUseBlock -> ChatMessage.ContentItem.ToolCall(
+            id = item.id,
+            call = mapToolCall(item.name, item.input)
+        )
+
+        is ContentBlock.ToolResultBlock -> ChatMessage.ContentItem.ToolResult(
+            toolUseId = item.toolUseId,
+            result = mapToolResult(item.content),
+            isError = item.isError ?: false
+        )
+
+        is ContentBlock.ThinkingItem -> ChatMessage.ContentItem.Thinking(
+            signature = item.signature ?: "",
+            thinking = item.thinking
+        )
     }
 
-    private fun mapStreamContentItem(item: StreamContentItem): List<ChatMessage.ContentItem> {
-        return when (item) {
-            is StreamContentItem.TextItem -> {
-                listOf(parseTextForGromozeka(item.text))
-            }
-
-            is StreamContentItem.ToolUseItem -> {
-                val toolCall = mapToolCall(item.name, item.input)
-                listOf(ChatMessage.ContentItem.ToolCall(item.id, toolCall))
-            }
-
-            is StreamContentItem.ToolResultItem -> {
-                val result = mapToolResult(item.content)
-                listOf(
-                    ChatMessage.ContentItem.ToolResult(
-                        toolUseId = item.toolUseId,
-                        result = result,
-                        isError = item.isError ?: false
-                    )
-                )
-            }
-
-            is StreamContentItem.ThinkingItem -> {
-                listOf(
-                    ChatMessage.ContentItem.Thinking(
-                        signature = item.signature ?: "",
-                        thinking = item.thinking
-                    )
-                )
-            }
+    private fun mapToolResult(content: ContentResultUnion?) = when (content) {
+        null -> ClaudeCodeToolResultData.NullResult // Special case for null content
+        
+        is ContentResultUnion.StringResult -> {
+            ClaudeCodeToolResultData.Read(content.content)
         }
-    }
 
-    private fun mapToolResult(content: ContentResultUnion?): ToolResultData {
-        return when (content) {
-            is ContentResultUnion.StringResult -> {
-                ClaudeCodeToolResultData.Read(content.content)
-            }
-
-            is ContentResultUnion.ArrayResult -> {
-                val textContent = content.items.joinToString("\n") { item ->
-                    when (item) {
-                        is StreamContentItem.TextItem -> item.text
-                        else -> item.toString()
-                    }
+        is ContentResultUnion.ArrayResult -> {
+            val textContent = content.items.joinToString("\n") { item ->
+                when (item) {
+                    is ContentBlock.TextBlock -> item.text
+                    else -> item.toString()
                 }
-                ClaudeCodeToolResultData.Read(textContent)
             }
-
-            null -> {
-                ClaudeCodeToolResultData.Read("")
-            }
+            ClaudeCodeToolResultData.Read(textContent)
         }
     }
 
@@ -250,36 +233,20 @@ object StreamToChatMessageMapper {
         }
     }
 
-    private fun parseTextForGromozeka(text: String): ChatMessage.ContentItem {
-        if (!text.trim().startsWith("{") || !text.trim().endsWith("}")) {
-            return ChatMessage.ContentItem.Message(text)
-        }
-
+    private fun parseText(text: String): ChatMessage.ContentItem {
         return try {
-            // Try to deserialize as StructuredText first
-            val structured = Json.decodeFromString<ChatMessage.StructuredText>(text)
-            ChatMessage.ContentItem.IntermediateMessage(
-                structured = structured
-            )
-        } catch (e: SerializationException) {
-            // Not a Gromozeka format, try as generic JSON
+            val jsonElement = Json.parseToJsonElement(text)
+            
             try {
-                val jsonElement = Json.parseToJsonElement(text)
+                val structured = Json.decodeFromJsonElement<ChatMessage.StructuredText>(jsonElement)
+                ChatMessage.ContentItem.IntermediateMessage(structured = structured)
+            } catch (_: SerializationException) {
+                // Not a Gromozeka format, return as generic JSON
                 println("[StreamToChatMessageMapper] PARSE: Text is not Gromozeka JSON, fallback to UnknownJson")
                 println("  Text preview: ${text.take(100)}${if (text.length > 100) "..." else ""}")
                 ChatMessage.ContentItem.UnknownJson(jsonElement)
-            } catch (jsonParseException: Exception) {
-                println("[StreamToChatMessageMapper] PARSE ERROR: Failed to parse text as JSON")
-                println("  SerializationException: ${e.message}")
-                println("  JsonParseException: ${jsonParseException.message}")
-                println("  Text full content: $text")
-                ChatMessage.ContentItem.Message(text)
             }
-        } catch (e: Exception) {
-            println("[StreamToChatMessageMapper] UNEXPECTED ERROR in parseTextForGromozeka: ${e.javaClass.simpleName}: ${e.message}")
-            println("  Text: $text")
-            println("  Stack trace: ${e.stackTraceToString()}")
-            // Any other error - treat as plain text
+        } catch (_: Exception) {
             ChatMessage.ContentItem.Message(text)
         }
     }
@@ -314,30 +281,25 @@ object StreamToChatMessageMapper {
 
     private fun parseResultAsGromozeka(resultText: String): List<ChatMessage.ContentItem> {
         return try {
-            // Try to parse result as StructuredText
-            val structured = Json.decodeFromString<ChatMessage.StructuredText>(resultText)
-            listOf(
-                ChatMessage.ContentItem.FinalResultMessage(
-                    structured = structured
-                )
-            )
-        } catch (e: SerializationException) {
-            // If not Gromozeka JSON, try to parse as generic JSON
+            // Parse JSON once
+            val jsonElement = Json.parseToJsonElement(resultText)
+            
             try {
-                val jsonElement = Json.parseToJsonElement(resultText)
+                // Try to decode as StructuredText
+                val structured = Json.decodeFromJsonElement<ChatMessage.StructuredText>(jsonElement)
+                listOf(ChatMessage.ContentItem.FinalResultMessage(structured = structured))
+            } catch (_: SerializationException) {
+                // Not a Gromozeka format, return as generic JSON
                 listOf(ChatMessage.ContentItem.UnknownJson(jsonElement))
-            } catch (jsonParseException: Exception) {
-                // If not JSON at all, treat as plain text
-                listOf(ChatMessage.ContentItem.Message(resultText))
             }
-        } catch (e: Exception) {
-            // Any other error - treat as plain text
+        } catch (_: Exception) {
+            // Not valid JSON at all - treat as plain text
             listOf(ChatMessage.ContentItem.Message(resultText))
         }
     }
 
     private fun createResultStatisticsContent(
-        message: StreamMessage.Result,
+        message: StreamJsonLine.Result,
         level: ChatMessage.ContentItem.System.SystemLevel,
     ): ChatMessage.ContentItem.System {
         val statisticsText = buildString {
@@ -357,7 +319,7 @@ object StreamToChatMessageMapper {
         )
     }
 
-    private fun mapControlRequestMessage(message: StreamMessage.ControlRequest): ChatMessage {
+    private fun mapControlRequestMessage(message: StreamJsonLine.ControlRequest): ChatMessage {
         val content = listOf(
             ChatMessage.ContentItem.System(
                 level = ChatMessage.ContentItem.System.SystemLevel.INFO,
@@ -378,7 +340,7 @@ object StreamToChatMessageMapper {
         )
     }
 
-    private fun mapControlResponseMessage(message: StreamMessage.ControlResponse): ChatMessage {
+    private fun mapControlResponseMessage(message: StreamJsonLine.ControlResponse): ChatMessage {
         val level = when (message.response.subtype) {
             "error" -> ChatMessage.ContentItem.System.SystemLevel.ERROR
             else -> ChatMessage.ContentItem.System.SystemLevel.INFO

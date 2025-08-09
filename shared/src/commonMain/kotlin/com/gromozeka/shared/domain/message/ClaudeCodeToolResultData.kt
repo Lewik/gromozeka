@@ -82,4 +82,10 @@ sealed class ClaudeCodeToolResultData : ToolResultData() {
         val response: String,
         val success: Boolean = true
     ) : ClaudeCodeToolResultData()
+    
+    /**
+     * Null result - when tool returns no content
+     */
+    @Serializable
+    data object NullResult : ClaudeCodeToolResultData()
 }

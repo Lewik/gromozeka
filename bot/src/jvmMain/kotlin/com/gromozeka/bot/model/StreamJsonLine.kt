@@ -10,7 +10,7 @@ import kotlinx.serialization.json.*
 @OptIn(ExperimentalSerializationApi::class)
 @Serializable
 @JsonClassDiscriminator("type")
-sealed class StreamMessage {
+sealed class StreamJsonLine {
     abstract val type: String
 
     @Serializable
@@ -30,7 +30,7 @@ sealed class StreamMessage {
         val apiKeySource: String? = null,
         val data: JsonObject? = null,  // Fallback for other fields
         override val type: String = "system",
-    ) : StreamMessage()
+    ) : StreamJsonLine()
 
     @Serializable
     @SerialName("user")
@@ -41,7 +41,7 @@ sealed class StreamMessage {
         @SerialName("parent_tool_use_id")
         val parentToolUseId: String? = null,
         override val type: String = "user",
-    ) : StreamMessage()
+    ) : StreamJsonLine()
 
     @Serializable
     @SerialName("assistant")
@@ -52,7 +52,7 @@ sealed class StreamMessage {
         @SerialName("parent_tool_use_id")
         val parentToolUseId: String? = null,
         override val type: String = "assistant",
-    ) : StreamMessage()
+    ) : StreamJsonLine()
 
     @Serializable
     @SerialName("result")
@@ -73,7 +73,7 @@ sealed class StreamMessage {
         val usage: UsageInfo? = null,
         val result: String? = null,
         override val type: String = "result",
-    ) : StreamMessage()
+    ) : StreamJsonLine()
 
     @Serializable
     @SerialName("control_request")
@@ -82,14 +82,14 @@ sealed class StreamMessage {
         val requestId: String,
         val request: com.gromozeka.bot.model.ControlRequest,
         override val type: String = "control_request",
-    ) : StreamMessage()
+    ) : StreamJsonLine()
 
     @Serializable
     @SerialName("control_response")
     data class ControlResponse(
         val response: com.gromozeka.bot.model.ControlResponse,
         override val type: String = "control_response",
-    ) : StreamMessage()
+    ) : StreamJsonLine()
 }
 
 @OptIn(ExperimentalSerializationApi::class)
@@ -111,7 +111,7 @@ sealed class StreamMessageContent {
         val id: String? = null,
         val type: String? = null, // Claude adds "type": "message" field
         val model: String? = null,
-        val content: List<StreamContentItem>,
+        val content: List<ContentBlock>,
         @SerialName("stop_reason")
         val stopReason: String? = null,
         @SerialName("stop_sequence")
@@ -124,35 +124,35 @@ sealed class StreamMessageContent {
 @OptIn(ExperimentalSerializationApi::class)
 @Serializable
 @JsonClassDiscriminator("type")
-sealed class StreamContentItem {
+sealed class ContentBlock {
     abstract val type: String
 
     @Serializable
     @SerialName("text")
-    data class TextItem(
+    data class TextBlock(
         val text: String,
         override val type: String = "text",
-    ) : StreamContentItem()
+    ) : ContentBlock()
 
     @Serializable
     @SerialName("tool_use")
-    data class ToolUseItem(
+    data class ToolUseBlock(
         val id: String,
         val name: String,
         val input: JsonElement,
         override val type: String = "tool_use",
-    ) : StreamContentItem()
+    ) : ContentBlock()
 
     @Serializable
     @SerialName("tool_result")
-    data class ToolResultItem(
+    data class ToolResultBlock(
         @SerialName("tool_use_id")
         val toolUseId: String,
         val content: ContentResultUnion? = null,
         @SerialName("is_error")
         val isError: Boolean? = null,
         override val type: String = "tool_result",
-    ) : StreamContentItem()
+    ) : ContentBlock()
 
     @Serializable
     @SerialName("thinking")
@@ -160,7 +160,7 @@ sealed class StreamContentItem {
         val thinking: String,
         val signature: String? = null,
         override val type: String = "thinking",
-    ) : StreamContentItem()
+    ) : ContentBlock()
 }
 
 @Serializable(with = ContentItemsUnionSerializer::class)
@@ -169,7 +169,7 @@ sealed class ContentItemsUnion {
     data class StringContent(val content: String) : ContentItemsUnion()
 
     @Serializable
-    data class ArrayContent(val items: List<StreamContentItem>) : ContentItemsUnion()
+    data class ArrayContent(val items: List<ContentBlock>) : ContentItemsUnion()
 }
 
 @Serializable(with = ContentResultUnionSerializer::class)
@@ -178,7 +178,7 @@ sealed class ContentResultUnion {
     data class StringResult(val content: String) : ContentResultUnion()
 
     @Serializable
-    data class ArrayResult(val items: List<StreamContentItem>) : ContentResultUnion()
+    data class ArrayResult(val items: List<ContentBlock>) : ContentResultUnion()
 }
 
 @Serializable
@@ -209,7 +209,7 @@ object ContentItemsUnionSerializer : KSerializer<ContentItemsUnion> {
 
             element is JsonArray -> {
                 val items = element.map {
-                    Json.decodeFromJsonElement<StreamContentItem>(it)
+                    Json.decodeFromJsonElement<ContentBlock>(it)
                 }
                 ContentItemsUnion.ArrayContent(items)
             }
@@ -226,7 +226,7 @@ object ContentItemsUnionSerializer : KSerializer<ContentItemsUnion> {
 
             is ContentItemsUnion.ArrayContent -> {
                 encoder.encodeSerializableValue(
-                    ListSerializer(StreamContentItem.serializer()),
+                    ListSerializer(ContentBlock.serializer()),
                     value.items
                 )
             }
@@ -246,7 +246,7 @@ object ContentResultUnionSerializer : KSerializer<ContentResultUnion> {
 
             element is JsonArray -> {
                 val items = element.map {
-                    Json.decodeFromJsonElement<StreamContentItem>(it)
+                    Json.decodeFromJsonElement<ContentBlock>(it)
                 }
                 ContentResultUnion.ArrayResult(items)
             }
@@ -263,7 +263,7 @@ object ContentResultUnionSerializer : KSerializer<ContentResultUnion> {
 
             is ContentResultUnion.ArrayResult -> {
                 encoder.encodeSerializableValue(
-                    ListSerializer(StreamContentItem.serializer()),
+                    ListSerializer(ContentBlock.serializer()),
                     value.items
                 )
             }
@@ -288,7 +288,7 @@ data class ControlResponse(
  * Wrapper for StreamMessage that preserves original JSON for debugging purposes.
  * Allows passing both parsed StreamMessage and raw JSON through the processing pipeline.
  */
-data class StreamMessagePacket(
-    val streamMessage: StreamMessage,
+data class StreamJsonLinePacket(
+    val streamMessage: StreamJsonLine,
     val originalJson: String?
 )

@@ -1,6 +1,6 @@
 package com.gromozeka.bot
 
-object StreamMessageTestData {
+object StreamJsonLineTestData {
 
     val systemInitMessage = """{
         "type": "system",

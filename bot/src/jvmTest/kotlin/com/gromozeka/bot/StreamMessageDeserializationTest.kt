@@ -7,7 +7,7 @@ import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 
-class StreamMessageDeserializationTest {
+class StreamJsonLineDeserializationTest {
 
     private val json = Json {
         ignoreUnknownKeys = true
@@ -16,10 +16,10 @@ class StreamMessageDeserializationTest {
 
     @Test
     fun `deserialize system init message`() {
-        val message = json.decodeFromString<StreamMessage>(StreamMessageTestData.systemInitMessage)
+        val message = json.decodeFromString<StreamJsonLine>(StreamJsonLineTestData.systemInitMessage)
 
-        assertTrue(message is StreamMessage.System)
-        message as StreamMessage.System
+        assertTrue(message is StreamJsonLine.System)
+        message as StreamJsonLine.System
 
         assertEquals("system", message.type)
         assertEquals("init", message.subtype)
@@ -30,10 +30,10 @@ class StreamMessageDeserializationTest {
 
     @Test
     fun `deserialize system error message`() {
-        val message = json.decodeFromString<StreamMessage>(StreamMessageTestData.systemErrorMessage)
+        val message = json.decodeFromString<StreamJsonLine>(StreamJsonLineTestData.systemErrorMessage)
 
-        assertTrue(message is StreamMessage.System)
-        message as StreamMessage.System
+        assertTrue(message is StreamJsonLine.System)
+        message as StreamJsonLine.System
 
         assertEquals("system", message.type)
         assertEquals("error", message.subtype)
@@ -43,10 +43,10 @@ class StreamMessageDeserializationTest {
 
     @Test
     fun `deserialize user message with string content`() {
-        val message = json.decodeFromString<StreamMessage>(StreamMessageTestData.userStringMessage)
+        val message = json.decodeFromString<StreamJsonLine>(StreamJsonLineTestData.userStringMessage)
 
-        assertTrue(message is StreamMessage.User)
-        message as StreamMessage.User
+        assertTrue(message is StreamJsonLine.User)
+        message as StreamJsonLine.User
 
         assertEquals("user", message.type)
         assertEquals("00f8f214-a5c5-40cf-a07e-4a3b383a94e9", message.sessionId)
@@ -62,10 +62,10 @@ class StreamMessageDeserializationTest {
 
     @Test
     fun `deserialize user message with array content`() {
-        val message = json.decodeFromString<StreamMessage>(StreamMessageTestData.userArrayMessage)
+        val message = json.decodeFromString<StreamJsonLine>(StreamJsonLineTestData.userArrayMessage)
 
-        assertTrue(message is StreamMessage.User)
-        message as StreamMessage.User
+        assertTrue(message is StreamJsonLine.User)
+        message as StreamJsonLine.User
 
         assertEquals("tool_456", message.parentToolUseId)
 
@@ -76,12 +76,12 @@ class StreamMessageDeserializationTest {
         assertEquals(2, arrayContent.items.size)
 
         val firstItem = arrayContent.items[0]
-        assertTrue(firstItem is StreamContentItem.TextItem)
-        assertEquals("Please run this command:", (firstItem as StreamContentItem.TextItem).text)
+        assertTrue(firstItem is ContentBlock.TextBlock)
+        assertEquals("Please run this command:", (firstItem as ContentBlock.TextBlock).text)
 
         val secondItem = arrayContent.items[1]
-        assertTrue(secondItem is StreamContentItem.ToolResultItem)
-        val toolResult = secondItem as StreamContentItem.ToolResultItem
+        assertTrue(secondItem is ContentBlock.ToolResultBlock)
+        val toolResult = secondItem as ContentBlock.ToolResultBlock
         assertEquals("tool_123", toolResult.toolUseId)
         assertTrue(toolResult.content is ContentResultUnion.StringResult)
         assertEquals("Command executed successfully", (toolResult.content as ContentResultUnion.StringResult).content)
@@ -89,10 +89,10 @@ class StreamMessageDeserializationTest {
 
     @Test
     fun `deserialize assistant text message`() {
-        val message = json.decodeFromString<StreamMessage>(StreamMessageTestData.assistantTextMessage)
+        val message = json.decodeFromString<StreamJsonLine>(StreamJsonLineTestData.assistantTextMessage)
 
-        assertTrue(message is StreamMessage.Assistant)
-        message as StreamMessage.Assistant
+        assertTrue(message is StreamJsonLine.Assistant)
+        message as StreamJsonLine.Assistant
 
         val assistantContent = message.message as StreamMessageContent.Assistant
         assertEquals("msg_123", assistantContent.id)
@@ -104,25 +104,25 @@ class StreamMessageDeserializationTest {
         assertEquals(12, assistantContent.usage?.outputTokens)
 
         assertEquals(1, assistantContent.content.size)
-        val textItem = assistantContent.content[0] as StreamContentItem.TextItem
+        val textItem = assistantContent.content[0] as ContentBlock.TextBlock
         assertEquals("I'm doing well, thank you for asking!", textItem.text)
     }
 
     @Test
     fun `deserialize assistant tool use message`() {
-        val message = json.decodeFromString<StreamMessage>(StreamMessageTestData.assistantToolUseMessage)
+        val message = json.decodeFromString<StreamJsonLine>(StreamJsonLineTestData.assistantToolUseMessage)
 
-        assertTrue(message is StreamMessage.Assistant)
-        message as StreamMessage.Assistant
+        assertTrue(message is StreamJsonLine.Assistant)
+        message as StreamJsonLine.Assistant
 
         val assistantContent = message.message as StreamMessageContent.Assistant
         assertEquals("tool_use", assistantContent.stopReason)
         assertEquals(2, assistantContent.content.size)
 
-        val textItem = assistantContent.content[0] as StreamContentItem.TextItem
+        val textItem = assistantContent.content[0] as ContentBlock.TextBlock
         assertEquals("I'll help you check the current directory.", textItem.text)
 
-        val toolUseItem = assistantContent.content[1] as StreamContentItem.ToolUseItem
+        val toolUseItem = assistantContent.content[1] as ContentBlock.ToolUseBlock
         assertEquals("tool_789", toolUseItem.id)
         assertEquals("Bash", toolUseItem.name)
         assertTrue(toolUseItem.input.toString().contains("pwd"))
@@ -130,19 +130,19 @@ class StreamMessageDeserializationTest {
 
     @Test
     fun `deserialize assistant thinking message`() {
-        val message = json.decodeFromString<StreamMessage>(StreamMessageTestData.assistantThinkingMessage)
+        val message = json.decodeFromString<StreamJsonLine>(StreamJsonLineTestData.assistantThinkingMessage)
 
-        assertTrue(message is StreamMessage.Assistant)
-        message as StreamMessage.Assistant
+        assertTrue(message is StreamJsonLine.Assistant)
+        message as StreamJsonLine.Assistant
 
         val assistantContent = message.message as StreamMessageContent.Assistant
         assertEquals(2, assistantContent.content.size)
 
-        val thinkingItem = assistantContent.content[0] as StreamContentItem.ThinkingItem
+        val thinkingItem = assistantContent.content[0] as ContentBlock.ThinkingItem
         assertTrue(thinkingItem.thinking.contains("The user is asking for help"))
         assertEquals("thinking_sig_123", thinkingItem.signature)
 
-        val textItem = assistantContent.content[1] as StreamContentItem.TextItem
+        val textItem = assistantContent.content[1] as ContentBlock.TextBlock
         assertEquals("Let me help you with that file operation.", textItem.text)
 
         // Check cache usage
@@ -151,10 +151,10 @@ class StreamMessageDeserializationTest {
 
     @Test
     fun `deserialize result success message`() {
-        val message = json.decodeFromString<StreamMessage>(StreamMessageTestData.resultSuccessMessage)
+        val message = json.decodeFromString<StreamJsonLine>(StreamJsonLineTestData.resultSuccessMessage)
 
-        assertTrue(message is StreamMessage.Result)
-        message as StreamMessage.Result
+        assertTrue(message is StreamJsonLine.Result)
+        message as StreamJsonLine.Result
 
         assertEquals("result", message.type)
         assertEquals("success", message.subtype)
@@ -173,10 +173,10 @@ class StreamMessageDeserializationTest {
 
     @Test
     fun `deserialize result error message`() {
-        val message = json.decodeFromString<StreamMessage>(StreamMessageTestData.resultErrorMessage)
+        val message = json.decodeFromString<StreamJsonLine>(StreamJsonLineTestData.resultErrorMessage)
 
-        assertTrue(message is StreamMessage.Result)
-        message as StreamMessage.Result
+        assertTrue(message is StreamJsonLine.Result)
+        message as StreamJsonLine.Result
 
         assertEquals("error", message.subtype)
         assertTrue(message.isError)
@@ -186,15 +186,15 @@ class StreamMessageDeserializationTest {
 
     @Test
     fun `deserialize tool result with string content`() {
-        val message = json.decodeFromString<StreamMessage>(StreamMessageTestData.toolResultStringContent)
+        val message = json.decodeFromString<StreamJsonLine>(StreamJsonLineTestData.toolResultStringContent)
 
-        assertTrue(message is StreamMessage.User)
-        message as StreamMessage.User
+        assertTrue(message is StreamJsonLine.User)
+        message as StreamJsonLine.User
 
         val userContent = message.message as StreamMessageContent.User
         val arrayContent = userContent.content as ContentItemsUnion.ArrayContent
 
-        val toolResultItem = arrayContent.items[0] as StreamContentItem.ToolResultItem
+        val toolResultItem = arrayContent.items[0] as ContentBlock.ToolResultBlock
         assertEquals("tool_789", toolResultItem.toolUseId)
         assertTrue(toolResultItem.content is ContentResultUnion.StringResult)
         assertEquals(
@@ -205,15 +205,15 @@ class StreamMessageDeserializationTest {
 
     @Test
     fun `deserialize tool result with array content`() {
-        val message = json.decodeFromString<StreamMessage>(StreamMessageTestData.toolResultArrayContent)
+        val message = json.decodeFromString<StreamJsonLine>(StreamJsonLineTestData.toolResultArrayContent)
 
-        assertTrue(message is StreamMessage.User)
-        message as StreamMessage.User
+        assertTrue(message is StreamJsonLine.User)
+        message as StreamJsonLine.User
 
         val userContent = message.message as StreamMessageContent.User
         val arrayContent = userContent.content as ContentItemsUnion.ArrayContent
 
-        val toolResultItem = arrayContent.items[0] as StreamContentItem.ToolResultItem
+        val toolResultItem = arrayContent.items[0] as ContentBlock.ToolResultBlock
         assertEquals("tool_abc", toolResultItem.toolUseId)
         assertFalse(toolResultItem.isError ?: true)
 
@@ -222,33 +222,33 @@ class StreamMessageDeserializationTest {
         assertEquals(2, arrayResult.items.size)
 
         arrayResult.items.forEach { item ->
-            assertTrue(item is StreamContentItem.TextItem)
+            assertTrue(item is ContentBlock.TextBlock)
         }
     }
 
     @Test
     fun `deserialize complex assistant message`() {
-        val message = json.decodeFromString<StreamMessage>(StreamMessageTestData.complexAssistantMessage)
+        val message = json.decodeFromString<StreamJsonLine>(StreamJsonLineTestData.complexAssistantMessage)
 
-        assertTrue(message is StreamMessage.Assistant)
-        message as StreamMessage.Assistant
+        assertTrue(message is StreamJsonLine.Assistant)
+        message as StreamJsonLine.Assistant
 
         val assistantContent = message.message as StreamMessageContent.Assistant
         assertEquals(5, assistantContent.content.size)
 
         // Check thinking block
-        val thinkingItem = assistantContent.content[0] as StreamContentItem.ThinkingItem
+        val thinkingItem = assistantContent.content[0] as ContentBlock.ThinkingItem
         assertTrue(thinkingItem.thinking.contains("analyze this request"))
 
         // Check text blocks
-        val textItem1 = assistantContent.content[1] as StreamContentItem.TextItem
+        val textItem1 = assistantContent.content[1] as ContentBlock.TextBlock
         assertEquals("I'll help you with multiple operations:", textItem1.text)
 
         // Check tool use blocks
-        val toolUse1 = assistantContent.content[2] as StreamContentItem.ToolUseItem
+        val toolUse1 = assistantContent.content[2] as ContentBlock.ToolUseBlock
         assertEquals("Read", toolUse1.name)
 
-        val toolUse2 = assistantContent.content[4] as StreamContentItem.ToolUseItem
+        val toolUse2 = assistantContent.content[4] as ContentBlock.ToolUseBlock
         assertEquals("LS", toolUse2.name)
 
         // Check usage with service tier
@@ -258,14 +258,14 @@ class StreamMessageDeserializationTest {
     @Test
     fun `handle malformed JSON gracefully`() {
         assertThrows<SerializationException> {
-            json.decodeFromString<StreamMessage>(StreamMessageTestData.malformedJson)
+            json.decodeFromString<StreamJsonLine>(StreamJsonLineTestData.malformedJson)
         }
     }
 
     @Test
     fun `handle unknown message type gracefully`() {
         assertThrows<SerializationException> {
-            json.decodeFromString<StreamMessage>(StreamMessageTestData.unknownMessageType)
+            json.decodeFromString<StreamJsonLine>(StreamJsonLineTestData.unknownMessageType)
         }
     }
 
@@ -281,9 +281,9 @@ class StreamMessageDeserializationTest {
             "session_id": "test"
         }"""
 
-        val message = json.decodeFromString<StreamMessage>(emptyStringMessage)
-        assertTrue(message is StreamMessage.User)
-        val userContent = (message as StreamMessage.User).message as StreamMessageContent.User
+        val message = json.decodeFromString<StreamJsonLine>(emptyStringMessage)
+        assertTrue(message is StreamJsonLine.User)
+        val userContent = (message as StreamJsonLine.User).message as StreamMessageContent.User
         assertTrue(userContent.content is ContentItemsUnion.StringContent)
         assertEquals("", (userContent.content as ContentItemsUnion.StringContent).content)
     }
@@ -307,9 +307,9 @@ class StreamMessageDeserializationTest {
             }
         }"""
 
-        val message = json.decodeFromString<StreamMessage>(fullUsageMessage)
-        assertTrue(message is StreamMessage.Result)
-        val resultMessage = message as StreamMessage.Result
+        val message = json.decodeFromString<StreamJsonLine>(fullUsageMessage)
+        assertTrue(message is StreamJsonLine.Result)
+        val resultMessage = message as StreamJsonLine.Result
 
         assertNotNull(resultMessage.usage)
         assertEquals(50, resultMessage.usage?.inputTokens)

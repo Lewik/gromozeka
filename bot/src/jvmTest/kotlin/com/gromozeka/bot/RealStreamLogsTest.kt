@@ -1,6 +1,6 @@
 package com.gromozeka.bot
 
-import com.gromozeka.bot.model.StreamMessage
+import com.gromozeka.bot.model.StreamJsonLine
 import com.gromozeka.bot.services.StreamToChatMessageMapper
 import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.Assertions.assertNotNull
@@ -10,7 +10,7 @@ import java.io.File
 
 /**
  * Simple tests using real stream logs from ~/.gromozeka/streamlogs/
- * Tests both deserialization of StreamMessage and mapping to ChatMessage
+ * Tests both deserialization of StreamJsonLine and mapping to ChatMessage
  */
 class RealStreamLogsTest {
 
@@ -52,7 +52,7 @@ class RealStreamLogsTest {
 
         for ((index, line) in lines.withIndex()) {
             try {
-                val streamMessage = json.decodeFromString<StreamMessage>(line.trim())
+                val streamMessage = json.decodeFromString<StreamJsonLine>(line.trim())
                 assertNotNull(streamMessage)
                 successCount++
 
@@ -104,8 +104,8 @@ class RealStreamLogsTest {
 
         for ((index, line) in lines.withIndex()) {
             try {
-                // Step 1: Deserialize StreamMessage
-                val streamMessage = json.decodeFromString<StreamMessage>(line.trim())
+                // Step 1: Deserialize StreamJsonLine
+                val streamMessage = json.decodeFromString<StreamJsonLine>(line.trim())
                 deserializeSuccess++
 
                 // Step 2: Map to ChatMessage
@@ -130,14 +130,14 @@ class RealStreamLogsTest {
         assertTrue(mappingRate >= 0.8, "Mapping rate too low: ${(mappingRate * 100).toInt()}%")
     }
 
-    private fun getMessageInfo(streamMessage: StreamMessage): String {
+    private fun getMessageInfo(streamMessage: StreamJsonLine): String {
         return when (streamMessage) {
-            is StreamMessage.System -> "subtype=${streamMessage.subtype}"
-            is StreamMessage.User -> "sessionId=${streamMessage.sessionId}"
-            is StreamMessage.Assistant -> "sessionId=${streamMessage.sessionId}"
-            is StreamMessage.Result -> "subtype=${streamMessage.subtype}, error=${streamMessage.isError}"
-            is StreamMessage.ControlRequest -> "control_request"
-            is StreamMessage.ControlResponse -> "control_response"
+            is StreamJsonLine.System -> "subtype=${streamMessage.subtype}"
+            is StreamJsonLine.User -> "sessionId=${streamMessage.sessionId}"
+            is StreamJsonLine.Assistant -> "sessionId=${streamMessage.sessionId}"
+            is StreamJsonLine.Result -> "subtype=${streamMessage.subtype}, error=${streamMessage.isError}"
+            is StreamJsonLine.ControlRequest -> "control_request"
+            is StreamJsonLine.ControlResponse -> "control_response"
         }
     }
 }

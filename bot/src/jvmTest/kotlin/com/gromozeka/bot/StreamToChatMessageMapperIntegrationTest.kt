@@ -1,6 +1,6 @@
 package com.gromozeka.bot
 
-import com.gromozeka.bot.model.StreamMessage
+import com.gromozeka.bot.model.StreamJsonLine
 import com.gromozeka.bot.services.StreamToChatMessageMapper
 import com.gromozeka.shared.domain.message.ChatMessage
 import io.kotest.core.spec.style.FunSpec
@@ -17,8 +17,8 @@ class StreamToChatMessageMapperIntegrationTest : FunSpec({
         isLenient = true
     }
 
-    test("integration test with real StreamMessageTestData - system init") {
-        val message = json.decodeFromString<StreamMessage>(StreamMessageTestData.systemInitMessage)
+    test("integration test with real StreamJsonLineTestData - system init") {
+        val message = json.decodeFromString<StreamJsonLine>(StreamJsonLineTestData.systemInitMessage)
 
         val result = StreamToChatMessageMapper.mapToChatMessage(message)
         result shouldNotBe null
@@ -30,8 +30,8 @@ class StreamToChatMessageMapperIntegrationTest : FunSpec({
         systemContent.content.contains("init") shouldBe true
     }
 
-    test("integration test with real StreamMessageTestData - system error") {
-        val message = json.decodeFromString<StreamMessage>(StreamMessageTestData.systemErrorMessage)
+    test("integration test with real StreamJsonLineTestData - system error") {
+        val message = json.decodeFromString<StreamJsonLine>(StreamJsonLineTestData.systemErrorMessage)
 
         val result = StreamToChatMessageMapper.mapToChatMessage(message)
         result shouldNotBe null
@@ -43,8 +43,8 @@ class StreamToChatMessageMapperIntegrationTest : FunSpec({
         systemContent.content.contains("error") shouldBe true
     }
 
-    test("integration test with real StreamMessageTestData - user string message") {
-        val message = json.decodeFromString<StreamMessage>(StreamMessageTestData.userStringMessage)
+    test("integration test with real StreamJsonLineTestData - user string message") {
+        val message = json.decodeFromString<StreamJsonLine>(StreamJsonLineTestData.userStringMessage)
 
         val result = StreamToChatMessageMapper.mapToChatMessage(message)
         result shouldNotBe null
@@ -56,8 +56,8 @@ class StreamToChatMessageMapperIntegrationTest : FunSpec({
         messageContent.text shouldBe "Hello Claude, how are you?"
     }
 
-    test("integration test with real StreamMessageTestData - user array message") {
-        val message = json.decodeFromString<StreamMessage>(StreamMessageTestData.userArrayMessage)
+    test("integration test with real StreamJsonLineTestData - user array message") {
+        val message = json.decodeFromString<StreamJsonLine>(StreamJsonLineTestData.userArrayMessage)
 
         val result = StreamToChatMessageMapper.mapToChatMessage(message)
         result shouldNotBe null
@@ -74,8 +74,8 @@ class StreamToChatMessageMapperIntegrationTest : FunSpec({
         toolResult.toolUseId shouldBe "tool_123"
     }
 
-    test("integration test with real StreamMessageTestData - assistant text message") {
-        val message = json.decodeFromString<StreamMessage>(StreamMessageTestData.assistantTextMessage)
+    test("integration test with real StreamJsonLineTestData - assistant text message") {
+        val message = json.decodeFromString<StreamJsonLine>(StreamJsonLineTestData.assistantTextMessage)
 
         val result = StreamToChatMessageMapper.mapToChatMessage(message)
         result shouldNotBe null
@@ -94,8 +94,8 @@ class StreamToChatMessageMapperIntegrationTest : FunSpec({
         metadata.usage!!.outputTokens shouldBe 12
     }
 
-    test("integration test with real StreamMessageTestData - assistant tool use message") {
-        val message = json.decodeFromString<StreamMessage>(StreamMessageTestData.assistantToolUseMessage)
+    test("integration test with real StreamJsonLineTestData - assistant tool use message") {
+        val message = json.decodeFromString<StreamJsonLine>(StreamJsonLineTestData.assistantToolUseMessage)
 
         val result = StreamToChatMessageMapper.mapToChatMessage(message)
         result shouldNotBe null
@@ -115,8 +115,8 @@ class StreamToChatMessageMapperIntegrationTest : FunSpec({
         metadata.stopReason shouldBe "tool_use"
     }
 
-    test("integration test with real StreamMessageTestData - assistant thinking message") {
-        val message = json.decodeFromString<StreamMessage>(StreamMessageTestData.assistantThinkingMessage)
+    test("integration test with real StreamJsonLineTestData - assistant thinking message") {
+        val message = json.decodeFromString<StreamJsonLine>(StreamJsonLineTestData.assistantThinkingMessage)
 
         val result = StreamToChatMessageMapper.mapToChatMessage(message)
         result shouldNotBe null
@@ -137,8 +137,8 @@ class StreamToChatMessageMapperIntegrationTest : FunSpec({
         metadata.usage!!.cacheReadTokens shouldBe 100
     }
 
-    test("integration test with real StreamMessageTestData - result success message") {
-        val message = json.decodeFromString<StreamMessage>(StreamMessageTestData.resultSuccessMessage)
+    test("integration test with real StreamJsonLineTestData - result success message") {
+        val message = json.decodeFromString<StreamJsonLine>(StreamJsonLineTestData.resultSuccessMessage)
 
         val result = StreamToChatMessageMapper.mapToChatMessage(message)
         result shouldNotBe null
@@ -150,8 +150,8 @@ class StreamToChatMessageMapperIntegrationTest : FunSpec({
         systemContent.content.contains("turns") shouldBe true
     }
 
-    test("integration test with real StreamMessageTestData - result error message") {
-        val message = json.decodeFromString<StreamMessage>(StreamMessageTestData.resultErrorMessage)
+    test("integration test with real StreamJsonLineTestData - result error message") {
+        val message = json.decodeFromString<StreamJsonLine>(StreamJsonLineTestData.resultErrorMessage)
 
         val result = StreamToChatMessageMapper.mapToChatMessage(message)
         result shouldNotBe null
@@ -164,8 +164,8 @@ class StreamToChatMessageMapperIntegrationTest : FunSpec({
         systemContent.content shouldBe "Error: API rate limit exceeded"
     }
 
-    test("integration test with real StreamMessageTestData - tool result string content") {
-        val message = json.decodeFromString<StreamMessage>(StreamMessageTestData.toolResultStringContent)
+    test("integration test with real StreamJsonLineTestData - tool result string content") {
+        val message = json.decodeFromString<StreamJsonLine>(StreamJsonLineTestData.toolResultStringContent)
 
         val result = StreamToChatMessageMapper.mapToChatMessage(message)
         result shouldNotBe null
@@ -178,8 +178,8 @@ class StreamToChatMessageMapperIntegrationTest : FunSpec({
         toolResult.isError shouldBe false
     }
 
-    test("integration test with real StreamMessageTestData - tool result array content") {
-        val message = json.decodeFromString<StreamMessage>(StreamMessageTestData.toolResultArrayContent)
+    test("integration test with real StreamJsonLineTestData - tool result array content") {
+        val message = json.decodeFromString<StreamJsonLine>(StreamJsonLineTestData.toolResultArrayContent)
 
         val result = StreamToChatMessageMapper.mapToChatMessage(message)
         result shouldNotBe null
@@ -192,8 +192,8 @@ class StreamToChatMessageMapperIntegrationTest : FunSpec({
         toolResult.isError shouldBe false
     }
 
-    test("integration test with real StreamMessageTestData - complex assistant message") {
-        val message = json.decodeFromString<StreamMessage>(StreamMessageTestData.complexAssistantMessage)
+    test("integration test with real StreamJsonLineTestData - complex assistant message") {
+        val message = json.decodeFromString<StreamJsonLine>(StreamJsonLineTestData.complexAssistantMessage)
 
         val result = StreamToChatMessageMapper.mapToChatMessage(message)
         result shouldNotBe null
@@ -225,18 +225,18 @@ class StreamToChatMessageMapperIntegrationTest : FunSpec({
 
     test("mapper handles all real test data without exceptions") {
         val allTestData = listOf(
-            StreamMessageTestData.systemInitMessage,
-            StreamMessageTestData.systemErrorMessage,
-            StreamMessageTestData.userStringMessage,
-            StreamMessageTestData.userArrayMessage,
-            StreamMessageTestData.assistantTextMessage,
-            StreamMessageTestData.assistantToolUseMessage,
-            StreamMessageTestData.assistantThinkingMessage,
-            StreamMessageTestData.resultSuccessMessage,
-            StreamMessageTestData.resultErrorMessage,
-            StreamMessageTestData.toolResultStringContent,
-            StreamMessageTestData.toolResultArrayContent,
-            StreamMessageTestData.complexAssistantMessage
+            StreamJsonLineTestData.systemInitMessage,
+            StreamJsonLineTestData.systemErrorMessage,
+            StreamJsonLineTestData.userStringMessage,
+            StreamJsonLineTestData.userArrayMessage,
+            StreamJsonLineTestData.assistantTextMessage,
+            StreamJsonLineTestData.assistantToolUseMessage,
+            StreamJsonLineTestData.assistantThinkingMessage,
+            StreamJsonLineTestData.resultSuccessMessage,
+            StreamJsonLineTestData.resultErrorMessage,
+            StreamJsonLineTestData.toolResultStringContent,
+            StreamJsonLineTestData.toolResultArrayContent,
+            StreamJsonLineTestData.complexAssistantMessage
         )
 
         var successfullyParsed = 0
@@ -244,7 +244,7 @@ class StreamToChatMessageMapperIntegrationTest : FunSpec({
 
         allTestData.forEach { testData ->
             try {
-                val streamMessage = json.decodeFromString<StreamMessage>(testData)
+                val streamMessage = json.decodeFromString<StreamJsonLine>(testData)
                 successfullyParsed++
 
                 val chatMessage = StreamToChatMessageMapper.mapToChatMessage(streamMessage)
