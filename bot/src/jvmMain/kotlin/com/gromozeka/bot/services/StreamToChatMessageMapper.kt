@@ -62,7 +62,7 @@ object StreamToChatMessageMapper {
             }
 
             is ContentItemsUnion.ArrayContent -> {
-                message.message.content.items.map { mapStreamContentItem(it) }
+                message.message.content.items.map { mapUserContentItem(it) }
             }
         }
 
@@ -80,7 +80,7 @@ object StreamToChatMessageMapper {
 
     private fun mapAssistantMessage(message: StreamJsonLine.Assistant): ChatMessage {
         val contentItems = message.message.content.flatMap { item ->
-            listOf(mapStreamContentItem(item))
+            listOf(mapAssistantContentItem(item))
         }
 
         return ChatMessage(
@@ -168,13 +168,8 @@ object StreamToChatMessageMapper {
     }
 
 
-    private fun mapStreamContentItem(item: ContentBlock) = when (item) {
+    private fun mapUserContentItem(item: ContentBlock) = when (item) {
         is ContentBlock.TextBlock -> parseText(item.text)
-
-        is ContentBlock.ToolUseBlock -> ChatMessage.ContentItem.ToolCall(
-            id = item.id,
-            call = mapToolCall(item.name, item.input)
-        )
 
         is ContentBlock.ToolResultBlock -> ChatMessage.ContentItem.ToolResult(
             toolUseId = item.toolUseId,
@@ -182,10 +177,24 @@ object StreamToChatMessageMapper {
             isError = item.isError ?: false
         )
 
+        is ContentBlock.ToolUseBlock -> error("USER messages cannot contain ToolUseBlock - only ASSISTANT can call tools")
+        is ContentBlock.ThinkingItem -> error("USER messages cannot contain ThinkingItem - only ASSISTANT can have thinking")
+    }
+
+    private fun mapAssistantContentItem(item: ContentBlock) = when (item) {
+        is ContentBlock.TextBlock -> parseTextForAssistant(item.text)
+
+        is ContentBlock.ToolUseBlock -> ChatMessage.ContentItem.ToolCall(
+            id = item.id,
+            call = mapToolCall(item.name, item.input)
+        )
+
         is ContentBlock.ThinkingItem -> ChatMessage.ContentItem.Thinking(
             signature = item.signature ?: "",
             thinking = item.thinking
         )
+
+        is ContentBlock.ToolResultBlock -> error("ASSISTANT messages cannot contain ToolResultBlock - only USER can provide tool results")
     }
 
     private fun mapToolResult(content: ContentResultUnion?) = when (content) {
@@ -248,6 +257,48 @@ object StreamToChatMessageMapper {
             }
         } catch (_: Exception) {
             ChatMessage.ContentItem.Message(text)
+        }
+    }
+
+    private fun parseTextForAssistant(text: String): ChatMessage.ContentItem {
+        return try {
+            val jsonElement = Json.parseToJsonElement(text)
+            
+            // Check if it's a JSON object (not a primitive or array)
+            if (jsonElement !is kotlinx.serialization.json.JsonObject) {
+                // It's a primitive or array, treat as plain text
+                println("[StreamToChatMessageMapper] ASSISTANT: JSON primitive/array detected, converting to StructuredText")
+                println("  Text preview: ${text.take(100)}${if (text.length > 100) "..." else ""}")
+                val structured = ChatMessage.StructuredText(
+                    fullText = text,
+                    ttsText = null,
+                    voiceTone = null,
+                    wasConverted = true  // Mark as automatically converted
+                )
+                return ChatMessage.ContentItem.IntermediateMessage(structured = structured)
+            }
+            
+            try {
+                // Try to parse as StructuredText (already in correct format)
+                val structured = Json.decodeFromJsonElement<ChatMessage.StructuredText>(jsonElement)
+                ChatMessage.ContentItem.IntermediateMessage(structured = structured)
+            } catch (_: SerializationException) {
+                // Not a Gromozeka format, return as generic JSON
+                println("[StreamToChatMessageMapper] ASSISTANT: Text is not Gromozeka JSON, fallback to UnknownJson")
+                println("  Text preview: ${text.take(100)}${if (text.length > 100) "..." else ""}")
+                ChatMessage.ContentItem.UnknownJson(jsonElement)
+            }
+        } catch (_: Exception) {
+            // Plain text - convert to StructuredText automatically
+            println("[StreamToChatMessageMapper] ASSISTANT: Plain text detected, converting to StructuredText")
+            println("  Text preview: ${text.take(100)}${if (text.length > 100) "..." else ""}")
+            val structured = ChatMessage.StructuredText(
+                fullText = text,
+                ttsText = null,
+                voiceTone = null,
+                wasConverted = true  // Mark as automatically converted
+            )
+            ChatMessage.ContentItem.IntermediateMessage(structured = structured)
         }
     }
 

@@ -81,10 +81,11 @@ class StreamToChatMessageMapperIntegrationTest : FunSpec({
         result shouldNotBe null
         result!!.role shouldBe ChatMessage.Role.ASSISTANT
         result.content.size shouldBe 1
-        result.content[0] should beInstanceOf<ChatMessage.ContentItem.Message>()
+        result.content[0] should beInstanceOf<ChatMessage.ContentItem.IntermediateMessage>()  // Now converts to StructuredText
 
-        val messageContent = result.content[0] as ChatMessage.ContentItem.Message
-        messageContent.text shouldBe "I'm doing well, thank you for asking!"
+        val messageContent = result.content[0] as ChatMessage.ContentItem.IntermediateMessage
+        messageContent.structured.fullText shouldBe "I'm doing well, thank you for asking!"
+        messageContent.structured.wasConverted shouldBe true
 
         val metadata = result.llmSpecificMetadata as ChatMessage.LlmSpecificMetadata.ClaudeCodeSessionFileEntry
         metadata.model shouldBe "claude-3-5-sonnet-20241022"
@@ -102,11 +103,12 @@ class StreamToChatMessageMapperIntegrationTest : FunSpec({
         result!!.role shouldBe ChatMessage.Role.ASSISTANT
         result.content.size shouldBe 2
 
-        result.content[0] should beInstanceOf<ChatMessage.ContentItem.Message>()
+        result.content[0] should beInstanceOf<ChatMessage.ContentItem.IntermediateMessage>()  // Now converts to StructuredText
         result.content[1] should beInstanceOf<ChatMessage.ContentItem.ToolCall>()
 
-        val messageContent = result.content[0] as ChatMessage.ContentItem.Message
-        messageContent.text shouldBe "I'll help you check the current directory."
+        val messageContent = result.content[0] as ChatMessage.ContentItem.IntermediateMessage
+        messageContent.structured.fullText shouldBe "I'll help you check the current directory."
+        messageContent.structured.wasConverted shouldBe true
 
         val toolCall = result.content[1] as ChatMessage.ContentItem.ToolCall
         toolCall.id shouldBe "tool_789"
@@ -124,13 +126,14 @@ class StreamToChatMessageMapperIntegrationTest : FunSpec({
         result.content.size shouldBe 2
 
         result.content[0] should beInstanceOf<ChatMessage.ContentItem.Thinking>()
-        result.content[1] should beInstanceOf<ChatMessage.ContentItem.Message>()
+        result.content[1] should beInstanceOf<ChatMessage.ContentItem.IntermediateMessage>()  // Now converts to StructuredText
 
         val thinking = result.content[0] as ChatMessage.ContentItem.Thinking
         thinking.signature shouldBe "thinking_sig_123"
 
-        val messageContent = result.content[1] as ChatMessage.ContentItem.Message
-        messageContent.text shouldBe "Let me help you with that file operation."
+        val messageContent = result.content[1] as ChatMessage.ContentItem.IntermediateMessage
+        messageContent.structured.fullText shouldBe "Let me help you with that file operation."
+        messageContent.structured.wasConverted shouldBe true
 
         val metadata = result.llmSpecificMetadata as ChatMessage.LlmSpecificMetadata.ClaudeCodeSessionFileEntry
         metadata.usage shouldNotBe null
@@ -201,19 +204,22 @@ class StreamToChatMessageMapperIntegrationTest : FunSpec({
         result.content.size shouldBe 5
 
         result.content[0] should beInstanceOf<ChatMessage.ContentItem.Thinking>()
-        result.content[1] should beInstanceOf<ChatMessage.ContentItem.Message>()
+        result.content[1] should beInstanceOf<ChatMessage.ContentItem.IntermediateMessage>()  // Now converts to StructuredText
         result.content[2] should beInstanceOf<ChatMessage.ContentItem.ToolCall>()
-        result.content[3] should beInstanceOf<ChatMessage.ContentItem.Message>()
+        result.content[3] should beInstanceOf<ChatMessage.ContentItem.IntermediateMessage>()  // Now converts to StructuredText
         result.content[4] should beInstanceOf<ChatMessage.ContentItem.ToolCall>()
 
         val thinking = result.content[0] as ChatMessage.ContentItem.Thinking
         thinking.thinking.contains("analyze this request") shouldBe true
 
-        val firstMessage = result.content[1] as ChatMessage.ContentItem.Message
-        firstMessage.text shouldBe "I'll help you with multiple operations:"
+        val firstMessage = result.content[1] as ChatMessage.ContentItem.IntermediateMessage
+        firstMessage.structured.fullText shouldBe "I'll help you with multiple operations:"
 
         val firstToolCall = result.content[2] as ChatMessage.ContentItem.ToolCall
         firstToolCall.call should beInstanceOf<com.gromozeka.shared.domain.message.ClaudeCodeToolCallData.Read>()
+
+        val secondMessage = result.content[3] as ChatMessage.ContentItem.IntermediateMessage
+        secondMessage.structured.fullText shouldBe "Let me also check the directory structure:"
 
         val secondToolCall = result.content[4] as ChatMessage.ContentItem.ToolCall
         // Note: LS tool is not in our predefined list, so it should be Generic

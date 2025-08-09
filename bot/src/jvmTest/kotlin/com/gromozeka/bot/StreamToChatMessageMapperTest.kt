@@ -155,7 +155,11 @@ class StreamToChatMessageMapperTest : FunSpec({
         result shouldNotBe null
         result!!.role shouldBe ChatMessage.Role.ASSISTANT
         result.content shouldHaveSize 1
-        result.content[0] should beInstanceOf<ChatMessage.ContentItem.Message>()
+        result.content[0] should beInstanceOf<ChatMessage.ContentItem.IntermediateMessage>()  // Now converts to StructuredText
+
+        val messageContent = result.content[0] as ChatMessage.ContentItem.IntermediateMessage
+        messageContent.structured.fullText shouldBe "I can help you with that!"
+        messageContent.structured.wasConverted shouldBe true  // Marked as auto-converted
 
         val metadata = result.llmSpecificMetadata as ChatMessage.LlmSpecificMetadata.ClaudeCodeSessionFileEntry
         metadata.model shouldBe "claude-3-5-sonnet-20241022"
@@ -192,7 +196,7 @@ class StreamToChatMessageMapperTest : FunSpec({
         result shouldNotBe null
         result!!.content shouldHaveSize 2
 
-        result.content[0] should beInstanceOf<ChatMessage.ContentItem.Message>()
+        result.content[0] should beInstanceOf<ChatMessage.ContentItem.IntermediateMessage>()  // Now converts to StructuredText
         result.content[1] should beInstanceOf<ChatMessage.ContentItem.ToolCall>()
 
         val toolCall = result.content[1] as ChatMessage.ContentItem.ToolCall
@@ -223,7 +227,7 @@ class StreamToChatMessageMapperTest : FunSpec({
         result!!.content shouldHaveSize 2
 
         result.content[0] should beInstanceOf<ChatMessage.ContentItem.Thinking>()
-        result.content[1] should beInstanceOf<ChatMessage.ContentItem.Message>()
+        result.content[1] should beInstanceOf<ChatMessage.ContentItem.IntermediateMessage>()  // Now converts to StructuredText
 
         val thinking = result.content[0] as ChatMessage.ContentItem.Thinking
         thinking.thinking shouldBe "The user wants me to analyze this code."
@@ -570,8 +574,15 @@ class StreamToChatMessageMapperTest : FunSpec({
 
         val result = StreamToChatMessageMapper.mapToChatMessage(assistantMessage)
         result shouldNotBe null
+        
+        // Check content was converted
+        result!!.content shouldHaveSize 1
+        result.content[0] should beInstanceOf<ChatMessage.ContentItem.IntermediateMessage>()
+        val messageContent = result.content[0] as ChatMessage.ContentItem.IntermediateMessage
+        messageContent.structured.fullText shouldBe "Test"
+        messageContent.structured.wasConverted shouldBe true
 
-        val metadata = result!!.llmSpecificMetadata as ChatMessage.LlmSpecificMetadata.ClaudeCodeSessionFileEntry
+        val metadata = result.llmSpecificMetadata as ChatMessage.LlmSpecificMetadata.ClaudeCodeSessionFileEntry
         metadata.sessionId shouldBe "test-session-123"
         metadata.model shouldBe "claude-3-5-sonnet-20241022"
         metadata.stopReason shouldBe "end_turn"
@@ -580,5 +591,96 @@ class StreamToChatMessageMapperTest : FunSpec({
         metadata.usage!!.outputTokens shouldBe 30
         metadata.usage!!.cacheCreationTokens shouldBe 10
         metadata.usage!!.cacheReadTokens shouldBe 20
+    }
+
+    test("mapper should auto-convert Assistant plain text to StructuredText with wasConverted flag") {
+        val assistantMessage = StreamJsonLine.Assistant(
+            message = StreamMessageContent.Assistant(
+                content = listOf(
+                    ContentBlock.TextBlock("This is plain text response from Claude")
+                )
+            ),
+            sessionId = "test-session"
+        )
+
+        val result = StreamToChatMessageMapper.mapToChatMessage(assistantMessage)
+        result shouldNotBe null
+        result.role shouldBe ChatMessage.Role.ASSISTANT
+        result.content shouldHaveSize 1
+        result.content[0] should beInstanceOf<ChatMessage.ContentItem.IntermediateMessage>()
+
+        val messageContent = result.content[0] as ChatMessage.ContentItem.IntermediateMessage
+        messageContent.structured shouldNotBe null
+        messageContent.structured.fullText shouldBe "This is plain text response from Claude"
+        messageContent.structured.ttsText shouldBe null
+        messageContent.structured.voiceTone shouldBe null
+        messageContent.structured.wasConverted shouldBe true  // Should be marked as auto-converted
+    }
+
+    test("mapper should not mark already structured Assistant text as converted") {
+        val structuredJson = """{"fullText": "Structured response", "ttsText": "Structured", "voiceTone": "calm"}"""
+        val assistantMessage = StreamJsonLine.Assistant(
+            message = StreamMessageContent.Assistant(
+                content = listOf(
+                    ContentBlock.TextBlock(structuredJson)
+                )
+            ),
+            sessionId = "test-session"
+        )
+
+        val result = StreamToChatMessageMapper.mapToChatMessage(assistantMessage)
+        result shouldNotBe null
+        result.content shouldHaveSize 1
+        result.content[0] should beInstanceOf<ChatMessage.ContentItem.IntermediateMessage>()
+
+        val messageContent = result.content[0] as ChatMessage.ContentItem.IntermediateMessage
+        messageContent.structured shouldNotBe null
+        messageContent.structured.fullText shouldBe "Structured response"
+        messageContent.structured.ttsText shouldBe "Structured"
+        messageContent.structured.voiceTone shouldBe "calm"
+        messageContent.structured.wasConverted shouldBe false  // Should NOT be marked as converted
+    }
+
+    test("mapper should handle Assistant JSON but not StructuredText as UnknownJson") {
+        val unknownJson = """{"someField": "someValue", "anotherField": 42}"""
+        val assistantMessage = StreamJsonLine.Assistant(
+            message = StreamMessageContent.Assistant(
+                content = listOf(
+                    ContentBlock.TextBlock(unknownJson)
+                )
+            ),
+            sessionId = "test-session"
+        )
+
+        val result = StreamToChatMessageMapper.mapToChatMessage(assistantMessage)
+        result shouldNotBe null
+        result.content shouldHaveSize 1
+        result.content[0] should beInstanceOf<ChatMessage.ContentItem.UnknownJson>()
+
+        val jsonContent = result.content[0] as ChatMessage.ContentItem.UnknownJson
+        jsonContent.json should beInstanceOf<JsonObject>()
+    }
+
+    test("mapper should auto-convert multiple Assistant plain text blocks") {
+        val assistantMessage = StreamJsonLine.Assistant(
+            message = StreamMessageContent.Assistant(
+                content = listOf(
+                    ContentBlock.TextBlock("First plain text"),
+                    ContentBlock.TextBlock("Second plain text")
+                )
+            ),
+            sessionId = "test-session"
+        )
+
+        val result = StreamToChatMessageMapper.mapToChatMessage(assistantMessage)
+        result shouldNotBe null
+        result.content shouldHaveSize 2
+        
+        // Both should be converted to StructuredText
+        result.content.forEach { item ->
+            item should beInstanceOf<ChatMessage.ContentItem.IntermediateMessage>()
+            val structured = (item as ChatMessage.ContentItem.IntermediateMessage).structured
+            structured.wasConverted shouldBe true
+        }
     }
 })
