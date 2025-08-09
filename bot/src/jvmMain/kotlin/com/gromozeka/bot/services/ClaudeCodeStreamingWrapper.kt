@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.*
@@ -155,8 +156,10 @@ class ClaudeCodeStreamingWrapper(
                 type = "user",
                 message = UserInputMessage.Content(
                     role = "user",
-                    content = UserInputMessage.Content.UserInput(
-                        text = message
+                    content = listOf(
+                        UserInputMessage.Content.TextBlock(
+                            text = message
+                        )
                     )
                 ),
                 session_id = sessionId,
@@ -370,12 +373,37 @@ class ClaudeCodeStreamingWrapper(
         @Serializable
         data class Content(
             val role: String,
-            val content: UserInput,
+            val content: List<ContentBlock>,
         ) {
+            // Note: We can't have explicit 'type' field due to kotlinx.serialization limitation
+            // The 'type' field is added automatically as discriminator by @SerialName
+            // See: https://github.com/Kotlin/kotlinx.serialization/issues/1664
             @Serializable
-            data class UserInput(
+            sealed class ContentBlock
+            
+            @Serializable
+            @SerialName("text")
+            data class TextBlock(
+                // val type: String = "text",  // Added automatically by @SerialName
                 val text: String
-            )
+            ) : ContentBlock()
+            
+            @Serializable
+            @SerialName("image") 
+            data class ImageBlock(
+                // val type: String = "image",  // Added automatically by @SerialName
+                val source: ImageSource
+            ) : ContentBlock() {
+                @Serializable
+                data class ImageSource(
+                    val type: String = "base64",
+                    val media_type: String,  // "image/jpeg", "image/png", "image/gif", "image/webp"
+                    val data: String  // base64 encoded image
+                )
+            }
+            
+            // Tool results are handled by Claude Code CLI internally
+            // We only send user messages with text and images
         }
     }
 
