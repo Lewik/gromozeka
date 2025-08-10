@@ -19,6 +19,9 @@ data class Settings(
     val claudeModel: String = "sonnet",
     val includeCurrentTime: Boolean = true,
     
+    // UI Settings  
+    val showSystemMessages: Boolean = true,
+    
     // Developer Settings
     val showOriginalJson: Boolean = false,
 )

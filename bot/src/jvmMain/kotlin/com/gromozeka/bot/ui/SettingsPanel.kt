@@ -163,6 +163,16 @@ fun SettingsPanel(
                         )
                     }
                     
+                    // UI Settings
+                    SettingsGroup(title = "Interface") {
+                        SwitchSettingItem(
+                            label = "Show system messages",
+                            description = "Display system notifications in chat (errors always shown)",
+                            value = settings.showSystemMessages,
+                            onValueChange = { onSettingsChange(settings.copy(showSystemMessages = it)) }
+                        )
+                    }
+                    
                     // Developer Settings
                     SettingsGroup(title = "Developer") {
                         SwitchSettingItem(

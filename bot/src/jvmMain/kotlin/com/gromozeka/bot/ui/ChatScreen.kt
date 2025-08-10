@@ -55,7 +55,6 @@ fun ChatScreen(
     val scrollState = rememberScrollState()
     var stickyToBottom by remember { mutableStateOf(true) }
     var jsonToShow by remember { mutableStateOf<String?>(null) }
-    var showSystemMessages by remember { mutableStateOf(true) }
     var showSettingsPanel by remember { mutableStateOf(false) }
 
     val isAtBottom by remember {
@@ -105,16 +104,6 @@ fun ChatScreen(
                         
                         Spacer(modifier = Modifier.width(8.dp))
                         
-                        // Toggle system messages
-                        CompactButton(
-                            onClick = { showSystemMessages = !showSystemMessages },
-                            tooltip = if (showSystemMessages) "Скрыть системные сообщения" else "Показать системные сообщения"
-                        ) {
-                            Text("⚙️")
-                        }
-                        
-                        Spacer(modifier = Modifier.width(8.dp))
-                        
                         // Settings button - only show if settings are provided
                         if (settings != null) {
                             CompactButton(
@@ -131,7 +120,17 @@ fun ChatScreen(
 
             Column(modifier = Modifier.weight(1f).verticalScroll(scrollState)) {
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    val filteredHistory = if (showSystemMessages) chatHistory else chatHistory.filter { it.role != ChatMessage.Role.SYSTEM }
+                    val filteredHistory = if (settings?.showSystemMessages == true) {
+                        chatHistory
+                    } else {
+                        chatHistory.filter { message ->
+                            message.role != ChatMessage.Role.SYSTEM || 
+                            message.content.any { content ->
+                                content is ChatMessage.ContentItem.System && 
+                                content.level == ChatMessage.ContentItem.System.SystemLevel.ERROR
+                            }
+                        }
+                    }
                     filteredHistory.forEach { message ->
                         MessageItem(
                             message = message,
