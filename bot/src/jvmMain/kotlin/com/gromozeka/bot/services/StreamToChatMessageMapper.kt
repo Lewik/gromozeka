@@ -1,6 +1,8 @@
 package com.gromozeka.bot.services
 
 import com.gromozeka.bot.model.*
+import com.gromozeka.bot.parsers.ResponseParserFactory
+import com.gromozeka.bot.settings.ResponseFormat
 import com.gromozeka.shared.domain.message.ChatMessage
 import com.gromozeka.shared.domain.message.ClaudeCodeToolCallData
 import com.gromozeka.shared.domain.message.ClaudeCodeToolResultData
@@ -16,6 +18,9 @@ import java.util.*
  * Maps StreamJsonLine to ChatMessage for UI consumption
  */
 object StreamToChatMessageMapper {
+    
+    // Current response format - should be updated when settings change
+    var currentResponseFormat: ResponseFormat = ResponseFormat.JSON
 
     fun mapToChatMessage(streamMessage: StreamJsonLine): ChatMessage {
         return when (streamMessage) {
@@ -261,33 +266,29 @@ object StreamToChatMessageMapper {
     }
 
     private fun parseTextForAssistant(text: String): ChatMessage.ContentItem {
+        // First try to parse using the configured parser
+        val parser = ResponseParserFactory.getParser(currentResponseFormat)
+        val parsed = parser.parse(text)
+        
+        if (parsed != null) {
+            println("[StreamToChatMessageMapper] ASSISTANT: Successfully parsed with ${currentResponseFormat} parser")
+            return ChatMessage.ContentItem.AssistantMessage(structured = parsed)
+        }
+        
+        // If primary parser failed, try all parsers as fallback
+        println("[StreamToChatMessageMapper] ASSISTANT: Primary parser failed, trying fallback parsers")
+        val fallbackParsed = ResponseParserFactory.tryAllParsers(text)
+        
+        if (fallbackParsed != null) {
+            println("[StreamToChatMessageMapper] ASSISTANT: Fallback parser succeeded")
+            return ChatMessage.ContentItem.AssistantMessage(structured = fallbackParsed)
+        }
+        
+        // Last resort - return as UnknownJson if it looks like JSON
         return try {
             val jsonElement = Json.parseToJsonElement(text)
-            
-            // Check if it's a JSON object (not a primitive or array)
-            if (jsonElement !is kotlinx.serialization.json.JsonObject) {
-                // It's a primitive or array, treat as plain text
-                println("[StreamToChatMessageMapper] ASSISTANT: JSON primitive/array detected, converting to StructuredText")
-                println("  Text preview: ${text.take(100)}${if (text.length > 100) "..." else ""}")
-                val structured = ChatMessage.StructuredText(
-                    fullText = text,
-                    ttsText = null,
-                    voiceTone = null,
-                    wasConverted = true  // Mark as automatically converted
-                )
-                return ChatMessage.ContentItem.AssistantMessage(structured = structured)
-            }
-            
-            try {
-                // Try to parse as StructuredText (already in correct format)
-                val structured = Json.decodeFromJsonElement<ChatMessage.StructuredText>(jsonElement)
-                ChatMessage.ContentItem.AssistantMessage(structured = structured)
-            } catch (_: SerializationException) {
-                // Not a Gromozeka format, return as generic JSON
-                println("[StreamToChatMessageMapper] ASSISTANT: Text is not Gromozeka JSON, fallback to UnknownJson")
-                println("  Text preview: ${text.take(100)}${if (text.length > 100) "..." else ""}")
-                ChatMessage.ContentItem.UnknownJson(jsonElement)
-            }
+            println("[StreamToChatMessageMapper] ASSISTANT: All parsers failed, returning as UnknownJson")
+            ChatMessage.ContentItem.UnknownJson(jsonElement)
         } catch (_: Exception) {
             // Plain text - convert to StructuredText automatically
             println("[StreamToChatMessageMapper] ASSISTANT: Plain text detected, converting to StructuredText")

@@ -3,6 +3,7 @@ package com.gromozeka.bot.services
 import com.gromozeka.bot.model.StreamJsonLine
 import com.gromozeka.bot.model.StreamJsonLinePacket
 import com.gromozeka.bot.settings.AppMode
+import com.gromozeka.bot.settings.ResponseFormat
 import jakarta.annotation.PreDestroy
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.Flow
@@ -37,11 +38,10 @@ class ClaudeCodeStreamingWrapper(
         encodeDefaults = true
     }
 
-    private fun loadDefaultSystemPrompt(): String {
-        val basePrompt = this::class.java.getResourceAsStream("/default-system-prompt.md")
-            ?.bufferedReader()
-            ?.readText()
-            ?: ""
+    private fun loadSystemPrompt(responseFormat: ResponseFormat): String {
+        // Load format-specific prompt
+        val basePrompt = SystemPromptLoader.loadPrompt(responseFormat)
+        println("[ClaudeCodeStreamingWrapper] Loaded prompt for format: $responseFormat")
 
         var prompt = if (settingsService.mode == AppMode.DEV) {
             println("[ClaudeCodeStreamingWrapper] DEV mode detected - loading additional DEV prompt")
@@ -108,12 +108,13 @@ class ClaudeCodeStreamingWrapper(
     suspend fun start(
         projectPath: String? = null,
         model: String? = null,
+        responseFormat: ResponseFormat = ResponseFormat.JSON,
     ) = withContext(Dispatchers.IO) {
         try {
             println("=== STARTING CLAUDE CODE STREAMING WRAPPER ===")
 
 
-            val defaultPrompt = loadDefaultSystemPrompt().replace("\"", "\\\"")
+            val systemPrompt = loadSystemPrompt(responseFormat).replace("\"", "\\\"")
             val command = mutableListOf(
                 "claude",
                 "--output-format",
@@ -124,7 +125,7 @@ class ClaudeCodeStreamingWrapper(
                 "--permission-mode",
                 "acceptEdits",
                 "--append-system-prompt",
-                defaultPrompt
+                systemPrompt
             )
 
             // Add model parameter if specified

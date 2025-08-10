@@ -32,6 +32,7 @@ class Session(
     private val sessionJsonlService: SessionJsonlService,
     private val soundNotificationService: SoundNotificationService,
     private val claudeModel: String? = null,
+    private val responseFormat: com.gromozeka.bot.settings.ResponseFormat = com.gromozeka.bot.settings.ResponseFormat.JSON,
 ) {
 
     // === StateFlow for external consumption ===
@@ -96,10 +97,17 @@ class Session(
                 loadHistoricalMessages(resumeSessionId)
                 historicalMessagesLoaded = true
             }
+            // Update StreamToChatMessageMapper with current response format
+            StreamToChatMessageMapper.currentResponseFormat = responseFormat
+            
             scope.launchOutputStreamCollection()
             scope.launchSoundNotificationCollection()
 
-            claudeWrapper.start(projectPath = projectPath, model = claudeModel)
+            claudeWrapper.start(
+                projectPath = projectPath, 
+                model = claudeModel,
+                responseFormat = responseFormat
+            )
 
 //            // === Phase 3: Start message buffer processing ===
 //            messageInputBufferJob = scope.launch {

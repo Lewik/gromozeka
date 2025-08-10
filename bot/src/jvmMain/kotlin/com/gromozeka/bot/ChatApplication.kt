@@ -118,6 +118,11 @@ fun ApplicationScope.ChatWindow(
     LaunchedEffect(Unit) {
         initialized = true
         scrollState.animateScrollTo(scrollState.maxValue)
+        
+        // Initialize StreamToChatMessageMapper with current response format
+        currentSettings?.let { settings ->
+            StreamToChatMessageMapper.currentResponseFormat = settings.responseFormat
+        }
     }
 
     // Subscribe to current session's message stream (true streaming)
@@ -285,6 +290,9 @@ fun ApplicationScope.ChatWindow(
         // Save to service (this will update the reactive state flow)
         // All dependent services will react automatically via their subscriptions
         settingsService.saveSettings(newSettings)
+        
+        // Update the response format in StreamToChatMessageMapper immediately
+        com.gromozeka.bot.services.StreamToChatMessageMapper.currentResponseFormat = newSettings.responseFormat
     }
 
     // Create modifier with PTT gestures for UI button

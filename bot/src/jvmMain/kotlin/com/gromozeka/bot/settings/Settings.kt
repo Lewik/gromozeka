@@ -18,6 +18,7 @@ data class Settings(
     // AI Settings
     val claudeModel: String = "sonnet",
     val includeCurrentTime: Boolean = true,
+    val responseFormat: ResponseFormat = ResponseFormat.JSON,
     
     // UI Settings  
     val showSystemMessages: Boolean = true,
@@ -30,4 +31,12 @@ data class Settings(
 enum class AppMode {
     DEV,
     PROD
+}
+
+@Serializable
+enum class ResponseFormat {
+    JSON,              // Current JSON format {"fullText": "...", "ttsText": "...", "voiceTone": "..."}
+    XML_STRUCTURED,    // <response><visual>...</visual><voice tone="...">...</voice></response>
+    XML_INLINE,        // Text with inline <tts tone="...">...</tts> tags
+    PLAIN_TEXT         // No structure, for debugging
 }

@@ -17,6 +17,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.gromozeka.bot.settings.Settings
+import com.gromozeka.bot.settings.ResponseFormat
 
 @Composable
 fun SettingsPanel(
@@ -153,6 +154,17 @@ fun SettingsPanel(
                             value = settings.claudeModel,
                             options = listOf("sonnet", "haiku", "opus"),
                             onValueChange = { onSettingsChange(settings.copy(claudeModel = it)) }
+                        )
+                        
+                        DropdownSettingItem(
+                            label = "Response Format",
+                            description = "Format for AI responses (JSON, XML, or Plain)",
+                            value = settings.responseFormat.name,
+                            options = ResponseFormat.values().map { it.name },
+                            onValueChange = { 
+                                val format = ResponseFormat.valueOf(it)
+                                onSettingsChange(settings.copy(responseFormat = format))
+                            }
                         )
                         
                         SwitchSettingItem(

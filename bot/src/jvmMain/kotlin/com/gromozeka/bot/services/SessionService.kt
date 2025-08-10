@@ -21,6 +21,7 @@ class SessionService(
             sessionJsonlService = sessionJsonlService,
             soundNotificationService = soundNotificationService,
             claudeModel = claudeModel,
+            responseFormat = settingsService.settings.responseFormat,
         )
     }
 }
