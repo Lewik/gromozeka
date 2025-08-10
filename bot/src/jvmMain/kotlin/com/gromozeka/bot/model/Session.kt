@@ -106,7 +106,8 @@ class Session(
             claudeWrapper.start(
                 projectPath = projectPath, 
                 model = claudeModel,
-                responseFormat = responseFormat
+                responseFormat = responseFormat,
+                resumeSessionId = resumeSessionId
             )
 
 //            // === Phase 3: Start message buffer processing ===

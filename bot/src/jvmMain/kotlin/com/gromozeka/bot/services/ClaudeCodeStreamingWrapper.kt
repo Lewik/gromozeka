@@ -109,6 +109,7 @@ class ClaudeCodeStreamingWrapper(
         projectPath: String? = null,
         model: String? = null,
         responseFormat: ResponseFormat = ResponseFormat.JSON,
+        resumeSessionId: String? = null,
     ) = withContext(Dispatchers.IO) {
         try {
             println("=== STARTING CLAUDE CODE STREAMING WRAPPER ===")
@@ -133,6 +134,13 @@ class ClaudeCodeStreamingWrapper(
                 command.add("--model")
                 command.add(model)
                 println("[ClaudeCodeStreamingWrapper] Using model: $model")
+            }
+
+            // Add resume parameter if specified
+            if (!resumeSessionId.isNullOrBlank()) {
+                command.add("--resume")
+                command.add(resumeSessionId)
+                println("[ClaudeCodeStreamingWrapper] Resuming session: $resumeSessionId")
             }
 
             // Truncate system prompt for cleaner logs
