@@ -30,16 +30,19 @@ class GlobalHotkeyService(
     private val gestureDetector = UnifiedGestureDetector(pttEventRouter, serviceScope)
     
     private var isRegistered = false
+    private var isPTTActive = false
     
     fun initializeService() {
         startListeningToSettings()
     }
     
     private suspend fun onHotkeyDown() {
+        isPTTActive = true
         gestureDetector.onGestureDown()
     }
     
     private suspend fun onHotkeyUp() {
+        isPTTActive = false
         gestureDetector.onGestureUp()
     }
     
@@ -77,6 +80,13 @@ class GlobalHotkeyService(
                 println("[HOTKEY] Fn+Control hotkey pressed")
                 serviceScope.launch {
                     onHotkeyDown()
+                }
+            } else if (isPTTActive && !isPartOfHotkey(e)) {
+                // PTT is active and user pressed a non-hotkey key -> conflict
+                println("[HOTKEY] Modifier conflict detected during PTT (keyCode=${e.keyCode})")
+                gestureDetector.setDisabledDueToConflict()
+                serviceScope.launch {
+                    pttEventRouter.handlePTTEvent(PTTEvent.MODIFIER_CONFLICT)
                 }
             }
         }

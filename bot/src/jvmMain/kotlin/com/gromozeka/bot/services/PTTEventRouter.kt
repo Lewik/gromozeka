@@ -6,10 +6,12 @@ import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
 enum class PTTEvent {
-    SINGLE_CLICK,    // Just stop TTS
-    DOUBLE_CLICK,    // Stop TTS + send interrupt
-    SINGLE_PUSH,     // Stop TTS + start PTT recording
-    DOUBLE_PUSH      // Stop TTS + send interrupt + start PTT recording
+    BUTTON_DOWN,     // Stop TTS + start PTT recording (immediate)
+    MODIFIER_CONFLICT, // Cancel PTT recording due to hotkey conflict
+    SINGLE_CLICK,    // Cancel PTT recording
+    DOUBLE_CLICK,    // Cancel PTT recording + send interrupt
+    SINGLE_PUSH,     // Transcribe PTT recording
+    DOUBLE_PUSH      // Transcribe PTT recording + send interrupt
 }
 
 class PTTEventRouter(
@@ -57,30 +59,38 @@ class PTTEventRouter(
         _events.emit(event)
 
         when (event) {
-            PTTEvent.SINGLE_CLICK -> {
-                // Stop TTS + cancel recording without sending
+            PTTEvent.BUTTON_DOWN -> {
+                // Stop TTS + start PTT recording immediately
                 ttsQueueService.stopAndClear()
+                startPTTRecording()
+            }
+
+            PTTEvent.MODIFIER_CONFLICT -> {
+                // Cancel recording due to hotkey conflict (e.g. Ctrl+Tab)
+                println("[PTT] Modifier conflict detected, canceling PTT")
+                cancelCurrentPTT()
+            }
+
+            PTTEvent.SINGLE_CLICK -> {
+                // Cancel recording without sending (TTS already stopped)
                 cancelCurrentPTT()
             }
 
             PTTEvent.DOUBLE_CLICK -> {
-                // Stop TTS + send interrupt + cancel recording
-                ttsQueueService.stopAndClear()
+                // Cancel recording + send interrupt (TTS already stopped)
                 _interruptCommand.emit(Unit)
                 cancelCurrentPTT()
             }
 
             PTTEvent.SINGLE_PUSH -> {
-                // Stop TTS + start PTT recording
-                ttsQueueService.stopAndClear()
-                startPTTRecording()
+                // PTT already recording, just continue until release
+                // No action needed - handlePTTRelease() will transcribe
             }
 
             PTTEvent.DOUBLE_PUSH -> {
-                // Stop TTS + send interrupt + start PTT recording
-                ttsQueueService.stopAndClear()
+                // PTT already recording + send interrupt
                 _interruptCommand.emit(Unit)
-                startPTTRecording()
+                // Continue recording until release
             }
         }
     }
