@@ -4,19 +4,19 @@ import androidx.compose.foundation.ContextMenuArea
 import androidx.compose.foundation.ContextMenuItem
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.text.selection.DisableSelection
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.*
-import androidx.compose.ui.input.pointer.PointerIcon
-import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.key.*
+import androidx.compose.ui.input.pointer.PointerIcon
+import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
@@ -92,9 +92,9 @@ fun ChatScreen(
                         CompactButton(onClick = onNewSession) {
                             Text("Новая")
                         }
-                        
+
                         Spacer(modifier = Modifier.weight(1f))
-                        
+
                         // Message count
                         CompactButton(
                             onClick = { },
@@ -102,9 +102,9 @@ fun ChatScreen(
                         ) {
                             Text("💬 ${chatHistory.size}")
                         }
-                        
+
                         Spacer(modifier = Modifier.width(8.dp))
-                        
+
                         // Settings button
                         CompactButton(
                             onClick = { onShowSettingsPanelChange(!showSettingsPanel) },
@@ -115,68 +115,68 @@ fun ChatScreen(
                     }
                 }
 
-            Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
-            Column(modifier = Modifier.weight(1f).verticalScroll(scrollState)) {
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    val filteredHistory = if (settings?.showSystemMessages == true) {
-                        chatHistory
-                    } else {
-                        chatHistory.filter { message ->
-                            message.role != ChatMessage.Role.SYSTEM || 
-                            message.content.any { content ->
-                                content is ChatMessage.ContentItem.System && 
-                                content.level == ChatMessage.ContentItem.System.SystemLevel.ERROR
+                Column(modifier = Modifier.weight(1f).verticalScroll(scrollState)) {
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        val filteredHistory = if (settings?.showSystemMessages == true) {
+                            chatHistory
+                        } else {
+                            chatHistory.filter { message ->
+                                message.role != ChatMessage.Role.SYSTEM ||
+                                        message.content.any { content ->
+                                            content is ChatMessage.ContentItem.System &&
+                                                    content.level == ChatMessage.ContentItem.System.SystemLevel.ERROR
+                                        }
                             }
                         }
-                    }
-                    filteredHistory.forEach { message ->
-                        MessageItem(
-                            message = message,
-                            settings = settings,
-                            onShowJson = { json -> jsonToShow = json },
-                            onSpeakRequest = { text, tone ->
-                                coroutineScope.launch {
-                                    ttsQueueService.enqueue(TTSQueueService.Task(text, tone))
+                        filteredHistory.forEach { message ->
+                            MessageItem(
+                                message = message,
+                                settings = settings,
+                                onShowJson = { json -> jsonToShow = json },
+                                onSpeakRequest = { text, tone ->
+                                    coroutineScope.launch {
+                                        ttsQueueService.enqueue(TTSQueueService.Task(text, tone))
+                                    }
                                 }
-                            }
-                        )
+                            )
+                        }
                     }
                 }
-            }
 
 
-            // Waiting for response indicator
-            if (isWaitingForResponse) {
-                Row {
-                    CircularProgressIndicator()
-                    Text("Ожидание ответа от Claude...")
+                // Waiting for response indicator
+                if (isWaitingForResponse) {
+                    Row {
+                        CircularProgressIndicator()
+                        Text("Ожидание ответа от Claude...")
+                    }
+                }
+
+                DisableSelection {
+                    MessageInput(
+                        userInput = userInput,
+                        onUserInputChange = onUserInputChange,
+                        assistantIsThinking = assistantIsThinking,
+                        onSendMessage = onSendMessage,
+                        coroutineScope = coroutineScope
+                    )
+
+                    VoiceControls(
+                        autoSend = autoSend,
+                        onSendMessage = onSendMessage,
+                        onUserInputChange = onUserInputChange,
+                        coroutineScope = coroutineScope,
+                        modifierWithPushToTalk = modifierWithPushToTalk,
+                        isDev = isDev,
+                        ttsSpeed = ttsSpeed,
+                        onTtsSpeedChange = onTtsSpeedChange
+                    )
                 }
             }
-
-            DisableSelection {
-                MessageInput(
-                    userInput = userInput,
-                    onUserInputChange = onUserInputChange,
-                    assistantIsThinking = assistantIsThinking,
-                    onSendMessage = onSendMessage,
-                    coroutineScope = coroutineScope
-                )
-
-                VoiceControls(
-                    autoSend = autoSend,
-                    onSendMessage = onSendMessage,
-                    onUserInputChange = onUserInputChange,
-                    coroutineScope = coroutineScope,
-                    modifierWithPushToTalk = modifierWithPushToTalk,
-                    isDev = isDev,
-                    ttsSpeed = ttsSpeed,
-                    onTtsSpeedChange = onTtsSpeedChange
-                )
-            }
         }
-        }
-        
+
         // Settings panel
         SettingsPanel(
             isVisible = showSettingsPanel,
@@ -209,7 +209,7 @@ private fun MessageItem(
         ChatMessage.Role.ASSISTANT -> "🤖"
         ChatMessage.Role.SYSTEM -> "⚙️"
     }
-    
+
     val contentIcons = message.content.mapNotNull { content ->
         when (content) {
             is ChatMessage.ContentItem.UserMessage -> null
@@ -221,7 +221,7 @@ private fun MessageItem(
             is ChatMessage.ContentItem.UnknownJson -> "⚠️"
         }
     }.distinct()
-    
+
     val buttonLabel = buildString {
         append(roleIcon)
         if (contentIcons.isNotEmpty()) {
@@ -230,7 +230,7 @@ private fun MessageItem(
             append(" 💬") // Default chat bubble if no content icons
         }
     }
-    
+
     val tooltipText = buildString {
         // Role / Type format
         append(message.role.name)
@@ -249,9 +249,10 @@ private fun MessageItem(
             }.distinct()
             append(contentTypes.joinToString(", "))
         }
-        
+
         // Add TTS info if available
-        val assistantContent = message.content.filterIsInstance<ChatMessage.ContentItem.AssistantMessage>().firstOrNull()
+        val assistantContent =
+            message.content.filterIsInstance<ChatMessage.ContentItem.AssistantMessage>().firstOrNull()
         assistantContent?.structured?.let { structured ->
             if (structured.ttsText != null || structured.voiceTone != null) {
                 append("\n\n")
@@ -260,7 +261,7 @@ private fun MessageItem(
                 structured.voiceTone?.let { append("🎭 Tone: $it") }
             }
         }
-        
+
         append("\nПКМ - контекстное меню")
     }
 
@@ -273,21 +274,21 @@ private fun MessageItem(
         // Metadata button (left, fixed width) with context menu
         DisableSelection {
             val clipboardManager = LocalClipboardManager.current
-            
+
             ContextMenuArea(
                 items = {
                     val assistantContent = message.content
                         .filterIsInstance<ChatMessage.ContentItem.AssistantMessage>()
                         .firstOrNull()
                     val hasTtsText = !assistantContent?.structured?.ttsText.isNullOrBlank()
-                    
+
                     buildList {
                         if (settings.showOriginalJson) {
                             add(ContextMenuItem("Показать JSON") {
                                 onShowJson(message.originalJson ?: "No JSON available")
                             })
                         }
-                        
+
                         add(ContextMenuItem("Копировать в Markdown") {
                             val markdownContent = message.content
                                 .filterIsInstance<ChatMessage.ContentItem.AssistantMessage>()
@@ -298,7 +299,7 @@ private fun MessageItem(
                                 ?: "Содержимое недоступно"
                             clipboardManager.setText(AnnotatedString(markdownContent))
                         })
-                        
+
                         if (hasTtsText) {
                             add(ContextMenuItem("Произнести") {
                                 val ttsText = assistantContent!!.structured.ttsText!!
@@ -320,40 +321,32 @@ private fun MessageItem(
         }
 
         // Message content (right, expandable)
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .defaultMinSize(minHeight = CompactButtonDefaults.ButtonHeight),
-            verticalArrangement = Arrangement.Center
+        Card(
+            modifier = Modifier.weight(1f),
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(0.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.primary.copy(
+                    alpha = if (message.role == ChatMessage.Role.USER &&
+                        message.content.any { it is ChatMessage.ContentItem.UserMessage }
+                    ) 0.1f else 0f
+                )
+            )
         ) {
-            message.content.forEach { content ->
-                when (content) {
-                    is ChatMessage.ContentItem.UserMessage -> {
-                        Markdown(content = content.text)
-                    }
-
-                    is ChatMessage.ContentItem.ToolCall -> {
-                        Text(text = "🔧 Tool: ${content.call::class.simpleName}")
-                    }
-
-                    is ChatMessage.ContentItem.ToolResult -> {
-                        Text(text = "📊 Tool Result")
-                    }
-
-                    is ChatMessage.ContentItem.Thinking -> {
-                        Text(text = "🤔 ${content.thinking}")
-                    }
-
-                    is ChatMessage.ContentItem.System -> {
-                        Text(text = "⚙️ ${content.content}")
-                    }
-
-                    is ChatMessage.ContentItem.AssistantMessage -> {
-                        StructuredMessageTemplate(content, isIntermediate = true)
-                    }
-
-                    is ChatMessage.ContentItem.UnknownJson -> {
-                        Column {
+            Column(
+                modifier = Modifier
+                    .defaultMinSize(minHeight = CompactButtonDefaults.ButtonHeight)
+                    .padding(start = 4.dp),
+                verticalArrangement = Arrangement.Center
+            ) {
+                message.content.forEach { content ->
+                    when (content) {
+                        is ChatMessage.ContentItem.UserMessage -> Markdown(content = content.text)
+                        is ChatMessage.ContentItem.ToolCall -> Text(text = "Tool: ${content.call::class.simpleName}")
+                        is ChatMessage.ContentItem.ToolResult -> Text(text = "Tool Result")
+                        is ChatMessage.ContentItem.Thinking -> Text(text = content.thinking)
+                        is ChatMessage.ContentItem.System -> Text(text = content.content)
+                        is ChatMessage.ContentItem.AssistantMessage -> Markdown(content = content.structured.fullText)
+                        is ChatMessage.ContentItem.UnknownJson -> Column {
                             Text(text = jsonPrettyPrint(content.json))
                             Text(text = "⚠️ Не удалось распарсить структуру")
                         }
@@ -363,25 +356,6 @@ private fun MessageItem(
         }
     }
 }
-
-@Composable
-private fun StructuredMessageTemplate(
-    data: ChatMessage.ContentItem,
-    isIntermediate: Boolean,
-) {
-    // Extract structured data from different message types
-    val (text, structured) = when (data) {
-        is ChatMessage.ContentItem.AssistantMessage -> data.structured.fullText to data.structured
-        else -> return // Shouldn't happen, but safe fallback
-    }
-
-    Card {
-        Column {
-            Markdown(content = text)
-        }
-    }
-}
-
 
 private val prettyJson = kotlinx.serialization.json.Json {
     prettyPrint = true
@@ -457,48 +431,48 @@ private fun VoiceControls(
 ) {
     // Voice controls row
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-            // Development mode buttons - first in row
-            if (isDev) {
-                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    CompactButton(onClick = {
-                        coroutineScope.launch {
-                            onSendMessage("Расскажи скороговорку")
-                        }
-                    }) {
-                        Text("🗣 Скороговорка")
+        // Development mode buttons - first in row
+        if (isDev) {
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                CompactButton(onClick = {
+                    coroutineScope.launch {
+                        onSendMessage("Расскажи скороговорку")
                     }
-                    
-                    CompactButton(onClick = {
-                        coroutineScope.launch {
-                            onSendMessage("Создай таблицу с примерами разных типов данных в программировании")
-                        }
-                    }) {
-                        Text("📊 Таблица")
+                }) {
+                    Text("🗣 Скороговорка")
+                }
+
+                CompactButton(onClick = {
+                    coroutineScope.launch {
+                        onSendMessage("Создай таблицу с примерами разных типов данных в программировании")
                     }
-                    
-                    CompactButton(onClick = {
-                        coroutineScope.launch {
-                            onSendMessage("Загугли последние новости про Google")
-                        }
-                    }) {
-                        Text("🔍 Загугли про гугл")
+                }) {
+                    Text("📊 Таблица")
+                }
+
+                CompactButton(onClick = {
+                    coroutineScope.launch {
+                        onSendMessage("Загугли последние новости про Google")
                     }
-                    
-                    CompactButton(onClick = {
-                        coroutineScope.launch {
-                            onSendMessage("Выполни ls")
-                        }
-                    }) {
-                        Text("📁 выполни ls")
+                }) {
+                    Text("🔍 Загугли про гугл")
+                }
+
+                CompactButton(onClick = {
+                    coroutineScope.launch {
+                        onSendMessage("Выполни ls")
                     }
+                }) {
+                    Text("📁 выполни ls")
                 }
             }
+        }
 
-            Spacer(modifier = Modifier.weight(1f))
+        Spacer(modifier = Modifier.weight(1f))
 
-            CompactButton(onClick = {}, modifier = modifierWithPushToTalk) {
-                Text("🎤 PTT")
-            }
+        CompactButton(onClick = {}, modifier = modifierWithPushToTalk) {
+            Text("🎤 PTT")
+        }
     }
 }
 
