@@ -92,8 +92,24 @@ fun SettingsPanel(
                             onValueChange = { onSettingsChange(settings.copy(enableStt = it)) }
                         )
                         
-                        // Only show TTS speed if TTS is enabled
+                        // Only show TTS settings if TTS is enabled
                         if (settings.enableTts) {
+                            DropdownSettingItem(
+                                label = "TTS Model",
+                                description = "Text-to-speech model",
+                                value = settings.ttsModel,
+                                options = listOf("gpt-4o-mini-tts", "tts-1", "tts-1-hd"),
+                                onValueChange = { onSettingsChange(settings.copy(ttsModel = it)) }
+                            )
+                            
+                            DropdownSettingItem(
+                                label = "TTS Voice",
+                                description = "Voice for speech synthesis",
+                                value = settings.ttsVoice,
+                                options = listOf("alloy", "echo", "fable", "onyx", "nova", "shimmer"),
+                                onValueChange = { onSettingsChange(settings.copy(ttsVoice = it)) }
+                            )
+                            
                             SliderSettingItem(
                                 label = "TTS Speed",
                                 description = "Speech rate: 0.25x (slowest) to 4.0x (fastest)",
@@ -172,6 +188,18 @@ fun SettingsPanel(
                             description = "Add timestamp to prompts for time-aware responses",
                             value = settings.includeCurrentTime,
                             onValueChange = { onSettingsChange(settings.copy(includeCurrentTime = it)) }
+                        )
+                    }
+                    
+                    // API Keys
+                    SettingsGroup(title = "API Keys") {
+                        PasswordSettingItem(
+                            label = "OpenAI API Key",
+                            description = "Required for TTS and STT services",
+                            value = settings.openAiApiKey ?: "",
+                            onValueChange = { 
+                                onSettingsChange(settings.copy(openAiApiKey = it.ifBlank { null }))
+                            }
                         )
                     }
                     
@@ -365,5 +393,37 @@ private fun DropdownSettingItem(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun PasswordSettingItem(
+    label: String,
+    description: String,
+    value: String,
+    onValueChange: (String) -> Unit
+) {
+    Column {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium
+        )
+        
+        if (description.isNotEmpty()) {
+            Text(
+                text = description,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+            )
+        }
+        
+        OutlinedTextField(
+            value = value,
+            onValueChange = onValueChange,
+            modifier = Modifier.fillMaxWidth(),
+            visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
+            singleLine = true
+        )
     }
 }

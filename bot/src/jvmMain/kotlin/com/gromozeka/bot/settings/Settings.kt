@@ -8,7 +8,10 @@ data class Settings(
     val enableTts: Boolean = true,
     val enableStt: Boolean = true,
     val ttsSpeed: Float = 1.0f,
+    val ttsModel: String = "gpt-4o-mini-tts", // tts-1, tts-1-hd, gpt-4o-mini-tts
+    val ttsVoice: String = "alloy", // alloy, echo, fable, onyx, nova, shimmer
     val sttMainLanguage: String = "en",
+    val sttModel: String = "whisper-1", // Currently only whisper-1 is supported
     
     // Input Settings
     val autoSend: Boolean = true,
@@ -19,6 +22,9 @@ data class Settings(
     val claudeModel: String = "sonnet",
     val includeCurrentTime: Boolean = true,
     val responseFormat: ResponseFormat = ResponseFormat.JSON,
+    
+    // API Keys
+    val openAiApiKey: String? = null,
     
     // UI Settings  
     val showSystemMessages: Boolean = true,

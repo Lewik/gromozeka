@@ -15,7 +15,7 @@ import javax.sound.sampled.*
 
 @Service
 class SttService(
-    private val openAiAudioTranscriptionModel: OpenAiAudioTranscriptionModel,
+    private val openAiAudioTranscriptionModel: OpenAiAudioTranscriptionModel?,
     private val settingsService: SettingsService,
     private val audioMuteManager: AudioMuteManager,
 ) {
@@ -51,17 +51,20 @@ class SttService(
         }
 
         val text = try {
-            val transcriptionOptions = OpenAiAudioTranscriptionOptions.builder()
-                .responseFormat(TranscriptResponseFormat.TEXT)
-                .temperature(0f)
-                .language(settingsService.settings.sttMainLanguage)
-                .build()
+            if (openAiAudioTranscriptionModel == null) {
+                println("[STT] OpenAI API key not configured, transcription disabled")
+                ""
+            } else {
+                val transcriptionOptions = OpenAiAudioTranscriptionOptions.builder()
+                    .responseFormat(TranscriptResponseFormat.TEXT)
+                    .temperature(0f)
+                    .language(settingsService.settings.sttMainLanguage)
+                    .build()
 
-
-            val transcriptionRequest =
-                AudioTranscriptionPrompt(FileSystemResource(this@SttService.outputFile), transcriptionOptions)
-            openAiAudioTranscriptionModel.call(transcriptionRequest).result.output
-
+                val transcriptionRequest =
+                    AudioTranscriptionPrompt(FileSystemResource(this@SttService.outputFile), transcriptionOptions)
+                openAiAudioTranscriptionModel.call(transcriptionRequest).result.output
+            }
         } catch (e: Exception) {
             println(e.toString())
             ""

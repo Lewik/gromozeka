@@ -11,7 +11,7 @@ import org.springframework.ai.openai.audio.speech.SpeechPrompt
 import java.io.File
 
 class TtsService(
-    private val openAiAudioSpeechModel: OpenAiAudioSpeechModel,
+    private val openAiAudioSpeechModel: OpenAiAudioSpeechModel?,
     private val settingsService: SettingsService
 ) {
 
@@ -20,7 +20,7 @@ class TtsService(
         voiceTone: String = "neutral colleague",
     ): File? = withContext(Dispatchers.IO) {
         try {
-            if (text.isBlank()) return@withContext null
+            if (text.isBlank() || openAiAudioSpeechModel == null) return@withContext null
 
             val outputFile = File.createTempFile("tts_output", ".mp3")
 
@@ -28,9 +28,10 @@ class TtsService(
                 SpeechPrompt(
                     voiceTone, OpenAiAudioSpeechOptions.builder()
                         .input(text)
-                        .model("gpt-4o-mini-tts")
-//                        .model(OpenAiAudioApi.TtsModel.TTS_1.value)
-                        .voice(OpenAiAudioApi.SpeechRequest.Voice.ALLOY)
+                        .model(settingsService.settings.ttsModel)
+                        .voice(OpenAiAudioApi.SpeechRequest.Voice.valueOf(
+                            settingsService.settings.ttsVoice.uppercase()
+                        ))
                         .responseFormat(OpenAiAudioApi.SpeechRequest.AudioResponseFormat.MP3)
                         .speed(settingsService.settings.ttsSpeed)
                         .build()
