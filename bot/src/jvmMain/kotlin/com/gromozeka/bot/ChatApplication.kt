@@ -104,6 +104,7 @@ fun ApplicationScope.ChatWindow(
 
     var userInput by remember { mutableStateOf("") }
     val chatHistory = remember { mutableStateListOf<ChatMessage>() }
+    val toolResultsMap = remember { mutableStateMapOf<String, ChatMessage.ContentItem.ToolResult>() }
 
     val assistantIsThinking = false // Temporarily deactivated
 
@@ -139,6 +140,13 @@ fun ApplicationScope.ChatWindow(
                 println("[ChatApp] Received streaming message: ${newMessage.role}")
                 println("[ChatApp] Message content: ${newMessage.content.size} items, first: ${newMessage.content.firstOrNull()?.javaClass?.simpleName}")
                 chatHistory.add(newMessage)  // Incremental updates
+                
+                // Update toolResultsMap with any ToolResult items from this message
+                newMessage.content.filterIsInstance<ChatMessage.ContentItem.ToolResult>().forEach { toolResult ->
+                    toolResultsMap[toolResult.toolUseId] = toolResult
+                    println("[ChatApp] Updated toolResultsMap with result for tool: ${toolResult.toolUseId}")
+                }
+                
                 println("[ChatApp] ChatHistory now has ${chatHistory.size} messages, last is ${chatHistory.lastOrNull()?.role}")
 
                 // TTS for ASSISTANT messages (only new ones, not historical)
@@ -167,9 +175,10 @@ fun ApplicationScope.ChatWindow(
         }
     }
 
-    // Clear history when switching sessions
+    // Clear history and toolResultsMap when switching sessions
     LaunchedEffect(currentSession) {
         chatHistory.clear()
+        toolResultsMap.clear()
     }
 
     // Subscribe to current session's sessionId changes
@@ -240,6 +249,7 @@ fun ApplicationScope.ChatWindow(
                     preview = "New Session"
                 )
                 chatHistory.clear()
+                toolResultsMap.clear()
                 showSessionList = false
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -332,7 +342,16 @@ fun ApplicationScope.ChatWindow(
                             selectedSession = session
                             currentSession = sessionObj
                             chatHistory.clear()
+                            toolResultsMap.clear()
                             chatHistory.addAll(messages)
+                            
+                            // Fill toolResultsMap with historical tool results
+                            messages.flatMap { message -> 
+                                message.content.filterIsInstance<ChatMessage.ContentItem.ToolResult>() 
+                            }.forEach { toolResult ->
+                                toolResultsMap[toolResult.toolUseId] = toolResult
+                            }
+                            
                             showSessionList = false
 
                             // Start the session with resume capability
@@ -361,6 +380,7 @@ fun ApplicationScope.ChatWindow(
                 } else {
                     ChatScreen(
                         chatHistory = chatHistory,
+                        toolResultsMap = toolResultsMap,
                         userInput = userInput,
                         onUserInputChange = { userInput = it },
                         assistantIsThinking = assistantIsThinking,

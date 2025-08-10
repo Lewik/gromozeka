@@ -83,6 +83,7 @@ fun CompactButton(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     tooltip: String? = null,
+    contentPadding: PaddingValues = CompactButtonDefaults.ContentPadding,
     content: @Composable RowScope.() -> Unit,
 ) {
     OptionalTooltip(tooltip) {
@@ -90,7 +91,7 @@ fun CompactButton(
             onClick = onClick,
             modifier = modifier.height(CompactButtonDefaults.ButtonHeight),
             enabled = enabled,
-            contentPadding = CompactButtonDefaults.ContentPadding,
+            contentPadding = contentPadding,
             shape = RoundedCornerShape(CompactButtonDefaults.CornerRadius),
             content = {
                 Row(
