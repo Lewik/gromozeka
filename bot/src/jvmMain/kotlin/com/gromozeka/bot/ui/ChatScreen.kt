@@ -1,5 +1,7 @@
 package com.gromozeka.bot.ui
 
+import androidx.compose.foundation.ContextMenuArea
+import androidx.compose.foundation.ContextMenuItem
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.selection.SelectionContainer
@@ -16,6 +18,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.key.*
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -49,6 +53,7 @@ fun ChatScreen(
     val scrollState = rememberScrollState()
     var stickyToBottom by remember { mutableStateOf(true) }
     var jsonToShow by remember { mutableStateOf<String?>(null) }
+    var showSystemMessages by remember { mutableStateOf(true) }
 
     val isAtBottom by remember {
         derivedStateOf {
@@ -75,18 +80,42 @@ fun ChatScreen(
         Column(modifier = Modifier.fillMaxSize()) {
             DisableSelection {
                 Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = onBackToSessionList) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Назад")
+                    CompactButton(onClick = onBackToSessionList) {
+                        Text("← Назад")
                     }
-                    IconButton(onClick = onNewSession) {
-                        Icon(Icons.Filled.Add, contentDescription = "Новая беседа")
+                    Spacer(modifier = Modifier.width(8.dp))
+                    CompactButton(onClick = onNewSession) {
+                        Text("Новая")
+                    }
+                    
+                    Spacer(modifier = Modifier.weight(1f))
+                    
+                    // Message count
+                    CompactButton(
+                        onClick = { },
+                        tooltip = "Всего сообщений: ${chatHistory.size}\n(включая системные)"
+                    ) {
+                        Text("💬 ${chatHistory.size}")
+                    }
+                    
+                    Spacer(modifier = Modifier.width(8.dp))
+                    
+                    // Toggle system messages
+                    CompactButton(
+                        onClick = { showSystemMessages = !showSystemMessages },
+                        tooltip = if (showSystemMessages) "Скрыть системные сообщения" else "Показать системные сообщения"
+                    ) {
+                        Text("⚙️")
                     }
                 }
             }
 
+            Spacer(modifier = Modifier.height(8.dp))
+
             Column(modifier = Modifier.weight(1f).verticalScroll(scrollState)) {
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    chatHistory.forEach { message ->
+                    val filteredHistory = if (showSystemMessages) chatHistory else chatHistory.filter { it.role != ChatMessage.Role.SYSTEM }
+                    filteredHistory.forEach { message ->
                         MessageItem(
                             message = message,
                             onShowJson = { json -> jsonToShow = json }
@@ -186,7 +215,19 @@ private fun MessageItem(
             }.distinct()
             append(contentTypes.joinToString(", "))
         }
-        append("\nClick to view JSON")
+        
+        // Add TTS info if available
+        val assistantContent = message.content.filterIsInstance<ChatMessage.ContentItem.AssistantMessage>().firstOrNull()
+        assistantContent?.structured?.let { structured ->
+            if (structured.ttsText != null || structured.voiceTone != null) {
+                append("\n\n")
+                structured.ttsText?.let { append("🗣️ TTS: $it") }
+                if (structured.ttsText != null && structured.voiceTone != null) append("\n")
+                structured.voiceTone?.let { append("🎭 Tone: $it") }
+            }
+        }
+        
+        append("\nПКМ - контекстное меню")
     }
 
     // Compact horizontal layout
@@ -195,14 +236,36 @@ private fun MessageItem(
         verticalAlignment = Alignment.Top,
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        // Metadata button (left, fixed width)
+        // Metadata button (left, fixed width) with context menu
         DisableSelection {
-            CompactButton(
-                onClick = { onShowJson(message.originalJson ?: "No JSON available") },
-                tooltip = tooltipText,
-                modifier = Modifier.pointerHoverIcon(PointerIcon.Hand)
+            val clipboardManager = LocalClipboardManager.current
+            
+            ContextMenuArea(
+                items = {
+                    listOf(
+                        ContextMenuItem("Показать JSON") {
+                            onShowJson(message.originalJson ?: "No JSON available")
+                        },
+                        ContextMenuItem("Копировать в Markdown") {
+                            val markdownContent = message.content
+                                .filterIsInstance<ChatMessage.ContentItem.AssistantMessage>()
+                                .firstOrNull()?.structured?.fullText
+                                ?: message.content
+                                    .filterIsInstance<ChatMessage.ContentItem.UserMessage>()
+                                    .firstOrNull()?.text
+                                ?: "Содержимое недоступно"
+                            clipboardManager.setText(AnnotatedString(markdownContent))
+                        }
+                    )
+                }
             ) {
-                Text(buttonLabel)
+                CompactButton(
+                    onClick = { }, // Убираем ЛКМ функциональность
+                    tooltip = tooltipText,
+                    modifier = Modifier.pointerHoverIcon(PointerIcon.Hand)
+                ) {
+                    Text(buttonLabel)
+                }
             }
         }
 
@@ -265,14 +328,6 @@ private fun StructuredMessageTemplate(
     Card {
         Column {
             Markdown(content = text)
-            if (structured != null && (structured.ttsText != null || structured.voiceTone != null)) {
-                Text(
-                    text = buildString {
-                        structured.ttsText?.let { append("🗣️ TTS: $it ") }
-                        structured.voiceTone?.let { append("🎭 Tone: $it") }
-                    }
-                )
-            }
         }
     }
 }
