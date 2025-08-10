@@ -372,7 +372,7 @@ fun ApplicationScope.ChatWindow(
                             createNewSession(currentProjectPath)
                         },
                         onSendMessage = sendMessage,
-                        ttsService = ttsService,
+                        ttsQueueService = ttsQueueService,
                         coroutineScope = coroutineScope,
                         modifierWithPushToTalk = modifierWithPushToTalk,
                         isDev = settingsService.mode == com.gromozeka.bot.settings.AppMode.DEV,

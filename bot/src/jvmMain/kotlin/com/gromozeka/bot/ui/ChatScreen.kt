@@ -24,7 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.gromozeka.bot.model.ChatSession
-import com.gromozeka.bot.services.TtsService
+import com.gromozeka.bot.services.TTSQueueService
 import com.gromozeka.shared.domain.message.ChatMessage
 import com.mikepenz.markdown.m3.Markdown
 import kotlinx.coroutines.CoroutineScope
@@ -45,7 +45,7 @@ fun ChatScreen(
     onBackToSessionList: () -> Unit,
     onNewSession: () -> Unit,
     onSendMessage: suspend (String) -> Unit,
-    ttsService: TtsService,
+    ttsQueueService: TTSQueueService,
     coroutineScope: CoroutineScope,
     modifierWithPushToTalk: Modifier,
     isDev: Boolean = false,
@@ -120,7 +120,12 @@ fun ChatScreen(
                     filteredHistory.forEach { message ->
                         MessageItem(
                             message = message,
-                            onShowJson = { json -> jsonToShow = json }
+                            onShowJson = { json -> jsonToShow = json },
+                            onSpeakRequest = { text, tone ->
+                                coroutineScope.launch {
+                                    ttsQueueService.enqueue(TTSQueueService.Task(text, tone))
+                                }
+                            }
                         )
                     }
                 }
@@ -172,6 +177,7 @@ fun ChatScreen(
 private fun MessageItem(
     message: ChatMessage,
     onShowJson: (String) -> Unit = {},
+    onSpeakRequest: (String, String) -> Unit = { _, _ -> },
 ) {
     // Combined metadata button data
     val roleIcon = when (message.role) {
@@ -246,11 +252,17 @@ private fun MessageItem(
             
             ContextMenuArea(
                 items = {
-                    listOf(
-                        ContextMenuItem("Показать JSON") {
+                    val assistantContent = message.content
+                        .filterIsInstance<ChatMessage.ContentItem.AssistantMessage>()
+                        .firstOrNull()
+                    val hasTtsText = !assistantContent?.structured?.ttsText.isNullOrBlank()
+                    
+                    buildList {
+                        add(ContextMenuItem("Показать JSON") {
                             onShowJson(message.originalJson ?: "No JSON available")
-                        },
-                        ContextMenuItem("Копировать в Markdown") {
+                        })
+                        
+                        add(ContextMenuItem("Копировать в Markdown") {
                             val markdownContent = message.content
                                 .filterIsInstance<ChatMessage.ContentItem.AssistantMessage>()
                                 .firstOrNull()?.structured?.fullText
@@ -259,8 +271,16 @@ private fun MessageItem(
                                     .firstOrNull()?.text
                                 ?: "Содержимое недоступно"
                             clipboardManager.setText(AnnotatedString(markdownContent))
+                        })
+                        
+                        if (hasTtsText) {
+                            add(ContextMenuItem("Произнести") {
+                                val ttsText = assistantContent!!.structured.ttsText!!
+                                val voiceTone = assistantContent.structured.voiceTone ?: ""
+                                onSpeakRequest(ttsText, voiceTone)
+                            })
                         }
-                    )
+                    }
                 }
             ) {
                 CompactButton(
