@@ -38,8 +38,10 @@ class Config {
     ) = SttService(openAiAudioTranscriptionModel, settingsService, audioMuteManager)
 
     @Bean
-    fun ttsService(openAiAudioSpeechModel: OpenAiAudioSpeechModel) =
-        TtsService(openAiAudioSpeechModel)
+    fun ttsService(
+        openAiAudioSpeechModel: OpenAiAudioSpeechModel,
+        settingsService: SettingsService
+    ) = TtsService(openAiAudioSpeechModel, settingsService)
 
     @Bean
     fun httpClient() = HttpClient(CIO) {

@@ -14,6 +14,8 @@ data class Settings(
     // STT language code - supports ISO 639-1 (e.g., "en", "ru") and 639-3 codes for GPT-4o models
     val sttMainLanguage: String = "en",
     val includeCurrentTime: Boolean = true,
+    // TTS speech rate: 0.25 (slowest) to 4.0 (fastest), 1.0 = normal speed
+    val ttsSpeed: Float = 1.0f,
 )
 
 @Serializable
