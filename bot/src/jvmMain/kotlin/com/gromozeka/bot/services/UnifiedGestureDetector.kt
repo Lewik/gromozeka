@@ -127,11 +127,6 @@ class UnifiedGestureDetector(
         timeoutJob?.cancel()
         state = GestureState.IDLE
     }
-    
-    fun getCurrentState(): GestureState = state
-    
-    fun isInHoldingState(): Boolean = 
-        state == GestureState.SINGLE_HOLDING || state == GestureState.DOUBLE_HOLDING
 }
 
 enum class GestureState {

@@ -366,7 +366,10 @@ class Session(
     private suspend fun handleSystemMessage(message: StreamJsonLine.System) {
         // Handle session ID updates and initialization
         if (message.subtype == "init") {
-            require(!sessionInitialized)
+            if (sessionInitialized) {
+                println("[Session] Received init message for already initialized session - ignoring")
+                return
+            }
             val currentSessionId = _sessionId.value
             val newSessionId = message.sessionId!!
             if (currentSessionId != newSessionId) {

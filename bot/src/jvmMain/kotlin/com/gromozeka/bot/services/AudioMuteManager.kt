@@ -9,7 +9,7 @@ class AudioMuteManager {
     
     private var originalMuteState: Boolean? = null
     
-    suspend fun muteIfNeeded(): Unit = withContext(Dispatchers.IO) {
+    suspend fun mute(): Unit = withContext(Dispatchers.IO) {
         val script = """
             set currentMuted to output muted of (get volume settings)
             if not currentMuted then set volume with output muted

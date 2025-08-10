@@ -54,8 +54,8 @@ fun main() {
     val ttsQueueService = context.getBean<TTSQueueService>()
     val sessionJsonlService = context.getBean<SessionJsonlService>()
     val globalHotkeyService = context.getBean<GlobalHotkeyService>()
-    val unifiedPTTService = context.getBean<UnifiedPTTService>()
     val pttEventRouter = context.getBean<PTTEventRouter>()
+    val pttService = context.getBean<PTTService>()
     val windowStateService = context.getBean<WindowStateService>()
 
     // Explicit startup of TTS queue service
@@ -64,7 +64,6 @@ fun main() {
 
     // Initialize services
     globalHotkeyService.initializeService()
-    unifiedPTTService.initialize()
     pttEventRouter.initialize()
     println("[GROMOZEKA] Starting Compose Desktop UI...")
     application {
@@ -74,8 +73,8 @@ fun main() {
                 settingsService,
                 sessionJsonlService,
                 globalHotkeyService,
-                unifiedPTTService,
                 pttEventRouter,
+                pttService,
                 windowStateService,
                 context
             )
@@ -90,8 +89,8 @@ fun ApplicationScope.ChatWindow(
     settingsService: SettingsService,
     sessionJsonlService: SessionJsonlService,
     globalHotkeyService: GlobalHotkeyService,
-    unifiedPTTService: UnifiedPTTService,
     pttEventRouter: PTTEventRouter,
+    pttService: PTTService,
     windowStateService: WindowStateService,
     context: org.springframework.context.ConfigurableApplicationContext,
 ) {
@@ -273,19 +272,19 @@ fun ApplicationScope.ChatWindow(
         scrollState.animateScrollTo(scrollState.maxValue)
     }
 
-    // Subscribe to UnifiedPTTService events
+    // Subscribe to PTT events
     LaunchedEffect(Unit) {
-        launch {
-            unifiedPTTService.textReceived.collect { text ->
-                // Only set userInput if autoSend is disabled
-                if (currentSettings?.autoSend != true) {
+        pttEventRouter.textTranscribed.collect { text ->
+            if (text.isEmpty()) {
+                // Clear input on cancellation
+                userInput = ""
+            } else {
+                // UI decides what to do based on settings
+                if (currentSettings.autoSend) {
+                    sendMessage(text)
+                } else {
                     userInput = text
                 }
-            }
-        }
-        launch {
-            unifiedPTTService.sendMessage.collect { text ->
-                sendMessage(text)
             }
         }
     }
@@ -298,7 +297,7 @@ fun ApplicationScope.ChatWindow(
     }
 
     // Get recording state from service
-    val isRecording by unifiedPTTService.recordingState.collectAsState()
+    val isRecording by pttService.recordingState.collectAsState()
 
     // Settings update handler
     val onSettingsChange: (Settings) -> Unit = { newSettings ->

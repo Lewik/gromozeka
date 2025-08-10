@@ -2,11 +2,12 @@ package com.gromozeka.bot
 
 import com.gromozeka.bot.services.AudioMuteManager
 import com.gromozeka.bot.services.PTTEventRouter
+import com.gromozeka.bot.services.PTTService
 import com.gromozeka.bot.services.SettingsService
 import com.gromozeka.bot.services.SttService
 import com.gromozeka.bot.services.TTSQueueService
 import com.gromozeka.bot.services.TtsService
-import com.gromozeka.bot.services.UnifiedPTTService
+import com.gromozeka.shared.audio.AudioRecorder
 import io.ktor.client.*
 import io.ktor.client.engine.cio.*
 import io.ktor.client.plugins.contentnegotiation.*
@@ -34,11 +35,13 @@ class Config {
 
 
     @Bean
+    fun audioRecorder() = AudioRecorder()
+
+    @Bean
     fun sttService(
         openAiAudioTranscriptionModel: OpenAiAudioTranscriptionModel,
-        settingsService: SettingsService,
-        audioMuteManager: AudioMuteManager
-    ) = SttService(openAiAudioTranscriptionModel, settingsService, audioMuteManager)
+        settingsService: SettingsService
+    ) = SttService(openAiAudioTranscriptionModel, settingsService)
 
     @Bean
     fun ttsService(
@@ -57,10 +60,18 @@ class Config {
     fun chatClient(chatModel: OpenAiChatModel) = ChatClient.create(chatModel)
 
     @Bean
+    fun pttService(
+        audioRecorder: AudioRecorder,
+        sttService: SttService,
+        settingsService: SettingsService,
+        audioMuteManager: AudioMuteManager
+    ) = PTTService(audioRecorder, sttService, settingsService, audioMuteManager)
+
+    @Bean
     fun pttEventRouter(
-        unifiedPTTService: UnifiedPTTService,
+        pttService: PTTService,
         ttsQueueService: TTSQueueService
-    ) = PTTEventRouter(unifiedPTTService, ttsQueueService)
+    ) = PTTEventRouter(pttService, ttsQueueService)
 
     @Bean
     fun settingsService(): SettingsService {
