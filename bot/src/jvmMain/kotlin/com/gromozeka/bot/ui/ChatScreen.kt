@@ -3,8 +3,11 @@ package com.gromozeka.bot.ui
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.foundation.text.selection.DisableSelection
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
+import androidx.compose.ui.input.pointer.PointerIcon
+import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
@@ -70,18 +73,20 @@ fun ChatScreen(
     }
 
 
-    Column(modifier = Modifier.fillMaxSize()) {
-        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onBackToSessionList) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Назад")
+    SelectionContainer {
+        Column(modifier = Modifier.fillMaxSize()) {
+            DisableSelection {
+                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = onBackToSessionList) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Назад")
+                    }
+                    IconButton(onClick = onNewSession) {
+                        Icon(Icons.Filled.Add, contentDescription = "Новая беседа")
+                    }
+                }
             }
-            IconButton(onClick = onNewSession) {
-                Icon(Icons.Filled.Add, contentDescription = "Новая беседа")
-            }
-        }
 
-        Column(modifier = Modifier.weight(1f).verticalScroll(scrollState)) {
-            SelectionContainer {
+            Column(modifier = Modifier.weight(1f).verticalScroll(scrollState)) {
                 Column {
                     chatHistory
                         .forEachIndexed { index, message ->
@@ -95,36 +100,37 @@ fun ChatScreen(
                         }
                 }
             }
-        }
 
 
-        // Waiting for response indicator
-        if (isWaitingForResponse) {
-            Row {
-                CircularProgressIndicator()
+            // Waiting for response indicator
+            if (isWaitingForResponse) {
+                Row {
+                    CircularProgressIndicator()
                     Text("Ожидание ответа от Claude...")
+                }
+            }
+
+            DisableSelection {
+                MessageInput(
+                    userInput = userInput,
+                    onUserInputChange = onUserInputChange,
+                    assistantIsThinking = assistantIsThinking,
+                    onSendMessage = onSendMessage,
+                    coroutineScope = coroutineScope
+                )
+
+                VoiceControls(
+                    autoSend = autoSend,
+                    onSendMessage = onSendMessage,
+                    onUserInputChange = onUserInputChange,
+                    coroutineScope = coroutineScope,
+                    modifierWithPushToTalk = modifierWithPushToTalk,
+                    isDev = isDev,
+                    ttsSpeed = ttsSpeed,
+                    onTtsSpeedChange = onTtsSpeedChange
+                )
             }
         }
-
-        MessageInput(
-            userInput = userInput,
-            onUserInputChange = onUserInputChange,
-            assistantIsThinking = assistantIsThinking,
-            onSendMessage = onSendMessage,
-            coroutineScope = coroutineScope
-        )
-
-
-        VoiceControls(
-            autoSend = autoSend,
-            onSendMessage = onSendMessage,
-            onUserInputChange = onUserInputChange,
-            coroutineScope = coroutineScope,
-            modifierWithPushToTalk = modifierWithPushToTalk,
-            isDev = isDev,
-            ttsSpeed = ttsSpeed,
-            onTtsSpeedChange = onTtsSpeedChange
-        )
     }
 
     // JSON Dialog at top level to avoid hierarchy issues
@@ -136,6 +142,7 @@ fun ChatScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun MessageItem(
     message: ChatMessage,
@@ -149,26 +156,64 @@ private fun MessageItem(
             modifier = Modifier
                 .fillMaxWidth(0.85f)
         ) {
-            // Header row with JSON button and type info
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                CompactIconButton(
-                    onClick = { onShowJson(message.originalJson ?: "No JSON available") }
-                ) {
-                    Text("{}")
+            // Combined metadata button
+            val roleIcon = when (message.role) {
+                ChatMessage.Role.USER -> "👤"
+                ChatMessage.Role.ASSISTANT -> "🤖"
+                ChatMessage.Role.SYSTEM -> "⚙️"
+            }
+            
+            val contentIcons = message.content.mapNotNull { content ->
+                when (content) {
+                    is ChatMessage.ContentItem.UserMessage -> null
+                    is ChatMessage.ContentItem.ToolCall -> "🔧"
+                    is ChatMessage.ContentItem.ToolResult -> "📦"
+                    is ChatMessage.ContentItem.Thinking -> "🤔"
+                    is ChatMessage.ContentItem.System -> "⚙️"
+                    is ChatMessage.ContentItem.AssistantMessage -> null
+                    is ChatMessage.ContentItem.UnknownJson -> "⚠️"
                 }
-                
-                Text("${message.role} | ${message.content.joinToString(", ") { content ->
-                    val icon = when (content) {
-                        is ChatMessage.ContentItem.UserMessage -> ""
-                        is ChatMessage.ContentItem.ToolCall -> "🔧"
-                        is ChatMessage.ContentItem.ToolResult -> "⚡"
-                        is ChatMessage.ContentItem.Thinking -> "🤔"
-                        is ChatMessage.ContentItem.System -> "⚙️"
-                        is ChatMessage.ContentItem.AssistantMessage -> "🤖"
-                        is ChatMessage.ContentItem.UnknownJson -> "⚠️"
+            }.distinct()
+            
+            val buttonLabel = buildString {
+                append(roleIcon)
+                contentIcons.forEach { append(" $it") }
+            }
+            
+            val tooltipText = buildString {
+                // Role / Type format
+                append(message.role.name)
+                if (contentIcons.isNotEmpty()) {
+                    append(" / ")
+                    val contentTypes = message.content.mapNotNull { content ->
+                        when (content) {
+                            is ChatMessage.ContentItem.UserMessage -> "Message"
+                            is ChatMessage.ContentItem.ToolCall -> "ToolCall"
+                            is ChatMessage.ContentItem.ToolResult -> "ToolResult"
+                            is ChatMessage.ContentItem.Thinking -> "Thinking"
+                            is ChatMessage.ContentItem.System -> "System"
+                            is ChatMessage.ContentItem.AssistantMessage -> "Assistant"
+                            is ChatMessage.ContentItem.UnknownJson -> "Unknown"
+                        }
+                    }.distinct()
+                    append(contentTypes.joinToString(", "))
+                }
+                append("\nClick to view JSON")
+            }
+            
+            DisableSelection {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    CompactButton(
+                        onClick = { onShowJson(message.originalJson ?: "No JSON available") },
+                        tooltip = tooltipText,
+                        modifier = Modifier.pointerHoverIcon(PointerIcon.Hand)
+                    ) {
+                        Text(buttonLabel)
                     }
-                    "$icon${content::class.simpleName}"
-                }}")
+                }
             }
 
             message.content.forEach { content ->
@@ -365,8 +410,7 @@ private fun JsonDialog(
         properties = DialogProperties(
             usePlatformDefaultWidth = false
         ),
-
-        ) {
+    ) {
         Card {
             Column {
                 // Header with title and close button
@@ -379,9 +423,12 @@ private fun JsonDialog(
 
                 Divider()
 
-                // Scrollable content with selection support
+                // Scrollable content - Dialog is outside main SelectionContainer
                 SelectionContainer {
-                    Text(text = jsonPrettyPrint(json))
+                    Text(
+                        text = jsonPrettyPrint(json),
+                        modifier = Modifier.fillMaxWidth()
+                    )
                 }
             }
         }

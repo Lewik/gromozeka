@@ -68,26 +68,47 @@ object CompactButtonDefaults {
     val CornerRadius = 6.dp
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun OptionalTooltip(
+    tooltip: String?,
+    content: @Composable () -> Unit
+) {
+    TooltipBox(
+        positionProvider = TooltipDefaults.rememberPlainTooltipPositionProvider(),
+        tooltip = if (tooltip != null) {
+            { PlainTooltip { Text(tooltip) } }
+        } else {
+            { }  // Empty composable
+        },
+        state = rememberTooltipState(),
+        content = content
+    )
+}
+
 @Composable
 fun CompactButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    tooltip: String? = null,
     content: @Composable RowScope.() -> Unit,
 ) {
-    Button(
-        onClick = onClick,
-        modifier = modifier.height(CompactButtonDefaults.ButtonHeight),
-        enabled = enabled,
-        contentPadding = CompactButtonDefaults.ContentPadding,
-        shape = RoundedCornerShape(CompactButtonDefaults.CornerRadius),
-        content = {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                content = content
-            )
-        }
-    )
+    OptionalTooltip(tooltip) {
+        Button(
+            onClick = onClick,
+            modifier = modifier.height(CompactButtonDefaults.ButtonHeight),
+            enabled = enabled,
+            contentPadding = CompactButtonDefaults.ContentPadding,
+            shape = RoundedCornerShape(CompactButtonDefaults.CornerRadius),
+            content = {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    content = content
+                )
+            }
+        )
+    }
 }
 
 @Composable
@@ -95,15 +116,18 @@ fun CompactIconButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    tooltip: String? = null,
     content: @Composable () -> Unit,
 ) {
-    FilledIconButton(
-        onClick = onClick,
-        modifier = modifier.size(CompactButtonDefaults.ButtonHeight),
-        shape = RoundedCornerShape(CompactButtonDefaults.CornerRadius),
-        enabled = enabled,
-        content = content
-    )
+    OptionalTooltip(tooltip) {
+        FilledIconButton(
+            onClick = onClick,
+            modifier = modifier.size(CompactButtonDefaults.ButtonHeight),
+            shape = RoundedCornerShape(CompactButtonDefaults.CornerRadius),
+            enabled = enabled,
+            content = content
+        )
+    }
 }
 
 @Composable
