@@ -49,13 +49,14 @@ fun ChatScreen(
     ttsSpeed: Float = 1.0f,
     onTtsSpeedChange: (Float) -> Unit = {},
     // Settings
-    settings: Settings? = null,
-    onSettingsChange: (Settings) -> Unit = {},
+    settings: Settings,
+    onSettingsChange: (Settings) -> Unit,
+    showSettingsPanel: Boolean,
+    onShowSettingsPanelChange: (Boolean) -> Unit,
 ) {
     val scrollState = rememberScrollState()
     var stickyToBottom by remember { mutableStateOf(true) }
     var jsonToShow by remember { mutableStateOf<String?>(null) }
-    var showSettingsPanel by remember { mutableStateOf(false) }
 
     val isAtBottom by remember {
         derivedStateOf {
@@ -104,14 +105,12 @@ fun ChatScreen(
                         
                         Spacer(modifier = Modifier.width(8.dp))
                         
-                        // Settings button - only show if settings are provided
-                        if (settings != null) {
-                            CompactButton(
-                                onClick = { showSettingsPanel = !showSettingsPanel },
-                                tooltip = "Настройки"
-                            ) {
-                                Icon(Icons.Default.Settings, contentDescription = "Settings")
-                            }
+                        // Settings button
+                        CompactButton(
+                            onClick = { onShowSettingsPanelChange(!showSettingsPanel) },
+                            tooltip = "Настройки"
+                        ) {
+                            Icon(Icons.Default.Settings, contentDescription = "Settings")
                         }
                     }
                 }
@@ -134,6 +133,7 @@ fun ChatScreen(
                     filteredHistory.forEach { message ->
                         MessageItem(
                             message = message,
+                            settings = settings,
                             onShowJson = { json -> jsonToShow = json },
                             onSpeakRequest = { text, tone ->
                                 coroutineScope.launch {
@@ -177,15 +177,13 @@ fun ChatScreen(
         }
         }
         
-        // Settings panel - only show if settings are provided
-        if (settings != null) {
-            SettingsPanel(
-                isVisible = showSettingsPanel,
-                settings = settings,
-                onSettingsChange = onSettingsChange,
-                onClose = { showSettingsPanel = false }
-            )
-        }
+        // Settings panel
+        SettingsPanel(
+            isVisible = showSettingsPanel,
+            settings = settings,
+            onSettingsChange = onSettingsChange,
+            onClose = { onShowSettingsPanelChange(false) }
+        )
     }
 
     // JSON Dialog at top level to avoid hierarchy issues
@@ -201,6 +199,7 @@ fun ChatScreen(
 @Composable
 private fun MessageItem(
     message: ChatMessage,
+    settings: Settings,
     onShowJson: (String) -> Unit = {},
     onSpeakRequest: (String, String) -> Unit = { _, _ -> },
 ) {
@@ -283,9 +282,11 @@ private fun MessageItem(
                     val hasTtsText = !assistantContent?.structured?.ttsText.isNullOrBlank()
                     
                     buildList {
-                        add(ContextMenuItem("Показать JSON") {
-                            onShowJson(message.originalJson ?: "No JSON available")
-                        })
+                        if (settings.showOriginalJson) {
+                            add(ContextMenuItem("Показать JSON") {
+                                onShowJson(message.originalJson ?: "No JSON available")
+                            })
+                        }
                         
                         add(ContextMenuItem("Копировать в Markdown") {
                             val markdownContent = message.content

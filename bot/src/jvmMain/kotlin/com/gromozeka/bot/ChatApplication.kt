@@ -114,6 +114,7 @@ fun ApplicationScope.ChatWindow(
     var showSessionList by remember { mutableStateOf(true) }
     var selectedSession by remember { mutableStateOf<ChatSession?>(null) }
     var currentSession by remember { mutableStateOf<Session?>(null) }
+    var showSettingsPanel by remember { mutableStateOf(false) }
     val isWaitingForResponse by currentSession?.isWaitingForResponse?.collectAsState() ?: remember {
         mutableStateOf(
             false
@@ -351,7 +352,11 @@ fun ApplicationScope.ChatWindow(
                         coroutineScope = coroutineScope,
                         onNewSession = createNewSession,
                         sessionJsonlService = sessionJsonlService,
-                        context = context
+                        context = context,
+                        settings = currentSettings,
+                        onSettingsChange = onSettingsChange,
+                        showSettingsPanel = showSettingsPanel,
+                        onShowSettingsPanelChange = { showSettingsPanel = it }
                     )
                 } else {
                     ChatScreen(
@@ -384,7 +389,9 @@ fun ApplicationScope.ChatWindow(
                         },
                         // Settings integration
                         settings = currentSettings,
-                        onSettingsChange = onSettingsChange
+                        onSettingsChange = onSettingsChange,
+                        showSettingsPanel = showSettingsPanel,
+                        onShowSettingsPanelChange = { showSettingsPanel = it }
                     )
                 }
             } else {

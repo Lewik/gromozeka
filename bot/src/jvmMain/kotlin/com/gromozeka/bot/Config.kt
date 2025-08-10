@@ -62,4 +62,11 @@ class Config {
         ttsQueueService: TTSQueueService
     ) = PTTEventRouter(unifiedPTTService, ttsQueueService)
 
+    @Bean
+    fun settingsService(): SettingsService {
+        val service = SettingsService()
+        service.initialize()  // Инициализируем сразу при создании бина
+        return service
+    }
+
 }

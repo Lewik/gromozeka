@@ -9,6 +9,7 @@ import androidx.compose.material3.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -51,6 +52,11 @@ fun SessionListScreen(
     onNewSession: (String) -> Unit,
     sessionJsonlService: SessionJsonlService,
     context: org.springframework.context.ConfigurableApplicationContext,
+    // Settings support
+    settings: com.gromozeka.bot.settings.Settings,
+    onSettingsChange: (com.gromozeka.bot.settings.Settings) -> Unit,
+    showSettingsPanel: Boolean,
+    onShowSettingsPanelChange: (Boolean) -> Unit,
 ) {
     var projectGroups by remember { mutableStateOf<List<ProjectGroup>>(emptyList()) }
     var expandedProjects by remember { mutableStateOf<Set<String>>(emptySet()) }
@@ -98,77 +104,95 @@ fun SessionListScreen(
         }
     }
 
-    Column(modifier = Modifier.fillMaxSize()) {
-        // Header with new session button
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "Проекты",
-                style = MaterialTheme.typography.headlineSmall
-            )
-            CompactButton(
-                onClick = { directoryPicker.launch() }
+    Row(modifier = Modifier.fillMaxSize()) {
+        // Main content
+        Column(modifier = Modifier.weight(1f)) {
+            // Header with buttons
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("Новая сессия")
+                Spacer(modifier = Modifier.weight(1f))
+                
+                CompactButton(
+                    onClick = { directoryPicker.launch() }
+                ) {
+                    Text("Новая сессия")
+                }
+                
+                Spacer(modifier = Modifier.width(8.dp))
+                
+                // Settings button
+                CompactButton(
+                    onClick = { onShowSettingsPanelChange(!showSettingsPanel) },
+                    tooltip = "Настройки"
+                ) {
+                    Icon(Icons.Default.Settings, contentDescription = "Settings")
+                }
             }
-        }
 
-        if (isLoading) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator()
-            }
-        } else {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-            ) {
-                if (projectGroups.isEmpty()) {
-                    // No sessions found - show message
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "Нет сохраненных проектов\nНажмите \"Новая сессия\" для начала работы",
-                            textAlign = TextAlign.Center
-                        )
-                    }
-                } else {
-                    // Show grouped sessions sorted by last activity
-                    projectGroups.forEach { group ->
-                        ProjectGroupHeader(
-                            group = group,
-                            isExpanded = expandedProjects.contains(group.projectPath),
-                            onToggleExpanded = {
-                                expandedProjects = if (expandedProjects.contains(group.projectPath)) {
-                                    expandedProjects - group.projectPath
-                                } else {
-                                    expandedProjects + group.projectPath
+            Spacer(modifier = Modifier.height(8.dp))
+
+            if (isLoading) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
+            } else {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    if (projectGroups.isEmpty()) {
+                        // No sessions found - show message
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "Нет сохраненных проектов\nНажмите \"Новая сессия\" для начала работы",
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    } else {
+                        // Show grouped sessions sorted by last activity
+                        projectGroups.forEach { group ->
+                            ProjectGroupHeader(
+                                group = group,
+                                isExpanded = expandedProjects.contains(group.projectPath),
+                                onToggleExpanded = {
+                                    expandedProjects = if (expandedProjects.contains(group.projectPath)) {
+                                        expandedProjects - group.projectPath
+                                    } else {
+                                        expandedProjects + group.projectPath
+                                    }
+                                },
+                                onNewSessionClick = onNewSession,
+                                onSessionClick = { clickedSession ->
+                                    coroutineScope.handleSessionClick(
+                                        clickedSession,
+                                        onSessionSelected,
+                                        sessionJsonlService,
+                                        context
+                                    )
                                 }
-                            },
-                            onNewSessionClick = onNewSession,
-                            onSessionClick = { clickedSession ->
-                                coroutineScope.handleSessionClick(
-                                    clickedSession,
-                                    onSessionSelected,
-                                    sessionJsonlService,
-                                    context
-                                )
-                            }
-                        )
+                            )
+                        }
                     }
                 }
             }
         }
+        
+        // Settings panel
+        SettingsPanel(
+            isVisible = showSettingsPanel,
+            settings = settings,
+            onSettingsChange = onSettingsChange,
+            onClose = { onShowSettingsPanelChange(false) }
+        )
     }
 }
 
