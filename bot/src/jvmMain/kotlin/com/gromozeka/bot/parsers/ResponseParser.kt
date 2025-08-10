@@ -9,7 +9,8 @@ interface ResponseParser {
     /**
      * Parse AI response text into structured format
      * @param text Raw response text from AI
-     * @return Structured text with TTS information, or null if parsing fails
+     * @return Structured text with TTS information
+     * @throws Exception if parsing fails
      */
-    fun parse(text: String): ChatMessage.StructuredText?
+    fun parse(text: String): ChatMessage.StructuredText
 }

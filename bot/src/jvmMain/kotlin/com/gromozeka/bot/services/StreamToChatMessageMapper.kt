@@ -266,34 +266,25 @@ object StreamToChatMessageMapper {
     }
 
     private fun parseTextForAssistant(text: String): ChatMessage.ContentItem {
-        // First try to parse using the configured parser
-        val parser = ResponseParserFactory.getParser(currentResponseFormat)
-        val parsed = parser.parse(text)
-        
-        if (parsed != null) {
-            return ChatMessage.ContentItem.AssistantMessage(structured = parsed)
-        }
-        
-        // If primary parser failed, try all parsers as fallback
-        val fallbackParsed = ResponseParserFactory.tryAllParsers(text)
-        
-        if (fallbackParsed != null) {
-            return ChatMessage.ContentItem.AssistantMessage(structured = fallbackParsed)
-        }
-        
-        // Last resort - return as UnknownJson if it looks like JSON
         return try {
-            val jsonElement = Json.parseToJsonElement(text)
-            ChatMessage.ContentItem.UnknownJson(jsonElement)
-        } catch (_: Exception) {
-            // Plain text - convert to StructuredText automatically
-            val structured = ChatMessage.StructuredText(
-                fullText = text,
-                ttsText = null,
-                voiceTone = null,
-                wasConverted = true  // Mark as automatically converted
+            // Try to parse using the configured parser
+            val parser = ResponseParserFactory.getParser(currentResponseFormat)
+            val parsed = parser.parse(text)
+            ChatMessage.ContentItem.AssistantMessage(structured = parsed)
+        } catch (e: Exception) {
+            // Parser failed - log and fallback to raw text
+            println("[StreamToChatMessageMapper] Parser failed for format $currentResponseFormat: ${e.message}")
+            println("  Text: ${text.take(100)}${if (text.length > 100) "..." else ""}")
+            
+            // Return as raw text fallback
+            ChatMessage.ContentItem.AssistantMessage(
+                structured = ChatMessage.StructuredText(
+                    fullText = text,
+                    ttsText = null,
+                    voiceTone = null,
+                    failedToParse = true
+                )
             )
-            ChatMessage.ContentItem.AssistantMessage(structured = structured)
         }
     }
 

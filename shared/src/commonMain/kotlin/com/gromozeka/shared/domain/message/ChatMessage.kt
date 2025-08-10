@@ -75,7 +75,7 @@ data class ChatMessage(
         val fullText: String,
         val ttsText: String? = null,
         val voiceTone: String? = null,
-        val wasConverted: Boolean = false  // true if plain text was auto-converted to StructuredText
+        val failedToParse: Boolean = false  // true if response parser failed and fell back to raw text
     )
     
     /**

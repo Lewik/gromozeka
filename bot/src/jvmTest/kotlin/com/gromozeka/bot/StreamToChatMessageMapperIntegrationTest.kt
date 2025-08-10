@@ -85,7 +85,7 @@ class StreamToChatMessageMapperIntegrationTest : FunSpec({
 
         val messageContent = result.content[0] as ChatMessage.ContentItem.AssistantMessage
         messageContent.structured.fullText shouldBe "I'm doing well, thank you for asking!"
-        messageContent.structured.wasConverted shouldBe true
+        messageContent.structured.failedToParse shouldBe true
 
         val metadata = result.llmSpecificMetadata as ChatMessage.LlmSpecificMetadata.ClaudeCodeSessionFileEntry
         metadata.model shouldBe "claude-3-5-sonnet-20241022"
@@ -108,7 +108,7 @@ class StreamToChatMessageMapperIntegrationTest : FunSpec({
 
         val messageContent = result.content[0] as ChatMessage.ContentItem.AssistantMessage
         messageContent.structured.fullText shouldBe "I'll help you check the current directory."
-        messageContent.structured.wasConverted shouldBe true
+        messageContent.structured.failedToParse shouldBe true
 
         val toolCall = result.content[1] as ChatMessage.ContentItem.ToolCall
         toolCall.id shouldBe "tool_789"
@@ -133,7 +133,7 @@ class StreamToChatMessageMapperIntegrationTest : FunSpec({
 
         val messageContent = result.content[1] as ChatMessage.ContentItem.AssistantMessage
         messageContent.structured.fullText shouldBe "Let me help you with that file operation."
-        messageContent.structured.wasConverted shouldBe true
+        messageContent.structured.failedToParse shouldBe true
 
         val metadata = result.llmSpecificMetadata as ChatMessage.LlmSpecificMetadata.ClaudeCodeSessionFileEntry
         metadata.usage shouldNotBe null
