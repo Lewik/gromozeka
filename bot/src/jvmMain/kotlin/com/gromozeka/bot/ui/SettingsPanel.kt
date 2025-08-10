@@ -77,7 +77,8 @@ fun SettingsPanel(
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     // Audio Settings
-                    SettingsGroup(title = "Audio") {
+                    // Voice Synthesis (TTS) Settings
+                    SettingsGroup(title = "Voice Synthesis") {
                         SwitchSettingItem(
                             label = "Enable Text-to-Speech",
                             description = "Convert AI responses to speech",
@@ -85,17 +86,10 @@ fun SettingsPanel(
                             onValueChange = { onSettingsChange(settings.copy(enableTts = it)) }
                         )
                         
-                        SwitchSettingItem(
-                            label = "Enable Speech-to-Text",
-                            description = "Convert voice input to text",
-                            value = settings.enableStt,
-                            onValueChange = { onSettingsChange(settings.copy(enableStt = it)) }
-                        )
-                        
                         // Only show TTS settings if TTS is enabled
                         if (settings.enableTts) {
                             DropdownSettingItem(
-                                label = "TTS Model",
+                                label = "Voice Model",
                                 description = "Text-to-speech model",
                                 value = settings.ttsModel,
                                 options = listOf("gpt-4o-mini-tts", "tts-1", "tts-1-hd"),
@@ -103,7 +97,7 @@ fun SettingsPanel(
                             )
                             
                             DropdownSettingItem(
-                                label = "TTS Voice",
+                                label = "Voice Type",
                                 description = "Voice for speech synthesis",
                                 value = settings.ttsVoice,
                                 options = listOf("alloy", "echo", "fable", "onyx", "nova", "shimmer"),
@@ -111,7 +105,7 @@ fun SettingsPanel(
                             )
                             
                             SliderSettingItem(
-                                label = "TTS Speed",
+                                label = "Speech Speed",
                                 description = "Speech rate: 0.25x (slowest) to 4.0x (fastest)",
                                 value = settings.ttsSpeed,
                                 min = 0.25f,
@@ -121,44 +115,50 @@ fun SettingsPanel(
                                 onValueChange = { onSettingsChange(settings.copy(ttsSpeed = it)) }
                             )
                         }
+                    }
+
+                    // Speech Recognition (STT) Settings  
+                    SettingsGroup(title = "Speech Recognition") {
+                        SwitchSettingItem(
+                            label = "Enable Speech-to-Text",
+                            description = "Convert voice input to text",
+                            value = settings.enableStt,
+                            onValueChange = { onSettingsChange(settings.copy(enableStt = it)) }
+                        )
                         
-                        // Only show STT language if STT is enabled
+                        // Only show STT settings if STT is enabled
                         if (settings.enableStt) {
                             DropdownSettingItem(
-                                label = "STT Language",
+                                label = "Recognition Language",
                                 description = "Speech recognition language",
                                 value = settings.sttMainLanguage,
                                 options = listOf("en", "ru", "es", "fr", "de", "zh", "ja"),
                                 onValueChange = { onSettingsChange(settings.copy(sttMainLanguage = it)) }
                             )
-                        }
-                    }
-                    
-                    // Input Settings
-                    SettingsGroup(title = "Input") {
-                        SwitchSettingItem(
-                            label = "Auto-send messages",
-                            description = "Send messages immediately after voice input",
-                            value = settings.autoSend,
-                            enabled = settings.enableStt, // Only enable if STT is enabled
-                            onValueChange = { onSettingsChange(settings.copy(autoSend = it)) }
-                        )
-                        
-                        SwitchSettingItem(
-                            label = "Global PTT Hotkey",
-                            description = "Enable push-to-talk from anywhere (Cmd+Shift+Space)",
-                            value = settings.globalPttHotkeyEnabled,
-                            onValueChange = { onSettingsChange(settings.copy(globalPttHotkeyEnabled = it)) }
-                        )
-                        
-                        // Only show mute option if global PTT is enabled
-                        if (settings.globalPttHotkeyEnabled) {
+                            
                             SwitchSettingItem(
-                                label = "Mute system audio during PTT",
-                                description = "Prevent audio feedback when recording",
-                                value = settings.muteSystemAudioDuringPTT,
-                                onValueChange = { onSettingsChange(settings.copy(muteSystemAudioDuringPTT = it)) }
+                                label = "Auto-send messages",
+                                description = "Send messages immediately after voice input",
+                                value = settings.autoSend,
+                                onValueChange = { onSettingsChange(settings.copy(autoSend = it)) }
                             )
+                            
+                            SwitchSettingItem(
+                                label = "Global PTT Hotkey",
+                                description = "Enable push-to-talk from anywhere (Cmd+Shift+Space)",
+                                value = settings.globalPttHotkeyEnabled,
+                                onValueChange = { onSettingsChange(settings.copy(globalPttHotkeyEnabled = it)) }
+                            )
+                            
+                            // Only show mute option if global PTT is enabled
+                            if (settings.globalPttHotkeyEnabled) {
+                                SwitchSettingItem(
+                                    label = "Mute system audio during PTT",
+                                    description = "Prevent audio feedback when recording",
+                                    value = settings.muteSystemAudioDuringPTT,
+                                    onValueChange = { onSettingsChange(settings.copy(muteSystemAudioDuringPTT = it)) }
+                                )
+                            }
                         }
                     }
                     
@@ -174,7 +174,7 @@ fun SettingsPanel(
                         
                         DropdownSettingItem(
                             label = "Response Format",
-                            description = "Format for AI responses (JSON, XML, or Plain)",
+                            description = "How AI structures voice responses (XML_INLINE recommended)",
                             value = settings.responseFormat.name,
                             options = ResponseFormat.values().map { it.name },
                             onValueChange = { 
@@ -185,7 +185,7 @@ fun SettingsPanel(
                         
                         SwitchSettingItem(
                             label = "Include current time",
-                            description = "Add timestamp to prompts for time-aware responses",
+                            description = "Add current date/time once at conversation start",
                             value = settings.includeCurrentTime,
                             onValueChange = { onSettingsChange(settings.copy(includeCurrentTime = it)) }
                         )

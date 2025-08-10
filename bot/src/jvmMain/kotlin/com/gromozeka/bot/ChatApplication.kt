@@ -427,6 +427,7 @@ fun ApplicationScope.ChatWindow(
                         ttsQueueService = ttsQueueService,
                         coroutineScope = coroutineScope,
                         modifierWithPushToTalk = modifierWithPushToTalk,
+                        isRecording = isRecording,
                         isDev = settingsService.mode == com.gromozeka.bot.settings.AppMode.DEV,
                         ttsSpeed = currentSettings?.ttsSpeed ?: 1.0f,
                         onTtsSpeedChange = { newSpeed ->

@@ -48,7 +48,9 @@ class GlobalHotkeyService(
         serviceScope.launch {
             settingsService.settingsFlow.collectLatest { settings ->
                 settings?.let { 
-                    handleSettingsUpdate(it.globalPttHotkeyEnabled)
+                    // Global hotkey should work only if both STT and global hotkey are enabled
+                    val shouldEnable = it.enableStt && it.globalPttHotkeyEnabled
+                    handleSettingsUpdate(shouldEnable)
                 }
             }
         }

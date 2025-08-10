@@ -12,6 +12,8 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.FiberManualRecord
+import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -51,6 +53,7 @@ fun ChatScreen(
     ttsQueueService: TTSQueueService,
     coroutineScope: CoroutineScope,
     modifierWithPushToTalk: Modifier,
+    isRecording: Boolean = false,
     isDev: Boolean = false,
     ttsSpeed: Float = 1.0f,
     onTtsSpeedChange: (Float) -> Unit = {},
@@ -152,6 +155,7 @@ fun ChatScreen(
                     }
                 }
 
+                Spacer(modifier = Modifier.height(8.dp))
 
                 // Waiting for response indicator
                 if (isWaitingForResponse) {
@@ -167,19 +171,20 @@ fun ChatScreen(
                         onUserInputChange = onUserInputChange,
                         assistantIsThinking = assistantIsThinking,
                         onSendMessage = onSendMessage,
-                        coroutineScope = coroutineScope
-                    )
-
-                    VoiceControls(
-                        autoSend = autoSend,
-                        onSendMessage = onSendMessage,
-                        onUserInputChange = onUserInputChange,
                         coroutineScope = coroutineScope,
                         modifierWithPushToTalk = modifierWithPushToTalk,
-                        isDev = isDev,
-                        ttsSpeed = ttsSpeed,
-                        onTtsSpeedChange = onTtsSpeedChange
+                        isRecording = isRecording,
+                        showPttButton = settings.enableStt
                     )
+
+                    // Dev buttons only
+                    if (isDev) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        DevButtons(
+                            onSendMessage = onSendMessage,
+                            coroutineScope = coroutineScope
+                        )
+                    }
                 }
             }
         }
@@ -396,8 +401,14 @@ private fun MessageInput(
     assistantIsThinking: Boolean,
     onSendMessage: suspend (String) -> Unit,
     coroutineScope: CoroutineScope,
+    modifierWithPushToTalk: Modifier,
+    isRecording: Boolean,
+    showPttButton: Boolean,
 ) {
-    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically, 
+        modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min)
+    ) {
         OutlinedTextField(
             value = userInput,
             onValueChange = onUserInputChange,
@@ -415,82 +426,96 @@ private fun MessageInput(
                     }
                 }
                 .weight(1f),
-            enabled = !assistantIsThinking,
-            placeholder = { Text("") },
-            trailingIcon = {
-                if (assistantIsThinking) {
-                    CircularProgressIndicator()
-                } else {
-                    IconButton(onClick = {
-                        println("📤 Send button clicked, sending message: '$userInput'")
-                        coroutineScope.launch {
-                            onSendMessage(userInput)
-                            onUserInputChange("")
-                        }
-                    }) {
-                        Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Send")
-                    }
-                }
-            }
+            placeholder = { Text("") }
         )
         Spacer(modifier = Modifier.width(4.dp))
+        
+        // Send button
+        if (assistantIsThinking) {
+            CompactButton(
+                onClick = {}, 
+                enabled = false,
+                modifier = Modifier.fillMaxHeight(),
+                tooltip = "Отправка сообщения..."
+            ) {
+                CircularProgressIndicator(modifier = Modifier.size(16.dp))
+            }
+        } else {
+            CompactButton(
+                onClick = {
+                    println("📤 Send button clicked, sending message: '$userInput'")
+                    coroutineScope.launch {
+                        onSendMessage(userInput)
+                        onUserInputChange("")
+                    }
+                },
+                modifier = Modifier.fillMaxHeight(),
+                tooltip = "Отправить сообщение (Shift+Enter)"
+            ) {
+                Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Send", modifier = Modifier.size(16.dp))
+            }
+        }
+        
+        // PTT button - only show if STT is enabled
+        if (showPttButton) {
+            Spacer(modifier = Modifier.width(4.dp))
+            
+            CompactButton(
+                onClick = {},
+                modifier = modifierWithPushToTalk.fillMaxHeight(),
+                tooltip = if (isRecording) "Идет запись... (отпустите для остановки)" else "Нажать и удерживать для записи (PTT)"
+            ) {
+                Icon(
+                    imageVector = if (isRecording) Icons.Default.FiberManualRecord else Icons.Default.Mic,
+                    contentDescription = if (isRecording) "Recording" else "Push to Talk",
+                    modifier = Modifier.size(16.dp),
+                    tint = if (isRecording) MaterialTheme.colorScheme.error else LocalContentColor.current
+                )
+            }
+        }
     }
 }
 
 @Composable
-private fun VoiceControls(
-    autoSend: Boolean,
+private fun DevButtons(
     onSendMessage: suspend (String) -> Unit,
-    onUserInputChange: (String) -> Unit,
     coroutineScope: CoroutineScope,
-    modifierWithPushToTalk: Modifier,
-    isDev: Boolean = false,
-    ttsSpeed: Float = 1.0f,
-    onTtsSpeedChange: (Float) -> Unit = {},
 ) {
-    // Voice controls row
-    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-        // Development mode buttons - first in row
-        if (isDev) {
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                CompactButton(onClick = {
-                    coroutineScope.launch {
-                        onSendMessage("Расскажи скороговорку")
-                    }
-                }) {
-                    Text("🗣 Скороговорка")
-                }
-
-                CompactButton(onClick = {
-                    coroutineScope.launch {
-                        onSendMessage("Создай таблицу с примерами разных типов данных в программировании")
-                    }
-                }) {
-                    Text("📊 Таблица")
-                }
-
-                CompactButton(onClick = {
-                    coroutineScope.launch {
-                        onSendMessage("Загугли последние новости про Google")
-                    }
-                }) {
-                    Text("🔍 Загугли про гугл")
-                }
-
-                CompactButton(onClick = {
-                    coroutineScope.launch {
-                        onSendMessage("Выполни ls")
-                    }
-                }) {
-                    Text("📁 выполни ls")
-                }
+    Row(
+        verticalAlignment = Alignment.CenterVertically, 
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        CompactButton(onClick = {
+            coroutineScope.launch {
+                onSendMessage("Расскажи скороговорку")
             }
+        }) {
+            Text("🗣 Скороговорка")
         }
 
-        Spacer(modifier = Modifier.weight(1f))
+        CompactButton(onClick = {
+            coroutineScope.launch {
+                onSendMessage("Создай таблицу с примерами разных типов данных в программировании")
+            }
+        }) {
+            Text("📊 Таблица")
+        }
 
-        CompactButton(onClick = {}, modifier = modifierWithPushToTalk) {
-            Text("🎤 PTT")
+        CompactButton(onClick = {
+            coroutineScope.launch {
+                onSendMessage("Загугли последние новости про Google")
+            }
+        }) {
+            Text("🔍 Загугли про гугл")
+        }
+
+        CompactButton(onClick = {
+            coroutineScope.launch {
+                onSendMessage("Выполни ls")
+            }
+        }) {
+            Text("📁 выполни ls")
         }
     }
 }

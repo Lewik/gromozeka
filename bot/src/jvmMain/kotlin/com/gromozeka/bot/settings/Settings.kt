@@ -21,7 +21,7 @@ data class Settings(
     // AI Settings
     val claudeModel: String = "sonnet",
     val includeCurrentTime: Boolean = true,
-    val responseFormat: ResponseFormat = ResponseFormat.JSON,
+    val responseFormat: ResponseFormat = ResponseFormat.XML_INLINE,
     
     // API Keys
     val openAiApiKey: String? = null,
