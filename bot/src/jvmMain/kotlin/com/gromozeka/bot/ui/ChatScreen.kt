@@ -85,17 +85,13 @@ fun ChatScreen(
             }
 
             Column(modifier = Modifier.weight(1f).verticalScroll(scrollState)) {
-                Column {
-                    chatHistory
-                        .forEachIndexed { index, message ->
-                            MessageItem(
-                                message = message,
-                                onShowJson = { json -> jsonToShow = json }
-                            )
-                            if (index < chatHistory.size - 1) {
-                                Divider()
-                            }
-                        }
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    chatHistory.forEach { message ->
+                        MessageItem(
+                            message = message,
+                            onShowJson = { json -> jsonToShow = json }
+                        )
+                    }
                 }
             }
 
@@ -144,74 +140,79 @@ private fun MessageItem(
     message: ChatMessage,
     onShowJson: (String) -> Unit = {},
 ) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-//        horizontalArrangement = if (message.messageType == ChatMessage.MessageType.USER) Arrangement.End else Arrangement.Start
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth(0.85f)
-        ) {
-            // Combined metadata button
-            val roleIcon = when (message.role) {
-                ChatMessage.Role.USER -> "👤"
-                ChatMessage.Role.ASSISTANT -> "🤖"
-                ChatMessage.Role.SYSTEM -> "⚙️"
-            }
-            
-            val contentIcons = message.content.mapNotNull { content ->
+    // Combined metadata button data
+    val roleIcon = when (message.role) {
+        ChatMessage.Role.USER -> "👤"
+        ChatMessage.Role.ASSISTANT -> "🤖"
+        ChatMessage.Role.SYSTEM -> "⚙️"
+    }
+    
+    val contentIcons = message.content.mapNotNull { content ->
+        when (content) {
+            is ChatMessage.ContentItem.UserMessage -> null
+            is ChatMessage.ContentItem.ToolCall -> "🔧"
+            is ChatMessage.ContentItem.ToolResult -> "📦"
+            is ChatMessage.ContentItem.Thinking -> "🤔"
+            is ChatMessage.ContentItem.System -> "⚙️"
+            is ChatMessage.ContentItem.AssistantMessage -> null
+            is ChatMessage.ContentItem.UnknownJson -> "⚠️"
+        }
+    }.distinct()
+    
+    val buttonLabel = buildString {
+        append(roleIcon)
+        if (contentIcons.isNotEmpty()) {
+            contentIcons.forEach { append(" $it") }
+        } else {
+            append(" 💬") // Default chat bubble if no content icons
+        }
+    }
+    
+    val tooltipText = buildString {
+        // Role / Type format
+        append(message.role.name)
+        if (contentIcons.isNotEmpty()) {
+            append(" / ")
+            val contentTypes = message.content.mapNotNull { content ->
                 when (content) {
-                    is ChatMessage.ContentItem.UserMessage -> null
-                    is ChatMessage.ContentItem.ToolCall -> "🔧"
-                    is ChatMessage.ContentItem.ToolResult -> "📦"
-                    is ChatMessage.ContentItem.Thinking -> "🤔"
-                    is ChatMessage.ContentItem.System -> "⚙️"
-                    is ChatMessage.ContentItem.AssistantMessage -> null
-                    is ChatMessage.ContentItem.UnknownJson -> "⚠️"
+                    is ChatMessage.ContentItem.UserMessage -> "Message"
+                    is ChatMessage.ContentItem.ToolCall -> "ToolCall"
+                    is ChatMessage.ContentItem.ToolResult -> "ToolResult"
+                    is ChatMessage.ContentItem.Thinking -> "Thinking"
+                    is ChatMessage.ContentItem.System -> "System"
+                    is ChatMessage.ContentItem.AssistantMessage -> "Assistant"
+                    is ChatMessage.ContentItem.UnknownJson -> "Unknown"
                 }
             }.distinct()
-            
-            val buttonLabel = buildString {
-                append(roleIcon)
-                contentIcons.forEach { append(" $it") }
-            }
-            
-            val tooltipText = buildString {
-                // Role / Type format
-                append(message.role.name)
-                if (contentIcons.isNotEmpty()) {
-                    append(" / ")
-                    val contentTypes = message.content.mapNotNull { content ->
-                        when (content) {
-                            is ChatMessage.ContentItem.UserMessage -> "Message"
-                            is ChatMessage.ContentItem.ToolCall -> "ToolCall"
-                            is ChatMessage.ContentItem.ToolResult -> "ToolResult"
-                            is ChatMessage.ContentItem.Thinking -> "Thinking"
-                            is ChatMessage.ContentItem.System -> "System"
-                            is ChatMessage.ContentItem.AssistantMessage -> "Assistant"
-                            is ChatMessage.ContentItem.UnknownJson -> "Unknown"
-                        }
-                    }.distinct()
-                    append(contentTypes.joinToString(", "))
-                }
-                append("\nClick to view JSON")
-            }
-            
-            DisableSelection {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    CompactButton(
-                        onClick = { onShowJson(message.originalJson ?: "No JSON available") },
-                        tooltip = tooltipText,
-                        modifier = Modifier.pointerHoverIcon(PointerIcon.Hand)
-                    ) {
-                        Text(buttonLabel)
-                    }
-                }
-            }
+            append(contentTypes.joinToString(", "))
+        }
+        append("\nClick to view JSON")
+    }
 
+    // Compact horizontal layout
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.Top,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        // Metadata button (left, fixed width)
+        DisableSelection {
+            CompactButton(
+                onClick = { onShowJson(message.originalJson ?: "No JSON available") },
+                tooltip = tooltipText,
+                modifier = Modifier.pointerHoverIcon(PointerIcon.Hand)
+            ) {
+                Text(buttonLabel)
+            }
+        }
+
+        // Message content (right, expandable)
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .defaultMinSize(minHeight = CompactButtonDefaults.ButtonHeight),
+            verticalArrangement = Arrangement.Center
+        ) {
             message.content.forEach { content ->
                 when (content) {
                     is ChatMessage.ContentItem.UserMessage -> {
@@ -238,7 +239,6 @@ private fun MessageItem(
                         StructuredMessageTemplate(content, isIntermediate = true)
                     }
 
-
                     is ChatMessage.ContentItem.UnknownJson -> {
                         Column {
                             Text(text = jsonPrettyPrint(content.json))
@@ -262,16 +262,8 @@ private fun StructuredMessageTemplate(
         else -> return // Shouldn't happen, but safe fallback
     }
 
-    val titleText = when (data) {
-        is ChatMessage.ContentItem.AssistantMessage -> "🤖 Громозека"
-        else -> "🤖 Громозека"
-    }
-
     Card {
         Column {
-            Row {
-                Text(text = titleText)
-            }
             Markdown(content = text)
             if (structured != null && (structured.ttsText != null || structured.voiceTone != null)) {
                 Text(
@@ -357,14 +349,40 @@ private fun VoiceControls(
     isDev: Boolean = false,
 ) {
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-        // Development mode button - first in row
+        // Development mode buttons - first in row
         if (isDev) {
-            CompactButton(onClick = {
-                coroutineScope.launch {
-                    onSendMessage("Расскажи скороговорку")
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                CompactButton(onClick = {
+                    coroutineScope.launch {
+                        onSendMessage("Расскажи скороговорку")
+                    }
+                }) {
+                    Text("🗣 Скороговорка")
                 }
-            }) {
-                Text("🗣 Скороговорка")
+                
+                CompactButton(onClick = {
+                    coroutineScope.launch {
+                        onSendMessage("Создай таблицу с примерами разных типов данных в программировании")
+                    }
+                }) {
+                    Text("📊 Таблица")
+                }
+                
+                CompactButton(onClick = {
+                    coroutineScope.launch {
+                        onSendMessage("Загугли последние новости про Google")
+                    }
+                }) {
+                    Text("🔍 Загугли про гугл")
+                }
+                
+                CompactButton(onClick = {
+                    coroutineScope.launch {
+                        onSendMessage("Выполни ls")
+                    }
+                }) {
+                    Text("📁 выполни ls")
+                }
             }
         }
 

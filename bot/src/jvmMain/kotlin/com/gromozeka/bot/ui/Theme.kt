@@ -63,7 +63,7 @@ fun GromozekaTheme(content: @Composable () -> Unit) {
 
 // Compact Button Defaults
 object CompactButtonDefaults {
-    val ContentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
+    val ContentPadding = PaddingValues(horizontal = 6.dp, vertical = 4.dp)
     val ButtonHeight = 28.dp
     val CornerRadius = 6.dp
 }
