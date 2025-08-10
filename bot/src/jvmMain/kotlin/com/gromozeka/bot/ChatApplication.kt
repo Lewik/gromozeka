@@ -10,16 +10,12 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.ApplicationScope
-import androidx.compose.ui.window.Window
-import androidx.compose.ui.window.application
+import androidx.compose.ui.window.*
 import com.gromozeka.bot.model.ChatSession
 import com.gromozeka.bot.model.Session
 import com.gromozeka.bot.services.*
-import com.gromozeka.bot.services.PTTEventRouter
-import com.gromozeka.bot.ui.advancedEscape
-import com.gromozeka.bot.ui.advancedPttGestures
 import com.gromozeka.bot.settings.Settings
 import com.gromozeka.bot.ui.*
 import com.gromozeka.shared.domain.message.ChatMessage
@@ -60,6 +56,7 @@ fun main() {
     val globalHotkeyService = context.getBean<GlobalHotkeyService>()
     val unifiedPTTService = context.getBean<UnifiedPTTService>()
     val pttEventRouter = context.getBean<PTTEventRouter>()
+    val windowStateService = context.getBean<WindowStateService>()
 
     // Explicit startup of TTS queue service
     ttsQueueService.start()
@@ -79,6 +76,7 @@ fun main() {
                 globalHotkeyService,
                 unifiedPTTService,
                 pttEventRouter,
+                windowStateService,
                 context
             )
         }
@@ -94,6 +92,7 @@ fun ApplicationScope.ChatWindow(
     globalHotkeyService: GlobalHotkeyService,
     unifiedPTTService: UnifiedPTTService,
     pttEventRouter: PTTEventRouter,
+    windowStateService: WindowStateService,
     context: org.springframework.context.ConfigurableApplicationContext,
 ) {
     val coroutineScope = rememberCoroutineScope()
@@ -126,7 +125,7 @@ fun ApplicationScope.ChatWindow(
     LaunchedEffect(Unit) {
         initialized = true
         scrollState.animateScrollTo(scrollState.maxValue)
-        
+
         // Initialize StreamToChatMessageMapper with current response format
         currentSettings?.let { settings ->
             StreamToChatMessageMapper.currentResponseFormat = settings.responseFormat
@@ -140,13 +139,13 @@ fun ApplicationScope.ChatWindow(
                 println("[ChatApp] Received streaming message: ${newMessage.role}")
                 println("[ChatApp] Message content: ${newMessage.content.size} items, first: ${newMessage.content.firstOrNull()?.javaClass?.simpleName}")
                 chatHistory.add(newMessage)  // Incremental updates
-                
+
                 // Update toolResultsMap with any ToolResult items from this message
                 newMessage.content.filterIsInstance<ChatMessage.ContentItem.ToolResult>().forEach { toolResult ->
                     toolResultsMap[toolResult.toolUseId] = toolResult
                     println("[ChatApp] Updated toolResultsMap with result for tool: ${toolResult.toolUseId}")
                 }
-                
+
                 println("[ChatApp] ChatHistory now has ${chatHistory.size} messages, last is ${chatHistory.lastOrNull()?.role}")
 
                 // TTS for ASSISTANT messages (only new ones, not historical)
@@ -306,17 +305,45 @@ fun ApplicationScope.ChatWindow(
         // Save to service (this will update the reactive state flow)
         // All dependent services will react automatically via their subscriptions
         settingsService.saveSettings(newSettings)
-        
+
         // Update the response format in StreamToChatMessageMapper immediately
-        com.gromozeka.bot.services.StreamToChatMessageMapper.currentResponseFormat = newSettings.responseFormat
+        StreamToChatMessageMapper.currentResponseFormat = newSettings.responseFormat
     }
 
     // Create modifier with PTT event router
     val modifierWithPushToTalk = Modifier.advancedPttGestures(pttEventRouter, coroutineScope)
 
+    // Load window state
+    val savedWindowState = remember { windowStateService.loadWindowState() }
+
+    // Window state for position tracking
+    val windowState = rememberWindowState(
+        position = if (savedWindowState.x != -1 && savedWindowState.y != -1) {
+            WindowPosition(
+                savedWindowState.x.dp,
+                savedWindowState.y.dp
+            )
+        } else WindowPosition.PlatformDefault,
+        size = DpSize(
+            savedWindowState.width.dp,
+            savedWindowState.height.dp
+        )
+    )
+
     Window(
+        state = windowState,
         onCloseRequest = {
             println("[GROMOZEKA] Application window closing - stopping all sessions...")
+
+            val newWindowState = UiWindowState(
+                x = windowState.position.x.value.toInt(),
+                y = windowState.position.y.value.toInt(),
+                width = windowState.size.width.value.toInt(),
+                height = windowState.size.height.value.toInt(),
+                isMaximized = windowState.placement == WindowPlacement.Maximized
+            )
+            windowStateService.saveWindowState(newWindowState)
+
             globalHotkeyService.cleanup()
             ttsQueueService.shutdown()
             exitApplication()
@@ -344,14 +371,14 @@ fun ApplicationScope.ChatWindow(
                             chatHistory.clear()
                             toolResultsMap.clear()
                             chatHistory.addAll(messages)
-                            
+
                             // Fill toolResultsMap with historical tool results
-                            messages.flatMap { message -> 
-                                message.content.filterIsInstance<ChatMessage.ContentItem.ToolResult>() 
+                            messages.flatMap { message ->
+                                message.content.filterIsInstance<ChatMessage.ContentItem.ToolResult>()
                             }.forEach { toolResult ->
                                 toolResultsMap[toolResult.toolUseId] = toolResult
                             }
-                            
+
                             showSessionList = false
 
                             // Start the session with resume capability
