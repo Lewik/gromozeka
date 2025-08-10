@@ -45,6 +45,8 @@ fun ChatScreen(
     coroutineScope: CoroutineScope,
     modifierWithPushToTalk: Modifier,
     isDev: Boolean = false,
+    ttsSpeed: Float = 1.0f,
+    onTtsSpeedChange: (Float) -> Unit = {},
 ) {
     val scrollState = rememberScrollState()
     var stickyToBottom by remember { mutableStateOf(true) }
@@ -123,7 +125,9 @@ fun ChatScreen(
                     onUserInputChange = onUserInputChange,
                     coroutineScope = coroutineScope,
                     modifierWithPushToTalk = modifierWithPushToTalk,
-                    isDev = isDev
+                    isDev = isDev,
+                    ttsSpeed = ttsSpeed,
+                    onTtsSpeedChange = onTtsSpeedChange
                 )
             }
         }
@@ -355,23 +359,43 @@ private fun VoiceControls(
     coroutineScope: CoroutineScope,
     modifierWithPushToTalk: Modifier,
     isDev: Boolean = false,
+    ttsSpeed: Float = 1.0f,
+    onTtsSpeedChange: (Float) -> Unit = {},
 ) {
-    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-        // Development mode button - first in row
-        if (isDev) {
-            CompactButton(onClick = {
-                coroutineScope.launch {
-                    onSendMessage("Расскажи скороговорку")
-                }
-            }) {
-                Text("🗣 Скороговорка")
-            }
+    Column {
+        // TTS Speed Control
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+            Text("TTS Speed:", style = MaterialTheme.typography.bodySmall)
+            Spacer(modifier = Modifier.width(8.dp))
+            Slider(
+                value = ttsSpeed,
+                onValueChange = onTtsSpeedChange,
+                valueRange = 0.25f..4.0f,
+                steps = 14, // 0.25, 0.5, 0.75, 1.0, 1.25, ..., 4.0
+                modifier = Modifier.weight(1f)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("${String.format("%.2f", ttsSpeed)}x", style = MaterialTheme.typography.bodySmall)
         }
+        
+        // Voice controls row
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+            // Development mode button - first in row
+            if (isDev) {
+                CompactButton(onClick = {
+                    coroutineScope.launch {
+                        onSendMessage("Расскажи скороговорку")
+                    }
+                }) {
+                    Text("🗣 Скороговорка")
+                }
+            }
 
-        Spacer(modifier = Modifier.weight(1f))
+            Spacer(modifier = Modifier.weight(1f))
 
-        CompactButton(onClick = {}, modifier = modifierWithPushToTalk) {
-            Text("🎤 PTT")
+            CompactButton(onClick = {}, modifier = modifierWithPushToTalk) {
+                Text("🎤 PTT")
+            }
         }
     }
 }

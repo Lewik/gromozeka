@@ -117,7 +117,8 @@ fun ApplicationScope.ChatWindow(
 
     val assistantIsThinking = false // Temporarily deactivated
 
-    var autoSend by remember { mutableStateOf(true) }
+    var autoSend by remember { mutableStateOf(settingsService.settings.autoSend) }
+    var ttsSpeed by remember { mutableStateOf(settingsService.settings.ttsSpeed) }
 
     var showSessionList by remember { mutableStateOf(true) }
     var selectedSession by remember { mutableStateOf<ChatSession?>(null) }
@@ -374,7 +375,12 @@ fun ApplicationScope.ChatWindow(
                         ttsService = ttsService,
                         coroutineScope = coroutineScope,
                         modifierWithPushToTalk = modifierWithPushToTalk,
-                        isDev = settingsService.mode == com.gromozeka.bot.settings.AppMode.DEV
+                        isDev = settingsService.mode == com.gromozeka.bot.settings.AppMode.DEV,
+                        ttsSpeed = ttsSpeed,
+                        onTtsSpeedChange = { newSpeed ->
+                            ttsSpeed = newSpeed
+                            settingsService.saveSettings { copy(ttsSpeed = newSpeed) }
+                        }
                     )
                 }
             } else {

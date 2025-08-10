@@ -10,7 +10,10 @@ import org.springframework.ai.openai.api.OpenAiAudioApi
 import org.springframework.ai.openai.audio.speech.SpeechPrompt
 import java.io.File
 
-class TtsService(private val openAiAudioSpeechModel: OpenAiAudioSpeechModel) {
+class TtsService(
+    private val openAiAudioSpeechModel: OpenAiAudioSpeechModel,
+    private val settingsService: SettingsService
+) {
 
     suspend fun generateSpeech(
         text: String,
@@ -29,7 +32,7 @@ class TtsService(private val openAiAudioSpeechModel: OpenAiAudioSpeechModel) {
 //                        .model(OpenAiAudioApi.TtsModel.TTS_1.value)
                         .voice(OpenAiAudioApi.SpeechRequest.Voice.ALLOY)
                         .responseFormat(OpenAiAudioApi.SpeechRequest.AudioResponseFormat.MP3)
-                        .speed(1.0f)
+                        .speed(settingsService.settings.ttsSpeed)
                         .build()
                 )
             ).result.output
