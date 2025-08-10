@@ -13,18 +13,9 @@ import androidx.compose.ui.unit.sp
 
 @Composable
 fun GromozekaTheme(content: @Composable () -> Unit) {
-    val scale: (String, TextStyle) -> TextStyle = { styleName, original ->
-
-        println("=== $styleName ===")
-        println("Original fontSize: ${original.fontSize}")
-        println("Original lineHeight: ${original.lineHeight}")
-        println("LineHeight isSp: ${original.lineHeight.isSp}")
-        println("LineHeight isEm: ${original.lineHeight.isEm}")
-        println("LineHeight value: ${original.lineHeight.value}")
-
+    val scale: (TextStyle) -> TextStyle = { original ->
         val newFontSize = (original.fontSize.value - 3).sp
         val newLineHeight = (original.lineHeight.value - 3).sp
-        println("================")
 
         original.copy(
             fontSize = newFontSize,
@@ -38,21 +29,21 @@ fun GromozekaTheme(content: @Composable () -> Unit) {
 
     val typography = MaterialTheme.typography
     val scaledTypography = Typography(
-        displayLarge = scale("displayLarge", typography.displayLarge),
-        displayMedium = scale("displayMedium", typography.displayMedium),
-        displaySmall = scale("displaySmall", typography.displaySmall),
-        headlineLarge = scale("headlineLarge", typography.headlineLarge),
-        headlineMedium = scale("headlineMedium", typography.headlineMedium),
-        headlineSmall = scale("headlineSmall", typography.headlineSmall),
-        titleLarge = scale("titleLarge", typography.titleLarge),
-        titleMedium = scale("titleMedium", typography.titleMedium),
-        titleSmall = scale("titleSmall", typography.titleSmall),
-        bodyLarge = scale("bodyLarge", typography.bodyLarge),
-        bodyMedium = scale("bodyMedium", typography.bodyMedium),
-        bodySmall = scale("bodySmall", typography.bodySmall),
-        labelLarge = scale("labelLarge", typography.labelLarge),
-        labelMedium = scale("labelMedium", typography.labelMedium),
-        labelSmall = scale("labelSmall", typography.labelSmall)
+        displayLarge = scale(typography.displayLarge),
+        displayMedium = scale(typography.displayMedium),
+        displaySmall = scale(typography.displaySmall),
+        headlineLarge = scale(typography.headlineLarge),
+        headlineMedium = scale(typography.headlineMedium),
+        headlineSmall = scale(typography.headlineSmall),
+        titleLarge = scale(typography.titleLarge),
+        titleMedium = scale(typography.titleMedium),
+        titleSmall = scale(typography.titleSmall),
+        bodyLarge = scale(typography.bodyLarge),
+        bodyMedium = scale(typography.bodyMedium),
+        bodySmall = scale(typography.bodySmall),
+        labelLarge = scale(typography.labelLarge),
+        labelMedium = scale(typography.labelMedium),
+        labelSmall = scale(typography.labelSmall)
     )
 
     MaterialTheme(
