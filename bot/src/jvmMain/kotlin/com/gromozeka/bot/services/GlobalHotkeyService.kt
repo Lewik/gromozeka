@@ -7,12 +7,17 @@ import com.github.kwhat.jnativehook.keyboard.NativeKeyListener
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.collectLatest
 import org.springframework.stereotype.Service
 import java.util.logging.Level
 import java.util.logging.Logger
 
 @Service
-class GlobalHotkeyService {
+class GlobalHotkeyService(
+    private val settingsService: SettingsService,
+    private val unifiedPTTService: UnifiedPTTService
+) {
     
     companion object {
         // Global hotkey: Fn + Control
@@ -29,8 +34,52 @@ class GlobalHotkeyService {
     
     private var isRegistered = false
     
-    fun setGestureHandler(handler: PTTGestureHandler) {
+    fun initializeService() {
+        // Create gesture detector with handler that delegates to UnifiedPTTService
+        val handler = object : PTTGestureHandler {
+            override suspend fun onPTTStart(mode: PTTMode) {
+                unifiedPTTService.onPTTPressed()
+            }
+            
+            override suspend fun onPTTStop(mode: PTTMode) {
+                unifiedPTTService.onPTTReleased()
+            }
+            
+            override suspend fun onSingleClick() {
+                // Single click - just cancel recording or stop TTS
+                unifiedPTTService.onEscapePressed()
+            }
+            
+            override suspend fun onDoubleClick() {
+                // Double click - interrupt command
+                unifiedPTTService.interruptCommand.emit(Unit)
+            }
+        }
         gestureDetector = PTTGestureDetector(handler, serviceScope)
+        
+        // Also start listening to settings
+        startListeningToSettings()
+    }
+    
+    private fun startListeningToSettings() {
+        // Subscribe to settings changes
+        serviceScope.launch {
+            settingsService.settingsFlow.collectLatest { settings ->
+                settings?.let { 
+                    handleSettingsUpdate(it.globalPttHotkeyEnabled)
+                }
+            }
+        }
+    }
+    
+    private fun handleSettingsUpdate(enabled: Boolean) {
+        if (enabled && !isRegistered) {
+            initialize()
+            println("[HOTKEY] Global hotkey service enabled via settings")
+        } else if (!enabled && isRegistered) {
+            shutdown()
+            println("[HOTKEY] Global hotkey service disabled via settings")
+        }
     }
     
     private val keyListener = object : NativeKeyListener {
@@ -71,7 +120,7 @@ class GlobalHotkeyService {
     }
     
     
-    fun initialize(): Boolean {
+    private fun initialize(): Boolean {
         try {
             Logger.getLogger(GlobalScreen::class.java.`package`.name).apply {
                 level = Level.WARNING
@@ -90,19 +139,23 @@ class GlobalHotkeyService {
         }
     }
     
-    fun shutdown() {
+    private fun shutdown() {
         if (isRegistered) {
             try {
                 gestureDetector?.reset()
                 GlobalScreen.removeNativeKeyListener(keyListener)
                 GlobalScreen.unregisterNativeHook()
                 isRegistered = false
-                serviceScope.cancel()
                 println("[HOTKEY] Global hotkey service shutdown")
             } catch (ex: NativeHookException) {
                 println("[HOTKEY] Failed to unregister native hook: ${ex.message}")
             }
         }
+    }
+    
+    fun cleanup() {
+        shutdown()
+        serviceScope.cancel()
     }
 }
 

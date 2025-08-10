@@ -11,9 +11,8 @@ import androidx.compose.material3.*
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
-import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -23,8 +22,8 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import com.gromozeka.bot.model.ChatSession
 import com.gromozeka.bot.services.TTSQueueService
+import com.gromozeka.bot.settings.Settings
 import com.gromozeka.shared.domain.message.ChatMessage
 import com.mikepenz.markdown.m3.Markdown
 import kotlinx.coroutines.CoroutineScope
@@ -34,14 +33,12 @@ import kotlinx.serialization.json.JsonElement
 
 @Composable
 fun ChatScreen(
-    selectedSession: ChatSession?,
     chatHistory: List<ChatMessage>,
     userInput: String,
     onUserInputChange: (String) -> Unit,
     assistantIsThinking: Boolean,
     isWaitingForResponse: Boolean,
     autoSend: Boolean,
-    onAutoSendChange: (Boolean) -> Unit,
     onBackToSessionList: () -> Unit,
     onNewSession: () -> Unit,
     onSendMessage: suspend (String) -> Unit,
@@ -51,11 +48,15 @@ fun ChatScreen(
     isDev: Boolean = false,
     ttsSpeed: Float = 1.0f,
     onTtsSpeedChange: (Float) -> Unit = {},
+    // Settings
+    settings: Settings? = null,
+    onSettingsChange: (Settings) -> Unit = {},
 ) {
     val scrollState = rememberScrollState()
     var stickyToBottom by remember { mutableStateOf(true) }
     var jsonToShow by remember { mutableStateOf<String?>(null) }
     var showSystemMessages by remember { mutableStateOf(true) }
+    var showSettingsPanel by remember { mutableStateOf(false) }
 
     val isAtBottom by remember {
         derivedStateOf {
@@ -78,39 +79,53 @@ fun ChatScreen(
     }
 
 
-    SelectionContainer {
-        Column(modifier = Modifier.fillMaxSize()) {
-            DisableSelection {
-                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    CompactButton(onClick = onBackToSessionList) {
-                        Text("← Назад")
-                    }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    CompactButton(onClick = onNewSession) {
-                        Text("Новая")
-                    }
-                    
-                    Spacer(modifier = Modifier.weight(1f))
-                    
-                    // Message count
-                    CompactButton(
-                        onClick = { },
-                        tooltip = "Всего сообщений: ${chatHistory.size}\n(включая системные)"
-                    ) {
-                        Text("💬 ${chatHistory.size}")
-                    }
-                    
-                    Spacer(modifier = Modifier.width(8.dp))
-                    
-                    // Toggle system messages
-                    CompactButton(
-                        onClick = { showSystemMessages = !showSystemMessages },
-                        tooltip = if (showSystemMessages) "Скрыть системные сообщения" else "Показать системные сообщения"
-                    ) {
-                        Text("⚙️")
+    Row(modifier = Modifier.fillMaxSize()) {
+        // Main chat content
+        SelectionContainer(modifier = Modifier.weight(1f)) {
+            Column(modifier = Modifier.fillMaxSize()) {
+                DisableSelection {
+                    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        CompactButton(onClick = onBackToSessionList) {
+                            Text("← Назад")
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        CompactButton(onClick = onNewSession) {
+                            Text("Новая")
+                        }
+                        
+                        Spacer(modifier = Modifier.weight(1f))
+                        
+                        // Message count
+                        CompactButton(
+                            onClick = { },
+                            tooltip = "Всего сообщений: ${chatHistory.size}\n(включая системные)"
+                        ) {
+                            Text("💬 ${chatHistory.size}")
+                        }
+                        
+                        Spacer(modifier = Modifier.width(8.dp))
+                        
+                        // Toggle system messages
+                        CompactButton(
+                            onClick = { showSystemMessages = !showSystemMessages },
+                            tooltip = if (showSystemMessages) "Скрыть системные сообщения" else "Показать системные сообщения"
+                        ) {
+                            Text("⚙️")
+                        }
+                        
+                        Spacer(modifier = Modifier.width(8.dp))
+                        
+                        // Settings button - only show if settings are provided
+                        if (settings != null) {
+                            CompactButton(
+                                onClick = { showSettingsPanel = !showSettingsPanel },
+                                tooltip = "Настройки"
+                            ) {
+                                Icon(Icons.Default.Settings, contentDescription = "Settings")
+                            }
+                        }
                     }
                 }
-            }
 
             Spacer(modifier = Modifier.height(8.dp))
 
@@ -160,6 +175,17 @@ fun ChatScreen(
                     onTtsSpeedChange = onTtsSpeedChange
                 )
             }
+        }
+        }
+        
+        // Settings panel - only show if settings are provided
+        if (settings != null) {
+            SettingsPanel(
+                isVisible = showSettingsPanel,
+                settings = settings,
+                onSettingsChange = onSettingsChange,
+                onClose = { showSettingsPanel = false }
+            )
         }
     }
 
@@ -429,24 +455,8 @@ private fun VoiceControls(
     ttsSpeed: Float = 1.0f,
     onTtsSpeedChange: (Float) -> Unit = {},
 ) {
-    Column {
-        // TTS Speed Control
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-            Text("TTS Speed:", style = MaterialTheme.typography.bodySmall)
-            Spacer(modifier = Modifier.width(8.dp))
-            Slider(
-                value = ttsSpeed,
-                onValueChange = onTtsSpeedChange,
-                valueRange = 0.25f..4.0f,
-                steps = 14, // 0.25, 0.5, 0.75, 1.0, 1.25, ..., 4.0
-                modifier = Modifier.weight(1f)
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("${String.format("%.2f", ttsSpeed)}x", style = MaterialTheme.typography.bodySmall)
-        }
-        
-        // Voice controls row
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+    // Voice controls row
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
             // Development mode buttons - first in row
             if (isDev) {
                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -489,7 +499,6 @@ private fun VoiceControls(
             CompactButton(onClick = {}, modifier = modifierWithPushToTalk) {
                 Text("🎤 PTT")
             }
-        }
     }
 }
 

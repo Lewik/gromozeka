@@ -6,33 +6,23 @@ import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
-import com.gromozeka.bot.services.PTTGestureDetector
-import com.gromozeka.bot.services.PTTGestureHandler
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.launch
 
 fun Modifier.pttGestures(
-    handler: PTTGestureHandler,
-    coroutineScope: CoroutineScope
+    onPressed: () -> Unit,
+    onReleased: () -> Unit
 ): Modifier {
-    val gestureDetector = PTTGestureDetector(handler, coroutineScope)
-    
     return this.pointerInput(Unit) {
         awaitEachGesture {
             val down = awaitFirstDown(pass = PointerEventPass.Initial)
             
             // Notify about press
-            coroutineScope.launch {
-                gestureDetector.onKeyDown()
-            }
+            onPressed()
             
             // Wait for release
             val up = waitForUpOrCancellation(pass = PointerEventPass.Initial)
             
             // Notify about release
-            coroutineScope.launch {
-                gestureDetector.onKeyUp()
-            }
+            onReleased()
         }
     }
 }

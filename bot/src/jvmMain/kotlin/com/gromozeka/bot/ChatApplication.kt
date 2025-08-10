@@ -5,24 +5,20 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.material3.*
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.ApplicationScope
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import com.gromozeka.bot.model.ChatSession
 import com.gromozeka.bot.model.Session
 import com.gromozeka.bot.services.*
-import com.gromozeka.bot.ui.ChatScreen
-import com.gromozeka.bot.ui.CompactButton
-import com.gromozeka.bot.ui.GromozekaTheme
-import com.gromozeka.bot.ui.SessionListScreen
-import com.gromozeka.bot.ui.onEscape
-import com.gromozeka.bot.ui.pttGestures
+import com.gromozeka.bot.settings.Settings
+import com.gromozeka.bot.ui.*
 import com.gromozeka.shared.domain.message.ChatMessage
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
@@ -57,33 +53,26 @@ fun main() {
     settingsService.initialize()
     println("[GROMOZEKA] Starting application in ${settingsService.mode.name} mode...")
 
-    val sttService = context.getBean<SttService>()
-    val ttsService = context.getBean<TtsService>()
     val ttsQueueService = context.getBean<TTSQueueService>()
     val sessionJsonlService = context.getBean<SessionJsonlService>()
     val globalHotkeyService = context.getBean<GlobalHotkeyService>()
+    val unifiedPTTService = context.getBean<UnifiedPTTService>()
 
     // Explicit startup of TTS queue service
     ttsQueueService.start()
     println("[GROMOZEKA] TTS queue service started")
 
-    // Initialize hotkey service if enabled in settings
-    if (settingsService.settings.globalPttHotkeyEnabled) {
-        globalHotkeyService.initialize()
-        println("[GROMOZEKA] Global hotkey service enabled")
-    } else {
-        println("[GROMOZEKA] Global hotkey service disabled in settings")
-    }
+    // Initialize global hotkey service (starts listening to settings internally)
+    globalHotkeyService.initializeService()
     println("[GROMOZEKA] Starting Compose Desktop UI...")
     application {
         GromozekaTheme {
             ChatWindow(
-                sttService,
-                ttsService,
                 ttsQueueService,
                 settingsService,
                 sessionJsonlService,
                 globalHotkeyService,
+                unifiedPTTService,
                 context
             )
         }
@@ -93,12 +82,11 @@ fun main() {
 @Composable
 @Preview
 fun ApplicationScope.ChatWindow(
-    sttService: SttService,
-    ttsService: TtsService,
     ttsQueueService: TTSQueueService,
     settingsService: SettingsService,
     sessionJsonlService: SessionJsonlService,
     globalHotkeyService: GlobalHotkeyService,
+    unifiedPTTService: UnifiedPTTService,
     context: org.springframework.context.ConfigurableApplicationContext,
 ) {
     val coroutineScope = rememberCoroutineScope()
@@ -107,18 +95,14 @@ fun ApplicationScope.ChatWindow(
 
     var initialized by remember { mutableStateOf(false) }
 
-//    val objectMapper = remember {
-//        ObjectMapper().apply {
-//            registerKotlinModule()
-//        }
-//    }
     var userInput by remember { mutableStateOf("") }
     val chatHistory = remember { mutableStateListOf<ChatMessage>() }
 
     val assistantIsThinking = false // Temporarily deactivated
 
-    var autoSend by remember { mutableStateOf(settingsService.settings.autoSend) }
-    var ttsSpeed by remember { mutableStateOf(settingsService.settings.ttsSpeed) }
+    // Reactive settings state - single source of truth
+    val currentSettings by settingsService.settingsFlow.collectAsState()
+
 
     var showSessionList by remember { mutableStateOf(true) }
     var selectedSession by remember { mutableStateOf<ChatSession?>(null) }
@@ -268,40 +252,52 @@ fun ApplicationScope.ChatWindow(
         scrollState.animateScrollTo(scrollState.maxValue)
     }
 
-    // Unified PTT Handler for hotkey and UI button
-    val unifiedPTTHandler = remember {
-        UnifiedPTTHandler(
-            sttService = sttService,
-            ttsQueueService = ttsQueueService,
-            autoSend = autoSend,
-            onTextReceived = { text -> userInput = text },
-            onSendMessage = { text ->
-                coroutineScope.launch { sendMessage(text) }
-            },
-            onInterrupt = {
-                currentSession?.sendInterrupt() ?: false
-            }
-        )
-    }
-
-    // Update recording state from unified handler
-    isRecording = unifiedPTTHandler.isRecording()
-
-    // Configure global hotkey handler
+    // Subscribe to UnifiedPTTService events
     LaunchedEffect(Unit) {
-        globalHotkeyService.setGestureHandler(unifiedPTTHandler)
+        launch {
+            unifiedPTTService.textReceived.collect { text ->
+                userInput = text
+            }
+        }
+        launch {
+            unifiedPTTService.sendMessage.collect { text ->
+                sendMessage(text)
+            }
+        }
     }
 
-    // Create modifier with unified logic
+    // Set interrupt executor for current session
+    LaunchedEffect(currentSession) {
+        unifiedPTTService.setInterruptExecutor {
+            currentSession?.sendInterrupt() ?: false
+        }
+    }
+
+    // Update recording state from service
+    val recordingState by unifiedPTTService.recordingState.collectAsState()
+    isRecording = recordingState
+
+    // Settings update handler
+    val onSettingsChange: (Settings) -> Unit = { newSettings ->
+        // Save to service (this will update the reactive state flow)
+        // All dependent services will react automatically via their subscriptions
+        settingsService.saveSettings(newSettings)
+    }
+
+    // Create modifier with PTT gestures for UI button
     val modifierWithPushToTalk = Modifier.pttGestures(
-        handler = unifiedPTTHandler,
-        coroutineScope = coroutineScope
+        onPressed = {
+            coroutineScope.launch { unifiedPTTService.onPTTPressed() }
+        },
+        onReleased = {
+            coroutineScope.launch { unifiedPTTService.onPTTReleased() }
+        }
     )
 
     Window(
         onCloseRequest = {
             println("[GROMOZEKA] Application window closing - stopping all sessions...")
-            globalHotkeyService.shutdown()
+            globalHotkeyService.cleanup()
             ttsQueueService.shutdown()
             exitApplication()
         },
@@ -312,10 +308,11 @@ fun ApplicationScope.ChatWindow(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(16.dp)
-                .onEscape(
-                    handler = unifiedPTTHandler,
-                    coroutineScope = coroutineScope
-                )
+                .onEscape {
+                    coroutineScope.launch {
+                        unifiedPTTService.onEscapePressed()
+                    }
+                }
         ) {
             if (initialized) {
                 if (showSessionList) {
@@ -353,14 +350,12 @@ fun ApplicationScope.ChatWindow(
                     )
                 } else {
                     ChatScreen(
-                        selectedSession = selectedSession,
                         chatHistory = chatHistory,
                         userInput = userInput,
                         onUserInputChange = { userInput = it },
                         assistantIsThinking = assistantIsThinking,
                         isWaitingForResponse = isWaitingForResponse,
-                        autoSend = autoSend,
-                        onAutoSendChange = { autoSend = it },
+                        autoSend = currentSettings?.autoSend ?: true,
                         onBackToSessionList = {
                             coroutineScope.launch {
                                 currentSession?.stop()
@@ -376,11 +371,15 @@ fun ApplicationScope.ChatWindow(
                         coroutineScope = coroutineScope,
                         modifierWithPushToTalk = modifierWithPushToTalk,
                         isDev = settingsService.mode == com.gromozeka.bot.settings.AppMode.DEV,
-                        ttsSpeed = ttsSpeed,
+                        ttsSpeed = currentSettings?.ttsSpeed ?: 1.0f,
                         onTtsSpeedChange = { newSpeed ->
-                            ttsSpeed = newSpeed
-                            settingsService.saveSettings { copy(ttsSpeed = newSpeed) }
-                        }
+                            currentSettings?.let { settings ->
+                                settingsService.saveSettings(settings.copy(ttsSpeed = newSpeed))
+                            }
+                        },
+                        // Settings integration
+                        settings = currentSettings,
+                        onSettingsChange = onSettingsChange
                     )
                 }
             } else {
