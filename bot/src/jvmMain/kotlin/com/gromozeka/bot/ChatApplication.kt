@@ -17,6 +17,9 @@ import androidx.compose.ui.window.application
 import com.gromozeka.bot.model.ChatSession
 import com.gromozeka.bot.model.Session
 import com.gromozeka.bot.services.*
+import com.gromozeka.bot.services.PTTEventRouter
+import com.gromozeka.bot.ui.advancedEscape
+import com.gromozeka.bot.ui.advancedPttGestures
 import com.gromozeka.bot.settings.Settings
 import com.gromozeka.bot.ui.*
 import com.gromozeka.shared.domain.message.ChatMessage
@@ -57,13 +60,16 @@ fun main() {
     val sessionJsonlService = context.getBean<SessionJsonlService>()
     val globalHotkeyService = context.getBean<GlobalHotkeyService>()
     val unifiedPTTService = context.getBean<UnifiedPTTService>()
+    val pttEventRouter = context.getBean<PTTEventRouter>()
 
     // Explicit startup of TTS queue service
     ttsQueueService.start()
     println("[GROMOZEKA] TTS queue service started")
 
-    // Initialize global hotkey service (starts listening to settings internally)
+    // Initialize services
     globalHotkeyService.initializeService()
+    unifiedPTTService.initialize()
+    pttEventRouter.initialize()
     println("[GROMOZEKA] Starting Compose Desktop UI...")
     application {
         GromozekaTheme {
@@ -73,6 +79,7 @@ fun main() {
                 sessionJsonlService,
                 globalHotkeyService,
                 unifiedPTTService,
+                pttEventRouter,
                 context
             )
         }
@@ -87,6 +94,7 @@ fun ApplicationScope.ChatWindow(
     sessionJsonlService: SessionJsonlService,
     globalHotkeyService: GlobalHotkeyService,
     unifiedPTTService: UnifiedPTTService,
+    pttEventRouter: PTTEventRouter,
     context: org.springframework.context.ConfigurableApplicationContext,
 ) {
     val coroutineScope = rememberCoroutineScope()
@@ -112,7 +120,6 @@ fun ApplicationScope.ChatWindow(
             false
         )
     }
-    var isRecording by remember { mutableStateOf(false) }
 
 
     LaunchedEffect(Unit) {
@@ -276,14 +283,13 @@ fun ApplicationScope.ChatWindow(
 
     // Set interrupt executor for current session
     LaunchedEffect(currentSession) {
-        unifiedPTTService.setInterruptExecutor {
+        pttEventRouter.setInterruptExecutor {
             currentSession?.sendInterrupt() ?: false
         }
     }
 
-    // Update recording state from service
-    val recordingState by unifiedPTTService.recordingState.collectAsState()
-    isRecording = recordingState
+    // Get recording state from service
+    val isRecording by unifiedPTTService.recordingState.collectAsState()
 
     // Settings update handler
     val onSettingsChange: (Settings) -> Unit = { newSettings ->
@@ -295,15 +301,8 @@ fun ApplicationScope.ChatWindow(
         com.gromozeka.bot.services.StreamToChatMessageMapper.currentResponseFormat = newSettings.responseFormat
     }
 
-    // Create modifier with PTT gestures for UI button
-    val modifierWithPushToTalk = Modifier.pttGestures(
-        onPressed = {
-            coroutineScope.launch { unifiedPTTService.onPTTPressed() }
-        },
-        onReleased = {
-            coroutineScope.launch { unifiedPTTService.onPTTReleased() }
-        }
-    )
+    // Create modifier with PTT event router
+    val modifierWithPushToTalk = Modifier.advancedPttGestures(pttEventRouter, coroutineScope)
 
     Window(
         onCloseRequest = {
@@ -319,11 +318,7 @@ fun ApplicationScope.ChatWindow(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(16.dp)
-                .onEscape {
-                    coroutineScope.launch {
-                        unifiedPTTService.onEscapePressed()
-                    }
-                }
+                .advancedEscape(pttEventRouter)
         ) {
             if (initialized) {
                 if (showSessionList) {

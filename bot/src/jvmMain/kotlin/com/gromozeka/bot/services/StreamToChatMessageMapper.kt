@@ -271,28 +271,22 @@ object StreamToChatMessageMapper {
         val parsed = parser.parse(text)
         
         if (parsed != null) {
-            println("[StreamToChatMessageMapper] ASSISTANT: Successfully parsed with ${currentResponseFormat} parser")
             return ChatMessage.ContentItem.AssistantMessage(structured = parsed)
         }
         
         // If primary parser failed, try all parsers as fallback
-        println("[StreamToChatMessageMapper] ASSISTANT: Primary parser failed, trying fallback parsers")
         val fallbackParsed = ResponseParserFactory.tryAllParsers(text)
         
         if (fallbackParsed != null) {
-            println("[StreamToChatMessageMapper] ASSISTANT: Fallback parser succeeded")
             return ChatMessage.ContentItem.AssistantMessage(structured = fallbackParsed)
         }
         
         // Last resort - return as UnknownJson if it looks like JSON
         return try {
             val jsonElement = Json.parseToJsonElement(text)
-            println("[StreamToChatMessageMapper] ASSISTANT: All parsers failed, returning as UnknownJson")
             ChatMessage.ContentItem.UnknownJson(jsonElement)
         } catch (_: Exception) {
             // Plain text - convert to StructuredText automatically
-            println("[StreamToChatMessageMapper] ASSISTANT: Plain text detected, converting to StructuredText")
-            println("  Text preview: ${text.take(100)}${if (text.length > 100) "..." else ""}")
             val structured = ChatMessage.StructuredText(
                 fullText = text,
                 ttsText = null,

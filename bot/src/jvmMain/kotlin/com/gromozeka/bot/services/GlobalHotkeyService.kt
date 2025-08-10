@@ -16,7 +16,7 @@ import java.util.logging.Logger
 @Service
 class GlobalHotkeyService(
     private val settingsService: SettingsService,
-    private val unifiedPTTService: UnifiedPTTService
+    private val pttEventRouter: PTTEventRouter
 ) {
     
     companion object {
@@ -27,38 +27,20 @@ class GlobalHotkeyService(
     }
     
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-    private var gestureDetector: PTTGestureDetector? = null
-    
-    private val _gestureEvents = MutableSharedFlow<PTTGestureEvent>()
-    val gestureEvents: SharedFlow<PTTGestureEvent> = _gestureEvents
+    private val gestureDetector = UnifiedGestureDetector(pttEventRouter, serviceScope)
     
     private var isRegistered = false
     
     fun initializeService() {
-        // Create gesture detector with handler that delegates to UnifiedPTTService
-        val handler = object : PTTGestureHandler {
-            override suspend fun onPTTStart(mode: PTTMode) {
-                unifiedPTTService.onPTTPressed()
-            }
-            
-            override suspend fun onPTTStop(mode: PTTMode) {
-                unifiedPTTService.onPTTReleased()
-            }
-            
-            override suspend fun onSingleClick() {
-                // Single click - just cancel recording or stop TTS
-                unifiedPTTService.onEscapePressed()
-            }
-            
-            override suspend fun onDoubleClick() {
-                // Double click - interrupt command
-                unifiedPTTService.interruptCommand.emit(Unit)
-            }
-        }
-        gestureDetector = PTTGestureDetector(handler, serviceScope)
-        
-        // Also start listening to settings
         startListeningToSettings()
+    }
+    
+    private suspend fun onHotkeyDown() {
+        gestureDetector.onGestureDown()
+    }
+    
+    private suspend fun onHotkeyUp() {
+        gestureDetector.onGestureUp()
     }
     
     private fun startListeningToSettings() {
@@ -92,7 +74,7 @@ class GlobalHotkeyService(
             if (isTargetHotkey(e)) {
                 println("[HOTKEY] Fn+Control hotkey pressed")
                 serviceScope.launch {
-                    gestureDetector?.onKeyDown()
+                    onHotkeyDown()
                 }
             }
         }
@@ -101,7 +83,7 @@ class GlobalHotkeyService(
             // Release of ANY key from combination
             if (isPartOfHotkey(e)) {
                 serviceScope.launch {
-                    gestureDetector?.onKeyUp()
+                    onHotkeyUp()
                 }
             }
         }
@@ -142,7 +124,7 @@ class GlobalHotkeyService(
     private fun shutdown() {
         if (isRegistered) {
             try {
-                gestureDetector?.reset()
+                resetGestureState()
                 GlobalScreen.removeNativeKeyListener(keyListener)
                 GlobalScreen.unregisterNativeHook()
                 isRegistered = false
@@ -153,15 +135,13 @@ class GlobalHotkeyService(
         }
     }
     
+    private fun resetGestureState() {
+        gestureDetector.resetGestureState()
+    }
+    
     fun cleanup() {
         shutdown()
         serviceScope.cancel()
     }
 }
 
-sealed class PTTGestureEvent {
-    object SingleClick : PTTGestureEvent()
-    object DoubleClick : PTTGestureEvent()
-    data class PTTStart(val mode: PTTMode) : PTTGestureEvent()
-    data class PTTStop(val mode: PTTMode) : PTTGestureEvent()
-}

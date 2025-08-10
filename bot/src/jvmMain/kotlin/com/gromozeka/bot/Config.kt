@@ -1,9 +1,12 @@
 package com.gromozeka.bot
 
 import com.gromozeka.bot.services.AudioMuteManager
+import com.gromozeka.bot.services.PTTEventRouter
 import com.gromozeka.bot.services.SettingsService
 import com.gromozeka.bot.services.SttService
+import com.gromozeka.bot.services.TTSQueueService
 import com.gromozeka.bot.services.TtsService
+import com.gromozeka.bot.services.UnifiedPTTService
 import io.ktor.client.*
 import io.ktor.client.engine.cio.*
 import io.ktor.client.plugins.contentnegotiation.*
@@ -53,5 +56,10 @@ class Config {
     @Bean
     fun chatClient(chatModel: OpenAiChatModel?) = chatModel?.let { ChatClient.create(it) }
 
+    @Bean
+    fun pttEventRouter(
+        unifiedPTTService: UnifiedPTTService,
+        ttsQueueService: TTSQueueService
+    ) = PTTEventRouter(unifiedPTTService, ttsQueueService)
 
 }

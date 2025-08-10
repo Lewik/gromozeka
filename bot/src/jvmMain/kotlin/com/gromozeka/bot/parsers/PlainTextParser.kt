@@ -15,6 +15,11 @@ class PlainTextParser : ResponseParser {
             return null
         }
         
+        // Don't parse JSON - let it be handled as UnknownJson
+        if (trimmedText.startsWith("{") && trimmedText.endsWith("}")) {
+            return null
+        }
+        
         // Return as plain text with no TTS metadata
         return ChatMessage.StructuredText(
             fullText = trimmedText,

@@ -18,12 +18,8 @@ class XmlInlineParser : ResponseParser {
             val matches = ttsPattern.findAll(trimmedText).toList()
             
             if (matches.isEmpty()) {
-                // No TTS tags found, return as plain text
-                return ChatMessage.StructuredText(
-                    fullText = trimmedText,
-                    ttsText = null,
-                    voiceTone = null
-                )
+                // No TTS tags found, this parser doesn't handle plain text
+                return null
             }
             
             // Extract TTS content and tone

@@ -3,60 +3,60 @@ package com.gromozeka.bot.services
 import kotlinx.coroutines.*
 import kotlin.time.Duration.Companion.milliseconds
 
-class PTTGestureDetector(
-    private val handler: PTTGestureHandler,
+class UnifiedGestureDetector(
+    private val pttEventRouter: PTTEventRouter,
     private val coroutineScope: CoroutineScope
 ) {
     private val doubleClickWindow = 400.milliseconds
     private val shortClickThreshold = 150.milliseconds
-    private var state = PTTState.IDLE
+    private var state = GestureState.IDLE
     private var firstPressTime = 0L
     private var currentPressTime = 0L
     private var timeoutJob: Job? = null
 
-    suspend fun onKeyDown() {
+    suspend fun onGestureDown() {
         val now = System.currentTimeMillis()
         currentPressTime = now
         
         when (state) {
-            PTTState.IDLE -> {
+            GestureState.IDLE -> {
                 firstPressTime = now
-                state = PTTState.FIRST_DOWN
+                state = GestureState.FIRST_DOWN
                 
                 // If holding long - this is single hold
                 timeoutJob = coroutineScope.launch {
                     delay(shortClickThreshold)
-                    if (state == PTTState.FIRST_DOWN) {
-                        state = PTTState.SINGLE_HOLDING
-                        handler.onPTTStart(PTTMode.SINGLE)
+                    if (state == GestureState.FIRST_DOWN) {
+                        state = GestureState.SINGLE_HOLDING
+                        pttEventRouter.handlePTTEvent(PTTEvent.SINGLE_PUSH)
                     }
                 }
             }
             
-            PTTState.WAITING_SECOND_DOWN -> {
+            GestureState.WAITING_SECOND_DOWN -> {
                 if (now - firstPressTime < doubleClickWindow.inWholeMilliseconds) {
                     // Second press within window
                     timeoutJob?.cancel()
-                    state = PTTState.SECOND_DOWN
+                    state = GestureState.SECOND_DOWN
                     
                     // If holding - this is double hold
                     timeoutJob = coroutineScope.launch {
                         delay(shortClickThreshold)
-                        if (state == PTTState.SECOND_DOWN) {
-                            state = PTTState.DOUBLE_HOLDING
-                            handler.onPTTStart(PTTMode.DOUBLE)
+                        if (state == GestureState.SECOND_DOWN) {
+                            state = GestureState.DOUBLE_HOLDING
+                            pttEventRouter.handlePTTEvent(PTTEvent.DOUBLE_PUSH)
                         }
                     }
                 } else {
                     // Too late, start over
                     firstPressTime = now
-                    state = PTTState.FIRST_DOWN
+                    state = GestureState.FIRST_DOWN
                     
                     timeoutJob = coroutineScope.launch {
                         delay(shortClickThreshold)
-                        if (state == PTTState.FIRST_DOWN) {
-                            state = PTTState.SINGLE_HOLDING
-                            handler.onPTTStart(PTTMode.SINGLE)
+                        if (state == GestureState.FIRST_DOWN) {
+                            state = GestureState.SINGLE_HOLDING
+                            pttEventRouter.handlePTTEvent(PTTEvent.SINGLE_PUSH)
                         }
                     }
                 }
@@ -69,52 +69,52 @@ class PTTGestureDetector(
         }
     }
 
-    suspend fun onKeyUp() {
+    suspend fun onGestureUp() {
         val now = System.currentTimeMillis()
         val holdDuration = now - currentPressTime
         
         when (state) {
-            PTTState.FIRST_DOWN -> {
+            GestureState.FIRST_DOWN -> {
                 timeoutJob?.cancel()
                 
                 if (holdDuration < shortClickThreshold.inWholeMilliseconds) {
                     // Quick press, waiting for second
-                    state = PTTState.WAITING_SECOND_DOWN
+                    state = GestureState.WAITING_SECOND_DOWN
                     
                     timeoutJob = coroutineScope.launch {
                         delay(doubleClickWindow)
-                        if (state == PTTState.WAITING_SECOND_DOWN) {
-                            state = PTTState.IDLE
-                            handler.onSingleClick()
+                        if (state == GestureState.WAITING_SECOND_DOWN) {
+                            state = GestureState.IDLE
+                            pttEventRouter.handlePTTEvent(PTTEvent.SINGLE_CLICK)
                         }
                     }
                 } else {
-                    // This was single hold, but released
-                    state = PTTState.IDLE
+                    // This was single hold, but released early
+                    state = GestureState.IDLE
                 }
             }
             
-            PTTState.SECOND_DOWN -> {
+            GestureState.SECOND_DOWN -> {
                 timeoutJob?.cancel()
                 
                 if (holdDuration < shortClickThreshold.inWholeMilliseconds) {
                     // Quick double click
-                    state = PTTState.IDLE
-                    handler.onDoubleClick()
+                    state = GestureState.IDLE
+                    pttEventRouter.handlePTTEvent(PTTEvent.DOUBLE_CLICK)
                 } else {
-                    // This was double hold, but released
-                    state = PTTState.IDLE
+                    // This was double hold, but released early
+                    state = GestureState.IDLE
                 }
             }
             
-            PTTState.SINGLE_HOLDING -> {
-                state = PTTState.IDLE
-                handler.onPTTStop(PTTMode.SINGLE)
+            GestureState.SINGLE_HOLDING -> {
+                state = GestureState.IDLE
+                pttEventRouter.handlePTTRelease()
             }
             
-            PTTState.DOUBLE_HOLDING -> {
-                state = PTTState.IDLE
-                handler.onPTTStop(PTTMode.DOUBLE)
+            GestureState.DOUBLE_HOLDING -> {
+                state = GestureState.IDLE
+                pttEventRouter.handlePTTRelease()
             }
             
             else -> {
@@ -123,29 +123,22 @@ class PTTGestureDetector(
         }
     }
     
-    fun reset() {
+    fun resetGestureState() {
         timeoutJob?.cancel()
-        state = PTTState.IDLE
+        state = GestureState.IDLE
     }
+    
+    fun getCurrentState(): GestureState = state
+    
+    fun isInHoldingState(): Boolean = 
+        state == GestureState.SINGLE_HOLDING || state == GestureState.DOUBLE_HOLDING
 }
 
-enum class PTTState {
+enum class GestureState {
     IDLE,
     FIRST_DOWN,
     WAITING_SECOND_DOWN,
     SECOND_DOWN,
     SINGLE_HOLDING,
     DOUBLE_HOLDING
-}
-
-enum class PTTMode { 
-    SINGLE, 
-    DOUBLE 
-}
-
-interface PTTGestureHandler {
-    suspend fun onSingleClick()
-    suspend fun onDoubleClick() 
-    suspend fun onPTTStart(mode: PTTMode)
-    suspend fun onPTTStop(mode: PTTMode)
 }
