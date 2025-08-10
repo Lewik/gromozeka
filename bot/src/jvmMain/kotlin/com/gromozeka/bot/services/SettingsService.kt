@@ -181,6 +181,7 @@ class SettingsService {
      */
     private fun validateSettings(settings: Settings) {
         validateLanguageCode(settings.sttMainLanguage)
+        validateTtsSpeed(settings.ttsSpeed)
     }
 
     /**
@@ -211,5 +212,16 @@ class SettingsService {
         }
 
         println("[SettingsService] STT language code validated: '$languageCode'")
+    }
+
+    /**
+     * Validates TTS speed parameter for OpenAI API compatibility
+     */
+    private fun validateTtsSpeed(speed: Float) {
+        require(speed in 0.25f..4.0f) {
+            "Invalid TTS speed: $speed. Must be between 0.25 (slowest) and 4.0 (fastest). Default: 1.0"
+        }
+        
+        println("[SettingsService] TTS speed validated: $speed")
     }
 }
