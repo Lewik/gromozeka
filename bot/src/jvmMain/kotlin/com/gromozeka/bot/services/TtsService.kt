@@ -11,7 +11,7 @@ import org.springframework.ai.openai.audio.speech.SpeechPrompt
 import java.io.File
 
 class TtsService(
-    private val openAiAudioSpeechModel: OpenAiAudioSpeechModel?,
+    private val openAiAudioSpeechModel: OpenAiAudioSpeechModel,
     private val settingsService: SettingsService
 ) {
 
@@ -20,7 +20,7 @@ class TtsService(
         voiceTone: String = "neutral colleague",
     ): File? = withContext(Dispatchers.IO) {
         try {
-            if (text.isBlank() || openAiAudioSpeechModel == null) return@withContext null
+            if (text.isBlank()) return@withContext null
 
             val outputFile = File.createTempFile("tts_output", ".mp3")
 

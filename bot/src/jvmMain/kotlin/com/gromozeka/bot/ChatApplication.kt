@@ -53,7 +53,6 @@ fun main() {
     println("[GROMOZEKA] Spring context initialized successfully")
 
     val settingsService = context.getBean<SettingsService>()
-    settingsService.initialize()
     println("[GROMOZEKA] Starting application in ${settingsService.mode.name} mode...")
 
     val ttsQueueService = context.getBean<TTSQueueService>()

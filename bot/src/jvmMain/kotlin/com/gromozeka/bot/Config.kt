@@ -35,14 +35,14 @@ class Config {
 
     @Bean
     fun sttService(
-        openAiAudioTranscriptionModel: OpenAiAudioTranscriptionModel?,
+        openAiAudioTranscriptionModel: OpenAiAudioTranscriptionModel,
         settingsService: SettingsService,
         audioMuteManager: AudioMuteManager
     ) = SttService(openAiAudioTranscriptionModel, settingsService, audioMuteManager)
 
     @Bean
     fun ttsService(
-        openAiAudioSpeechModel: OpenAiAudioSpeechModel?,
+        openAiAudioSpeechModel: OpenAiAudioSpeechModel,
         settingsService: SettingsService
     ) = TtsService(openAiAudioSpeechModel, settingsService)
 
@@ -54,7 +54,7 @@ class Config {
     }
 
     @Bean
-    fun chatClient(chatModel: OpenAiChatModel?) = chatModel?.let { ChatClient.create(it) }
+    fun chatClient(chatModel: OpenAiChatModel) = ChatClient.create(chatModel)
 
     @Bean
     fun pttEventRouter(

@@ -10,6 +10,7 @@ import kotlinx.serialization.json.Json
 import org.springframework.stereotype.Service
 import java.io.File
 import java.util.*
+import jakarta.annotation.PostConstruct
 
 @Service
 class SettingsService {
@@ -31,16 +32,11 @@ class SettingsService {
     private val _settingsFlow = MutableStateFlow<Settings?>(null)
     val settingsFlow: StateFlow<Settings?> = _settingsFlow.asStateFlow()
 
-    private var initialized = false
-
     /**
-     * Initialize the service - must be called explicitly after Spring context creation
+     * Initialize the service automatically after Spring bean creation
      */
+    @PostConstruct
     fun initialize() {
-        if (initialized) {
-            throw IllegalStateException("SettingsService already initialized")
-        }
-
         if (gromozekaHome.mkdirs()) {
             println("[SettingsService] Created gromozeka home directory: ${gromozekaHome.absolutePath}")
         }
@@ -48,7 +44,6 @@ class SettingsService {
         // Load settings
         _settingsFlow.value = loadSettings()
 
-        initialized = true
         println("[SettingsService] Initialized with mode: ${mode.name}")
         println("[SettingsService] Gromozeka home: ${gromozekaHome.absolutePath}")
     }
@@ -125,7 +120,6 @@ class SettingsService {
     }
 
     fun saveSettings(settings: Settings) {
-        requireInitialized()
         validateSettings(settings) // Fail fast on invalid settings
         // Always save to file in both modes
         settingsFile.writeText(json.encodeToString(settings))
@@ -139,47 +133,34 @@ class SettingsService {
     }
 
     fun reloadSettings() {
-        requireInitialized()
         _settingsFlow.value = loadSettings()
         println("[SettingsService] Settings reloaded from file")
     }
 
     // Utility methods
     val settings: Settings
-        get() = _settingsFlow.value
-            ?: throw IllegalStateException("SettingsService not initialized. Call initialize() first.")
+        get() = _settingsFlow.value ?: Settings()
 
     // Utility methods for common paths
     fun getLogsDir(): File {
-        requireInitialized()
         return File(gromozekaHome, "logs").apply { mkdirs() }
     }
 
     fun getCacheDir(): File {
-        requireInitialized()
         return File(gromozekaHome, "cache").apply { mkdirs() }
     }
 
     fun getSessionsDir(): File {
-        requireInitialized()
         return File(gromozekaHome, "sessions").apply { mkdirs() }
     }
 
     // Claude specific paths
     fun getClaudeProjectsDir(): File {
-        requireInitialized()
         return File(claudeHome, "projects")
     }
 
     fun getClaudeConfigDir(): File {
-        requireInitialized()
         return File(claudeHome, "config")
-    }
-
-    private fun requireInitialized() {
-        if (!initialized) {
-            throw IllegalStateException("SettingsService not initialized. Call initialize() first.")
-        }
     }
 
     /**
