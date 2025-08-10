@@ -256,7 +256,10 @@ fun ApplicationScope.ChatWindow(
     LaunchedEffect(Unit) {
         launch {
             unifiedPTTService.textReceived.collect { text ->
-                userInput = text
+                // Only set userInput if autoSend is disabled
+                if (currentSettings?.autoSend != true) {
+                    userInput = text
+                }
             }
         }
         launch {
