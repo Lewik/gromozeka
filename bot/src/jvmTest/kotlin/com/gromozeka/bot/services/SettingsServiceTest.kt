@@ -161,4 +161,61 @@ class SettingsServiceTest : FunSpec({
         val settingsFile = File(service.gromozekaHome, "settings.json")
         settingsFile.exists() shouldBe true
     }
+
+    test("should regenerate settings.dist.yaml with default values") {
+        val projectRoot = File(System.getProperty("user.dir"))
+        val distFile = File(projectRoot, "dev-data/.gromozeka/settings.dist.yaml")
+        
+        // Create directory if it doesn't exist
+        distFile.parentFile?.mkdirs()
+        
+        val defaultSettings = Settings() // Use all default values
+        
+        // Generate YAML content with comments
+        val yamlContent = buildString {
+            appendLine("# Gromozeka Default Settings Template")
+            appendLine("# Copy this file to settings.json and modify as needed")
+            appendLine()
+            
+            appendLine("# TTS (Text-to-Speech) Configuration")
+            appendLine("enableTts: ${defaultSettings.enableTts}")
+            appendLine("ttsSpeed: ${defaultSettings.ttsSpeed}  # Speech rate: 0.25 (slowest) to 4.0 (fastest), 1.0 = normal speed")
+            appendLine()
+            
+            appendLine("# STT (Speech-to-Text) Configuration")
+            appendLine("enableStt: ${defaultSettings.enableStt}")
+            appendLine("sttMainLanguage: \"${defaultSettings.sttMainLanguage}\"  # Language code - supports ISO 639-1 (e.g., \"en\", \"ru\") and 639-3 codes for GPT-4o models")
+            appendLine()
+            
+            appendLine("# Voice Control Settings")
+            appendLine("autoSend: ${defaultSettings.autoSend}")
+            appendLine("globalPttHotkeyEnabled: ${defaultSettings.globalPttHotkeyEnabled}")
+            appendLine("muteSystemAudioDuringPTT: ${defaultSettings.muteSystemAudioDuringPTT}")
+            appendLine()
+            
+            appendLine("# Claude Model Configuration") 
+            appendLine("claudeModel: \"${defaultSettings.claudeModel}\"")
+            appendLine()
+            
+            appendLine("# UI Settings")
+            appendLine("showOriginalJson: ${defaultSettings.showOriginalJson}")
+            appendLine()
+            
+            appendLine("# System Settings")
+            appendLine("includeCurrentTime: ${defaultSettings.includeCurrentTime}")
+        }
+        
+        // Write the file
+        distFile.writeText(yamlContent)
+        
+        // Verify the file exists and contains expected content
+        distFile.exists() shouldBe true
+        val content = distFile.readText()
+        content.contains("enableTts: ${defaultSettings.enableTts}") shouldBe true
+        content.contains("ttsSpeed: ${defaultSettings.ttsSpeed}") shouldBe true
+        content.contains("autoSend: ${defaultSettings.autoSend}") shouldBe true
+        content.contains("claudeModel: \"${defaultSettings.claudeModel}\"") shouldBe true
+        
+        println("✅ settings.dist.yaml regenerated successfully at: ${distFile.absolutePath}")
+    }
 })

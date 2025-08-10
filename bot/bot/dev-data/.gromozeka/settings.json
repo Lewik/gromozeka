@@ -1,8 +1,0 @@
-{
-    "enableTts": true,
-    "enableStt": true,
-    "autoSend": true,
-    "claudeModel": "sonnet",
-    "globalPttHotkeyEnabled": false,
-    "showOriginalJson": true
-}
