@@ -31,6 +31,7 @@ class GlobalHotkeyService(
     
     private var isRegistered = false
     private var isPTTActive = false
+    private var ignoreUntilNextCtrlDown = false
     
     fun initializeService() {
         startListeningToSettings()
@@ -71,20 +72,48 @@ class GlobalHotkeyService(
     
     private val keyListener = object : NativeKeyListener {
         override fun nativeKeyPressed(e: NativeKeyEvent) {
+            // If ignoring all events until next clean Ctrl-Down
+            if (ignoreUntilNextCtrlDown) {
+                if (e.keyCode == HOTKEY_CTRL_KEYCODE) {
+                    // New Ctrl press - reset ignore flag and check if clean
+                    println("[HOTKEY] New Ctrl-Down detected, resetting ignore flag")
+                    ignoreUntilNextCtrlDown = false
+                    
+                    // Check if this is a clean Ctrl press (only Ctrl modifier)
+                    if (isCleanCtrlPress(e)) {
+                        println("[HOTKEY] Clean Ctrl press - starting PTT")
+                        serviceScope.launch {
+                            onHotkeyDown()
+                        }
+                    } else {
+                        println("[HOTKEY] Ctrl pressed with other modifiers - ignoring until next clean press")
+                        ignoreUntilNextCtrlDown = true
+                    }
+                }
+                // Ignore ALL other events (including other keys and Ctrl-Up)
+                return
+            }
+            
             // Debug logging for fn+ctrl key detection
             if (e.keyCode == HOTKEY_FN_KEYCODE || e.keyCode == HOTKEY_CTRL_KEYCODE) {
                 println("[HOTKEY] Key detected: keyCode=${e.keyCode}, modifiers=${e.modifiers}")
             }
             
             if (isTargetHotkey(e)) {
-                println("[HOTKEY] Fn+Control hotkey pressed")
-                serviceScope.launch {
-                    onHotkeyDown()
+                // Check if this is a clean Ctrl press without conflicting keys
+                if (isCleanCtrlPress(e)) {
+                    println("[HOTKEY] Clean Fn+Control hotkey pressed")
+                    serviceScope.launch {
+                        onHotkeyDown()
+                    }
+                } else {
+                    println("[HOTKEY] Ctrl pressed with conflicting modifiers - ignoring until next clean press")
+                    ignoreUntilNextCtrlDown = true
                 }
             } else if (isPTTActive && !isPartOfHotkey(e)) {
                 // PTT is active and user pressed a non-hotkey key -> conflict
-                println("[HOTKEY] Modifier conflict detected during PTT (keyCode=${e.keyCode})")
-                gestureDetector.setDisabledDueToConflict()
+                println("[HOTKEY] Key conflict detected during PTT (keyCode=${e.keyCode}) - ignoring until next clean Ctrl")
+                ignoreUntilNextCtrlDown = true
                 serviceScope.launch {
                     pttEventRouter.handlePTTEvent(PTTEvent.MODIFIER_CONFLICT)
                 }
@@ -92,6 +121,11 @@ class GlobalHotkeyService(
         }
         
         override fun nativeKeyReleased(e: NativeKeyEvent) {
+            // If ignoring events, ignore ALL releases including Ctrl-Up
+            if (ignoreUntilNextCtrlDown) {
+                return
+            }
+            
             // Release of ANY key from combination
             if (isPartOfHotkey(e)) {
                 serviceScope.launch {
@@ -111,6 +145,14 @@ class GlobalHotkeyService(
         // Any of the hotkey combination keys: Fn or Control
         return event.keyCode == HOTKEY_FN_KEYCODE ||
                event.keyCode == HOTKEY_CTRL_KEYCODE
+    }
+    
+    private fun isCleanCtrlPress(event: NativeKeyEvent): Boolean {
+        // Check that only Ctrl modifier is pressed, no other conflicting modifiers
+        // Allow Fn+Ctrl but reject Shift+Ctrl, Alt+Ctrl, etc.
+        val allowedModifiers = NativeKeyEvent.CTRL_L_MASK or NativeKeyEvent.CTRL_R_MASK
+        return (event.modifiers and allowedModifiers) != 0 && 
+               (event.modifiers and allowedModifiers.inv()) == 0
     }
     
     
@@ -149,6 +191,8 @@ class GlobalHotkeyService(
     
     private fun resetGestureState() {
         gestureDetector.resetGestureState()
+        ignoreUntilNextCtrlDown = false
+        isPTTActive = false
     }
     
     fun cleanup() {

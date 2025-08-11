@@ -13,13 +13,8 @@ class UnifiedGestureDetector(
     private var firstPressTime = 0L
     private var currentPressTime = 0L
     private var timeoutJob: Job? = null
-    private var disabledDueToConflict = false
 
     suspend fun onGestureDown() {
-        if (disabledDueToConflict) {
-            // Disabled due to modifier conflict, ignore until reset
-            return
-        }
         
         val now = System.currentTimeMillis()
         currentPressTime = now
@@ -136,13 +131,6 @@ class UnifiedGestureDetector(
     }
     
     fun resetGestureState() {
-        timeoutJob?.cancel()
-        state = GestureState.IDLE
-        disabledDueToConflict = false
-    }
-    
-    fun setDisabledDueToConflict() {
-        disabledDueToConflict = true
         timeoutJob?.cancel()
         state = GestureState.IDLE
     }
