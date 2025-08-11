@@ -346,7 +346,7 @@ fun ApplicationScope.ChatWindow(
             ttsQueueService.shutdown()
             exitApplication()
         },
-        title = "🤖 Громозека${if (settingsService.mode == com.gromozeka.bot.settings.AppMode.DEV) " [DEV]" else ""}${selectedSession?.projectPath?.let { " • $it" } ?: ""}",
+        title = if (settingsService.mode == com.gromozeka.bot.settings.AppMode.DEV) "Gromozeka [DEV]" else "Gromozeka",
         icon = painterResource("logos/logo-256x256.png")
     ) {
         Box(

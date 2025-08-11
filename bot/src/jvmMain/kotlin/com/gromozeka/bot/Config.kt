@@ -12,6 +12,9 @@ import io.ktor.client.*
 import io.ktor.client.engine.cio.*
 import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.serialization.kotlinx.json.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import org.springframework.ai.chat.client.ChatClient
 import org.springframework.ai.openai.OpenAiAudioSpeechModel
 import org.springframework.ai.openai.OpenAiAudioTranscriptionModel
@@ -78,6 +81,11 @@ class Config {
         val service = SettingsService()
         service.initialize()  // Инициализируем сразу при создании бина
         return service
+    }
+
+    @Bean
+    fun coroutineScope(): CoroutineScope {
+        return CoroutineScope(Dispatchers.Default + SupervisorJob())
     }
 
 }
