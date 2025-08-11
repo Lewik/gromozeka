@@ -2,15 +2,17 @@ package com.gromozeka.bot
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
-import org.junit.jupiter.api.Disabled
-import org.junit.jupiter.api.Test
 import java.io.File
+import kotlin.test.Test
+import org.junit.jupiter.api.Disabled
 
 class MessageFieldsStructureAnalysisTest {
 
+    // DISABLED - This test is for research purposes only and should not run in CI
+    @Disabled
     @Test
-    @Disabled("Research test - creates files. Run manually when needed.")
     fun analyzeMessageFieldStructure() {
+        
         val analyzer = MessageFieldsStructureAnalyzer()
         val messageStructures = analyzer.analyzeMessageFieldByType()
 
@@ -40,9 +42,11 @@ class MessageFieldsStructureAnalysisTest {
         println("Results written to: ${outputFile.absolutePath}")
     }
 
+    // DISABLED - This test is for research purposes only and should not run in CI
+    @Disabled
     @Test
-    @Disabled("Research test - creates files. Run manually when needed.")
     fun analyzeToolUseResultFieldStructure() {
+        
         val analyzer = MessageFieldsStructureAnalyzer()
         val toolUseResultStructures = analyzer.analyzeToolUseResultFieldByType()
 
@@ -72,9 +76,11 @@ class MessageFieldsStructureAnalysisTest {
         println("Results written to: ${outputFile.absolutePath}")
     }
 
+    // DISABLED - This test is for research purposes only and should not run in CI
+    @Disabled
     @Test
-    @Disabled("Research test - creates files. Run manually when needed.")
     fun analyzeBothMessageAndToolUseResultFields() {
+        
         val analyzer = MessageFieldsStructureAnalyzer()
         val messageStructures = analyzer.analyzeMessageFieldByType()
         val toolUseResultStructures = analyzer.analyzeToolUseResultFieldByType()
@@ -125,7 +131,6 @@ class MessageFieldsStructureAnalyzer {
     fun analyzeMessageFieldByType(): Map<String, Set<String>> {
         val resultsByType = mutableMapOf<String, MutableSet<String>>()
 
-        // Analyze gromozeka sessions from today (2025-08-01)
         val todaySessionFiles = listOf(
             "8259ddd2-5761-41e6-ae94-2060663f3128.jsonl",
             "5eeceea8-df50-4031-813e-380cfe33be32.jsonl",
@@ -146,7 +151,6 @@ class MessageFieldsStructureAnalyzer {
                         val json = objectMapper.readValue(line, Map::class.java) as Map<String, Any?>
                         val typeValue = json["type"] as? String ?: "null"
 
-                        // Extract message field if it exists
                         val messageField = json["message"]
                         if (messageField != null) {
                             val messageStructure = extractStructure(messageField)
@@ -165,7 +169,6 @@ class MessageFieldsStructureAnalyzer {
     fun analyzeToolUseResultFieldByType(): Map<String, Set<String>> {
         val resultsByType = mutableMapOf<String, MutableSet<String>>()
 
-        // Analyze gromozeka sessions from today (2025-08-01)
         val todaySessionFiles = listOf(
             "8259ddd2-5761-41e6-ae94-2060663f3128.jsonl",
             "5eeceea8-df50-4031-813e-380cfe33be32.jsonl",
@@ -186,7 +189,6 @@ class MessageFieldsStructureAnalyzer {
                         val json = objectMapper.readValue(line, Map::class.java) as Map<String, Any?>
                         val typeValue = json["type"] as? String ?: "null"
 
-                        // Extract toolUseResult field if it exists
                         val toolUseResultField = json["toolUseResult"]
                         if (toolUseResultField != null) {
                             val toolUseResultStructure = extractStructure(toolUseResultField)

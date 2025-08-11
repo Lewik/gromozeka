@@ -1,5 +1,6 @@
 package com.gromozeka.bot.model
 
+import com.gromozeka.shared.domain.session.ClaudeSessionUuid
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
@@ -26,7 +27,7 @@ sealed class ClaudeCodeSessionEntryV1_0 {
         val isSidechain: Boolean,
         val userType: String,
         val cwd: String,
-        val sessionId: String,
+        val sessionId: ClaudeSessionUuid,
         val version: String,
         val gitBranch: String,
         val message: MessageContent,

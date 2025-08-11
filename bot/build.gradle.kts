@@ -67,13 +67,9 @@ kotlin {
         val jvmTest by getting {
             dependencies {
                 implementation(libs.spring.boot.starter.test)
-                implementation(libs.junit.jupiter)
-                implementation(libs.junit.platform.launcher)
                 implementation(libs.mockk)
-                implementation(libs.kotest.runner.junit5)
-                implementation(libs.kotest.assertions.core)
-                implementation(libs.kotest.assertions.json)
                 implementation(libs.kotlinx.serialization.json)
+                implementation(kotlin("test"))
                 
                 // Batik for SVG to PNG conversion (build-time only)
                 implementation(libs.batik.transcoder)

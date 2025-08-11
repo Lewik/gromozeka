@@ -4,6 +4,7 @@ import com.gromozeka.bot.model.StreamJsonLine
 import com.gromozeka.bot.model.StreamJsonLinePacket
 import com.gromozeka.bot.settings.AppMode
 import com.gromozeka.bot.settings.ResponseFormat
+import com.gromozeka.shared.domain.session.ClaudeSessionUuid
 import jakarta.annotation.PreDestroy
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.Flow
@@ -109,7 +110,7 @@ class ClaudeCodeStreamingWrapper(
         projectPath: String? = null,
         model: String? = null,
         responseFormat: ResponseFormat = ResponseFormat.JSON,
-        resumeSessionId: String? = null,
+        resumeSessionId: ClaudeSessionUuid? = null,
     ) = withContext(Dispatchers.IO) {
         try {
             println("=== STARTING CLAUDE CODE STREAMING WRAPPER ===")
@@ -142,9 +143,9 @@ class ClaudeCodeStreamingWrapper(
             }
 
             // Add resume parameter if specified
-            if (!resumeSessionId.isNullOrBlank()) {
+            if (resumeSessionId != null) {
                 command.add("--resume")
-                command.add(resumeSessionId)
+                command.add(resumeSessionId.value)
                 println("[ClaudeCodeStreamingWrapper] Resuming session: $resumeSessionId")
             }
 
@@ -187,7 +188,7 @@ class ClaudeCodeStreamingWrapper(
         }
     }
 
-    suspend fun sendMessage(message: String, sessionId: String) = withContext(Dispatchers.IO) {
+    suspend fun sendMessage(message: String, sessionId: ClaudeSessionUuid) = withContext(Dispatchers.IO) {
         try {
             val proc = process
             println("[ClaudeCodeStreamingWrapper] Process alive before sending: ${proc?.isAlive()}")
@@ -204,7 +205,7 @@ class ClaudeCodeStreamingWrapper(
                         )
                     )
                 ),
-                session_id = sessionId,  // Never send session_id - let Claude manage it
+                session_id = sessionId.value,  // Never send session_id - let Claude manage it
                 parent_tool_use_id = null
             )
 

@@ -3,25 +3,30 @@ package com.gromozeka.bot
 import com.gromozeka.bot.model.ClaudeLogEntry
 import com.gromozeka.bot.services.ClaudeLogEntryMapper
 import com.gromozeka.shared.domain.message.ChatMessage
-import io.kotest.core.spec.style.FunSpec
-import io.kotest.matchers.comparables.shouldBeGreaterThanOrEqualTo
 import kotlinx.serialization.json.Json
 import java.io.File
+import kotlin.test.Test
+import kotlin.test.assertTrue
+import org.junit.jupiter.api.Disabled
 
-class RealChatTestDataTest : FunSpec({
+class RealChatTestDataTest {
 
-    val json = Json {
+    private val json = Json {
         ignoreUnknownKeys = true
         coerceInputValues = false
     }
 
-    test("should parse real chattest session without errors") {
+    // DISABLED - This test is for research purposes only and should not run in CI
+    @Disabled
+    @Test
+    fun shouldParseRealChattestSessionWithoutErrors() {
+        
         val chatTestFile =
-            File("/Users/lewik/.claude/projects/-Users-lewik-code-chattest/f278cf1c-fd5c-4a50-a266-8d4ca95231ee.jsonl")
+            File("/Users/slavik/.claude/projects/-Users-slavik-code-chattest/f278cf1c-fd5c-4a50-a266-8d4ca95231ee.jsonl")
 
         if (!chatTestFile.exists()) {
             println("Chattest file not found, skipping test")
-            return@test
+            return
         }
 
         var successCount = 0
@@ -33,20 +38,16 @@ class RealChatTestDataTest : FunSpec({
             if (line.trim().isNotEmpty()) {
                 totalLines++
                 try {
-                    // 1. Parsing ClaudeLogEntry
                     val entry = json.decodeFromString<ClaudeLogEntry>(line.trim())
                     successCount++
 
-                    // 2. Mapping to ChatMessage
                     val chatMessage = ClaudeLogEntryMapper.mapToChatMessage(entry)
                     if (chatMessage != null) {
                         mappedCount++
 
-                        // 3. Check if there's JSON content from Gromozeka
                         chatMessage.content.forEach { contentItem ->
                             when (contentItem) {
                                 is ChatMessage.ContentItem.UserMessage -> {
-                                    // Check if it contains JSON
                                     if (contentItem.text.contains("{") && contentItem.text.contains("fullText")) {
                                         println("Found potential Gromozeka JSON in message: ${contentItem.text.take(100)}...")
                                     }
@@ -60,7 +61,7 @@ class RealChatTestDataTest : FunSpec({
                                     println("Unknown JSON content: ${contentItem.json}")
                                 }
 
-                                else -> { /* other types */
+                                else -> { 
                                 }
                             }
                         }
@@ -83,8 +84,7 @@ class RealChatTestDataTest : FunSpec({
             errors.take(3).forEach { println("  $it") }
         }
 
-        // Test is considered successful if more than 80% of lines are parsed
         val successRate = successCount * 100.0 / totalLines
-        successRate shouldBeGreaterThanOrEqualTo 80.0
+        assertTrue(successRate >= 80.0)
     }
-})
+}

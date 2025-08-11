@@ -1,12 +1,13 @@
 package com.gromozeka.bot.model
 
+import com.gromozeka.shared.domain.session.ClaudeSessionUuid
 import kotlinx.datetime.Instant
 
 /**
  * Represents a Claude Code chat session with metadata
  */
 data class ChatSession(
-    val sessionId: String,
+    val sessionId: ClaudeSessionUuid,
     val projectPath: String,
     val firstMessage: String,
     val lastTimestamp: Instant,

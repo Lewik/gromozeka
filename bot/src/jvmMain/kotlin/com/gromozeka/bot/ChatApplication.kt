@@ -16,6 +16,7 @@ import androidx.compose.ui.window.*
 import com.gromozeka.bot.model.ChatSession
 import com.gromozeka.bot.model.Session
 import com.gromozeka.bot.services.*
+import com.gromozeka.shared.domain.session.toClaudeSessionUuid
 import com.gromozeka.bot.settings.Settings
 import com.gromozeka.bot.ui.*
 import com.gromozeka.shared.domain.message.ChatMessage
@@ -182,12 +183,10 @@ fun ApplicationScope.ChatWindow(
     // Subscribe to current session's sessionId changes
     LaunchedEffect(currentSession) {
         currentSession?.let { session ->
-            session.sessionId.collectLatest { newSessionId ->
-                // Update UI automatically when sessionId changes (handle nullable sessionId)
-                newSessionId?.let { id ->
-                    selectedSession = selectedSession?.copy(sessionId = id)
-                    println("[ChatApp] UI updated with new session ID: $id")
-                }
+            session.claudeSessionId.collectLatest { newSessionId ->
+                // Update UI automatically when sessionId changes
+                selectedSession = selectedSession?.copy(sessionId = newSessionId)
+                println("[ChatApp] UI updated with new session ID: $newSessionId")
             }
         }
     }
@@ -239,7 +238,7 @@ fun ApplicationScope.ChatWindow(
                 currentSession = activeSession
 
                 selectedSession = ChatSession(
-                    sessionId = "new-session", // Temporary ID, will be updated when real sessionId is captured
+                    sessionId = "new-session".toClaudeSessionUuid(), // Temporary ID, will be updated when real sessionId is captured
                     projectPath = projectPath,
                     firstMessage = "",
                     lastTimestamp = Clock.System.now(),
@@ -419,7 +418,7 @@ fun ApplicationScope.ChatWindow(
                             showSessionList = true
                         },
                         onNewSession = {
-                            val currentProjectPath = selectedSession?.projectPath ?: "/Users/lewik/code/gromozeka"
+                            val currentProjectPath = selectedSession?.projectPath ?: "/Users/slavik/code/gromozeka"
                             createNewSession(currentProjectPath)
                         },
                         onSendMessage = sendMessage,

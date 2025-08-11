@@ -1,5 +1,6 @@
 package com.gromozeka.shared.domain.message
 
+import com.gromozeka.shared.domain.session.ClaudeSessionUuid
 import kotlinx.datetime.Instant
 import kotlinx.serialization.*
 import kotlinx.serialization.json.JsonClassDiscriminator
@@ -43,7 +44,7 @@ data class ChatMessage(
         
         @Serializable
         data class ClaudeCodeSessionFileEntry(
-            val sessionId: String? = null,
+            val sessionId: ClaudeSessionUuid? = null,
             val requestId: String? = null,
             val model: String? = null,
             val usage: UsageInfo? = null,

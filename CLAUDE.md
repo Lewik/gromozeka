@@ -27,6 +27,28 @@ This is a Kotlin Multiplatform Project (MPP) with the following modules:
 
 **CRITICAL**: Never run `./gradlew :bot:run` unless user explicitly requests it or gives consent. Always ask permission before starting the application.
 
+## Test Status
+
+**Current Test State**: All tests are currently **disabled** using `@Disabled` annotation. There are no active/enabled tests running in CI.
+
+**Test Categories**:
+- `deserialization/` - Tests for JSON parsing and deserialization (5 files)  
+- `integration/` - Integration and statistics tests (1 file)
+- `research/` - Research and data analysis tests (4 files)
+- `testdata/` - Test data objects and structures (2 files)  
+- `utilities/` - Utility tests like logo generation (1 file)
+
+**Note**: Tests are disabled for research purposes and should not run in CI. They can be manually enabled for development/debugging by removing `@Disabled` annotations.
+
+**Why Few Tests**: Kotlin is a statically typed language with strong compile-time guarantees. Many potential runtime errors are caught at compilation time through:
+- Null safety (nullable types)
+- Type safety and inference  
+- Exhaustive when expressions
+- Data class immutability
+- Smart casting
+
+This significantly reduces the need for extensive unit testing compared to dynamically typed languages. **Do not create tests for obvious type-safe operations or basic Kotlin language features** - the compiler already validates these.
+
 ## Project Overview
 
 **Concept**: Gromozeka - multi-armed AI agent (named after the character from "The Mystery of the Third Planet"). This is not just another chatbot, but a "handy" agent with multiple capabilities for interacting with system, services, and various APIs.

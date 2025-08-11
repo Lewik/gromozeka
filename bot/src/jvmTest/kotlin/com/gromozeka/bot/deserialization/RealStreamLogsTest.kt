@@ -3,10 +3,11 @@ package com.gromozeka.bot
 import com.gromozeka.bot.model.StreamJsonLine
 import com.gromozeka.bot.services.StreamToChatMessageMapper
 import kotlinx.serialization.json.Json
-import org.junit.jupiter.api.Assertions.assertNotNull
-import org.junit.jupiter.api.Assertions.assertTrue
-import org.junit.jupiter.api.Test
 import java.io.File
+import kotlin.test.Test
+import kotlin.test.assertNotNull
+import kotlin.test.assertTrue
+import org.junit.jupiter.api.Disabled
 
 /**
  * Simple tests using real stream logs from ~/.gromozeka/streamlogs/
@@ -19,8 +20,11 @@ class RealStreamLogsTest {
         isLenient = true
     }
 
+    // DISABLED - This test is for research purposes only and should not run in CI
+    @Disabled
     @Test
     fun testStreamLogsDeserialization() {
+        
         val streamLogsDir =
             File(System.getProperty("user.home"), ".gromozeka/streamlogs/Users-lewik-code-gromozeka-dev")
 
@@ -42,7 +46,6 @@ class RealStreamLogsTest {
             return
         }
 
-        // Test newest file
         val newestFile = jsonlFiles.maxByOrNull { it.lastModified() }!!
         println("Testing file: ${newestFile.name}")
 
@@ -67,13 +70,15 @@ class RealStreamLogsTest {
 
         println("Results: $successCount successful, $errorCount errors out of ${lines.size} lines")
 
-        // Expect at least 80% success rate
         val successRate = successCount.toDouble() / lines.size
         assertTrue(successRate >= 0.8, "Success rate too low: ${(successRate * 100).toInt()}%")
     }
 
+    // DISABLED - This test is for research purposes only and should not run in CI
+    @Disabled
     @Test
     fun testStreamLogsToChatMessageMapping() {
+        
         val streamLogsDir =
             File(System.getProperty("user.home"), ".gromozeka/streamlogs/Users-lewik-code-gromozeka-dev")
 
@@ -94,7 +99,6 @@ class RealStreamLogsTest {
             return
         }
 
-        // Test newest file
         val newestFile = jsonlFiles.maxByOrNull { it.lastModified() }!!
         println("Testing mapping for file: ${newestFile.name}")
 
@@ -104,11 +108,9 @@ class RealStreamLogsTest {
 
         for ((index, line) in lines.withIndex()) {
             try {
-                // Step 1: Deserialize StreamJsonLine
                 val streamMessage = json.decodeFromString<StreamJsonLine>(line.trim())
                 deserializeSuccess++
 
-                // Step 2: Map to ChatMessage
                 val chatMessage = StreamToChatMessageMapper.mapToChatMessage(streamMessage)
                 mappingSuccess++
 
@@ -125,7 +127,6 @@ class RealStreamLogsTest {
 
         println("Mapping results: $deserializeSuccess deserialized, $mappingSuccess mapped out of ${lines.size} lines")
 
-        // Expect high mapping success rate
         val mappingRate = mappingSuccess.toDouble() / lines.size
         assertTrue(mappingRate >= 0.8, "Mapping rate too low: ${(mappingRate * 100).toInt()}%")
     }

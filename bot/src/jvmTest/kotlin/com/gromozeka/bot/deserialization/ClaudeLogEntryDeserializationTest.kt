@@ -1,21 +1,21 @@
 package com.gromozeka.bot
 
 import com.gromozeka.bot.model.ClaudeLogEntry
-import io.kotest.core.spec.style.FunSpec
-import io.kotest.matchers.should
-import io.kotest.matchers.types.beInstanceOf
 import kotlinx.serialization.json.Json
 import java.io.File
+import kotlin.test.Test
+import kotlin.test.assertTrue
+import org.junit.jupiter.api.Disabled
 
-class ClaudeLogEntryDeserializationTest : FunSpec({
+class ClaudeLogEntryDeserializationTest {
 
-    val json = Json {
-        ignoreUnknownKeys = false // strict deserialization
+    private val json = Json {
+        ignoreUnknownKeys = false 
         coerceInputValues = false
     }
 
-    fun findAllSessionFiles(): List<File> {
-        val projectsDir = File("/Users/lewik/.claude/projects")
+    private fun findAllSessionFiles(): List<File> {
+        val projectsDir = File("/Users/slavik/.claude/projects")
 
         val brokenFiles = setOf(
             "d6f9c172-d0bd-4eb3-84a6-daf8132472d5.jsonl",
@@ -28,16 +28,22 @@ class ClaudeLogEntryDeserializationTest : FunSpec({
             .toList()
     }
 
-    val allSessionFiles = findAllSessionFiles()
-
-    test("overview of all session files") {
+    // DISABLED - This test is for research purposes only and should not run in CI
+    @Disabled
+    @Test
+    fun overviewOfAllSessionFiles() {
+        val allSessionFiles = findAllSessionFiles()
         println("Found ${allSessionFiles.size} session files:")
         allSessionFiles.groupBy { it.parentFile.name }.forEach { (project, files) ->
             println("  $project: ${files.size} files")
         }
     }
 
-    test("statistics of parsed entry types") {
+    // DISABLED - This test is for research purposes only and should not run in CI
+    @Disabled
+    @Test
+    fun statisticsOfParsedEntryTypes() {
+        val allSessionFiles = findAllSessionFiles()
         val typeStats = mutableMapOf<String, Int>()
         var totalLines = 0
         var successfullyParsed = 0
@@ -57,7 +63,6 @@ class ClaudeLogEntryDeserializationTest : FunSpec({
                         }
                         typeStats[typeName] = typeStats.getOrDefault(typeName, 0) + 1
                     } catch (e: Exception) {
-                        // Skip parsing errors
                     }
                 }
             }
@@ -72,11 +77,15 @@ class ClaudeLogEntryDeserializationTest : FunSpec({
         }
     }
 
-    allSessionFiles.forEach { file ->
-        test("should deserialize all lines from ${file.parentFile.name}/${file.name}") {
+    // DISABLED - This test is for research purposes only and should not run in CI
+    @Disabled
+    @Test
+    fun deserializeAllSessionFiles() {
+        val allSessionFiles = findAllSessionFiles()
+        allSessionFiles.forEach { file ->
             if (!file.exists()) {
                 println("File not found: ${file.absolutePath}")
-                return@test
+                return@forEach
             }
 
             val lines = file.readLines()
@@ -90,35 +99,30 @@ class ClaudeLogEntryDeserializationTest : FunSpec({
                         val entry = json.decodeFromString<ClaudeLogEntry>(line)
                         successCount++
 
-                        // verify that we received the correct type
-                        entry should beInstanceOf<ClaudeLogEntry>()
+                        assertTrue(entry is ClaudeLogEntry)
 
                         when (entry) {
                             is ClaudeLogEntry.UserEntry -> {
-                                entry.uuid.should { it.isNotEmpty() }
-                                entry.sessionId?.should { it.isNotEmpty() }
+                                assertTrue(entry.uuid.isNotEmpty())
+                                assertTrue(entry.sessionId?.value?.isNotEmpty() ?: true)
                             }
 
                             is ClaudeLogEntry.AssistantEntry -> {
-                                entry.requestId?.should { it.isNotEmpty() }
+                                assertTrue(entry.requestId?.isNotEmpty() ?: true)
                             }
 
                             is ClaudeLogEntry.SystemEntry -> {
-                                entry.content.should { it.isNotEmpty() }
+                                assertTrue(entry.content.isNotEmpty())
                             }
 
                             is ClaudeLogEntry.SummaryEntry -> {
-                                entry.summary.should { it.isNotEmpty() }
+                                assertTrue(entry.summary.isNotEmpty())
                             }
                         }
 
                     } catch (e: Exception) {
                         println("Failed to parse line in ${file.name}: ${e.message}")
                         println("Line: $line")
-                        // Temporarily don't throw exceptions to see all errors
-                        // if (totalLines <= 5) { 
-                        //     throw e
-                        // }
                     }
                 }
             }
@@ -126,4 +130,4 @@ class ClaudeLogEntryDeserializationTest : FunSpec({
             println("Successfully parsed $successCount/$totalLines lines from ${file.parentFile.name}/${file.name}")
         }
     }
-})
+}

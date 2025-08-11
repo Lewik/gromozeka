@@ -3,6 +3,9 @@ package com.gromozeka.bot.services
 import com.gromozeka.bot.model.ChatSession
 import com.gromozeka.bot.model.ClaudeLogEntry
 import com.gromozeka.bot.model.StreamSessionMetadata
+import com.gromozeka.shared.domain.session.ClaudeSessionUuid
+import com.gromozeka.shared.domain.session.toSessionUuid
+import com.gromozeka.shared.domain.session.toClaudeSessionUuid
 import com.gromozeka.bot.utils.SessionDeduplicator
 import com.gromozeka.bot.utils.decodeProjectPath
 import com.gromozeka.bot.utils.encodeProjectPath
@@ -41,10 +44,10 @@ class SessionJsonlService(
      * @return List of ChatMessage from the session, empty if file doesn't exist or errors occur
      */
     suspend fun loadMessagesFromSession(
-        sessionId: String,
+        sessionId: ClaudeSessionUuid,
         projectPath: String,
     ): List<ChatMessage> = withContext(Dispatchers.IO) {
-        val sessionFile = findSessionFile(sessionId, projectPath)
+        val sessionFile = findSessionFile(sessionId.value, projectPath)
         if (sessionFile == null || !sessionFile.exists()) {
             println("[SessionJsonlService] Session file not found for ID: $sessionId")
             return@withContext emptyList()
@@ -112,10 +115,10 @@ class SessionJsonlService(
      * @return StreamSessionMetadata or null if file doesn't exist or errors occur
      */
     suspend fun loadMetadataFromSession(
-        sessionId: String,
+        sessionId: ClaudeSessionUuid,
         projectPath: String,
     ): StreamSessionMetadata? = withContext(Dispatchers.IO) {
-        val sessionFile = findSessionFile(sessionId, projectPath)
+        val sessionFile = findSessionFile(sessionId.value, projectPath)
         if (sessionFile == null || !sessionFile.exists()) {
             println("[SessionJsonlService] Session file not found for metadata: $sessionId")
             return@withContext null
@@ -128,7 +131,7 @@ class SessionJsonlService(
 
             if (lines.isEmpty()) {
                 return@withContext StreamSessionMetadata(
-                    sessionId = sessionId,
+                    sessionId = sessionId.value.toSessionUuid(),
                     projectPath = projectPath,
                     title = "Empty Session",
                     lastModified = fileLastModified,
@@ -150,7 +153,7 @@ class SessionJsonlService(
             val title = generateSessionTitle(messages)
 
             return@withContext StreamSessionMetadata(
-                sessionId = sessionId,
+                sessionId = sessionId.value.toSessionUuid(),
                 projectPath = projectPath,
                 title = title,
                 lastModified = fileLastModified,
@@ -228,7 +231,7 @@ class SessionJsonlService(
         val sessions = sessionFiles.map { file ->
             async {
                 try {
-                    val sessionId = file.nameWithoutExtension
+                    val sessionId = file.nameWithoutExtension.toClaudeSessionUuid()
                     val projectPath = file.parentFile?.decodeProjectPath()
                         ?: throw IllegalArgumentException("Cannot determine project path for file: ${file.path}")
 

@@ -2,15 +2,17 @@ package com.gromozeka.bot
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
-import org.junit.jupiter.api.Disabled
-import org.junit.jupiter.api.Test
 import java.io.File
+import kotlin.test.Test
+import org.junit.jupiter.api.Disabled
 
 class TypeValuesAnalysisTest {
 
+    // DISABLED - This test is for research purposes only and should not run in CI
+    @Disabled
     @Test
-    @Disabled("Research test - creates files. Run manually when needed.")
     fun analyzeTypeValuesInTodaySessions() {
+        
         val analyzer = TypeValuesAnalyzer()
         val typeValues = analyzer.analyzeTodaySessionTypes()
 
@@ -35,9 +37,11 @@ class TypeValuesAnalysisTest {
         println("Results written to: ${outputFile.absolutePath}")
     }
 
+    // DISABLED - This test is for research purposes only and should not run in CI
+    @Disabled
     @Test
-    @Disabled("Research test - creates files. Run manually when needed.")
     fun analyzeTypeValuesInAllSessions() {
+        
         val analyzer = TypeValuesAnalyzer()
         val typeValues = analyzer.analyzeAllSessionTypes()
 
@@ -69,7 +73,6 @@ class TypeValuesAnalyzer {
     fun analyzeTodaySessionTypes(): Map<String, Int> {
         val typeValues = mutableMapOf<String, Int>()
 
-        // Only analyze gromozeka sessions from today (2025-08-01)
         val todaySessionFiles = listOf(
             "8259ddd2-5761-41e6-ae94-2060663f3128.jsonl",
             "5eeceea8-df50-4031-813e-380cfe33be32.jsonl",

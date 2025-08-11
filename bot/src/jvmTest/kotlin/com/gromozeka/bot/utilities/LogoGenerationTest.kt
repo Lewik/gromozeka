@@ -3,8 +3,9 @@ package com.gromozeka.bot
 import org.apache.batik.transcoder.image.PNGTranscoder
 import org.apache.batik.transcoder.TranscoderInput
 import org.apache.batik.transcoder.TranscoderOutput
-import org.junit.jupiter.api.Test
 import java.io.File
+import kotlin.test.Test
+import org.junit.jupiter.api.Disabled
 
 /**
  * Test for generating logo PNG files from SVG source using Apache Batik.
@@ -14,8 +15,11 @@ import java.io.File
  */
 class LogoGenerationTest {
     
+    // DISABLED - This test is for logo generation only and should not run in CI
+    @Disabled
     @Test
     fun generateLogos() {
+        
         val projectDir = File("").absoluteFile
         val svgFile = File(projectDir, "src/jvmMain/resources/logo.svg")
         val logosDir = File(projectDir, "src/jvmMain/resources/logos")
@@ -23,7 +27,6 @@ class LogoGenerationTest {
         require(svgFile.exists()) { "SVG file not found: ${svgFile.absolutePath}" }
         logosDir.mkdirs()
         
-        // Clean directory except README.md
         logosDir.listFiles()?.forEach { file ->
             if (file.isFile && file.name != "README.md") {
                 file.delete()

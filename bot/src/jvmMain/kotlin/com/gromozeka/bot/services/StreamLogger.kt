@@ -1,5 +1,7 @@
 package com.gromozeka.bot.services
 
+import com.gromozeka.shared.domain.session.ClaudeSessionUuid
+import com.gromozeka.shared.domain.session.toClaudeSessionUuid
 import java.io.BufferedWriter
 import java.io.FileWriter
 import java.nio.file.Files
@@ -14,11 +16,11 @@ import kotlin.io.path.*
  * Logs raw JSONL stream data from Claude Code CLI for testing and debugging.
  *
  * Directory structure: ~/.gromozeka/streamlogs/{encoded-project-path}/{sessionId}.jsonl
- * Project path encoding: /Users/lewik/code/project → -Users-lewik-code-project
+ * Project path encoding: /Users/slavik/code/project → -Users-slavik-code-project
  */
 class StreamLogger(
     private val projectPath: String,
-    private val sessionId: String? = null,
+    private val sessionId: ClaudeSessionUuid? = null,
 ) {
     companion object {
         private const val BASE_DIR = ".gromozeka/streamlogs"
@@ -82,7 +84,7 @@ class StreamLogger(
 
     private val logDir: Path
     private var currentWriter: BufferedWriter? = null
-    private var currentSessionId: String? = sessionId
+    private var currentSessionId: ClaudeSessionUuid? = sessionId
     private val writerLock = Any()
 
     init {
@@ -102,7 +104,7 @@ class StreamLogger(
     /**
      * Update session ID and reinitialize writer
      */
-    fun updateSessionId(newSessionId: String) {
+    fun updateSessionId(newSessionId: ClaudeSessionUuid) {
         synchronized(writerLock) {
             if (currentSessionId != newSessionId) {
                 closeWriter()
@@ -131,7 +133,7 @@ class StreamLogger(
                 // Fallback: create writer with unix timestamp if no session ID yet
                 val fallbackId = System.currentTimeMillis().toString()
                 println("[StreamLogger] No session ID yet, creating fallback log: $fallbackId.jsonl")
-                initWriter(fallbackId)
+                initWriter(fallbackId.toClaudeSessionUuid())
 
                 // Try to write the line immediately
                 currentWriter?.let { writer ->
@@ -150,9 +152,9 @@ class StreamLogger(
     /**
      * Initialize writer for a specific session
      */
-    private fun initWriter(sessionId: String) {
+    private fun initWriter(sessionId: ClaudeSessionUuid) {
         try {
-            val logFile = logDir.resolve("$sessionId.jsonl").toFile()
+            val logFile = logDir.resolve("${sessionId.value}.jsonl").toFile()
             currentWriter = BufferedWriter(FileWriter(logFile, true)) // Append mode
             println("[StreamLogger] Started logging to: ${logFile.absolutePath}")
         } catch (e: Exception) {

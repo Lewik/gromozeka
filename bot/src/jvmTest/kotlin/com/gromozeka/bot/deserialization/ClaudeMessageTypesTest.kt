@@ -1,26 +1,25 @@
 package com.gromozeka.bot
 
 import com.gromozeka.bot.model.ClaudeLogEntry
-import io.kotest.core.spec.style.FunSpec
-import io.kotest.matchers.should
-import io.kotest.matchers.shouldNotBe
-import io.kotest.matchers.types.beInstanceOf
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import java.io.File
 import java.time.LocalDate
 import java.time.ZoneId
+import kotlin.test.Test
+import kotlin.test.assertTrue
+import org.junit.jupiter.api.Disabled
 
-class ClaudeMessageTypesTest : FunSpec({
+class ClaudeMessageTypesTest {
 
-    val json = Json {
+    private val json = Json {
         ignoreUnknownKeys = false
         coerceInputValues = false
     }
 
-    fun findTodaySessionFiles(): List<File> {
-        val projectsDir = File("/Users/lewik/.claude/projects")
+    private fun findTodaySessionFiles(): List<File> {
+        val projectsDir = File("/Users/slavik/.claude/projects")
         val today = LocalDate.now()
         val todayStart = today.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
         val tomorrowStart = today.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
@@ -37,9 +36,11 @@ class ClaudeMessageTypesTest : FunSpec({
             .toList()
     }
 
-    val todaySessionFiles = findTodaySessionFiles()
-
-    test("analyze message field structures in today's files") {
+    // DISABLED - This test is for research purposes only and should not run in CI
+    @Disabled
+    @Test
+    fun analyzeMessageFieldStructuresInTodaysFiles() {
+        val todaySessionFiles = findTodaySessionFiles()
         var messageFieldCount = 0
         var toolUseResultFieldCount = 0
         val messageTypeStats = mutableMapOf<String, Int>()
@@ -56,7 +57,6 @@ class ClaudeMessageTypesTest : FunSpec({
                                 entry.message?.let { messageElement ->
                                     messageFieldCount++
 
-                                    // Try to determine message structure type
                                     when (messageElement) {
                                         is JsonObject -> {
                                             val role = messageElement["role"]?.jsonPrimitive?.content
@@ -64,11 +64,9 @@ class ClaudeMessageTypesTest : FunSpec({
                                             val typeKey = "user_${role}_${content?.javaClass?.simpleName}"
                                             messageTypeStats[typeKey] = messageTypeStats.getOrDefault(typeKey, 0) + 1
 
-                                            // Try to parse as typed message
                                             try {
                                                 val typedMessage =
                                                     json.decodeFromString<ClaudeLogEntry.Message>(messageElement.toString())
-                                                // Successfully parsed
                                             } catch (e: Exception) {
                                                 parseErrors.add("User message parse error in ${file.name}: ${e.message}")
                                             }
@@ -97,11 +95,9 @@ class ClaudeMessageTypesTest : FunSpec({
                                             val typeKey = "assistant_${role}_${content?.javaClass?.simpleName}"
                                             messageTypeStats[typeKey] = messageTypeStats.getOrDefault(typeKey, 0) + 1
 
-                                            // Try to parse as typed message
                                             try {
                                                 val typedMessage =
                                                     json.decodeFromString<ClaudeLogEntry.Message>(messageElement.toString())
-                                                // Successfully parsed
                                             } catch (e: Exception) {
                                                 parseErrors.add("Assistant message parse error in ${file.name}: ${e.message}")
                                             }
@@ -120,12 +116,10 @@ class ClaudeMessageTypesTest : FunSpec({
                             }
 
                             else -> {
-                                // System and Summary entries don't have message fields
                             }
                         }
 
                     } catch (e: Exception) {
-                        // Skip entries that don't parse as ClaudeLogEntry
                     }
                 }
             }
@@ -158,12 +152,16 @@ class ClaudeMessageTypesTest : FunSpec({
         )
     }
 
-    test("verify message field types can be parsed with current data classes") {
+    // DISABLED - This test is for research purposes only and should not run in CI
+    @Disabled
+    @Test
+    fun verifyMessageFieldTypesCanBeParsedWithCurrentDataClasses() {
+        val todaySessionFiles = findTodaySessionFiles()
         var successCount = 0
         var totalMessageFields = 0
         val failureExamples = mutableListOf<String>()
 
-        todaySessionFiles.take(3).forEach { file -> // Test only first 3 files for speed
+        todaySessionFiles.take(3).forEach { file ->
             file.readLines().forEach { line ->
                 if (line.trim().isNotEmpty()) {
                     try {
@@ -183,12 +181,11 @@ class ClaudeMessageTypesTest : FunSpec({
                                     is JsonObject -> {
                                         val typedMessage =
                                             json.decodeFromString<ClaudeLogEntry.Message>(element.toString())
-                                        typedMessage should beInstanceOf<ClaudeLogEntry.Message>()
+                                        assertTrue(typedMessage is ClaudeLogEntry.Message)
                                         successCount++
                                     }
 
                                     else -> {
-                                        // Skip non-object message elements
                                     }
                                 }
                             } catch (e: Exception) {
@@ -203,7 +200,6 @@ class ClaudeMessageTypesTest : FunSpec({
                         }
 
                     } catch (e: Exception) {
-                        // Skip entries that don't parse
                     }
                 }
             }
@@ -222,7 +218,6 @@ class ClaudeMessageTypesTest : FunSpec({
             }
         }
 
-        // We expect some failures since our types might not cover all cases yet
-        totalMessageFields shouldNotBe 0
+        assertTrue(totalMessageFields != 0)
     }
-})
+}

@@ -4,6 +4,8 @@ import com.gromozeka.bot.model.*
 import com.gromozeka.bot.parsers.ResponseParserFactory
 import com.gromozeka.bot.settings.ResponseFormat
 import com.gromozeka.shared.domain.message.ChatMessage
+import com.gromozeka.shared.domain.session.ClaudeSessionUuid
+import com.gromozeka.shared.domain.session.toClaudeSessionUuid
 import com.gromozeka.shared.domain.message.ClaudeCodeToolCallData
 import com.gromozeka.shared.domain.message.ClaudeCodeToolResultData
 import com.gromozeka.shared.domain.message.ToolCallData
@@ -55,7 +57,7 @@ object StreamToChatMessageMapper {
             content = content,
             timestamp = Clock.System.now(),
             llmSpecificMetadata = createStreamMetadata(
-                sessionId = message.sessionId ?: "unknown"
+                sessionId = message.sessionId ?: "unknown".toClaudeSessionUuid()
             )
         )
     }
@@ -289,7 +291,7 @@ object StreamToChatMessageMapper {
     }
 
     private fun createStreamMetadata(
-        sessionId: String,
+        sessionId: ClaudeSessionUuid,
         model: String? = null,
         usage: UsageInfo? = null,
         stopReason: String? = null,
@@ -375,7 +377,7 @@ object StreamToChatMessageMapper {
             content = content,
             timestamp = Clock.System.now(),
             llmSpecificMetadata = createStreamMetadata(
-                sessionId = "control"
+                sessionId = "control".toClaudeSessionUuid()
             )
         )
     }
@@ -407,7 +409,7 @@ object StreamToChatMessageMapper {
             content = content,
             timestamp = Clock.System.now(),
             llmSpecificMetadata = createStreamMetadata(
-                sessionId = "control"
+                sessionId = "control".toClaudeSessionUuid()
             )
         )
     }

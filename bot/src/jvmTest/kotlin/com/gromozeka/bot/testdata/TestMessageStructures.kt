@@ -1,5 +1,6 @@
 package com.gromozeka.bot
 
+import com.gromozeka.shared.domain.session.ClaudeSessionUuid
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -66,7 +67,7 @@ data class TestLogEntry(
     val type: String,
     val timestamp: String,
     val uuid: String,
-    val sessionId: String? = null,
+    val sessionId: ClaudeSessionUuid? = null,
     val message: TestMessage? = null,
     val toolUseResult: JsonElement? = null,
 )

@@ -1,6 +1,9 @@
 package com.gromozeka.bot.model
 
 import com.gromozeka.bot.services.ClaudeCodeStreamingWrapper
+import com.gromozeka.shared.domain.session.ClaudeSessionUuid
+import com.gromozeka.shared.domain.session.SessionUuid
+import com.gromozeka.shared.domain.session.toClaudeSessionUuid
 import com.gromozeka.bot.services.SessionJsonlService
 import com.gromozeka.bot.services.SoundNotificationService
 import com.gromozeka.bot.services.StreamToChatMessageMapper
@@ -36,8 +39,8 @@ class Session(
 ) {
 
     // === StateFlow for external consumption ===
-    private val _sessionId = MutableStateFlow("default")
-    val sessionId: StateFlow<String> = _sessionId.asStateFlow()
+    private val _claudeSessionId = MutableStateFlow("default".toClaudeSessionUuid())
+    val claudeSessionId: StateFlow<ClaudeSessionUuid> = _claudeSessionId.asStateFlow()
 
     // True streaming architecture - individual messages flow
     private val _messageOutputStream = MutableSharedFlow<ChatMessage>(
@@ -81,7 +84,7 @@ class Session(
      * @param scope CoroutineScope for session lifecycle
      * @param resumeSessionId Optional session ID to load historical messages from
      */
-    suspend fun start(scope: CoroutineScope, resumeSessionId: String? = null) = sessionMutex.withLock {
+    suspend fun start(scope: CoroutineScope, resumeSessionId: ClaudeSessionUuid? = null) = sessionMutex.withLock {
         println("[Session] Starting session for project: $projectPath")
 
         require(_sessionState.value == SessionState.INACTIVE) {
@@ -116,7 +119,7 @@ class Session(
 //                    if (sessionInitialized) {
 //                        try {
 //                            println("[Session] Processing buffered message: ${message.take(50)}...")
-//                            claudeWrapper.sendMessage(message, _sessionId.value)
+//                            claudeWrapper.sendMessage(message, _claudeSessionId.value)
 //                        } catch (e: Exception) {
 //                            println("[Session] Failed to send buffered message: ${e.message}")
 //                            // Re-emit to buffer for retry
@@ -177,7 +180,7 @@ class Session(
                 _messageInputBuffer.emit(message)
             } else {
                 println("[Session] Sending first message directly")
-                claudeWrapper.sendMessage(message, _sessionId.value)
+                claudeWrapper.sendMessage(message, _claudeSessionId.value)
                 firstMessageSent = true
             }
 
@@ -325,7 +328,7 @@ class Session(
                 repeat(3) { attempt ->
                     try {
                         println("[Session] Processing buffered message (attempt ${attempt + 1}): ${message.take(50)}...")
-                        claudeWrapper.sendMessage(message, _sessionId.value)
+                        claudeWrapper.sendMessage(message, _claudeSessionId.value)
                         return@onEach
                     } catch (e: Exception) {
                         println("[Session] Failed to send buffered message (attempt ${attempt + 1}): ${e.message}")
@@ -372,13 +375,13 @@ class Session(
     private suspend fun handleSystemMessage(message: StreamJsonLine.System) {
         // Handle session ID updates and initialization
         if (message.subtype == "init") {
-            val currentSessionId = _sessionId.value
+            val currentSessionId = _claudeSessionId.value
             val newSessionId = message.sessionId!!
             
             // Check if session ID changed - this indicates session switching (like after /compact)
             if (currentSessionId != newSessionId) {
                 println("[Session] Session ID updated from stream: $currentSessionId -> $newSessionId")
-                _sessionId.value = newSessionId
+                _claudeSessionId.value = newSessionId
                 _events.emit(StreamSessionEvent.SessionIdChangedOnStart(newSessionId))
                 
                 // Reset initialization flag for new session
@@ -494,7 +497,7 @@ class Session(
     }
 
 
-    private suspend fun loadHistoricalMessages(oldSessionId: String) {
+    private suspend fun loadHistoricalMessages(oldSessionId: ClaudeSessionUuid) {
         try {
             val historicalMessages = sessionJsonlService.loadMessagesFromSession(oldSessionId, projectPath)
 
@@ -555,7 +558,7 @@ enum class SessionState {
  * Session metadata for UI display
  */
 data class StreamSessionMetadata(
-    val sessionId: String,
+    val sessionId: SessionUuid,
     val projectPath: String,
     val title: String,
     val lastModified: kotlinx.datetime.LocalDateTime,
@@ -574,7 +577,7 @@ sealed class StreamSessionEvent {
     data object ConversationTurnCompleted : StreamSessionEvent()
     data object StreamReconnected : StreamSessionEvent()
     data object AutoRestarted : StreamSessionEvent()
-    data class SessionIdChangedOnStart(val newSessionId: String) : StreamSessionEvent()
+    data class SessionIdChangedOnStart(val newSessionId: ClaudeSessionUuid) : StreamSessionEvent()
     data class HistoricalMessagesLoaded(val messageCount: Int) : StreamSessionEvent()
     data object InterruptSent : StreamSessionEvent()
     data object InterruptAcknowledged : StreamSessionEvent()

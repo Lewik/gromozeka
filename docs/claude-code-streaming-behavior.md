@@ -6,7 +6,7 @@
 
 ```bash
 # 1. Navigate to .sources directory (create if doesn't exist)
-cd /Users/lewik/code/gromozeka/dev
+cd /Users/slavik/code/gromozeka/dev
 mkdir -p .sources
 cd .sources
 

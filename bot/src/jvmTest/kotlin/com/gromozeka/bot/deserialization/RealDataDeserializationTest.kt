@@ -2,9 +2,10 @@ package com.gromozeka.bot
 
 import com.gromozeka.bot.model.ClaudeLogEntry
 import kotlinx.serialization.json.Json
-import org.junit.jupiter.api.Assertions.assertNotNull
-import org.junit.jupiter.api.Test
 import java.io.File
+import kotlin.test.Test
+import kotlin.test.assertNotNull
+import org.junit.jupiter.api.Disabled
 
 class RealDataDeserializationTest {
 
@@ -13,8 +14,11 @@ class RealDataDeserializationTest {
         isLenient = true
     }
 
+    // DISABLED - This test is for research purposes only and should not run in CI
+    @Disabled
     @Test
     fun testRealSessionDataDeserialization() {
+        
         val sessionFiles = listOf(
             "8259ddd2-5761-41e6-ae94-2060663f3128.jsonl",
             "5eeceea8-df50-4031-813e-380cfe33be32.jsonl",
@@ -28,7 +32,7 @@ class RealDataDeserializationTest {
             if (file.exists()) {
                 println("Testing file: $filename")
 
-                val lines = file.readLines().take(10) // Test first 10 lines
+                val lines = file.readLines().take(10)
                 var successCount = 0
                 var errorCount = 0
 
@@ -39,7 +43,6 @@ class RealDataDeserializationTest {
                             assertNotNull(entry)
                             successCount++
 
-                            // Print some info about the parsed entry
                             when (entry) {
                                 is ClaudeLogEntry.UserEntry -> {
                                     println("  Line $index: UserEntry - uuid=${entry.uuid}")

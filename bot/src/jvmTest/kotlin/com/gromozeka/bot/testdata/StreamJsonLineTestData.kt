@@ -168,7 +168,7 @@ object StreamJsonLineTestData {
                 {
                     "type": "tool_result",
                     "tool_use_id": "tool_789",
-                    "content": "/Users/lewik/code/gromozeka/dev"
+                    "content": "/Users/slavik/code/gromozeka/dev"
                 }
             ]
         },

@@ -2,12 +2,12 @@ package com.gromozeka.bot
 
 import com.gromozeka.bot.model.ClaudeLogEntry
 import com.gromozeka.bot.model.McpToolResultParser
-import io.kotest.core.spec.style.FunSpec
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import java.io.File
 import java.time.LocalDate
 import java.time.ZoneId
+import kotlin.test.Test
 
 /**
  * # RESEARCH REPORT: toolUseResult Field Analysis in Claude Code Session Files
@@ -245,14 +245,14 @@ import java.time.ZoneId
  * and SDK source code investigation. All findings are based on actual data from
  * production usage as of August 2025.*
  */
-class ToolUseResultResearchReport : FunSpec({
+class ToolUseResultResearchReport {
 
-    val json = Json {
+    private val json = Json {
         ignoreUnknownKeys = false
         prettyPrint = true
     }
 
-    fun detectPattern(json: JsonElement): String {
+    private fun detectPattern(json: JsonElement): String {
         val jsonStr = json.toString()
 
         return when {
@@ -268,8 +268,8 @@ class ToolUseResultResearchReport : FunSpec({
         }
     }
 
-    fun findTodaySessionFiles(): List<File> {
-        val projectsDir = File("/Users/lewik/.claude/projects")
+    private fun findTodaySessionFiles(): List<File> {
+        val projectsDir = File("/Users/slavik/.claude/projects")
         val today = LocalDate.now()
         val todayStart = today.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
         val tomorrowStart = today.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
@@ -283,11 +283,16 @@ class ToolUseResultResearchReport : FunSpec({
             .filter { it.isFile && it.extension == "jsonl" }
             .filter { it.lastModified() >= todayStart && it.lastModified() < tomorrowStart }
             .filter { it.name !in brokenFiles }
-            .take(5) // Limit for research purposes
+            .take(5)
             .toList()
     }
 
-    test("Comprehensive toolUseResult Structure Analysis") {
+    // DISABLED - This test is for research purposes only and should not run in CI
+    @Test
+    fun comprehensiveToolUseResultStructureAnalysis() {
+        return // Test disabled
+        
+        /*
         val sessionFiles = findTodaySessionFiles()
         println("=== COMPREHENSIVE TOOLUSERESULT RESEARCH REPORT ===")
         println("Generated: ${LocalDate.now()}")
@@ -325,18 +330,15 @@ class ToolUseResultResearchReport : FunSpec({
                         if (toolResult != null) {
                             entriesWithToolResult++
 
-                            // Pattern analysis
                             val pattern = detectPattern(toolResult)
                             patterns[pattern] = patterns.getOrDefault(pattern, 0) + 1
 
-                            // Collect examples (max 3 per pattern)
                             patternExamples.computeIfAbsent(pattern) { mutableListOf() }.let { examples ->
                                 if (examples.size < 3) {
                                     examples.add(toolResult)
                                 }
                             }
 
-                            // Test MCP conversion
                             val mcpResult = McpToolResultParser.convertToMcp(toolResult)
                             if (mcpResult != null) {
                                 successfulMcpConversions++
@@ -347,7 +349,6 @@ class ToolUseResultResearchReport : FunSpec({
                         }
 
                     } catch (e: Exception) {
-                        // Count parsing errors but continue
                     }
                 }
             }
@@ -437,12 +438,17 @@ class ToolUseResultResearchReport : FunSpec({
         println("\n" + "=".repeat(80))
         println("END OF COMPREHENSIVE RESEARCH REPORT")
         println("=".repeat(80))
+        */
     }
 
-    test("MCP Compatibility Detailed Analysis") {
+    // DISABLED - This test is for research purposes only and should not run in CI
+    @Test
+    fun mcpCompatibilityDetailedAnalysis() {
+        return // Test disabled
+        
+        /*
         println("\n=== MCP COMPATIBILITY DEEP DIVE ===")
 
-        // This test focuses specifically on MCP conversion challenges
         val sessionFiles = findTodaySessionFiles()
 
         println("🎯 OBJECTIVE: Understand why MCP conversion fails for 44% of cases")
@@ -470,7 +476,6 @@ class ToolUseResultResearchReport : FunSpec({
                             if (mcpResult != null) {
                                 conversionSuccesses++
                             } else {
-                                // Analyze why conversion failed
                                 val pattern = detectPattern(toolResult)
                                 val reason = when (pattern) {
                                     "Todo Management" -> "Complex nested arrays not mappable to MCP content types"
@@ -483,7 +488,6 @@ class ToolUseResultResearchReport : FunSpec({
                             }
                         }
                     } catch (e: Exception) {
-                        // Skip parsing errors
                     }
                 }
             }
@@ -524,5 +528,6 @@ class ToolUseResultResearchReport : FunSpec({
         println("✅ Implement MCP types for future API integrations")
         println("✅ Create conversion layer only when needed for display")
         println("❌ Don't force MCP compliance on existing session data")
+        */
     }
-})
+}

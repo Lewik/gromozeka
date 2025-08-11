@@ -1,5 +1,6 @@
 package com.gromozeka.bot.model
 
+import com.gromozeka.shared.domain.session.ClaudeSessionUuid
 import kotlinx.serialization.*
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.descriptors.buildClassSerialDescriptor
@@ -18,7 +19,7 @@ sealed class StreamJsonLine {
     data class System(
         val subtype: String,
         @SerialName("session_id")
-        val sessionId: String? = null,
+        val sessionId: ClaudeSessionUuid? = null,
         val cwd: String? = null,
         val tools: List<String>? = null,
         @SerialName("mcp_servers")
@@ -37,7 +38,7 @@ sealed class StreamJsonLine {
     data class User(
         val message: StreamMessageContent.User,
         @SerialName("session_id")
-        val sessionId: String,
+        val sessionId: ClaudeSessionUuid,
         @SerialName("parent_tool_use_id")
         val parentToolUseId: String? = null,
         override val type: String = "user",
@@ -48,7 +49,7 @@ sealed class StreamJsonLine {
     data class Assistant(
         val message: StreamMessageContent.Assistant,
         @SerialName("session_id")
-        val sessionId: String,
+        val sessionId: ClaudeSessionUuid,
         @SerialName("parent_tool_use_id")
         val parentToolUseId: String? = null,
         override val type: String = "assistant",
@@ -67,7 +68,7 @@ sealed class StreamJsonLine {
         @SerialName("num_turns")
         val numTurns: Int,
         @SerialName("session_id")
-        val sessionId: String,
+        val sessionId: ClaudeSessionUuid,
         @SerialName("total_cost_usd")
         val totalCostUsd: Double? = null,
         val usage: UsageInfo? = null,

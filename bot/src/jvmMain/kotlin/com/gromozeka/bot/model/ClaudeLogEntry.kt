@@ -1,5 +1,6 @@
 package com.gromozeka.bot.model
 
+import com.gromozeka.shared.domain.session.ClaudeSessionUuid
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
@@ -27,7 +28,7 @@ sealed class ClaudeLogEntry {
     sealed class BaseEntry : ClaudeLogEntry() {
         abstract val cwd: String?
         abstract val gitBranch: String?
-        abstract val sessionId: String?
+        abstract val sessionId: ClaudeSessionUuid?
         abstract val timestamp: String
         abstract val userType: String?
         abstract val uuid: String
@@ -41,7 +42,7 @@ sealed class ClaudeLogEntry {
     data class UserEntry(
         override val cwd: String?,
         override val gitBranch: String?,
-        override val sessionId: String?,
+        override val sessionId: ClaudeSessionUuid?,
         override val timestamp: String,
         override val userType: String?,
         override val uuid: String,
@@ -60,7 +61,7 @@ sealed class ClaudeLogEntry {
     data class AssistantEntry(
         override val cwd: String?,
         override val gitBranch: String?,
-        override val sessionId: String?,
+        override val sessionId: ClaudeSessionUuid?,
         override val timestamp: String,
         override val userType: String?,
         override val uuid: String,
@@ -78,7 +79,7 @@ sealed class ClaudeLogEntry {
     data class SystemEntry(
         override val cwd: String?,
         override val gitBranch: String?,
-        override val sessionId: String?,
+        override val sessionId: ClaudeSessionUuid?,
         override val timestamp: String,
         override val userType: String?,
         override val uuid: String,

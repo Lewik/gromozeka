@@ -1,21 +1,22 @@
 package com.gromozeka.bot
 
 import com.gromozeka.bot.model.ClaudeLogEntry
-import io.kotest.core.spec.style.FunSpec
 import kotlinx.serialization.json.Json
 import java.io.File
 import java.time.LocalDate
 import java.time.ZoneId
+import kotlin.test.Test
+import org.junit.jupiter.api.Disabled
 
-class MessageTypingStatsTest : FunSpec({
+class MessageTypingStatsTest {
 
-    val json = Json {
+    private val json = Json {
         ignoreUnknownKeys = false
         coerceInputValues = false
     }
 
-    fun findTodaySessionFiles(): List<File> {
-        val projectsDir = File("/Users/lewik/.claude/projects")
+    private fun findTodaySessionFiles(): List<File> {
+        val projectsDir = File("/Users/slavik/.claude/projects")
         val today = LocalDate.now()
         val todayStart = today.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
         val tomorrowStart = today.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
@@ -32,7 +33,11 @@ class MessageTypingStatsTest : FunSpec({
             .toList()
     }
 
-    test("check typed message fields coverage") {
+    // DISABLED - This test is for research purposes only and should not run in CI
+    @Disabled
+    @Test
+    fun checkTypedMessageFieldsCoverage() {
+        
         val files = findTodaySessionFiles()
         var totalLogEntries = 0
         var entriesWithMessage = 0
@@ -62,7 +67,6 @@ class MessageTypingStatsTest : FunSpec({
                         }
 
                     } catch (e: Exception) {
-                        // Skip parsing errors
                     }
                 }
             }
@@ -83,4 +87,4 @@ class MessageTypingStatsTest : FunSpec({
         println("\nCurrent implementation: message fields are typed as Message when possible")
         println("Fallback: incompatible structures remain as null (graceful degradation)")
     }
-})
+}
