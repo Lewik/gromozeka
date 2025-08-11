@@ -149,6 +149,12 @@ class Session(
             "Session is not active. Current state: ${_sessionState.value}"
         }
 
+        // Skip empty or blank messages to prevent breaking Claude
+        if (message.isBlank()) {
+            println("[Session] Skipping empty/blank message")
+            return@withLock
+        }
+
         try {
             println("[Session] Sending message: ${message.take(100)}${if (message.length > 100) "..." else ""}")
 

@@ -17,8 +17,11 @@ class GlobalHotkeyService(
 ) {
 
     companion object {
-        // Global hotkey: Section/Paragraph key (§) on MacBook - uses rawCode since keyCode is 0
-        private const val HOTKEY_SECTION_RAWCODE = 10  // rawCode for § key on macOS
+        // Global hotkey: Section/Paragraph key (§) remapped to F13 via hidutil
+        // Original § rawCode = 10, but we remap it to F13 
+        // JNativeHook reports keyCode=91, rawCode=105 for remapped F13
+        private const val HOTKEY_F13_KEYCODE = 91  // Actual keyCode JNativeHook sees for F13
+        private const val HOTKEY_F13_RAWCODE = 105  // Actual rawCode JNativeHook sees for F13
     }
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -64,10 +67,9 @@ class GlobalHotkeyService(
 
     private val keyListener = object : NativeKeyListener {
         override fun nativeKeyPressed(e: NativeKeyEvent) {
-            // Check for Section key (§) using rawCode since keyCode is 0 for this key
-            if (e.rawCode == HOTKEY_SECTION_RAWCODE) {
-                println("[HOTKEY] Section key (§) pressed - starting PTT")
-                // Note: § character typing is disabled via hidutil on macOS
+            // Check for F13 key (which is remapped from § via hidutil)
+            if (e.keyCode == HOTKEY_F13_KEYCODE) {
+                println("[HOTKEY] PTT key pressed")
                 isPTTActive = true
                 serviceScope.launch {
                     onHotkeyDown()
@@ -76,10 +78,9 @@ class GlobalHotkeyService(
         }
 
         override fun nativeKeyReleased(e: NativeKeyEvent) {
-            // Check for Section key (§) release using rawCode
-            if (e.rawCode == HOTKEY_SECTION_RAWCODE && isPTTActive) {
-                println("[HOTKEY] Section key (§) released - stopping PTT")
-                // Note: § character typing is disabled via hidutil on macOS
+            // Check for F13 key (which is remapped from § via hidutil) release
+            if (e.keyCode == HOTKEY_F13_KEYCODE && isPTTActive) {
+                println("[HOTKEY] PTT key released")
                 isPTTActive = false
                 serviceScope.launch {
                     onHotkeyUp()
@@ -88,10 +89,35 @@ class GlobalHotkeyService(
         }
     }
 
+    private fun setupKeyRemapping() {
+        try {
+            // Remap § key to F13 to prevent character typing
+            val command = listOf(
+                "hidutil", "property", "--set",
+                """{"UserKeyMapping":[{"HIDKeyboardModifierMappingSrc":0x700000064,"HIDKeyboardModifierMappingDst":0x700000068}]}"""
+            )
+            ProcessBuilder(command).start().waitFor()
+            println("[HOTKEY] Remapped § key to F13 via hidutil")
+        } catch (e: Exception) {
+            println("[HOTKEY] Warning: Could not remap § key: ${e.message}")
+        }
+    }
+    
+    private fun clearKeyRemapping() {
+        try {
+            // Clear all key remappings
+            val command = listOf("hidutil", "property", "--set", """{"UserKeyMapping":[]}""")
+            ProcessBuilder(command).start().waitFor()
+            println("[HOTKEY] Cleared key remapping via hidutil")
+        } catch (e: Exception) {
+            println("[HOTKEY] Warning: Could not clear key remapping: ${e.message}")
+        }
+    }
+    
     private fun initialize(): Boolean {
         try {
-            // Disable § key from typing on macOS using hidutil
-            disableSectionKeyTyping()
+            // § key is remapped to F13 via hidutil to prevent typing
+            setupKeyRemapping()
             
             Logger.getLogger(GlobalScreen::class.java.`package`.name).apply {
                 level = Level.WARNING
@@ -110,31 +136,6 @@ class GlobalHotkeyService(
         }
     }
 
-    private fun disableSectionKeyTyping() {
-        try {
-            // Disable § key from producing character output on macOS
-            // 0x700000064 = § key, 0x700000000 = no output
-            val command = listOf(
-                "hidutil", "property", "--set",
-                """{"UserKeyMapping":[{"HIDKeyboardModifierMappingSrc":0x700000064,"HIDKeyboardModifierMappingDst":0x700000000}]}"""
-            )
-            ProcessBuilder(command).start().waitFor()
-            println("[HOTKEY] Disabled § key typing via hidutil")
-        } catch (e: Exception) {
-            println("[HOTKEY] Warning: Could not disable § key typing: ${e.message}")
-        }
-    }
-    
-    private fun restoreSectionKeyTyping() {
-        try {
-            // Restore default key mapping
-            val command = listOf("hidutil", "property", "--set", """{"UserKeyMapping":[]}""")
-            ProcessBuilder(command).start().waitFor()
-            println("[HOTKEY] Restored § key typing via hidutil")
-        } catch (e: Exception) {
-            println("[HOTKEY] Warning: Could not restore § key typing: ${e.message}")
-        }
-    }
 
     private fun shutdown() {
         if (isRegistered) {
@@ -143,7 +144,7 @@ class GlobalHotkeyService(
                 GlobalScreen.removeNativeKeyListener(keyListener)
                 GlobalScreen.unregisterNativeHook()
                 isRegistered = false
-                restoreSectionKeyTyping() // Restore key mapping on shutdown
+                clearKeyRemapping()
                 println("[HOTKEY] Global hotkey service shutdown")
             } catch (ex: NativeHookException) {
                 println("[HOTKEY] Failed to unregister native hook: ${ex.message}")
@@ -159,7 +160,6 @@ class GlobalHotkeyService(
     fun cleanup() {
         shutdown()
         serviceScope.cancel()
-        restoreSectionKeyTyping() // Ensure key mapping is restored even on forced cleanup
     }
 }
 
