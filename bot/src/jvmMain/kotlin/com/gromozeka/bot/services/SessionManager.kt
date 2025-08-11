@@ -2,11 +2,13 @@ package com.gromozeka.bot.services
 
 import com.gromozeka.bot.model.Session
 import com.gromozeka.shared.domain.session.SessionUuid
+import com.gromozeka.shared.domain.session.ClaudeSessionUuid
 import com.gromozeka.shared.domain.session.toSessionUuid
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.stereotype.Service
 import java.util.*
 
@@ -18,8 +20,11 @@ import java.util.*
  */
 @Service
 class SessionManager(
-    private val sessionService: SessionService,
-    private val scope: CoroutineScope,
+    private val claudeCodeStreamingWrapper: ClaudeCodeStreamingWrapper,
+    private val sessionJsonlService: SessionJsonlService,
+    private val soundNotificationService: SoundNotificationService,
+    private val settingsService: SettingsService,
+    @Qualifier("coroutineScope") private val scope: CoroutineScope,
 ) {
 
     private val sessionMutex = Mutex()
@@ -38,14 +43,15 @@ class SessionManager(
 
     /**
      * Create new session and switch to it
-     * @param projectPath Path to the project directory
+     * @param projectPath Path to the project directory  
+     * @param resumeSessionId Optional Claude session ID to resume from (for loading history)
      * @return SessionUuid of the created session
      */
-    suspend fun createSession(projectPath: String): SessionUuid = sessionMutex.withLock {
+    suspend fun createSession(projectPath: String, resumeSessionId: ClaudeSessionUuid? = null): SessionUuid = sessionMutex.withLock {
         val sessionId = UUID.randomUUID().toString().toSessionUuid()
-        val session = sessionService.createSession(projectPath)
+        val session = createSessionInternal(projectPath)
         
-        session.start(scope)
+        session.start(scope, resumeSessionId)
         
         val updatedSessions = _activeSessions.value + (sessionId to session)
         _activeSessions.value = updatedSessions
@@ -53,6 +59,23 @@ class SessionManager(
         
         println("[SessionManager] Created and switched to session: $sessionId")
         sessionId
+    }
+
+    /**
+     * Create Session instance with current settings
+     */
+    private fun createSessionInternal(
+        projectPath: String,
+        claudeModel: String = settingsService.settings.claudeModel,
+    ): Session {
+        return Session(
+            projectPath = projectPath,
+            claudeWrapper = claudeCodeStreamingWrapper,
+            sessionJsonlService = sessionJsonlService,
+            soundNotificationService = soundNotificationService,
+            claudeModel = claudeModel,
+            responseFormat = settingsService.settings.responseFormat,
+        )
     }
 
     /**
@@ -111,21 +134,4 @@ class SessionManager(
         println("[SessionManager] All sessions stopped")
     }
 
-    /**
-     * Get current active session (null if none)
-     */
-    fun getCurrentSession(): Session? {
-        val currentId = _currentSessionId.value
-        return currentId?.let { _activeSessions.value[it] }
-    }
-
-    /**
-     * Check if there are any active sessions
-     */
-    fun hasActiveSessions(): Boolean = _activeSessions.value.isNotEmpty()
-
-    /**
-     * Get number of active sessions
-     */
-    fun getActiveSessionCount(): Int = _activeSessions.value.size
 }

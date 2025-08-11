@@ -1,6 +1,5 @@
 package com.gromozeka.bot.ui
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -15,11 +14,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.gromozeka.bot.model.ChatSession
-import com.gromozeka.bot.model.Session
+import com.gromozeka.bot.model.ChatSessionMetadata
 import com.gromozeka.bot.services.SessionJsonlService
-import com.gromozeka.bot.services.SessionService
-import com.gromozeka.shared.domain.message.ChatMessage
+import com.gromozeka.bot.services.SessionManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Instant
@@ -28,8 +25,8 @@ import io.github.vinceglb.filekit.compose.rememberDirectoryPickerLauncher
 private data class ProjectGroup(
     val projectPath: String,
     val projectName: String,
-    val sessions: List<ChatSession>,
-    val latestSession: ChatSession?,
+    val sessionsMetadata: List<ChatSessionMetadata>,
+    val latestSessionMetadata: ChatSessionMetadata?,
     val formattedTime: String,
 )
 
@@ -47,11 +44,11 @@ private fun formatRelativeTime(timestamp: Instant): String {
 
 @Composable
 fun SessionListScreen(
-    onSessionSelected: (ChatSession, List<ChatMessage>, Session) -> Unit,
+    onSessionMetadataSelected: (ChatSessionMetadata) -> Unit,
     coroutineScope: CoroutineScope,
     onNewSession: (String) -> Unit,
     sessionJsonlService: SessionJsonlService,
-    context: org.springframework.context.ConfigurableApplicationContext,
+    sessionManager: SessionManager,
     // Settings support
     settings: com.gromozeka.bot.settings.Settings,
     onSettingsChange: (com.gromozeka.bot.settings.Settings) -> Unit,
@@ -75,7 +72,7 @@ fun SessionListScreen(
     LaunchedEffect(Unit) {
         isLoading = true
         try {
-            val loadedSessions = sessionJsonlService.loadAllSessions()
+            val loadedSessions = sessionJsonlService.loadAllSessionsMetadata()
 
             // Group sessions by project
             val groupedProjects = loadedSessions
@@ -87,13 +84,13 @@ fun SessionListScreen(
                     ProjectGroup(
                         projectPath = projectPath,
                         projectName = projectName,
-                        sessions = sessions,
-                        latestSession = latestSession,
+                        sessionsMetadata = sessions,
+                        latestSessionMetadata = latestSession,
                         formattedTime = formattedTime
                     )
                 }
 
-            projectGroups = groupedProjects.sortedByDescending { it.latestSession?.lastTimestamp }
+            projectGroups = groupedProjects.sortedByDescending { it.latestSessionMetadata?.lastTimestamp }
 
             println("[SessionListScreen] Loaded ${loadedSessions.size} sessions in ${projectGroups.size} projects")
         } catch (e: Exception) {
@@ -171,12 +168,11 @@ fun SessionListScreen(
                                     }
                                 },
                                 onNewSessionClick = onNewSession,
-                                onSessionClick = { clickedSession ->
+                                onSessionMetadataClick = { clickedSession ->
                                     coroutineScope.handleSessionClick(
                                         clickedSession,
-                                        onSessionSelected,
-                                        sessionJsonlService,
-                                        context
+                                        onSessionMetadataSelected,
+                                        sessionManager
                                     )
                                 }
                             )
@@ -202,7 +198,7 @@ private fun ProjectGroupHeader(
     isExpanded: Boolean,
     onToggleExpanded: () -> Unit,
     onNewSessionClick: (String) -> Unit,
-    onSessionClick: (ChatSession) -> Unit,
+    onSessionMetadataClick: (ChatSessionMetadata) -> Unit,
 ) {
     CompactCard(
         modifier = Modifier.padding(vertical = 4.dp)
@@ -228,7 +224,7 @@ private fun ProjectGroupHeader(
                 ) {
                     Text(text = group.projectName)
                     Text(text = group.projectPath)
-                    Text(text = "${group.sessions.size} сессий")
+                    Text(text = "${group.sessionsMetadata.size} сессий")
                 }
                 
                 Spacer(modifier = Modifier.width(8.dp))
@@ -241,7 +237,7 @@ private fun ProjectGroupHeader(
                 Spacer(modifier = Modifier.width(12.dp))
                 
                 // 4. Column 2 - информация о последней сессии
-                group.latestSession?.let { latestSession ->
+                group.latestSessionMetadata?.let { latestSession ->
                     Column(
                         modifier = Modifier.weight(1f)
                     ) {
@@ -253,7 +249,7 @@ private fun ProjectGroupHeader(
                     Spacer(modifier = Modifier.width(8.dp))
                     
                     // 5. Кнопка "Продолжить"
-                    CompactButton(onClick = { onSessionClick(latestSession) }) {
+                    CompactButton(onClick = { onSessionMetadataClick(latestSession) }) {
                         Text("Продолжить")
                     }
                 } ?: run {
@@ -271,10 +267,10 @@ private fun ProjectGroupHeader(
                 Column(
                     modifier = Modifier.padding(start = 32.dp, end = 12.dp, bottom = 8.dp)
                 ) {
-                    group.sessions.forEach { session ->
+                    group.sessionsMetadata.forEach { session ->
                         SessionItem(
-                            session = session,
-                            onSessionClick = onSessionClick,
+                            sessionMetadata = session,
+                            onSessionMetadataClick = onSessionMetadataClick,
                             isGrouped = true,
                             modifier = Modifier.padding(vertical = 4.dp)
                         )
@@ -287,8 +283,8 @@ private fun ProjectGroupHeader(
 
 @Composable
 private fun SessionItem(
-    session: ChatSession,
-    onSessionClick: (ChatSession) -> Unit,
+    sessionMetadata: ChatSessionMetadata,
+    onSessionMetadataClick: (ChatSessionMetadata) -> Unit,
     isGrouped: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
@@ -308,11 +304,11 @@ private fun SessionItem(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = session.displayPreview(),
+                        text = sessionMetadata.displayPreview(),
                         modifier = Modifier.weight(1f)
                     )
                     Text(
-                        text = session.displayTime()
+                        text = sessionMetadata.displayTime()
                     )
                 }
                 
@@ -324,14 +320,14 @@ private fun SessionItem(
                 ) {
                     if (!isGrouped) {
                         Text(
-                            text = session.displayProject(),
+                            text = sessionMetadata.displayProject(),
                             modifier = Modifier.weight(1f)
                         )
                     } else {
                         Spacer(modifier = Modifier.weight(1f))
                     }
                     Text(
-                        text = "${session.messageCount} сообщений"
+                        text = "${sessionMetadata.messageCount} сообщений"
                     )
                 }
             }
@@ -340,7 +336,7 @@ private fun SessionItem(
             
             // Правый блок с кнопкой
             CompactButton(
-                onClick = { onSessionClick(session) }
+                onClick = { onSessionMetadataClick(sessionMetadata) }
             ) {
                 Text("Продолжить")
             }
@@ -349,24 +345,27 @@ private fun SessionItem(
 }
 
 
-// Resume existing session - create new Session with historical data loading
+// Resume existing session - create new Session with historical data loading via SessionManager
 private fun CoroutineScope.handleSessionClick(
-    clickedSession: ChatSession,
-    onSessionSelected: (ChatSession, List<ChatMessage>, Session) -> Unit,
-    sessionJsonlService: SessionJsonlService,
-    context: org.springframework.context.ConfigurableApplicationContext,
+    clickedSessionMetadata: ChatSessionMetadata,
+    onSessionMetadataSelected: (ChatSessionMetadata) -> Unit,
+    sessionManager: SessionManager,
 ) {
     launch {
         try {
-            // Create new Session that will load history during start
-            val sessionService = context.getBean(SessionService::class.java)
-            val session = sessionService.createSession(clickedSession.projectPath)
-
-            // Pass session to parent - it will handle Claude process management  
-            // The parent will call session.start() with resumeSessionId
-            onSessionSelected(clickedSession, emptyList(), session)
+            // Create session via SessionManager with resumeSessionId for history loading
+            val sessionId = sessionManager.createSession(
+                projectPath = clickedSessionMetadata.projectPath,
+                resumeSessionId = clickedSessionMetadata.claudeSessionId
+            )
+            
+            println("[SessionListScreen] Created session via SessionManager: $sessionId, resume from: ${clickedSessionMetadata.claudeSessionId}")
+            
+            // Notify parent that session was selected and created
+            onSessionMetadataSelected(clickedSessionMetadata)
 
         } catch (e: Exception) {
+            println("[SessionListScreen] Failed to create session via SessionManager: ${e.message}")
             e.printStackTrace()
         }
     }

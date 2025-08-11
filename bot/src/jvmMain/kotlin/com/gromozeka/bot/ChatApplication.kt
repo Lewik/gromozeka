@@ -13,8 +13,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.*
-import com.gromozeka.bot.model.ChatSession
-import com.gromozeka.bot.model.Session
 import com.gromozeka.bot.services.*
 import com.gromozeka.shared.domain.session.toClaudeSessionUuid
 import com.gromozeka.bot.settings.Settings
@@ -97,7 +95,7 @@ fun ApplicationScope.ChatWindow(
 ) {
     val coroutineScope = rememberCoroutineScope()
     val scrollState = rememberScrollState()
-    val sessionService = remember { context.getBean(SessionService::class.java) }
+    val sessionManager = remember { context.getBean(SessionManager::class.java) }
 
     var initialized by remember { mutableStateOf(false) }
 
@@ -112,8 +110,7 @@ fun ApplicationScope.ChatWindow(
 
 
     var showSessionList by remember { mutableStateOf(true) }
-    var selectedSession by remember { mutableStateOf<ChatSession?>(null) }
-    var currentSession by remember { mutableStateOf<Session?>(null) }
+    val currentSession by sessionManager.currentSession.collectAsState(null)
     var showSettingsPanel by remember { mutableStateOf(false) }
     val isWaitingForResponse by currentSession?.isWaitingForResponse?.collectAsState() ?: remember {
         mutableStateOf(
@@ -180,12 +177,11 @@ fun ApplicationScope.ChatWindow(
         toolResultsMap.clear()
     }
 
-    // Subscribe to current session's sessionId changes
+    // Subscribe to current session's sessionId changes  
     LaunchedEffect(currentSession) {
         currentSession?.let { session ->
             session.claudeSessionId.collectLatest { newSessionId ->
-                // Update UI automatically when sessionId changes
-                selectedSession = selectedSession?.copy(sessionId = newSessionId)
+                // Session ID changes are now handled automatically via currentSession flow
                 println("[ChatApp] UI updated with new session ID: $newSessionId")
             }
         }
@@ -220,7 +216,7 @@ fun ApplicationScope.ChatWindow(
     DisposableEffect(Unit) {
         onDispose {
             coroutineScope.launch {
-                currentSession?.stop()
+                sessionManager.stopAllSessions()
             }
         }
     }
@@ -228,23 +224,14 @@ fun ApplicationScope.ChatWindow(
     val createNewSession: (String) -> Unit = { projectPath ->
         coroutineScope.launch {
             try {
-                // Stop existing session if running
-                currentSession?.stop()
-                currentSession = null
+                // Stop current session via SessionManager 
+                sessionManager.currentSessionId.value?.let { currentId ->
+                    sessionManager.stopSession(currentId)
+                }
 
-                // Create and start new active session
-                val activeSession = sessionService.createSession(projectPath)
-                activeSession.start(coroutineScope)
-                currentSession = activeSession
-
-                selectedSession = ChatSession(
-                    sessionId = "new-session".toClaudeSessionUuid(), // Temporary ID, will be updated when real sessionId is captured
-                    projectPath = projectPath,
-                    firstMessage = "",
-                    lastTimestamp = Clock.System.now(),
-                    messageCount = 0,
-                    preview = "New Session"
-                )
+                // Create and start new active session via SessionManager
+                val sessionId = sessionManager.createSession(projectPath)
+                // SessionManager automatically switches to new session and updates currentSession flow
                 chatHistory.clear()
                 toolResultsMap.clear()
                 showSessionList = false
@@ -333,6 +320,17 @@ fun ApplicationScope.ChatWindow(
         onCloseRequest = {
             println("[GROMOZEKA] Application window closing - stopping all sessions...")
 
+            // Stop all sessions via SessionManager
+            coroutineScope.launch {
+                try {
+                    sessionManager.stopAllSessions()
+                    println("[GROMOZEKA] All sessions stopped via SessionManager")
+                } catch (e: Exception) {
+                    println("[GROMOZEKA] Error stopping sessions: ${e.message}")
+                    e.printStackTrace()
+                }
+            }
+
             val newWindowState = UiWindowState(
                 x = windowState.position.x.value.toInt(),
                 y = windowState.position.y.value.toInt(),
@@ -358,45 +356,20 @@ fun ApplicationScope.ChatWindow(
             if (initialized) {
                 if (showSessionList) {
                     SessionListScreen(
-                        onSessionSelected = { session, messages, sessionObj ->
-                            // Stop current session if any
-                            currentSession?.let { currentSess ->
-                                coroutineScope.launch { currentSess.stop() }
-                            }
-
-                            selectedSession = session
-                            currentSession = sessionObj
+                        onSessionMetadataSelected = { session ->
+                            // Session already created in SessionListScreen via SessionManager
+                            // currentSession will be automatically updated via SessionManager flow
+                            
+                            // Clear UI state for new session
                             chatHistory.clear()
                             toolResultsMap.clear()
-                            chatHistory.addAll(messages)
-
-                            // Fill toolResultsMap with historical tool results
-                            messages.flatMap { message ->
-                                message.content.filterIsInstance<ChatMessage.ContentItem.ToolResult>()
-                            }.forEach { toolResult ->
-                                toolResultsMap[toolResult.toolUseId] = toolResult
-                            }
-
+                            
                             showSessionList = false
-
-                            // Start the session with resume capability
-                            coroutineScope.launch {
-                                try {
-                                    // Pass the old session ID for history loading
-                                    sessionObj.start(coroutineScope, resumeSessionId = session.sessionId)
-
-                                    // Session started successfully
-                                    println("[ChatApplication] Session started with resume for: ${session.sessionId}")
-                                } catch (e: Exception) {
-                                    println("[ChatApplication] Failed to start session: ${e.message}")
-                                    e.printStackTrace()
-                                }
-                            }
                         },
                         coroutineScope = coroutineScope,
                         onNewSession = createNewSession,
                         sessionJsonlService = sessionJsonlService,
-                        context = context,
+                        sessionManager = sessionManager,
                         settings = currentSettings,
                         onSettingsChange = onSettingsChange,
                         showSettingsPanel = showSettingsPanel,
@@ -413,12 +386,14 @@ fun ApplicationScope.ChatWindow(
                         autoSend = currentSettings?.autoSend ?: true,
                         onBackToSessionList = {
                             coroutineScope.launch {
-                                currentSession?.stop()
+                                sessionManager.currentSessionId.value?.let { currentId ->
+                                    sessionManager.stopSession(currentId)
+                                }
                             }
                             showSessionList = true
                         },
                         onNewSession = {
-                            val currentProjectPath = selectedSession?.projectPath ?: "/Users/slavik/code/gromozeka"
+                            val currentProjectPath = currentSession?.projectPath ?: "/Users/slavik/code/gromozeka"
                             createNewSession(currentProjectPath)
                         },
                         onSendMessage = sendMessage,

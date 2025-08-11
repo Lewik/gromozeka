@@ -1,8 +1,7 @@
 package com.gromozeka.bot.ui.state
 
 import androidx.compose.runtime.*
-import com.gromozeka.bot.model.ChatSession
-import com.gromozeka.bot.model.Session
+import com.gromozeka.bot.model.ChatSessionMetadata
 import com.gromozeka.shared.domain.message.ChatMessage
 
 @Stable
@@ -10,7 +9,7 @@ class SessionUIState {
     var initialized by mutableStateOf(false)
     var userInput by mutableStateOf("")
     var showSessionList by mutableStateOf(true)
-    var selectedSession by mutableStateOf<ChatSession?>(null)
+    var selectedSessionMetadata by mutableStateOf<ChatSessionMetadata?>(null)
     var showSettingsPanel by mutableStateOf(false)
     var chatHistory by mutableStateOf<List<ChatMessage>>(emptyList())
     
@@ -32,7 +31,7 @@ class SessionUIState {
     fun reset() {
         userInput = ""
         chatHistory = emptyList()
-        selectedSession = null
+        selectedSessionMetadata = null
         showSessionList = true
         showSettingsPanel = false
     }

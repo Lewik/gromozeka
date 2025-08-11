@@ -1,6 +1,6 @@
 package com.gromozeka.bot.services
 
-import com.gromozeka.bot.model.ChatSession
+import com.gromozeka.bot.model.ChatSessionMetadata
 import com.gromozeka.bot.model.ClaudeLogEntry
 import com.gromozeka.bot.model.StreamSessionMetadata
 import com.gromozeka.shared.domain.session.ClaudeSessionUuid
@@ -213,7 +213,7 @@ class SessionJsonlService(
      * Load all sessions from Claude Code's projects directory
      * @return List of ChatSession objects representing all available sessions
      */
-    suspend fun loadAllSessions(): List<ChatSession> = withContext(Dispatchers.IO) {
+    suspend fun loadAllSessionsMetadata(): List<ChatSessionMetadata> = withContext(Dispatchers.IO) {
         val projectsDir = settingsService.getClaudeProjectsDir()
         if (!projectsDir.exists()) {
             println("[SessionJsonlService] Projects directory doesn't exist: ${projectsDir.absolutePath}")
@@ -239,8 +239,8 @@ class SessionJsonlService(
                     val metadata = loadMetadataFromSession(sessionId, projectPath)
 
                     if (metadata != null) {
-                        ChatSession(
-                            sessionId = sessionId,
+                        ChatSessionMetadata(
+                            claudeSessionId = sessionId,
                             projectPath = projectPath,
                             firstMessage = metadata.title,
                             lastTimestamp = metadata.lastModified.toInstant(TimeZone.currentSystemDefault()),

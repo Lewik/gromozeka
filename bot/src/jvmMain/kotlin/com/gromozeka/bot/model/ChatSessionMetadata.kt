@@ -6,8 +6,8 @@ import kotlinx.datetime.Instant
 /**
  * Represents a Claude Code chat session with metadata
  */
-data class ChatSession(
-    val sessionId: ClaudeSessionUuid,
+data class ChatSessionMetadata(
+    val claudeSessionId: ClaudeSessionUuid,
     val projectPath: String,
     val firstMessage: String,
     val lastTimestamp: Instant,
