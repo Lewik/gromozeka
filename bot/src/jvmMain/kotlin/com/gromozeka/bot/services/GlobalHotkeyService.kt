@@ -20,8 +20,7 @@ class GlobalHotkeyService(
 ) {
     
     companion object {
-        // Global hotkey: Fn + Control
-        private const val HOTKEY_FN_KEYCODE = 63  // macOS fn key code (0x3F)
+        // Global hotkey: Control only
         private const val HOTKEY_CTRL_KEYCODE = NativeKeyEvent.VC_CONTROL
         private const val HOTKEY_CTRL_MASK = NativeKeyEvent.CTRL_L_MASK
     }
@@ -94,15 +93,15 @@ class GlobalHotkeyService(
                 return
             }
             
-            // Debug logging for fn+ctrl key detection
-            if (e.keyCode == HOTKEY_FN_KEYCODE || e.keyCode == HOTKEY_CTRL_KEYCODE) {
-                println("[HOTKEY] Key detected: keyCode=${e.keyCode}, modifiers=${e.modifiers}")
+            // Debug logging for ctrl key detection
+            if (e.keyCode == HOTKEY_CTRL_KEYCODE) {
+                println("[HOTKEY] Control key detected: keyCode=${e.keyCode}, modifiers=${e.modifiers}")
             }
             
             if (isTargetHotkey(e)) {
                 // Check if this is a clean Ctrl press without conflicting keys
                 if (isCleanCtrlPress(e)) {
-                    println("[HOTKEY] Clean Fn+Control hotkey pressed")
+                    println("[HOTKEY] Clean Control hotkey pressed")
                     serviceScope.launch {
                         onHotkeyDown()
                     }
@@ -136,23 +135,21 @@ class GlobalHotkeyService(
     }
     
     private fun isTargetHotkey(event: NativeKeyEvent): Boolean {
-        // Check for Fn + Control (both modifiers pressed)
-        val ctrlPressed = (event.modifiers and HOTKEY_CTRL_MASK) != 0
-        return (event.keyCode == HOTKEY_FN_KEYCODE || event.keyCode == HOTKEY_CTRL_KEYCODE) && ctrlPressed
+        // Check for Control only (no other modifiers like Shift, Alt, etc.)
+        return event.keyCode == HOTKEY_CTRL_KEYCODE && 
+               (event.modifiers and HOTKEY_CTRL_MASK) != 0
     }
     
     private fun isPartOfHotkey(event: NativeKeyEvent): Boolean {
-        // Any of the hotkey combination keys: Fn or Control
-        return event.keyCode == HOTKEY_FN_KEYCODE ||
-               event.keyCode == HOTKEY_CTRL_KEYCODE
+        // Only Control key is part of our hotkey
+        return event.keyCode == HOTKEY_CTRL_KEYCODE
     }
     
     private fun isCleanCtrlPress(event: NativeKeyEvent): Boolean {
-        // Check that only Ctrl modifier is pressed, no other conflicting modifiers
-        // Allow Fn+Ctrl but reject Shift+Ctrl, Alt+Ctrl, etc.
-        val allowedModifiers = NativeKeyEvent.CTRL_L_MASK or NativeKeyEvent.CTRL_R_MASK
-        return (event.modifiers and allowedModifiers) != 0 && 
-               (event.modifiers and allowedModifiers.inv()) == 0
+        // Clean Control press: only Ctrl modifier, no Shift/Alt/etc.
+        val onlyCtrlModifier = (event.modifiers and HOTKEY_CTRL_MASK) != 0 && 
+                               (event.modifiers and HOTKEY_CTRL_MASK.inv()) == 0
+        return event.keyCode == HOTKEY_CTRL_KEYCODE && onlyCtrlModifier
     }
     
     
@@ -166,7 +163,7 @@ class GlobalHotkeyService(
             GlobalScreen.registerNativeHook()
             GlobalScreen.addNativeKeyListener(keyListener)
             isRegistered = true
-            println("[HOTKEY] Global hotkey service initialized (Fn+Control)")
+            println("[HOTKEY] Global hotkey service initialized (Control only)")
             return true
         } catch (ex: NativeHookException) {
             println("[HOTKEY] Failed to register native hook: ${ex.message}")

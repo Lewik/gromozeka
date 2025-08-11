@@ -16,13 +16,9 @@ fun Modifier.advancedEscape(
     
     this.onKeyEvent { event ->
         if (event.key == Key.Escape && event.type == KeyEventType.KeyDown) {
+            // Escape should only reset PTT state, not start new PTT
             coroutineScope.launch {
-                gestureDetector.onGestureDown()
-            }
-            true
-        } else if (event.key == Key.Escape && event.type == KeyEventType.KeyUp) {
-            coroutineScope.launch {
-                gestureDetector.onGestureUp()
+                gestureDetector.resetGestureState()
             }
             true
         } else {
