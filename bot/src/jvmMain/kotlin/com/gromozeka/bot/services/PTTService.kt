@@ -29,12 +29,6 @@ class PTTService(
         currentRecordingSession?.cancel()
         
         val settings = settingsService.settings
-        
-        // Muting
-        if (settings.muteSystemAudioDuringPTT) {
-            audioMuteManager.mute()
-        }
-        
         val audioConfig = AudioConfig(
             sampleRate = 16000,
             channels = 1,
@@ -43,6 +37,11 @@ class PTTService(
         )
         
         try {
+            // Mute audio first (inside try-catch to ensure cleanup)
+            if (settings.muteSystemAudioDuringPTT) {
+                audioMuteManager.mute()
+            }
+            
             println("[PTT] Starting recording")
             val session = audioRecorder.launchRecording(CoroutineScope(currentCoroutineContext()), audioConfig)
             currentRecordingSession = session
@@ -66,7 +65,7 @@ class PTTService(
             _recordingState.value = false
             currentRecordingSession = null
             
-            // Cleanup on failure
+            // ALWAYS cleanup on failure (including mute restore)
             if (settings.muteSystemAudioDuringPTT) {
                 audioMuteManager.restoreOriginalState()
             }
