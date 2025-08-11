@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This is a Kotlin Multiplatform Project (MPP) with the following modules:
 - `bot` - The main application module containing the gromozeka bot application
-- `shared` - A library module with shared code and models
+- `shared` - A library module with shared code and models  
 - `docs/` - Project documentation including architectural decisions and philosophy
 
 ## Build and Test Commands
@@ -27,7 +27,6 @@ This is a Kotlin Multiplatform Project (MPP) with the following modules:
 
 **CRITICAL**: Never run `./gradlew :bot:run` unless user explicitly requests it or gives consent. Always ask permission before starting the application.
 
-
 ## Project Overview
 
 **Concept**: Gromozeka - multi-armed AI agent (named after the character from "The Mystery of the Third Planet"). This is not just another chatbot, but a "handy" agent with multiple capabilities for interacting with system, services, and various APIs.
@@ -36,37 +35,111 @@ This is a Kotlin Multiplatform Project (MPP) with the following modules:
 
 **Architecture Stack**:
 - **UI**: JetBrains Compose Desktop
-- **AI Integration**: Claude Code CLI wrapper + Spring AI
-- **Core Features**: Text chat, voice input (STT), tool calling, MCP support, session management
-- **Extensibility**: Plugin architecture for adding new "arms" (capabilities)
+- **AI Integration**: Claude Code CLI streaming integration
+- **Core Features**: Text chat, voice input (PTT), session management, streaming UI
 
 **Key Differentiators**:
-- Claude Code CLI integration for rich tool ecosystem
-- MCP (Model Context Protocol) for modular capability extension
-- Real-time streaming responses
-- Persistent sessions with context
-- Desktop-first approach for maximum development convenience
+- Advanced voice interface wrapper for AI interaction
+- Sophisticated PTT (Push-to-Talk) system with global hotkeys  
+- Multiple session management with history and resume support (work in progress)
+- Context management and organization (work in progress)
 
 **Naming**: "Gromozeka" - internal codename, may be changed for release
 
-## Claude Code Integration Plan
+## Current Architecture
 
-**Research results**: Claude Code provides rich out-of-the-box ecosystem (tools, sub-agents, MCP servers, IDE integration) that would be expensive to replicate. While alternatives like DeepSeek V3 are cheaper per token, Claude Code's developer experience and built-in capabilities justify the cost for this use case.
+### Core Integration: Claude Code CLI Streaming
 
-**Hybrid approach**:
-- **Claude Code CLI wrapper**: For core AI chat functionality, tool calling, MCP integration
-- **Spring AI**: Keep for STT/TTS services and existing voice features
-- **Integration method**: Command line SDK via ProcessBuilder with JSON output parsing
+**Key components**:
+1. **ClaudeCodeStreamingWrapper** - Process management and stream communication
+2. **Session** - Session lifecycle, message handling, and state management  
+3. **StreamToChatMessageMapper** - Maps Claude stream format to internal ChatMessage format
+4. **SessionJsonlService** - Historical session loading from .jsonl files for resume functionality
 
-**Key integration points**:
-- `claude -p "prompt" --output-format json` for structured responses
-- `--mcp-config` for MCP server configuration
-- `--allowedTools` for tool access control
-- Session management via `--resume` and `--continue`
+**Claude Code CLI invocation**:
+```bash
+claude --output-format stream-json --input-format stream-json --verbose --permission-mode acceptEdits --append-system-prompt <SYSTEM_PROMPT>
+```
 
-See docs/ folder for Claude Code integration documentation.
+**Streaming Protocol**:
+- **Input**: JSON messages sent to Claude CLI stdin
+- **Output**: Stream of JSONL messages from Claude CLI stdout  
+- **Control**: Interrupt requests via control messages
+- **Session Management**: Session ID extracted from `init` messages
 
-**Reference examples**: https://github.com/anthropics/anthropic-sdk-python for SDK usage patterns.
+### PTT (Push-to-Talk) System
+
+**Advanced PTT Implementation** with two input types:
+1. **On-screen PTT button** - Always available in UI
+2. **§ (paragraph) key** - Global hotkey via hidutil remapping to F13
+
+**5 Gesture Types Supported**:
+- **Single Click**: Stop TTS
+- **Double Click**: Stop TTS + Interrupt Claude  
+- **Single Hold**: Record voice message
+- **Double Hold**: Interrupt Claude + Record voice message
+- **Button Down**: Optimistic recording start + audio mute
+
+**Technical Implementation**:
+- **GlobalHotkeyService**: Manages § key remapping and global hotkey detection
+- **UnifiedGestureDetector**: Recognizes gesture patterns by timing
+- **PTTEventRouter**: Routes gesture events to appropriate handlers
+- **AudioMuteManager**: System audio muting during recording
+- **STTService**: Speech-to-text transcription
+
+Uses § key remapped to F13 via hidutil to avoid conflicts with system shortcuts.
+
+### Session Management & Resume
+
+**Resume Behavior**: 
+- Claude Code CLI creates NEW session ID on resume (not reusing old ID)
+- Historical messages loaded from old session .jsonl file
+- Current session uses new session ID for operations
+- Session state handles this dual-ID transition gracefully
+
+**Session Lifecycle**:
+1. Start Claude CLI process with streaming
+2. Extract session ID from init messages
+3. Load historical messages if resuming
+4. Handle real-time streaming messages
+5. Manage buffered messages until session initialized
+
+**File Locations**: Claude stores session files in `~/.claude/projects/<escaped-path>/` as individual `.jsonl` files.
+
+### Real-time Streaming Architecture
+
+**Current Approach**: Direct stdout/stdin streaming with Claude Code CLI process.
+
+**Stream Processing Flow**:
+```
+User Input → Session.sendMessage() → ClaudeWrapper.sendMessage() → Claude CLI stdin
+Claude CLI stdout → parseStreamJsonLine() → StreamToChatMessageMapper → UI Updates
+```
+
+**Key Patterns**:
+- **SharedFlow** for message streaming with replay for late subscribers
+- **StateFlow** for session state and metadata
+- **Mutex protection** for all mutable session operations
+- **Error recovery** with graceful degradation and reconnection attempts
+
+### Data Models
+
+**Streaming Models** (`StreamJsonLine` sealed class):
+- `StreamJsonLine.System` - Init, control, metadata messages
+- `StreamJsonLine.User` - User input messages  
+- `StreamJsonLine.Assistant` - Claude response messages
+- `StreamJsonLine.Result` - Final response with usage metrics
+- `StreamJsonLine.ControlRequest/Response` - Interrupt handling
+
+**Unified Output** (`ChatMessage`):
+- Engine-agnostic representation in shared module
+- ContentItem hierarchy for different message types (text, tool calls, etc.)
+- Support for historical messages, TTS text, and original JSON
+
+**Tool Integration**:
+- Full Claude Code tool support (Read, Edit, Bash, Grep, WebSearch, etc.)
+- Type-safe mapping via `ClaudeCodeToolCallData`/`ClaudeCodeToolResultData`
+- MCP tool compatibility framework
 
 ## GitHub Issues Usage
 
@@ -75,341 +148,50 @@ Issues serve as our **shared project notebook** and **reference base**:
 ### What to put in Issues:
 - 💡 **Ideas/Features**: "Add Obsidian integration", "Voice commands support"
 - 🔧 **Technical problems**: "STT slow on long recordings", "Memory leaks in streaming"
-- 🎯 **Architectural decisions**: "Switch to MCP for all tools", "Redesign session storage"
+- 🎯 **Architectural decisions**: "Switch to MCP for all tools", "Redesign session storage"  
 - 📚 **Research notes**: "Investigate whisper.cpp vs Vosk", "Local LLM integration options"
 - 🐛 **Found bugs**: "PTT fails when window minimized", "Claude Code CLI timeout issues"
 
 ### How Claude Code uses Issues:
-- **NOT read automatically** at session start
 - **Search as needed**: When relevant context is required
 - **Reference during planning**: "What should we work on next?"
 - **Create new ones** when discovering important items
-- **Link when relevant**: "This relates to issue #5"
-- **Always sign** generated issues and comments with signature like:
-
-```
----
-🤖 *Generated by Claude Code*
-```
+- **Always sign** generated issues and comments with: `🤖 Generated with [Claude Code](https://claude.ai/code)`
 
 **Language**: All GitHub Issues must be created in English (titles, descriptions, comments).
 
-**Purpose**: Issues = our persistent development memory that Claude Code can access when needed.
+## Development Guidelines
 
-## Architecture & Design Philosophy
-
-### Core Concept
-
-Gromozeka is a multi-armed AI agent designed as a **desktop-first application** for individual developers. Unlike traditional chatbots, Gromozeka emphasizes **practical utility through real tool integration**.
-
-**Scope**: Personal development tool with desktop-first architecture. Current implementation optimized for single-user, local environment. Future: thin client architecture with "brain" running on capable hardware (desktop/server) and UI clients (mobile/lightweight desktop) connecting remotely.
-
-### Architectural Principles
-
-#### 1. Single Source of Truth: File-Based Architecture
-
-**Decision**: Parse only session files, not streaming output.
-
-**Rationale**:
-- **Reliability first**: Claude Code writes to disk immediately (no buffering) to prevent data loss on crash/Ctrl+C
-- **Single parser**: Easier to maintain than dual parser system (streaming vs file)
-- **Complete data**: Files contain full metadata that streaming may omit
-- **Audit trail**: All interactions automatically persisted for debugging
-- **Consistency**: Same parsing logic for both historical and new messages
-
-**Performance analysis**:
-- Session size limited by Claude's context window (auto-compaction)
-- Typical file read time ≈ 1ms on SSD for context-sized files
-- Stream processing delay = 200ms (protection against partial writes)
-- **Total latency acceptable** for human interaction speeds
-
-**Memory management**:
-- No unbounded growth: Claude's auto-compaction limits session size
-- Context boundaries provide natural memory limits
-- Desktop scope: even worst-case memory usage is manageable
-
-**Trade-offs accepted**:
-- Minimal latency vs streaming (but human-imperceptible)
-- Stream processing complexity (but robust error handling added)
-- Must handle partial file writes (delay + retry logic)
-
-#### 2. Backend-Driven State Management
-
-**Decision**: Kotlin backend manages all state, UI is purely reactive.
-
-**Rationale**:
-- Centralized state management via `Session` class (refactored from coordinator anti-pattern)
-- Kotlin Flow for reactive updates (StateFlow/SharedFlow)
-- Clear separation of concerns
-- Easier to test business logic
-
-**Current implementation**: `Session.kt` encapsulates all session logic - process management, streaming, state updates, and lifecycle.
-
-#### 3. Claude Code Engine Focus
-
-**Decision**: Architecture optimized specifically for Claude Code engine integration.
-
-**Rationale**:
-- Claude Code has unique session file format (.jsonl) and CLI behavior
-- Claude Code's immediate file writes enable reliable streaming approach
-- Claude Code's auto-compaction provides natural session boundaries
-- Other LLM engines would require completely different integration strategies
-- Better to build one engine integration excellently than many poorly
-- Future LLM engines = separate wrappers with engine-specific architectures
-
-**Engine-specific design decisions**:
-- Session ID extraction from Claude's `init` messages
-- Session file monitoring of `~/.claude/projects/` directory structure
-- Parsing Claude's specific JSONL message format
-- Resume behavior handling (new file creation)
-
-### Technical Decisions
-
-#### Stream Processing Strategy
-
-```
-Claude Process → Writes JSONL → Stream reads → Parser processes → UI updates
-```
-
-**Why not streaming?**
-- **Dual parser complexity**: Stream and file formats typically differ, requiring separate parsers
-- **Processing inconsistency**: Historical messages often parsed differently than real-time ones
-- **Maintenance overhead**: Multiple parsing paths increase complexity
-- **Persistence guarantee**: Files are the only reliable storage that survives crashes
-- **Simpler architecture**: Single parsing path reduces edge cases
-
-#### Claude Code Session Management
-
-**Engine-specific behavior**:
-1. **New Session**: Start Claude CLI → Extract session ID from `init` message → Monitor new .jsonl file
-2. **Resume Session**: Claude CLI creates new file (not reuse old) → Update stream monitoring to new file via callback
-3. **Session ID Mismatch Fix**: Always set up `onSessionIdCaptured` to handle Claude's file creation behavior
-
-**Key insight**: Claude Code CLI always creates new files on resume, never appends to existing ones.
-
-#### Error Handling
-
-- Graceful stream recovery on crash
-- Null-safety throughout Kotlin code
-- Partial JSON line protection in parser
-
-### Implementation Guidelines
-
-1. **Prefer file-based truth** over in-memory state
-2. **Handle edge cases** (partial writes, crashes, race conditions)  
-3. **Embrace Claude Code engine specifics** - leverage its unique behavior and .jsonl format
-4. **Test with real Claude-generated session files** not mocked data
-5. **Document engine-specific behaviors** and non-obvious decisions in code
-
-### Validation Strategy
-
-**"Validate in practice, not in CI":**
-- Stream behavior varies by platform - manual validation more reliable than flaky automated tests
-- External process timing cannot be reliably tested in unit tests
-- Focus automated testing on pure functions (parsers, data transformations)
-- System integration behavior validated through real usage
-
-### Future Considerations
-
-#### Phase 1: Desktop Maturity
-- **Performance**: Incremental file reading for very large sessions
-- **Multi-session**: Better support for concurrent sessions  
-- **Plugin system**: For adding new "arms" (capabilities)
-
-#### Phase 2: Client-Server Architecture
-- **Remote UI clients**: Mobile apps, lightweight desktop clients
-- **Network protocol**: Stream session updates to remote clients (WebSocket/gRPC)
-- **"Brain" separation**: Core logic + Claude Code engine integration runs on powerful hardware
-- **Multi-client support**: Same session accessible from multiple devices
-- **Alternative LLM engines**: Separate wrappers with engine-specific architectures and protocols
-
-**X-Server inspiration**: UI rendering on client, all computation on server.
-
-### Philosophy Summary
-
-> "Parse once, parse right. The file is the truth, streaming is just a preview."
-
-This approach prioritizes **reliability** and **consistency** over streaming speed. Key insights:
-
-- **Desktop scope**: Single-user environment allows simpler, more robust solutions
-- **Natural boundaries**: Context limits prevent unbounded resource growth  
-- **Single parser advantage**: Unified processing path reduces complexity
-- **Pragmatic validation**: Manual testing more reliable than flaky automated tests for system behavior
-- **Developer confidence**: Every interaction automatically saved and debuggable
-
-For a desktop developer tool, having consistent and trustworthy state management is more valuable than optimizing for theoretical edge cases that don't occur in practice.
-
-## Claude Code CLI Working Notes
-
-### Session Files Location
-
-Claude Code stores session files in project-specific directories:
-- **Base path**: `~/.claude/projects/`
-- **Project directories**: Named with escaped paths (e.g., `-Users-lewik-code-gromozeka/`)
-- **Session files**: Individual `.jsonl` files with UUID names inside project directories
-
-**Example structure**:
-```
-~/.claude/projects/
-├── -Users-lewik-code-gromozeka/
-│   ├── 00f8f214-a5c5-40cf-a07e-4a3b383a94e9.jsonl
-│   ├── 01408712-7950-4d1f-9d80-46126637f418.jsonl
-│   └── ...
-└── -Users-lewik-code-another-project/
-    ├── session-uuid-1.jsonl
-    └── session-uuid-2.jsonl
-```
-
-### Session File Format
-
-- **Format**: JSONL (JSON Lines) - one JSON object per line
-- **Content**: Each line represents a message exchange
-- **Metadata**: Includes timestamps, message types, tool calls, etc.
-- **Auto-compaction**: Claude automatically manages session size via context window limits
-
-### Key Behavioral Notes
-
-- **File creation**: Claude Code always creates new files on `--resume`, never appends
-- **Immediate writes**: No buffering - files updated immediately for crash safety  
-- **Session ID extraction**: Must monitor `init` messages to get proper session ID
-- **Stream timing**: 300ms debounce + conflate (updated from 200ms)
-
-## Claude Code
-### Resume Behavior
-
-Claude Code CLI resume behavior with `--resume <old-session-id>`:
-1. **Historical context loading**: Claude loads the conversation history from the old session ID as it should
-2. **New session ID creation**: However, Claude creates a **NEW** session ID for the resumed session (like copying session with new id)
-3. **Init message contains new ID**: The `init` message will contain the NEW session ID, not the old one
-4. **Implementation consequence**: Load history from old ID, but use new ID for current session operations
-
-This dual-ID behavior is critical for proper session management in Gromozeka:
-- Historical messages come from `<old-session-id>.jsonl`
-- Current session operations use `<new-session-id>.jsonl`
-- Session state must handle this ID transition gracefully
-
-## Current Implementation Details
-
-### Core Architecture Components
-
-#### Session.kt - The Central Hub
-**Responsibilities**: Process management, stream monitoring, state management, lifecycle control
-- **Thread safety**: Mutex protection for all mutable operations
-- **Reactive updates**: StateFlow for metadata/messages, SharedFlow for events
-- **Stream processing**: Real-time stdout monitoring with 300ms debounce
-- **Process lifecycle**: Graceful shutdown with 1s timeout before force kill
-
-**Key pattern**: Single class encapsulating all session logic (replaced coordinator anti-pattern)
-
-#### Data Models Architecture
-
-**Current state**: Dual serialization approach (transitional)
-- **kotlinx.serialization**: New models (`ClaudeLogEntry`, `ChatMessage`)
-- **Jackson**: Legacy models (`ToolCall`, `ToolResult`)
-
-**ClaudeLogEntry hierarchy**:
-```kotlin
-sealed class ClaudeLogEntry {
-    SummaryEntry                    // Claude's auto-summaries
-    sealed class BaseEntry {        // All real entries
-        UserEntry                   // User messages  
-        AssistantEntry             // Claude responses
-        SystemEntry                // System notifications
-    }
-}
-```
-
-**Unified output model** (`ChatMessage`):
-- Engine-agnostic representation in shared module
-- ContentItem hierarchy for different message types
-- LlmSpecificMetadata for engine-specific data
-
-#### Tool Integration
-
-**Claude Code tools support**:
-- Read, Edit, Bash, Grep, WebSearch, WebFetch, TodoWrite, Task (subagents)
-- Type-safe mapping via ClaudeCodeToolCallData/ClaudeCodeToolResultData
-- Generic fallback for MCP and unknown tools
-
-**MCP compatibility**: Basic structure ready, but `McpToolResultParser` contains TODO stubs
-
-### Critical Implementation Notes
-
-#### JSON Parsing Complexity
-**ClaudeMessageContentSerializer** handles multiple formats:
-1. Simple strings: `"text"`
-2. Claude objects: `{"type": "text", "content": "..."}`  
-3. Gromozeka JSON: `{"fullText": "...", "ttsText": "..."}`
-4. Arrays: `[{"type": "text", "text": "..."}]`
-5. Unknown JSON: fallback to `UnknownJsonContent`
-
-**Performance consideration**: Multi-step type checking in serializer may be slow for large sessions
-
-#### Stream Processing Pattern
-```kotlin
-stdoutReader.readLine() // Read JSON lines from Claude process
-    ?.let { parseStreamMessage(it) } // Parse Claude messages
-    ?.let { _streamMessages.emit(it) } // Emit to message stream
-    // Debounce and conflation handled at UI level
-```
-
-#### Session ID Handling
-**Critical behavior**: Claude Code CLI always creates new files on resume
-- Monitor stdout for session ID in init messages
-- Update stream monitoring via `onSessionIdCaptured` callback
-- Handle session ID mismatch gracefully
-
-### Known Issues and Trade-offs
-
-#### Architectural Debt
-1. **Mixed serialization**: Jackson vs kotlinx.serialization in same project
-2. **Session class size**: ~500 lines handling multiple concerns
-3. **Error handling**: Generic exception catching in some places
-4. **File parsing**: Full file re-read on each change (not incremental)
-
-#### Performance Considerations
-- **Memory**: All messages loaded in memory (bounded by Claude's context window)
-- **Parsing**: JSON deserialization on every file change
-- **UI updates**: Full message list updates (not incremental)
-
-#### Race Conditions Protected
-- **Mutex in Session**: All mutable operations protected
-- **Process lifecycle**: Start/stop operations atomic
-- **Stream processing**: Debounce prevents partial read issues
-
-### Development Guidelines
-
-#### When Working with Sessions
+### When Working with Sessions:
 1. Always use `sessionMutex.withLock` for mutable operations
-2. Test session behavior with real Claude Code processes, not mocks
-3. Handle session ID changes via `onSessionIdCaptured` callback
-4. Expect nullable fields everywhere (Claude format is unstable)
+2. Test session behavior with real Claude Code processes, not mocks  
+3. Handle session ID changes via init message monitoring
+4. Expect nullable fields everywhere (Claude format can vary)
 
-#### When Adding New Tools
-1. Add to `ClaudeCodeToolCallData` sealed class
-2. Update `ClaudeLogEntryMapper.mapToolCall()`
-3. Test with real Claude Code tool execution
-4. Provide Generic fallback for unknown tools
+### When Adding New Features:
+1. Follow reactive programming patterns (StateFlow/SharedFlow)
+2. Add proper error handling and recovery
+3. Test with real Claude Code streaming output
+4. Document engine-specific behaviors in code
 
-#### When Modifying File Parsing
-1. Test with real .jsonl files from `~/.claude/projects/`
-2. Handle partial writes via debounce timing
-3. Ensure graceful degradation for unknown JSON formats
-4. Validate with different session sizes
+### Testing Strategy:
+- **Unit tests**: Pure functions (parsers, mappers, utilities)
+- **Integration tests**: Use real Claude Code session data from test files
+- **Manual validation**: Stream behavior and PTT system require real testing
+- **No mocks**: External process timing cannot be reliably mocked
 
-### Future Improvement Areas
+## Known Issues and Future Work
 
-#### Short-term Optimizations
-- Migrate to single serialization library (kotlinx.serialization)
-- Implement incremental file reading for large sessions
-- Split Session class into smaller, focused components
-- Add proper error recovery and retry mechanisms
+### Current Limitations:
+- Single active session support (multi-session planned)
+- Full message list updates (incremental updates planned)
+- Mixed serialization libraries (migration to kotlinx.serialization planned)
 
-#### Long-term Architecture
-- Plugin system for new "arms" (capabilities)
-- Multi-engine support with separate wrappers
-- Client-server architecture for remote access
-- Performance monitoring and optimization
+### Future Enhancements:
+- **Plugin system**: For adding new "arms" (capabilities)
+- **Client-server architecture**: Remote UI clients connecting to core "brain"
+- **Alternative LLM engines**: Separate wrappers for different engines
+
 
 # important-instruction-reminders
 Do what has been asked; nothing more, nothing less.

@@ -69,7 +69,6 @@ class GlobalHotkeyService(
         override fun nativeKeyPressed(e: NativeKeyEvent) {
             // Check for F13 key (which is remapped from § via hidutil)
             if (e.keyCode == HOTKEY_F13_KEYCODE) {
-                println("[HOTKEY] PTT key pressed")
                 isPTTActive = true
                 serviceScope.launch {
                     onHotkeyDown()
@@ -80,7 +79,6 @@ class GlobalHotkeyService(
         override fun nativeKeyReleased(e: NativeKeyEvent) {
             // Check for F13 key (which is remapped from § via hidutil) release
             if (e.keyCode == HOTKEY_F13_KEYCODE && isPTTActive) {
-                println("[HOTKEY] PTT key released")
                 isPTTActive = false
                 serviceScope.launch {
                     onHotkeyUp()
