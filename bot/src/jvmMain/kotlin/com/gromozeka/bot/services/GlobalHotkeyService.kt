@@ -112,6 +112,7 @@ class GlobalHotkeyService(
             } else if (isPTTActive && !isPartOfHotkey(e)) {
                 // PTT is active and user pressed a non-hotkey key -> conflict
                 println("[HOTKEY] Key conflict detected during PTT (keyCode=${e.keyCode}) - ignoring until next clean Ctrl")
+                isPTTActive = false  // Reset PTT state immediately on conflict
                 ignoreUntilNextCtrlDown = true
                 serviceScope.launch {
                     pttEventRouter.handlePTTEvent(PTTEvent.MODIFIER_CONFLICT)
