@@ -43,7 +43,7 @@ class PTTService(
             }
             
             println("[PTT] Starting recording")
-            val session = audioRecorder.launchRecording(CoroutineScope(currentCoroutineContext()), audioConfig)
+            val session = audioRecorder.launchRecording(CoroutineScope(SupervisorJob() + Dispatchers.IO), audioConfig)
             currentRecordingSession = session
             _recordingState.value = true
             recordingStartTime = System.currentTimeMillis()
