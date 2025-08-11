@@ -366,6 +366,9 @@ class Session(
     private suspend fun handleSystemMessage(message: StreamJsonLine.System) {
         // Handle session ID updates and initialization
         if (message.subtype == "init") {
+            // Multiple init messages are EXPECTED in stream-json mode!
+            // Claude Code sends an init after each user message, confirmed via claude-code-sdk-python testing.
+            // See docs/claude-code-streaming-behavior.md for detailed analysis.
             if (sessionInitialized) {
                 println("[Session] Received init message for already initialized session - ignoring")
                 return

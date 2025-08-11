@@ -67,12 +67,12 @@ class ClaudeCodeStreamingWrapper(
             val now = LocalDateTime.now()
             val zoneId = ZoneId.systemDefault()
             val zoneOffset = zoneId.rules.getOffset(now)
-            
+
             val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
             val timeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss")
             val dayOfWeek = now.dayOfWeek.toString().lowercase()
                 .replaceFirstChar { it.uppercase() }
-            
+
             val envBlock = """
                 
                 <env>
@@ -81,7 +81,7 @@ class ClaudeCodeStreamingWrapper(
                 Day of week: $dayOfWeek
                 </env>
             """.trimIndent()
-            
+
             prompt = "$prompt\n$envBlock"
             println("[ClaudeCodeStreamingWrapper] Added current time to prompt: ${now.format(dateFormatter)} ${now.format(timeFormatter)} ${zoneId.id}")
         }
@@ -116,6 +116,11 @@ class ClaudeCodeStreamingWrapper(
 
 
             val systemPrompt = loadSystemPrompt(responseFormat).replace("\"", "\\\"")
+            
+            // NOTE: In stream-json mode, Claude Code sends multiple init messages - this is NORMAL behavior.
+            // We confirmed this by testing claude-code-sdk-python: each user message triggers a new init.
+            // The session ID remains the same across all init messages.
+            // See docs/claude-code-streaming-behavior.md for detailed analysis.
             val command = mutableListOf(
                 "claude",
                 "--output-format",
@@ -157,10 +162,6 @@ class ClaudeCodeStreamingWrapper(
             val processBuilder = ProcessBuilder(command)
                 .redirectErrorStream(false)
 
-            // Set environment variable like in Python SDK for headless mode
-            val env = processBuilder.environment()
-//            env["CLAUDE_CODE_ENTRYPOINT"] = "sdk-py"
-
             val actualProjectPath = projectPath ?: System.getProperty("user.dir")
             if (projectPath != null) {
                 processBuilder.directory(File(projectPath))
@@ -191,6 +192,8 @@ class ClaudeCodeStreamingWrapper(
             val proc = process
             println("[ClaudeCodeStreamingWrapper] Process alive before sending: ${proc?.isAlive()}")
 
+            // According to Claude Code SDK docs: don't send session_id at all
+            // When null, kotlinx.serialization won't include the field in JSON
             val streamJsonMessage = UserInputMessage(
                 type = "user",
                 message = UserInputMessage.Content(
@@ -201,7 +204,7 @@ class ClaudeCodeStreamingWrapper(
                         )
                     )
                 ),
-                session_id = sessionId,
+                session_id = sessionId,  // Never send session_id - let Claude manage it
                 parent_tool_use_id = null
             )
 
@@ -297,7 +300,7 @@ class ClaudeCodeStreamingWrapper(
                     sessionId = null
                 )
             }
-            
+
             StreamJsonLinePacket(fallbackMessage, originalJson)
         } catch (e: Exception) {
             println("[ClaudeCodeStreamingWrapper] UNEXPECTED ERROR in parseStreamJsonLine: ${e.javaClass.simpleName}: ${e.message}")
@@ -308,7 +311,7 @@ class ClaudeCodeStreamingWrapper(
                 data = buildJsonObject { put("error", JsonPrimitive(e.message ?: "Unknown error")) },
                 sessionId = null
             )
-            
+
             StreamJsonLinePacket(fallbackMessage, originalJson)
         }
     }
@@ -406,7 +409,7 @@ class ClaudeCodeStreamingWrapper(
     data class UserInputMessage(
         val type: String,
         val message: Content,
-        val session_id: String,
+        val session_id: String? = null,  // Made nullable to test without session_id
         val parent_tool_use_id: String? = null,
     ) {
         @Serializable
@@ -419,16 +422,16 @@ class ClaudeCodeStreamingWrapper(
             // See: https://github.com/Kotlin/kotlinx.serialization/issues/1664
             @Serializable
             sealed class ContentBlock
-            
+
             @Serializable
             @SerialName("text")
             data class TextBlock(
                 // val type: String = "text",  // Added automatically by @SerialName
                 val text: String
             ) : ContentBlock()
-            
+
             @Serializable
-            @SerialName("image") 
+            @SerialName("image")
             data class ImageBlock(
                 // val type: String = "image",  // Added automatically by @SerialName
                 val source: ImageSource
@@ -440,7 +443,7 @@ class ClaudeCodeStreamingWrapper(
                     val data: String  // base64 encoded image
                 )
             }
-            
+
             // Tool results are handled by Claude Code CLI internally
             // We only send user messages with text and images
         }
