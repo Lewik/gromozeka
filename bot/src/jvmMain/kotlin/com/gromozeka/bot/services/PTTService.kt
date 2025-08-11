@@ -90,6 +90,8 @@ class PTTService(
         currentRecordingSession = null
         val settings = settingsService.settings
         
+        var finalAudio: ByteArray? = null
+        
         try {
             // Handle minimum duration
             val recordingDuration = System.currentTimeMillis() - recordingStartTime
@@ -99,29 +101,35 @@ class PTTService(
             }
             
             // Get final audio - this is the key operation
-            val finalAudio = withContext(NonCancellable) {
+            finalAudio = withContext(NonCancellable) {
                 session.stop()
             }
             
-            // Transcribe
-            val text = sttService.transcribe(finalAudio)
-            println("[PTT] Recording stopped, transcribed: '${text.take(50)}${if (text.length > 50) "..." else ""}'")
-            
-            
-            return@withContext text
-            
         } catch (e: Exception) {
             println("[PTT] Failed to stop recording: ${e.message}")
-            return@withContext ""
             
         } finally {
-            // ALWAYS cleanup - this is critical
+            // ALWAYS restore audio immediately after recording attempt (success or failure)
             withContext(NonCancellable) {
                 session.cancel()
                 if (settings.muteSystemAudioDuringPTT) {
                     audioMuteManager.restoreOriginalState()
                 }
             }
+        }
+        
+        // Transcribe if we got audio (this happens AFTER mute is restored)
+        if (finalAudio != null) {
+            try {
+                val text = sttService.transcribe(finalAudio)
+                println("[PTT] Recording stopped, transcribed: '${text.take(50)}${if (text.length > 50) "..." else ""}'")
+                return@withContext text
+            } catch (e: Exception) {
+                println("[PTT] Failed to transcribe audio: ${e.message}")
+                return@withContext ""
+            }
+        } else {
+            return@withContext ""
         }
     }
     
