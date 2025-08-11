@@ -366,20 +366,25 @@ class Session(
     private suspend fun handleSystemMessage(message: StreamJsonLine.System) {
         // Handle session ID updates and initialization
         if (message.subtype == "init") {
+            val currentSessionId = _sessionId.value
+            val newSessionId = message.sessionId!!
+            
+            // Check if session ID changed - this indicates session switching (like after /compact)
+            if (currentSessionId != newSessionId) {
+                println("[Session] Session ID updated from stream: $currentSessionId -> $newSessionId")
+                _sessionId.value = newSessionId
+                _events.emit(StreamSessionEvent.SessionIdChangedOnStart(newSessionId))
+                
+                // Reset initialization flag for new session
+                sessionInitialized = false
+            }
+            
             // Multiple init messages are EXPECTED in stream-json mode!
             // Claude Code sends an init after each user message, confirmed via claude-code-sdk-python testing.
             // See docs/claude-code-streaming-behavior.md for detailed analysis.
             if (sessionInitialized) {
                 println("[Session] Received init message for already initialized session - ignoring")
                 return
-            }
-            val currentSessionId = _sessionId.value
-            val newSessionId = message.sessionId!!
-            if (currentSessionId != newSessionId) {
-                println("[Session] Session ID updated from stream: $currentSessionId -> $newSessionId")
-
-                _sessionId.value = newSessionId
-                _events.emit(StreamSessionEvent.SessionIdChangedOnStart(newSessionId))
             }
 
             sessionInitialized = true
