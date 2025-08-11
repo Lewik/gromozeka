@@ -447,13 +447,13 @@ object ClaudeLogEntryMapper {
                 println("  Text preview: ${text.take(100)}${if (text.length > 100) "..." else ""}")
                 listOf(ChatMessage.ContentItem.UnknownJson(jsonElement))
             } catch (jsonParseException: Exception) {
-                println("[ClaudeLogEntryMapper] PARSE ERROR: Failed to parse text as JSON")
-                println("  SerializationException: ${e.message}")
-                println("  JsonParseException: ${jsonParseException.message}")
-                println("  Text full content: $text")
-                println("  Text length: ${text.length}")
-                println("  Text starts with: ${text.take(50)}")
-                println("  Text ends with: ${text.takeLast(50)}")
+//                println("[ClaudeLogEntryMapper] PARSE ERROR: Failed to parse text as JSON")
+//                println("  SerializationException: ${e.message}")
+//                println("  JsonParseException: ${jsonParseException.message}")
+//                println("  Text full content: $text")
+//                println("  Text length: ${text.length}")
+//                println("  Text starts with: ${text.take(50)}")
+//                println("  Text ends with: ${text.takeLast(50)}")
                 // Not valid JSON at all - treat as plain text
                 listOf(ChatMessage.ContentItem.UserMessage(text))
             }
