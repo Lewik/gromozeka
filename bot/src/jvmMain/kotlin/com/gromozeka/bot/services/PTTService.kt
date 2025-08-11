@@ -21,6 +21,9 @@ class PTTService(
     private var recordingStartTime: Long = 0
     private val minRecordingDurationMs = 150L
     
+    // Track mute state independently from recording session
+    private var isMuted = false
+    
     /**
      * Start PTT recording - simple suspend function
      */
@@ -39,6 +42,8 @@ class PTTService(
         try {
             // Mute audio first (inside try-catch to ensure cleanup)
             if (settings.muteSystemAudioDuringPTT) {
+                println("[PTT] MUTING audio")
+                isMuted = true  // Set flag BEFORE actual mute to prevent race condition
                 audioMuteManager.mute()
             }
             
@@ -66,8 +71,12 @@ class PTTService(
             currentRecordingSession = null
             
             // ALWAYS cleanup on failure (including mute restore)
-            if (settings.muteSystemAudioDuringPTT) {
+            if (isMuted) {
+                println("[PTT] RESTORING audio mute after startRecording error")
                 audioMuteManager.restoreOriginalState()
+                isMuted = false
+            } else {
+                println("[PTT] startRecording error but isMuted=false")
             }
             throw e
         }
@@ -111,8 +120,12 @@ class PTTService(
             // ALWAYS restore audio immediately after recording attempt (success or failure)
             withContext(NonCancellable) {
                 session.cancel()
-                if (settings.muteSystemAudioDuringPTT) {
+                if (isMuted) {
+                    println("[PTT] RESTORING audio mute after stopAndTranscribe")
                     audioMuteManager.restoreOriginalState()
+                    isMuted = false
+                } else {
+                    println("[PTT] stopAndTranscribe but isMuted=false - no restore needed")
                 }
             }
         }
@@ -139,22 +152,29 @@ class PTTService(
         val session = currentRecordingSession
         val wasRecording = _recordingState.value
         
-        if (wasRecording && session != null) {
-            println("[PTT] Canceling recording")
-            _recordingState.value = false
-            currentRecordingSession = null
-            val settings = settingsService.settings
-            
-            // Cleanup
+        println("[PTT] Canceling recording (wasRecording=$wasRecording, session=${session != null}, isMuted=$isMuted)")
+        
+        // Always reset recording state
+        _recordingState.value = false
+        currentRecordingSession = null
+        
+        // Cleanup session if exists
+        if (session != null) {
             withContext(NonCancellable) {
                 session.cancel()
-                if (settings.muteSystemAudioDuringPTT) {
-                    audioMuteManager.restoreOriginalState()
-                }
             }
-            
+        }
+        
+        // ALWAYS restore mute if it was set (independent of session state)
+        if (isMuted) {
+            withContext(NonCancellable) {
+                println("[PTT] RESTORING audio mute after cancel")
+                audioMuteManager.restoreOriginalState()
+                isMuted = false
+            }
+            println("[PTT] Audio mute restored after cancel")
         } else {
-            println("[PTT] No recording to cancel")
+            println("[PTT] Cancel called but isMuted=false - no restore needed")
         }
     }
 }

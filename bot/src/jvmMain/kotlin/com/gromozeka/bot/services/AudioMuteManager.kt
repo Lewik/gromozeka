@@ -18,6 +18,9 @@ class AudioMuteManager {
         }
         
         try {
+            // Set flag BEFORE AppleScript to prevent race condition
+            isMutedByUs = true
+            
             val script = """
                 set currentMuted to output muted of (get volume settings)
                 if not currentMuted then set volume with output muted
@@ -32,11 +35,12 @@ class AudioMuteManager {
                 output.equals("true", ignoreCase = true)
             }
             
-            isMutedByUs = true
             println("[AudioMute] Audio muted, original state was: ${originalMuteState}")
             
         } catch (e: Exception) {
             println("[AudioMute] Failed to mute audio: ${e.message}")
+            // Reset flag on error
+            isMutedByUs = false 
             throw e
         }
     }

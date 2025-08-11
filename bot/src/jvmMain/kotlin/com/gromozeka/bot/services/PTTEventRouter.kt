@@ -3,11 +3,11 @@ package com.gromozeka.bot.services
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
 enum class PTTEvent {
     BUTTON_DOWN,     // Stop TTS + start PTT recording (immediate)
-    MODIFIER_CONFLICT, // Cancel PTT recording due to hotkey conflict
     SINGLE_CLICK,    // Cancel PTT recording
     DOUBLE_CLICK,    // Cancel PTT recording + send interrupt
     SINGLE_PUSH,     // Transcribe PTT recording
@@ -60,35 +60,32 @@ class PTTEventRouter(
 
         when (event) {
             PTTEvent.BUTTON_DOWN -> {
-                // Stop TTS + start PTT recording immediately
-                ttsQueueService.stopAndClear()
+                // Start PTT recording immediately (TTS continues playing muted)
                 startPTTRecording()
             }
 
-            PTTEvent.MODIFIER_CONFLICT -> {
-                // Cancel recording due to hotkey conflict (e.g. Ctrl+Tab)
-                println("[PTT] Modifier conflict detected, canceling PTT")
-                cancelCurrentPTT()
-            }
-
             PTTEvent.SINGLE_CLICK -> {
-                // Cancel recording without sending (TTS already stopped)
+                // Stop TTS + Cancel recording without sending
+                ttsQueueService.stopAndClear()
                 cancelCurrentPTT()
             }
 
             PTTEvent.DOUBLE_CLICK -> {
-                // Cancel recording + send interrupt (TTS already stopped)
+                // Stop TTS + Cancel recording + send interrupt
+                ttsQueueService.stopAndClear()
                 _interruptCommand.emit(Unit)
                 cancelCurrentPTT()
             }
 
             PTTEvent.SINGLE_PUSH -> {
-                // PTT already recording, just continue until release
-                // No action needed - handlePTTRelease() will transcribe
+                // Stop TTS + Continue recording until release
+                ttsQueueService.stopAndClear()
+                // No other action needed - handlePTTRelease() will transcribe
             }
 
             PTTEvent.DOUBLE_PUSH -> {
-                // PTT already recording + send interrupt
+                // Stop TTS + PTT already recording + send interrupt
+                ttsQueueService.stopAndClear()
                 _interruptCommand.emit(Unit)
                 // Continue recording until release
             }
@@ -115,19 +112,21 @@ class PTTEventRouter(
         // Cancel any existing recording first
         currentPTTJob?.cancel()
 
-
+        // Create fresh scope to avoid cancelled context issues
+        val freshScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
+        
         // Start PTT recording - simple suspend function call
-        currentPTTJob = serviceScope.launch {
+        currentPTTJob = freshScope.launch {
             try {
                 // Start recording with timeout
-                withTimeout(30.seconds) {
+                withTimeout(5.minutes) {
                     pttService.startRecording()
                     
                     // Wait for cancellation (PTT release) or timeout
                     awaitCancellation()
                 }
             } catch (e: TimeoutCancellationException) {
-                println("[PTT] Recording timeout after 30 seconds")
+                println("[PTT] Recording timeout after 5 minutes")
             } catch (e: CancellationException) {
                 // Normal PTT release, don't log
             } catch (e: Exception) {
@@ -149,4 +148,5 @@ class PTTEventRouter(
             println("[PTT] Failed to cancel recording: ${e.message}")
         }
     }
+
 }
