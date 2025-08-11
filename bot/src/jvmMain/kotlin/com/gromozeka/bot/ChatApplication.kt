@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -99,11 +100,6 @@ fun ApplicationScope.ChatWindow(
 
     var initialized by remember { mutableStateOf(false) }
 
-    var userInput by remember { mutableStateOf("") }
-    val chatHistory = remember { mutableStateListOf<ChatMessage>() }
-    val toolResultsMap = remember { mutableStateMapOf<String, ChatMessage.ContentItem.ToolResult>() }
-
-    val assistantIsThinking = false // Temporarily deactivated
 
     // Reactive settings state - single source of truth
     val currentSettings by settingsService.settingsFlow.collectAsState()
@@ -112,16 +108,10 @@ fun ApplicationScope.ChatWindow(
     var showSessionList by remember { mutableStateOf(true) }
     val currentSession by sessionManager.currentSession.collectAsState(null)
     var showSettingsPanel by remember { mutableStateOf(false) }
-    val isWaitingForResponse by currentSession?.isWaitingForResponse?.collectAsState() ?: remember {
-        mutableStateOf(
-            false
-        )
-    }
 
 
     LaunchedEffect(Unit) {
         initialized = true
-        scrollState.animateScrollTo(scrollState.maxValue)
 
         // Initialize StreamToChatMessageMapper with current response format
         currentSettings?.let { settings ->
@@ -129,53 +119,6 @@ fun ApplicationScope.ChatWindow(
         }
     }
 
-    // Subscribe to current session's message stream (true streaming)
-    LaunchedEffect(currentSession) {
-        currentSession?.let { session ->
-            session.messageOutputStream.collect { newMessage ->
-                println("[ChatApp] Received streaming message: ${newMessage.role}")
-                println("[ChatApp] Message content: ${newMessage.content.size} items, first: ${newMessage.content.firstOrNull()?.javaClass?.simpleName}")
-                chatHistory.add(newMessage)  // Incremental updates
-
-                // Update toolResultsMap with any ToolResult items from this message
-                newMessage.content.filterIsInstance<ChatMessage.ContentItem.ToolResult>().forEach { toolResult ->
-                    toolResultsMap[toolResult.toolUseId] = toolResult
-                    println("[ChatApp] Updated toolResultsMap with result for tool: ${toolResult.toolUseId}")
-                }
-
-                println("[ChatApp] ChatHistory now has ${chatHistory.size} messages, last is ${chatHistory.lastOrNull()?.role}")
-
-                // TTS for ASSISTANT messages (only new ones, not historical)
-                if (newMessage.role == ChatMessage.Role.ASSISTANT && !newMessage.isHistorical) {
-                    println("[ChatApp] Processing TTS for new assistant message")
-                    val content = newMessage.content.firstOrNull()
-                    println("[ChatApp] TTS Content type: ${content?.javaClass?.simpleName}")
-
-                    val structured = when (content) {
-                        is ChatMessage.ContentItem.AssistantMessage -> content.structured
-                        else -> null
-                    }
-
-                    if (structured != null) {
-                        val ttsText = structured.ttsText
-                        println("[ChatApp] TTS text: '$ttsText'")
-                        if (!ttsText.isNullOrBlank()) {
-                            println("[ChatApp] Enqueueing TTS: '$ttsText'")
-                            ttsQueueService.enqueue(TTSQueueService.Task(ttsText, structured.voiceTone ?: ""))
-                        }
-                    }
-                } else if (newMessage.role == ChatMessage.Role.ASSISTANT && newMessage.isHistorical) {
-                    println("[ChatApp] Skipping TTS for historical assistant message")
-                }
-            }
-        }
-    }
-
-    // Clear history and toolResultsMap when switching sessions
-    LaunchedEffect(currentSession) {
-        chatHistory.clear()
-        toolResultsMap.clear()
-    }
 
     // Subscribe to current session's sessionId changes  
     LaunchedEffect(currentSession) {
@@ -232,8 +175,6 @@ fun ApplicationScope.ChatWindow(
                 // Create and start new active session via SessionManager
                 val sessionId = sessionManager.createSession(projectPath)
                 // SessionManager automatically switches to new session and updates currentSession flow
-                chatHistory.clear()
-                toolResultsMap.clear()
                 showSessionList = false
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -253,27 +194,6 @@ fun ApplicationScope.ChatWindow(
     }
 
 
-    // Auto-scroll to bottom when messages change
-    LaunchedEffect(chatHistory.size) {
-        scrollState.animateScrollTo(scrollState.maxValue)
-    }
-
-    // Subscribe to PTT events
-    LaunchedEffect(Unit) {
-        pttEventRouter.textTranscribed.collect { text ->
-            if (text.isEmpty()) {
-                // Clear input on cancellation
-                userInput = ""
-            } else {
-                // UI decides what to do based on settings
-                if (currentSettings.autoSend) {
-                    sendMessage(text)
-                } else {
-                    userInput = text
-                }
-            }
-        }
-    }
 
     // Set interrupt executor for current session
     LaunchedEffect(currentSession) {
@@ -360,10 +280,6 @@ fun ApplicationScope.ChatWindow(
                             // Session already created in SessionListScreen via SessionManager
                             // currentSession will be automatically updated via SessionManager flow
                             
-                            // Clear UI state for new session
-                            chatHistory.clear()
-                            toolResultsMap.clear()
-                            
                             showSessionList = false
                         },
                         coroutineScope = coroutineScope,
@@ -376,44 +292,44 @@ fun ApplicationScope.ChatWindow(
                         onShowSettingsPanelChange = { showSettingsPanel = it }
                     )
                 } else {
-                    ChatScreen(
-                        chatHistory = chatHistory,
-                        toolResultsMap = toolResultsMap,
-                        userInput = userInput,
-                        onUserInputChange = { userInput = it },
-                        assistantIsThinking = assistantIsThinking,
-                        isWaitingForResponse = isWaitingForResponse,
-                        autoSend = currentSettings?.autoSend ?: true,
-                        onBackToSessionList = {
-                            coroutineScope.launch {
-                                sessionManager.currentSessionId.value?.let { currentId ->
-                                    sessionManager.stopSession(currentId)
+                    currentSession?.let { session ->
+                        SessionScreen(
+                            session = session,
+                            
+                            // Navigation callbacks
+                            onBackToSessionList = {
+                                coroutineScope.launch {
+                                    sessionManager.currentSessionId.value?.let { currentId ->
+                                        sessionManager.stopSession(currentId)
+                                    }
                                 }
-                            }
-                            showSessionList = true
-                        },
-                        onNewSession = {
-                            val currentProjectPath = currentSession?.projectPath ?: "/Users/slavik/code/gromozeka"
-                            createNewSession(currentProjectPath)
-                        },
-                        onSendMessage = sendMessage,
-                        ttsQueueService = ttsQueueService,
-                        coroutineScope = coroutineScope,
-                        modifierWithPushToTalk = modifierWithPushToTalk,
-                        isRecording = isRecording,
-                        isDev = settingsService.mode == com.gromozeka.bot.settings.AppMode.DEV,
-                        ttsSpeed = currentSettings?.ttsSpeed ?: 1.0f,
-                        onTtsSpeedChange = { newSpeed ->
-                            currentSettings?.let { settings ->
-                                settingsService.saveSettings(settings.copy(ttsSpeed = newSpeed))
-                            }
-                        },
-                        // Settings integration
-                        settings = currentSettings,
-                        onSettingsChange = onSettingsChange,
-                        showSettingsPanel = showSettingsPanel,
-                        onShowSettingsPanelChange = { showSettingsPanel = it }
-                    )
+                                showSessionList = true
+                            },
+                            onNewSession = {
+                                createNewSession(session.projectPath)
+                            },
+                            
+                            // Services
+                            ttsQueueService = ttsQueueService,
+                            coroutineScope = coroutineScope,
+                            modifierWithPushToTalk = modifierWithPushToTalk,
+                            isRecording = isRecording,
+                            
+                            // Settings
+                            settings = currentSettings,
+                            onSettingsChange = onSettingsChange,
+                            showSettingsPanel = showSettingsPanel,
+                            onShowSettingsPanelChange = { showSettingsPanel = it },
+                            
+                            // Dev mode
+                            isDev = settingsService.mode == com.gromozeka.bot.settings.AppMode.DEV,
+                        )
+                    } ?: run {
+                        // No active session - show message
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Text("No active session")
+                        }
+                    }
                 }
             } else {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {

@@ -17,6 +17,7 @@ import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.key.*
@@ -39,33 +40,62 @@ import kotlinx.serialization.json.Json.Default.parseToJsonElement
 import kotlinx.serialization.json.JsonElement
 
 @Composable
-fun ChatScreen(
-    chatHistory: List<ChatMessage>,
-    toolResultsMap: Map<String, ChatMessage.ContentItem.ToolResult>,
-    userInput: String,
-    onUserInputChange: (String) -> Unit,
-    assistantIsThinking: Boolean,
-    isWaitingForResponse: Boolean,
-    autoSend: Boolean,
+fun SessionScreen(
+    session: com.gromozeka.bot.model.Session,
+    
+    // Navigation callbacks
     onBackToSessionList: () -> Unit,
     onNewSession: () -> Unit,
-    onSendMessage: suspend (String) -> Unit,
+    
+    // Services
     ttsQueueService: TTSQueueService,
     coroutineScope: CoroutineScope,
     modifierWithPushToTalk: Modifier,
     isRecording: Boolean = false,
-    isDev: Boolean = false,
-    ttsSpeed: Float = 1.0f,
-    onTtsSpeedChange: (Float) -> Unit = {},
+    
     // Settings
     settings: Settings,
     onSettingsChange: (Settings) -> Unit,
     showSettingsPanel: Boolean,
     onShowSettingsPanelChange: (Boolean) -> Unit,
+    
+    // Dev mode
+    isDev: Boolean = false,
 ) {
+    // UI state management
     val scrollState = rememberScrollState()
     var stickyToBottom by remember { mutableStateOf(true) }
     var jsonToShow by remember { mutableStateOf<String?>(null) }
+    
+    // Tab UI State - fully encapsulated
+    var userInput by remember { mutableStateOf("") }
+    val chatHistory = remember { mutableStateListOf<ChatMessage>() }
+    val toolResultsMap = remember { mutableStateMapOf<String, ChatMessage.ContentItem.ToolResult>() }
+    
+    // Session state
+    val isWaitingForResponse by session.isWaitingForResponse.collectAsState()
+    
+    // Subscribe to message stream and update local state
+    LaunchedEffect(session) {
+        session.messageOutputStream.collect { newMessage ->
+            chatHistory.add(newMessage)
+            // Update toolResultsMap with any ToolResult items
+            newMessage.content.filterIsInstance<ChatMessage.ContentItem.ToolResult>().forEach { toolResult ->
+                toolResultsMap[toolResult.toolUseId] = toolResult
+            }
+        }
+    }
+    
+    // Clear history when switching sessions
+    LaunchedEffect(session) {
+        chatHistory.clear()
+        toolResultsMap.clear()
+    }
+    
+    // Message sending function using session
+    val onSendMessage: suspend (String) -> Unit = { message ->
+        session.sendMessage(message)
+    }
 
     val isAtBottom by remember {
         derivedStateOf {
@@ -168,9 +198,14 @@ fun ChatScreen(
                 DisableSelection {
                     MessageInput(
                         userInput = userInput,
-                        onUserInputChange = onUserInputChange,
-                        assistantIsThinking = assistantIsThinking,
-                        onSendMessage = onSendMessage,
+                        onUserInputChange = { userInput = it },
+                        isWaitingForResponse = isWaitingForResponse,
+                        onSendMessage = { message ->
+                            coroutineScope.launch {
+                                onSendMessage(message)
+                                userInput = "" // Clear input after sending
+                            }
+                        },
                         coroutineScope = coroutineScope,
                         modifierWithPushToTalk = modifierWithPushToTalk,
                         isRecording = isRecording,
@@ -181,8 +216,11 @@ fun ChatScreen(
                     if (isDev) {
                         Spacer(modifier = Modifier.height(8.dp))
                         DevButtons(
-                            onSendMessage = onSendMessage,
-                            coroutineScope = coroutineScope
+                            onSendMessage = { message ->
+                                coroutineScope.launch {
+                                    onSendMessage(message)
+                                }
+                            }
                         )
                     }
                 }
@@ -398,7 +436,7 @@ private fun jsonPrettyPrint(jsonString: String): String = try {
 private fun MessageInput(
     userInput: String,
     onUserInputChange: (String) -> Unit,
-    assistantIsThinking: Boolean,
+    isWaitingForResponse: Boolean,
     onSendMessage: suspend (String) -> Unit,
     coroutineScope: CoroutineScope,
     modifierWithPushToTalk: Modifier,
@@ -414,11 +452,10 @@ private fun MessageInput(
             onValueChange = onUserInputChange,
             modifier = Modifier
                 .onPreviewKeyEvent { event ->
-                    if (!assistantIsThinking && event.key == Key.Enter && event.isShiftPressed && event.type == KeyEventType.KeyDown && userInput.isNotBlank()) {
+                    if (!isWaitingForResponse && event.key == Key.Enter && event.isShiftPressed && event.type == KeyEventType.KeyDown && userInput.isNotBlank()) {
                         println("🚀 Shift+Enter KeyDown detected, sending message: '$userInput'")
                         coroutineScope.launch {
                             onSendMessage(userInput)
-                            onUserInputChange("")
                         }
                         true
                     } else {
@@ -431,7 +468,7 @@ private fun MessageInput(
         Spacer(modifier = Modifier.width(4.dp))
         
         // Send button
-        if (assistantIsThinking) {
+        if (isWaitingForResponse) {
             CompactButton(
                 onClick = {}, 
                 enabled = false,
@@ -446,7 +483,6 @@ private fun MessageInput(
                     println("📤 Send button clicked, sending message: '$userInput'")
                     coroutineScope.launch {
                         onSendMessage(userInput)
-                        onUserInputChange("")
                     }
                 },
                 modifier = Modifier.fillMaxHeight(),
@@ -479,7 +515,6 @@ private fun MessageInput(
 @Composable
 private fun DevButtons(
     onSendMessage: suspend (String) -> Unit,
-    coroutineScope: CoroutineScope,
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically, 
@@ -487,7 +522,7 @@ private fun DevButtons(
         horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         CompactButton(onClick = {
-            coroutineScope.launch {
+            kotlinx.coroutines.runBlocking {
                 onSendMessage("Расскажи скороговорку")
             }
         }) {
@@ -495,7 +530,7 @@ private fun DevButtons(
         }
 
         CompactButton(onClick = {
-            coroutineScope.launch {
+            kotlinx.coroutines.runBlocking {
                 onSendMessage("Создай таблицу с примерами разных типов данных в программировании")
             }
         }) {
@@ -503,7 +538,7 @@ private fun DevButtons(
         }
 
         CompactButton(onClick = {
-            coroutineScope.launch {
+            kotlinx.coroutines.runBlocking {
                 onSendMessage("Загугли последние новости про Google")
             }
         }) {
@@ -511,7 +546,7 @@ private fun DevButtons(
         }
 
         CompactButton(onClick = {
-            coroutineScope.launch {
+            kotlinx.coroutines.runBlocking {
                 onSendMessage("Выполни ls")
             }
         }) {
