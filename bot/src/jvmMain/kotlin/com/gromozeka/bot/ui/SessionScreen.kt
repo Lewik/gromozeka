@@ -418,7 +418,7 @@ private fun MessageItem(
                                         }
                                     }
                                 }
-                                Markdown(content = content.text)
+                                GromozekaMarkdown(content = content.text)
                             }
                         }
                         is ChatMessage.ContentItem.ToolCall -> {
@@ -436,7 +436,7 @@ private fun MessageItem(
 
                         is ChatMessage.ContentItem.Thinking -> Text(text = content.thinking)
                         is ChatMessage.ContentItem.System -> Text(text = content.content)
-                        is ChatMessage.ContentItem.AssistantMessage -> Markdown(content = content.structured.fullText)
+                        is ChatMessage.ContentItem.AssistantMessage -> GromozekaMarkdown(content = content.structured.fullText)
                         is ChatMessage.ContentItem.UnknownJson -> Column {
                             Text(text = jsonPrettyPrint(content.json))
                             Text(text = "⚠️ Не удалось распарсить структуру")
