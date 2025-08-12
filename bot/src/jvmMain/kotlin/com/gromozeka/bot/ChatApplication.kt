@@ -275,8 +275,7 @@ fun ApplicationScope.ChatWindow(
             if (initialized) {
                 // Tab-based UI: SessionListScreen as first tab, active sessions as additional tabs
                 Column(modifier = Modifier.fillMaxSize()) {
-                    // Create tabs: "Список" + session tabs
-                    val tabTitles = mutableListOf("Список")
+                    val tabTitles = mutableListOf("📁")
                     tabTitles.addAll(activeSessions.keys.mapIndexed { index, _ -> "Таб ${index + 1}" })
                     
                     // Determine selected tab index
@@ -294,24 +293,24 @@ fun ApplicationScope.ChatWindow(
                         modifier = Modifier
                     ) {
                         tabTitles.forEachIndexed { index, title ->
-                            Tab(
-                                selected = selectedTabIndex == index,
-                                onClick = {
-                                    if (index == 0) {
-                                        // Switch to SessionListScreen tab
-                                        coroutineScope.launch {
-                                            sessionUiManager.setCurrentSession(null)
+                            OptionalTooltip(if (index == 0) "Проекты" else null) {
+                                Tab(
+                                    selected = selectedTabIndex == index,
+                                    onClick = {
+                                        if (index == 0) {
+                                            coroutineScope.launch {
+                                                sessionUiManager.setCurrentSession(null)
+                                            }
+                                        } else {
+                                            val sessionId = activeSessions.keys.toList()[index - 1]
+                                            coroutineScope.launch {
+                                                sessionUiManager.setCurrentSession(sessionId)
+                                            }
                                         }
-                                    } else {
-                                        // Switch to session tab
-                                        val sessionId = activeSessions.keys.toList()[index - 1]
-                                        coroutineScope.launch {
-                                            sessionUiManager.setCurrentSession(sessionId)
-                                        }
-                                    }
-                                },
-                                text = { Text(title) }
-                            )
+                                    },
+                                    text = { Text(title) }
+                                )
+                            }
                         }
                     }
                     
