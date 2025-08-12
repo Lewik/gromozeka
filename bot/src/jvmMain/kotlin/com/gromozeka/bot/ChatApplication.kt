@@ -4,6 +4,7 @@ import androidx.compose.desktop.ui.tooling.preview.Preview
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -17,13 +18,14 @@ import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.*
 import com.gromozeka.bot.services.*
-import com.gromozeka.shared.domain.session.toClaudeSessionUuid
 import com.gromozeka.bot.settings.Settings
 import com.gromozeka.bot.ui.*
-import com.gromozeka.shared.domain.message.ChatMessage
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
-import kotlinx.datetime.Clock
 import org.springframework.beans.factory.getBean
 import org.springframework.boot.WebApplicationType
 import org.springframework.boot.autoconfigure.SpringBootApplication
@@ -112,6 +114,28 @@ fun ApplicationScope.ChatWindow(
     val currentSessionId by sessionUiManager.currentSessionId.collectAsState()
     val currentSession by sessionUiManager.currentSession.collectAsState(null)
     var showSettingsPanel by remember { mutableStateOf(false) }
+
+    // Create reactive session loading states - remember moved to root level
+    var sessionLoadingStates by remember { mutableStateOf(emptyMap<com.gromozeka.shared.domain.session.SessionUuid, Boolean>()) }
+    
+    // Subscribe to all session loading states
+    LaunchedEffect(Unit) {
+        sessionManager
+            .activeSessions
+            .flatMapLatest { sessions ->
+                if (sessions.isEmpty()) {
+                    flowOf(emptyMap())
+                } else {
+                    val flows = sessions
+                        .map { (sessionId, session) ->
+                            session.isWaitingForResponse.map { isWaiting -> sessionId to isWaiting }
+                        }
+                        .toTypedArray()
+                    combine(*flows) { it.toMap() }
+                }
+            }
+            .collect { sessionLoadingStates = it }
+    }
 
 
     LaunchedEffect(Unit) {
@@ -285,8 +309,6 @@ fun ApplicationScope.ChatWindow(
             if (initialized) {
                 // Tab-based UI: SessionListScreen as first tab, active sessions as additional tabs
                 Column(modifier = Modifier.fillMaxSize()) {
-                    val tabTitles = mutableListOf("📁")
-                    tabTitles.addAll(activeSessions.keys.mapIndexed { index, _ -> "Таб ${index + 1}" })
                     
                     // Determine selected tab index
                     val selectedTabIndex = when {
@@ -302,25 +324,49 @@ fun ApplicationScope.ChatWindow(
                         selectedTabIndex = selectedTabIndex,
                         modifier = Modifier
                     ) {
-                        tabTitles.forEachIndexed { index, title ->
-                            OptionalTooltip(if (index == 0) "Проекты" else null) {
-                                Tab(
-                                    selected = selectedTabIndex == index,
-                                    onClick = {
-                                        if (index == 0) {
-                                            coroutineScope.launch {
-                                                sessionUiManager.setCurrentSession(null)
-                                            }
-                                        } else {
-                                            val sessionId = activeSessions.keys.toList()[index - 1]
-                                            coroutineScope.launch {
-                                                sessionUiManager.setCurrentSession(sessionId)
-                                            }
+                        // Projects tab (first tab)
+                        OptionalTooltip("Проекты") {
+                            Tab(
+                                selected = selectedTabIndex == 0,
+                                onClick = {
+                                    coroutineScope.launch {
+                                        sessionUiManager.setCurrentSession(null)
+                                    }
+                                },
+                                text = { Text("📁") }
+                            )
+                        }
+                        
+                        // Session tabs with loading indicators
+                        activeSessions.keys.toList().forEachIndexed { index, sessionId ->
+                            val isLoading = sessionLoadingStates[sessionId] ?: false
+                            val tabIndex = index + 1
+                            
+                            Tab(
+                                selected = selectedTabIndex == tabIndex,
+                                onClick = {
+                                    coroutineScope.launch {
+                                        sessionUiManager.setCurrentSession(sessionId)
+                                    }
+                                },
+                                text = {
+                                    Box(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text("Таб ${index + 1}")
+                                        
+                                        if (isLoading) {
+                                            CircularProgressIndicator(
+                                                modifier = Modifier
+                                                    .size(12.dp)
+                                                    .align(Alignment.CenterEnd),
+                                                strokeWidth = 1.5.dp
+                                            )
                                         }
-                                    },
-                                    text = { Text(title) }
-                                )
-                            }
+                                    }
+                                }
+                            )
                         }
                     }
                     
