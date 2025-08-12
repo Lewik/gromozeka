@@ -211,6 +211,13 @@ fun SettingsPanel(
                             value = settings.showSystemMessages,
                             onValueChange = { onSettingsChange(settings.copy(showSystemMessages = it)) }
                         )
+                        
+                        SwitchSettingItem(
+                            label = "Always on top",
+                            description = "Keep window above all other applications",
+                            value = settings.alwaysOnTop,
+                            onValueChange = { onSettingsChange(settings.copy(alwaysOnTop = it)) }
+                        )
                     }
                     
                     // Developer Settings

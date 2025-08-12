@@ -28,6 +28,7 @@ data class Settings(
     
     // UI Settings  
     val showSystemMessages: Boolean = true,
+    val alwaysOnTop: Boolean = false,
     
     // Developer Settings
     val showOriginalJson: Boolean = false,

@@ -233,9 +233,11 @@ fun ApplicationScope.ChatWindow(
             savedWindowState.height.dp
         )
     )
+    
 
     Window(
         state = windowState,
+        alwaysOnTop = currentSettings.alwaysOnTop,
         onCloseRequest = {
             println("[GROMOZEKA] Application window closing - stopping all sessions...")
 
@@ -263,7 +265,15 @@ fun ApplicationScope.ChatWindow(
             ttsQueueService.shutdown()
             exitApplication()
         },
-        title = if (settingsService.mode == com.gromozeka.bot.settings.AppMode.DEV) "Gromozeka [DEV]" else "Gromozeka",
+        title = buildString {
+            append("Gromozeka")
+            if (currentSettings.alwaysOnTop) {
+                append(" [Always On Top]")
+            }
+            if (settingsService.mode == com.gromozeka.bot.settings.AppMode.DEV) {
+                append(" [DEV]")
+            }
+        },
         icon = painterResource("logos/logo-256x256.png")
     ) {
         Box(
