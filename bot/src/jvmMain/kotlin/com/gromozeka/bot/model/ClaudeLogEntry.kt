@@ -5,6 +5,7 @@ import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.SerializationException
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.descriptors.buildClassSerialDescriptor
 import kotlinx.serialization.encoding.Decoder
@@ -165,11 +166,91 @@ sealed class ClaudeLogEntry {
         @Serializable
         @SerialName("tool_result")
         data class ToolResultItem(
-            val content: ToolResultContent,
+            val content: JsonElement, // Union: String | Array<ContentItem>
             @SerialName("tool_use_id")
             val toolUseId: String,
             override val type: String = "tool_result",
+        ) : UserContentItem() {
+
+            /**
+             * Parse content as typed ToolResultContent based on JSON structure
+             */
+            fun getTypedContent(): ToolResultContent {
+                return when {
+                    // String content
+                    content is JsonPrimitive && content.isString -> {
+                        ToolResultContent.StringToolResult(content.content)
+                    }
+                    
+                    // Object with string content field
+                    content is JsonObject && content["content"]?.jsonPrimitive?.isString == true -> {
+                        ToolResultContent.StringToolResult(
+                            content = content["content"]!!.jsonPrimitive.content,
+                            isError = content["is_error"]?.jsonPrimitive?.booleanOrNull
+                        )
+                    }
+                    
+                    // Array content
+                    content is JsonArray -> {
+                        val items = content.map { 
+                            Json.decodeFromJsonElement<UserContentItem>(it)
+                        }
+                        ToolResultContent.MixedContentToolResult(items)
+                    }
+                    
+                    // Object with array content field
+                    content is JsonObject && content["content"] is JsonArray -> {
+                        val contentArray = content["content"]!!.jsonArray
+                        val items = contentArray.map {
+                            Json.decodeFromJsonElement<UserContentItem>(it)
+                        }
+                        ToolResultContent.MixedContentToolResult(items)
+                    }
+                    
+                    else -> {
+                        throw SerializationException("Unknown ToolResultContent format: $content")
+                    }
+                }
+            }
+        }
+
+        @Serializable
+        @SerialName("image")
+        data class ImageItem(
+            val source: ImageSource,
+            override val type: String = "image",
         ) : UserContentItem()
+    }
+
+    @OptIn(ExperimentalSerializationApi::class)
+    @Serializable
+    @JsonClassDiscriminator("type")
+    sealed class ImageSource {
+        abstract val type: String
+
+        @Serializable
+        @SerialName("base64")
+        data class Base64ImageSource(
+            val data: String,
+            @SerialName("media_type")
+            val mediaType: String, // "image/png", "image/jpeg", "image/gif", "image/webp"
+            override val type: String = "base64",
+        ) : ImageSource()
+
+        @Serializable
+        @SerialName("url")
+        data class UrlImageSource(
+            val url: String,
+            override val type: String = "url",
+        ) : ImageSource()
+
+        @Serializable
+        @SerialName("file")
+        data class FileImageSource(
+            @SerialName("file_id")
+            val fileId: String,
+            override val type: String = "file",
+        ) : ImageSource()
     }
 
     @OptIn(ExperimentalSerializationApi::class)
@@ -192,6 +273,13 @@ sealed class ClaudeLogEntry {
         data class ArrayToolResult(
             val content: List<UserContentItem.TextItem>,
             override val type: String = "array",
+        ) : ToolResultContent()
+
+        @Serializable
+        @SerialName("mixed_content")
+        data class MixedContentToolResult(
+            val content: List<UserContentItem>, // Can contain text, images, etc.
+            override val type: String = "mixed_content",
         ) : ToolResultContent()
     }
 
@@ -332,4 +420,5 @@ object UserMessageContentSerializer : KSerializer<ClaudeLogEntry.Message.UserMes
         }
     }
 }
+
 

@@ -174,21 +174,85 @@ object ClaudeLogEntryMapper {
                 listOf(ChatMessage.ContentItem.UserMessage(item.text))
             }
 
+            is ClaudeLogEntry.UserContentItem.ImageItem -> {
+                val chatImageSource = when (val source = item.source) {
+                    is ClaudeLogEntry.ImageSource.Base64ImageSource -> {
+                        ChatMessage.ImageSource.Base64ImageSource(
+                            data = source.data,
+                            mediaType = source.mediaType
+                        )
+                    }
+                    is ClaudeLogEntry.ImageSource.UrlImageSource -> {
+                        ChatMessage.ImageSource.UrlImageSource(
+                            url = source.url
+                        )
+                    }
+                    is ClaudeLogEntry.ImageSource.FileImageSource -> {
+                        ChatMessage.ImageSource.FileImageSource(
+                            fileId = source.fileId
+                        )
+                    }
+                }
+                listOf(ChatMessage.ContentItem.ImageItem(chatImageSource))
+            }
+
             is ClaudeLogEntry.UserContentItem.ToolResultItem -> {
-                val toolResult = when (item.content) {
+                val typedContent = item.getTypedContent()
+                val resultData = when (typedContent) {
                     is ClaudeLogEntry.ToolResultContent.StringToolResult -> {
-                        ClaudeCodeToolResultData.Read(item.content.content)
+                        listOf(ChatMessage.ContentItem.ToolResult.Data.Text(typedContent.content))
                     }
 
                     is ClaudeLogEntry.ToolResultContent.ArrayToolResult -> {
-                        val textContent = item.content.content.joinToString("\n") { it.text }
-                        ClaudeCodeToolResultData.Read(textContent)
+                        val textContent = typedContent.content.joinToString("\n") { it.text }
+                        listOf(ChatMessage.ContentItem.ToolResult.Data.Text(textContent))
+                    }
+                    
+                    is ClaudeLogEntry.ToolResultContent.MixedContentToolResult -> {
+                        val dataItems = mutableListOf<ChatMessage.ContentItem.ToolResult.Data>()
+                        typedContent.content.forEach { contentItem ->
+                            when (contentItem) {
+                                is ClaudeLogEntry.UserContentItem.TextItem -> {
+                                    dataItems.add(ChatMessage.ContentItem.ToolResult.Data.Text(contentItem.text))
+                                }
+                                is ClaudeLogEntry.UserContentItem.ImageItem -> {
+                                    when (val source = contentItem.source) {
+                                        is ClaudeLogEntry.ImageSource.Base64ImageSource -> {
+                                            dataItems.add(
+                                                ChatMessage.ContentItem.ToolResult.Data.Base64Data(
+                                                    data = source.data,
+                                                    mediaType = ChatMessage.MediaType.parse(source.mediaType)
+                                                )
+                                            )
+                                        }
+                                        is ClaudeLogEntry.ImageSource.UrlImageSource -> {
+                                            dataItems.add(
+                                                ChatMessage.ContentItem.ToolResult.Data.UrlData(
+                                                    url = source.url
+                                                )
+                                            )
+                                        }
+                                        is ClaudeLogEntry.ImageSource.FileImageSource -> {
+                                            dataItems.add(
+                                                ChatMessage.ContentItem.ToolResult.Data.FileData(
+                                                    fileId = source.fileId
+                                                )
+                                            )
+                                        }
+                                    }
+                                }
+                                else -> {
+                                    dataItems.add(ChatMessage.ContentItem.ToolResult.Data.Text("[Unknown content type: ${contentItem.type}]"))
+                                }
+                            }
+                        }
+                        dataItems
                     }
                 }
                 listOf(
                     ChatMessage.ContentItem.ToolResult(
                         toolUseId = item.toolUseId,
-                        result = toolResult,
+                        result = resultData,
                         isError = false
                     )
                 )
@@ -297,7 +361,7 @@ object ClaudeLogEntryMapper {
                 results.add(
                     ChatMessage.ContentItem.ToolResult(
                         toolUseId = "",
-                        result = ToolResultData.Generic("unknown", toolResultJson),
+                        result = listOf(ChatMessage.ContentItem.ToolResult.Data.Text("Unknown tool result: $toolResultJson")),
                         isError = false
                     )
                 )
@@ -312,7 +376,7 @@ object ClaudeLogEntryMapper {
             return listOf(
                 ChatMessage.ContentItem.ToolResult(
                     toolUseId = "",
-                    result = ToolResultData.Generic("unknown", resultJson),
+                    result = listOf(ChatMessage.ContentItem.ToolResult.Data.Text("Unknown tool result: $resultJson")),
                     isError = false
                 )
             )
@@ -323,14 +387,21 @@ object ClaudeLogEntryMapper {
         val content = resultJson["content"]
 
         // Try to determine tool type from content structure
-        val result = when {
+        val resultData = when {
             content is JsonObject && content.containsKey("stdout") -> {
-                Json.decodeFromJsonElement<ClaudeCodeToolResultData.Bash>(content)
+                // Bash tool result - combine stdout/stderr
+                val stdout = content["stdout"]?.jsonPrimitive?.content ?: ""
+                val stderr = content["stderr"]?.jsonPrimitive?.content ?: ""
+                val combined = listOfNotNull(
+                    if (stdout.isNotBlank()) "STDOUT:\n$stdout" else null,
+                    if (stderr.isNotBlank()) "STDERR:\n$stderr" else null
+                ).joinToString("\n\n")
+                listOf(ChatMessage.ContentItem.ToolResult.Data.Text(combined.ifBlank { "No output" }))
             }
 
             content is JsonPrimitive -> {
                 // Simple text result (likely Read)
-                ClaudeCodeToolResultData.Read(content.content)
+                listOf(ChatMessage.ContentItem.ToolResult.Data.Text(content.content))
             }
 
             content is JsonArray -> {
@@ -342,19 +413,19 @@ object ClaudeLogEntryMapper {
                         else -> element.toString()
                     }
                 }
-                ClaudeCodeToolResultData.Read(textContent)
+                listOf(ChatMessage.ContentItem.ToolResult.Data.Text(textContent))
             }
 
             else -> {
                 // Generic result
-                ToolResultData.Generic("unknown", content ?: JsonNull)
+                listOf(ChatMessage.ContentItem.ToolResult.Data.Text("Unknown content: ${content ?: JsonNull}"))
             }
         }
 
         return listOf(
             ChatMessage.ContentItem.ToolResult(
                 toolUseId = toolUseId,
-                result = result,
+                result = resultData,
                 isError = isError
             )
         )
@@ -443,24 +514,12 @@ object ClaudeLogEntryMapper {
             // Not a Gromozeka format, try as generic JSON
             try {
                 val jsonElement = Json.parseToJsonElement(text)
-                println("[ClaudeLogEntryMapper] PARSE: Text is not Gromozeka JSON, fallback to UnknownJson")
-                println("  Text preview: ${text.take(100)}${if (text.length > 100) "..." else ""}")
                 listOf(ChatMessage.ContentItem.UnknownJson(jsonElement))
             } catch (jsonParseException: Exception) {
-//                println("[ClaudeLogEntryMapper] PARSE ERROR: Failed to parse text as JSON")
-//                println("  SerializationException: ${e.message}")
-//                println("  JsonParseException: ${jsonParseException.message}")
-//                println("  Text full content: $text")
-//                println("  Text length: ${text.length}")
-//                println("  Text starts with: ${text.take(50)}")
-//                println("  Text ends with: ${text.takeLast(50)}")
                 // Not valid JSON at all - treat as plain text
                 listOf(ChatMessage.ContentItem.UserMessage(text))
             }
         } catch (e: Exception) {
-            println("[ClaudeLogEntryMapper] UNEXPECTED ERROR in parseTextContentForGromozeka: ${e.javaClass.simpleName}: ${e.message}")
-            println("  Text: $text")
-            println("  Stack trace: ${e.stackTraceToString()}")
             // Any other error - treat as plain text
             listOf(ChatMessage.ContentItem.UserMessage(text))
         }

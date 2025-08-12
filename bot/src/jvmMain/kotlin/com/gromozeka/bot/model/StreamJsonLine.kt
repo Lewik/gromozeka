@@ -162,6 +162,44 @@ sealed class ContentBlock {
         val signature: String? = null,
         override val type: String = "thinking",
     ) : ContentBlock()
+
+    @Serializable
+    @SerialName("image")
+    data class ImageBlock(
+        val source: ImageSource,
+        override val type: String = "image",
+    ) : ContentBlock()
+}
+
+@OptIn(ExperimentalSerializationApi::class)
+@Serializable
+@JsonClassDiscriminator("type")
+sealed class ImageSource {
+    abstract val type: String
+
+    @Serializable
+    @SerialName("base64")
+    data class Base64ImageSource(
+        val data: String,
+        @SerialName("media_type")
+        val mediaType: String,
+        override val type: String = "base64",
+    ) : ImageSource()
+
+    @Serializable
+    @SerialName("url")
+    data class UrlImageSource(
+        val url: String,
+        override val type: String = "url",
+    ) : ImageSource()
+
+    @Serializable
+    @SerialName("file")
+    data class FileImageSource(
+        @SerialName("file_id")
+        val fileId: String,
+        override val type: String = "file",
+    ) : ImageSource()
 }
 
 @Serializable(with = ContentItemsUnionSerializer::class)

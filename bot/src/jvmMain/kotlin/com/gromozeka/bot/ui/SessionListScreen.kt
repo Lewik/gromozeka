@@ -55,6 +55,8 @@ fun SessionListScreen(
     onSettingsChange: (com.gromozeka.bot.settings.Settings) -> Unit,
     showSettingsPanel: Boolean,
     onShowSettingsPanelChange: (Boolean) -> Unit,
+    // Trigger for refreshing sessions list
+    refreshTrigger: Int = 0,
 ) {
     var projectGroups by remember { mutableStateOf<List<ProjectGroup>>(emptyList()) }
     var expandedProjects by remember { mutableStateOf<Set<String>>(emptySet()) }
@@ -69,8 +71,8 @@ fun SessionListScreen(
         }
     }
 
-    // Load sessions on first composition
-    LaunchedEffect(Unit) {
+    // Function to load sessions data
+    suspend fun loadSessions() {
         isLoading = true
         try {
             val loadedSessions = sessionJsonlService.loadAllSessionsMetadata()
@@ -102,6 +104,11 @@ fun SessionListScreen(
         }
     }
 
+    // Load sessions on first composition and when refreshTrigger changes
+    LaunchedEffect(refreshTrigger) {
+        loadSessions()
+    }
+
     Row(modifier = Modifier.fillMaxSize()) {
         // Main content
         Column(modifier = Modifier.weight(1f)) {
@@ -111,6 +118,20 @@ fun SessionListScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Spacer(modifier = Modifier.weight(1f))
+                
+                // Refresh button
+                CompactButton(
+                    onClick = {
+                        coroutineScope.launch {
+                            loadSessions()
+                        }
+                    },
+                    tooltip = "Обновить список сессий"
+                ) {
+                    Text("🔄")
+                }
+                
+                Spacer(modifier = Modifier.width(8.dp))
                 
                 CompactButton(
                     onClick = { directoryPicker.launch() }

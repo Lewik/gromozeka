@@ -272,6 +272,7 @@ private fun MessageItem(
             is ChatMessage.ContentItem.Thinking -> "🤔"
             is ChatMessage.ContentItem.System -> "⚙️"
             is ChatMessage.ContentItem.AssistantMessage -> null
+            is ChatMessage.ContentItem.ImageItem -> "🖼️"
             is ChatMessage.ContentItem.UnknownJson -> "⚠️"
         }
     }.distinct()
@@ -298,6 +299,7 @@ private fun MessageItem(
                     is ChatMessage.ContentItem.Thinking -> "Thinking"
                     is ChatMessage.ContentItem.System -> "System"
                     is ChatMessage.ContentItem.AssistantMessage -> "Assistant"
+                    is ChatMessage.ContentItem.ImageItem -> "Image"
                     is ChatMessage.ContentItem.UnknownJson -> "Unknown"
                 }
             }.distinct()
@@ -339,7 +341,8 @@ private fun MessageItem(
                     buildList {
                         if (settings.showOriginalJson) {
                             add(ContextMenuItem("Показать JSON") {
-                                onShowJson(message.originalJson ?: "No JSON available")
+                                val jsonToShow = (message.originalJson ?: "No JSON available")
+                                onShowJson(jsonToShow)
                             })
                         }
 
@@ -432,6 +435,23 @@ private fun MessageItem(
 
                         is ChatMessage.ContentItem.ToolResult -> {
                             // Don't render ToolResult separately - it's shown in ToolCallItem
+                        }
+
+                        is ChatMessage.ContentItem.ImageItem -> {
+                            when (val source = content.source) {
+                                is ChatMessage.ImageSource.Base64ImageSource -> {
+                                    // Base64 too long - show placeholder
+                                    Text("🖼️ [Image ${source.mediaType} - ${source.data.length} chars Base64]")
+                                }
+                                is ChatMessage.ImageSource.UrlImageSource -> {
+                                    // URL can be shown in full
+                                    Text("🖼️ ${source.url}")
+                                }
+                                is ChatMessage.ImageSource.FileImageSource -> {
+                                    // File ID can be shown in full
+                                    Text("🖼️ File: ${source.fileId}")
+                                }
+                            }
                         }
 
                         is ChatMessage.ContentItem.Thinking -> Text(text = content.thinking)
@@ -725,98 +745,64 @@ private fun ToolCallItem(
 
                         Spacer(modifier = Modifier.height(8.dp))
 
-                        // Show result content based on result type
+                        // Show result content - now it's a list of Data items
                         SelectionContainer {
-                            when (val resultData = result.result) {
-                                is com.gromozeka.shared.domain.message.ClaudeCodeToolResultData.Read -> {
-                                    Text(
-                                        text = resultData.content,
-                                        modifier = Modifier.fillMaxWidth(),
-                                        style = MaterialTheme.typography.bodySmall
-                                    )
-                                }
-
-                                is com.gromozeka.shared.domain.message.ClaudeCodeToolResultData.Edit -> {
-                                    Text(
-                                        text = resultData.message ?: "Edit completed",
-                                        modifier = Modifier.fillMaxWidth(),
-                                        style = MaterialTheme.typography.bodySmall
-                                    )
-                                }
-
-                                is com.gromozeka.shared.domain.message.ClaudeCodeToolResultData.Bash -> {
-                                    Column {
-                                        resultData.stdout?.let {
-                                            Text("STDOUT:", style = MaterialTheme.typography.labelSmall)
-                                            Text(it, style = MaterialTheme.typography.bodySmall)
-                                        }
-                                        resultData.stderr?.let {
-                                            Text("STDERR:", style = MaterialTheme.typography.labelSmall)
+                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                result.result.forEach { dataItem ->
+                                    when (dataItem) {
+                                        is ChatMessage.ContentItem.ToolResult.Data.Text -> {
                                             Text(
-                                                it,
+                                                text = dataItem.content,
+                                                modifier = Modifier.fillMaxWidth(),
+                                                style = MaterialTheme.typography.bodySmall
+                                            )
+                                        }
+
+                                        is ChatMessage.ContentItem.ToolResult.Data.Base64Data -> {
+                                            when {
+                                                dataItem.mediaType.type == "image" -> {
+                                                    // Base64 image - show placeholder with truncation
+                                                    Text(
+                                                        text = "🖼️ [Image ${dataItem.mediaType.value} - ${dataItem.data.length} chars Base64]",
+                                                        modifier = Modifier.fillMaxWidth(),
+                                                        style = MaterialTheme.typography.bodySmall,
+                                                        color = MaterialTheme.colorScheme.primary
+                                                    )
+                                                }
+                                                else -> {
+                                                    // Non-image Base64 data - show truncated version
+                                                    val truncated = if (dataItem.data.length > 100) {
+                                                        "${dataItem.data.take(50)}...[${dataItem.data.length - 100} chars]...${dataItem.data.takeLast(50)}"
+                                                    } else {
+                                                        dataItem.data
+                                                    }
+                                                    Text(
+                                                        text = "📄 [${dataItem.mediaType.value}] $truncated",
+                                                        modifier = Modifier.fillMaxWidth(),
+                                                        style = MaterialTheme.typography.bodySmall
+                                                    )
+                                                }
+                                            }
+                                        }
+
+                                        is ChatMessage.ContentItem.ToolResult.Data.UrlData -> {
+                                            Text(
+                                                text = "🔗 ${dataItem.url}${dataItem.mediaType?.let { " (${it.value})" } ?: ""}",
+                                                modifier = Modifier.fillMaxWidth(),
                                                 style = MaterialTheme.typography.bodySmall,
-                                                color = MaterialTheme.colorScheme.error
+                                                color = MaterialTheme.colorScheme.primary
+                                            )
+                                        }
+
+                                        is ChatMessage.ContentItem.ToolResult.Data.FileData -> {
+                                            Text(
+                                                text = "📁 File: ${dataItem.fileId}${dataItem.mediaType?.let { " (${it.value})" } ?: ""}",
+                                                modifier = Modifier.fillMaxWidth(),
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.primary
                                             )
                                         }
                                     }
-                                }
-
-                                is com.gromozeka.shared.domain.message.ClaudeCodeToolResultData.Grep -> {
-                                    Text(
-                                        text = resultData.content ?: resultData.matches?.joinToString("\n")
-                                        ?: "No matches",
-                                        modifier = Modifier.fillMaxWidth(),
-                                        style = MaterialTheme.typography.bodySmall
-                                    )
-                                }
-
-                                is com.gromozeka.shared.domain.message.ClaudeCodeToolResultData.TodoWrite -> {
-                                    Text(
-                                        text = resultData.message ?: "TodoWrite completed",
-                                        modifier = Modifier.fillMaxWidth(),
-                                        style = MaterialTheme.typography.bodySmall
-                                    )
-                                }
-
-                                is com.gromozeka.shared.domain.message.ClaudeCodeToolResultData.WebSearch -> {
-                                    Text(
-                                        text = resultData.results.toString(),
-                                        modifier = Modifier.fillMaxWidth(),
-                                        style = MaterialTheme.typography.bodySmall
-                                    )
-                                }
-
-                                is com.gromozeka.shared.domain.message.ClaudeCodeToolResultData.WebFetch -> {
-                                    Text(
-                                        text = resultData.content,
-                                        modifier = Modifier.fillMaxWidth(),
-                                        style = MaterialTheme.typography.bodySmall
-                                    )
-                                }
-
-                                is com.gromozeka.shared.domain.message.ClaudeCodeToolResultData.Subagent -> {
-                                    Text(
-                                        text = resultData.response,
-                                        modifier = Modifier.fillMaxWidth(),
-                                        style = MaterialTheme.typography.bodySmall
-                                    )
-                                }
-
-                                is com.gromozeka.shared.domain.message.ClaudeCodeToolResultData.NullResult -> {
-                                    Text(
-                                        text = "No result",
-                                        modifier = Modifier.fillMaxWidth(),
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-
-                                is com.gromozeka.shared.domain.message.ToolResultData.Generic -> {
-                                    Text(
-                                        text = resultData.output.toString(),
-                                        modifier = Modifier.fillMaxWidth(),
-                                        style = MaterialTheme.typography.bodySmall
-                                    )
                                 }
                             }
                         }

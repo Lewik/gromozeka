@@ -184,6 +184,28 @@ object StreamToChatMessageMapper {
             isError = item.isError ?: false
         )
 
+        is ContentBlock.ImageBlock -> {
+            val chatImageSource = when (val source = item.source) {
+                is ImageSource.Base64ImageSource -> {
+                    ChatMessage.ImageSource.Base64ImageSource(
+                        data = source.data,
+                        mediaType = source.mediaType
+                    )
+                }
+                is ImageSource.UrlImageSource -> {
+                    ChatMessage.ImageSource.UrlImageSource(
+                        url = source.url
+                    )
+                }
+                is ImageSource.FileImageSource -> {
+                    ChatMessage.ImageSource.FileImageSource(
+                        fileId = source.fileId
+                    )
+                }
+            }
+            ChatMessage.ContentItem.ImageItem(chatImageSource)
+        }
+
         is ContentBlock.ToolUseBlock -> error("USER messages cannot contain ToolUseBlock - only ASSISTANT can call tools")
         is ContentBlock.ThinkingItem -> error("USER messages cannot contain ThinkingItem - only ASSISTANT can have thinking")
     }
@@ -201,24 +223,77 @@ object StreamToChatMessageMapper {
             thinking = item.thinking
         )
 
+        is ContentBlock.ImageBlock -> {
+            val chatImageSource = when (val source = item.source) {
+                is ImageSource.Base64ImageSource -> {
+                    ChatMessage.ImageSource.Base64ImageSource(
+                        data = source.data,
+                        mediaType = source.mediaType
+                    )
+                }
+                is ImageSource.UrlImageSource -> {
+                    ChatMessage.ImageSource.UrlImageSource(
+                        url = source.url
+                    )
+                }
+                is ImageSource.FileImageSource -> {
+                    ChatMessage.ImageSource.FileImageSource(
+                        fileId = source.fileId
+                    )
+                }
+            }
+            ChatMessage.ContentItem.ImageItem(chatImageSource)
+        }
+
         is ContentBlock.ToolResultBlock -> error("ASSISTANT messages cannot contain ToolResultBlock - only USER can provide tool results")
     }
 
-    private fun mapToolResult(content: ContentResultUnion?) = when (content) {
-        null -> ClaudeCodeToolResultData.NullResult // Special case for null content
+    private fun mapToolResult(content: ContentResultUnion?): List<ChatMessage.ContentItem.ToolResult.Data> = when (content) {
+        null -> listOf(ChatMessage.ContentItem.ToolResult.Data.Text("No result")) // Special case for null content
         
         is ContentResultUnion.StringResult -> {
-            ClaudeCodeToolResultData.Read(content.content)
+            listOf(ChatMessage.ContentItem.ToolResult.Data.Text(content.content))
         }
 
         is ContentResultUnion.ArrayResult -> {
-            val textContent = content.items.joinToString("\n") { item ->
+            val dataItems = mutableListOf<ChatMessage.ContentItem.ToolResult.Data>()
+            content.items.forEach { item ->
                 when (item) {
-                    is ContentBlock.TextBlock -> item.text
-                    else -> item.toString()
+                    is ContentBlock.TextBlock -> {
+                        dataItems.add(ChatMessage.ContentItem.ToolResult.Data.Text(item.text))
+                    }
+                    is ContentBlock.ImageBlock -> {
+                        when (val source = item.source) {
+                            is ImageSource.Base64ImageSource -> {
+                                dataItems.add(
+                                    ChatMessage.ContentItem.ToolResult.Data.Base64Data(
+                                        data = source.data,
+                                        mediaType = ChatMessage.MediaType.parse(source.mediaType)
+                                    )
+                                )
+                            }
+                            is ImageSource.UrlImageSource -> {
+                                dataItems.add(
+                                    ChatMessage.ContentItem.ToolResult.Data.UrlData(
+                                        url = source.url
+                                    )
+                                )
+                            }
+                            is ImageSource.FileImageSource -> {
+                                dataItems.add(
+                                    ChatMessage.ContentItem.ToolResult.Data.FileData(
+                                        fileId = source.fileId
+                                    )
+                                )
+                            }
+                        }
+                    }
+                    else -> {
+                        dataItems.add(ChatMessage.ContentItem.ToolResult.Data.Text("[Unknown content type: ${item.type}]"))
+                    }
                 }
             }
-            ClaudeCodeToolResultData.Read(textContent)
+            dataItems
         }
     }
 

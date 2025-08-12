@@ -114,6 +114,7 @@ fun ApplicationScope.ChatWindow(
     val currentSessionId by sessionUiManager.currentSessionId.collectAsState()
     val currentSession by sessionUiManager.currentSession.collectAsState(null)
     var showSettingsPanel by remember { mutableStateOf(false) }
+    var sessionListRefreshTrigger by remember { mutableStateOf(0) }
 
     // Create reactive session loading states - remember moved to root level
     var sessionLoadingStates by remember { mutableStateOf(emptyMap<com.gromozeka.shared.domain.session.SessionUuid, Boolean>()) }
@@ -331,6 +332,8 @@ fun ApplicationScope.ChatWindow(
                                 onClick = {
                                     coroutineScope.launch {
                                         sessionUiManager.setCurrentSession(null)
+                                        // Trigger refresh when switching to projects tab
+                                        sessionListRefreshTrigger++
                                     }
                                 },
                                 text = { Text("📁") }
@@ -391,7 +394,8 @@ fun ApplicationScope.ChatWindow(
                                 settings = currentSettings,
                                 onSettingsChange = onSettingsChange,
                                 showSettingsPanel = showSettingsPanel,
-                                onShowSettingsPanelChange = { showSettingsPanel = it }
+                                onShowSettingsPanelChange = { showSettingsPanel = it },
+                                refreshTrigger = sessionListRefreshTrigger
                             )
                         }
                         
