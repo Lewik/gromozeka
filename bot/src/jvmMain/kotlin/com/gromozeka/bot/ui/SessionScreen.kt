@@ -34,6 +34,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.gromozeka.bot.services.TTSQueueService
 import com.gromozeka.bot.settings.Settings
+import com.gromozeka.bot.utils.TokenUsageCalculator
 import com.gromozeka.shared.domain.message.ChatMessage
 import com.gromozeka.shared.domain.message.ClaudeCodeToolCallData
 import com.gromozeka.shared.domain.message.MessageTag
@@ -76,8 +77,19 @@ fun SessionScreen(
     val filteredHistory by viewModel.filteredMessages.collectAsState()
     val toolResultsMap by viewModel.toolResultsMap.collectAsState()
     val isWaitingForResponse by viewModel.isWaitingForResponse.collectAsState()
+    val tokenUsage by viewModel.tokenUsage.collectAsState()
     val userInput = viewModel.userInput
     val jsonToShow = viewModel.jsonToShow
+
+    // Format UI strings here in UI layer
+    val formattedTokenUsage = remember(tokenUsage) {
+        val formatted = formatTokenUsageForDisplay(tokenUsage)
+        println("[SessionScreen] Token usage formatted: $formatted (total=${tokenUsage.grandTotal})")
+        formatted
+    }
+    val tokenUsageTooltip = remember(tokenUsage) {
+        createTokenUsageTooltip(tokenUsage)
+    }
 
     // Message sending function using ViewModel
     val onSendMessage: (String) -> Unit = { message ->
@@ -129,6 +141,16 @@ fun SessionScreen(
                             tooltip = "Всего сообщений: ${filteredHistory.size}\n(фильтрация по настройкам)"
                         ) {
                             Text("💬 ${filteredHistory.size}")
+                        }
+
+                        Spacer(modifier = Modifier.width(8.dp))
+
+                        // Token usage count  
+                        CompactButton(
+                            onClick = { },
+                            tooltip = tokenUsageTooltip
+                        ) {
+                            Text("🪙 $formattedTokenUsage")
                         }
 
                         Spacer(modifier = Modifier.width(8.dp))
@@ -848,6 +870,47 @@ private fun MessageTagButton(
                     style = MaterialTheme.typography.bodySmall
                 )
             }
+        }
+    }
+}
+
+// === Token Usage UI Formatting ===
+
+/**
+ * Format token usage for display in UI
+ */
+private fun formatTokenUsageForDisplay(usage: TokenUsageCalculator.SessionTokenUsage): String {
+    val total = usage.grandTotal
+    val percent = (usage.contextUsagePercent * 100).toInt()
+    
+    return when {
+        total < 1000 -> "${total}t"
+        total < 10000 -> "${total / 1000}k"  
+        else -> "${total / 1000}k"
+    } + if (percent > 10) " (${percent}%)" else ""
+}
+
+/**
+ * Create detailed breakdown tooltip for token usage
+ */
+private fun createTokenUsageTooltip(usage: TokenUsageCalculator.SessionTokenUsage): String {
+    return buildString {
+        appendLine("📊 Токены сессии (как в Claude Code):")
+        appendLine("• Ввод: ${usage.totalInputTokens}")
+        appendLine("• Вывод: ${usage.totalOutputTokens}")
+        appendLine("• Кэш чтение: ${usage.currentCacheReadTokens}")
+        appendLine()
+        appendLine("🔄 Основной счет: ${usage.grandTotal}")
+        appendLine()
+        appendLine("🗂️ Кэш создание: ${usage.totalCacheCreationTokens} (отдельно)")
+        appendLine("💾 Всего с кэшем: ${usage.totalCacheTokens}")
+        appendLine()
+        val percent = (usage.contextUsagePercent * 100).toInt()
+        appendLine("📈 Контекст: ${percent}% из ~200k")
+        
+        if (percent > 80) {
+            appendLine()
+            appendLine("⚠️ Приближается лимит контекста!")
         }
     }
 }

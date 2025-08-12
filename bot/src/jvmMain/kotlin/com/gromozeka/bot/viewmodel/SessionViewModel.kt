@@ -5,6 +5,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.gromozeka.bot.model.Session
 import com.gromozeka.bot.settings.Settings
+import com.gromozeka.bot.utils.TokenUsageCalculator
 import com.gromozeka.shared.domain.message.ChatMessage
 import com.gromozeka.shared.domain.message.MessageTag
 import kotlinx.coroutines.CoroutineScope
@@ -65,6 +66,16 @@ class SessionViewModel(
         initialValue = emptyList()
     )
 
+    // === Token Usage Calculation ===
+    val tokenUsage: StateFlow<TokenUsageCalculator.SessionTokenUsage> = allMessages
+        .map { messages -> TokenUsageCalculator.calculateSessionUsage(messages) }
+        .stateIn(
+            scope = scope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = TokenUsageCalculator.SessionTokenUsage(0, 0, 0, 0)
+        )
+
+    // === Raw token usage data (UI will format it) ===
 
     // === Инкрементально аккумулируем в Map ===
     val toolResultsMap: StateFlow<Map<String, ChatMessage.ContentItem.ToolResult>> =

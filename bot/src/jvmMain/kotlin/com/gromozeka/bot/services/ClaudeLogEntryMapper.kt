@@ -73,6 +73,25 @@ object ClaudeLogEntryMapper {
             content.add(ChatMessage.ContentItem.UserMessage(""))
         }
 
+        // Extract usage info from message content
+        val usageInfo = when (val message = entry.message) {
+            is ClaudeLogEntry.Message.AssistantMessage -> {
+                val usage = message.usage
+                val info = ChatMessage.LlmSpecificMetadata.ClaudeCodeSessionFileEntry.UsageInfo(
+                    inputTokens = usage.inputTokens,
+                    outputTokens = usage.outputTokens,
+                    cacheCreationTokens = usage.cacheCreationInputTokens,
+                    cacheReadTokens = usage.cacheReadInputTokens
+                )
+                println("[ClaudeLogEntryMapper] Assistant ${entry.uuid}: extracted usage in=${usage.inputTokens}, out=${usage.outputTokens}, cache_create=${usage.cacheCreationInputTokens}, cache_read=${usage.cacheReadInputTokens}")
+                info
+            }
+            else -> {
+                println("[ClaudeLogEntryMapper] Assistant ${entry.uuid}: no usage (message type: ${message?.javaClass?.simpleName})")
+                null
+            }
+        }
+
         return ChatMessage(
             uuid = entry.uuid,
             parentUuid = entry.parentUuid,
@@ -85,7 +104,8 @@ object ClaudeLogEntryMapper {
                 version = entry.version,
                 userType = entry.userType,
                 isSidechain = entry.isSidechain ?: false,
-                isMeta = false
+                isMeta = false,
+                usage = usageInfo
             ),
             gitBranch = entry.gitBranch,
             cwd = entry.cwd
