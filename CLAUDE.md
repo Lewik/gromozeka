@@ -8,6 +8,18 @@ This is a Kotlin Multiplatform Project (MPP) with the following modules:
 - `bot` - The main application module containing the gromozeka bot application
 - `shared` - A library module with shared code and models  
 - `docs/` - Project documentation including architectural decisions and philosophy
+- `logs/` - Development logs directory (ignored in git)
+
+## Development Logging
+
+**Log Files Location**: `logs/dev.log` - All development logs are written to this file during development.
+
+**Important Notes**:
+- Logs are **overwritten on each application start** during development
+- Log files can be large - use `grep`, `tail`, or other text search tools to find relevant information
+- Various debug categories are used throughout the codebase for different components and issues
+
+**Usage**: Monitor `logs/dev.log` during development to debug performance issues, memory leaks, and thread pool problems.
 
 ## Build and Test Commands
 
