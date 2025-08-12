@@ -3,6 +3,7 @@ package com.gromozeka.bot
 import com.gromozeka.bot.services.AudioMuteManager
 import com.gromozeka.bot.services.PTTEventRouter
 import com.gromozeka.bot.services.PTTService
+import com.gromozeka.bot.services.SessionUiManager
 import com.gromozeka.bot.services.SettingsService
 import com.gromozeka.bot.services.SttService
 import com.gromozeka.bot.services.TTSQueueService
@@ -73,8 +74,10 @@ class Config {
     @Bean
     fun pttEventRouter(
         pttService: PTTService,
-        ttsQueueService: TTSQueueService
-    ) = PTTEventRouter(pttService, ttsQueueService)
+        ttsQueueService: TTSQueueService,
+        sessionUiManager: SessionUiManager,
+        settingsService: SettingsService
+    ) = PTTEventRouter(pttService, ttsQueueService, sessionUiManager, settingsService)
 
     @Bean
     fun settingsService(): SettingsService {

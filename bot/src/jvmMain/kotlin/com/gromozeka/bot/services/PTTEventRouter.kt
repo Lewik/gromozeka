@@ -17,17 +17,14 @@ enum class PTTEvent {
 class PTTEventRouter(
     private val pttService: PTTService,
     private val ttsQueueService: TTSQueueService,
+    private val sessionUiManager: SessionUiManager,
+    private val settingsService: SettingsService,
 ) {
 
     private val serviceScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
 
     private val _events = MutableSharedFlow<PTTEvent>()
     val events: SharedFlow<PTTEvent> = _events
-
-    // PTT results for UI
-    private val _textTranscribed = MutableSharedFlow<String>()
-    val textTranscribed: SharedFlow<String> = _textTranscribed.asSharedFlow()
-
 
     // Interrupt command management
     private val _interruptCommand = MutableSharedFlow<Unit>()
@@ -36,6 +33,9 @@ class PTTEventRouter(
 
     // Current PTT session
     private var currentPTTJob: Job? = null
+    
+    // Target session ViewModel captured at PTT start
+    private var targetViewModel: com.gromozeka.bot.viewmodel.SessionViewModel? = null
 
     /**
      * Initialize PTT event router and start listening to interrupt commands
@@ -60,6 +60,11 @@ class PTTEventRouter(
 
         when (event) {
             PTTEvent.BUTTON_DOWN -> {
+                // Capture target session ViewModel at PTT start to prevent race conditions
+                val currentSessionId = sessionUiManager.currentSessionId.value
+                targetViewModel = currentSessionId?.let { 
+                    sessionUiManager.sessionViewModels.value[it] 
+                }
                 // Start PTT recording immediately (TTS continues playing muted)
                 startPTTRecording()
             }
@@ -100,11 +105,21 @@ class PTTEventRouter(
         // Get transcribed text from the recording
         try {
             val text = pttService.stopAndTranscribe()
-            if (text.isNotEmpty()) {
-                _textTranscribed.emit(text)
+            if (text.isNotEmpty() && targetViewModel != null) {
+                val currentSettings = settingsService.settingsFlow.value
+                if (currentSettings.autoSend) {
+                    // Send message directly to target session
+                    targetViewModel!!.sendMessage(text)
+                } else {
+                    // Set text in user input field for editing
+                    targetViewModel!!.userInput = text
+                }
             }
         } catch (e: Exception) {
             println("[PTT] Failed to transcribe recording: ${e.message}")
+        } finally {
+            // Clear target session reference
+            targetViewModel = null
         }
     }
 
@@ -140,6 +155,7 @@ class PTTEventRouter(
     private suspend fun cancelCurrentPTT() {
         currentPTTJob?.cancel()
         currentPTTJob = null
+        targetViewModel = null // Clear captured target session
 
         // Cancel the recording without transcription
         try {
