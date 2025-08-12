@@ -5,7 +5,10 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.ContextMenuArea
 import androidx.compose.foundation.ContextMenuItem
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.selection.DisableSelection
 import androidx.compose.foundation.text.selection.SelectionContainer
@@ -20,6 +23,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
@@ -32,6 +36,7 @@ import com.gromozeka.bot.services.TTSQueueService
 import com.gromozeka.bot.settings.Settings
 import com.gromozeka.shared.domain.message.ChatMessage
 import com.gromozeka.shared.domain.message.ClaudeCodeToolCallData
+import com.gromozeka.shared.domain.message.MessageTag
 import com.gromozeka.shared.domain.message.ToolCallData
 import com.mikepenz.markdown.m3.Markdown
 import kotlinx.coroutines.CoroutineScope
@@ -192,6 +197,23 @@ fun SessionScreen(
                         isRecording = isRecording,
                         showPttButton = settings.enableStt
                     )
+
+                    // Message Tags
+                    if (viewModel.availableMessageTags.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        LazyRow(
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            items(viewModel.availableMessageTags) { tag ->
+                                MessageTagButton(
+                                    tag = tag,
+                                    isActive = tag.title in viewModel.activeMessageTags,
+                                    onClick = { viewModel.toggleMessageTag(tag.title) }
+                                )
+                            }
+                        }
+                    }
 
                     // Dev buttons only
                     if (isDev) {
@@ -372,7 +394,33 @@ private fun MessageItem(
             ) {
                 message.content.forEach { content ->
                     when (content) {
-                        is ChatMessage.ContentItem.UserMessage -> Markdown(content = content.text)
+                        is ChatMessage.ContentItem.UserMessage -> {
+                            Column {
+                                // Show active tags for user messages
+                                if (message.activeTags.isNotEmpty()) {
+                                    LazyRow(
+                                        modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                    ) {
+                                        items(message.activeTags) { tag ->
+                                            Surface(
+                                                shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+                                                color = MaterialTheme.colorScheme.primaryContainer,
+                                                modifier = Modifier.height(20.dp)
+                                            ) {
+                                                Text(
+                                                    text = tag.title,
+                                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                                Markdown(content = content.text)
+                            }
+                        }
                         is ChatMessage.ContentItem.ToolCall -> {
                             // Find corresponding result from entire chat history
                             val correspondingResult = toolResultsMap[content.id]
@@ -774,6 +822,45 @@ private fun ToolCallItem(
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MessageTagButton(
+    tag: MessageTag,
+    isActive: Boolean,
+    onClick: () -> Unit
+) {
+    if (isActive) {
+        // Активный тег: стандартные цвета CompactButton (синий фон, белый текст)
+        CompactButton(
+            onClick = onClick,
+            tooltip = tag.instruction
+        ) {
+            Text(
+                text = tag.title,
+                style = MaterialTheme.typography.bodySmall
+            )
+        }
+    } else {
+        // Неактивный тег: прозрачный фон, темный текст
+        OptionalTooltip(tag.instruction) {
+            TextButton(
+                onClick = onClick,
+                modifier = Modifier.height(CompactButtonDefaults.ButtonHeight),
+                contentPadding = CompactButtonDefaults.ContentPadding,
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(CompactButtonDefaults.CornerRadius),
+                colors = ButtonDefaults.textButtonColors(
+                    containerColor = Color.Transparent,
+                    contentColor = MaterialTheme.colorScheme.onSurface
+                )
+            ) {
+                Text(
+                    text = tag.title,
+                    style = MaterialTheme.typography.bodySmall
+                )
             }
         }
     }

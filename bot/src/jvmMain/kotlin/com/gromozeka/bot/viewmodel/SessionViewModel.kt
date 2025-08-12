@@ -6,6 +6,7 @@ import androidx.compose.runtime.setValue
 import com.gromozeka.bot.model.Session
 import com.gromozeka.bot.settings.Settings
 import com.gromozeka.shared.domain.message.ChatMessage
+import com.gromozeka.shared.domain.message.MessageTag
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.*
 
@@ -21,6 +22,17 @@ class SessionViewModel(
     // === UI State (из SessionScreen) ===
     var userInput by mutableStateOf("")
     var jsonToShow by mutableStateOf<String?>(null)
+    
+    // === Message Tags ===
+    val availableMessageTags = listOf(
+        MessageTag("Ultrathink", "Режим глубокого анализа с пошаговыми рассуждениями и детальной проработкой"),
+        MessageTag("Readonly", "Режим readonly - никаких изменений кода или команд применяющих изменения"),
+        MessageTag("Research", "Режим исследования - приоритет поиску в интернете и документации"),
+        MessageTag("Quick", "Быстрый режим - краткие ответы, минимум текста"),
+        MessageTag("Explain", "Режим объяснений - детальный разбор с контекстом и примерами")
+    )
+    
+    var activeMessageTags by mutableStateOf(setOf<String>())
 
     // === Messages from messageOutputStream (no duplication) ===
     private val allMessages: StateFlow<List<ChatMessage>> = session.messageOutputStream
@@ -74,8 +86,24 @@ class SessionViewModel(
     val isWaitingForResponse: StateFlow<Boolean> = session.isWaitingForResponse
 
     // === Commands ===
+    fun toggleMessageTag(title: String) {
+        activeMessageTags = if (title in activeMessageTags) {
+            activeMessageTags - title
+        } else {
+            activeMessageTags + title
+        }
+    }
+    
     suspend fun sendMessage(message: String) {
-        session.sendMessage(message)
+        val activeTags = availableMessageTags.filter { it.title in activeMessageTags }
+        
+        val messageWithInstructions = if (activeTags.isNotEmpty()) {
+            "$message\n\n<instructions>\n${activeTags.joinToString("\n") { it.instruction }}\n</instructions>"
+        } else {
+            message
+        }
+        
+        session.sendMessage(messageWithInstructions, activeTags)
         userInput = "" // Clear input after sending
     }
 }

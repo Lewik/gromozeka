@@ -9,6 +9,7 @@ import com.gromozeka.bot.services.SoundNotificationService
 import com.gromozeka.bot.services.StreamToChatMessageMapper
 import com.gromozeka.bot.utils.ChatMessageSoundDetector
 import com.gromozeka.shared.domain.message.ChatMessage
+import com.gromozeka.shared.domain.message.MessageTag
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.sync.Mutex
@@ -151,7 +152,7 @@ class Session(
     /**
      * Send a message through the Claude Code CLI process with buffering for session ID management
      */
-    suspend fun sendMessage(message: String) = sessionMutex.withLock {
+    suspend fun sendMessage(message: String, activeTags: List<MessageTag> = emptyList()) = sessionMutex.withLock {
         require(_sessionState.value == SessionState.ACTIVE) {
             "Session is not active. Current state: ${_sessionState.value}"
         }
@@ -172,7 +173,8 @@ class Session(
                     content = listOf(ChatMessage.ContentItem.UserMessage(message)),
                     timestamp = Clock.System.now(),
                     uuid = java.util.UUID.randomUUID().toString(),
-                    llmSpecificMetadata = null
+                    llmSpecificMetadata = null,
+                    activeTags = activeTags
                 )
             )
 
