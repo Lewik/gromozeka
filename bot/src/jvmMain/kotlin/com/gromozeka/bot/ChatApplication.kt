@@ -2,11 +2,13 @@ package com.gromozeka.bot
 
 import androidx.compose.desktop.ui.tooling.preview.Preview
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Text
+import androidx.compose.material3.*
+import androidx.compose.ui.draw.alpha
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -97,6 +99,7 @@ fun ApplicationScope.ChatWindow(
     val coroutineScope = rememberCoroutineScope()
     val scrollState = rememberScrollState()
     val sessionManager = remember { context.getBean(SessionManager::class.java) }
+    val sessionUiManager = remember { context.getBean(SessionUiManager::class.java) }
 
     var initialized by remember { mutableStateOf(false) }
 
@@ -105,8 +108,9 @@ fun ApplicationScope.ChatWindow(
     val currentSettings by settingsService.settingsFlow.collectAsState()
 
 
-    var showSessionList by remember { mutableStateOf(true) }
-    val currentSession by sessionManager.currentSession.collectAsState(null)
+    val activeSessions by sessionManager.activeSessions.collectAsState()
+    val currentSessionId by sessionUiManager.currentSessionId.collectAsState()
+    val currentSession by sessionUiManager.currentSession.collectAsState(null)
     var showSettingsPanel by remember { mutableStateOf(false) }
 
 
@@ -167,15 +171,10 @@ fun ApplicationScope.ChatWindow(
     val createNewSession: (String) -> Unit = { projectPath ->
         coroutineScope.launch {
             try {
-                // Stop current session via SessionManager 
-                sessionManager.currentSessionId.value?.let { currentId ->
-                    sessionManager.stopSession(currentId)
-                }
-
-                // Create and start new active session via SessionManager
+                // Explicit workflow: Session → ViewModel → Navigation
                 val sessionId = sessionManager.createSession(projectPath)
-                // SessionManager automatically switches to new session and updates currentSession flow
-                showSessionList = false
+                sessionUiManager.createViewModel(sessionId)
+                sessionUiManager.setCurrentSession(sessionId)
             } catch (e: Exception) {
                 e.printStackTrace()
             }
@@ -274,60 +273,116 @@ fun ApplicationScope.ChatWindow(
                 .advancedEscape(pttEventRouter)
         ) {
             if (initialized) {
-                if (showSessionList) {
-                    SessionListScreen(
-                        onSessionMetadataSelected = { session ->
-                            // Session already created in SessionListScreen via SessionManager
-                            // currentSession will be automatically updated via SessionManager flow
-                            
-                            showSessionList = false
-                        },
-                        coroutineScope = coroutineScope,
-                        onNewSession = createNewSession,
-                        sessionJsonlService = sessionJsonlService,
-                        sessionManager = sessionManager,
-                        settings = currentSettings,
-                        onSettingsChange = onSettingsChange,
-                        showSettingsPanel = showSettingsPanel,
-                        onShowSettingsPanelChange = { showSettingsPanel = it }
-                    )
-                } else {
-                    currentSession?.let { session ->
-                        SessionScreen(
-                            session = session,
-                            
-                            // Navigation callbacks
-                            onBackToSessionList = {
-                                coroutineScope.launch {
-                                    sessionManager.currentSessionId.value?.let { currentId ->
-                                        sessionManager.stopSession(currentId)
+                // Tab-based UI: SessionListScreen as first tab, active sessions as additional tabs
+                Column(modifier = Modifier.fillMaxSize()) {
+                    // Create tabs: "Список" + session tabs
+                    val tabTitles = mutableListOf("Список")
+                    tabTitles.addAll(activeSessions.keys.mapIndexed { index, _ -> "Таб ${index + 1}" })
+                    
+                    // Determine selected tab index
+                    val selectedTabIndex = when {
+                        currentSessionId == null -> 0 // SessionListScreen tab
+                        else -> {
+                            val sessionIndex = activeSessions.keys.toList().indexOf(currentSessionId)
+                            if (sessionIndex >= 0) sessionIndex + 1 else 0
+                        }
+                    }
+                    
+                    // Tab Row
+                    TabRow(
+                        selectedTabIndex = selectedTabIndex,
+                        modifier = Modifier
+                    ) {
+                        tabTitles.forEachIndexed { index, title ->
+                            Tab(
+                                selected = selectedTabIndex == index,
+                                onClick = {
+                                    if (index == 0) {
+                                        // Switch to SessionListScreen tab
+                                        coroutineScope.launch {
+                                            sessionUiManager.setCurrentSession(null)
+                                        }
+                                    } else {
+                                        // Switch to session tab
+                                        val sessionId = activeSessions.keys.toList()[index - 1]
+                                        coroutineScope.launch {
+                                            sessionUiManager.setCurrentSession(sessionId)
+                                        }
                                     }
-                                }
-                                showSessionList = true
-                            },
-                            onNewSession = {
-                                createNewSession(session.projectPath)
-                            },
-                            
-                            // Services
-                            ttsQueueService = ttsQueueService,
-                            coroutineScope = coroutineScope,
-                            modifierWithPushToTalk = modifierWithPushToTalk,
-                            isRecording = isRecording,
-                            
-                            // Settings
-                            settings = currentSettings,
-                            onSettingsChange = onSettingsChange,
-                            showSettingsPanel = showSettingsPanel,
-                            onShowSettingsPanelChange = { showSettingsPanel = it },
-                            
-                            // Dev mode
-                            isDev = settingsService.mode == com.gromozeka.bot.settings.AppMode.DEV,
-                        )
-                    } ?: run {
-                        // No active session - show message
-                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            Text("No active session")
+                                },
+                                text = { Text(title) }
+                            )
+                        }
+                    }
+                    
+                    // Tab Content - All tabs exist in parallel, only selected is visible
+                    Box(modifier = Modifier.weight(1f)) {
+                        // SessionListScreen tab - always exists
+                        val isSessionListVisible = selectedTabIndex == 0
+                        Box(
+                            modifier = Modifier.fillMaxSize()
+                                .alpha(if (isSessionListVisible) 1f else 0f)
+                        ) {
+                            SessionListScreen(
+                                onSessionMetadataSelected = { session ->
+                                    // Session and ViewModel already created in SessionListScreen
+                                    // Tab UI will automatically switch to the new session
+                                },
+                                coroutineScope = coroutineScope,
+                                onNewSession = createNewSession,
+                                sessionJsonlService = sessionJsonlService,
+                                sessionManager = sessionManager,
+                                sessionUiManager = sessionUiManager,
+                                settings = currentSettings,
+                                onSettingsChange = onSettingsChange,
+                                showSettingsPanel = showSettingsPanel,
+                                onShowSettingsPanelChange = { showSettingsPanel = it }
+                            )
+                        }
+                        
+                        // Only render SessionScreen for current session
+                        val currentSessionViewModel by sessionUiManager.currentSessionViewModel.collectAsState(null)
+                        if (currentSessionId != null && currentSession != null) {
+                            currentSessionViewModel?.let { viewModel ->
+                                SessionScreen(
+                                    viewModel = viewModel,
+                                    
+                                    // Navigation callbacks - modified to not stop sessions
+                                    onBackToSessionList = {
+                                        // Switch to SessionListScreen tab without stopping session
+                                        coroutineScope.launch {
+                                            sessionUiManager.setCurrentSession(null)
+                                        }
+                                    },
+                                    onNewSession = {
+                                        createNewSession(currentSession!!.projectPath)
+                                    },
+                                    
+                                    // Close tab callback - removes ViewModel and stops session
+                                    onCloseTab = {
+                                        coroutineScope.launch {
+                                            val sessionId = currentSessionId!!
+                                            sessionUiManager.removeViewModel(sessionId)
+                                            sessionManager.stopSession(sessionId)
+                                        }
+                                    },
+                                    
+                                    // Services
+                                    ttsQueueService = ttsQueueService,
+                                    coroutineScope = coroutineScope,
+                                    modifierWithPushToTalk = modifierWithPushToTalk,
+                                    isRecording = isRecording,
+                                    
+                                    // Settings
+                                    settings = currentSettings,
+                                    onSettingsChange = onSettingsChange,
+                                    showSettingsPanel = showSettingsPanel,
+                                    onShowSettingsPanelChange = { showSettingsPanel = it },
+                                    
+                                    // Dev mode
+                                    isDev = settingsService.mode == com.gromozeka.bot.settings.AppMode.DEV,
+                                )
+                            }
                         }
                     }
                 }

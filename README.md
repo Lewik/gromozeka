@@ -16,7 +16,7 @@ Named after the multi-armed character from "The Mystery of the Third Planet". Cu
 
 ### 🖥️ Desktop Interface
 - **Native UI**: JetBrains Compose Desktop chat interface
-- **Multiple sessions**: Handle concurrent conversations (work in progress)
+- **Multiple sessions**: Handle concurrent conversations in tabs
 - **Context management**: Create and organize conversation contexts (work in progress)
 - **Always available**: System-wide accessibility without switching contexts
 
@@ -117,7 +117,7 @@ docs/          # Architecture documentation
 ## 🔮 Future Roadmap
 
 ### Short-term
-- **Complete multi-session support**: Finish concurrent conversation handling
+- **Enhanced tab management**: Improve session tab UI and navigation
 - **Context management system**: Finish context creation and organization features  
 - **Cross-platform**: Windows and Linux support
 

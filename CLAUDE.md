@@ -63,7 +63,7 @@ This significantly reduces the need for extensive unit testing compared to dynam
 **Key Differentiators**:
 - Advanced voice interface wrapper for AI interaction
 - Sophisticated PTT (Push-to-Talk) system with global hotkeys  
-- Multiple session management with history and resume support (work in progress)
+- Multiple session management with history and resume support in tabs
 - Context management and organization (work in progress)
 
 **Naming**: "Gromozeka" - internal codename, may be changed for release
@@ -205,7 +205,6 @@ Issues serve as our **shared project notebook** and **reference base**:
 ## Known Issues and Future Work
 
 ### Current Limitations:
-- Single active session support (multi-session planned)
 - Full message list updates (incremental updates planned)
 - Mixed serialization libraries (migration to kotlinx.serialization planned)
 

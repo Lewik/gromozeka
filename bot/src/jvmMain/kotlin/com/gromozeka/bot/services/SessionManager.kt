@@ -13,14 +13,13 @@ import org.springframework.stereotype.Service
 import java.util.*
 
 /**
- * Service for managing multiple sessions with reactive state management.
+ * Service for managing multiple sessions - pure business logic.
  * 
- * Replaces direct Session usage in ChatApplication with centralized session management.
- * Provides flow-based reactive state for UI consumption and handles session lifecycle.
+ * Manages Session lifecycle: create, start, stop. Does not know about UI or ViewModels.
+ * UI logic is handled by SessionUiManager.
  */
 @Service
 class SessionManager(
-    private val claudeCodeStreamingWrapper: ClaudeCodeStreamingWrapper,
     private val sessionJsonlService: SessionJsonlService,
     private val soundNotificationService: SoundNotificationService,
     private val settingsService: SettingsService,
@@ -29,20 +28,12 @@ class SessionManager(
 
     private val sessionMutex = Mutex()
 
-    // === Flow-based State Management ===
+    // === Business State Management ===
     private val _activeSessions = MutableStateFlow<Map<SessionUuid, Session>>(emptyMap())
     val activeSessions: StateFlow<Map<SessionUuid, Session>> = _activeSessions.asStateFlow()
 
-    private val _currentSessionId = MutableStateFlow<SessionUuid?>(null)
-    val currentSessionId: StateFlow<SessionUuid?> = _currentSessionId.asStateFlow()
-
-    // Computed properties
-    val currentSession: Flow<Session?> = combine(activeSessions, currentSessionId) { sessions, currentId ->
-        currentId?.let { sessions[it] }
-    }
-
     /**
-     * Create new session and switch to it
+     * Create and start new session
      * @param projectPath Path to the project directory  
      * @param resumeSessionId Optional Claude session ID to resume from (for loading history)
      * @return SessionUuid of the created session
@@ -55,9 +46,8 @@ class SessionManager(
         
         val updatedSessions = _activeSessions.value + (sessionId to session)
         _activeSessions.value = updatedSessions
-        _currentSessionId.value = sessionId
         
-        println("[SessionManager] Created and switched to session: $sessionId")
+        println("[SessionManager] Created session: $sessionId")
         sessionId
     }
 
@@ -70,27 +60,14 @@ class SessionManager(
     ): Session {
         return Session(
             projectPath = projectPath,
-            claudeWrapper = claudeCodeStreamingWrapper,
             sessionJsonlService = sessionJsonlService,
             soundNotificationService = soundNotificationService,
+            settingsService = settingsService,
             claudeModel = claudeModel,
             responseFormat = settingsService.settings.responseFormat,
         )
     }
 
-    /**
-     * Switch to existing session
-     * @param sessionId SessionUuid to switch to
-     * @throws IllegalArgumentException if session doesn't exist
-     */
-    suspend fun switchToSession(sessionId: SessionUuid) = sessionMutex.withLock {
-        require(_activeSessions.value.containsKey(sessionId)) {
-            "Session $sessionId does not exist in active sessions"
-        }
-        
-        _currentSessionId.value = sessionId
-        println("[SessionManager] Switched to session: $sessionId")
-    }
 
     /**
      * Stop and remove specific session
@@ -104,17 +81,12 @@ class SessionManager(
             val updatedSessions = _activeSessions.value - sessionId
             _activeSessions.value = updatedSessions
             
-            // If we stopped current session, clear current session ID
-            if (_currentSessionId.value == sessionId) {
-                _currentSessionId.value = null
-            }
-            
             println("[SessionManager] Stopped session: $sessionId")
         }
     }
 
     /**
-     * Stop all active sessions and clear state
+     * Stop all active sessions
      */
     suspend fun stopAllSessions() = sessionMutex.withLock {
         val sessions = _activeSessions.value
@@ -129,7 +101,6 @@ class SessionManager(
         }
         
         _activeSessions.value = emptyMap()
-        _currentSessionId.value = null
         
         println("[SessionManager] All sessions stopped")
     }

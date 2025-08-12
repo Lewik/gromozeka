@@ -5,7 +5,6 @@ import com.gromozeka.bot.model.StreamJsonLinePacket
 import com.gromozeka.bot.settings.AppMode
 import com.gromozeka.bot.settings.ResponseFormat
 import com.gromozeka.shared.domain.session.ClaudeSessionUuid
-import jakarta.annotation.PreDestroy
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -16,7 +15,6 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.*
-import org.springframework.stereotype.Component
 import java.io.BufferedReader
 import java.io.BufferedWriter
 import java.io.File
@@ -26,7 +24,7 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.*
 
-@Component
+// No longer a Spring @Component - created per Session for proper isolation
 class ClaudeCodeStreamingWrapper(
     private val settingsService: SettingsService,
 ) {
@@ -369,8 +367,9 @@ class ClaudeCodeStreamingWrapper(
 
     suspend fun stop() = withContext(Dispatchers.IO) {
         try {
-            readJob?.cancel()
-            stderrJob?.cancel()
+            // Cancel all coroutines in scope (includes readJob and stderrJob)
+            scope.cancel()
+            
             stdinWriter?.close()
             stdoutReader?.close()
             stderrReader?.close()
@@ -384,7 +383,6 @@ class ClaudeCodeStreamingWrapper(
                 process?.destroyForcibly()
             }
 
-
         } catch (e: Exception) {
             e.printStackTrace()
         } finally {
@@ -392,19 +390,6 @@ class ClaudeCodeStreamingWrapper(
         }
     }
 
-    private fun extractSessionId(jsonLine: String) = try {
-        val jsonObject = Json.parseToJsonElement(jsonLine) as? JsonObject
-        val type = jsonObject?.get("type")?.jsonPrimitive?.content
-        val subtype = jsonObject?.get("subtype")?.jsonPrimitive?.content
-        if (type == "system" && subtype == "init") {
-            val sessionId = jsonObject["session_id"]?.jsonPrimitive?.content
-            sessionId
-        } else {
-            null
-        }
-    } catch (e: Exception) {
-        null
-    }
 
     @Serializable
     data class UserInputMessage(
@@ -450,10 +435,5 @@ class ClaudeCodeStreamingWrapper(
         }
     }
 
-    @PreDestroy
-    fun cleanup() {
-        println("CLEARING STREAM")
-        scope.cancel()
-    }
 }
 

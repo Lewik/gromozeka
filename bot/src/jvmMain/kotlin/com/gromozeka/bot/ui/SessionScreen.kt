@@ -41,60 +41,44 @@ import kotlinx.serialization.json.JsonElement
 
 @Composable
 fun SessionScreen(
-    session: com.gromozeka.bot.model.Session,
-    
+    viewModel: com.gromozeka.bot.viewmodel.SessionViewModel,
+
     // Navigation callbacks
     onBackToSessionList: () -> Unit,
     onNewSession: () -> Unit,
-    
+    onCloseTab: (() -> Unit)? = null,
+
     // Services
     ttsQueueService: TTSQueueService,
     coroutineScope: CoroutineScope,
     modifierWithPushToTalk: Modifier,
     isRecording: Boolean = false,
-    
+
     // Settings
     settings: Settings,
     onSettingsChange: (Settings) -> Unit,
     showSettingsPanel: Boolean,
     onShowSettingsPanelChange: (Boolean) -> Unit,
-    
+
     // Dev mode
     isDev: Boolean = false,
 ) {
-    // UI state management
+    // UI state management (only scroll remains local)
     val scrollState = rememberScrollState()
     var stickyToBottom by remember { mutableStateOf(true) }
-    var jsonToShow by remember { mutableStateOf<String?>(null) }
-    
-    // Tab UI State - fully encapsulated
-    var userInput by remember { mutableStateOf("") }
-    val chatHistory = remember { mutableStateListOf<ChatMessage>() }
-    val toolResultsMap = remember { mutableStateMapOf<String, ChatMessage.ContentItem.ToolResult>() }
-    
-    // Session state
-    val isWaitingForResponse by session.isWaitingForResponse.collectAsState()
-    
-    // Subscribe to message stream and update local state
-    LaunchedEffect(session) {
-        session.messageOutputStream.collect { newMessage ->
-            chatHistory.add(newMessage)
-            // Update toolResultsMap with any ToolResult items
-            newMessage.content.filterIsInstance<ChatMessage.ContentItem.ToolResult>().forEach { toolResult ->
-                toolResultsMap[toolResult.toolUseId] = toolResult
-            }
+
+    // All data comes from ViewModel
+    val filteredHistory by viewModel.filteredMessages.collectAsState()
+    val toolResultsMap by viewModel.toolResultsMap.collectAsState()
+    val isWaitingForResponse by viewModel.isWaitingForResponse.collectAsState()
+    val userInput = viewModel.userInput
+    val jsonToShow = viewModel.jsonToShow
+
+    // Message sending function using ViewModel
+    val onSendMessage: (String) -> Unit = { message ->
+        coroutineScope.launch {
+            viewModel.sendMessage(message)
         }
-    }
-    
-    // Clear history when switching sessions
-    LaunchedEffect(session) {
-        chatHistory.clear()
-        toolResultsMap.clear()
-    }
-    
-    // Message sending function using session
-    val onSendMessage: suspend (String) -> Unit = { message ->
-        session.sendMessage(message)
     }
 
     val isAtBottom by remember {
@@ -111,7 +95,7 @@ fun SessionScreen(
         }
     }
 
-    LaunchedEffect(chatHistory.size) {
+    LaunchedEffect(filteredHistory.size) {
         if (stickyToBottom) {
             scrollState.animateScrollTo(scrollState.maxValue)
         }
@@ -137,9 +121,9 @@ fun SessionScreen(
                         // Message count
                         CompactButton(
                             onClick = { },
-                            tooltip = "Всего сообщений: ${chatHistory.size}\n(включая системные)"
+                            tooltip = "Всего сообщений: ${filteredHistory.size}\n(фильтрация по настройкам)"
                         ) {
-                            Text("💬 ${chatHistory.size}")
+                            Text("💬 ${filteredHistory.size}")
                         }
 
                         Spacer(modifier = Modifier.width(8.dp))
@@ -151,6 +135,17 @@ fun SessionScreen(
                         ) {
                             Icon(Icons.Default.Settings, contentDescription = "Settings")
                         }
+
+                        // Close tab button (if onCloseTab callback is provided)
+                        onCloseTab?.let { closeCallback ->
+                            Spacer(modifier = Modifier.width(8.dp))
+                            CompactButton(
+                                onClick = closeCallback,
+                                tooltip = "Закрыть таб"
+                            ) {
+                                Text("✕")
+                            }
+                        }
                     }
                 }
 
@@ -158,23 +153,12 @@ fun SessionScreen(
 
                 Column(modifier = Modifier.weight(1f).verticalScroll(scrollState)) {
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        val filteredHistory = if (settings?.showSystemMessages == true) {
-                            chatHistory
-                        } else {
-                            chatHistory.filter { message ->
-                                message.role != ChatMessage.Role.SYSTEM ||
-                                        message.content.any { content ->
-                                            content is ChatMessage.ContentItem.System &&
-                                                    content.level == ChatMessage.ContentItem.System.SystemLevel.ERROR
-                                        }
-                            }
-                        }
                         filteredHistory.forEach { message ->
                             MessageItem(
                                 message = message,
                                 settings = settings,
                                 toolResultsMap = toolResultsMap,
-                                onShowJson = { json -> jsonToShow = json },
+                                onShowJson = { json -> viewModel.jsonToShow = json },
                                 onSpeakRequest = { text, tone ->
                                     coroutineScope.launch {
                                         ttsQueueService.enqueue(TTSQueueService.Task(text, tone))
@@ -198,13 +182,10 @@ fun SessionScreen(
                 DisableSelection {
                     MessageInput(
                         userInput = userInput,
-                        onUserInputChange = { userInput = it },
+                        onUserInputChange = { viewModel.userInput = it },
                         isWaitingForResponse = isWaitingForResponse,
                         onSendMessage = { message ->
-                            coroutineScope.launch {
-                                onSendMessage(message)
-                                userInput = "" // Clear input after sending
-                            }
+                            onSendMessage(message)
                         },
                         coroutineScope = coroutineScope,
                         modifierWithPushToTalk = modifierWithPushToTalk,
@@ -240,7 +221,7 @@ fun SessionScreen(
     jsonToShow?.let { json ->
         JsonDialog(
             json = json,
-            onDismiss = { jsonToShow = null }
+            onDismiss = { viewModel.jsonToShow = null }
         )
     }
 }
@@ -444,7 +425,7 @@ private fun MessageInput(
     showPttButton: Boolean,
 ) {
     Row(
-        verticalAlignment = Alignment.CenterVertically, 
+        verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min)
     ) {
         OutlinedTextField(
@@ -466,11 +447,11 @@ private fun MessageInput(
             placeholder = { Text("") }
         )
         Spacer(modifier = Modifier.width(4.dp))
-        
+
         // Send button
         if (isWaitingForResponse) {
             CompactButton(
-                onClick = {}, 
+                onClick = {},
                 enabled = false,
                 modifier = Modifier.fillMaxHeight(),
                 tooltip = "Отправка сообщения..."
@@ -491,11 +472,11 @@ private fun MessageInput(
                 Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Send", modifier = Modifier.size(16.dp))
             }
         }
-        
+
         // PTT button - only show if STT is enabled
         if (showPttButton) {
             Spacer(modifier = Modifier.width(4.dp))
-            
+
             CompactButton(
                 onClick = {},
                 modifier = modifierWithPushToTalk.fillMaxHeight(),
@@ -517,7 +498,7 @@ private fun DevButtons(
     onSendMessage: suspend (String) -> Unit,
 ) {
     Row(
-        verticalAlignment = Alignment.CenterVertically, 
+        verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {

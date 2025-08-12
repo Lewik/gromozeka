@@ -49,6 +49,7 @@ fun SessionListScreen(
     onNewSession: (String) -> Unit,
     sessionJsonlService: SessionJsonlService,
     sessionManager: SessionManager,
+    sessionUiManager: com.gromozeka.bot.services.SessionUiManager,
     // Settings support
     settings: com.gromozeka.bot.settings.Settings,
     onSettingsChange: (com.gromozeka.bot.settings.Settings) -> Unit,
@@ -172,7 +173,8 @@ fun SessionListScreen(
                                     coroutineScope.handleSessionClick(
                                         clickedSession,
                                         onSessionMetadataSelected,
-                                        sessionManager
+                                        sessionManager,
+                                        sessionUiManager
                                     )
                                 }
                             )
@@ -350,22 +352,25 @@ private fun CoroutineScope.handleSessionClick(
     clickedSessionMetadata: ChatSessionMetadata,
     onSessionMetadataSelected: (ChatSessionMetadata) -> Unit,
     sessionManager: SessionManager,
+    sessionUiManager: com.gromozeka.bot.services.SessionUiManager,
 ) {
     launch {
         try {
-            // Create session via SessionManager with resumeSessionId for history loading
+            // Explicit workflow: Session → ViewModel → Navigation
             val sessionId = sessionManager.createSession(
                 projectPath = clickedSessionMetadata.projectPath,
                 resumeSessionId = clickedSessionMetadata.claudeSessionId
             )
+            sessionUiManager.createViewModel(sessionId)
+            sessionUiManager.setCurrentSession(sessionId)
             
-            println("[SessionListScreen] Created session via SessionManager: $sessionId, resume from: ${clickedSessionMetadata.claudeSessionId}")
+            println("[SessionListScreen] Created session and ViewModel: $sessionId, resume from: ${clickedSessionMetadata.claudeSessionId}")
             
             // Notify parent that session was selected and created
             onSessionMetadataSelected(clickedSessionMetadata)
 
         } catch (e: Exception) {
-            println("[SessionListScreen] Failed to create session via SessionManager: ${e.message}")
+            println("[SessionListScreen] Failed to create session and ViewModel: ${e.message}")
             e.printStackTrace()
         }
     }

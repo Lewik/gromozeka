@@ -31,12 +31,16 @@ import kotlin.time.Duration.Companion.milliseconds
  */
 class Session(
     val projectPath: String,
-    private val claudeWrapper: ClaudeCodeStreamingWrapper,
     private val sessionJsonlService: SessionJsonlService,
     private val soundNotificationService: SoundNotificationService,
+    private val settingsService: com.gromozeka.bot.services.SettingsService,
     private val claudeModel: String? = null,
     private val responseFormat: com.gromozeka.bot.settings.ResponseFormat = com.gromozeka.bot.settings.ResponseFormat.JSON,
 ) {
+
+    // ClaudeCodeStreamingWrapper encapsulated inside Session - one wrapper per session
+    // In the future, Session can support different AI engines (OpenAI, Anthropic, etc.)
+    private val claudeWrapper = ClaudeCodeStreamingWrapper(settingsService)
 
     // === StateFlow for external consumption ===
     private val _claudeSessionId = MutableStateFlow("default".toClaudeSessionUuid())
