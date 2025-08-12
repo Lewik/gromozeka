@@ -26,6 +26,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import org.springframework.beans.factory.getBean
 import org.springframework.boot.WebApplicationType
 import org.springframework.boot.autoconfigure.SpringBootApplication
@@ -61,6 +62,7 @@ fun main() {
     val pttEventRouter = context.getBean<PTTEventRouter>()
     val pttService = context.getBean<PTTService>()
     val windowStateService = context.getBean<WindowStateService>()
+    val applicationPersistentStateService = context.getBean<ApplicationPersistentStateService>()
 
     // Explicit startup of TTS queue service
     ttsQueueService.start()
@@ -69,6 +71,11 @@ fun main() {
     // Initialize services
     globalHotkeyService.initializeService()
     pttEventRouter.initialize()
+    
+    // Initialize ApplicationPersistentStateService (loads state, restores tabs, starts subscription)
+    runBlocking {
+        applicationPersistentStateService.initialize()
+    }
     println("[GROMOZEKA] Starting Compose Desktop UI...")
     application {
         GromozekaTheme {
@@ -119,32 +126,32 @@ fun ApplicationScope.ChatWindow(
     // Create reactive session loading states - remember moved to root level
     var sessionLoadingStates by remember { mutableStateOf(emptyMap<com.gromozeka.shared.domain.session.SessionUuid, Boolean>()) }
     
-    // Subscribe to all session loading states
-    LaunchedEffect(Unit) {
-        sessionManager
-            .activeSessions
-            .flatMapLatest { sessions ->
-                if (sessions.isEmpty()) {
-                    flowOf(emptyMap())
-                } else {
-                    val flows = sessions
-                        .map { (sessionId, session) ->
-                            session.isWaitingForResponse.map { isWaiting -> sessionId to isWaiting }
-                        }
-                        .toTypedArray()
-                    combine(*flows) { it.toMap() }
-                }
-            }
-            .collect { sessionLoadingStates = it }
-    }
-
-
+    // Initialization and session loading states subscription
     LaunchedEffect(Unit) {
         initialized = true
 
         // Initialize StreamToChatMessageMapper with current response format
         currentSettings?.let { settings ->
             StreamToChatMessageMapper.currentResponseFormat = settings.responseFormat
+        }
+
+        // Subscribe to all session loading states (in parallel)
+        launch {
+            sessionManager
+                .activeSessions
+                .flatMapLatest { sessions ->
+                    if (sessions.isEmpty()) {
+                        flowOf(emptyMap())
+                    } else {
+                        val flows = sessions
+                            .map { (sessionId, session) ->
+                                session.isWaitingForResponse.map { isWaiting -> sessionId to isWaiting }
+                            }
+                            .toTypedArray()
+                        combine(*flows) { it.toMap() }
+                    }
+                }
+                .collect { sessionLoadingStates = it }
         }
     }
 
