@@ -68,7 +68,6 @@ class SessionManager(
             projectPath = projectPath,
             sessionJsonlService = sessionJsonlService,
             soundNotificationService = soundNotificationService,
-            settingsService = settingsService,
             claudeWrapper = claudeWrapper,
             claudeModel = claudeModel,
             responseFormat = settingsService.settings.responseFormat,

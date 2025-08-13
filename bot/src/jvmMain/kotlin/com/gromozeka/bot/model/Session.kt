@@ -1,15 +1,15 @@
 package com.gromozeka.bot.model
 
 import com.gromozeka.bot.services.ClaudeWrapper
-import com.gromozeka.shared.domain.session.ClaudeSessionUuid
-import com.gromozeka.shared.domain.session.SessionUuid
-import com.gromozeka.shared.domain.session.toClaudeSessionUuid
 import com.gromozeka.bot.services.SessionJsonlService
 import com.gromozeka.bot.services.SoundNotificationService
 import com.gromozeka.bot.services.StreamToChatMessageMapper
 import com.gromozeka.bot.utils.ChatMessageSoundDetector
 import com.gromozeka.shared.domain.message.ChatMessage
 import com.gromozeka.shared.domain.message.MessageTag
+import com.gromozeka.shared.domain.session.ClaudeSessionUuid
+import com.gromozeka.shared.domain.session.SessionUuid
+import com.gromozeka.shared.domain.session.toClaudeSessionUuid
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.sync.Mutex
@@ -34,7 +34,6 @@ class Session(
     val projectPath: String,
     private val sessionJsonlService: SessionJsonlService,
     private val soundNotificationService: SoundNotificationService,
-    private val settingsService: com.gromozeka.bot.services.SettingsService,
     private val claudeWrapper: ClaudeWrapper,
     private val claudeModel: String? = null,
     private val responseFormat: com.gromozeka.bot.settings.ResponseFormat = com.gromozeka.bot.settings.ResponseFormat.JSON,
@@ -104,34 +103,18 @@ class Session(
             }
             // Update StreamToChatMessageMapper with current response format
             StreamToChatMessageMapper.currentResponseFormat = responseFormat
-            
+
             scope.launchOutputStreamCollection()
             scope.launchSoundNotificationCollection()
 
             claudeWrapper.start(
-                projectPath = projectPath, 
+                projectPath = projectPath,
                 model = claudeModel,
                 responseFormat = responseFormat,
                 resumeSessionId = resumeSessionId
             )
 
-//            // === Phase 3: Start message buffer processing ===
-//            messageInputBufferJob = scope.launch {
-//                messageInputBuffer.collect { message ->
-//                    if (sessionInitialized) {
-//                        try {
-//                            println("[Session] Processing buffered message: ${message.take(50)}...")
-//                            claudeWrapper.sendMessage(message, _claudeSessionId.value)
-//                        } catch (e: Exception) {
-//                            println("[Session] Failed to send buffered message: ${e.message}")
-//                            // Re-emit to buffer for retry
-//                            _messageInputBuffer.emit(message)
-//                        }
-//                    }
-//                }
-//            }
-
-            // === Phase 4: Mark as Active ===
+            // === Phase 3: Mark as Active ===
             _sessionState.value = SessionState.ACTIVE
             _events.emit(StreamSessionEvent.Started)
 
@@ -380,17 +363,17 @@ class Session(
         if (message.subtype == "init") {
             val currentSessionId = _claudeSessionId.value
             val newSessionId = message.sessionId!!
-            
+
             // Check if session ID changed - this indicates session switching (like after /compact)
             if (currentSessionId != newSessionId) {
                 println("[Session] Session ID updated from stream: $currentSessionId -> $newSessionId")
                 _claudeSessionId.value = newSessionId
                 _events.emit(StreamSessionEvent.SessionIdChangedOnStart(newSessionId))
-                
+
                 // Reset initialization flag for new session
                 sessionInitialized = false
             }
-            
+
             // Multiple init messages are EXPECTED in stream-json mode!
             // Claude Code sends an init after each user message, confirmed via claude-code-sdk-python testing.
             // See docs/claude-code-streaming-behavior.md for detailed analysis.
@@ -520,7 +503,7 @@ class Session(
             _events.emit(StreamSessionEvent.Warning("Failed to load history: ${e.message}"))
         }
     }
-    
+
     private fun CoroutineScope.launchSoundNotificationCollection() {
         launch {
             messageOutputStream
@@ -532,6 +515,7 @@ class Session(
                                 println("[Session] Playing error sound for message type: ${chatMessage.role}")
                                 soundNotificationService.playErrorSound()
                             }
+
                             ChatMessageSoundDetector.shouldPlayMessageSound(chatMessage) -> {
                                 println("[Session] Playing message sound for message type: ${chatMessage.role}")
                                 soundNotificationService.playMessageSound()
