@@ -57,3 +57,10 @@ application-local.yaml
 bot/src/jvmMain/resources/application.yaml
 bot/src/jvmMain/resources/mcp-bup.json
 
+# Python virtual environments
+python-sdk-venv/
+venv/
+.venv/
+__pycache__/
+*.pyc
+

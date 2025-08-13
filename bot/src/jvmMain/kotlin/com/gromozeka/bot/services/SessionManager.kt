@@ -1,6 +1,7 @@
 package com.gromozeka.bot.services
 
 import com.gromozeka.bot.model.Session
+import com.gromozeka.bot.services.WrapperFactory.WrapperType
 import com.gromozeka.shared.domain.session.SessionUuid
 import com.gromozeka.shared.domain.session.ClaudeSessionUuid
 import com.gromozeka.shared.domain.session.toSessionUuid
@@ -23,6 +24,7 @@ class SessionManager(
     private val sessionJsonlService: SessionJsonlService,
     private val soundNotificationService: SoundNotificationService,
     private val settingsService: SettingsService,
+    private val wrapperFactory: WrapperFactory,
     @Qualifier("coroutineScope") private val scope: CoroutineScope,
 ) {
 
@@ -58,11 +60,16 @@ class SessionManager(
         projectPath: String,
         claudeModel: String = settingsService.settings.claudeModel,
     ): Session {
+        // Create wrapper using factory
+        val wrapperType = WrapperType.DIRECT_CLI
+        val claudeWrapper = wrapperFactory.createWrapper(settingsService, wrapperType)
+        
         return Session(
             projectPath = projectPath,
             sessionJsonlService = sessionJsonlService,
             soundNotificationService = soundNotificationService,
             settingsService = settingsService,
+            claudeWrapper = claudeWrapper,
             claudeModel = claudeModel,
             responseFormat = settingsService.settings.responseFormat,
         )

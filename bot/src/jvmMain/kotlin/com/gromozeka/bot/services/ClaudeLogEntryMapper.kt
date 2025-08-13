@@ -83,11 +83,9 @@ object ClaudeLogEntryMapper {
                     cacheCreationTokens = usage.cacheCreationInputTokens,
                     cacheReadTokens = usage.cacheReadInputTokens
                 )
-                println("[ClaudeLogEntryMapper] Assistant ${entry.uuid}: extracted usage in=${usage.inputTokens}, out=${usage.outputTokens}, cache_create=${usage.cacheCreationInputTokens}, cache_read=${usage.cacheReadInputTokens}")
                 info
             }
             else -> {
-                println("[ClaudeLogEntryMapper] Assistant ${entry.uuid}: no usage (message type: ${message?.javaClass?.simpleName})")
                 null
             }
         }

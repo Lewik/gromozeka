@@ -42,7 +42,6 @@ object TokenUsageCalculator {
                         cacheCreationTokens = usage.cacheCreationTokens ?: 0,
                         cacheReadTokens = usage.cacheReadTokens ?: 0
                     )
-                    println("[TokenUsageCalculator] Extracted usage from metadata: in=${usage.inputTokens}, out=${usage.outputTokens}, cache_create=${usage.cacheCreationTokens}, cache_read=${usage.cacheReadTokens}")
                     return tokenUsage
                 }
             }
@@ -89,8 +88,7 @@ object TokenUsageCalculator {
             val cacheReadTokens = usage["cache_read_input_tokens"]?.jsonPrimitive?.int ?: 0
             
             val tokenUsage = TokenUsage(inputTokens, outputTokens, cacheCreationTokens, cacheReadTokens)
-            println("[TokenUsageCalculator] Extracted usage from JSON: in=$inputTokens, out=$outputTokens, cache_create=$cacheCreationTokens, cache_read=$cacheReadTokens")
-            
+
             tokenUsage
         } catch (e: Exception) {
             println("[TokenUsageCalculator] Error parsing usage from JSON: ${e.message}")

@@ -22,10 +22,23 @@ import java.io.OutputStreamWriter
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
-import java.util.*
+import java.net.URI
 
-// No longer a Spring @Component - created per Session for proper isolation
-class ClaudeCodeStreamingWrapper(
+/**
+ * Alternative wrapper that uses Claude Code Python SDK instead of direct CLI.
+ * This wrapper launches claude_proxy_server.py process which uses the official
+ * claude-code-sdk-python to communicate with Claude.
+ * 
+ * Benefits over direct CLI:
+ * - Better message handling through official SDK
+ * - Cleaner async/await patterns
+ * - More robust error handling
+ * - SDK-managed session state
+ * 
+ * The proxy server translates between SDK messages and our stream-json format
+ * to maintain compatibility with the existing Gromozeka architecture.
+ */
+class ClaudeCodePythonSdkWrapper(
     private val settingsService: SettingsService,
 ) : ClaudeWrapper {
 
@@ -38,26 +51,25 @@ class ClaudeCodeStreamingWrapper(
     }
 
     private fun loadSystemPrompt(responseFormat: ResponseFormat): String {
-        // Load format-specific prompt
         val basePrompt = SystemPromptLoader.loadPrompt(responseFormat)
-        println("[ClaudeCodeStreamingWrapper] Loaded prompt for format: $responseFormat")
+        println("[ClaudeCodePythonSdkWrapper] Loaded prompt for format: $responseFormat")
 
         var prompt = if (settingsService.mode == AppMode.DEV) {
-            println("[ClaudeCodeStreamingWrapper] DEV mode detected - loading additional DEV prompt")
+            println("[ClaudeCodePythonSdkWrapper] DEV mode detected - loading additional DEV prompt")
             val devPrompt = this::class.java.getResourceAsStream("/dev-mode-prompt.md")
                 ?.bufferedReader()
                 ?.readText()
                 ?: ""
 
             if (devPrompt.isNotEmpty()) {
-                println("[ClaudeCodeStreamingWrapper] DEV prompt loaded successfully (${devPrompt.length} chars)")
+                println("[ClaudeCodePythonSdkWrapper] DEV prompt loaded successfully (${devPrompt.length} chars)")
                 "$basePrompt\n\n$devPrompt"
             } else {
-                println("[ClaudeCodeStreamingWrapper] WARNING: DEV prompt file empty or not found")
+                println("[ClaudeCodePythonSdkWrapper] WARNING: DEV prompt file empty or not found")
                 basePrompt
             }
         } else {
-            println("[ClaudeCodeStreamingWrapper] PROD mode - using base prompt only")
+            println("[ClaudeCodePythonSdkWrapper] PROD mode - using base prompt only")
             basePrompt
         }
 
@@ -82,7 +94,7 @@ class ClaudeCodeStreamingWrapper(
             """.trimIndent()
 
             prompt = "$prompt\n$envBlock"
-            println("[ClaudeCodeStreamingWrapper] Added current time to prompt: ${now.format(dateFormatter)} ${now.format(timeFormatter)} ${zoneId.id}")
+            println("[ClaudeCodePythonSdkWrapper] Added current time to prompt: ${now.format(dateFormatter)} ${now.format(timeFormatter)} ${zoneId.id}")
         }
 
         return prompt
@@ -95,7 +107,6 @@ class ClaudeCodeStreamingWrapper(
     private var readJob: Job? = null
     private var stderrJob: Job? = null
     private var streamLogger: StreamLogger? = null
-
 
     // Unified stream broadcasting with buffer for late subscribers
     private val _streamMessages = MutableSharedFlow<StreamJsonLinePacket>(
@@ -111,55 +122,45 @@ class ClaudeCodeStreamingWrapper(
         resumeSessionId: ClaudeSessionUuid?,
     ) = withContext(Dispatchers.IO) {
         try {
-            println("=== STARTING CLAUDE CODE STREAMING WRAPPER ===")
+            println("=== STARTING CLAUDE CODE PYTHON SDK WRAPPER ===")
 
-
-            val systemPrompt = loadSystemPrompt(responseFormat).replace("\"", "\\\"")
+            val systemPrompt = loadSystemPrompt(responseFormat)
             
-            // NOTE: In stream-json mode, Claude Code sends multiple init messages - this is NORMAL behavior.
-            // We confirmed this by testing claude-code-sdk-python: each user message triggers a new init.
-            // The session ID remains the same across all init messages.
-            // See docs/claude-code-streaming-behavior.md for detailed analysis.
+            // Find Python interpreter
+            val pythonCommand = findPythonCommand()
+            
+            // Find the proxy server script
+            val proxyScriptPath = findProxyServerScript()
+            
+            // Build command to launch the proxy server
             val command = mutableListOf(
-                "claude",
-                "--output-format",
-                "stream-json",
-                "--input-format",
-                "stream-json",
-                "--verbose",
-                "--permission-mode",
-                "acceptEdits",
-                "--append-system-prompt",
-                systemPrompt
+                pythonCommand,
+                proxyScriptPath
             )
 
-            // Add model parameter if specified
+            // Pass configuration via environment variables
+            val env = mutableMapOf<String, String>()
+            env["CLAUDE_SYSTEM_PROMPT"] = systemPrompt
+            env["CLAUDE_PERMISSION_MODE"] = "acceptEdits"
+            
             if (!model.isNullOrBlank()) {
-                command.add("--model")
-                command.add(model)
-                println("[ClaudeCodeStreamingWrapper] Using model: $model")
+                env["CLAUDE_MODEL"] = model
+                println("[ClaudeCodePythonSdkWrapper] Using model: $model")
             }
 
-            // Add resume parameter if specified
             if (resumeSessionId != null) {
-                command.add("--resume")
-                command.add(resumeSessionId.value)
-                println("[ClaudeCodeStreamingWrapper] Resuming session: $resumeSessionId")
+                env["CLAUDE_RESUME_SESSION"] = resumeSessionId.value
+                println("[ClaudeCodePythonSdkWrapper] Resuming session: $resumeSessionId")
             }
 
-            // Truncate system prompt for cleaner logs
-            val truncatedCommand = command.mapIndexed { index, arg ->
-                if (index > 0 && command.getOrNull(index - 1) == "--append-system-prompt" && arg.length > 100) {
-                    "<SYSTEM_PROMPT_TRUNCATED_${arg.length}_CHARS>"
-                } else {
-                    arg
-                }
-            }
-            println("[ClaudeCodeStreamingWrapper] EXECUTING COMMAND: ${truncatedCommand.joinToString(" ")}")
-            println("[ClaudeCodeStreamingWrapper] FULL COMMAND: $truncatedCommand")
-
+            println("[ClaudeCodePythonSdkWrapper] EXECUTING COMMAND: ${command.joinToString(" ")}")
+            
             val processBuilder = ProcessBuilder(command)
                 .redirectErrorStream(false)
+
+            // Set environment variables
+            val processEnv = processBuilder.environment()
+            processEnv.putAll(env)
 
             val actualProjectPath = projectPath ?: System.getProperty("user.dir")
             if (projectPath != null) {
@@ -172,7 +173,7 @@ class ClaudeCodeStreamingWrapper(
             process = processBuilder.start()
 
             val proc = process ?: throw IllegalStateException("Failed to start process")
-            println("[ClaudeCodeStreamingWrapper] Process started with PID: ${proc.pid()}")
+            println("[ClaudeCodePythonSdkWrapper] Process started with PID: ${proc.pid()}")
 
             stdinWriter = BufferedWriter(OutputStreamWriter(proc.outputStream))
             stdoutReader = BufferedReader(proc.inputStream.reader())
@@ -186,13 +187,78 @@ class ClaudeCodeStreamingWrapper(
         }
     }
 
+    private fun findPythonCommand(): String {
+        // First, check for virtual environment in project
+        val venvPaths = listOf(
+            // In Gromozeka dev directory
+            File("/Users/lewik/code/gromozeka/dev/python-sdk-venv/bin/python"),
+            File("/Users/lewik/code/gromozeka/release/python-sdk-venv/bin/python"),
+            // Relative to current directory
+            File(System.getProperty("user.dir"), "python-sdk-venv/bin/python"),
+            // Common venv names
+            File(System.getProperty("user.dir"), "venv/bin/python"),
+            File(System.getProperty("user.dir"), ".venv/bin/python")
+        )
+        
+        // Check virtual environments first
+        for (venvPath in venvPaths) {
+            if (venvPath.exists() && venvPath.canExecute()) {
+                println("[ClaudeCodePythonSdkWrapper] Found Python in venv: ${venvPath.absolutePath}")
+                return venvPath.absolutePath
+            }
+        }
+        
+        // Fall back to system Python
+        val pythonCommands = listOf("python3", "python", "python3.13", "python3.12", "python3.11")
+        
+        for (cmd in pythonCommands) {
+            try {
+                val process = ProcessBuilder(cmd, "--version").start()
+                val exitCode = process.waitFor()
+                if (exitCode == 0) {
+                    println("[ClaudeCodePythonSdkWrapper] Found system Python: $cmd")
+                    return cmd
+                }
+            } catch (e: Exception) {
+                // Try next command
+            }
+        }
+        
+        throw IllegalStateException("Python interpreter not found. Please install Python 3.8 or later.")
+    }
+    
+    private fun findProxyServerScript(): String {
+        // Look for claude_proxy_server.py in several locations
+        val possibleLocations = listOf(
+            // In the current directory
+            File(System.getProperty("user.dir"), "claude_proxy_server.py"),
+            // In the Gromozeka dev directory
+            File("/Users/lewik/code/gromozeka/dev/claude_proxy_server.py"),
+            // In the Gromozeka release directory
+            File("/Users/lewik/code/gromozeka/release/claude_proxy_server.py"),
+            // Relative to JAR location
+            File(this::class.java.protectionDomain.codeSource?.location?.toURI()?.resolve("../claude_proxy_server.py")?.path ?: "")
+        )
+        
+        for (location in possibleLocations) {
+            if (location.exists() && location.isFile) {
+                println("[ClaudeCodePythonSdkWrapper] Found proxy server script at: ${location.absolutePath}")
+                return location.absolutePath
+            }
+        }
+        
+        // If not found, use the most likely location with a warning
+        val defaultPath = "/Users/lewik/code/gromozeka/dev/claude_proxy_server.py"
+        println("[ClaudeCodePythonSdkWrapper] WARNING: Proxy server script not found, using default: $defaultPath")
+        return defaultPath
+    }
+
     override suspend fun sendMessage(message: String, sessionId: ClaudeSessionUuid) = withContext(Dispatchers.IO) {
         try {
             val proc = process
-            println("[ClaudeCodeStreamingWrapper] Process alive before sending: ${proc?.isAlive()}")
+            println("[ClaudeCodePythonSdkWrapper] Process alive before sending: ${proc?.isAlive}")
 
-            // According to Claude Code SDK docs: don't send session_id at all
-            // When null, kotlinx.serialization won't include the field in JSON
+            // Create user message in the same format as ClaudeCodeStreamingWrapper
             val streamJsonMessage = UserInputMessage(
                 type = "user",
                 message = UserInputMessage.Content(
@@ -203,13 +269,13 @@ class ClaudeCodeStreamingWrapper(
                         )
                     )
                 ),
-                session_id = sessionId.value,  // Never send session_id - let Claude manage it
+                session_id = sessionId.value,
                 parent_tool_use_id = null
             )
 
             val jsonLine = json.encodeToString(streamJsonMessage)
-            println("[ClaudeCodeStreamingWrapper] Writing to stdin: $jsonLine")
-            println("[ClaudeCodeStreamingWrapper] Session ID used: $sessionId")
+            println("[ClaudeCodePythonSdkWrapper] Writing to stdin: $jsonLine")
+            println("[ClaudeCodePythonSdkWrapper] Session ID used: $sessionId")
 
             val writer = stdinWriter ?: throw IllegalStateException("Process not started")
             writer.write("$jsonLine\n")
@@ -223,7 +289,7 @@ class ClaudeCodeStreamingWrapper(
         try {
             val proc = process
             if (proc == null || !proc.isAlive) {
-                throw IllegalStateException("Claude process is not running")
+                throw IllegalStateException("Claude proxy process is not running")
             }
 
             val writer = stdinWriter
@@ -231,7 +297,7 @@ class ClaudeCodeStreamingWrapper(
                 throw IllegalStateException("stdin writer not available")
             }
 
-            // Create control request structure as per Claude Code CLI protocol
+            // Create control request structure
             val controlRequestJson = buildJsonObject {
                 put("type", "control_request")
                 put("request_id", controlMessage.requestId)
@@ -241,12 +307,12 @@ class ClaudeCodeStreamingWrapper(
             }
 
             val jsonLine = controlRequestJson.toString()
-            println("[ClaudeWrapper] Sending control message: $jsonLine")
+            println("[ClaudeCodePythonSdkWrapper] Sending control message: $jsonLine")
 
             writer.write("$jsonLine\n")
             writer.flush()
         } catch (e: Exception) {
-            println("[ClaudeWrapper] Control message failed: ${e.message}")
+            println("[ClaudeCodePythonSdkWrapper] Control message failed: ${e.message}")
             throw e
         }
     }
@@ -263,16 +329,16 @@ class ClaudeCodeStreamingWrapper(
 
         return try {
             val parsed = Json.decodeFromString<StreamJsonLine>(jsonLine)
-            println("[ClaudeCodeStreamingWrapper] Successfully parsed StreamJsonLine: ${parsed.type}")
+            println("[ClaudeCodePythonSdkWrapper] Successfully parsed StreamJsonLine: ${parsed.type}")
 
             // Special logging for control messages
             when (parsed) {
                 is StreamJsonLine.ControlResponse -> {
-                    println("[ClaudeWrapper] Control response received: request_id=${parsed.response.requestId}, subtype=${parsed.response.subtype}, error=${parsed.response.error}")
+                    println("[ClaudeCodePythonSdkWrapper] Control response received: request_id=${parsed.response.requestId}, subtype=${parsed.response.subtype}, error=${parsed.response.error}")
                 }
 
                 is StreamJsonLine.ControlRequest -> {
-                    println("[ClaudeWrapper] Control request parsed: request_id=${parsed.requestId}, subtype=${parsed.request.subtype}")
+                    println("[ClaudeCodePythonSdkWrapper] Control request parsed: request_id=${parsed.requestId}, subtype=${parsed.request.subtype}")
                 }
 
                 else -> {}
@@ -280,7 +346,7 @@ class ClaudeCodeStreamingWrapper(
 
             StreamJsonLinePacket(parsed, originalJson)
         } catch (e: SerializationException) {
-            println("[ClaudeCodeStreamingWrapper] STREAM PARSE ERROR: Failed to deserialize StreamJsonLine")
+            println("[ClaudeCodePythonSdkWrapper] STREAM PARSE ERROR: Failed to deserialize StreamJsonLine")
             println("  Exception: ${e.javaClass.simpleName}: ${e.message}")
             println("  JSON line: $jsonLine")
             println("  Stack trace: ${e.stackTraceToString()}")
@@ -291,7 +357,7 @@ class ClaudeCodeStreamingWrapper(
                     sessionId = null
                 )
             } catch (e: Exception) {
-                println("[ClaudeCodeStreamingWrapper] SECONDARY ERROR: Failed to parse as JsonObject")
+                println("[ClaudeCodePythonSdkWrapper] SECONDARY ERROR: Failed to parse as JsonObject")
                 println("  Exception: ${e.javaClass.simpleName}: ${e.message}")
                 StreamJsonLine.System(
                     subtype = "raw_output",
@@ -302,7 +368,7 @@ class ClaudeCodeStreamingWrapper(
 
             StreamJsonLinePacket(fallbackMessage, originalJson)
         } catch (e: Exception) {
-            println("[ClaudeCodeStreamingWrapper] UNEXPECTED ERROR in parseStreamJsonLine: ${e.javaClass.simpleName}: ${e.message}")
+            println("[ClaudeCodePythonSdkWrapper] UNEXPECTED ERROR in parseStreamJsonLine: ${e.javaClass.simpleName}: ${e.message}")
             println("  JSON line: $jsonLine")
             println("  Stack trace: ${e.stackTraceToString()}")
             val fallbackMessage = StreamJsonLine.System(
@@ -325,13 +391,13 @@ class ClaudeCodeStreamingWrapper(
                 if (line.trim().isEmpty()) continue
 
                 try {
-                    println("=== CLAUDE CODE LIVE STREAM ===")
+                    println("=== CLAUDE PYTHON SDK STREAM ===")
                     println(line)
-                    println("=== END LIVE STREAM ===")
+                    println("=== END SDK STREAM ===")
 
                     // Parse and broadcast stream message
                     val streamMessagePacket = parseStreamJsonLine(line)
-                    println("[ClaudeWrapper] *** EMITTING STREAM MESSAGE: ${streamMessagePacket.streamMessage.type}")
+                    println("[ClaudeCodePythonSdkWrapper] *** EMITTING STREAM MESSAGE: ${streamMessagePacket.streamMessage.type}")
 
                     _streamMessages.emit(streamMessagePacket)
                 } catch (e: Exception) {
@@ -356,11 +422,11 @@ class ClaudeCodeStreamingWrapper(
                 val line = reader.readLine() ?: break
                 if (line.trim().isEmpty()) continue
 
-                println("[ClaudeCodeStreamingWrapper] STDERR: $line")
+                println("[ClaudeCodePythonSdkWrapper] STDERR: $line")
             }
 
         } catch (e: Exception) {
-            println("[ClaudeCodeStreamingWrapper] Error reading stderr: ${e.message}")
+            println("[ClaudeCodePythonSdkWrapper] Error reading stderr: ${e.message}")
             e.printStackTrace()
         }
     }
@@ -390,12 +456,12 @@ class ClaudeCodeStreamingWrapper(
         }
     }
 
-
+    // Reuse the same UserInputMessage data class from ClaudeCodeStreamingWrapper
     @Serializable
     data class UserInputMessage(
         val type: String,
         val message: Content,
-        val session_id: String? = null,  // Made nullable to test without session_id
+        val session_id: String? = null,
         val parent_tool_use_id: String? = null,
     ) {
         @Serializable
@@ -403,37 +469,27 @@ class ClaudeCodeStreamingWrapper(
             val role: String,
             val content: List<ContentBlock>,
         ) {
-            // Note: We can't have explicit 'type' field due to kotlinx.serialization limitation
-            // The 'type' field is added automatically as discriminator by @SerialName
-            // See: https://github.com/Kotlin/kotlinx.serialization/issues/1664
             @Serializable
             sealed class ContentBlock
 
             @Serializable
             @SerialName("text")
             data class TextBlock(
-                // val type: String = "text",  // Added automatically by @SerialName
                 val text: String
             ) : ContentBlock()
 
             @Serializable
             @SerialName("image")
             data class ImageBlock(
-                // val type: String = "image",  // Added automatically by @SerialName
                 val source: ImageSource
             ) : ContentBlock() {
                 @Serializable
                 data class ImageSource(
                     val type: String = "base64",
-                    val media_type: String,  // "image/jpeg", "image/png", "image/gif", "image/webp"
-                    val data: String  // base64 encoded image
+                    val media_type: String,
+                    val data: String
                 )
             }
-
-            // Tool results are handled by Claude Code CLI internally
-            // We only send user messages with text and images
         }
     }
-
 }
-

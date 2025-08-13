@@ -1,6 +1,6 @@
 package com.gromozeka.bot.model
 
-import com.gromozeka.bot.services.ClaudeCodeStreamingWrapper
+import com.gromozeka.bot.services.ClaudeWrapper
 import com.gromozeka.shared.domain.session.ClaudeSessionUuid
 import com.gromozeka.shared.domain.session.SessionUuid
 import com.gromozeka.shared.domain.session.toClaudeSessionUuid
@@ -35,13 +35,10 @@ class Session(
     private val sessionJsonlService: SessionJsonlService,
     private val soundNotificationService: SoundNotificationService,
     private val settingsService: com.gromozeka.bot.services.SettingsService,
+    private val claudeWrapper: ClaudeWrapper,
     private val claudeModel: String? = null,
     private val responseFormat: com.gromozeka.bot.settings.ResponseFormat = com.gromozeka.bot.settings.ResponseFormat.JSON,
 ) {
-
-    // ClaudeCodeStreamingWrapper encapsulated inside Session - one wrapper per session
-    // In the future, Session can support different AI engines (OpenAI, Anthropic, etc.)
-    private val claudeWrapper = ClaudeCodeStreamingWrapper(settingsService)
 
     // === StateFlow for external consumption ===
     private val _claudeSessionId = MutableStateFlow("default".toClaudeSessionUuid())
