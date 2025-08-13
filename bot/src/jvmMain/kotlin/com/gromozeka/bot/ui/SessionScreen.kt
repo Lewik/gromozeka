@@ -47,7 +47,7 @@ import kotlinx.serialization.json.JsonElement
 
 @Composable
 fun SessionScreen(
-    viewModel: com.gromozeka.bot.viewmodel.SessionViewModel,
+    viewModel: com.gromozeka.bot.viewmodel.TabViewModel,
 
     // Navigation callbacks
     onBackToSessionList: () -> Unit,
@@ -94,7 +94,7 @@ fun SessionScreen(
     // Message sending function using ViewModel
     val onSendMessage: (String) -> Unit = { message ->
         coroutineScope.launch {
-            viewModel.sendMessage(message)
+            viewModel.sendMessageToSession(message)
         }
     }
 

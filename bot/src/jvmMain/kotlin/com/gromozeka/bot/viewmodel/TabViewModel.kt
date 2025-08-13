@@ -11,16 +11,17 @@ import com.gromozeka.shared.domain.message.MessageTag
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.*
 
-class SessionViewModel(
+class TabViewModel(
     // Session is intentionally private to maintain clean MVVM architecture.
-    // UI layer should only interact with SessionViewModel, not with Session directly.
+    // Tab is the "head" for headless Session - UI layer should only interact
+    // with TabViewModel, not with Session directly. Session lives without any UI knowledge.
     // This ensures isolation of business logic from the presentation layer.
     private val session: Session,
     private val settingsFlow: StateFlow<Settings>,
     private val scope: CoroutineScope,
 ) {
 
-    // === UI State (из SessionScreen) ===
+    // === UI State ===
     var userInput by mutableStateOf("")
     var jsonToShow by mutableStateOf<String?>(null)
     
@@ -105,7 +106,7 @@ class SessionViewModel(
         }
     }
     
-    suspend fun sendMessage(message: String) {
+    suspend fun sendMessageToSession(message: String) {
         val activeTags = availableMessageTags.filter { it.title in activeMessageTags }
         
         val messageWithInstructions = if (activeTags.isNotEmpty()) {

@@ -1,7 +1,7 @@
 package com.gromozeka.bot.services
 
 import com.gromozeka.bot.model.Session
-import com.gromozeka.bot.viewmodel.SessionViewModel
+import com.gromozeka.bot.viewmodel.TabViewModel
 import com.gromozeka.shared.domain.session.SessionUuid
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.*
@@ -30,8 +30,8 @@ class SessionUiManager(
     private val uiMutex = Mutex()
 
     // === UI State Management ===
-    private val _sessionViewModels = MutableStateFlow<Map<SessionUuid, SessionViewModel>>(emptyMap())
-    val sessionViewModels: StateFlow<Map<SessionUuid, SessionViewModel>> = _sessionViewModels.asStateFlow()
+    private val _sessionViewModels = MutableStateFlow<Map<SessionUuid, TabViewModel>>(emptyMap())
+    val sessionViewModels: StateFlow<Map<SessionUuid, TabViewModel>> = _sessionViewModels.asStateFlow()
 
     private val _currentSessionId = MutableStateFlow<SessionUuid?>(null)
     val currentSessionId: StateFlow<SessionUuid?> = _currentSessionId.asStateFlow()
@@ -46,7 +46,7 @@ class SessionUiManager(
         currentId?.let { sessions[it] }
     }
     
-    val currentSessionViewModel: Flow<SessionViewModel?> = combine(
+    val currentSessionViewModel: Flow<TabViewModel?> = combine(
         sessionViewModels, 
         currentSessionId
     ) { viewModels, currentId ->
@@ -73,10 +73,10 @@ class SessionUiManager(
     /**
      * Create ViewModel for specific session
      * @param sessionId SessionUuid to create ViewModel for
-     * @return Created SessionViewModel 
+     * @return Created TabViewModel 
      * @throws IllegalArgumentException if session doesn't exist
      */
-    suspend fun createViewModel(sessionId: SessionUuid): SessionViewModel = uiMutex.withLock {
+    suspend fun createViewModel(sessionId: SessionUuid): TabViewModel = uiMutex.withLock {
         val activeSessions = sessionManager.activeSessions.value
         require(activeSessions.containsKey(sessionId)) {
             "Cannot create ViewModel for non-existent session: $sessionId"
@@ -88,7 +88,7 @@ class SessionUiManager(
         }
         
         val session = activeSessions[sessionId]!!
-        val viewModel = SessionViewModel(
+        val viewModel = TabViewModel(
             session = session,
             settingsFlow = settingsService.settingsFlow,
             scope = scope

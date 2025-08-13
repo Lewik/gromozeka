@@ -35,7 +35,7 @@ class PTTEventRouter(
     private var currentPTTJob: Job? = null
     
     // Target session ViewModel captured at PTT start
-    private var targetViewModel: com.gromozeka.bot.viewmodel.SessionViewModel? = null
+    private var targetViewModel: com.gromozeka.bot.viewmodel.TabViewModel? = null
 
     /**
      * Initialize PTT event router and start listening to interrupt commands
@@ -109,7 +109,7 @@ class PTTEventRouter(
                 val currentSettings = settingsService.settingsFlow.value
                 if (currentSettings.autoSend) {
                     // Send message directly to target session
-                    targetViewModel!!.sendMessage(text)
+                    targetViewModel!!.sendMessageToSession(text)
                 } else {
                     // Set text in user input field for editing
                     targetViewModel!!.userInput = text
