@@ -68,6 +68,12 @@ class AppViewModel(
     }
     
     /**
+     * Send interrupt to current session
+     * @return true if interrupt was sent, false if no current session
+     */
+    suspend fun sendInterruptToCurrentSession() = currentSession.value?.also { it.sendInterrupt() } != null
+    
+    /**
      * Closes a tab and stops its session
      * @param index Index of the tab to close
      */

@@ -30,7 +30,6 @@ class PTTEventRouter(
     // Interrupt command management
     private val _interruptCommand = MutableSharedFlow<Unit>()
     val interruptCommand: MutableSharedFlow<Unit> = _interruptCommand
-    private var interruptExecutor: (suspend () -> Boolean)? = null
 
     // Current PTT session
     private var currentPTTJob: Job? = null
@@ -44,17 +43,11 @@ class PTTEventRouter(
     fun initialize() {
         serviceScope.launch {
             _interruptCommand.collect {
-                interruptExecutor?.invoke()
+                appViewModel.sendInterruptToCurrentSession()
             }
         }
     }
 
-    /**
-     * Set the interrupt executor that will be called when interrupt is requested
-     */
-    fun setInterruptExecutor(executor: suspend () -> Boolean) {
-        interruptExecutor = executor
-    }
 
     suspend fun handlePTTEvent(event: PTTEvent) {
         _events.emit(event)

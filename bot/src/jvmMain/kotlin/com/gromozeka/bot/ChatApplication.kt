@@ -198,15 +198,6 @@ fun ApplicationScope.ChatWindow(
 
 
 
-    // Set interrupt executor for current session
-    LaunchedEffect(currentSession) {
-        pttEventRouter.setInterruptExecutor {
-            currentSession?.let { session ->
-                runBlocking { session.sendInterrupt() }
-                true
-            } ?: false
-        }
-    }
 
     // Get recording state from service
     val isRecording by pttService.recordingState.collectAsState()
