@@ -229,7 +229,10 @@ fun ApplicationScope.ChatWindow(
     // Set interrupt executor for current session
     LaunchedEffect(currentSession) {
         pttEventRouter.setInterruptExecutor {
-            currentSession?.sendInterrupt() ?: false
+            currentSession?.let { session ->
+                runBlocking { session.sendInterrupt() }
+                true
+            } ?: false
         }
     }
 

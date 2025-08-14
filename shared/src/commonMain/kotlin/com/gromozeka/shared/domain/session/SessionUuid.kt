@@ -21,6 +21,10 @@ value class ClaudeSessionUuid(val value: String) {
     }
 
     override fun toString(): String = value
+    
+    companion object {
+        val DEFAULT = ClaudeSessionUuid("default")
+    }
 }
 
 fun String.toSessionUuid(): SessionUuid = SessionUuid(this)

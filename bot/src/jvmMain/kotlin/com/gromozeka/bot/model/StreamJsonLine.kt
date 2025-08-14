@@ -26,6 +26,8 @@ sealed class StreamJsonLine {
         val mcpServers: List<String>? = null,
         val model: String? = null,
         val permissionMode: String? = null,
+        @SerialName("permission_denials")
+        val permissionDenials: List<String>? = null,
         @SerialName("slash_commands")
         val slashCommands: List<String>? = null,
         val apiKeySource: String? = null,
@@ -73,6 +75,8 @@ sealed class StreamJsonLine {
         val totalCostUsd: Double? = null,
         val usage: UsageInfo? = null,
         val result: String? = null,
+        @SerialName("permission_denials")
+        val permissionDenials: List<String>? = null,
         override val type: String = "result",
     ) : StreamJsonLine()
 
@@ -230,10 +234,20 @@ data class UsageInfo(
     val cacheCreationInputTokens: Int? = null,
     @SerialName("cache_read_input_tokens")
     val cacheReadInputTokens: Int? = null,
+    @SerialName("cache_creation")
+    val cacheCreation: CacheCreationInfo? = null,
     @SerialName("server_tool_use")
     val serverToolUse: JsonObject? = null, // Contains web_search_requests, etc.
     @SerialName("service_tier")
     val serviceTier: String? = null,
+)
+
+@Serializable
+data class CacheCreationInfo(
+    @SerialName("ephemeral_5m_input_tokens")
+    val ephemeral5mInputTokens: Int? = null,
+    @SerialName("ephemeral_1h_input_tokens")
+    val ephemeral1hInputTokens: Int? = null,
 )
 
 object ContentItemsUnionSerializer : KSerializer<ContentItemsUnion> {
