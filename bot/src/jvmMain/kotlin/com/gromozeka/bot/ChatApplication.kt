@@ -164,30 +164,6 @@ fun ApplicationScope.ChatWindow(
 
 
 
-    // Subscribe to current session's events
-    LaunchedEffect(currentSession) {
-        currentSession?.let { session ->
-            session.events.collectLatest { event ->
-                when (event) {
-                    is com.gromozeka.bot.model.StreamSessionEvent.MessagesUpdated -> {
-                        println("[ChatApp] Messages updated: ${event.messageCount} messages")
-                    }
-
-                    is com.gromozeka.bot.model.StreamSessionEvent.Error -> {
-                        println("[ChatApp] Session error: ${event.message}")
-                    }
-
-                    is com.gromozeka.bot.model.StreamSessionEvent.SessionIdChangedOnStart -> {
-                        println("[ChatApp] Session ID changed to: ${event.newSessionId}")
-                        // UI is automatically updated via sessionId StateFlow subscription above
-                        // No manual session replacement needed!
-                    }
-
-                    else -> println("[ChatApp] Session event: $event")
-                }
-            }
-        }
-    }
 
     // Cleanup when composable is disposed
     DisposableEffect(Unit) {
