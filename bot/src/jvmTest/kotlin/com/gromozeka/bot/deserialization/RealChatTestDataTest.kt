@@ -4,10 +4,10 @@ import com.gromozeka.bot.model.ClaudeLogEntry
 import com.gromozeka.bot.services.ClaudeLogEntryMapper
 import com.gromozeka.shared.domain.message.ChatMessage
 import kotlinx.serialization.json.Json
+import org.junit.jupiter.api.Disabled
 import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertTrue
-import org.junit.jupiter.api.Disabled
 
 class RealChatTestDataTest {
 
@@ -20,7 +20,7 @@ class RealChatTestDataTest {
     @Disabled
     @Test
     fun shouldParseRealChattestSessionWithoutErrors() {
-        
+
         val chatTestFile =
             File("/Users/slavik/.claude/projects/-Users-slavik-code-chattest/f278cf1c-fd5c-4a50-a266-8d4ca95231ee.jsonl")
 
@@ -61,7 +61,7 @@ class RealChatTestDataTest {
                                     println("Unknown JSON content: ${contentItem.json}")
                                 }
 
-                                else -> { 
+                                else -> {
                                 }
                             }
                         }

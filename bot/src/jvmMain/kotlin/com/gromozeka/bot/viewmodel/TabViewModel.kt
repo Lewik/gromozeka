@@ -26,11 +26,11 @@ class TabViewModel(
     val projectPath get() = session.projectPath
     val claudeSessionId get() = session.claudeSessionId
     // Note: isWaitingForResponse is already exposed below as StateFlow
-    
+
     // === UI State ===
     var userInput by mutableStateOf("")
     var jsonToShow by mutableStateOf<String?>(null)
-    
+
     // === Message Tags ===
     val availableMessageTags = listOf(
         MessageTag("Ultrathink", "Режим глубокого анализа с пошаговыми рассуждениями и детальной проработкой"),
@@ -39,7 +39,7 @@ class TabViewModel(
         MessageTag("Quick", "Быстрый режим - краткие ответы, минимум текста"),
         MessageTag("Explain", "Режим объяснений - детальный разбор с контекстом и примерами")
     )
-    
+
     var activeMessageTags by mutableStateOf(setOf<String>())
 
     // === Messages from messageOutputStream (no duplication) ===
@@ -111,16 +111,16 @@ class TabViewModel(
             activeMessageTags + title
         }
     }
-    
+
     suspend fun sendMessageToSession(message: String) {
         val activeTags = availableMessageTags.filter { it.title in activeMessageTags }
-        
+
         val messageWithInstructions = if (activeTags.isNotEmpty()) {
             "$message\n\n<instructions>\n${activeTags.joinToString("\n") { it.instruction }}\n</instructions>"
         } else {
             message
         }
-        
+
         session.sendMessage(messageWithInstructions, activeTags)
         userInput = "" // Clear input after sending
     }

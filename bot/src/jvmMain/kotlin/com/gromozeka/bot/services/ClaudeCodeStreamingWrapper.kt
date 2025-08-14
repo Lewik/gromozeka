@@ -10,8 +10,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.*
@@ -22,7 +22,6 @@ import java.io.OutputStreamWriter
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
-import java.util.*
 
 // No longer a Spring @Component - created per Session for proper isolation
 class ClaudeCodeStreamingWrapper(
@@ -82,7 +81,13 @@ class ClaudeCodeStreamingWrapper(
             """.trimIndent()
 
             prompt = "$prompt\n$envBlock"
-            println("[ClaudeCodeStreamingWrapper] Added current time to prompt: ${now.format(dateFormatter)} ${now.format(timeFormatter)} ${zoneId.id}")
+            println(
+                "[ClaudeCodeStreamingWrapper] Added current time to prompt: ${now.format(dateFormatter)} ${
+                    now.format(
+                        timeFormatter
+                    )
+                } ${zoneId.id}"
+            )
         }
 
         return prompt
@@ -115,7 +120,7 @@ class ClaudeCodeStreamingWrapper(
 
 
             val systemPrompt = loadSystemPrompt(responseFormat).replace("\"", "\\\"")
-            
+
             // NOTE: In stream-json mode, Claude Code sends multiple init messages - this is NORMAL behavior.
             // We confirmed this by testing claude-code-sdk-python: each user message triggers a new init.
             // The session ID remains the same across all init messages.
@@ -219,37 +224,38 @@ class ClaudeCodeStreamingWrapper(
         }
     }
 
-    override suspend fun sendControlMessage(controlMessage: StreamJsonLine.ControlRequest) = withContext(Dispatchers.IO) {
-        try {
-            val proc = process
-            if (proc == null || !proc.isAlive) {
-                throw IllegalStateException("Claude process is not running")
-            }
-
-            val writer = stdinWriter
-            if (writer == null) {
-                throw IllegalStateException("stdin writer not available")
-            }
-
-            // Create control request structure as per Claude Code CLI protocol
-            val controlRequestJson = buildJsonObject {
-                put("type", "control_request")
-                put("request_id", controlMessage.requestId)
-                putJsonObject("request") {
-                    put("subtype", controlMessage.request.subtype)
+    override suspend fun sendControlMessage(controlMessage: StreamJsonLine.ControlRequest) =
+        withContext(Dispatchers.IO) {
+            try {
+                val proc = process
+                if (proc == null || !proc.isAlive) {
+                    throw IllegalStateException("Claude process is not running")
                 }
+
+                val writer = stdinWriter
+                if (writer == null) {
+                    throw IllegalStateException("stdin writer not available")
+                }
+
+                // Create control request structure as per Claude Code CLI protocol
+                val controlRequestJson = buildJsonObject {
+                    put("type", "control_request")
+                    put("request_id", controlMessage.requestId)
+                    putJsonObject("request") {
+                        put("subtype", controlMessage.request.subtype)
+                    }
+                }
+
+                val jsonLine = controlRequestJson.toString()
+                println("[ClaudeWrapper] Sending control message: $jsonLine")
+
+                writer.write("$jsonLine\n")
+                writer.flush()
+            } catch (e: Exception) {
+                println("[ClaudeWrapper] Control message failed: ${e.message}")
+                throw e
             }
-
-            val jsonLine = controlRequestJson.toString()
-            println("[ClaudeWrapper] Sending control message: $jsonLine")
-
-            writer.write("$jsonLine\n")
-            writer.flush()
-        } catch (e: Exception) {
-            println("[ClaudeWrapper] Control message failed: ${e.message}")
-            throw e
         }
-    }
 
     override fun streamOutput(): Flow<StreamJsonLinePacket> = streamMessages
 
@@ -369,7 +375,7 @@ class ClaudeCodeStreamingWrapper(
         try {
             // Cancel all coroutines in scope (includes readJob and stderrJob)
             scope.cancel()
-            
+
             stdinWriter?.close()
             stdoutReader?.close()
             stderrReader?.close()
@@ -413,20 +419,20 @@ class ClaudeCodeStreamingWrapper(
             @SerialName("text")
             data class TextBlock(
                 // val type: String = "text",  // Added automatically by @SerialName
-                val text: String
+                val text: String,
             ) : ContentBlock()
 
             @Serializable
             @SerialName("image")
             data class ImageBlock(
                 // val type: String = "image",  // Added automatically by @SerialName
-                val source: ImageSource
+                val source: ImageSource,
             ) : ContentBlock() {
                 @Serializable
                 data class ImageSource(
                     val type: String = "base64",
                     val media_type: String,  // "image/jpeg", "image/png", "image/gif", "image/webp"
-                    val data: String  // base64 encoded image
+                    val data: String,  // base64 encoded image
                 )
             }
 

@@ -12,24 +12,24 @@ data class Settings(
     val ttsVoice: String = "alloy", // alloy, echo, fable, onyx, nova, shimmer
     val sttMainLanguage: String = "en",
     val sttModel: String = "whisper-1", // Currently only whisper-1 is supported
-    
+
     // Input Settings
     val autoSend: Boolean = true,
     val globalPttHotkeyEnabled: Boolean = false,
     val muteSystemAudioDuringPTT: Boolean = true,
-    
+
     // AI Settings
     val claudeModel: String = "sonnet",
     val includeCurrentTime: Boolean = true,
     val responseFormat: ResponseFormat = ResponseFormat.XML_INLINE,
-    
+
     // API Keys
     val openAiApiKey: String? = null,
-    
+
     // UI Settings  
     val showSystemMessages: Boolean = true,
     val alwaysOnTop: Boolean = false,
-    
+
     // Developer Settings
     val showOriginalJson: Boolean = false,
 )

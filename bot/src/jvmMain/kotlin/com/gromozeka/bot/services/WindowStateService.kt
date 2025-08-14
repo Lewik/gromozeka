@@ -8,18 +8,18 @@ import java.io.File
 
 @Service
 class WindowStateService(
-    private val settingsService: SettingsService
+    private val settingsService: SettingsService,
 ) {
-    
+
     private val json = Json {
         prettyPrint = true
         encodeDefaults = true
     }
-    
-    private val windowStateFile: File by lazy { 
+
+    private val windowStateFile: File by lazy {
         File(settingsService.gromozekaHome, "window-state.json")
     }
-    
+
     fun loadWindowState(): UiWindowState {
         return if (windowStateFile.exists()) {
             try {
@@ -33,7 +33,7 @@ class WindowStateService(
             UiWindowState() // Default state
         }
     }
-    
+
     fun saveWindowState(windowState: UiWindowState) {
         try {
             windowStateFile.writeText(json.encodeToString(windowState))

@@ -1,17 +1,15 @@
 package com.gromozeka.bot
 
 import androidx.compose.desktop.ui.tooling.preview.Preview
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.material3.*
-import androidx.compose.ui.draw.alpha
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
+import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
@@ -67,7 +65,7 @@ fun main() {
     // Initialize services
     globalHotkeyService.initializeService()
     pttEventRouter.initialize()
-    
+
     // Initialize AppUiStateService (loads state, restores tabs, starts subscription)
     runBlocking {
         appUiStateService.initialize(appViewModel)
@@ -128,8 +126,6 @@ fun ApplicationScope.ChatWindow(
     }
 
 
-
-
     // Cleanup when composable is disposed
     DisposableEffect(Unit) {
         onDispose {
@@ -160,8 +156,6 @@ fun ApplicationScope.ChatWindow(
             e.printStackTrace()
         }
     }
-
-
 
 
     // Get recording state from service
@@ -195,7 +189,7 @@ fun ApplicationScope.ChatWindow(
             savedWindowState.height.dp
         )
     )
-    
+
 
     Window(
         state = windowState,
@@ -205,10 +199,10 @@ fun ApplicationScope.ChatWindow(
 
             // Save UI state BEFORE cleanup
             appUiStateService.saveCurrentState()
-            
+
             // Disable auto-save during cleanup to prevent saving empty state
             appUiStateService.disableAutoSave()
-            
+
             coroutineScope.launch {
                 try {
                     appViewModel.cleanup()
@@ -252,10 +246,10 @@ fun ApplicationScope.ChatWindow(
             if (initialized) {
                 // Tab-based UI: SessionListScreen as first tab, active sessions as additional tabs
                 Column(modifier = Modifier.fillMaxSize()) {
-                    
+
                     // Determine selected tab index (0 = projects, 1+ = tabs)
                     val selectedTabIndex = currentTabIndex?.plus(1) ?: 0
-                    
+
                     // Tab Row
                     TabRow(
                         selectedTabIndex = selectedTabIndex,
@@ -275,12 +269,12 @@ fun ApplicationScope.ChatWindow(
                                 text = { Text("📁") }
                             )
                         }
-                        
+
                         // Session tabs with loading indicators
                         tabs.forEachIndexed { index, tab ->
                             val isLoading = tab.isWaitingForResponse.collectAsState().value
                             val tabIndex = index + 1
-                            
+
                             Tab(
                                 selected = selectedTabIndex == tabIndex,
                                 onClick = {
@@ -294,7 +288,7 @@ fun ApplicationScope.ChatWindow(
                                         contentAlignment = Alignment.Center
                                     ) {
                                         Text("Таб ${index + 1}")
-                                        
+
                                         if (isLoading) {
                                             CircularProgressIndicator(
                                                 modifier = Modifier
@@ -308,7 +302,7 @@ fun ApplicationScope.ChatWindow(
                             )
                         }
                     }
-                    
+
                     // Tab Content - All tabs exist in parallel, only selected is visible
                     Box(modifier = Modifier.weight(1f)) {
                         // SessionListScreen tab - always exists
@@ -334,13 +328,13 @@ fun ApplicationScope.ChatWindow(
                                 refreshTrigger = sessionListRefreshTrigger
                             )
                         }
-                        
+
                         // Only render SessionScreen for current tab
                         if (currentTab != null && currentSession != null) {
                             currentTab?.let { tabViewModel ->
                                 SessionScreen(
                                     viewModel = tabViewModel,
-                                    
+
                                     // Navigation callbacks - modified to not stop sessions
                                     onBackToSessionList = {
                                         // Switch to SessionListScreen tab without stopping session
@@ -351,7 +345,7 @@ fun ApplicationScope.ChatWindow(
                                     onNewSession = {
                                         createNewSession(currentSession!!.projectPath)
                                     },
-                                    
+
                                     // Close tab callback - removes tab and stops session
                                     onCloseTab = {
                                         coroutineScope.launch {
@@ -360,19 +354,19 @@ fun ApplicationScope.ChatWindow(
                                             }
                                         }
                                     },
-                                    
+
                                     // Services
                                     ttsQueueService = ttsQueueService,
                                     coroutineScope = coroutineScope,
                                     modifierWithPushToTalk = modifierWithPushToTalk,
                                     isRecording = isRecording,
-                                    
+
                                     // Settings
                                     settings = currentSettings,
                                     onSettingsChange = onSettingsChange,
                                     showSettingsPanel = showSettingsPanel,
                                     onShowSettingsPanelChange = { showSettingsPanel = it },
-                                    
+
                                     // Dev mode
                                     isDev = settingsService.mode == com.gromozeka.bot.settings.AppMode.DEV,
                                 )

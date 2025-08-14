@@ -32,7 +32,7 @@ class ModelsConfig {
         val apiKey = settingsService.settings.openAiApiKey ?: ""
         val openAiApi = OpenAiApi.builder().apiKey(apiKey).build()
         val model = OpenAiApi.ChatModel.GPT_4_O_MINI
-        
+
         return OpenAiChatModel.builder()
             .openAiApi(openAiApi)
             .defaultOptions(OpenAiChatOptions.builder().model(model).build())

@@ -172,8 +172,8 @@ class SettingsService {
      * Fail fast if invalid - OpenAI models won't understand invalid codes
      */
     private fun validateLanguageCode(languageCode: String) {
-        require(languageCode.isNotBlank()) { 
-            "STT language code cannot be blank" 
+        require(languageCode.isNotBlank()) {
+            "STT language code cannot be blank"
         }
 
         // Check if it's a valid ISO language code using Java's Locale
@@ -190,8 +190,8 @@ class SettingsService {
 
         require(isValidIso639_1 && isValidLength && isAlphabetic) {
             "Invalid STT language code: '$languageCode'. " +
-            "Must be a valid ISO 639-1 (2-letter) or ISO 639-3 (3-letter) code. " +
-            "Examples: 'en', 'ru', 'zh', 'es', 'fra', 'deu'"
+                    "Must be a valid ISO 639-1 (2-letter) or ISO 639-3 (3-letter) code. " +
+                    "Examples: 'en', 'ru', 'zh', 'es', 'fra', 'deu'"
         }
 
         println("[SettingsService] STT language code validated: '$languageCode'")
@@ -204,7 +204,7 @@ class SettingsService {
         require(speed in 0.25f..4.0f) {
             "Invalid TTS speed: $speed. Must be between 0.25 (slowest) and 4.0 (fastest). Default: 1.0"
         }
-        
+
         println("[SettingsService] TTS speed validated: $speed")
     }
 }

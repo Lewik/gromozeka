@@ -100,7 +100,7 @@ class GlobalHotkeyService(
             println("[HOTKEY] Warning: Could not remap § key: ${e.message}")
         }
     }
-    
+
     private fun clearKeyRemapping() {
         try {
             // Clear all key remappings
@@ -111,12 +111,12 @@ class GlobalHotkeyService(
             println("[HOTKEY] Warning: Could not clear key remapping: ${e.message}")
         }
     }
-    
+
     private fun initialize(): Boolean {
         try {
             // § key is remapped to F13 via hidutil to prevent typing
             setupKeyRemapping()
-            
+
             Logger.getLogger(GlobalScreen::class.java.`package`.name).apply {
                 level = Level.WARNING
                 useParentHandlers = false

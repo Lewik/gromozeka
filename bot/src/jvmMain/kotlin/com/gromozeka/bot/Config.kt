@@ -1,13 +1,6 @@
 package com.gromozeka.bot
 
-import com.gromozeka.bot.services.AudioMuteManager
-import com.gromozeka.bot.services.PTTEventRouter
-import com.gromozeka.bot.services.PTTService
-import com.gromozeka.bot.services.SettingsService
-import com.gromozeka.bot.services.SttService
-import com.gromozeka.bot.services.SessionManager
-import com.gromozeka.bot.services.TTSQueueService
-import com.gromozeka.bot.services.TtsService
+import com.gromozeka.bot.services.*
 import com.gromozeka.bot.viewmodel.AppViewModel
 import com.gromozeka.shared.audio.AudioRecorder
 import io.ktor.client.*
@@ -46,13 +39,13 @@ class Config {
     @Bean
     fun sttService(
         openAiAudioTranscriptionModel: OpenAiAudioTranscriptionModel,
-        settingsService: SettingsService
+        settingsService: SettingsService,
     ) = SttService(openAiAudioTranscriptionModel, settingsService)
 
     @Bean
     fun ttsService(
         openAiAudioSpeechModel: OpenAiAudioSpeechModel,
-        settingsService: SettingsService
+        settingsService: SettingsService,
     ) = TtsService(openAiAudioSpeechModel, settingsService)
 
     @Bean
@@ -70,22 +63,22 @@ class Config {
         audioRecorder: AudioRecorder,
         sttService: SttService,
         settingsService: SettingsService,
-        audioMuteManager: AudioMuteManager
+        audioMuteManager: AudioMuteManager,
     ) = PTTService(audioRecorder, sttService, settingsService, audioMuteManager)
 
     @Bean
     fun appViewModel(
         sessionManager: SessionManager,
         settingsService: SettingsService,
-        @Qualifier("coroutineScope") scope: CoroutineScope
+        @Qualifier("coroutineScope") scope: CoroutineScope,
     ) = AppViewModel(sessionManager, settingsService, scope)
-    
+
     @Bean
     fun pttEventRouter(
         pttService: PTTService,
         ttsQueueService: TTSQueueService,
         appViewModel: AppViewModel,
-        settingsService: SettingsService
+        settingsService: SettingsService,
     ) = PTTEventRouter(pttService, ttsQueueService, appViewModel, settingsService)
 
     @Bean

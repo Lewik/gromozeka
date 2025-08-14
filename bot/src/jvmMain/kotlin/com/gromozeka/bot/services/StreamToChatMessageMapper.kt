@@ -4,11 +4,11 @@ import com.gromozeka.bot.model.*
 import com.gromozeka.bot.parsers.ResponseParserFactory
 import com.gromozeka.bot.settings.ResponseFormat
 import com.gromozeka.shared.domain.message.ChatMessage
+import com.gromozeka.shared.domain.message.ClaudeCodeToolCallData
+import com.gromozeka.shared.domain.message.ToolCallData
 import com.gromozeka.shared.domain.session.ClaudeSessionUuid
 import com.gromozeka.shared.domain.session.toClaudeSessionUuid
-import com.gromozeka.shared.domain.message.ClaudeCodeToolCallData
-import com.gromozeka.shared.domain.message.ClaudeCodeToolResultData
-import com.gromozeka.shared.domain.message.ToolCallData
+import jakarta.annotation.PostConstruct
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
@@ -19,7 +19,6 @@ import kotlinx.serialization.json.decodeFromJsonElement
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.stereotype.Service
 import java.util.*
-import jakarta.annotation.PostConstruct
 
 /**
  * Maps StreamJsonLine to ChatMessage for UI consumption
@@ -27,12 +26,12 @@ import jakarta.annotation.PostConstruct
 @Service
 class StreamToChatMessageMapper(
     private val settingsService: SettingsService,
-    @Qualifier("coroutineScope") private val scope: CoroutineScope
+    @Qualifier("coroutineScope") private val scope: CoroutineScope,
 ) {
-    
+
     // Current response format - updated from settings
     private var currentResponseFormat: ResponseFormat = ResponseFormat.JSON
-    
+
     @PostConstruct
     fun init() {
         // Subscribe to settings changes
@@ -211,11 +210,13 @@ class StreamToChatMessageMapper(
                         mediaType = source.mediaType
                     )
                 }
+
                 is ImageSource.UrlImageSource -> {
                     ChatMessage.ImageSource.UrlImageSource(
                         url = source.url
                     )
                 }
+
                 is ImageSource.FileImageSource -> {
                     ChatMessage.ImageSource.FileImageSource(
                         fileId = source.fileId
@@ -250,11 +251,13 @@ class StreamToChatMessageMapper(
                         mediaType = source.mediaType
                     )
                 }
+
                 is ImageSource.UrlImageSource -> {
                     ChatMessage.ImageSource.UrlImageSource(
                         url = source.url
                     )
                 }
+
                 is ImageSource.FileImageSource -> {
                     ChatMessage.ImageSource.FileImageSource(
                         fileId = source.fileId
@@ -267,54 +270,59 @@ class StreamToChatMessageMapper(
         is ContentBlock.ToolResultBlock -> error("ASSISTANT messages cannot contain ToolResultBlock - only USER can provide tool results")
     }
 
-    private fun mapToolResult(content: ContentResultUnion?): List<ChatMessage.ContentItem.ToolResult.Data> = when (content) {
-        null -> listOf(ChatMessage.ContentItem.ToolResult.Data.Text("No result")) // Special case for null content
-        
-        is ContentResultUnion.StringResult -> {
-            listOf(ChatMessage.ContentItem.ToolResult.Data.Text(content.content))
-        }
+    private fun mapToolResult(content: ContentResultUnion?): List<ChatMessage.ContentItem.ToolResult.Data> =
+        when (content) {
+            null -> listOf(ChatMessage.ContentItem.ToolResult.Data.Text("No result")) // Special case for null content
 
-        is ContentResultUnion.ArrayResult -> {
-            val dataItems = mutableListOf<ChatMessage.ContentItem.ToolResult.Data>()
-            content.items.forEach { item ->
-                when (item) {
-                    is ContentBlock.TextBlock -> {
-                        dataItems.add(ChatMessage.ContentItem.ToolResult.Data.Text(item.text))
-                    }
-                    is ContentBlock.ImageBlock -> {
-                        when (val source = item.source) {
-                            is ImageSource.Base64ImageSource -> {
-                                dataItems.add(
-                                    ChatMessage.ContentItem.ToolResult.Data.Base64Data(
-                                        data = source.data,
-                                        mediaType = ChatMessage.MediaType.parse(source.mediaType)
+            is ContentResultUnion.StringResult -> {
+                listOf(ChatMessage.ContentItem.ToolResult.Data.Text(content.content))
+            }
+
+            is ContentResultUnion.ArrayResult -> {
+                val dataItems = mutableListOf<ChatMessage.ContentItem.ToolResult.Data>()
+                content.items.forEach { item ->
+                    when (item) {
+                        is ContentBlock.TextBlock -> {
+                            dataItems.add(ChatMessage.ContentItem.ToolResult.Data.Text(item.text))
+                        }
+
+                        is ContentBlock.ImageBlock -> {
+                            when (val source = item.source) {
+                                is ImageSource.Base64ImageSource -> {
+                                    dataItems.add(
+                                        ChatMessage.ContentItem.ToolResult.Data.Base64Data(
+                                            data = source.data,
+                                            mediaType = ChatMessage.MediaType.parse(source.mediaType)
+                                        )
                                     )
-                                )
-                            }
-                            is ImageSource.UrlImageSource -> {
-                                dataItems.add(
-                                    ChatMessage.ContentItem.ToolResult.Data.UrlData(
-                                        url = source.url
+                                }
+
+                                is ImageSource.UrlImageSource -> {
+                                    dataItems.add(
+                                        ChatMessage.ContentItem.ToolResult.Data.UrlData(
+                                            url = source.url
+                                        )
                                     )
-                                )
-                            }
-                            is ImageSource.FileImageSource -> {
-                                dataItems.add(
-                                    ChatMessage.ContentItem.ToolResult.Data.FileData(
-                                        fileId = source.fileId
+                                }
+
+                                is ImageSource.FileImageSource -> {
+                                    dataItems.add(
+                                        ChatMessage.ContentItem.ToolResult.Data.FileData(
+                                            fileId = source.fileId
+                                        )
                                     )
-                                )
+                                }
                             }
                         }
-                    }
-                    else -> {
-                        dataItems.add(ChatMessage.ContentItem.ToolResult.Data.Text("[Unknown content type: ${item.type}]"))
+
+                        else -> {
+                            dataItems.add(ChatMessage.ContentItem.ToolResult.Data.Text("[Unknown content type: ${item.type}]"))
+                        }
                     }
                 }
+                dataItems
             }
-            dataItems
         }
-    }
 
     private fun mapToolCall(name: String, input: JsonElement): ToolCallData {
         return try {
@@ -346,7 +354,7 @@ class StreamToChatMessageMapper(
     private fun parseText(text: String): ChatMessage.ContentItem {
         return try {
             val jsonElement = Json.parseToJsonElement(text)
-            
+
             try {
                 val structured = Json.decodeFromJsonElement<ChatMessage.StructuredText>(jsonElement)
                 ChatMessage.ContentItem.AssistantMessage(structured = structured)
@@ -371,7 +379,7 @@ class StreamToChatMessageMapper(
             // Parser failed - log and fallback to raw text
             println("[StreamToChatMessageMapper] Parser failed for format $currentResponseFormat: ${e.message}")
             println("  Text: ${text.take(100)}${if (text.length > 100) "..." else ""}")
-            
+
             // Return as raw text fallback
             ChatMessage.ContentItem.AssistantMessage(
                 structured = ChatMessage.StructuredText(
@@ -416,14 +424,16 @@ class StreamToChatMessageMapper(
         return try {
             // Parse JSON once
             val jsonElement = Json.parseToJsonElement(resultText)
-            
+
             try {
                 val structured = Json.decodeFromJsonElement<ChatMessage.StructuredText>(jsonElement)
-                listOf(ChatMessage.ContentItem.System(
-                    level = ChatMessage.ContentItem.System.SystemLevel.INFO,
-                    content = structured.fullText,
-                    toolUseId = null
-                ))
+                listOf(
+                    ChatMessage.ContentItem.System(
+                        level = ChatMessage.ContentItem.System.SystemLevel.INFO,
+                        content = structured.fullText,
+                        toolUseId = null
+                    )
+                )
             } catch (_: SerializationException) {
                 // Not a Gromozeka format, return as generic JSON
                 listOf(ChatMessage.ContentItem.UnknownJson(jsonElement))

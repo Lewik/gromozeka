@@ -2,9 +2,9 @@ package com.gromozeka.bot
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
+import org.junit.jupiter.api.Disabled
 import java.io.File
 import kotlin.test.Test
-import org.junit.jupiter.api.Disabled
 
 class TypeValuesAnalysisTest {
 
@@ -12,7 +12,7 @@ class TypeValuesAnalysisTest {
     @Disabled
     @Test
     fun analyzeTypeValuesInTodaySessions() {
-        
+
         val analyzer = TypeValuesAnalyzer()
         val typeValues = analyzer.analyzeTodaySessionTypes()
 
@@ -41,7 +41,7 @@ class TypeValuesAnalysisTest {
     @Disabled
     @Test
     fun analyzeTypeValuesInAllSessions() {
-        
+
         val analyzer = TypeValuesAnalyzer()
         val typeValues = analyzer.analyzeAllSessionTypes()
 

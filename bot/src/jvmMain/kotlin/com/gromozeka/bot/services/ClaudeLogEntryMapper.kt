@@ -1,7 +1,9 @@
 package com.gromozeka.bot.services
 
 import com.gromozeka.bot.model.ClaudeLogEntry
-import com.gromozeka.shared.domain.message.*
+import com.gromozeka.shared.domain.message.ChatMessage
+import com.gromozeka.shared.domain.message.ClaudeCodeToolCallData
+import com.gromozeka.shared.domain.message.ToolCallData
 import kotlinx.datetime.Instant
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.*
@@ -85,6 +87,7 @@ object ClaudeLogEntryMapper {
                 )
                 info
             }
+
             else -> {
                 null
             }
@@ -200,11 +203,13 @@ object ClaudeLogEntryMapper {
                             mediaType = source.mediaType
                         )
                     }
+
                     is ClaudeLogEntry.ImageSource.UrlImageSource -> {
                         ChatMessage.ImageSource.UrlImageSource(
                             url = source.url
                         )
                     }
+
                     is ClaudeLogEntry.ImageSource.FileImageSource -> {
                         ChatMessage.ImageSource.FileImageSource(
                             fileId = source.fileId
@@ -225,7 +230,7 @@ object ClaudeLogEntryMapper {
                         val textContent = typedContent.content.joinToString("\n") { it.text }
                         listOf(ChatMessage.ContentItem.ToolResult.Data.Text(textContent))
                     }
-                    
+
                     is ClaudeLogEntry.ToolResultContent.MixedContentToolResult -> {
                         val dataItems = mutableListOf<ChatMessage.ContentItem.ToolResult.Data>()
                         typedContent.content.forEach { contentItem ->
@@ -233,6 +238,7 @@ object ClaudeLogEntryMapper {
                                 is ClaudeLogEntry.UserContentItem.TextItem -> {
                                     dataItems.add(ChatMessage.ContentItem.ToolResult.Data.Text(contentItem.text))
                                 }
+
                                 is ClaudeLogEntry.UserContentItem.ImageItem -> {
                                     when (val source = contentItem.source) {
                                         is ClaudeLogEntry.ImageSource.Base64ImageSource -> {
@@ -243,6 +249,7 @@ object ClaudeLogEntryMapper {
                                                 )
                                             )
                                         }
+
                                         is ClaudeLogEntry.ImageSource.UrlImageSource -> {
                                             dataItems.add(
                                                 ChatMessage.ContentItem.ToolResult.Data.UrlData(
@@ -250,6 +257,7 @@ object ClaudeLogEntryMapper {
                                                 )
                                             )
                                         }
+
                                         is ClaudeLogEntry.ImageSource.FileImageSource -> {
                                             dataItems.add(
                                                 ChatMessage.ContentItem.ToolResult.Data.FileData(
@@ -259,6 +267,7 @@ object ClaudeLogEntryMapper {
                                         }
                                     }
                                 }
+
                                 else -> {
                                     dataItems.add(ChatMessage.ContentItem.ToolResult.Data.Text("[Unknown content type: ${contentItem.type}]"))
                                 }

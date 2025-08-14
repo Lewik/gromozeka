@@ -2,11 +2,11 @@ package com.gromozeka.bot
 
 import com.gromozeka.bot.model.ClaudeLogEntry
 import kotlinx.serialization.json.Json
+import org.junit.jupiter.api.Disabled
 import java.io.File
 import java.time.LocalDate
 import java.time.ZoneId
 import kotlin.test.Test
-import org.junit.jupiter.api.Disabled
 
 class MessageTypingStatsTest {
 
@@ -37,7 +37,7 @@ class MessageTypingStatsTest {
     @Disabled
     @Test
     fun checkTypedMessageFieldsCoverage() {
-        
+
         val files = findTodaySessionFiles()
         var totalLogEntries = 0
         var entriesWithMessage = 0

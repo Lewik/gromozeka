@@ -3,14 +3,14 @@ package com.gromozeka.bot.services
 import com.gromozeka.bot.model.ChatSessionMetadata
 import com.gromozeka.bot.model.ClaudeLogEntry
 import com.gromozeka.bot.model.StreamSessionMetadata
-import com.gromozeka.shared.domain.session.ClaudeSessionUuid
-import com.gromozeka.shared.domain.session.toSessionUuid
-import com.gromozeka.shared.domain.session.toClaudeSessionUuid
 import com.gromozeka.bot.utils.SessionDeduplicator
 import com.gromozeka.bot.utils.decodeProjectPath
 import com.gromozeka.bot.utils.encodeProjectPath
 import com.gromozeka.bot.utils.isSessionFile
 import com.gromozeka.shared.domain.message.ChatMessage
+import com.gromozeka.shared.domain.session.ClaudeSessionUuid
+import com.gromozeka.shared.domain.session.toClaudeSessionUuid
+import com.gromozeka.shared.domain.session.toSessionUuid
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll

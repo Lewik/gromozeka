@@ -12,7 +12,7 @@ class SessionUIState {
     var selectedSessionMetadata by mutableStateOf<ChatSessionMetadata?>(null)
     var showSettingsPanel by mutableStateOf(false)
     var chatHistory by mutableStateOf<List<ChatMessage>>(emptyList())
-    
+
     val canSendMessage: Boolean
         get() = userInput.isNotBlank() && initialized
 

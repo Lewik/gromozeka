@@ -2,9 +2,9 @@ package com.gromozeka.bot
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
+import org.junit.jupiter.api.Disabled
 import java.io.File
 import kotlin.test.Test
-import org.junit.jupiter.api.Disabled
 
 class MessageFieldsStructureAnalysisTest {
 
@@ -12,7 +12,7 @@ class MessageFieldsStructureAnalysisTest {
     @Disabled
     @Test
     fun analyzeMessageFieldStructure() {
-        
+
         val analyzer = MessageFieldsStructureAnalyzer()
         val messageStructures = analyzer.analyzeMessageFieldByType()
 
@@ -46,7 +46,7 @@ class MessageFieldsStructureAnalysisTest {
     @Disabled
     @Test
     fun analyzeToolUseResultFieldStructure() {
-        
+
         val analyzer = MessageFieldsStructureAnalyzer()
         val toolUseResultStructures = analyzer.analyzeToolUseResultFieldByType()
 
@@ -80,7 +80,7 @@ class MessageFieldsStructureAnalysisTest {
     @Disabled
     @Test
     fun analyzeBothMessageAndToolUseResultFields() {
-        
+
         val analyzer = MessageFieldsStructureAnalyzer()
         val messageStructures = analyzer.analyzeMessageFieldByType()
         val toolUseResultStructures = analyzer.analyzeToolUseResultFieldByType()

@@ -3,11 +3,11 @@ package com.gromozeka.bot
 import com.gromozeka.bot.model.StreamJsonLine
 import com.gromozeka.bot.services.StreamToChatMessageMapper
 import kotlinx.serialization.json.Json
+import org.junit.jupiter.api.Disabled
 import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
-import org.junit.jupiter.api.Disabled
 
 /**
  * Simple tests using real stream logs from ~/.gromozeka/streamlogs/
@@ -24,7 +24,7 @@ class RealStreamLogsTest {
     @Disabled
     @Test
     fun testStreamLogsDeserialization() {
-        
+
         val streamLogsDir =
             File(System.getProperty("user.home"), ".gromozeka/streamlogs/Users-lewik-code-gromozeka-dev")
 
@@ -78,7 +78,7 @@ class RealStreamLogsTest {
     @Disabled
     @Test
     fun testStreamLogsToChatMessageMapping() {
-        
+
         val streamLogsDir =
             File(System.getProperty("user.home"), ".gromozeka/streamlogs/Users-lewik-code-gromozeka-dev")
 

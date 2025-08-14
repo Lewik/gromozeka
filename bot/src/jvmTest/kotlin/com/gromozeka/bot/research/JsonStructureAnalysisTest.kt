@@ -2,9 +2,9 @@ package com.gromozeka.bot
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
+import org.junit.jupiter.api.Disabled
 import java.io.File
 import kotlin.test.Test
-import org.junit.jupiter.api.Disabled
 
 class JsonStructureAnalysisTest {
 
@@ -12,7 +12,7 @@ class JsonStructureAnalysisTest {
     @Disabled
     @Test
     fun discoverAllClaudeJsonStructures() {
-        
+
         val analyzer = JsonStructureAnalyzer()
         val analysisResults = analyzer.analyzeByTypeAndGroup()
 
@@ -49,7 +49,7 @@ class JsonStructureAnalysisTest {
     @Disabled
     @Test
     fun discoverJsonStructuresWithoutMessage() {
-        
+
         val analyzer = JsonStructureAnalyzer()
         val analysisResults = analyzer.analyzeByTypeAndGroupWithoutMessage()
 

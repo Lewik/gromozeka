@@ -3,7 +3,6 @@ package com.gromozeka.bot.services
 import com.gromozeka.bot.viewmodel.AppViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.serialization.Serializable
@@ -20,28 +19,28 @@ import java.io.File
 @Service
 class AppUiStateService(
     private val settingsService: SettingsService,
-    @Qualifier("coroutineScope") private val scope: CoroutineScope
+    @Qualifier("coroutineScope") private val scope: CoroutineScope,
 ) {
-    
+
     private val json = Json {
         prettyPrint = true
         encodeDefaults = true
     }
-    
-    private val stateFile: File by lazy { 
+
+    private val stateFile: File by lazy {
         File(settingsService.gromozekaHome, "ui-state.json")
     }
-    
+
     private lateinit var appViewModel: AppViewModel
     private var autoSaveEnabled = true
     private var claudeSessionIdJobs = mutableMapOf<String, Job>()  // Track subscriptions per tab
-    
+
     /**
      * Initializes the service with AppViewModel and sets up auto-save
      */
     suspend fun initialize(appViewModel: AppViewModel) {
         this.appViewModel = appViewModel
-        
+
         // Load saved state
         val savedState = loadState()
         if (savedState.tabs.isNotEmpty()) {
@@ -56,11 +55,11 @@ class AppUiStateService(
                 savedState.currentTabIndex
             )
         }
-        
+
         // Subscribe to tab changes for auto-save
         appViewModel.tabs.onEach { tabs ->
             saveCurrentState()
-            
+
             // Clean up old subscriptions for removed tabs
             val currentTabIds = tabs.map { it.sessionId.value }.toSet()
             claudeSessionIdJobs.keys.toList().forEach { tabId ->
@@ -69,7 +68,7 @@ class AppUiStateService(
                     claudeSessionIdJobs.remove(tabId)
                 }
             }
-            
+
             // Subscribe to claudeSessionId changes in each tab (only if not already subscribed)
             tabs.forEach { tab ->
                 val tabId = tab.sessionId.value
@@ -81,40 +80,40 @@ class AppUiStateService(
                 }
             }
         }.launchIn(scope)
-        
+
         appViewModel.currentTabIndex.onEach { _ ->
             saveCurrentState()
         }.launchIn(scope)
     }
-    
+
     /**
      * Disables auto-save (used during shutdown)
      */
     fun disableAutoSave() {
         autoSaveEnabled = false
     }
-    
+
     /**
      * Saves current UI state to file
      */
     fun saveCurrentState() {
         if (!::appViewModel.isInitialized || !autoSaveEnabled) return
-        
+
         val tabs = appViewModel.getTabsForPersistence().map { info ->
             UiState.Tab(
                 projectPath = info.projectPath,
                 claudeSessionId = info.claudeSessionId
             )
         }
-        
+
         val state = UiState(
             tabs = tabs,
             currentTabIndex = appViewModel.currentTabIndex.value
         )
-        
+
         saveState(state)
     }
-    
+
     private fun loadState(): UiState {
         return try {
             if (stateFile.exists()) {
@@ -128,7 +127,7 @@ class AppUiStateService(
             UiState()
         }
     }
-    
+
     private fun saveState(state: UiState) {
         try {
             val jsonContent = json.encodeToString(state)
@@ -138,19 +137,19 @@ class AppUiStateService(
             println("[AppUiStateService] Failed to save UI state: ${e.message}")
         }
     }
-    
+
     /**
      * UI State model for persistence
      */
     @Serializable
     data class UiState(
         val tabs: List<Tab> = emptyList(),
-        val currentTabIndex: Int? = null
+        val currentTabIndex: Int? = null,
     ) {
         @Serializable
         data class Tab(
             val projectPath: String,
-            val claudeSessionId: String
+            val claudeSessionId: String,
         )
     }
 }

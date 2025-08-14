@@ -10,8 +10,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.*
@@ -27,14 +27,14 @@ import java.time.format.DateTimeFormatter
  * Wrapper that uses Claude Code Node.js SDK instead of direct CLI.
  * This wrapper launches claude_proxy_server.js process which uses the official
  * @anthropic-ai/claude-code SDK to communicate with Claude.
- * 
+ *
  * Benefits over direct CLI:
  * - Native SDK (Claude Code itself is Node.js)
  * - Better async/await patterns with native Promises
  * - More robust error handling
  * - Built-in abort controller support
  * - Direct access to SDK features like interrupt()
- * 
+ *
  * The proxy server translates between SDK messages and our stream-json format
  * to maintain compatibility with the existing Gromozeka architecture.
  */
@@ -94,7 +94,13 @@ class ClaudeCodeNodeSdkWrapper(
             """.trimIndent()
 
             prompt = "$prompt\n$envBlock"
-            println("[ClaudeCodeNodeSdkWrapper] Added current time to prompt: ${now.format(dateFormatter)} ${now.format(timeFormatter)} ${zoneId.id}")
+            println(
+                "[ClaudeCodeNodeSdkWrapper] Added current time to prompt: ${now.format(dateFormatter)} ${
+                    now.format(
+                        timeFormatter
+                    )
+                } ${zoneId.id}"
+            )
         }
 
         return prompt
@@ -125,13 +131,13 @@ class ClaudeCodeNodeSdkWrapper(
             println("=== STARTING CLAUDE CODE NODE SDK WRAPPER ===")
 
             val systemPrompt = loadSystemPrompt(responseFormat)
-            
+
             // Find Node.js interpreter
             val nodeCommand = findNodeCommand()
-            
+
             // Find the proxy server script
             val proxyScriptPath = findProxyServerScript()
-            
+
             // Build command to launch the proxy server
             val command = mutableListOf(
                 nodeCommand,
@@ -142,7 +148,7 @@ class ClaudeCodeNodeSdkWrapper(
             val env = mutableMapOf<String, String>()
             env["CLAUDE_SYSTEM_PROMPT"] = systemPrompt
             env["CLAUDE_PERMISSION_MODE"] = "acceptEdits"
-            
+
             if (!model.isNullOrBlank()) {
                 env["CLAUDE_MODEL"] = model
                 println("[ClaudeCodeNodeSdkWrapper] Using model: $model")
@@ -154,7 +160,7 @@ class ClaudeCodeNodeSdkWrapper(
             }
 
             println("[ClaudeCodeNodeSdkWrapper] EXECUTING COMMAND: ${command.joinToString(" ")}")
-            
+
             val processBuilder = ProcessBuilder(command)
                 .redirectErrorStream(false)
 
@@ -190,7 +196,7 @@ class ClaudeCodeNodeSdkWrapper(
     private fun findNodeCommand(): String {
         // Check for Node.js in common locations
         val nodeCommands = listOf("node", "nodejs", "/usr/local/bin/node", "/opt/homebrew/bin/node")
-        
+
         for (cmd in nodeCommands) {
             try {
                 val process = ProcessBuilder(cmd, "--version").start()
@@ -198,23 +204,23 @@ class ClaudeCodeNodeSdkWrapper(
                 if (exitCode == 0) {
                     val version = process.inputStream.bufferedReader().readText().trim()
                     println("[ClaudeCodeNodeSdkWrapper] Found Node.js: $cmd (version: $version)")
-                    
+
                     // Check if version is 18+ (required by Claude Code SDK)
                     val majorVersion = version.removePrefix("v").split(".").firstOrNull()?.toIntOrNull() ?: 0
                     if (majorVersion < 18) {
                         println("[ClaudeCodeNodeSdkWrapper] WARNING: Node.js version $version is below required v18")
                     }
-                    
+
                     return cmd
                 }
             } catch (e: Exception) {
                 // Try next command
             }
         }
-        
+
         throw IllegalStateException("Node.js not found. Please install Node.js 18 or later.")
     }
-    
+
     private fun findProxyServerScript(): String {
         // Look for claude_proxy_server.mjs (ES module) in several locations
         val possibleLocations = listOf(
@@ -225,16 +231,19 @@ class ClaudeCodeNodeSdkWrapper(
             // In the Gromozeka release directory
             File("/Users/lewik/code/gromozeka/release/claude_proxy_server.mjs"),
             // Relative to JAR location
-            File(this::class.java.protectionDomain.codeSource?.location?.toURI()?.resolve("../claude_proxy_server.mjs")?.path ?: "")
+            File(
+                this::class.java.protectionDomain.codeSource?.location?.toURI()
+                    ?.resolve("../claude_proxy_server.mjs")?.path ?: ""
+            )
         )
-        
+
         for (location in possibleLocations) {
             if (location.exists() && location.isFile) {
                 println("[ClaudeCodeNodeSdkWrapper] Found proxy server script at: ${location.absolutePath}")
                 return location.absolutePath
             }
         }
-        
+
         // If not found, use the most likely location with a warning
         val defaultPath = "/Users/lewik/code/gromozeka/dev/claude_proxy_server.mjs"
         println("[ClaudeCodeNodeSdkWrapper] WARNING: Proxy server script not found, using default: $defaultPath")
@@ -273,37 +282,38 @@ class ClaudeCodeNodeSdkWrapper(
         }
     }
 
-    override suspend fun sendControlMessage(controlMessage: StreamJsonLine.ControlRequest) = withContext(Dispatchers.IO) {
-        try {
-            val proc = process
-            if (proc == null || !proc.isAlive) {
-                throw IllegalStateException("Claude Node SDK proxy process is not running")
-            }
-
-            val writer = stdinWriter
-            if (writer == null) {
-                throw IllegalStateException("stdin writer not available")
-            }
-
-            // Create control request structure
-            val controlRequestJson = buildJsonObject {
-                put("type", "control_request")
-                put("request_id", controlMessage.requestId)
-                putJsonObject("request") {
-                    put("subtype", controlMessage.request.subtype)
+    override suspend fun sendControlMessage(controlMessage: StreamJsonLine.ControlRequest) =
+        withContext(Dispatchers.IO) {
+            try {
+                val proc = process
+                if (proc == null || !proc.isAlive) {
+                    throw IllegalStateException("Claude Node SDK proxy process is not running")
                 }
+
+                val writer = stdinWriter
+                if (writer == null) {
+                    throw IllegalStateException("stdin writer not available")
+                }
+
+                // Create control request structure
+                val controlRequestJson = buildJsonObject {
+                    put("type", "control_request")
+                    put("request_id", controlMessage.requestId)
+                    putJsonObject("request") {
+                        put("subtype", controlMessage.request.subtype)
+                    }
+                }
+
+                val jsonLine = controlRequestJson.toString()
+                println("[ClaudeCodeNodeSdkWrapper] Sending control message: $jsonLine")
+
+                writer.write("$jsonLine\n")
+                writer.flush()
+            } catch (e: Exception) {
+                println("[ClaudeCodeNodeSdkWrapper] Control message failed: ${e.message}")
+                throw e
             }
-
-            val jsonLine = controlRequestJson.toString()
-            println("[ClaudeCodeNodeSdkWrapper] Sending control message: $jsonLine")
-
-            writer.write("$jsonLine\n")
-            writer.flush()
-        } catch (e: Exception) {
-            println("[ClaudeCodeNodeSdkWrapper] Control message failed: ${e.message}")
-            throw e
         }
-    }
 
     override fun streamOutput(): Flow<StreamJsonLinePacket> = streamMessages
 
@@ -423,7 +433,7 @@ class ClaudeCodeNodeSdkWrapper(
         try {
             // Cancel all coroutines in scope (includes readJob and stderrJob)
             scope.cancel()
-            
+
             stdinWriter?.close()
             stdoutReader?.close()
             stderrReader?.close()
@@ -463,19 +473,19 @@ class ClaudeCodeNodeSdkWrapper(
             @Serializable
             @SerialName("text")
             data class TextBlock(
-                val text: String
+                val text: String,
             ) : ContentBlock()
 
             @Serializable
             @SerialName("image")
             data class ImageBlock(
-                val source: ImageSource
+                val source: ImageSource,
             ) : ContentBlock() {
                 @Serializable
                 data class ImageSource(
                     val type: String = "base64",
                     val media_type: String,
-                    val data: String
+                    val data: String,
                 )
             }
         }

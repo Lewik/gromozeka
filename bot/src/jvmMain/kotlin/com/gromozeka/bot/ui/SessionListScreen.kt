@@ -4,11 +4,13 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -18,10 +20,10 @@ import com.gromozeka.bot.model.ChatSessionMetadata
 import com.gromozeka.bot.services.SessionJsonlService
 import com.gromozeka.bot.services.SessionManager
 import com.gromozeka.bot.viewmodel.AppViewModel
+import io.github.vinceglb.filekit.compose.rememberDirectoryPickerLauncher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Instant
-import io.github.vinceglb.filekit.compose.rememberDirectoryPickerLauncher
 
 private data class ProjectGroup(
     val projectPath: String,
@@ -62,7 +64,7 @@ fun SessionListScreen(
     var projectGroups by remember { mutableStateOf<List<ProjectGroup>>(emptyList()) }
     var expandedProjects by remember { mutableStateOf<Set<String>>(emptySet()) }
     var isLoading by remember { mutableStateOf(true) }
-    
+
     // Directory picker for new sessions
     val directoryPicker = rememberDirectoryPickerLauncher { directory ->
         directory?.let { dir ->
@@ -119,7 +121,7 @@ fun SessionListScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Spacer(modifier = Modifier.weight(1f))
-                
+
                 // Refresh button
                 CompactButton(
                     onClick = {
@@ -131,17 +133,17 @@ fun SessionListScreen(
                 ) {
                     Text("🔄")
                 }
-                
+
                 Spacer(modifier = Modifier.width(8.dp))
-                
+
                 CompactButton(
                     onClick = { directoryPicker.launch() }
                 ) {
                     Text("Новая сессия")
                 }
-                
+
                 Spacer(modifier = Modifier.width(8.dp))
-                
+
                 // Settings button
                 CompactButton(
                     onClick = { onShowSettingsPanelChange(!showSettingsPanel) },
@@ -204,7 +206,7 @@ fun SessionListScreen(
                 }
             }
         }
-        
+
         // Settings panel
         SettingsPanel(
             isVisible = showSettingsPanel,
@@ -238,9 +240,9 @@ private fun ProjectGroupHeader(
                     contentDescription = if (isExpanded) "Свернуть" else "Развернуть",
                     modifier = Modifier.clickable { onToggleExpanded() }
                 )
-                
+
                 Spacer(modifier = Modifier.width(8.dp))
-                
+
                 // 2. Column 1 - информация о проекте
                 Column(
                     modifier = Modifier.weight(1f)
@@ -249,16 +251,16 @@ private fun ProjectGroupHeader(
                     Text(text = group.projectPath)
                     Text(text = "${group.sessionsMetadata.size} сессий")
                 }
-                
+
                 Spacer(modifier = Modifier.width(8.dp))
-                
+
                 // 3. Кнопка "Новая"
                 CompactButton(onClick = { onNewSessionClick(group.projectPath) }) {
                     Text("Новая")
                 }
-                
+
                 Spacer(modifier = Modifier.width(12.dp))
-                
+
                 // 4. Column 2 - информация о последней сессии
                 group.latestSessionMetadata?.let { latestSession ->
                     Column(
@@ -268,9 +270,9 @@ private fun ProjectGroupHeader(
                         Text(text = "${latestSession.messageCount} сообщений")
                         Text(text = group.formattedTime)
                     }
-                    
+
                     Spacer(modifier = Modifier.width(8.dp))
-                    
+
                     // 5. Кнопка "Продолжить"
                     CompactButton(onClick = { onSessionMetadataClick(latestSession) }) {
                         Text("Продолжить")
@@ -284,7 +286,7 @@ private fun ProjectGroupHeader(
                     }
                 }
             }
-            
+
             // Expanded content
             if (isExpanded) {
                 Column(
@@ -334,9 +336,9 @@ private fun SessionItem(
                         text = sessionMetadata.displayTime()
                     )
                 }
-                
+
                 Spacer(modifier = Modifier.height(4.dp))
-                
+
                 // Вторая строка: полный путь слева (только если не в группе), количество сообщений справа
                 Row(
                     verticalAlignment = Alignment.CenterVertically
@@ -354,9 +356,9 @@ private fun SessionItem(
                     )
                 }
             }
-            
+
             Spacer(modifier = Modifier.width(12.dp))
-            
+
             // Правый блок с кнопкой
             CompactButton(
                 onClick = { onSessionMetadataClick(sessionMetadata) }
@@ -382,9 +384,9 @@ private fun CoroutineScope.handleSessionClick(
                 resumeSessionId = clickedSessionMetadata.claudeSessionId.value
             )
             appViewModel.selectTab(tabIndex)
-            
+
             println("[SessionListScreen] Created tab at index $tabIndex, resume from: ${clickedSessionMetadata.claudeSessionId}")
-            
+
             // Notify parent that session was selected and created
             onSessionMetadataSelected(clickedSessionMetadata)
 

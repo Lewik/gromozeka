@@ -9,15 +9,14 @@ import com.gromozeka.shared.domain.message.ChatMessage
 import com.gromozeka.shared.domain.message.MessageTag
 import com.gromozeka.shared.domain.session.ClaudeSessionUuid
 import com.gromozeka.shared.domain.session.SessionUuid
-import com.gromozeka.shared.domain.session.toClaudeSessionUuid
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.selects.select
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.Clock
-import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * Legacy SessionState enum - kept for compatibility with existing UI code
@@ -41,11 +40,11 @@ enum class SessionState {
  * INCOMING CHANNELS (→ Session Actor) by priority:
  * 1. Priority Channel: interrupt, forceSend - critical control commands
  *    Nature: Bypass normal flow for immediate handling
- * 2. Claude Stream Channel: claudeWrapper.streamOutput() → StreamJsonLine flow  
+ * 2. Claude Stream Channel: claudeWrapper.streamOutput() → StreamJsonLine flow
  *    Nature: Continuous reactive stream from Claude CLI (processed before new user input)
  * 3. User Command Channel: start(), stop(), sendMessage() from UI/user
  *    Nature: Imperative commands (waits for Claude responses to complete)
- * - Historical Data: sessionJsonlService.loadMessagesFromSession() 
+ * - Historical Data: sessionJsonlService.loadMessagesFromSession()
  *   Nature: One-time bulk load during session resume (not a channel)
  *
  * OUTGOING CHANNELS (Session →):
@@ -86,14 +85,15 @@ class Session(
     // === ACTOR CHANNELS ===
     private val userCommandChannel = Channel<Command>(capacity = Channel.UNLIMITED)      // Commands from user/UI
     private val priorityChannel = Channel<PriorityCommand>(capacity = Channel.UNLIMITED) // High priority commands
-    private val claudeStreamChannel = Channel<StreamJsonLinePacket>(capacity = Channel.UNLIMITED) // Stream from Claude CLI
+    private val claudeStreamChannel =
+        Channel<StreamJsonLinePacket>(capacity = Channel.UNLIMITED) // Stream from Claude CLI
 
     // === ACTOR STATE ===  
     private var actorState: ActorState = ActorState.Inactive
     private var actorJob: Job? = null
     private var currentSessionId = ClaudeSessionUuid.DEFAULT
     private var actorScope: CoroutineScope? = null
-    
+
     // === OUTGOING CHANNELS (StateFlow/SharedFlow for UI consumption) ===
     private val _claudeSessionId = MutableStateFlow(ClaudeSessionUuid.DEFAULT)
     val claudeSessionId: StateFlow<ClaudeSessionUuid> = _claudeSessionId.asStateFlow()
@@ -114,21 +114,21 @@ class Session(
     val isWaitingForResponse: StateFlow<Boolean> = _isWaitingForResponse.asStateFlow()
 
     // === ACTOR COMMAND DEFINITIONS ===
-    
+
     /**
      * Commands for the Session actor - main lifecycle and message operations
      */
     sealed class Command {
         data class Start(
-            val scope: CoroutineScope, 
-            val resumeSessionId: ClaudeSessionUuid? = null
+            val scope: CoroutineScope,
+            val resumeSessionId: ClaudeSessionUuid? = null,
         ) : Command()
-        
+
         data object Stop : Command()
-        
+
         data class SendMessage(
-            val message: String, 
-            val activeTags: List<MessageTag> = emptyList()
+            val message: String,
+            val activeTags: List<MessageTag> = emptyList(),
         ) : Command()
     }
 
@@ -137,13 +137,13 @@ class Session(
      */
     sealed class PriorityCommand {
         data object Interrupt : PriorityCommand()
-        
+
         data object ForceSend : PriorityCommand()
     }
 
     /**
      * Internal actor states for lifecycle management using sealed class hierarchy
-     * 
+     *
      * State transition graph:
      * ```
      * Inactive → Starting → WaitingForInit → Active.Ready ⇄ Active.WaitingForResponse
@@ -152,7 +152,7 @@ class Session(
      *                               ↓
      *                            (Error can occur from any state except Inactive)
      * ```
-     * 
+     *
      * Key transitions:
      * - Start: only from Inactive
      * - Stop: from any state except Inactive/Stopping
@@ -164,24 +164,24 @@ class Session(
         object Inactive : ActorState()           // Initial state, no Claude process
         object Starting : ActorState()           // Starting Claude process  
         object WaitingForInit : ActorState()     // Process started, waiting for init message
-        
+
         // Active states - can be Ready or WaitingForResponse
         sealed class Active : ActorState() {
             object Ready : Active()               // Ready to accept new commands
             object WaitingForResponse : Active()  // Waiting for Claude to respond
         }
-        
+
         object Stopping : ActorState()           // Graceful shutdown in progress
         object Error : ActorState()              // Error state, requires cleanup
     }
 
     // === ACTOR LOOP ===
-    
+
     /**
      * Main actor loop with select-based channel prioritization.
      * Priority order: 1) Priority, 2) Claude stream, 3) User commands
      * Rationale: Interrupts are critical, Claude responses should be processed before new user input
-     * 
+     *
      * Key mechanisms:
      * - Natural backpressure: User commands wait in channel when not registered
      * - Conditional registration: Channels only registered based on current state
@@ -190,7 +190,7 @@ class Session(
      */
     private suspend fun actorLoop() {
         println("[Actor] Starting actor loop")
-        
+
         while (true) {
             select<Unit> {
                 // PRIORITY 1: Priority commands - always processed
@@ -198,7 +198,7 @@ class Session(
                     println("[Actor] Processing priority command: $command")
                     handlePriorityCommand(command)
                 }
-                
+
                 // PRIORITY 2: Claude stream - only when waiting for init or active
                 if (actorState == ActorState.WaitingForInit || actorState is ActorState.Active) {
                     claudeStreamChannel.onReceive { streamPacket ->
@@ -206,7 +206,7 @@ class Session(
                         handleClaudeStreamMessage(streamPacket)
                     }
                 }
-                
+
                 // PRIORITY 3: User commands - only when ready to process them
                 if (actorState != ActorState.Active.WaitingForResponse) {
                     userCommandChannel.onReceive { command ->
@@ -217,7 +217,7 @@ class Session(
             }
         }
     }
-    
+
     /**
      * Handle user commands - called only when state allows processing
      * Thanks to conditional registration in select, we know the state is appropriate
@@ -232,10 +232,12 @@ class Session(
                         println("[Actor] First message during init - sending immediately")
                         handleFirstMessageDuringInit(command.message, command.activeTags)
                     }
+
                     ActorState.Active.Ready -> {
                         // Normal message sending
                         performSendMessage(command.message, command.activeTags)
                     }
+
                     else -> {
                         // Inactive, Starting, Stopping, Error states
                         println("[Actor] Cannot send message in state: $actorState")
@@ -243,6 +245,7 @@ class Session(
                     }
                 }
             }
+
             is Command.Start -> {
                 if (actorState == ActorState.Inactive) {
                     performStart(command.scope, command.resumeSessionId)
@@ -251,6 +254,7 @@ class Session(
                     _events.emit(StreamSessionEvent.Warning("Session already active or starting"))
                 }
             }
+
             is Command.Stop -> {
                 if (actorState != ActorState.Inactive && actorState != ActorState.Stopping) {
                     performStop()
@@ -260,7 +264,7 @@ class Session(
             }
         }
     }
-    
+
     /**
      * Handle priority commands with special forceSend logic
      */
@@ -274,13 +278,14 @@ class Session(
                     _events.emit(StreamSessionEvent.Warning("Cannot interrupt inactive session"))
                 }
             }
-            
+
             is PriorityCommand.ForceSend -> {
                 when {
                     actorState !is ActorState.Active -> {
                         println("[Actor] Cannot force send - session not active (state: $actorState)")
                         _events.emit(StreamSessionEvent.Warning("Cannot force send: session inactive"))
                     }
+
                     else -> {
                         // Try to extract a SendMessage command from the user channel
                         val pendingCommand = userCommandChannel.tryReceive().getOrNull()
@@ -295,12 +300,14 @@ class Session(
                                     _events.emit(StreamSessionEvent.Error("Force send failed: ${e.message}"))
                                 }
                             }
+
                             pendingCommand != null -> {
                                 // Put non-SendMessage command back
                                 userCommandChannel.send(pendingCommand)
                                 println("[Actor] No SendMessage to force send, returned command to channel")
                                 _events.emit(StreamSessionEvent.Warning("No pending message to force send"))
                             }
+
                             else -> {
                                 println("[Actor] No commands in channel to force send")
                                 _events.emit(StreamSessionEvent.Warning("No pending commands to force send"))
@@ -311,8 +318,8 @@ class Session(
             }
         }
     }
-    
-    
+
+
     /**
      * Handle first message during WaitingForInit state
      * This allows the first message to be sent immediately to trigger Claude's response
@@ -322,10 +329,10 @@ class Session(
             println("[Actor] Skipping empty first message")
             return
         }
-        
+
         try {
             println("[Actor] Sending first message during init: ${message.take(50)}...")
-            
+
             // Emit user message to UI
             _messageOutputStream.emit(
                 ChatMessage(
@@ -337,19 +344,19 @@ class Session(
                     activeTags = activeTags
                 )
             )
-            
+
             // Mark as waiting for response (but stay in WaitingForInit state)
             _isWaitingForResponse.value = true
-            
+
             // Send message to Claude - this will trigger init response
             claudeWrapper.sendMessage(message, currentSessionId)
-            
+
         } catch (e: Exception) {
             println("[Actor] Failed to send first message: ${e.message}")
             _events.emit(StreamSessionEvent.Error("First message failed: ${e.message}"))
         }
     }
-    
+
     /**
      * Handle stream messages from Claude CLI
      */
@@ -357,7 +364,7 @@ class Session(
         // Same logic as current handleOutputStreamJsonLine but without mutex
         try {
             val streamMessage = streamPacket.streamMessage
-            
+
             // When we receive final result, transition back to Ready
             if (streamMessage is StreamJsonLine.Result) {
                 if (actorState == ActorState.Active.WaitingForResponse) {
@@ -372,12 +379,13 @@ class Session(
                 is StreamJsonLine.Assistant -> Unit // Expected - Claude's responses
                 is StreamJsonLine.Result -> Unit // Expected - final result with usage
                 is StreamJsonLine.ControlResponse -> handleControlResponse(streamMessage)
-                
+
                 // These should NEVER come from Claude CLI - log as warnings
                 is StreamJsonLine.User -> {
                     println("[Actor] WARNING: Received User message from Claude stream - this shouldn't happen!")
                     _events.emit(StreamSessionEvent.Warning("Unexpected User message from Claude"))
                 }
+
                 is StreamJsonLine.ControlRequest -> {
                     println("[Actor] WARNING: Received ControlRequest from Claude stream - this shouldn't happen!")
                     _events.emit(StreamSessionEvent.Warning("Unexpected ControlRequest from Claude"))
@@ -396,7 +404,7 @@ class Session(
     }
 
     // === ACTOR COMMAND HANDLERS ===
-    
+
     /**
      * Actor implementation of start command
      */
@@ -421,7 +429,7 @@ class Session(
 
             // Start stream collector coroutine
             launchStreamCollector()
-            
+
             // Start sound notification collection  
             launchSoundNotificationCollection()
 
@@ -448,9 +456,9 @@ class Session(
             _events.emit(StreamSessionEvent.Error("Failed to start session: ${e.message}"))
         }
     }
-    
+
     /**
-     * Actor implementation of stop command  
+     * Actor implementation of stop command
      */
     private suspend fun performStop() {
         val currentState = actorState
@@ -461,7 +469,7 @@ class Session(
         }
 
         if (currentState == ActorState.Stopping) {
-            println("[Actor] Session is already stopping")  
+            println("[Actor] Session is already stopping")
             return
         }
 
@@ -495,7 +503,7 @@ class Session(
             actorScope = null
         }
     }
-    
+
     /**
      * Actor implementation of sendMessage command
      */
@@ -538,7 +546,7 @@ class Session(
             _events.emit(StreamSessionEvent.Error("Send failed: ${e.message}"))
         }
     }
-    
+
     /**
      * Actor implementation of interrupt command
      */
@@ -564,9 +572,9 @@ class Session(
             _events.emit(StreamSessionEvent.Error("Interrupt failed: ${e.message}"))
         }
     }
-    
+
     // === HELPER METHODS ===
-    
+
     /**
      * Launch coroutine that collects Claude CLI stream and forwards to streamChannel
      */
@@ -584,7 +592,7 @@ class Session(
             }
         }
     }
-    
+
     /**
      * Launch sound notification collection coroutine
      */
@@ -611,7 +619,7 @@ class Session(
                 }
         }
     }
-    
+
     /**
      * Cleanup resources and reset state
      */
@@ -623,9 +631,9 @@ class Session(
             println("[Actor] Error during cleanup: ${e.message}")
         }
     }
-    
+
     // === ADDITIONAL HELPER METHODS FOR ACTOR ===
-    
+
     /**
      * Load historical messages from a previous session (used in performStart)
      */
@@ -646,7 +654,7 @@ class Session(
             _events.emit(StreamSessionEvent.Warning("Failed to load history: ${e.message}"))
         }
     }
-    
+
     /**
      * Handle system messages from Claude CLI (session initialization, etc.)
      */
@@ -660,7 +668,7 @@ class Session(
                 currentSessionId = newSessionId
                 _claudeSessionId.value = newSessionId
                 _events.emit(StreamSessionEvent.SessionIdChangedOnStart(newSessionId))
-                
+
                 // Reset to waiting state on session change (like after /compact)
                 if (actorState is ActorState.Active) {
                     actorState = ActorState.WaitingForInit
@@ -673,12 +681,12 @@ class Session(
                 actorState = ActorState.Active.Ready
                 println("[Actor] Session initialized with ID: $newSessionId")
                 println("[Actor] Session now Active.Ready - user commands unblocked")
-                
+
                 // No need to process buffered messages - they're waiting in channel!
             }
         }
     }
-    
+
     /**
      * Handle control responses from Claude CLI
      */
@@ -690,16 +698,17 @@ class Session(
                 _isWaitingForResponse.value = false
                 _events.emit(StreamSessionEvent.InterruptAcknowledged)
             }
+
             "error" -> {
                 _events.emit(StreamSessionEvent.Error("Interrupt error: ${response.response.error}"))
             }
         }
     }
-    
-    
+
+
     // === BACKWARDS COMPATIBILITY API (Channel Proxies) ===
     // These methods maintain the existing public API by forwarding calls to actor channels
-    
+
     /**
      * Initialize and start the actor system
      */
@@ -709,38 +718,38 @@ class Session(
             println("[Session] Actor initialized")
         }
     }
-    
+
     /**
      * Start the session: launch Claude Code CLI process and begin stream collection
-     * @param scope CoroutineScope for session lifecycle  
+     * @param scope CoroutineScope for session lifecycle
      * @param resumeSessionId Optional session ID to load historical messages from
      */
     suspend fun start(scope: CoroutineScope, resumeSessionId: ClaudeSessionUuid? = null) {
         initializeActor(scope)
         userCommandChannel.send(Command.Start(scope, resumeSessionId))
     }
-    
+
     /**
      * Stop the session: stop Claude Code CLI process and stream collection
      */
     suspend fun stop() {
         userCommandChannel.send(Command.Stop)
     }
-    
+
     /**
      * Send a message through the Claude Code CLI process
      */
     suspend fun sendMessage(message: String, activeTags: List<MessageTag> = emptyList()) {
         userCommandChannel.send(Command.SendMessage(message, activeTags))
     }
-    
+
     /**
      * Send interrupt signal to Claude Code CLI
      */
     suspend fun sendInterrupt() {
         priorityChannel.send(PriorityCommand.Interrupt)
     }
-    
+
     /**
      * Force send one buffered message (bypass normal flow control)
      * Useful for recovering from "stuck" states

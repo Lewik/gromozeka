@@ -2,15 +2,15 @@ package com.gromozeka.bot
 
 import com.gromozeka.bot.model.ClaudeLogEntry
 import kotlinx.serialization.json.Json
+import org.junit.jupiter.api.Disabled
 import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertTrue
-import org.junit.jupiter.api.Disabled
 
 class ClaudeLogEntryDeserializationTest {
 
     private val json = Json {
-        ignoreUnknownKeys = false 
+        ignoreUnknownKeys = false
         coerceInputValues = false
     }
 

@@ -3,15 +3,13 @@ package com.gromozeka.bot.ui
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.style.LineHeightStyle
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.mikepenz.markdown.m3.Markdown
 import com.mikepenz.markdown.m3.markdownTypography
 
@@ -22,20 +20,20 @@ fun GromozekaTheme(content: @Composable () -> Unit) {
         displayLarge = MaterialTheme.typography.displayLarge.copy(fontSize = 24.sp, lineHeight = 28.sp),
         displayMedium = MaterialTheme.typography.displayMedium.copy(fontSize = 22.sp, lineHeight = 26.sp),
         displaySmall = MaterialTheme.typography.displaySmall.copy(fontSize = 20.sp, lineHeight = 24.sp),
-        
+
         headlineLarge = MaterialTheme.typography.headlineLarge.copy(fontSize = 20.sp, lineHeight = 24.sp),
         headlineMedium = MaterialTheme.typography.headlineMedium.copy(fontSize = 18.sp, lineHeight = 22.sp),
         headlineSmall = MaterialTheme.typography.headlineSmall.copy(fontSize = 16.sp, lineHeight = 20.sp),
-        
+
         titleLarge = MaterialTheme.typography.titleLarge.copy(fontSize = 16.sp, lineHeight = 20.sp),
         titleMedium = MaterialTheme.typography.titleMedium.copy(fontSize = 14.sp, lineHeight = 18.sp),
         titleSmall = MaterialTheme.typography.titleSmall.copy(fontSize = 13.sp, lineHeight = 17.sp),
-        
+
         // Body text - основа 12sp
         bodyLarge = MaterialTheme.typography.bodyLarge.copy(fontSize = 12.sp, lineHeight = 16.sp),
         bodyMedium = MaterialTheme.typography.bodyMedium.copy(fontSize = 12.sp, lineHeight = 16.sp),
         bodySmall = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp, lineHeight = 16.sp),
-        
+
         // Labels - 11sp как есть
         labelLarge = MaterialTheme.typography.labelLarge.copy(fontSize = 11.sp, lineHeight = 15.sp),
         labelMedium = MaterialTheme.typography.labelMedium.copy(fontSize = 11.sp, lineHeight = 15.sp),
@@ -59,7 +57,7 @@ object CompactButtonDefaults {
 @Composable
 fun OptionalTooltip(
     tooltip: String?,
-    content: @Composable () -> Unit
+    content: @Composable () -> Unit,
 ) {
     TooltipBox(
         positionProvider = TooltipDefaults.rememberPlainTooltipPositionProvider(),
@@ -133,7 +131,7 @@ fun CompactCard(
 @Composable
 fun GromozekaMarkdown(
     content: String,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     Markdown(
         content = content,

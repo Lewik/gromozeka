@@ -343,5 +343,5 @@ data class ControlResponse(
  */
 data class StreamJsonLinePacket(
     val streamMessage: StreamJsonLine,
-    val originalJson: String?
+    val originalJson: String?,
 )

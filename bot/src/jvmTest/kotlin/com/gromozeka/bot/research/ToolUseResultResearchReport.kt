@@ -1,7 +1,5 @@
 package com.gromozeka.bot
 
-import com.gromozeka.bot.model.ClaudeLogEntry
-import com.gromozeka.bot.model.McpToolResultParser
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import java.io.File
@@ -291,7 +289,7 @@ class ToolUseResultResearchReport {
     @Test
     fun comprehensiveToolUseResultStructureAnalysis() {
         return // Test disabled
-        
+
         /*
         val sessionFiles = findTodaySessionFiles()
         println("=== COMPREHENSIVE TOOLUSERESULT RESEARCH REPORT ===")
@@ -445,7 +443,7 @@ class ToolUseResultResearchReport {
     @Test
     fun mcpCompatibilityDetailedAnalysis() {
         return // Test disabled
-        
+
         /*
         println("\n=== MCP COMPATIBILITY DEEP DIVE ===")
 

@@ -2,11 +2,13 @@ package com.gromozeka.bot.services
 
 import com.gromozeka.bot.model.Session
 import com.gromozeka.bot.services.WrapperFactory.WrapperType
-import com.gromozeka.shared.domain.session.SessionUuid
 import com.gromozeka.shared.domain.session.ClaudeSessionUuid
+import com.gromozeka.shared.domain.session.SessionUuid
 import com.gromozeka.shared.domain.session.toSessionUuid
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import org.springframework.beans.factory.annotation.Qualifier
@@ -41,18 +43,19 @@ class SessionManager(
      * @param resumeSessionId Optional Claude session ID to resume from (for loading history)
      * @return SessionUuid of the created session
      */
-    suspend fun createSession(projectPath: String, resumeSessionId: ClaudeSessionUuid? = null): Session = sessionMutex.withLock {
+    suspend fun createSession(projectPath: String, resumeSessionId: ClaudeSessionUuid? = null): Session =
+        sessionMutex.withLock {
 
-        val session = createSessionInternal(projectPath)
+            val session = createSessionInternal(projectPath)
 
-        session.start(scope, resumeSessionId)
+            session.start(scope, resumeSessionId)
 
-        val updatedSessions = _activeSessions.value + (session.id to session)
-        _activeSessions.value = updatedSessions
+            val updatedSessions = _activeSessions.value + (session.id to session)
+            _activeSessions.value = updatedSessions
 
-        println("[SessionManager] Created session: ${session.id}")
-        session
-    }
+            println("[SessionManager] Created session: ${session.id}")
+            session
+        }
 
     /**
      * Create Session instance with current settings

@@ -7,9 +7,9 @@ import java.io.InputStream
  * Loads system prompts from resources based on response format
  */
 object SystemPromptLoader {
-    
+
     private const val PROMPTS_PATH = "/prompts/"
-    
+
     /**
      * Get system prompt for specified format
      */
@@ -17,7 +17,7 @@ object SystemPromptLoader {
         // Load base prompt
         val basePrompt = loadResourceFile("${PROMPTS_PATH}base-prompt.md")
             ?: "You're Gromozeka - a multi-armed AI buddy. Be direct, casual, and real with the user."
-        
+
         // Load format-specific instructions
         val formatFilename = when (format) {
             ResponseFormat.JSON -> "json-format.md"
@@ -25,9 +25,9 @@ object SystemPromptLoader {
             ResponseFormat.XML_INLINE -> "xml-inline.md"
             ResponseFormat.PLAIN_TEXT -> "plain-text.md"
         }
-        
+
         val formatPrompt = loadResourceFile("$PROMPTS_PATH$formatFilename") ?: ""
-        
+
         // Combine base + format
         return if (formatPrompt.isNotEmpty()) {
             "$basePrompt\n\n$formatPrompt"
@@ -36,7 +36,7 @@ object SystemPromptLoader {
         }
     }
 
-    
+
     /**
      * Load prompt file from resources
      */

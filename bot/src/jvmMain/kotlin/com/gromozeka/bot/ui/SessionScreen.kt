@@ -5,7 +5,6 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.ContextMenuArea
 import androidx.compose.foundation.ContextMenuItem
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -20,7 +19,6 @@ import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -39,7 +37,6 @@ import com.gromozeka.shared.domain.message.ChatMessage
 import com.gromozeka.shared.domain.message.ClaudeCodeToolCallData
 import com.gromozeka.shared.domain.message.MessageTag
 import com.gromozeka.shared.domain.message.ToolCallData
-import com.mikepenz.markdown.m3.Markdown
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json.Default.parseToJsonElement
@@ -446,6 +443,7 @@ private fun MessageItem(
                                 GromozekaMarkdown(content = content.text)
                             }
                         }
+
                         is ChatMessage.ContentItem.ToolCall -> {
                             // Find corresponding result from entire chat history
                             val correspondingResult = toolResultsMap[content.id]
@@ -465,10 +463,12 @@ private fun MessageItem(
                                     // Base64 too long - show placeholder
                                     Text("🖼️ [Image ${source.mediaType} - ${source.data.length} chars Base64]")
                                 }
+
                                 is ChatMessage.ImageSource.UrlImageSource -> {
                                     // URL can be shown in full
                                     Text("🖼️ ${source.url}")
                                 }
+
                                 is ChatMessage.ImageSource.FileImageSource -> {
                                     // File ID can be shown in full
                                     Text("🖼️ File: ${source.fileId}")
@@ -791,10 +791,15 @@ private fun ToolCallItem(
                                                         color = MaterialTheme.colorScheme.primary
                                                     )
                                                 }
+
                                                 else -> {
                                                     // Non-image Base64 data - show truncated version
                                                     val truncated = if (dataItem.data.length > 100) {
-                                                        "${dataItem.data.take(50)}...[${dataItem.data.length - 100} chars]...${dataItem.data.takeLast(50)}"
+                                                        "${dataItem.data.take(50)}...[${dataItem.data.length - 100} chars]...${
+                                                            dataItem.data.takeLast(
+                                                                50
+                                                            )
+                                                        }"
                                                     } else {
                                                         dataItem.data
                                                     }
@@ -839,7 +844,7 @@ private fun ToolCallItem(
 private fun MessageTagButton(
     tag: MessageTag,
     isActive: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
 ) {
     if (isActive) {
         // Активный тег: стандартные цвета CompactButton (синий фон, белый текст)
@@ -882,10 +887,10 @@ private fun MessageTagButton(
 private fun formatTokenUsageForDisplay(usage: TokenUsageCalculator.SessionTokenUsage): String {
     val total = usage.grandTotal
     val percent = (usage.contextUsagePercent * 100).toInt()
-    
+
     return when {
         total < 1000 -> "${total}t"
-        total < 10000 -> "${total / 1000}k"  
+        total < 10000 -> "${total / 1000}k"
         else -> "${total / 1000}k"
     } + if (percent > 10) " (${percent}%)" else ""
 }
@@ -907,7 +912,7 @@ private fun createTokenUsageTooltip(usage: TokenUsageCalculator.SessionTokenUsag
         appendLine()
         val percent = (usage.contextUsagePercent * 100).toInt()
         appendLine("📈 Контекст: ${percent}% из ~200k")
-        
+
         if (percent > 80) {
             appendLine()
             appendLine("⚠️ Приближается лимит контекста!")

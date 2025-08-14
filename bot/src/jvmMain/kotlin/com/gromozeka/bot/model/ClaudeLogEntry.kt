@@ -1,11 +1,7 @@
 package com.gromozeka.bot.model
 
 import com.gromozeka.shared.domain.session.ClaudeSessionUuid
-import kotlinx.serialization.ExperimentalSerializationApi
-import kotlinx.serialization.KSerializer
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.SerializationException
+import kotlinx.serialization.*
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.descriptors.buildClassSerialDescriptor
 import kotlinx.serialization.encoding.Decoder
@@ -107,7 +103,7 @@ sealed class ClaudeLogEntry {
             val content: Content,
             override val role: String = "user",
         ) : Message() {
-            
+
             @Serializable(with = UserMessageContentSerializer::class)
             sealed class Content {
 
@@ -181,7 +177,7 @@ sealed class ClaudeLogEntry {
                     content is JsonPrimitive && content.isString -> {
                         ToolResultContent.StringToolResult(content.content)
                     }
-                    
+
                     // Object with string content field
                     content is JsonObject && content["content"]?.jsonPrimitive?.isString == true -> {
                         ToolResultContent.StringToolResult(
@@ -189,15 +185,15 @@ sealed class ClaudeLogEntry {
                             isError = content["is_error"]?.jsonPrimitive?.booleanOrNull
                         )
                     }
-                    
+
                     // Array content
                     content is JsonArray -> {
-                        val items = content.map { 
+                        val items = content.map {
                             Json.decodeFromJsonElement<UserContentItem>(it)
                         }
                         ToolResultContent.MixedContentToolResult(items)
                     }
-                    
+
                     // Object with array content field
                     content is JsonObject && content["content"] is JsonArray -> {
                         val contentArray = content["content"]!!.jsonArray
@@ -206,7 +202,7 @@ sealed class ClaudeLogEntry {
                         }
                         ToolResultContent.MixedContentToolResult(items)
                     }
-                    
+
                     else -> {
                         throw SerializationException("Unknown ToolResultContent format: $content")
                     }

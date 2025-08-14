@@ -7,17 +7,17 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.gromozeka.bot.settings.Settings
 import com.gromozeka.bot.settings.ResponseFormat
+import com.gromozeka.bot.settings.Settings
 
 @Composable
 fun SettingsPanel(
@@ -25,7 +25,7 @@ fun SettingsPanel(
     settings: Settings,
     onSettingsChange: (Settings) -> Unit,
     onClose: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     AnimatedVisibility(
         visible = isVisible,
@@ -60,14 +60,14 @@ fun SettingsPanel(
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold
                     )
-                    
+
                     IconButton(onClick = onClose) {
                         Icon(Icons.Default.Close, contentDescription = "Close settings")
                     }
                 }
-                
+
                 Spacer(modifier = Modifier.height(16.dp))
-                
+
                 // Settings content
                 val scrollState = rememberScrollState()
                 Column(
@@ -85,7 +85,7 @@ fun SettingsPanel(
                             value = settings.enableTts,
                             onValueChange = { onSettingsChange(settings.copy(enableTts = it)) }
                         )
-                        
+
                         // Only show TTS settings if TTS is enabled
                         if (settings.enableTts) {
                             DropdownSettingItem(
@@ -95,7 +95,7 @@ fun SettingsPanel(
                                 options = listOf("gpt-4o-mini-tts", "tts-1", "tts-1-hd"),
                                 onValueChange = { onSettingsChange(settings.copy(ttsModel = it)) }
                             )
-                            
+
                             DropdownSettingItem(
                                 label = "Voice Type",
                                 description = "Voice for speech synthesis",
@@ -103,7 +103,7 @@ fun SettingsPanel(
                                 options = listOf("alloy", "echo", "fable", "onyx", "nova", "shimmer"),
                                 onValueChange = { onSettingsChange(settings.copy(ttsVoice = it)) }
                             )
-                            
+
                             SliderSettingItem(
                                 label = "Speech Speed",
                                 description = "Speech rate: 0.25x (slowest) to 4.0x (fastest)",
@@ -125,7 +125,7 @@ fun SettingsPanel(
                             value = settings.enableStt,
                             onValueChange = { onSettingsChange(settings.copy(enableStt = it)) }
                         )
-                        
+
                         // Only show STT settings if STT is enabled
                         if (settings.enableStt) {
                             DropdownSettingItem(
@@ -135,21 +135,21 @@ fun SettingsPanel(
                                 options = listOf("en", "ru", "es", "fr", "de", "zh", "ja"),
                                 onValueChange = { onSettingsChange(settings.copy(sttMainLanguage = it)) }
                             )
-                            
+
                             SwitchSettingItem(
                                 label = "Auto-send messages",
                                 description = "Send messages immediately after voice input",
                                 value = settings.autoSend,
                                 onValueChange = { onSettingsChange(settings.copy(autoSend = it)) }
                             )
-                            
+
                             SwitchSettingItem(
                                 label = "Global PTT Hotkey",
                                 description = "Enable push-to-talk from anywhere (Cmd+Shift+Space)",
                                 value = settings.globalPttHotkeyEnabled,
                                 onValueChange = { onSettingsChange(settings.copy(globalPttHotkeyEnabled = it)) }
                             )
-                            
+
                             // Only show mute option if global PTT is enabled
                             if (settings.globalPttHotkeyEnabled) {
                                 SwitchSettingItem(
@@ -161,7 +161,7 @@ fun SettingsPanel(
                             }
                         }
                     }
-                    
+
                     // AI Settings
                     SettingsGroup(title = "AI") {
                         DropdownSettingItem(
@@ -171,18 +171,18 @@ fun SettingsPanel(
                             options = listOf("sonnet", "haiku", "opus"),
                             onValueChange = { onSettingsChange(settings.copy(claudeModel = it)) }
                         )
-                        
+
                         DropdownSettingItem(
                             label = "Response Format",
                             description = "How AI structures voice responses (XML_INLINE recommended)",
                             value = settings.responseFormat.name,
                             options = ResponseFormat.values().map { it.name },
-                            onValueChange = { 
+                            onValueChange = {
                                 val format = ResponseFormat.valueOf(it)
                                 onSettingsChange(settings.copy(responseFormat = format))
                             }
                         )
-                        
+
                         SwitchSettingItem(
                             label = "Include current time",
                             description = "Add current date/time once at conversation start",
@@ -190,19 +190,19 @@ fun SettingsPanel(
                             onValueChange = { onSettingsChange(settings.copy(includeCurrentTime = it)) }
                         )
                     }
-                    
+
                     // API Keys
                     SettingsGroup(title = "API Keys") {
                         PasswordSettingItem(
                             label = "OpenAI API Key",
                             description = "Required for TTS and STT services",
                             value = settings.openAiApiKey ?: "",
-                            onValueChange = { 
+                            onValueChange = {
                                 onSettingsChange(settings.copy(openAiApiKey = it.ifBlank { null }))
                             }
                         )
                     }
-                    
+
                     // UI Settings
                     SettingsGroup(title = "Interface") {
                         SwitchSettingItem(
@@ -211,7 +211,7 @@ fun SettingsPanel(
                             value = settings.showSystemMessages,
                             onValueChange = { onSettingsChange(settings.copy(showSystemMessages = it)) }
                         )
-                        
+
                         SwitchSettingItem(
                             label = "Always on top",
                             description = "Keep window above all other applications",
@@ -219,7 +219,7 @@ fun SettingsPanel(
                             onValueChange = { onSettingsChange(settings.copy(alwaysOnTop = it)) }
                         )
                     }
-                    
+
                     // Developer Settings
                     SettingsGroup(title = "Developer") {
                         SwitchSettingItem(
@@ -238,7 +238,7 @@ fun SettingsPanel(
 @Composable
 private fun SettingsGroup(
     title: String,
-    content: @Composable ColumnScope.() -> Unit
+    content: @Composable ColumnScope.() -> Unit,
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -256,7 +256,7 @@ private fun SettingsGroup(
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.primary
             )
-            
+
             content()
         }
     }
@@ -268,7 +268,7 @@ private fun SwitchSettingItem(
     description: String,
     value: Boolean,
     enabled: Boolean = true,
-    onValueChange: (Boolean) -> Unit
+    onValueChange: (Boolean) -> Unit,
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -280,17 +280,21 @@ private fun SwitchSettingItem(
                 text = label,
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Medium,
-                color = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                color = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(
+                    alpha = 0.5f
+                )
             )
             if (description.isNotEmpty()) {
                 Text(
                     text = description,
                     style = MaterialTheme.typography.bodySmall,
-                    color = if (enabled) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                    color = if (enabled) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurface.copy(
+                        alpha = 0.3f
+                    )
                 )
             }
         }
-        
+
         Switch(
             checked = value,
             onCheckedChange = onValueChange,
@@ -308,7 +312,7 @@ private fun SliderSettingItem(
     max: Float,
     step: Float,
     valueFormat: String,
-    onValueChange: (Float) -> Unit
+    onValueChange: (Float) -> Unit,
 ) {
     Column {
         Row(
@@ -327,7 +331,7 @@ private fun SliderSettingItem(
                 color = MaterialTheme.colorScheme.primary
             )
         }
-        
+
         if (description.isNotEmpty()) {
             Text(
                 text = description,
@@ -335,7 +339,7 @@ private fun SliderSettingItem(
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
             )
         }
-        
+
         Slider(
             value = value,
             onValueChange = onValueChange,
@@ -352,17 +356,17 @@ private fun DropdownSettingItem(
     description: String,
     value: String,
     options: List<String>,
-    onValueChange: (String) -> Unit
+    onValueChange: (String) -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
-    
+
     Column {
         Text(
             text = label,
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Medium
         )
-        
+
         if (description.isNotEmpty()) {
             Text(
                 text = description,
@@ -370,7 +374,7 @@ private fun DropdownSettingItem(
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
             )
         }
-        
+
         ExposedDropdownMenuBox(
             expanded = expanded,
             onExpandedChange = { expanded = !expanded }
@@ -384,7 +388,7 @@ private fun DropdownSettingItem(
                     .menuAnchor(),
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) }
             )
-            
+
             ExposedDropdownMenu(
                 expanded = expanded,
                 onDismissRequest = { expanded = false }
@@ -408,7 +412,7 @@ private fun PasswordSettingItem(
     label: String,
     description: String,
     value: String,
-    onValueChange: (String) -> Unit
+    onValueChange: (String) -> Unit,
 ) {
     Column {
         Text(
@@ -416,7 +420,7 @@ private fun PasswordSettingItem(
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Medium
         )
-        
+
         if (description.isNotEmpty()) {
             Text(
                 text = description,
@@ -424,7 +428,7 @@ private fun PasswordSettingItem(
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
             )
         }
-        
+
         OutlinedTextField(
             value = value,
             onValueChange = onValueChange,

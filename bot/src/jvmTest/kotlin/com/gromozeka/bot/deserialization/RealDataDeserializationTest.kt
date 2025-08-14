@@ -2,10 +2,10 @@ package com.gromozeka.bot
 
 import com.gromozeka.bot.model.ClaudeLogEntry
 import kotlinx.serialization.json.Json
+import org.junit.jupiter.api.Disabled
 import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertNotNull
-import org.junit.jupiter.api.Disabled
 
 class RealDataDeserializationTest {
 
@@ -18,7 +18,7 @@ class RealDataDeserializationTest {
     @Disabled
     @Test
     fun testRealSessionDataDeserialization() {
-        
+
         val sessionFiles = listOf(
             "8259ddd2-5761-41e6-ae94-2060663f3128.jsonl",
             "5eeceea8-df50-4031-813e-380cfe33be32.jsonl",

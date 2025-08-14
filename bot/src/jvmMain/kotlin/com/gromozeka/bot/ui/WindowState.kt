@@ -8,5 +8,5 @@ data class UiWindowState(
     val y: Int = -1,     // -1 means not set (use system default)  
     val width: Int = 1200,
     val height: Int = 800,
-    val isMaximized: Boolean = false
+    val isMaximized: Boolean = false,
 )

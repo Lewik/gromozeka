@@ -10,8 +10,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.*
@@ -22,19 +22,18 @@ import java.io.OutputStreamWriter
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
-import java.net.URI
 
 /**
  * Alternative wrapper that uses Claude Code Python SDK instead of direct CLI.
  * This wrapper launches claude_proxy_server.py process which uses the official
  * claude-code-sdk-python to communicate with Claude.
- * 
+ *
  * Benefits over direct CLI:
  * - Better message handling through official SDK
  * - Cleaner async/await patterns
  * - More robust error handling
  * - SDK-managed session state
- * 
+ *
  * The proxy server translates between SDK messages and our stream-json format
  * to maintain compatibility with the existing Gromozeka architecture.
  */
@@ -94,7 +93,13 @@ class ClaudeCodePythonSdkWrapper(
             """.trimIndent()
 
             prompt = "$prompt\n$envBlock"
-            println("[ClaudeCodePythonSdkWrapper] Added current time to prompt: ${now.format(dateFormatter)} ${now.format(timeFormatter)} ${zoneId.id}")
+            println(
+                "[ClaudeCodePythonSdkWrapper] Added current time to prompt: ${now.format(dateFormatter)} ${
+                    now.format(
+                        timeFormatter
+                    )
+                } ${zoneId.id}"
+            )
         }
 
         return prompt
@@ -125,13 +130,13 @@ class ClaudeCodePythonSdkWrapper(
             println("=== STARTING CLAUDE CODE PYTHON SDK WRAPPER ===")
 
             val systemPrompt = loadSystemPrompt(responseFormat)
-            
+
             // Find Python interpreter
             val pythonCommand = findPythonCommand()
-            
+
             // Find the proxy server script
             val proxyScriptPath = findProxyServerScript()
-            
+
             // Build command to launch the proxy server
             val command = mutableListOf(
                 pythonCommand,
@@ -142,7 +147,7 @@ class ClaudeCodePythonSdkWrapper(
             val env = mutableMapOf<String, String>()
             env["CLAUDE_SYSTEM_PROMPT"] = systemPrompt
             env["CLAUDE_PERMISSION_MODE"] = "acceptEdits"
-            
+
             if (!model.isNullOrBlank()) {
                 env["CLAUDE_MODEL"] = model
                 println("[ClaudeCodePythonSdkWrapper] Using model: $model")
@@ -154,7 +159,7 @@ class ClaudeCodePythonSdkWrapper(
             }
 
             println("[ClaudeCodePythonSdkWrapper] EXECUTING COMMAND: ${command.joinToString(" ")}")
-            
+
             val processBuilder = ProcessBuilder(command)
                 .redirectErrorStream(false)
 
@@ -199,7 +204,7 @@ class ClaudeCodePythonSdkWrapper(
             File(System.getProperty("user.dir"), "venv/bin/python"),
             File(System.getProperty("user.dir"), ".venv/bin/python")
         )
-        
+
         // Check virtual environments first
         for (venvPath in venvPaths) {
             if (venvPath.exists() && venvPath.canExecute()) {
@@ -207,10 +212,10 @@ class ClaudeCodePythonSdkWrapper(
                 return venvPath.absolutePath
             }
         }
-        
+
         // Fall back to system Python
         val pythonCommands = listOf("python3", "python", "python3.13", "python3.12", "python3.11")
-        
+
         for (cmd in pythonCommands) {
             try {
                 val process = ProcessBuilder(cmd, "--version").start()
@@ -223,10 +228,10 @@ class ClaudeCodePythonSdkWrapper(
                 // Try next command
             }
         }
-        
+
         throw IllegalStateException("Python interpreter not found. Please install Python 3.8 or later.")
     }
-    
+
     private fun findProxyServerScript(): String {
         // Look for claude_proxy_server.py in several locations
         val possibleLocations = listOf(
@@ -237,16 +242,19 @@ class ClaudeCodePythonSdkWrapper(
             // In the Gromozeka release directory
             File("/Users/lewik/code/gromozeka/release/claude_proxy_server.py"),
             // Relative to JAR location
-            File(this::class.java.protectionDomain.codeSource?.location?.toURI()?.resolve("../claude_proxy_server.py")?.path ?: "")
+            File(
+                this::class.java.protectionDomain.codeSource?.location?.toURI()
+                    ?.resolve("../claude_proxy_server.py")?.path ?: ""
+            )
         )
-        
+
         for (location in possibleLocations) {
             if (location.exists() && location.isFile) {
                 println("[ClaudeCodePythonSdkWrapper] Found proxy server script at: ${location.absolutePath}")
                 return location.absolutePath
             }
         }
-        
+
         // If not found, use the most likely location with a warning
         val defaultPath = "/Users/lewik/code/gromozeka/dev/claude_proxy_server.py"
         println("[ClaudeCodePythonSdkWrapper] WARNING: Proxy server script not found, using default: $defaultPath")
@@ -285,37 +293,38 @@ class ClaudeCodePythonSdkWrapper(
         }
     }
 
-    override suspend fun sendControlMessage(controlMessage: StreamJsonLine.ControlRequest) = withContext(Dispatchers.IO) {
-        try {
-            val proc = process
-            if (proc == null || !proc.isAlive) {
-                throw IllegalStateException("Claude proxy process is not running")
-            }
-
-            val writer = stdinWriter
-            if (writer == null) {
-                throw IllegalStateException("stdin writer not available")
-            }
-
-            // Create control request structure
-            val controlRequestJson = buildJsonObject {
-                put("type", "control_request")
-                put("request_id", controlMessage.requestId)
-                putJsonObject("request") {
-                    put("subtype", controlMessage.request.subtype)
+    override suspend fun sendControlMessage(controlMessage: StreamJsonLine.ControlRequest) =
+        withContext(Dispatchers.IO) {
+            try {
+                val proc = process
+                if (proc == null || !proc.isAlive) {
+                    throw IllegalStateException("Claude proxy process is not running")
                 }
+
+                val writer = stdinWriter
+                if (writer == null) {
+                    throw IllegalStateException("stdin writer not available")
+                }
+
+                // Create control request structure
+                val controlRequestJson = buildJsonObject {
+                    put("type", "control_request")
+                    put("request_id", controlMessage.requestId)
+                    putJsonObject("request") {
+                        put("subtype", controlMessage.request.subtype)
+                    }
+                }
+
+                val jsonLine = controlRequestJson.toString()
+                println("[ClaudeCodePythonSdkWrapper] Sending control message: $jsonLine")
+
+                writer.write("$jsonLine\n")
+                writer.flush()
+            } catch (e: Exception) {
+                println("[ClaudeCodePythonSdkWrapper] Control message failed: ${e.message}")
+                throw e
             }
-
-            val jsonLine = controlRequestJson.toString()
-            println("[ClaudeCodePythonSdkWrapper] Sending control message: $jsonLine")
-
-            writer.write("$jsonLine\n")
-            writer.flush()
-        } catch (e: Exception) {
-            println("[ClaudeCodePythonSdkWrapper] Control message failed: ${e.message}")
-            throw e
         }
-    }
 
     override fun streamOutput(): Flow<StreamJsonLinePacket> = streamMessages
 
@@ -435,7 +444,7 @@ class ClaudeCodePythonSdkWrapper(
         try {
             // Cancel all coroutines in scope (includes readJob and stderrJob)
             scope.cancel()
-            
+
             stdinWriter?.close()
             stdoutReader?.close()
             stderrReader?.close()
@@ -475,19 +484,19 @@ class ClaudeCodePythonSdkWrapper(
             @Serializable
             @SerialName("text")
             data class TextBlock(
-                val text: String
+                val text: String,
             ) : ContentBlock()
 
             @Serializable
             @SerialName("image")
             data class ImageBlock(
-                val source: ImageSource
+                val source: ImageSource,
             ) : ContentBlock() {
                 @Serializable
                 data class ImageSource(
                     val type: String = "base64",
                     val media_type: String,
-                    val data: String
+                    val data: String,
                 )
             }
         }

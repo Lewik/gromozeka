@@ -2,10 +2,9 @@ package com.gromozeka.bot.services
 
 import com.gromozeka.bot.viewmodel.AppViewModel
 import kotlinx.coroutines.*
-import kotlinx.coroutines.flow.*
-import kotlin.time.Duration.Companion.milliseconds
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlin.time.Duration.Companion.minutes
-import kotlin.time.Duration.Companion.seconds
 
 enum class PTTEvent {
     BUTTON_DOWN,     // Stop TTS + start PTT recording (immediate)
@@ -33,7 +32,7 @@ class PTTEventRouter(
 
     // Current PTT session
     private var currentPTTJob: Job? = null
-    
+
     // Target session ViewModel captured at PTT start
     private var targetViewModel: com.gromozeka.bot.viewmodel.TabViewModel? = null
 
@@ -92,7 +91,7 @@ class PTTEventRouter(
         // Cancel current PTT recording job
         currentPTTJob?.cancel()
         currentPTTJob = null
-        
+
         // Get transcribed text from the recording
         try {
             val text = pttService.stopAndTranscribe()
@@ -120,14 +119,14 @@ class PTTEventRouter(
 
         // Create fresh scope to avoid cancelled context issues
         val freshScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
-        
+
         // Start PTT recording - simple suspend function call
         currentPTTJob = freshScope.launch {
             try {
                 // Start recording with timeout
                 withTimeout(5.minutes) {
                     pttService.startRecording()
-                    
+
                     // Wait for cancellation (PTT release) or timeout
                     awaitCancellation()
                 }

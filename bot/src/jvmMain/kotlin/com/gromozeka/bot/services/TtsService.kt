@@ -12,7 +12,7 @@ import java.io.File
 
 class TtsService(
     private val openAiAudioSpeechModel: OpenAiAudioSpeechModel,
-    private val settingsService: SettingsService
+    private val settingsService: SettingsService,
 ) {
 
     suspend fun generateSpeech(
@@ -29,9 +29,11 @@ class TtsService(
                     voiceTone, OpenAiAudioSpeechOptions.builder()
                         .input(text)
                         .model(settingsService.settings.ttsModel)
-                        .voice(OpenAiAudioApi.SpeechRequest.Voice.valueOf(
-                            settingsService.settings.ttsVoice.uppercase()
-                        ))
+                        .voice(
+                            OpenAiAudioApi.SpeechRequest.Voice.valueOf(
+                                settingsService.settings.ttsVoice.uppercase()
+                            )
+                        )
                         .responseFormat(OpenAiAudioApi.SpeechRequest.AudioResponseFormat.MP3)
                         .speed(settingsService.settings.ttsSpeed)
                         .build()

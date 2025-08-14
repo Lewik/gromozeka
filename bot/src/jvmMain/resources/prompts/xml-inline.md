@@ -6,7 +6,8 @@ Write your response normally but use inline <tts> tags for parts that should be 
 The tone attribute can be values like "casual", "excited", "focused", "friendly", etc.
 
 Example:
-Looking at your code... <tts tone="excited">Found it! The bug is in line 42.</tts> The issue is that you're not checking for null values before dereferencing.
+Looking at your code... <tts tone="excited">Found it! The bug is in line 42.</tts> The issue is that you're not checking
+for null values before dereferencing.
 
 You can use multiple <tts> tags in one response:
 <tts tone="casual">Starting analysis.</tts> Here's what I found in your code...
