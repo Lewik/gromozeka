@@ -7,7 +7,6 @@ import com.gromozeka.shared.domain.session.ClaudeSessionUuid
 import com.gromozeka.shared.domain.session.toSessionUuid
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.*
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import org.springframework.beans.factory.annotation.Qualifier
@@ -46,27 +45,6 @@ class SessionManager(
         val session = createSessionInternal(projectPath)
 
         session.start(scope, resumeSessionId)
-        
-        // Subscribe to session events for debugging
-        scope.launch {
-            session.events.collect { event ->
-                when (event) {
-                    is com.gromozeka.bot.model.StreamSessionEvent.MessagesUpdated -> {
-                        println("[SessionManager] Session ${session.id}: Messages updated: ${event.messageCount} messages")
-                    }
-
-                    is com.gromozeka.bot.model.StreamSessionEvent.Error -> {
-                        println("[SessionManager] Session ${session.id}: Error: ${event.message}")
-                    }
-
-                    is com.gromozeka.bot.model.StreamSessionEvent.SessionIdChangedOnStart -> {
-                        println("[SessionManager] Session ${session.id}: Claude Session ID changed to: ${event.newSessionId}")
-                    }
-
-                    else -> println("[SessionManager] Session ${session.id}: Event: $event")
-                }
-            }
-        }
 
         val updatedSessions = _activeSessions.value + (session.id to session)
         _activeSessions.value = updatedSessions
