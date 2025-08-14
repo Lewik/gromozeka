@@ -78,6 +78,7 @@ class Session(
     private val sessionJsonlService: SessionJsonlService,
     private val soundNotificationService: SoundNotificationService,
     private val claudeWrapper: ClaudeWrapper,
+    private val streamToChatMessageMapper: StreamToChatMessageMapper,
     private val claudeModel: String? = null,
     private val responseFormat: com.gromozeka.bot.settings.ResponseFormat = com.gromozeka.bot.settings.ResponseFormat.JSON,
 ) {
@@ -383,7 +384,7 @@ class Session(
                 }
             }
 
-            val chatMessage = StreamToChatMessageMapper
+            val chatMessage = streamToChatMessageMapper
                 .mapToChatMessage(streamPacket.streamMessage)
                 .copy(originalJson = streamPacket.originalJson)
             _messageOutputStream.emit(chatMessage)
@@ -417,8 +418,6 @@ class Session(
                 loadHistoricalMessages(resumeSessionId)
             }
 
-            // Update StreamToChatMessageMapper with current response format
-            StreamToChatMessageMapper.currentResponseFormat = responseFormat
 
             // Start stream collector coroutine
             launchStreamCollector()

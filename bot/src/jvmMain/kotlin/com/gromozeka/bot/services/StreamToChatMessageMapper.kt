@@ -9,20 +9,39 @@ import com.gromozeka.shared.domain.session.toClaudeSessionUuid
 import com.gromozeka.shared.domain.message.ClaudeCodeToolCallData
 import com.gromozeka.shared.domain.message.ClaudeCodeToolResultData
 import com.gromozeka.shared.domain.message.ToolCallData
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.decodeFromJsonElement
+import org.springframework.beans.factory.annotation.Qualifier
+import org.springframework.stereotype.Service
 import java.util.*
+import jakarta.annotation.PostConstruct
 
 /**
  * Maps StreamJsonLine to ChatMessage for UI consumption
  */
-object StreamToChatMessageMapper {
+@Service
+class StreamToChatMessageMapper(
+    private val settingsService: SettingsService,
+    @Qualifier("coroutineScope") private val scope: CoroutineScope
+) {
     
-    // Current response format - should be updated when settings change
-    var currentResponseFormat: ResponseFormat = ResponseFormat.JSON
+    // Current response format - updated from settings
+    private var currentResponseFormat: ResponseFormat = ResponseFormat.JSON
+    
+    @PostConstruct
+    fun init() {
+        // Subscribe to settings changes
+        scope.launch {
+            settingsService.settingsFlow.collect { settings ->
+                currentResponseFormat = settings.responseFormat
+            }
+        }
+    }
 
     fun mapToChatMessage(streamMessage: StreamJsonLine): ChatMessage {
         return when (streamMessage) {

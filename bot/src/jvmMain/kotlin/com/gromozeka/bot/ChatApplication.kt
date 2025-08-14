@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.*
 import androidx.compose.ui.draw.alpha
 import androidx.compose.runtime.*
@@ -21,12 +20,6 @@ import com.gromozeka.bot.services.*
 import com.gromozeka.bot.settings.Settings
 import com.gromozeka.bot.ui.*
 import com.gromozeka.bot.viewmodel.AppViewModel
-import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.springframework.beans.factory.getBean
@@ -113,7 +106,6 @@ fun ApplicationScope.ChatWindow(
     context: org.springframework.context.ConfigurableApplicationContext,
 ) {
     val coroutineScope = rememberCoroutineScope()
-    val scrollState = rememberScrollState()
     val sessionManager = remember { context.getBean(SessionManager::class.java) }
 
     var initialized by remember { mutableStateOf(false) }
@@ -130,36 +122,9 @@ fun ApplicationScope.ChatWindow(
     var showSettingsPanel by remember { mutableStateOf(false) }
     var sessionListRefreshTrigger by remember { mutableStateOf(0) }
 
-    // Create reactive session loading states - remember moved to root level
-    var sessionLoadingStates by remember { mutableStateOf(emptyMap<com.gromozeka.shared.domain.session.SessionUuid, Boolean>()) }
-    
-    // Initialization and session loading states subscription
+    // Initialization
     LaunchedEffect(Unit) {
         initialized = true
-
-        // Initialize StreamToChatMessageMapper with current response format
-        currentSettings?.let { settings ->
-            StreamToChatMessageMapper.currentResponseFormat = settings.responseFormat
-        }
-
-        // Subscribe to all session loading states (in parallel)
-        launch {
-            sessionManager
-                .activeSessions
-                .flatMapLatest { sessions ->
-                    if (sessions.isEmpty()) {
-                        flowOf(emptyMap())
-                    } else {
-                        val flows = sessions
-                            .map { (sessionId, session) ->
-                                session.isWaitingForResponse.map { isWaiting -> sessionId to isWaiting }
-                            }
-                            .toTypedArray()
-                        combine(*flows) { it.toMap() }
-                    }
-                }
-                .collect { sessionLoadingStates = it }
-        }
     }
 
 
@@ -208,8 +173,7 @@ fun ApplicationScope.ChatWindow(
         // All dependent services will react automatically via their subscriptions
         settingsService.saveSettings(newSettings)
 
-        // Update the response format in StreamToChatMessageMapper immediately
-        StreamToChatMessageMapper.currentResponseFormat = newSettings.responseFormat
+        // Response format is now automatically updated in StreamToChatMessageMapper via settings subscription
     }
 
     // Create modifier with PTT event router

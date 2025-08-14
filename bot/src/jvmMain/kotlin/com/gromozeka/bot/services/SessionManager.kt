@@ -25,6 +25,7 @@ class SessionManager(
     private val soundNotificationService: SoundNotificationService,
     private val settingsService: SettingsService,
     private val wrapperFactory: WrapperFactory,
+    private val streamToChatMessageMapper: StreamToChatMessageMapper,
     @Qualifier("coroutineScope") private val scope: CoroutineScope,
 ) {
 
@@ -70,6 +71,7 @@ class SessionManager(
             sessionJsonlService = sessionJsonlService,
             soundNotificationService = soundNotificationService,
             claudeWrapper = claudeWrapper,
+            streamToChatMessageMapper = streamToChatMessageMapper,
             claudeModel = claudeModel,
             responseFormat = settingsService.settings.responseFormat,
         )
