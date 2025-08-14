@@ -51,6 +51,7 @@ fun main() {
 
     val ttsQueueService = context.getBean<TTSQueueService>()
     val sessionJsonlService = context.getBean<SessionJsonlService>()
+    val sessionSearchService = context.getBean<SessionSearchService>()
     val globalHotkeyService = context.getBean<GlobalHotkeyService>()
     val pttEventRouter = context.getBean<PTTEventRouter>()
     val pttService = context.getBean<PTTService>()
@@ -78,6 +79,7 @@ fun main() {
                 ttsQueueService,
                 settingsService,
                 sessionJsonlService,
+                sessionSearchService,
                 globalHotkeyService,
                 pttEventRouter,
                 pttService,
@@ -96,6 +98,7 @@ fun ApplicationScope.ChatWindow(
     ttsQueueService: TTSQueueService,
     settingsService: SettingsService,
     sessionJsonlService: SessionJsonlService,
+    sessionSearchService: SessionSearchService,
     globalHotkeyService: GlobalHotkeyService,
     pttEventRouter: PTTEventRouter,
     pttService: PTTService,
@@ -105,6 +108,9 @@ fun ApplicationScope.ChatWindow(
 ) {
     val coroutineScope = rememberCoroutineScope()
     val sessionManager = remember { context.getBean(SessionManager::class.java) }
+    val sessionSearchViewModel = remember { 
+        com.gromozeka.bot.viewmodel.SessionSearchViewModel(sessionSearchService, coroutineScope) 
+    }
 
     var initialized by remember { mutableStateOf(false) }
 
@@ -321,6 +327,7 @@ fun ApplicationScope.ChatWindow(
                                 sessionJsonlService = sessionJsonlService,
                                 sessionManager = sessionManager,
                                 appViewModel = appViewModel,
+                                searchViewModel = sessionSearchViewModel,
                                 settings = currentSettings,
                                 onSettingsChange = onSettingsChange,
                                 showSettingsPanel = showSettingsPanel,
