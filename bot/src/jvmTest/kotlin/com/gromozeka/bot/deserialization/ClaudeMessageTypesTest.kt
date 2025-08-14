@@ -50,9 +50,7 @@ class ClaudeMessageTypesTest {
             file.readLines().forEach { line ->
                 if (line.trim().isNotEmpty()) {
                     try {
-                        val entry = json.decodeFromString<ClaudeLogEntry>(line)
-
-                        when (entry) {
+                        when (val entry = json.decodeFromString<ClaudeLogEntry>(line)) {
                             is ClaudeLogEntry.UserEntry -> {
                                 entry.message?.let { messageElement ->
                                     messageFieldCount++
@@ -65,8 +63,7 @@ class ClaudeMessageTypesTest {
                                             messageTypeStats[typeKey] = messageTypeStats.getOrDefault(typeKey, 0) + 1
 
                                             try {
-                                                val typedMessage =
-                                                    json.decodeFromString<ClaudeLogEntry.Message>(messageElement.toString())
+                                                json.decodeFromString<ClaudeLogEntry.Message>(messageElement.toString())
                                             } catch (e: Exception) {
                                                 parseErrors.add("User message parse error in ${file.name}: ${e.message}")
                                             }
@@ -96,8 +93,7 @@ class ClaudeMessageTypesTest {
                                             messageTypeStats[typeKey] = messageTypeStats.getOrDefault(typeKey, 0) + 1
 
                                             try {
-                                                val typedMessage =
-                                                    json.decodeFromString<ClaudeLogEntry.Message>(messageElement.toString())
+                                                json.decodeFromString<ClaudeLogEntry.Message>(messageElement.toString())
                                             } catch (e: Exception) {
                                                 parseErrors.add("Assistant message parse error in ${file.name}: ${e.message}")
                                             }
@@ -165,9 +161,7 @@ class ClaudeMessageTypesTest {
             file.readLines().forEach { line ->
                 if (line.trim().isNotEmpty()) {
                     try {
-                        val entry = json.decodeFromString<ClaudeLogEntry>(line)
-
-                        val messageElement = when (entry) {
+                        val messageElement = when (val entry = json.decodeFromString<ClaudeLogEntry>(line)) {
                             is ClaudeLogEntry.UserEntry -> entry.message
                             is ClaudeLogEntry.AssistantEntry -> entry.message
                             else -> null

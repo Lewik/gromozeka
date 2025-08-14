@@ -100,7 +100,6 @@ class PTTService(
         // Set state immediately
         _recordingState.value = false
         currentRecordingSession = null
-        val settings = settingsService.settings
 
         val finalAudio = try {
             // Handle minimum duration

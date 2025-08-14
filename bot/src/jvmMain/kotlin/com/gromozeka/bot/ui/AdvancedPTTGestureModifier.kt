@@ -21,14 +21,14 @@ fun Modifier.advancedPttGestures(
 
     this.pointerInput(Unit) {
         awaitEachGesture {
-            val down = awaitFirstDown(pass = PointerEventPass.Initial)
+            awaitFirstDown(pass = PointerEventPass.Initial)
 
             coroutineScope.launch {
                 gestureDetector.onGestureDown()
             }
 
             // Wait for release
-            val up = waitForUpOrCancellation(pass = PointerEventPass.Initial)
+            waitForUpOrCancellation(pass = PointerEventPass.Initial)
 
             coroutineScope.launch {
                 gestureDetector.onGestureUp()

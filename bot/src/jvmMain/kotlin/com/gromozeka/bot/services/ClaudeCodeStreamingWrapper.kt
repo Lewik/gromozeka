@@ -194,7 +194,7 @@ class ClaudeCodeStreamingWrapper(
     override suspend fun sendMessage(message: String, sessionId: ClaudeSessionUuid) = withContext(Dispatchers.IO) {
         try {
             val proc = process
-            println("[ClaudeCodeStreamingWrapper] Process alive before sending: ${proc?.isAlive()}")
+            println("[ClaudeCodeStreamingWrapper] Process alive before sending: ${proc?.isAlive}")
 
             // According to Claude Code SDK docs: don't send session_id at all
             // When null, kotlinx.serialization won't include the field in JSON

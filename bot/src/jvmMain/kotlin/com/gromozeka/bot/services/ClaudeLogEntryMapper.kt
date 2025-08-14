@@ -220,8 +220,7 @@ object ClaudeLogEntryMapper {
             }
 
             is ClaudeLogEntry.UserContentItem.ToolResultItem -> {
-                val typedContent = item.getTypedContent()
-                val resultData = when (typedContent) {
+                val resultData = when (val typedContent = item.getTypedContent()) {
                     is ClaudeLogEntry.ToolResultContent.StringToolResult -> {
                         listOf(ChatMessage.ContentItem.ToolResult.Data.Text(typedContent.content))
                     }
