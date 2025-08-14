@@ -22,8 +22,8 @@ import androidx.compose.ui.unit.dp
 import com.gromozeka.bot.model.ChatSessionMetadata
 import com.gromozeka.bot.services.SessionJsonlService
 import com.gromozeka.bot.services.SessionManager
-import com.gromozeka.bot.viewmodel.AppViewModel
-import com.gromozeka.bot.viewmodel.SessionSearchViewModel
+import com.gromozeka.bot.ui.viewmodel.AppViewModel
+import com.gromozeka.bot.ui.viewmodel.SessionSearchViewModel
 import io.github.vinceglb.filekit.compose.rememberDirectoryPickerLauncher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch

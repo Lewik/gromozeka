@@ -1,8 +1,9 @@
-package com.gromozeka.bot.viewmodel
+package com.gromozeka.bot.ui.viewmodel
 
 import com.gromozeka.bot.model.Session
 import com.gromozeka.bot.services.SessionManager
 import com.gromozeka.bot.services.SettingsService
+import com.gromozeka.bot.ui.state.UIState
 import com.gromozeka.shared.domain.session.ClaudeSessionUuid
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.*
@@ -10,8 +11,12 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
 /**
- * Application-level ViewModel that manages all tabs
- * Replaces SessionUiManager functionality
+ * Application-level ViewModel that manages all UI tabs
+ * 
+ * Clear separation of concepts:
+ * - Tabs: UI concept (what user sees in interface)
+ * - Sessions: Business concept (Claude connections)
+ * - Each tab currently contains one session, but architecture allows for other tab types
  */
 class AppViewModel(
     private val sessionManager: SessionManager,
@@ -20,15 +25,15 @@ class AppViewModel(
 ) {
     private val mutex = Mutex()
 
-    // Tab management
-    private val _tabs = MutableStateFlow<List<TabViewModel>>(emptyList())
-    val tabs: StateFlow<List<TabViewModel>> = _tabs.asStateFlow()
+    // Tab management (UI layer)
+    private val _tabs = MutableStateFlow<List<SessionViewModel>>(emptyList())
+    val tabs: StateFlow<List<SessionViewModel>> = _tabs.asStateFlow()
 
     private val _currentTabIndex = MutableStateFlow<Int?>(null)
     val currentTabIndex: StateFlow<Int?> = _currentTabIndex.asStateFlow()
 
     // Computed properties
-    val currentTab: StateFlow<TabViewModel?> = combine(tabs, currentTabIndex) { tabList, index ->
+    val currentTab: StateFlow<SessionViewModel?> = combine(tabs, currentTabIndex) { tabList, index ->
         index?.let { tabList.getOrNull(it) }
     }.stateIn(scope, SharingStarted.Eagerly, null)
 
@@ -38,25 +43,34 @@ class AppViewModel(
     }.stateIn(scope, SharingStarted.Eagerly, null)
 
     /**
-     * Creates a new tab with a session
+     * Creates a new tab with a Claude session
      * @param projectPath Path to the project directory
      * @param resumeSessionId Optional Claude session ID to resume
      * @return Index of the created tab
      */
-    suspend fun createTab(projectPath: String, resumeSessionId: String? = null): Int = mutex.withLock {
+    suspend fun createTab(
+        projectPath: String, 
+        resumeSessionId: String? = null,
+        initialActiveMessageTags: Set<String> = emptySet()
+    ): Int = mutex.withLock {
         val claudeSessionId = resumeSessionId?.let { ClaudeSessionUuid(it) }
         // Create session through SessionManager
         val session = sessionManager.createSession(projectPath, claudeSessionId)
 
-        // Create TabViewModel for this session
-        val tabViewModel = TabViewModel(
+        // Create SessionViewModel for this tab
+        val initialTabUiState = UIState.Tab.initial(
+            projectPath = projectPath,
+            initialActiveMessageTags = initialActiveMessageTags
+        )
+        val sessionViewModel = SessionViewModel(
             session = session,
             settingsFlow = settingsService.settingsFlow,
-            scope = scope
+            scope = scope,
+            initialTabUiState = initialTabUiState
         )
 
         // Add to tabs list
-        val updatedTabs = _tabs.value + tabViewModel
+        val updatedTabs = _tabs.value + sessionViewModel
         _tabs.value = updatedTabs
 
         val newTabIndex = updatedTabs.size - 1
@@ -109,32 +123,29 @@ class AppViewModel(
         println("[AppViewModel] Selected tab: $index")
     }
 
+
     /**
-     * Gets tab info for persistence
+     * Restores tabs from UIState
      */
-    fun getTabsForPersistence(): List<TabInfo> {
-        return _tabs.value.map { tab ->
-            TabInfo(
-                projectPath = tab.projectPath,
-                claudeSessionId = tab.claudeSessionId.value.value
+    suspend fun restoreTabs(uiState: UIState) {
+        println("[AppViewModel] Restoring ${uiState.tabs.size} tabs from UIState")
+
+        uiState.tabs.forEach { tabUiState ->
+            val claudeSessionId = tabUiState.claudeSessionId.takeIf { it != ClaudeSessionUuid.DEFAULT }
+            val session = sessionManager.createSession(tabUiState.projectPath, claudeSessionId)
+
+            val sessionViewModel = SessionViewModel(
+                session = session,
+                settingsFlow = settingsService.settingsFlow,
+                scope = scope,
+                initialTabUiState = tabUiState
             )
-        }
-    }
 
-    /**
-     * Restores tabs from saved state
-     */
-    suspend fun restoreTabs(tabInfos: List<TabInfo>, currentIndex: Int?) {
-        println("[AppViewModel] Restoring ${tabInfos.size} tabs")
-
-        tabInfos.forEach { info ->
-            // Don't pass "default" as resumeSessionId - it's not a valid Claude Session ID
-            val resumeSessionId = if (info.claudeSessionId == "default") null else info.claudeSessionId
-            createTab(info.projectPath, resumeSessionId)
+            _tabs.value = _tabs.value + sessionViewModel
         }
 
-        if (currentIndex != null && currentIndex < _tabs.value.size) {
-            selectTab(currentIndex)
+        if (uiState.currentTabIndex != null && uiState.currentTabIndex < _tabs.value.size) {
+            selectTab(uiState.currentTabIndex)
         }
     }
 
@@ -149,11 +160,4 @@ class AppViewModel(
         sessionManager.stopAllSessions()
     }
 
-    /**
-     * Tab information for persistence
-     */
-    data class TabInfo(
-        val projectPath: String,
-        val claudeSessionId: String,
-    )
 }

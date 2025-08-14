@@ -1,7 +1,7 @@
 package com.gromozeka.bot
 
 import com.gromozeka.bot.services.*
-import com.gromozeka.bot.viewmodel.AppViewModel
+import com.gromozeka.bot.ui.viewmodel.AppViewModel
 import com.gromozeka.shared.audio.AudioRecorder
 import io.ktor.client.*
 import io.ktor.client.engine.cio.*

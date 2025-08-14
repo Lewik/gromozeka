@@ -1,4 +1,4 @@
-package com.gromozeka.bot.viewmodel
+package com.gromozeka.bot.ui.viewmodel
 
 import com.gromozeka.bot.model.ChatSessionMetadata
 import com.gromozeka.bot.services.SessionSearchService

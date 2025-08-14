@@ -17,7 +17,7 @@ import androidx.compose.ui.window.*
 import com.gromozeka.bot.services.*
 import com.gromozeka.bot.settings.Settings
 import com.gromozeka.bot.ui.*
-import com.gromozeka.bot.viewmodel.AppViewModel
+import com.gromozeka.bot.ui.viewmodel.AppViewModel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.springframework.beans.factory.getBean
@@ -56,7 +56,7 @@ fun main() {
     val pttEventRouter = context.getBean<PTTEventRouter>()
     val pttService = context.getBean<PTTService>()
     val windowStateService = context.getBean<WindowStateService>()
-    val appUiStateService = context.getBean<AppUiStateService>()
+    val UIStateService = context.getBean<UIStateService>()
     val appViewModel = context.getBean<AppViewModel>()
 
     // Explicit startup of TTS queue service
@@ -67,9 +67,9 @@ fun main() {
     globalHotkeyService.initializeService()
     pttEventRouter.initialize()
 
-    // Initialize AppUiStateService (loads state, restores tabs, starts subscription)
+    // Initialize UIStateService (loads state, restores sessions, starts subscription)
     runBlocking {
-        appUiStateService.initialize(appViewModel)
+        UIStateService.initialize(appViewModel)
     }
     println("[GROMOZEKA] Starting Compose Desktop UI...")
     application {
@@ -84,7 +84,7 @@ fun main() {
                 pttEventRouter,
                 pttService,
                 windowStateService,
-                appUiStateService,
+                UIStateService,
                 context
             )
         }
@@ -103,13 +103,13 @@ fun ApplicationScope.ChatWindow(
     pttEventRouter: PTTEventRouter,
     pttService: PTTService,
     windowStateService: WindowStateService,
-    appUiStateService: AppUiStateService,
+    UIStateService: UIStateService,
     context: org.springframework.context.ConfigurableApplicationContext,
 ) {
     val coroutineScope = rememberCoroutineScope()
     val sessionManager = remember { context.getBean(SessionManager::class.java) }
     val sessionSearchViewModel = remember { 
-        com.gromozeka.bot.viewmodel.SessionSearchViewModel(sessionSearchService, coroutineScope) 
+        com.gromozeka.bot.ui.viewmodel.SessionSearchViewModel(sessionSearchService, coroutineScope) 
     }
 
     var initialized by remember { mutableStateOf(false) }
@@ -203,11 +203,11 @@ fun ApplicationScope.ChatWindow(
         onCloseRequest = {
             println("[GROMOZEKA] Application window closing - stopping all sessions...")
 
-            // Save UI state BEFORE cleanup
-            appUiStateService.saveCurrentState()
-
+            // Force save current state before cleanup
+            UIStateService.forceSave()
+            
             // Disable auto-save during cleanup to prevent saving empty state
-            appUiStateService.disableAutoSave()
+            UIStateService.disableAutoSave()
 
             coroutineScope.launch {
                 try {
@@ -253,7 +253,7 @@ fun ApplicationScope.ChatWindow(
                 // Tab-based UI: SessionListScreen as first tab, active sessions as additional tabs
                 Column(modifier = Modifier.fillMaxSize()) {
 
-                    // Determine selected tab index (0 = projects, 1+ = tabs)
+                    // Determine selected tab index (0 = projects, 1+ = sessions)
                     val selectedTabIndex = currentTabIndex?.plus(1) ?: 0
 
                     // Tab Row
@@ -338,9 +338,9 @@ fun ApplicationScope.ChatWindow(
 
                         // Only render SessionScreen for current tab
                         if (currentTab != null && currentSession != null) {
-                            currentTab?.let { tabViewModel ->
+                            currentTab?.let { sessionViewModel ->
                                 SessionScreen(
-                                    viewModel = tabViewModel,
+                                    viewModel = sessionViewModel,
 
                                     // Navigation callbacks - modified to not stop sessions
                                     onBackToSessionList = {
@@ -353,7 +353,7 @@ fun ApplicationScope.ChatWindow(
                                         createNewSession(currentSession!!.projectPath)
                                     },
 
-                                    // Close tab callback - removes tab and stops session
+                                    // Close session callback - removes session and stops it
                                     onCloseTab = {
                                         coroutineScope.launch {
                                             currentTabIndex?.let { index ->

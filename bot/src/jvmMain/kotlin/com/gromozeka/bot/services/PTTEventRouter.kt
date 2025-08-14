@@ -1,6 +1,6 @@
 package com.gromozeka.bot.services
 
-import com.gromozeka.bot.viewmodel.AppViewModel
+import com.gromozeka.bot.ui.viewmodel.AppViewModel
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -34,7 +34,7 @@ class PTTEventRouter(
     private var currentPTTJob: Job? = null
 
     // Target session ViewModel captured at PTT start
-    private var targetViewModel: com.gromozeka.bot.viewmodel.TabViewModel? = null
+    private var targetViewModel: com.gromozeka.bot.ui.viewmodel.SessionViewModel? = null
 
     /**
      * Initialize PTT event router and start listening to interrupt commands
@@ -102,7 +102,7 @@ class PTTEventRouter(
                     targetViewModel!!.sendMessageToSession(text)
                 } else {
                     // Set text in user input field for editing
-                    targetViewModel!!.userInput = text
+                    targetViewModel!!.updateUserInput(text)
                 }
             }
         } catch (e: Exception) {

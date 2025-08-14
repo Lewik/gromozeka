@@ -44,7 +44,7 @@ import kotlinx.serialization.json.JsonElement
 
 @Composable
 fun SessionScreen(
-    viewModel: com.gromozeka.bot.viewmodel.TabViewModel,
+    viewModel: com.gromozeka.bot.ui.viewmodel.SessionViewModel,
 
     // Navigation callbacks
     onBackToSessionList: () -> Unit,
@@ -75,7 +75,8 @@ fun SessionScreen(
     val toolResultsMap by viewModel.toolResultsMap.collectAsState()
     val isWaitingForResponse by viewModel.isWaitingForResponse.collectAsState()
     val tokenUsage by viewModel.tokenUsage.collectAsState()
-    val userInput = viewModel.userInput
+    val uiState by viewModel.uiState.collectAsState()
+    val userInput = uiState.userInput
     val jsonToShow = viewModel.jsonToShow
 
     // Format UI strings here in UI layer
@@ -206,7 +207,7 @@ fun SessionScreen(
                 DisableSelection {
                     MessageInput(
                         userInput = userInput,
-                        onUserInputChange = { viewModel.userInput = it },
+                        onUserInputChange = { viewModel.updateUserInput(it) },
                         isWaitingForResponse = isWaitingForResponse,
                         onSendMessage = { message ->
                             onSendMessage(message)
@@ -227,7 +228,7 @@ fun SessionScreen(
                             items(viewModel.availableMessageTags) { tag ->
                                 MessageTagButton(
                                     tag = tag,
-                                    isActive = tag.title in viewModel.activeMessageTags,
+                                    isActive = tag.title in uiState.activeMessageTags,
                                     onClick = { viewModel.toggleMessageTag(tag.title) }
                                 )
                             }

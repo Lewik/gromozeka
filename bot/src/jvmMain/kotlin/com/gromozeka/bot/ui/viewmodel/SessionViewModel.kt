@@ -1,34 +1,55 @@
-package com.gromozeka.bot.viewmodel
+package com.gromozeka.bot.ui.viewmodel
 
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.gromozeka.bot.model.Session
 import com.gromozeka.bot.settings.Settings
+import com.gromozeka.bot.ui.state.UIState
 import com.gromozeka.bot.utils.TokenUsageCalculator
 import com.gromozeka.shared.domain.message.ChatMessage
 import com.gromozeka.shared.domain.message.MessageTag
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.*
 
-class TabViewModel(
+class SessionViewModel(
     // Session is intentionally private to maintain clean MVVM architecture.
-    // Tab is the "head" for headless Session - UI layer should only interact
-    // with TabViewModel, not with Session directly. Session lives without any UI knowledge.
+    // SessionViewModel is the "head" for headless Session - UI layer should only interact
+    // with SessionViewModel, not with Session directly. Session lives without any UI knowledge.
     // This ensures isolation of business logic from the presentation layer.
     private val session: Session,
     private val settingsFlow: StateFlow<Settings>,
     private val scope: CoroutineScope,
+    initialTabUiState: UIState.Tab,
 ) {
 
     // === Public accessors for AppViewModel ===
     val sessionId get() = session.id  // Get from Session directly
     val projectPath get() = session.projectPath
     val claudeSessionId get() = session.claudeSessionId
-    // Note: isWaitingForResponse is already exposed below as StateFlow
 
-    // === UI State ===
-    var userInput by mutableStateOf("")
+    // === Immutable UI State (Official Android Pattern) ===
+    private val _uiState = MutableStateFlow(initialTabUiState)
+    val uiState: StateFlow<UIState.Tab> = _uiState.asStateFlow()
+
+    // === Reactive updates from Session ===
+    init {
+        // Update claudeSessionId when it changes in Session
+        session.claudeSessionId.onEach { newSessionId ->
+            _uiState.update { currentState ->
+                currentState.copy(claudeSessionId = newSessionId)
+            }
+        }.launchIn(scope)
+
+        // Update isWaitingForResponse when it changes in Session  
+        session.isWaitingForResponse.onEach { isWaiting ->
+            _uiState.update { currentState ->
+                currentState.copy(isWaitingForResponse = isWaiting)
+            }
+        }.launchIn(scope)
+    }
+
+    // === Non-persistent UI State ===
     var jsonToShow by mutableStateOf<String?>(null)
 
     // === Message Tags ===
@@ -40,14 +61,19 @@ class TabViewModel(
         MessageTag("Explain", "Режим объяснений - детальный разбор с контекстом и примерами")
     )
 
-    var activeMessageTags by mutableStateOf(setOf<String>())
+    // === Convenience accessors for backward compatibility ===
+    val activeMessageTags: Set<String> get() = _uiState.value.activeMessageTags
+    val userInput: String get() = _uiState.value.userInput
+    val activeMessageTagsFlow: StateFlow<Set<String>> = _uiState.map { it.activeMessageTags }.stateIn(
+        scope, SharingStarted.Lazily, initialTabUiState.activeMessageTags
+    )
 
     // === Messages from messageOutputStream (no duplication) ===
     private val allMessages: StateFlow<List<ChatMessage>> = session.messageOutputStream
         .scan(emptyList<ChatMessage>()) { acc, message -> acc + message }
         .stateIn(
             scope = scope,
-            started = SharingStarted.WhileSubscribed(5000),
+            started = SharingStarted.Eagerly,
             initialValue = emptyList()
         )
 
@@ -103,17 +129,27 @@ class TabViewModel(
     // === Session State Forwarding ===
     val isWaitingForResponse: StateFlow<Boolean> = session.isWaitingForResponse
 
-    // === Commands ===
+    // === Commands (Immutable State Updates) ===
     fun toggleMessageTag(title: String) {
-        activeMessageTags = if (title in activeMessageTags) {
-            activeMessageTags - title
-        } else {
-            activeMessageTags + title
+        _uiState.update { currentState ->
+            val newTags = if (title in currentState.activeMessageTags) {
+                currentState.activeMessageTags - title
+            } else {
+                currentState.activeMessageTags + title
+            }
+            currentState.copy(activeMessageTags = newTags)
+        }
+    }
+
+    fun updateUserInput(input: String) {
+        _uiState.update { currentState ->
+            currentState.copy(userInput = input)
         }
     }
 
     suspend fun sendMessageToSession(message: String) {
-        val activeTags = availableMessageTags.filter { it.title in activeMessageTags }
+        val currentState = _uiState.value
+        val activeTags = availableMessageTags.filter { it.title in currentState.activeMessageTags }
 
         val messageWithInstructions = if (activeTags.isNotEmpty()) {
             "$message\n\n<instructions>\n${activeTags.joinToString("\n") { it.instruction }}\n</instructions>"
@@ -122,6 +158,8 @@ class TabViewModel(
         }
 
         session.sendMessage(messageWithInstructions, activeTags)
-        userInput = "" // Clear input after sending
+        
+        // Clear input after sending
+        _uiState.update { it.copy(userInput = "") }
     }
 }
