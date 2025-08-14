@@ -61,26 +61,26 @@ object TokenUsageCalculator {
      */
     private fun extractTokenUsageFromJson(originalJson: String?): TokenUsage? {
         if (originalJson == null) {
-            println("[TokenUsageCalculator] originalJson is null, trying metadata...")
+            //println("[TokenUsageCalculator] originalJson is null, trying metadata...")
             return null
         }
 
         return try {
             val json = Json.parseToJsonElement(originalJson)
             if (json !is JsonObject) {
-                println("[TokenUsageCalculator] json is not JsonObject: ${json::class.simpleName}")
+                //println("[TokenUsageCalculator] json is not JsonObject: ${json::class.simpleName}")
                 return null
             }
 
             val message = json["message"]?.jsonObject
             if (message == null) {
-                println("[TokenUsageCalculator] No 'message' field found in JSON")
+                //println("[TokenUsageCalculator] No 'message' field found in JSON")
                 return null
             }
 
             val usage = message["usage"]?.jsonObject
             if (usage == null) {
-                println("[TokenUsageCalculator] No 'usage' field found in message")
+                //println("[TokenUsageCalculator] No 'usage' field found in message")
                 return null
             }
 
@@ -93,8 +93,8 @@ object TokenUsageCalculator {
 
             tokenUsage
         } catch (e: Exception) {
-            println("[TokenUsageCalculator] Error parsing usage from JSON: ${e.message}")
-            println("[TokenUsageCalculator] JSON snippet: ${originalJson.take(200)}...")
+            //println("[TokenUsageCalculator] Error parsing usage from JSON: ${e.message}")
+            //println("[TokenUsageCalculator] JSON snippet: ${originalJson.take(200)}...")
             null
         }
     }
@@ -109,11 +109,11 @@ object TokenUsageCalculator {
         var latestCacheReadTokens = 0
 
         val assistantMessages = messages.filter { it.role == ChatMessage.Role.ASSISTANT }
-        println("[TokenUsageCalculator] Processing ${assistantMessages.size} assistant messages out of ${messages.size} total")
+        //println("[TokenUsageCalculator] Processing ${assistantMessages.size} assistant messages out of ${messages.size} total")
 
         // Only process ASSISTANT messages - they contain usage info
         assistantMessages.forEachIndexed { index, message ->
-            println("[TokenUsageCalculator] Processing assistant message $index: uuid=${message.uuid}, isHistorical=${message.isHistorical}")
+            //println("[TokenUsageCalculator] Processing assistant message $index: uuid=${message.uuid}, isHistorical=${message.isHistorical}")
             val usage = extractTokenUsage(message)
             if (usage != null) {
                 totalInputTokens += usage.inputTokens
@@ -123,16 +123,16 @@ object TokenUsageCalculator {
                 // Historical messages may contain accumulated cache_creation_tokens from previous sessions
                 if (!message.isHistorical) {
                     totalCacheCreationTokens += usage.cacheCreationTokens
-                    println("[TokenUsageCalculator] Added cache_create=${usage.cacheCreationTokens} (non-historical)")
+                    //println("[TokenUsageCalculator] Added cache_create=${usage.cacheCreationTokens} (non-historical)")
                 } else {
-                    println("[TokenUsageCalculator] Skipped cache_create=${usage.cacheCreationTokens} (historical message)")
+                    //println("[TokenUsageCalculator] Skipped cache_create=${usage.cacheCreationTokens} (historical message)")
                 }
 
                 // Cache read tokens are cumulative - take the latest value
                 if (usage.cacheReadTokens > latestCacheReadTokens) {
                     latestCacheReadTokens = usage.cacheReadTokens
                 }
-                println("[TokenUsageCalculator] Running totals: in=$totalInputTokens, out=$totalOutputTokens, cache_create=$totalCacheCreationTokens, cache_read_latest=$latestCacheReadTokens")
+                //println("[TokenUsageCalculator] Running totals: in=$totalInputTokens, out=$totalOutputTokens, cache_create=$totalCacheCreationTokens, cache_read_latest=$latestCacheReadTokens")
             }
         }
 
@@ -143,7 +143,7 @@ object TokenUsageCalculator {
             currentCacheReadTokens = latestCacheReadTokens
         )
 
-        println("[TokenUsageCalculator] Final result: ${result.grandTotal} total (${(result.contextUsagePercent * 100).toInt()}%)")
+        //println("[TokenUsageCalculator] Final result: ${result.grandTotal} total (${(result.contextUsagePercent * 100).toInt()}%)")
 
         return result
     }
