@@ -153,7 +153,6 @@ class UIStateService(
         try {
             val jsonContent = json.encodeToString(state)
             stateFile.writeText(jsonContent)
-            println("[UIStateService] Saved UI state: ${state.tabs.size} tabs")
         } catch (e: Exception) {
             println("[UIStateService] Failed to save UI state: ${e.message}")
         }

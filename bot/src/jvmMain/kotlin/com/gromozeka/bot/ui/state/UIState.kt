@@ -33,12 +33,5 @@ data class UIState(
         val activeMessageTags: Set<String> = emptySet(),
         val userInput: String = "",
         val isWaitingForResponse: Boolean = false,
-    ) {
-        companion object {
-            fun initial(projectPath: String, initialActiveMessageTags: Set<String> = emptySet()) = Tab(
-                projectPath = projectPath,
-                activeMessageTags = initialActiveMessageTags
-            )
-        }
-    }
+    )
 }

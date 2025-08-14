@@ -58,9 +58,10 @@ class AppViewModel(
         val session = sessionManager.createSession(projectPath, claudeSessionId)
 
         // Create SessionViewModel for this tab
-        val initialTabUiState = UIState.Tab.initial(
+        val initialTabUiState = UIState.Tab(
             projectPath = projectPath,
-            initialActiveMessageTags = initialActiveMessageTags
+            claudeSessionId = claudeSessionId ?: ClaudeSessionUuid.DEFAULT,
+            activeMessageTags = initialActiveMessageTags
         )
         val sessionViewModel = SessionViewModel(
             session = session,

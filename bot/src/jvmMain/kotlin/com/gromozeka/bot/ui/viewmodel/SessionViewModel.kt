@@ -9,6 +9,7 @@ import com.gromozeka.bot.ui.state.UIState
 import com.gromozeka.bot.utils.TokenUsageCalculator
 import com.gromozeka.shared.domain.message.ChatMessage
 import com.gromozeka.shared.domain.message.MessageTag
+import com.gromozeka.shared.domain.session.ClaudeSessionUuid
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.*
 
