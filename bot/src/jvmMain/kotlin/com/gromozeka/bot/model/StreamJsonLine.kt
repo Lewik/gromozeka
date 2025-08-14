@@ -27,7 +27,7 @@ sealed class StreamJsonLine {
         val model: String? = null,
         val permissionMode: String? = null,
         @SerialName("permission_denials")
-        val permissionDenials: List<String>? = null,
+        val permissionDenials: JsonElement? = null,
         @SerialName("slash_commands")
         val slashCommands: List<String>? = null,
         val apiKeySource: String? = null,
@@ -76,7 +76,7 @@ sealed class StreamJsonLine {
         val usage: UsageInfo? = null,
         val result: String? = null,
         @SerialName("permission_denials")
-        val permissionDenials: List<String>? = null,
+        val permissionDenials: JsonElement? = null,
         override val type: String = "result",
     ) : StreamJsonLine()
 

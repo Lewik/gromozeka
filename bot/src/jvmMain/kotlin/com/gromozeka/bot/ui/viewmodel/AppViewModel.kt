@@ -151,6 +151,31 @@ class AppViewModel(
     }
 
     /**
+     * Renames a tab with custom name
+     * @param tabIndex Index of the tab to rename
+     * @param newName New custom name for the tab (null to reset to default)
+     */
+    suspend fun renameTab(tabIndex: Int, newName: String?) = mutex.withLock {
+        val tabList = _tabs.value
+        val sessionViewModel = tabList.getOrNull(tabIndex) ?: return@withLock
+        
+        sessionViewModel.updateCustomName(newName?.takeIf { it.isNotBlank() })
+        println("[AppViewModel] Renamed tab at index $tabIndex to: ${newName ?: "default"}")
+    }
+
+    /**
+     * Resets tab name to default (removes custom name)
+     * @param tabIndex Index of the tab to reset
+     */
+    suspend fun resetTabName(tabIndex: Int) = mutex.withLock {
+        val tabList = _tabs.value
+        val sessionViewModel = tabList.getOrNull(tabIndex) ?: return@withLock
+        
+        sessionViewModel.updateCustomName(null)
+        println("[AppViewModel] Reset tab name at index $tabIndex to default")
+    }
+
+    /**
      * Stops all sessions and clears tabs
      */
     suspend fun cleanup() {

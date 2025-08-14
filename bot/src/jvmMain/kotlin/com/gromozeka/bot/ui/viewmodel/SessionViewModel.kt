@@ -148,6 +148,12 @@ class SessionViewModel(
         }
     }
 
+    fun updateCustomName(customName: String?) {
+        _uiState.update { currentState ->
+            currentState.copy(customName = customName)
+        }
+    }
+
     suspend fun sendMessageToSession(message: String) {
         val currentState = _uiState.value
         val activeTags = availableMessageTags.filter { it.title in currentState.activeMessageTags }

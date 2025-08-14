@@ -1,18 +1,24 @@
 package com.gromozeka.bot
 
 import androidx.compose.desktop.ui.tooling.preview.Preview
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.*
 import com.gromozeka.bot.services.*
 import com.gromozeka.bot.settings.Settings
@@ -25,6 +31,52 @@ import org.springframework.boot.WebApplicationType
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.builder.SpringApplicationBuilder
 import java.io.File
+import com.gromozeka.bot.ui.state.UIState
+
+/**
+ * Format folder name to human readable format
+ * Converts: kebab-case, snake_case, camelCase, PascalCase to "Capitalized Words"
+ * Also handles parent folder in the format "Parent / Child"
+ */
+fun formatProjectName(projectPath: String): String {
+    val projectFile = File(projectPath)
+    val projectName = projectFile.name.takeIf { it.isNotBlank() } ?: return "Unknown Project"
+    val parentName = projectFile.parentFile?.name?.takeIf { it.isNotBlank() }
+    
+    fun formatFolderName(name: String): String {
+        return name
+            // Replace hyphens and underscores with spaces
+            .replace(Regex("[-_]"), " ")
+            // Split camelCase and PascalCase (insert space before uppercase letters)
+            .replace(Regex("(?<=[a-z])(?=[A-Z])"), " ")
+            // Split sequences of digits from letters
+            .replace(Regex("(?<=[a-zA-Z])(?=\\d)|(?<=\\d)(?=[a-zA-Z])"), " ")
+            // Split multiple words, normalize whitespace
+            .split(Regex("\\s+"))
+            .filter { it.isNotBlank() }
+            // Capitalize each word
+            .joinToString(" ") { word ->
+                word.lowercase().replaceFirstChar { it.uppercase() }
+            }
+    }
+    
+    val formattedProject = formatFolderName(projectName)
+    val formattedParent = parentName?.let { formatFolderName(it) }
+    
+    return if (formattedParent != null && formattedParent != formattedProject) {
+        "$formattedParent / $formattedProject"
+    } else {
+        formattedProject
+    }
+}
+
+/**
+ * Get display name for a tab based on custom name or formatted project path
+ */
+fun getTabDisplayName(tabUiState: UIState.Tab, index: Int): String {
+    return tabUiState.customName?.takeIf { it.isNotBlank() }
+        ?: formatProjectName(tabUiState.projectPath)
+}
 
 fun main() {
     System.setProperty("java.awt.headless", "false")
@@ -91,6 +143,7 @@ fun main() {
     }
 }
 
+@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 @Preview
 fun ApplicationScope.ChatWindow(
@@ -125,6 +178,14 @@ fun ApplicationScope.ChatWindow(
     val currentSession by appViewModel.currentSession.collectAsState()
     var showSettingsPanel by remember { mutableStateOf(false) }
     var sessionListRefreshTrigger by remember { mutableStateOf(0) }
+    
+    // State for rename dialog
+    var renameDialogOpen by remember { mutableStateOf(false) }
+    var renameTabIndex by remember { mutableStateOf(-1) }
+    var renameCurrentName by remember { mutableStateOf("") }
+    
+    // State for tab hover
+    var hoveredTabIndex by remember { mutableStateOf(-1) }
 
     // Initialization
     LaunchedEffect(Unit) {
@@ -276,9 +337,10 @@ fun ApplicationScope.ChatWindow(
                             )
                         }
 
-                        // Session tabs with loading indicators
+                        // Session tabs with loading indicators and edit button
                         tabs.forEachIndexed { index, tab ->
                             val isLoading = tab.isWaitingForResponse.collectAsState().value
+                            val tabUiState = tab.uiState.collectAsState().value
                             val tabIndex = index + 1
 
                             Tab(
@@ -288,12 +350,31 @@ fun ApplicationScope.ChatWindow(
                                         appViewModel.selectTab(index)
                                     }
                                 },
+                                modifier = Modifier.onPointerEvent(PointerEventType.Enter) { hoveredTabIndex = index }
+                                    .onPointerEvent(PointerEventType.Exit) { hoveredTabIndex = -1 },
                                 text = {
                                     Box(
                                         modifier = Modifier.fillMaxWidth(),
                                         contentAlignment = Alignment.Center
                                     ) {
-                                        Text("Таб ${index + 1}")
+                                        Text(getTabDisplayName(tabUiState, index))
+
+                                        // Edit button (pencil) - appears on hover
+                                        if (hoveredTabIndex == index) {
+                                            IconButton(
+                                                onClick = {
+                                                    renameTabIndex = index
+                                                    renameCurrentName = getTabDisplayName(tabUiState, index)
+                                                    renameDialogOpen = true
+                                                },
+                                                modifier = Modifier
+                                                    .size(16.dp)
+                                                    .align(Alignment.CenterStart)
+                                                    .offset(x = (-8).dp)
+                                            ) {
+                                                Text("✏️", fontSize = 10.sp)
+                                            }
+                                        }
 
                                         if (isLoading) {
                                             CircularProgressIndicator(
@@ -307,6 +388,23 @@ fun ApplicationScope.ChatWindow(
                                 }
                             )
                         }
+
+                        // Rename dialog
+                        TabRenameDialog(
+                            isOpen = renameDialogOpen,
+                            currentName = renameCurrentName,
+                            onRename = { newName ->
+                                val tabIndexToRename = renameTabIndex
+                                coroutineScope.launch {
+                                    appViewModel.renameTab(tabIndexToRename, newName)
+                                }
+                            },
+                            onDismiss = {
+                                renameDialogOpen = false
+                                renameTabIndex = -1
+                                renameCurrentName = ""
+                            }
+                        )
                     }
 
                     // Tab Content - All tabs exist in parallel, only selected is visible

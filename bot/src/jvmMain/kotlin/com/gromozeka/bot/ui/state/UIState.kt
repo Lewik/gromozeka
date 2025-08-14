@@ -33,5 +33,6 @@ data class UIState(
         val activeMessageTags: Set<String> = emptySet(),
         val userInput: String = "",
         val isWaitingForResponse: Boolean = false,
+        val customName: String? = null,
     )
 }
