@@ -1,5 +1,6 @@
 package com.gromozeka.bot.services
 
+import com.gromozeka.bot.viewmodel.AppViewModel
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import kotlin.time.Duration.Companion.milliseconds
@@ -17,7 +18,7 @@ enum class PTTEvent {
 class PTTEventRouter(
     private val pttService: PTTService,
     private val ttsQueueService: TTSQueueService,
-    private val sessionUiManager: SessionUiManager,
+    private val appViewModel: AppViewModel,
     private val settingsService: SettingsService,
 ) {
 
@@ -61,10 +62,7 @@ class PTTEventRouter(
         when (event) {
             PTTEvent.BUTTON_DOWN -> {
                 // Capture target session ViewModel at PTT start to prevent race conditions
-                val currentSessionId = sessionUiManager.currentSessionId.value
-                targetViewModel = currentSessionId?.let { 
-                    sessionUiManager.sessionViewModels.value[it] 
-                }
+                targetViewModel = appViewModel.currentTab.value
                 // Start PTT recording immediately (TTS continues playing muted)
                 startPTTRecording()
             }

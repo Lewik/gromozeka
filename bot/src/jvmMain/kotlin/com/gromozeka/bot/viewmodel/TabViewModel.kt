@@ -21,6 +21,12 @@ class TabViewModel(
     private val scope: CoroutineScope,
 ) {
 
+    // === Public accessors for AppViewModel ===
+    val sessionId get() = session.id  // Get from Session directly
+    val projectPath get() = session.projectPath
+    val claudeSessionId get() = session.claudeSessionId
+    // Note: isWaitingForResponse is already exposed below as StateFlow
+    
     // === UI State ===
     var userInput by mutableStateOf("")
     var jsonToShow by mutableStateOf<String?>(null)

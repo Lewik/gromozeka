@@ -3,11 +3,12 @@ package com.gromozeka.bot
 import com.gromozeka.bot.services.AudioMuteManager
 import com.gromozeka.bot.services.PTTEventRouter
 import com.gromozeka.bot.services.PTTService
-import com.gromozeka.bot.services.SessionUiManager
 import com.gromozeka.bot.services.SettingsService
 import com.gromozeka.bot.services.SttService
+import com.gromozeka.bot.services.SessionManager
 import com.gromozeka.bot.services.TTSQueueService
 import com.gromozeka.bot.services.TtsService
+import com.gromozeka.bot.viewmodel.AppViewModel
 import com.gromozeka.shared.audio.AudioRecorder
 import io.ktor.client.*
 import io.ktor.client.engine.cio.*
@@ -20,6 +21,7 @@ import org.springframework.ai.chat.client.ChatClient
 import org.springframework.ai.openai.OpenAiAudioSpeechModel
 import org.springframework.ai.openai.OpenAiAudioTranscriptionModel
 import org.springframework.ai.openai.OpenAiChatModel
+import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 
@@ -72,12 +74,19 @@ class Config {
     ) = PTTService(audioRecorder, sttService, settingsService, audioMuteManager)
 
     @Bean
+    fun appViewModel(
+        sessionManager: SessionManager,
+        settingsService: SettingsService,
+        @Qualifier("coroutineScope") scope: CoroutineScope
+    ) = AppViewModel(sessionManager, settingsService, scope)
+    
+    @Bean
     fun pttEventRouter(
         pttService: PTTService,
         ttsQueueService: TTSQueueService,
-        sessionUiManager: SessionUiManager,
+        appViewModel: AppViewModel,
         settingsService: SettingsService
-    ) = PTTEventRouter(pttService, ttsQueueService, sessionUiManager, settingsService)
+    ) = PTTEventRouter(pttService, ttsQueueService, appViewModel, settingsService)
 
     @Bean
     fun settingsService(): SettingsService {

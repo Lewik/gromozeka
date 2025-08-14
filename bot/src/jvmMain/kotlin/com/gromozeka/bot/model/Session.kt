@@ -73,6 +73,7 @@ enum class SessionState {
  * Process Lifecycle: Robust start/stop with graceful shutdown and error recovery
  */
 class Session(
+    val id: SessionUuid,  // Added to track session identity
     val projectPath: String,
     private val sessionJsonlService: SessionJsonlService,
     private val soundNotificationService: SoundNotificationService,

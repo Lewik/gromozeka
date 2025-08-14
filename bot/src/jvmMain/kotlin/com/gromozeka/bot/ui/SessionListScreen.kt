@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.dp
 import com.gromozeka.bot.model.ChatSessionMetadata
 import com.gromozeka.bot.services.SessionJsonlService
 import com.gromozeka.bot.services.SessionManager
+import com.gromozeka.bot.viewmodel.AppViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Instant
@@ -49,7 +50,7 @@ fun SessionListScreen(
     onNewSession: (String) -> Unit,
     sessionJsonlService: SessionJsonlService,
     sessionManager: SessionManager,
-    sessionUiManager: com.gromozeka.bot.services.SessionUiManager,
+    appViewModel: AppViewModel,
     // Settings support
     settings: com.gromozeka.bot.settings.Settings,
     onSettingsChange: (com.gromozeka.bot.settings.Settings) -> Unit,
@@ -194,8 +195,7 @@ fun SessionListScreen(
                                     coroutineScope.handleSessionClick(
                                         clickedSession,
                                         onSessionMetadataSelected,
-                                        sessionManager,
-                                        sessionUiManager
+                                        appViewModel
                                     )
                                 }
                             )
@@ -368,30 +368,28 @@ private fun SessionItem(
 }
 
 
-// Resume existing session - create new Session with historical data loading via SessionManager
+// Resume existing session - create new tab with historical data loading
 private fun CoroutineScope.handleSessionClick(
     clickedSessionMetadata: ChatSessionMetadata,
     onSessionMetadataSelected: (ChatSessionMetadata) -> Unit,
-    sessionManager: SessionManager,
-    sessionUiManager: com.gromozeka.bot.services.SessionUiManager,
+    appViewModel: AppViewModel,
 ) {
     launch {
         try {
-            // Explicit workflow: Session → ViewModel → Navigation
-            val sessionId = sessionManager.createSession(
+            // Create tab with resume session ID
+            val tabIndex = appViewModel.createTab(
                 projectPath = clickedSessionMetadata.projectPath,
-                resumeSessionId = clickedSessionMetadata.claudeSessionId
+                resumeSessionId = clickedSessionMetadata.claudeSessionId.value
             )
-            sessionUiManager.createViewModel(sessionId)
-            sessionUiManager.setCurrentSession(sessionId)
+            appViewModel.selectTab(tabIndex)
             
-            println("[SessionListScreen] Created session and ViewModel: $sessionId, resume from: ${clickedSessionMetadata.claudeSessionId}")
+            println("[SessionListScreen] Created tab at index $tabIndex, resume from: ${clickedSessionMetadata.claudeSessionId}")
             
             // Notify parent that session was selected and created
             onSessionMetadataSelected(clickedSessionMetadata)
 
         } catch (e: Exception) {
-            println("[SessionListScreen] Failed to create session and ViewModel: ${e.message}")
+            println("[SessionListScreen] Failed to create tab: ${e.message}")
             e.printStackTrace()
         }
     }

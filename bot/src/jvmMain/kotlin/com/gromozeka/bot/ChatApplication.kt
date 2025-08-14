@@ -20,10 +20,12 @@ import androidx.compose.ui.window.*
 import com.gromozeka.bot.services.*
 import com.gromozeka.bot.settings.Settings
 import com.gromozeka.bot.ui.*
+import com.gromozeka.bot.viewmodel.AppViewModel
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -62,7 +64,8 @@ fun main() {
     val pttEventRouter = context.getBean<PTTEventRouter>()
     val pttService = context.getBean<PTTService>()
     val windowStateService = context.getBean<WindowStateService>()
-    val applicationPersistentStateService = context.getBean<ApplicationPersistentStateService>()
+    val appUiStateService = context.getBean<AppUiStateService>()
+    val appViewModel = context.getBean<AppViewModel>()
 
     // Explicit startup of TTS queue service
     ttsQueueService.start()
@@ -72,14 +75,15 @@ fun main() {
     globalHotkeyService.initializeService()
     pttEventRouter.initialize()
     
-    // Initialize ApplicationPersistentStateService (loads state, restores tabs, starts subscription)
+    // Initialize AppUiStateService (loads state, restores tabs, starts subscription)
     runBlocking {
-        applicationPersistentStateService.initialize()
+        appUiStateService.initialize(appViewModel)
     }
     println("[GROMOZEKA] Starting Compose Desktop UI...")
     application {
         GromozekaTheme {
             ChatWindow(
+                appViewModel,
                 ttsQueueService,
                 settingsService,
                 sessionJsonlService,
@@ -87,6 +91,7 @@ fun main() {
                 pttEventRouter,
                 pttService,
                 windowStateService,
+                appUiStateService,
                 context
             )
         }
@@ -96,6 +101,7 @@ fun main() {
 @Composable
 @Preview
 fun ApplicationScope.ChatWindow(
+    appViewModel: AppViewModel,
     ttsQueueService: TTSQueueService,
     settingsService: SettingsService,
     sessionJsonlService: SessionJsonlService,
@@ -103,12 +109,12 @@ fun ApplicationScope.ChatWindow(
     pttEventRouter: PTTEventRouter,
     pttService: PTTService,
     windowStateService: WindowStateService,
+    appUiStateService: AppUiStateService,
     context: org.springframework.context.ConfigurableApplicationContext,
 ) {
     val coroutineScope = rememberCoroutineScope()
     val scrollState = rememberScrollState()
     val sessionManager = remember { context.getBean(SessionManager::class.java) }
-    val sessionUiManager = remember { context.getBean(SessionUiManager::class.java) }
 
     var initialized by remember { mutableStateOf(false) }
 
@@ -117,9 +123,10 @@ fun ApplicationScope.ChatWindow(
     val currentSettings by settingsService.settingsFlow.collectAsState()
 
 
-    val activeSessions by sessionManager.activeSessions.collectAsState()
-    val currentSessionId by sessionUiManager.currentSessionId.collectAsState()
-    val currentSession by sessionUiManager.currentSession.collectAsState(null)
+    val tabs by appViewModel.tabs.collectAsState()
+    val currentTabIndex by appViewModel.currentTabIndex.collectAsState()
+    val currentTab by appViewModel.currentTab.collectAsState()
+    val currentSession by appViewModel.currentSession.collectAsState()
     var showSettingsPanel by remember { mutableStateOf(false) }
     var sessionListRefreshTrigger by remember { mutableStateOf(0) }
 
@@ -195,7 +202,7 @@ fun ApplicationScope.ChatWindow(
     DisposableEffect(Unit) {
         onDispose {
             coroutineScope.launch {
-                sessionManager.stopAllSessions()
+                appViewModel.cleanup()
             }
         }
     }
@@ -203,10 +210,8 @@ fun ApplicationScope.ChatWindow(
     val createNewSession: (String) -> Unit = { projectPath ->
         coroutineScope.launch {
             try {
-                // Explicit workflow: Session → ViewModel → Navigation
-                val sessionId = sessionManager.createSession(projectPath)
-                sessionUiManager.createViewModel(sessionId)
-                sessionUiManager.setCurrentSession(sessionId)
+                val tabIndex = appViewModel.createTab(projectPath)
+                appViewModel.selectTab(tabIndex)
             } catch (e: Exception) {
                 e.printStackTrace()
             }
@@ -276,13 +281,18 @@ fun ApplicationScope.ChatWindow(
         onCloseRequest = {
             println("[GROMOZEKA] Application window closing - stopping all sessions...")
 
-            // Stop all sessions via SessionManager
+            // Save UI state BEFORE cleanup
+            appUiStateService.saveCurrentState()
+            
+            // Disable auto-save during cleanup to prevent saving empty state
+            appUiStateService.disableAutoSave()
+            
             coroutineScope.launch {
                 try {
-                    sessionManager.stopAllSessions()
-                    println("[GROMOZEKA] All sessions stopped via SessionManager")
+                    appViewModel.cleanup()
+                    println("[GROMOZEKA] All sessions stopped and UI state saved")
                 } catch (e: Exception) {
-                    println("[GROMOZEKA] Error stopping sessions: ${e.message}")
+                    println("[GROMOZEKA] Error during cleanup: ${e.message}")
                     e.printStackTrace()
                 }
             }
@@ -321,14 +331,8 @@ fun ApplicationScope.ChatWindow(
                 // Tab-based UI: SessionListScreen as first tab, active sessions as additional tabs
                 Column(modifier = Modifier.fillMaxSize()) {
                     
-                    // Determine selected tab index
-                    val selectedTabIndex = when {
-                        currentSessionId == null -> 0 // SessionListScreen tab
-                        else -> {
-                            val sessionIndex = activeSessions.keys.toList().indexOf(currentSessionId)
-                            if (sessionIndex >= 0) sessionIndex + 1 else 0
-                        }
-                    }
+                    // Determine selected tab index (0 = projects, 1+ = tabs)
+                    val selectedTabIndex = currentTabIndex?.plus(1) ?: 0
                     
                     // Tab Row
                     TabRow(
@@ -341,7 +345,7 @@ fun ApplicationScope.ChatWindow(
                                 selected = selectedTabIndex == 0,
                                 onClick = {
                                     coroutineScope.launch {
-                                        sessionUiManager.setCurrentSession(null)
+                                        appViewModel.selectTab(null)
                                         // Trigger refresh when switching to projects tab
                                         sessionListRefreshTrigger++
                                     }
@@ -351,15 +355,15 @@ fun ApplicationScope.ChatWindow(
                         }
                         
                         // Session tabs with loading indicators
-                        activeSessions.keys.toList().forEachIndexed { index, sessionId ->
-                            val isLoading = sessionLoadingStates[sessionId] ?: false
+                        tabs.forEachIndexed { index, tab ->
+                            val isLoading = tab.isWaitingForResponse.collectAsState().value
                             val tabIndex = index + 1
                             
                             Tab(
                                 selected = selectedTabIndex == tabIndex,
                                 onClick = {
                                     coroutineScope.launch {
-                                        sessionUiManager.setCurrentSession(sessionId)
+                                        appViewModel.selectTab(index)
                                     }
                                 },
                                 text = {
@@ -400,7 +404,7 @@ fun ApplicationScope.ChatWindow(
                                 onNewSession = createNewSession,
                                 sessionJsonlService = sessionJsonlService,
                                 sessionManager = sessionManager,
-                                sessionUiManager = sessionUiManager,
+                                appViewModel = appViewModel,
                                 settings = currentSettings,
                                 onSettingsChange = onSettingsChange,
                                 showSettingsPanel = showSettingsPanel,
@@ -409,30 +413,29 @@ fun ApplicationScope.ChatWindow(
                             )
                         }
                         
-                        // Only render SessionScreen for current session
-                        val currentSessionViewModel by sessionUiManager.currentSessionViewModel.collectAsState(null)
-                        if (currentSessionId != null && currentSession != null) {
-                            currentSessionViewModel?.let { viewModel ->
+                        // Only render SessionScreen for current tab
+                        if (currentTab != null && currentSession != null) {
+                            currentTab?.let { tabViewModel ->
                                 SessionScreen(
-                                    viewModel = viewModel,
+                                    viewModel = tabViewModel,
                                     
                                     // Navigation callbacks - modified to not stop sessions
                                     onBackToSessionList = {
                                         // Switch to SessionListScreen tab without stopping session
                                         coroutineScope.launch {
-                                            sessionUiManager.setCurrentSession(null)
+                                            appViewModel.selectTab(null)
                                         }
                                     },
                                     onNewSession = {
                                         createNewSession(currentSession!!.projectPath)
                                     },
                                     
-                                    // Close tab callback - removes ViewModel and stops session
+                                    // Close tab callback - removes tab and stops session
                                     onCloseTab = {
                                         coroutineScope.launch {
-                                            val sessionId = currentSessionId!!
-                                            sessionUiManager.removeViewModel(sessionId)
-                                            sessionManager.stopSession(sessionId)
+                                            currentTabIndex?.let { index ->
+                                                appViewModel.closeTab(index)
+                                            }
                                         }
                                     },
                                     

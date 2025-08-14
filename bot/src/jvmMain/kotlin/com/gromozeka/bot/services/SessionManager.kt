@@ -15,7 +15,7 @@ import java.util.*
 
 /**
  * Service for managing multiple sessions - pure business logic.
- * 
+ *
  * Manages Session lifecycle: create, start, stop. Does not know about UI or ViewModels.
  * UI logic is handled by SessionUiManager.
  */
@@ -36,21 +36,21 @@ class SessionManager(
 
     /**
      * Create and start new session
-     * @param projectPath Path to the project directory  
+     * @param projectPath Path to the project directory
      * @param resumeSessionId Optional Claude session ID to resume from (for loading history)
      * @return SessionUuid of the created session
      */
-    suspend fun createSession(projectPath: String, resumeSessionId: ClaudeSessionUuid? = null): SessionUuid = sessionMutex.withLock {
-        val sessionId = UUID.randomUUID().toString().toSessionUuid()
+    suspend fun createSession(projectPath: String, resumeSessionId: ClaudeSessionUuid? = null): Session = sessionMutex.withLock {
+
         val session = createSessionInternal(projectPath)
-        
+
         session.start(scope, resumeSessionId)
-        
-        val updatedSessions = _activeSessions.value + (sessionId to session)
+
+        val updatedSessions = _activeSessions.value + (session.id to session)
         _activeSessions.value = updatedSessions
-        
-        println("[SessionManager] Created session: $sessionId")
-        sessionId
+
+        println("[SessionManager] Created session: ${session.id}")
+        session
     }
 
     /**
@@ -63,8 +63,9 @@ class SessionManager(
         // Create wrapper using factory
         val wrapperType = WrapperType.DIRECT_CLI
         val claudeWrapper = wrapperFactory.createWrapper(settingsService, wrapperType)
-        
+
         return Session(
+            id = UUID.randomUUID().toString().toSessionUuid(),
             projectPath = projectPath,
             sessionJsonlService = sessionJsonlService,
             soundNotificationService = soundNotificationService,
@@ -83,10 +84,10 @@ class SessionManager(
         val session = _activeSessions.value[sessionId]
         if (session != null) {
             session.stop()
-            
+
             val updatedSessions = _activeSessions.value - sessionId
             _activeSessions.value = updatedSessions
-            
+
             println("[SessionManager] Stopped session: $sessionId")
         }
     }
@@ -97,7 +98,7 @@ class SessionManager(
     suspend fun stopAllSessions() = sessionMutex.withLock {
         val sessions = _activeSessions.value
         println("[SessionManager] Stopping ${sessions.size} active sessions...")
-        
+
         sessions.values.forEach { session ->
             try {
                 session.stop()
@@ -105,9 +106,9 @@ class SessionManager(
                 println("[SessionManager] Error stopping session: ${e.message}")
             }
         }
-        
+
         _activeSessions.value = emptyMap()
-        
+
         println("[SessionManager] All sessions stopped")
     }
 
