@@ -163,15 +163,6 @@ fun ApplicationScope.ChatWindow(
     }
 
 
-    // Subscribe to current session's sessionId changes  
-    LaunchedEffect(currentSession) {
-        currentSession?.let { session ->
-            session.claudeSessionId.collectLatest { newSessionId ->
-                // Session ID changes are now handled automatically via currentSession flow
-                println("[ChatApp] UI updated with new session ID: $newSessionId")
-            }
-        }
-    }
 
     // Subscribe to current session's events
     LaunchedEffect(currentSession) {
