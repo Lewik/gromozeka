@@ -63,6 +63,7 @@ class SessionSearchViewModel(
         _searchQuery.value = ""
         _searchResults.value = emptyList()
         _isSearching.value = false
+        _showSearchResults.value = false
     }
     
     /**
@@ -72,15 +73,10 @@ class SessionSearchViewModel(
     val showSearchResults: StateFlow<Boolean> = _showSearchResults.asStateFlow()
     
     init {
-        // Update show results when query or results change
+        // Update show results when query changes
         scope.launch {
             searchQuery.collect { query ->
-                _showSearchResults.value = query.isNotEmpty() || _searchResults.value.isNotEmpty()
-            }
-        }
-        scope.launch {
-            searchResults.collect { results ->
-                _showSearchResults.value = _searchQuery.value.isNotEmpty() || results.isNotEmpty()
+                _showSearchResults.value = query.isNotEmpty()
             }
         }
     }
