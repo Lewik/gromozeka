@@ -220,6 +220,44 @@ fun SettingsPanel(
                         )
                     }
 
+                    // Notifications Settings
+                    SettingsGroup(title = "Notifications") {
+                        SwitchSettingItem(
+                            label = "Error sounds",
+                            description = "Play sound notification for error messages",
+                            value = settings.enableErrorSounds,
+                            onValueChange = { onSettingsChange(settings.copy(enableErrorSounds = it)) }
+                        )
+
+                        SwitchSettingItem(
+                            label = "Message sounds",
+                            description = "Play sound notification for new messages",
+                            value = settings.enableMessageSounds,
+                            onValueChange = { onSettingsChange(settings.copy(enableMessageSounds = it)) }
+                        )
+
+                        SwitchSettingItem(
+                            label = "Ready sounds",
+                            description = "Play sound when Claude finishes processing",
+                            value = settings.enableReadySounds,
+                            onValueChange = { onSettingsChange(settings.copy(enableReadySounds = it)) }
+                        )
+
+                        // Volume control (show only if any sound is enabled)
+                        if (settings.enableErrorSounds || settings.enableMessageSounds || settings.enableReadySounds) {
+                            SliderSettingItem(
+                                label = "Sound Volume",
+                                description = "Volume level for all notification sounds",
+                                value = settings.soundVolume,
+                                min = 0.0f,
+                                max = 1.0f,
+                                step = 0.1f,
+                                valueFormat = "%.0f%%",
+                                onValueChange = { onSettingsChange(settings.copy(soundVolume = it)) }
+                            )
+                        }
+                    }
+
                     // Developer Settings
                     SettingsGroup(title = "Developer") {
                         SwitchSettingItem(
@@ -326,7 +364,7 @@ private fun SliderSettingItem(
                 fontWeight = FontWeight.Medium
             )
             Text(
-                text = valueFormat.format(value),
+                text = valueFormat.format(if (valueFormat.contains("%%")) value * 100 else value),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.primary
             )

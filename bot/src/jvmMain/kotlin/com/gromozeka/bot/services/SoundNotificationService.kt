@@ -7,12 +7,30 @@ import java.io.BufferedInputStream
 import javax.sound.sampled.AudioSystem
 
 @Service
-class SoundNotificationService {
+class SoundNotificationService(
+    private val settingsService: SettingsService
+) {
     private val errorSoundPath = "/sounds/error.wav"
     private val messageSoundPath = "/sounds/message.wav"
+    private val readySoundPath = "/sounds/ready.wav"
 
-    suspend fun playErrorSound() = playSound(errorSoundPath)
-    suspend fun playMessageSound() = playSound(messageSoundPath)
+    suspend fun playErrorSound() {
+        if (settingsService.settings.enableErrorSounds) {
+            playSound(errorSoundPath)
+        }
+    }
+
+    suspend fun playMessageSound() {
+        if (settingsService.settings.enableMessageSounds) {
+            playSound(messageSoundPath)
+        }
+    }
+
+    suspend fun playReadySound() {
+        if (settingsService.settings.enableReadySounds) {
+            playSound(readySoundPath)
+        }
+    }
 
     private suspend fun playSound(resourcePath: String) = withContext(Dispatchers.IO) {
         try {
@@ -22,6 +40,16 @@ class SoundNotificationService {
 
             val clip = AudioSystem.getClip()
             clip.open(audioInputStream)
+            
+            // Apply volume control
+            val volume = settingsService.settings.soundVolume
+            if (clip.isControlSupported(javax.sound.sampled.FloatControl.Type.MASTER_GAIN)) {
+                val gainControl = clip.getControl(javax.sound.sampled.FloatControl.Type.MASTER_GAIN) as javax.sound.sampled.FloatControl
+                val range = gainControl.maximum - gainControl.minimum
+                val gain = gainControl.minimum + range * volume
+                gainControl.value = gain
+            }
+            
             clip.start()
 
             // Don't block - let sound play asynchronously

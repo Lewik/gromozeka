@@ -194,14 +194,6 @@ fun SessionScreen(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // Waiting for response indicator
-                if (isWaitingForResponse) {
-                    Row {
-                        CircularProgressIndicator()
-                        Text("Ожидание ответа от Claude...")
-                    }
-                }
-
                 DisableSelection {
                     MessageInput(
                         userInput = userInput,

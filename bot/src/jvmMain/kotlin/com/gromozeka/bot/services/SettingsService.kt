@@ -106,7 +106,11 @@ class SettingsService {
         val defaults = Settings(
             enableTts = true,
             enableStt = true,
-            autoSend = true
+            autoSend = true,
+            enableErrorSounds = false,
+            enableMessageSounds = false,
+            enableReadySounds = false,
+            soundVolume = 1.0f
         )
 
         settingsFile.writeText(json.encodeToString(defaults))

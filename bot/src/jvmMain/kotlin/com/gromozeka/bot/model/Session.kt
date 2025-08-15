@@ -358,6 +358,7 @@ class Session(
                 if (actorState == ActorState.Active.WaitingForResponse) {
                     actorState = ActorState.Active.Ready
                     println("[Actor] Response complete - back to Ready state")
+                    soundNotificationService.playReadySound()
                 }
                 _isWaitingForResponse.value = false
             }

@@ -30,6 +30,12 @@ data class Settings(
     val showSystemMessages: Boolean = true,
     val alwaysOnTop: Boolean = false,
 
+    // Notification Settings
+    val enableErrorSounds: Boolean = false,
+    val enableMessageSounds: Boolean = false,
+    val enableReadySounds: Boolean = false,
+    val soundVolume: Float = 1.0f, // 0.0 to 1.0
+
     // Developer Settings
     val showOriginalJson: Boolean = false,
 )

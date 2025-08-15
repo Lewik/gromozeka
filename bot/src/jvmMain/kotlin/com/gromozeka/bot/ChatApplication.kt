@@ -321,6 +321,7 @@ fun ApplicationScope.ChatWindow(
                     TabRow(
                         selectedTabIndex = selectedTabIndex,
                         modifier = Modifier
+                            .padding(horizontal = 16.dp, vertical = 8.dp)
                     ) {
                         // Projects tab (first tab)
                         OptionalTooltip("Проекты") {
