@@ -4,6 +4,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.gromozeka.bot.model.Session
+import com.gromozeka.bot.services.ScreenCaptureService
 import com.gromozeka.bot.settings.Settings
 import com.gromozeka.bot.ui.state.UIState
 import com.gromozeka.bot.utils.TokenUsageCalculator
@@ -22,6 +23,7 @@ class SessionViewModel(
     private val settingsFlow: StateFlow<Settings>,
     private val scope: CoroutineScope,
     initialTabUiState: UIState.Tab,
+    private val screenCaptureService: ScreenCaptureService = ScreenCaptureService(),
 ) {
 
     // === Public accessors for AppViewModel ===
@@ -230,5 +232,18 @@ class SessionViewModel(
         
         // Clear input after sending
         _uiState.update { it.copy(userInput = "") }
+    }
+
+    suspend fun captureAndAddToInput() {
+        val filePath = screenCaptureService.captureWindowToTemp()
+        if (filePath != null) {
+            val currentInput = _uiState.value.userInput
+            val newInput = if (currentInput.isBlank()) {
+                filePath
+            } else {
+                "$currentInput $filePath"
+            }
+            _uiState.update { it.copy(userInput = newInput) }
+        }
     }
 }

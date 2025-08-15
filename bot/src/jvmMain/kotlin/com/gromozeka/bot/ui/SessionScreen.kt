@@ -233,6 +233,24 @@ fun SessionScreen(
                         }
                     }
 
+                    // Screenshot button
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        CompactButton(
+                            onClick = {
+                                coroutineScope.launch {
+                                    viewModel.captureAndAddToInput()
+                                }
+                            },
+                            tooltip = "Скриншот окна"
+                        ) {
+                            Text("📷")
+                        }
+                    }
+
                     // Dev buttons only
                     if (isDev) {
                         Spacer(modifier = Modifier.height(8.dp))
