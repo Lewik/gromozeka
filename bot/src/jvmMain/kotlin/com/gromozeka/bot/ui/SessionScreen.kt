@@ -216,29 +216,22 @@ fun SessionScreen(
                         showPttButton = settings.enableStt
                     )
 
-                    // Message Tags
-                    if (viewModel.availableMessageTags.isNotEmpty()) {
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Row(
-                            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            viewModel.availableMessageTags.forEach { messageTag ->
-                                MultiStateMessageTagButton(
-                                    messageTag = messageTag,
-                                    activeMessageTags = uiState.activeMessageTags,
-                                    onToggleTag = { tag, controlIdx -> viewModel.toggleMessageTag(tag, controlIdx) }
-                                )
-                            }
-                        }
-                    }
-
-                    // Screenshot button
+                    // Message Tags and Screenshot button
                     Spacer(modifier = Modifier.height(4.dp))
                     Row(
                         modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
+                        // Message Tags
+                        viewModel.availableMessageTags.forEach { messageTag ->
+                            MultiStateMessageTagButton(
+                                messageTag = messageTag,
+                                activeMessageTags = uiState.activeMessageTags,
+                                onToggleTag = { tag, controlIdx -> viewModel.toggleMessageTag(tag, controlIdx) }
+                            )
+                        }
+                        
+                        // Screenshot button
                         CompactButton(
                             onClick = {
                                 coroutineScope.launch {
@@ -877,7 +870,7 @@ private fun MultiStateMessageTagButton(
         )
     }
     
-    SegmentedButtonGroup(
+    CustomSegmentedButtonGroup(
         options = options,
         selectedIndex = selectedIndex,
         onSelectionChange = { controlIndex ->

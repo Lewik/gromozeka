@@ -159,7 +159,79 @@ fun GromozekaMarkdown(
     )
 }
 
-// === Segmented Button Group using Material3 built-in components ===
+// === Custom Segmented Button Group using CompactButton ===
+
+@Composable
+fun CustomSegmentedButtonGroup(
+    options: List<SegmentedButtonOption>,
+    selectedIndex: Int,
+    onSelectionChange: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier.height(CompactButtonDefaults.ButtonHeight),
+        horizontalArrangement = Arrangement.Start
+    ) {
+        options.forEachIndexed { index, option ->
+            val isSelected = index == selectedIndex
+            val isFirst = index == 0
+            val isLast = index == options.size - 1
+            val isSingle = options.size == 1
+            
+            // Определяем форму кнопки
+            val shape = when {
+                isSingle -> RoundedCornerShape(CompactButtonDefaults.CornerRadius)
+                isFirst -> RoundedCornerShape(
+                    topStart = CompactButtonDefaults.CornerRadius,
+                    bottomStart = CompactButtonDefaults.CornerRadius,
+                    topEnd = 0.dp,
+                    bottomEnd = 0.dp
+                )
+                isLast -> RoundedCornerShape(
+                    topStart = 0.dp,
+                    bottomStart = 0.dp, 
+                    topEnd = CompactButtonDefaults.CornerRadius,
+                    bottomEnd = CompactButtonDefaults.CornerRadius
+                )
+                else -> RoundedCornerShape(0.dp)
+            }
+            
+            OptionalTooltip(option.tooltip) {
+                Button(
+                    onClick = { onSelectionChange(index) },
+                    modifier = Modifier.height(CompactButtonDefaults.ButtonHeight),
+                    contentPadding = CompactButtonDefaults.ContentPadding,
+                    shape = shape,
+                    colors = if (isSelected) {
+                        // Активная кнопка - стандартные цвета
+                        ButtonDefaults.buttonColors()
+                    } else {
+                        // Неактивная кнопка - фон как у окна
+                        ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    },
+                    border = if (!isSelected) {
+                        BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
+                    } else null
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = option.text,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+// === Old Segmented Button Group using Material3 built-in components ===
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -182,14 +254,39 @@ fun SegmentedButtonGroup(
                     ),
                     onClick = { onSelectionChange(index) },
                     selected = index == selectedIndex,
-                    modifier = Modifier.fillMaxHeight()
+                    colors = SegmentedButtonDefaults.colors(
+                        activeContainerColor = MaterialTheme.colorScheme.primary,
+                        activeContentColor = MaterialTheme.colorScheme.onPrimary,
+                        inactiveContainerColor = MaterialTheme.colorScheme.surface,
+                        inactiveContentColor = MaterialTheme.colorScheme.onSurface,
+                        activeBorderColor = MaterialTheme.colorScheme.primary,
+                        inactiveBorderColor = MaterialTheme.colorScheme.outline
+                    ),
+                    modifier = Modifier.height(CompactButtonDefaults.ButtonHeight)
                 ) {
-                    Text(
+                    Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+            Row(
+                Modifier.defaultMinSize(
+                        minWidth = ButtonDefaults.MinWidth,
+                        minHeight = ButtonDefaults.MinHeight
+                    )
+                    .padding(CompactButtonDefaults.ContentPadding),
+
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
+
+            ) {
+                     Text(
                         text = option.text,
-                        style = MaterialTheme.typography.bodySmall,
+                        style = MaterialTheme.typography.bodyMedium,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
+        }
+
+                }
                 }
             }
         }
