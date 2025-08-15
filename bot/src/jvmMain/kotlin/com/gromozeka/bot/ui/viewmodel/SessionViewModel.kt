@@ -116,10 +116,18 @@ class SessionViewModel(
         allMessages,
         settingsFlow
     ) { messages, settings ->
-        if (settings.showSystemMessages) {
-            messages
-        } else {
-            messages.filter { message ->
+        messages.filter { message ->
+            // Filter out messages that contain only ToolResult elements
+            // These are already displayed integrated into their corresponding ToolCall
+            val containsOnlyToolResults = message.content.isNotEmpty() &&
+                    message.content.all { it is ChatMessage.ContentItem.ToolResult }
+            
+            if (containsOnlyToolResults) {
+                false // Hide messages with only ToolResult content
+            } else if (settings.showSystemMessages) {
+                true // Show all other messages when system messages are enabled
+            } else {
+                // Existing system message filtering logic
                 message.role != ChatMessage.Role.SYSTEM ||
                         message.content.any { content ->
                             content is ChatMessage.ContentItem.System &&
