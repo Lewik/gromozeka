@@ -102,6 +102,7 @@ fun main() {
     println("[GROMOZEKA] Starting application in ${settingsService.mode.name} mode...")
 
     val ttsQueueService = context.getBean<TTSQueueService>()
+    val ttsAutoplayService = context.getBean<TTSAutoplayService>()
     val sessionJsonlService = context.getBean<SessionJsonlService>()
     val sessionSearchService = context.getBean<SessionSearchService>()
     val globalHotkeyService = context.getBean<GlobalHotkeyService>()
@@ -111,9 +112,12 @@ fun main() {
     val UIStateService = context.getBean<UIStateService>()
     val appViewModel = context.getBean<AppViewModel>()
 
-    // Explicit startup of TTS queue service
+    // Explicit startup of TTS services
     ttsQueueService.start()
     println("[GROMOZEKA] TTS queue service started")
+    
+    ttsAutoplayService.start()
+    println("[GROMOZEKA] TTS autoplay service started")
 
     // Initialize services
     globalHotkeyService.initializeService()
