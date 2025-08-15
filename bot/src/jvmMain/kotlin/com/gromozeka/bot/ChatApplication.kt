@@ -13,6 +13,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.focus.focusTarget
+import androidx.compose.ui.input.key.*
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.ui.res.painterResource
@@ -312,7 +314,21 @@ fun ApplicationScope.ChatWindow(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(16.dp)
+                .focusTarget()
                 .advancedEscape(pttEventRouter)
+                .onKeyEvent { event ->
+                    if (event.key == Key.T && 
+                        event.isMetaPressed && 
+                        event.type == KeyEventType.KeyDown) {
+                        
+                        // Cmd+T работает только на экране сессии (не на экране проектов)
+                        val selectedTabIndex = currentTabIndex?.plus(1) ?: 0
+                        if (selectedTabIndex > 0 && currentSession != null) {
+                            createNewSession(currentSession!!.projectPath)
+                        }
+                        true
+                    } else false
+                }
         ) {
             if (initialized) {
                 // Tab-based UI: SessionListScreen as first tab, active sessions as additional tabs
