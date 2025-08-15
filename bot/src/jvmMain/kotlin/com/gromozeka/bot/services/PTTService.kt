@@ -1,5 +1,6 @@
 package com.gromozeka.bot.services
 
+import com.gromozeka.bot.platform.SystemAudioController
 import com.gromozeka.shared.audio.AudioConfig
 import com.gromozeka.shared.audio.AudioRecorder
 import com.gromozeka.shared.audio.RecordingSession
@@ -12,7 +13,7 @@ class PTTService(
     private val audioRecorder: AudioRecorder,
     private val sttService: SttService,
     private val settingsService: SettingsService,
-    private val audioMuteManager: AudioMuteManager,
+    private val systemAudioController: SystemAudioController,
 ) {
 
 
@@ -26,6 +27,7 @@ class PTTService(
 
     // Track mute state independently from recording session
     private var isMuted = false
+    private var originalMuteState: Boolean? = null
 
     /**
      * Start PTT recording - simple suspend function
@@ -47,7 +49,8 @@ class PTTService(
             if (settings.muteSystemAudioDuringPTT) {
                 println("[PTT] MUTING audio")
                 isMuted = true  // Set flag BEFORE actual mute to prevent race condition
-                audioMuteManager.mute()
+                originalMuteState = systemAudioController.isSystemMuted()
+                systemAudioController.mute()
             }
 
             println("[PTT] Starting recording")
@@ -76,8 +79,7 @@ class PTTService(
             // ALWAYS cleanup on failure (including mute restore)
             if (isMuted) {
                 println("[PTT] RESTORING audio mute after startRecording error")
-                audioMuteManager.restoreOriginalState()
-                isMuted = false
+                restoreOriginalMuteState()
             } else {
                 println("[PTT] startRecording error but isMuted=false")
             }
@@ -124,8 +126,7 @@ class PTTService(
                 session.cancel()
                 if (isMuted) {
                     println("[PTT] RESTORING audio mute after stopAndTranscribe")
-                    audioMuteManager.restoreOriginalState()
-                    isMuted = false
+                    restoreOriginalMuteState()
                 } else {
                     println("[PTT] stopAndTranscribe but isMuted=false - no restore needed")
                 }
@@ -171,12 +172,24 @@ class PTTService(
         if (isMuted) {
             withContext(NonCancellable) {
                 println("[PTT] RESTORING audio mute after cancel")
-                audioMuteManager.restoreOriginalState()
-                isMuted = false
+                restoreOriginalMuteState()
             }
             println("[PTT] Audio mute restored after cancel")
         } else {
             println("[PTT] Cancel called but isMuted=false - no restore needed")
         }
+    }
+
+    private suspend fun restoreOriginalMuteState() {
+        originalMuteState?.let { wasMuted ->
+            if (!wasMuted) {
+                systemAudioController.unmute()
+                println("[PTT] Audio unmuted (restored to original state)")
+            } else {
+                println("[PTT] Audio kept muted (was originally muted)")
+            }
+        }
+        originalMuteState = null
+        isMuted = false
     }
 }

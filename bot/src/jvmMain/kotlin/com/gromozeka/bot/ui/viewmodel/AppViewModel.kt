@@ -1,6 +1,7 @@
 package com.gromozeka.bot.ui.viewmodel
 
 import com.gromozeka.bot.model.Session
+import com.gromozeka.bot.platform.ScreenCaptureController
 import com.gromozeka.bot.services.SessionManager
 import com.gromozeka.bot.services.SettingsService
 import com.gromozeka.bot.ui.state.UIState
@@ -22,6 +23,7 @@ class AppViewModel(
     private val sessionManager: SessionManager,
     private val settingsService: SettingsService,
     private val scope: CoroutineScope,
+    private val screenCaptureController: ScreenCaptureController,
 ) {
     private val mutex = Mutex()
 
@@ -66,7 +68,8 @@ class AppViewModel(
             session = session,
             settingsFlow = settingsService.settingsFlow,
             scope = scope,
-            initialTabUiState = initialTabUiState
+            initialTabUiState = initialTabUiState,
+            screenCaptureController = screenCaptureController
         )
 
         // Add to tabs list
@@ -138,7 +141,8 @@ class AppViewModel(
                 session = session,
                 settingsFlow = settingsService.settingsFlow,
                 scope = scope,
-                initialTabUiState = tabUiState
+                initialTabUiState = tabUiState,
+                screenCaptureController = screenCaptureController
             )
 
             _tabs.value = _tabs.value + sessionViewModel

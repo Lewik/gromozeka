@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.*
+import com.gromozeka.bot.platform.GlobalHotkeyController
 import com.gromozeka.bot.services.*
 import com.gromozeka.bot.settings.Settings
 import com.gromozeka.bot.ui.*
@@ -107,7 +108,7 @@ fun main() {
     val ttsAutoplayService = context.getBean<TTSAutoplayService>()
     val sessionJsonlService = context.getBean<SessionJsonlService>()
     val sessionSearchService = context.getBean<SessionSearchService>()
-    val globalHotkeyService = context.getBean<GlobalHotkeyService>()
+    val globalHotkeyController = context.getBean<GlobalHotkeyController>()
     val pttEventRouter = context.getBean<PTTEventRouter>()
     val pttService = context.getBean<PTTService>()
     val windowStateService = context.getBean<WindowStateService>()
@@ -122,7 +123,7 @@ fun main() {
     println("[GROMOZEKA] TTS autoplay service started")
 
     // Initialize services
-    globalHotkeyService.initializeService()
+    globalHotkeyController.initializeService()
     pttEventRouter.initialize()
 
     // Initialize UIStateService (loads state, restores sessions, starts subscription)
@@ -138,7 +139,7 @@ fun main() {
                 settingsService,
                 sessionJsonlService,
                 sessionSearchService,
-                globalHotkeyService,
+                globalHotkeyController,
                 pttEventRouter,
                 pttService,
                 windowStateService,
@@ -158,7 +159,7 @@ fun ApplicationScope.ChatWindow(
     settingsService: SettingsService,
     sessionJsonlService: SessionJsonlService,
     sessionSearchService: SessionSearchService,
-    globalHotkeyService: GlobalHotkeyService,
+    globalHotkeyController: GlobalHotkeyController,
     pttEventRouter: PTTEventRouter,
     pttService: PTTService,
     windowStateService: WindowStateService,
@@ -295,7 +296,7 @@ fun ApplicationScope.ChatWindow(
             )
             windowStateService.saveWindowState(newWindowState)
 
-            globalHotkeyService.cleanup()
+            globalHotkeyController.cleanup()
             ttsQueueService.shutdown()
             exitApplication()
         },

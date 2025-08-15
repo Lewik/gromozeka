@@ -1,5 +1,8 @@
 package com.gromozeka.bot
 
+import com.gromozeka.bot.platform.SystemAudioController
+import com.gromozeka.bot.platform.ScreenCaptureController
+import com.gromozeka.bot.platform.AudioPlayerController
 import com.gromozeka.bot.services.*
 import com.gromozeka.bot.ui.viewmodel.AppViewModel
 import com.gromozeka.shared.audio.AudioRecorder
@@ -46,7 +49,8 @@ class Config {
     fun ttsService(
         openAiAudioSpeechModel: OpenAiAudioSpeechModel,
         settingsService: SettingsService,
-    ) = TtsService(openAiAudioSpeechModel, settingsService)
+        audioPlayerController: AudioPlayerController,
+    ) = TtsService(openAiAudioSpeechModel, settingsService, audioPlayerController)
 
     @Bean
     fun httpClient() = HttpClient(CIO) {
@@ -63,15 +67,16 @@ class Config {
         audioRecorder: AudioRecorder,
         sttService: SttService,
         settingsService: SettingsService,
-        audioMuteManager: AudioMuteManager,
-    ) = PTTService(audioRecorder, sttService, settingsService, audioMuteManager)
+        systemAudioController: SystemAudioController,
+    ) = PTTService(audioRecorder, sttService, settingsService, systemAudioController)
 
     @Bean
     fun appViewModel(
         sessionManager: SessionManager,
         settingsService: SettingsService,
         @Qualifier("coroutineScope") scope: CoroutineScope,
-    ) = AppViewModel(sessionManager, settingsService, scope)
+        screenCaptureController: ScreenCaptureController,
+    ) = AppViewModel(sessionManager, settingsService, scope, screenCaptureController)
 
     @Bean
     fun pttEventRouter(

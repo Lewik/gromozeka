@@ -1,9 +1,12 @@
-package com.gromozeka.bot.services
+package com.gromozeka.bot.platform
 
 import com.github.kwhat.jnativehook.GlobalScreen
 import com.github.kwhat.jnativehook.NativeHookException
 import com.github.kwhat.jnativehook.keyboard.NativeKeyEvent
 import com.github.kwhat.jnativehook.keyboard.NativeKeyListener
+import com.gromozeka.bot.services.SettingsService
+import com.gromozeka.bot.services.PTTEventRouter
+import com.gromozeka.bot.services.UnifiedGestureDetector
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.collectLatest
 import org.springframework.stereotype.Service
@@ -11,10 +14,10 @@ import java.util.logging.Level
 import java.util.logging.Logger
 
 @Service
-class GlobalHotkeyService(
+class MacOSGlobalHotkeyController(
     private val settingsService: SettingsService,
     private val pttEventRouter: PTTEventRouter,
-) {
+) : GlobalHotkeyController {
 
     companion object {
         // Global hotkey: Section/Paragraph key (§) remapped to F13 via hidutil
@@ -30,7 +33,7 @@ class GlobalHotkeyService(
     private var isRegistered = false
     private var isPTTActive = false
 
-    fun initializeService() {
+    override fun initializeService() {
         startListeningToSettings()
     }
 
@@ -155,7 +158,7 @@ class GlobalHotkeyService(
         isPTTActive = false
     }
 
-    fun cleanup() {
+    override fun cleanup() {
         shutdown()
         serviceScope.cancel()
     }
