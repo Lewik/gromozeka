@@ -54,7 +54,6 @@ application-local.yaml
 **/secrets.properties
 **/api-keys.properties
 **/*-secret.properties
-bot/src/jvmMain/resources/application.yaml
 bot/src/jvmMain/resources/mcp-bup.json
 
 # Python virtual environments
