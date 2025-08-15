@@ -196,8 +196,8 @@ class ClaudeCodePythonSdkWrapper(
         // First, check for virtual environment in project
         val venvPaths = listOf(
             // In Gromozeka dev directory
-            File("/Users/lewik/code/gromozeka/dev/python-sdk-venv/bin/python"),
-            File("/Users/lewik/code/gromozeka/release/python-sdk-venv/bin/python"),
+            File(System.getProperty("user.home"), "code/gromozeka/dev/python-sdk-venv/bin/python"),
+            File(System.getProperty("user.home"), "code/gromozeka/release/python-sdk-venv/bin/python"),
             // Relative to current directory
             File(System.getProperty("user.dir"), "python-sdk-venv/bin/python"),
             // Common venv names
@@ -238,9 +238,9 @@ class ClaudeCodePythonSdkWrapper(
             // In the current directory
             File(System.getProperty("user.dir"), "claude_proxy_server.py"),
             // In the Gromozeka dev directory
-            File("/Users/lewik/code/gromozeka/dev/claude_proxy_server.py"),
+            File(System.getProperty("user.home"), "code/gromozeka/dev/claude_proxy_server.py"),
             // In the Gromozeka release directory
-            File("/Users/lewik/code/gromozeka/release/claude_proxy_server.py"),
+            File(System.getProperty("user.home"), "code/gromozeka/release/claude_proxy_server.py"),
             // Relative to JAR location
             File(
                 this::class.java.protectionDomain.codeSource?.location?.toURI()
@@ -256,7 +256,7 @@ class ClaudeCodePythonSdkWrapper(
         }
 
         // If not found, use the most likely location with a warning
-        val defaultPath = "/Users/lewik/code/gromozeka/dev/claude_proxy_server.py"
+        val defaultPath = File(System.getProperty("user.home"), "code/gromozeka/dev/claude_proxy_server.py").absolutePath
         println("[ClaudeCodePythonSdkWrapper] WARNING: Proxy server script not found, using default: $defaultPath")
         return defaultPath
     }
