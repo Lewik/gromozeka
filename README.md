@@ -37,7 +37,7 @@ Named after the multi-armed character from "The Mystery of the Third Planet". Cu
 1. **Clone the repository**:
    ```bash
    git clone https://github.com/Lewik/gromozeka
-   cd gromozeka/dev
+   cd gromozeka
    ```
 
 2. **Configure Claude Code**:
