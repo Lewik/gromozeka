@@ -6,7 +6,7 @@ import com.gromozeka.bot.services.SoundNotificationService
 import com.gromozeka.bot.services.StreamToChatMessageMapper
 import com.gromozeka.bot.utils.ChatMessageSoundDetector
 import com.gromozeka.shared.domain.message.ChatMessage
-import com.gromozeka.shared.domain.message.MessageTag
+import com.gromozeka.shared.domain.message.MessageTagDefinition
 import com.gromozeka.shared.domain.session.ClaudeSessionUuid
 import com.gromozeka.shared.domain.session.SessionUuid
 import kotlinx.coroutines.CoroutineScope
@@ -18,16 +18,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.selects.select
 import kotlinx.datetime.Clock
 
-/**
- * Legacy SessionState enum - kept for compatibility with existing UI code
- */
-enum class SessionState {
-    INACTIVE,       // Initial state
-    STARTING,       // Startup process (creating process, connecting stream)
-    ACTIVE,         // Active session (stream collecting, can send messages)
-    STOPPING,       // Stop process (graceful shutdown)
-    ERROR          // Error (requires cleanup and possibly restart)
-}
 
 /**
  * Stream-based Session class that processes messages from Claude Code CLI stdout stream.
@@ -107,8 +97,6 @@ class Session(
     private val _events = MutableSharedFlow<StreamSessionEvent>()
     val events: SharedFlow<StreamSessionEvent> = _events.asSharedFlow()
 
-    private val _sessionState = MutableStateFlow(SessionState.INACTIVE)
-    val sessionState: StateFlow<SessionState> = _sessionState.asStateFlow()
 
     private val _isWaitingForResponse = MutableStateFlow(false)
     val isWaitingForResponse: StateFlow<Boolean> = _isWaitingForResponse.asStateFlow()
@@ -128,7 +116,7 @@ class Session(
 
         data class SendMessage(
             val message: String,
-            val activeTags: List<MessageTag> = emptyList(),
+            val activeTags: List<MessageTagDefinition.Data> = emptyList(),
         ) : Command()
     }
 
@@ -324,7 +312,7 @@ class Session(
      * Handle first message during WaitingForInit state
      * This allows the first message to be sent immediately to trigger Claude's response
      */
-    private suspend fun handleFirstMessageDuringInit(message: String, activeTags: List<MessageTag>) {
+    private suspend fun handleFirstMessageDuringInit(message: String, activeTags: List<MessageTagDefinition.Data>) {
         if (message.isBlank()) {
             println("[Actor] Skipping empty first message")
             return
@@ -417,7 +405,6 @@ class Session(
 
         actorScope = scope
         actorState = ActorState.Starting
-        _sessionState.value = SessionState.STARTING
 
         try {
             // Load historical messages if resuming
@@ -443,7 +430,6 @@ class Session(
 
             // Move to waiting for init state
             actorState = ActorState.WaitingForInit
-            _sessionState.value = SessionState.ACTIVE  // UI sees it as active
             _events.emit(StreamSessionEvent.Started)
 
             println("[Actor] Session started successfully")
@@ -451,7 +437,6 @@ class Session(
         } catch (e: Exception) {
             println("[Actor] Failed to start session: ${e.message}")
             actorState = ActorState.Error
-            _sessionState.value = SessionState.ERROR
             performCleanup()
             _events.emit(StreamSessionEvent.Error("Failed to start session: ${e.message}"))
         }
@@ -474,7 +459,6 @@ class Session(
         }
 
         actorState = ActorState.Stopping
-        _sessionState.value = SessionState.STOPPING
 
         try {
             println("[Actor] Stopping session...")
@@ -488,7 +472,6 @@ class Session(
 
             // Reset state
             actorState = ActorState.Inactive
-            _sessionState.value = SessionState.INACTIVE
             _isWaitingForResponse.value = false
             actorScope = null
 
@@ -498,7 +481,6 @@ class Session(
         } catch (e: Exception) {
             println("[Actor] Error during stop: ${e.message}")
             actorState = ActorState.Error
-            _sessionState.value = SessionState.ERROR
             _isWaitingForResponse.value = false
             actorScope = null
         }
@@ -507,7 +489,7 @@ class Session(
     /**
      * Actor implementation of sendMessage command
      */
-    private suspend fun performSendMessage(message: String, activeTags: List<MessageTag>) {
+    private suspend fun performSendMessage(message: String, activeTags: List<MessageTagDefinition.Data>) {
         // This should only be called when Active.Ready
         require(actorState == ActorState.Active.Ready) {
             "Can only send messages when Ready. Current state: $actorState"
@@ -739,7 +721,7 @@ class Session(
     /**
      * Send a message through the Claude Code CLI process
      */
-    suspend fun sendMessage(message: String, activeTags: List<MessageTag> = emptyList()) {
+    suspend fun sendMessage(message: String, activeTags: List<MessageTagDefinition.Data> = emptyList()) {
         userCommandChannel.send(Command.SendMessage(message, activeTags))
     }
 

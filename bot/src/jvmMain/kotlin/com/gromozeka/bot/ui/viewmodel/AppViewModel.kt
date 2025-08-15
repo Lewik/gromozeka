@@ -50,8 +50,7 @@ class AppViewModel(
      */
     suspend fun createTab(
         projectPath: String, 
-        resumeSessionId: String? = null,
-        initialActiveMessageTags: Set<String> = emptySet()
+        resumeSessionId: String? = null
     ): Int = mutex.withLock {
         val claudeSessionId = resumeSessionId?.let { ClaudeSessionUuid(it) }
         // Create session through SessionManager
@@ -61,7 +60,7 @@ class AppViewModel(
         val initialTabUiState = UIState.Tab(
             projectPath = projectPath,
             claudeSessionId = claudeSessionId ?: ClaudeSessionUuid.DEFAULT,
-            activeMessageTags = initialActiveMessageTags
+            activeMessageTags = SessionViewModel.getDefaultEnabledTags()
         )
         val sessionViewModel = SessionViewModel(
             session = session,

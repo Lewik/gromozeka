@@ -3,7 +3,20 @@ package com.gromozeka.shared.domain.message
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class MessageTag(
-    val title: String,       // Display name for the button: "Ultrathink", "Readonly", etc.
-    val instruction: String  // Text sent to Claude in <instructions> section and used for tooltips
-)
+data class MessageTagDefinition(
+    val controls: List<Control>,
+    val selectedByDefault: Int = 0
+) {
+    @Serializable
+    data class Control(
+        val data: Data,
+        val includeInMessage: Boolean = true
+    )
+    
+    @Serializable
+    data class Data(
+        val id: String,
+        val title: String,
+        val instruction: String
+    )
+}

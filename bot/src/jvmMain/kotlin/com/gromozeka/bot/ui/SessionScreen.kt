@@ -6,8 +6,6 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.ContextMenuArea
 import androidx.compose.foundation.ContextMenuItem
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.selection.DisableSelection
 import androidx.compose.foundation.text.selection.SelectionContainer
@@ -35,7 +33,7 @@ import com.gromozeka.bot.settings.Settings
 import com.gromozeka.bot.utils.TokenUsageCalculator
 import com.gromozeka.shared.domain.message.ChatMessage
 import com.gromozeka.shared.domain.message.ClaudeCodeToolCallData
-import com.gromozeka.shared.domain.message.MessageTag
+import com.gromozeka.shared.domain.message.MessageTagDefinition
 import com.gromozeka.shared.domain.message.ToolCallData
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -221,15 +219,15 @@ fun SessionScreen(
                     // Message Tags
                     if (viewModel.availableMessageTags.isNotEmpty()) {
                         Spacer(modifier = Modifier.height(4.dp))
-                        LazyRow(
+                        Row(
                             modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            items(viewModel.availableMessageTags) { tag ->
-                                MessageTagButton(
-                                    tag = tag,
-                                    isActive = tag.title in uiState.activeMessageTags,
-                                    onClick = { viewModel.toggleMessageTag(tag.title) }
+                            viewModel.availableMessageTags.forEach { messageTag ->
+                                MultiStateMessageTagButton(
+                                    messageTag = messageTag,
+                                    activeMessageTags = uiState.activeMessageTags,
+                                    onToggleTag = { tag, controlIdx -> viewModel.toggleMessageTag(tag, controlIdx) }
                                 )
                             }
                         }
@@ -421,11 +419,11 @@ private fun MessageItem(
                             Column {
                                 // Show active tags for user messages
                                 if (message.activeTags.isNotEmpty()) {
-                                    LazyRow(
+                                    Row(
                                         modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
                                         horizontalArrangement = Arrangement.spacedBy(4.dp)
                                     ) {
-                                        items(message.activeTags) { tag ->
+                                        message.activeTags.forEach { tag ->
                                             Surface(
                                                 shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
                                                 color = MaterialTheme.colorScheme.primaryContainer,
@@ -842,43 +840,34 @@ private fun ToolCallItem(
 }
 
 @Composable
-private fun MessageTagButton(
-    tag: MessageTag,
-    isActive: Boolean,
-    onClick: () -> Unit,
+private fun MultiStateMessageTagButton(
+    messageTag: MessageTagDefinition,
+    activeMessageTags: Set<String>,
+    onToggleTag: (MessageTagDefinition, Int) -> Unit,
 ) {
-    if (isActive) {
-        // Активный тег: стандартные цвета CompactButton (синий фон, белый текст)
-        CompactButton(
-            onClick = onClick,
-            tooltip = tag.instruction
-        ) {
-            Text(
-                text = tag.title,
-                style = MaterialTheme.typography.bodySmall
-            )
-        }
-    } else {
-        // Неактивный тег: прозрачный фон, темный текст
-        OptionalTooltip(tag.instruction) {
-            TextButton(
-                onClick = onClick,
-                modifier = Modifier.height(CompactButtonDefaults.ButtonHeight),
-                contentPadding = CompactButtonDefaults.ContentPadding,
-                shape = androidx.compose.foundation.shape.RoundedCornerShape(CompactButtonDefaults.CornerRadius),
-                colors = ButtonDefaults.textButtonColors(
-                    containerColor = Color.Transparent,
-                    contentColor = MaterialTheme.colorScheme.onSurface
-                )
-            ) {
-                Text(
-                    text = tag.title,
-                    style = MaterialTheme.typography.bodySmall
-                )
-            }
-        }
+    // Find which control is currently active based on activeMessageTags
+    val activeControlIndex = messageTag.controls.indexOfFirst { control ->
+        control.data.id in activeMessageTags
     }
+    val selectedIndex = if (activeControlIndex >= 0) activeControlIndex else messageTag.selectedByDefault
+    
+    // Convert MessageTagDefinition.Controls to SegmentedButtonOptions
+    val options = messageTag.controls.map { control ->
+        SegmentedButtonOption(
+            text = control.data.title,
+            tooltip = control.data.instruction
+        )
+    }
+    
+    SegmentedButtonGroup(
+        options = options,
+        selectedIndex = selectedIndex,
+        onSelectionChange = { controlIndex ->
+            onToggleTag(messageTag, controlIndex)
+        }
+    )
 }
+
 
 // === Token Usage UI Formatting ===
 

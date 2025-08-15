@@ -1,17 +1,25 @@
 package com.gromozeka.bot.ui
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.mikepenz.markdown.m3.Markdown
 import com.mikepenz.markdown.m3.markdownTypography
+
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 
 @Composable
 fun GromozekaTheme(content: @Composable () -> Unit) {
@@ -150,3 +158,45 @@ fun GromozekaMarkdown(
         modifier = modifier
     )
 }
+
+// === Segmented Button Group using Material3 built-in components ===
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SegmentedButtonGroup(
+    options: List<SegmentedButtonOption>,
+    selectedIndex: Int,
+    onSelectionChange: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    SingleChoiceSegmentedButtonRow(
+        modifier = modifier.height(CompactButtonDefaults.ButtonHeight)
+    ) {
+        options.forEachIndexed { index, option ->
+            OptionalTooltip(option.tooltip) {
+                SegmentedButton(
+                    shape = SegmentedButtonDefaults.itemShape(
+                        index = index,
+                        count = options.size,
+                        baseShape = RoundedCornerShape(CompactButtonDefaults.CornerRadius)
+                    ),
+                    onClick = { onSelectionChange(index) },
+                    selected = index == selectedIndex,
+                    modifier = Modifier.fillMaxHeight()
+                ) {
+                    Text(
+                        text = option.text,
+                        style = MaterialTheme.typography.bodySmall,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+        }
+    }
+}
+
+data class SegmentedButtonOption(
+    val text: String,
+    val tooltip: String? = null
+)

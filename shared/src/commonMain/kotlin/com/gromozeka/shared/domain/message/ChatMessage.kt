@@ -30,7 +30,7 @@ data class ChatMessage(
     val originalJson: String? = null,
     
     // Message tags that were active when this message was sent
-    val activeTags: List<MessageTag> = emptyList(),
+    val activeTags: List<MessageTagDefinition.Data> = emptyList(),
 ) {
 
     @Serializable

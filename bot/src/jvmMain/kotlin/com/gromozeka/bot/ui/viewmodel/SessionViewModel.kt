@@ -8,7 +8,7 @@ import com.gromozeka.bot.settings.Settings
 import com.gromozeka.bot.ui.state.UIState
 import com.gromozeka.bot.utils.TokenUsageCalculator
 import com.gromozeka.shared.domain.message.ChatMessage
-import com.gromozeka.shared.domain.message.MessageTag
+import com.gromozeka.shared.domain.message.MessageTagDefinition
 import com.gromozeka.shared.domain.session.ClaudeSessionUuid
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.*
@@ -54,13 +54,44 @@ class SessionViewModel(
     var jsonToShow by mutableStateOf<String?>(null)
 
     // === Message Tags ===
-    val availableMessageTags = listOf(
-        MessageTag("Ultrathink", "Режим глубокого анализа с пошаговыми рассуждениями и детальной проработкой"),
-        MessageTag("Readonly", "Режим readonly - никаких изменений кода или команд применяющих изменения"),
-        MessageTag("Research", "Режим исследования - приоритет поиску в интернете и документации"),
-        MessageTag("Quick", "Быстрый режим - краткие ответы, минимум текста"),
-        MessageTag("Explain", "Режим объяснений - детальный разбор с контекстом и примерами")
-    )
+    companion object {
+        private val ALL_MESSAGE_TAG_DEFINITIONS = listOf(
+            MessageTagDefinition(
+                controls = listOf(
+                    MessageTagDefinition.Control(
+                        data = MessageTagDefinition.Data("thinking_off", "Off", "Обычный режим работы"),
+                        includeInMessage = false
+                    ),
+                    MessageTagDefinition.Control(
+                        data = MessageTagDefinition.Data("thinking_ultrathink", "Ultrathink", "Режим глубокого анализа с пошаговыми рассуждениями и детальной проработкой"),
+                        includeInMessage = true
+                    )
+                ),
+                selectedByDefault = 1  // Ultrathink по умолчанию
+            ),
+            MessageTagDefinition(
+                controls = listOf(
+                    MessageTagDefinition.Control(
+                        data = MessageTagDefinition.Data("mode_readonly", "Readonly", "Режим readonly - никаких изменений кода или команд применяющих изменения"),
+                        includeInMessage = true
+                    ),
+                    MessageTagDefinition.Control(
+                        data = MessageTagDefinition.Data("mode_writable", "Writable", "Разрешено исправление файлов"),
+                        includeInMessage = true
+                    )
+                ),
+                selectedByDefault = 0  // Readonly по умолчанию
+            )
+        )
+        
+        fun getDefaultEnabledTags(): Set<String> {
+            return ALL_MESSAGE_TAG_DEFINITIONS.map { tagDefinition ->
+                tagDefinition.controls[tagDefinition.selectedByDefault].data.id
+            }.toSet()
+        }
+    }
+    
+    val availableMessageTags = ALL_MESSAGE_TAG_DEFINITIONS
 
     // === Convenience accessors for backward compatibility ===
     val activeMessageTags: Set<String> get() = _uiState.value.activeMessageTags
@@ -131,14 +162,29 @@ class SessionViewModel(
     val isWaitingForResponse: StateFlow<Boolean> = session.isWaitingForResponse
 
     // === Commands (Immutable State Updates) ===
-    fun toggleMessageTag(title: String) {
+    fun toggleMessageTag(messageTag: MessageTagDefinition, controlIndex: Int) {
         _uiState.update { currentState ->
-            val newTags = if (title in currentState.activeMessageTags) {
-                currentState.activeMessageTags - title
+            if (controlIndex >= 0 && controlIndex < messageTag.controls.size) {
+                val selectedId = messageTag.controls[controlIndex].data.id
+                
+                // Get all IDs from this MessageTag group
+                val allIdsInGroup = messageTag.controls.map { it.data.id }.toSet()
+                
+                // Check if clicked ID is already active in this group
+                val isAlreadyActive = selectedId in currentState.activeMessageTags
+                
+                if (isAlreadyActive) {
+                    // If already active, do nothing (ignore repeat clicks)
+                    currentState
+                } else {
+                    // Remove all IDs from this group, then add the new one
+                    val cleanedTags = currentState.activeMessageTags - allIdsInGroup
+                    val newTags = cleanedTags + selectedId
+                    currentState.copy(activeMessageTags = newTags)
+                }
             } else {
-                currentState.activeMessageTags + title
+                currentState
             }
-            currentState.copy(activeMessageTags = newTags)
         }
     }
 
@@ -156,15 +202,31 @@ class SessionViewModel(
 
     suspend fun sendMessageToSession(message: String) {
         val currentState = _uiState.value
-        val activeTags = availableMessageTags.filter { it.title in currentState.activeMessageTags }
+        
+        // Collect all active tag data that should be included in message
+        val activeTagsData = availableMessageTags.mapNotNull { messageTag ->
+            // Find which control should be active based on currentState.activeMessageTags
+            val activeControlIndex = messageTag.controls.indexOfFirst { control ->
+                control.data.id in currentState.activeMessageTags
+            }
+            
+            val selectedControlIndex = if (activeControlIndex >= 0) activeControlIndex else messageTag.selectedByDefault
+            val selectedControl = messageTag.controls[selectedControlIndex]
+            
+            // Include only if this control should be sent to chat
+            if (selectedControl.includeInMessage) {
+                selectedControl.data
+            } else null
+        }
 
-        val messageWithInstructions = if (activeTags.isNotEmpty()) {
-            "$message\n\n<instructions>\n${activeTags.joinToString("\n") { it.instruction }}\n</instructions>"
+        val messageWithInstructions = if (activeTagsData.isNotEmpty()) {
+            "$message\n\n<instructions>\n${activeTagsData.joinToString("\n") { it.instruction }}\n</instructions>"
         } else {
             message
         }
 
-        session.sendMessage(messageWithInstructions, activeTags)
+        // Send MessageTag.Data directly to Session
+        session.sendMessage(messageWithInstructions, activeTagsData)
         
         // Clear input after sending
         _uiState.update { it.copy(userInput = "") }
