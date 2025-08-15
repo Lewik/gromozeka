@@ -121,10 +121,6 @@ fun SessionScreen(
             Column(modifier = Modifier.fillMaxSize()) {
                 DisableSelection {
                     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        CompactButton(onClick = onBackToSessionList) {
-                            Text("← Назад")
-                        }
-                        Spacer(modifier = Modifier.width(8.dp))
                         CompactButton(onClick = onNewSession) {
                             Text("Новая")
                         }
