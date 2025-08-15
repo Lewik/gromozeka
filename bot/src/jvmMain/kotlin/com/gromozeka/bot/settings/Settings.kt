@@ -5,8 +5,8 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class Settings(
     // Audio Settings
-    val enableTts: Boolean = true,
-    val enableStt: Boolean = true,
+    val enableTts: Boolean = false,
+    val enableStt: Boolean = false,
     val ttsSpeed: Float = 1.0f,
     val ttsModel: String = "gpt-4o-mini-tts", // tts-1, tts-1-hd, gpt-4o-mini-tts
     val ttsVoice: String = "alloy", // alloy, echo, fable, onyx, nova, shimmer
@@ -14,9 +14,9 @@ data class Settings(
     val sttModel: String = "whisper-1", // Currently only whisper-1 is supported
 
     // Input Settings
-    val autoSend: Boolean = true,
+    val autoSend: Boolean = false,
     val globalPttHotkeyEnabled: Boolean = false,
-    val muteSystemAudioDuringPTT: Boolean = true,
+    val muteSystemAudioDuringPTT: Boolean = false,
 
     // AI Settings
     val claudeModel: String = "sonnet",
