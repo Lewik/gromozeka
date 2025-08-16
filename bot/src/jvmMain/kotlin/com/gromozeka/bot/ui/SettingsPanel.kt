@@ -18,6 +18,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.gromozeka.bot.settings.ResponseFormat
 import com.gromozeka.bot.settings.Settings
+import com.gromozeka.bot.services.translation.TranslationService
+import com.gromozeka.bot.services.translation.data.Translation
+import com.gromozeka.bot.ui.LocalTranslation
+import java.io.File
 
 @Composable
 fun SettingsPanel(
@@ -25,8 +29,10 @@ fun SettingsPanel(
     settings: Settings,
     onSettingsChange: (Settings) -> Unit,
     onClose: () -> Unit,
+    translationService: TranslationService,
     modifier: Modifier = Modifier,
 ) {
+    val translation = LocalTranslation.current
     AnimatedVisibility(
         visible = isVisible,
         enter = expandHorizontally(),
@@ -217,6 +223,77 @@ fun SettingsPanel(
                             description = "Keep window above all other applications",
                             value = settings.alwaysOnTop,
                             onValueChange = { onSettingsChange(settings.copy(alwaysOnTop = it)) }
+                        )
+                    }
+
+                    // Localization Settings
+                    SettingsGroup(title = translation.localizationTitle) {
+                        // Language selection
+                        DropdownSettingItem(
+                            label = "Language",
+                            description = "Select interface language",
+                            value = settings.currentLanguageCode,
+                            options = Translation.builtIn.keys.toList(),
+                            optionLabel = { languageCode ->
+                                Translation.builtIn[languageCode]!!.languageName
+                            },
+                            onValueChange = { newLanguageCode ->
+                                onSettingsChange(settings.copy(currentLanguageCode = newLanguageCode))
+                            }
+                        )
+                        
+                        InfoSettingItem(
+                            label = "Custom Translation Info",
+                            message = "💡 Custom translations are loaded automatically if override.json file exists. Use Export → Edit file → Check to customize.",
+                            isError = false
+                        )
+                        
+                        // Show override status - automatically based on file existence
+                        val overrideResult by translationService.lastOverrideResult.collectAsState()
+                        overrideResult?.let { result ->
+                            when (result) {
+                                is com.gromozeka.bot.services.translation.TranslationOverrideResult.Success -> {
+                                    InfoSettingItem(
+                                        label = "Translation Override Status",
+                                        message = "✅ Custom translations loaded. ${result.overriddenFields.size} fields customized.",
+                                        isError = false
+                                    )
+                                }
+                                is com.gromozeka.bot.services.translation.TranslationOverrideResult.Failure -> {
+                                    InfoSettingItem(
+                                        label = "Translation Override Status", 
+                                        message = "❌ Override failed: ${result.error}",
+                                        isError = true
+                                    )
+                                }
+                            }
+                        }
+                        
+                        ButtonSettingItem(
+                            label = "Refresh Translations",
+                            description = "Apply current language settings and check for override files",
+                            buttonText = "Refresh",
+                            onClick = {
+                                println("[SettingsPanel] Refreshing translations...")
+                                translationService.refreshTranslations()
+                            }
+                        )
+                        
+                        ButtonSettingItem(
+                            label = "Export Current Translation",
+                            description = "Export current translation to override.json file for customization",
+                            buttonText = "Export",
+                            onClick = {
+                                val success = translationService.exportToFile()
+                                
+                                if (success) {
+                                    println("[SettingsPanel] Successfully exported translation")
+                                    // TODO: Show success notification
+                                } else {
+                                    println("[SettingsPanel] Failed to export translation")
+                                    // TODO: Show error notification  
+                                }
+                            }
                         )
                     }
 
@@ -473,6 +550,121 @@ private fun PasswordSettingItem(
             modifier = Modifier.fillMaxWidth(),
             visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
             singleLine = true
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun <T> DropdownSettingItem(
+    label: String,
+    description: String,
+    value: T,
+    options: List<T>,
+    optionLabel: (T) -> String,
+    onValueChange: (T) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+
+    Column {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium
+        )
+
+        if (description.isNotEmpty()) {
+            Text(
+                text = description,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                modifier = Modifier.padding(top = 4.dp)
+            )
+        }
+
+        ExposedDropdownMenuBox(
+            expanded = expanded,
+            onExpandedChange = { expanded = !expanded },
+            modifier = Modifier.padding(top = 8.dp)
+        ) {
+            OutlinedTextField(
+                readOnly = true,
+                value = optionLabel(value),
+                onValueChange = { },
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+                modifier = Modifier
+                    .menuAnchor()
+                    .fillMaxWidth()
+            )
+            ExposedDropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false }
+            ) {
+                options.forEach { option ->
+                    DropdownMenuItem(
+                        text = { Text(optionLabel(option)) },
+                        onClick = {
+                            onValueChange(option)
+                            expanded = false
+                        }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ButtonSettingItem(
+    label: String,
+    description: String,
+    buttonText: String,
+    onClick: () -> Unit,
+) {
+    Column {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium
+        )
+
+        if (description.isNotEmpty()) {
+            Text(
+                text = description,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                modifier = Modifier.padding(top = 4.dp)
+            )
+        }
+
+        Button(
+            onClick = onClick,
+            modifier = Modifier.padding(top = 8.dp)
+        ) {
+            Text(buttonText)
+        }
+    }
+}
+
+@Composable
+private fun InfoSettingItem(
+    label: String,
+    message: String,
+    isError: Boolean = false,
+) {
+    Column {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium
+        )
+
+        Text(
+            text = message,
+            style = MaterialTheme.typography.bodySmall,
+            color = if (isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+            modifier = Modifier.padding(top = 4.dp)
         )
     }
 }

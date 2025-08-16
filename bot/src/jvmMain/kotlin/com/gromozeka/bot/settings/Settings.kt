@@ -1,6 +1,7 @@
 package com.gromozeka.bot.settings
 
 import kotlinx.serialization.Serializable
+import com.gromozeka.bot.services.translation.data.EnglishTranslation
 
 @Serializable
 data class Settings(
@@ -11,7 +12,7 @@ data class Settings(
     val ttsSpeed: Float = 1.0f,
     val ttsModel: String = "gpt-4o-mini-tts", // tts-1, tts-1-hd, gpt-4o-mini-tts
     val ttsVoice: String = "alloy", // alloy, echo, fable, onyx, nova, shimmer
-    val sttMainLanguage: String = "en",
+    val sttMainLanguage: String = EnglishTranslation.LANGUAGE_CODE,
     val sttModel: String = "whisper-1", // Currently only whisper-1 is supported
 
     // Input Settings
@@ -30,6 +31,9 @@ data class Settings(
     // UI Settings  
     val showSystemMessages: Boolean = true,
     val alwaysOnTop: Boolean = false,
+    
+    // Localization Settings
+    val currentLanguageCode: String = EnglishTranslation.LANGUAGE_CODE, // en, ru, he
 
     // Notification Settings
     val enableErrorSounds: Boolean = false,

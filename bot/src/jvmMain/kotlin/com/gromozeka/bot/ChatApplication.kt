@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.*
 import com.gromozeka.bot.platform.GlobalHotkeyController
 import com.gromozeka.bot.services.*
+import com.gromozeka.bot.services.translation.TranslationService
 import com.gromozeka.bot.settings.Settings
 import com.gromozeka.bot.ui.*
 import com.gromozeka.bot.ui.viewmodel.AppViewModel
@@ -114,6 +115,7 @@ fun main() {
     val windowStateService = context.getBean<WindowStateService>()
     val UIStateService = context.getBean<UIStateService>()
     val appViewModel = context.getBean<AppViewModel>()
+    val translationService = context.getBean<TranslationService>()
 
     // Explicit startup of TTS services
     ttsQueueService.start()
@@ -130,22 +132,28 @@ fun main() {
     runBlocking {
         UIStateService.initialize(appViewModel)
     }
+    
+    // TranslationService automatically initializes via @Bean creation and subscribes to settings
+    
     println("[GROMOZEKA] Starting Compose Desktop UI...")
     application {
         GromozekaTheme {
-            ChatWindow(
-                appViewModel,
-                ttsQueueService,
-                settingsService,
-                sessionJsonlService,
-                sessionSearchService,
-                globalHotkeyController,
-                pttEventRouter,
-                pttService,
-                windowStateService,
-                UIStateService,
-                context
-            )
+            TranslationProvider(translationService) {
+                ChatWindow(
+                    appViewModel,
+                    ttsQueueService,
+                    settingsService,
+                    sessionJsonlService,
+                    sessionSearchService,
+                    globalHotkeyController,
+                    pttEventRouter,
+                    pttService,
+                    windowStateService,
+                    UIStateService,
+                    translationService,
+                    context
+                )
+            }
         }
     }
 }
@@ -164,6 +172,7 @@ fun ApplicationScope.ChatWindow(
     pttService: PTTService,
     windowStateService: WindowStateService,
     UIStateService: UIStateService,
+    translationService: TranslationService,
     context: org.springframework.context.ConfigurableApplicationContext,
 ) {
     val coroutineScope = rememberCoroutineScope()
@@ -177,6 +186,9 @@ fun ApplicationScope.ChatWindow(
 
     // Reactive settings state - single source of truth
     val currentSettings by settingsService.settingsFlow.collectAsState()
+    
+    // Get current translation for UI strings
+    val translation = LocalTranslation.current
 
 
     val tabs by appViewModel.tabs.collectAsState()
@@ -241,6 +253,8 @@ fun ApplicationScope.ChatWindow(
         // All dependent services will react automatically via their subscriptions
         settingsService.saveSettings(newSettings)
 
+        // Note: Use "Check Override" button in settings to update translations
+
         // Response format is now automatically updated in StreamToChatMessageMapper via settings subscription
     }
 
@@ -301,12 +315,12 @@ fun ApplicationScope.ChatWindow(
             exitApplication()
         },
         title = buildString {
-            append("Gromozeka")
+            append(translation.appName)
             if (currentSettings.alwaysOnTop) {
-                append(" [Always On Top]")
+                append(translation.alwaysOnTopSuffix)
             }
             if (settingsService.mode == com.gromozeka.bot.settings.AppMode.DEV) {
-                append(" [DEV]")
+                append(translation.devModeSuffix)
             }
         },
         icon = painterResource("logos/logo-256x256.png")
@@ -452,6 +466,7 @@ fun ApplicationScope.ChatWindow(
                                 onSettingsChange = onSettingsChange,
                                 showSettingsPanel = showSettingsPanel,
                                 onShowSettingsPanelChange = { showSettingsPanel = it },
+                                translationService = translationService,
                                 refreshTrigger = sessionListRefreshTrigger
                             )
                         }
@@ -493,6 +508,7 @@ fun ApplicationScope.ChatWindow(
                                     onSettingsChange = onSettingsChange,
                                     showSettingsPanel = showSettingsPanel,
                                     onShowSettingsPanelChange = { showSettingsPanel = it },
+                                    translationService = translationService,
 
                                     // Dev mode
                                     isDev = settingsService.mode == com.gromozeka.bot.settings.AppMode.DEV,

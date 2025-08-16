@@ -60,6 +60,7 @@ fun SessionScreen(
     onSettingsChange: (Settings) -> Unit,
     showSettingsPanel: Boolean,
     onShowSettingsPanelChange: (Boolean) -> Unit,
+    translationService: com.gromozeka.bot.services.translation.TranslationService,
 
     // Dev mode
     isDev: Boolean = false,
@@ -252,7 +253,8 @@ fun SessionScreen(
             isVisible = showSettingsPanel,
             settings = settings,
             onSettingsChange = onSettingsChange,
-            onClose = { onShowSettingsPanelChange(false) }
+            onClose = { onShowSettingsPanelChange(false) },
+            translationService = translationService
         )
     }
 
