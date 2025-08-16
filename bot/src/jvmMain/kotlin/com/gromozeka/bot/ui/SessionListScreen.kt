@@ -19,6 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.gromozeka.bot.ui.LocalTranslation
 import com.gromozeka.bot.model.ChatSessionMetadata
 import com.gromozeka.bot.services.SessionJsonlService
 import com.gromozeka.bot.services.SessionManager
@@ -142,7 +143,7 @@ fun SessionListScreen(
                             loadSessions()
                         }
                     },
-                    tooltip = "Refresh session list"
+                    tooltip = LocalTranslation.current.refreshSessionsTooltip
                 ) {
                     Text("🔄")
                 }
@@ -152,7 +153,7 @@ fun SessionListScreen(
                 CompactButton(
                     onClick = { directoryPicker.launch() }
                 ) {
-                    Text("New Session")
+                    Text(LocalTranslation.current.newSessionButton)
                 }
 
                 Spacer(modifier = Modifier.width(8.dp))
@@ -160,9 +161,9 @@ fun SessionListScreen(
                 // Settings button
                 CompactButton(
                     onClick = { onShowSettingsPanelChange(!showSettingsPanel) },
-                    tooltip = "Settings"
+                    tooltip = LocalTranslation.current.settingsTooltip
                 ) {
-                    Icon(Icons.Default.Settings, contentDescription = "Settings")
+                    Icon(Icons.Default.Settings, contentDescription = LocalTranslation.current.settingsTooltip)
                 }
             }
 
@@ -207,14 +208,14 @@ fun SessionListScreen(
                                     ) {
                                         CircularProgressIndicator()
                                         Text(
-                                            text = "Searching for \"$searchQuery\"...",
+                                            text = LocalTranslation.current.searchingForText.format(searchQuery),
                                             textAlign = TextAlign.Center
                                         )
                                     }
                                 } else {
                                     Text(
-                                        text = if (searchQuery.isBlank()) "Enter search query" 
-                                              else "Nothing found for \"$searchQuery\"",
+                                        text = if (searchQuery.isBlank()) LocalTranslation.current.enterSearchQuery 
+                                              else LocalTranslation.current.nothingFoundForText.format(searchQuery),
                                         textAlign = TextAlign.Center
                                     )
                                 }
@@ -222,7 +223,7 @@ fun SessionListScreen(
                         } else {
                             // Show search results as individual sessions
                             Text(
-                                text = "Found ${searchResults.size} sessions:",
+                                text = LocalTranslation.current.foundSessionsText.format(searchResults.size),
                                 modifier = Modifier.padding(vertical = 8.dp)
                             )
                             searchResults.forEach { session ->
@@ -249,7 +250,7 @@ fun SessionListScreen(
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
-                                    text = "No saved projects\nClick \"New Session\" to start working",
+                                    text = LocalTranslation.current.noSavedProjectsText,
                                     textAlign = TextAlign.Center
                                 )
                             }
@@ -313,7 +314,7 @@ private fun ProjectGroupHeader(
                 // 1. Expand button
                 Icon(
                     imageVector = if (isExpanded) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowRight,
-                    contentDescription = if (isExpanded) "Collapse" else "Expand",
+                    contentDescription = LocalTranslation.current.expandCollapseText,
                     modifier = Modifier.clickable { onToggleExpanded() }
                 )
 
@@ -325,14 +326,14 @@ private fun ProjectGroupHeader(
                 ) {
                     Text(text = group.projectName)
                     Text(text = group.projectPath)
-                    Text(text = "${group.sessionsMetadata.size} sessions")
+                    Text(text = LocalTranslation.current.sessionsCountText.format(group.sessionsMetadata.size))
                 }
 
                 Spacer(modifier = Modifier.width(8.dp))
 
                 // 3. "New" button
                 CompactButton(onClick = { onNewSessionClick(group.projectPath) }) {
-                    Text("New")
+                    Text(LocalTranslation.current.newButton)
                 }
 
                 Spacer(modifier = Modifier.width(12.dp))
@@ -343,7 +344,7 @@ private fun ProjectGroupHeader(
                         modifier = Modifier.weight(1f)
                     ) {
                         Text(text = latestSession.displayPreview())
-                        Text(text = "${latestSession.messageCount} messages")
+                        Text(text = LocalTranslation.current.messagesCountText.format(latestSession.messageCount))
                         Text(text = group.formattedTime)
                     }
 
@@ -351,12 +352,12 @@ private fun ProjectGroupHeader(
 
                     // 5. "Continue" button
                     CompactButton(onClick = { onSessionMetadataClick(latestSession) }) {
-                        Text("Continue")
+                        Text(LocalTranslation.current.continueButton)
                     }
                 } ?: run {
                     // If no sessions - empty Column
                     Column(modifier = Modifier.weight(1f)) {
-                        Text(text = "No sessions")
+                        Text(text = LocalTranslation.current.noSessionsText)
                         Text(text = "")
                         Text(text = "")
                     }
@@ -428,7 +429,7 @@ private fun SessionItem(
                         Spacer(modifier = Modifier.weight(1f))
                     }
                     Text(
-                        text = "${sessionMetadata.messageCount} messages"
+                        text = LocalTranslation.current.messagesCountText.format(sessionMetadata.messageCount)
                     )
                 }
             }
@@ -439,7 +440,7 @@ private fun SessionItem(
             CompactButton(
                 onClick = { onSessionMetadataClick(sessionMetadata) }
             ) {
-                Text("Continue")
+                Text(LocalTranslation.current.continueButton)
             }
         }
     }

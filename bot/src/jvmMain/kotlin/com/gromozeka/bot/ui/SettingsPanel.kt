@@ -62,13 +62,13 @@ fun SettingsPanel(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        "Settings",
+                        translation.settings.settingsTitle,
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold
                     )
 
                     IconButton(onClick = onClose) {
-                        Icon(Icons.Default.Close, contentDescription = "Close settings")
+                        Icon(Icons.Default.Close, contentDescription = translation.settings.closeSettingsText)
                     }
                 }
 
@@ -84,10 +84,10 @@ fun SettingsPanel(
                 ) {
                     // Audio Settings
                     // Voice Synthesis (TTS) Settings
-                    SettingsGroup(title = "Voice Synthesis") {
+                    SettingsGroup(title = translation.settings.voiceSynthesisTitle) {
                         SwitchSettingItem(
-                            label = "Enable Text-to-Speech",
-                            description = "Convert AI responses to speech",
+                            label = translation.settings.enableTtsLabel,
+                            description = translation.settings.ttsDescription,
                             value = settings.enableTts,
                             onValueChange = { onSettingsChange(settings.copy(enableTts = it)) }
                         )
@@ -95,24 +95,24 @@ fun SettingsPanel(
                         // Only show TTS settings if TTS is enabled
                         if (settings.enableTts) {
                             DropdownSettingItem(
-                                label = "Voice Model",
-                                description = "Text-to-speech model",
+                                label = translation.settings.voiceModelLabel,
+                                description = translation.settings.ttsModelDescription,
                                 value = settings.ttsModel,
                                 options = listOf("gpt-4o-mini-tts", "tts-1", "tts-1-hd"),
                                 onValueChange = { onSettingsChange(settings.copy(ttsModel = it)) }
                             )
 
                             DropdownSettingItem(
-                                label = "Voice Type",
-                                description = "Voice for speech synthesis",
+                                label = translation.settings.voiceTypeLabel,
+                                description = translation.settings.ttsVoiceDescription,
                                 value = settings.ttsVoice,
                                 options = listOf("alloy", "echo", "fable", "onyx", "nova", "shimmer"),
                                 onValueChange = { onSettingsChange(settings.copy(ttsVoice = it)) }
                             )
 
                             SliderSettingItem(
-                                label = "Speech Speed",
-                                description = "Speech rate: 0.25x (slowest) to 4.0x (fastest)",
+                                label = translation.settings.speechSpeedLabel,
+                                description = translation.settings.ttsSpeedDescription,
                                 value = settings.ttsSpeed,
                                 min = 0.25f,
                                 max = 4.0f,
@@ -124,10 +124,10 @@ fun SettingsPanel(
                     }
 
                     // Speech Recognition (STT) Settings  
-                    SettingsGroup(title = "Speech Recognition") {
+                    SettingsGroup(title = translation.settings.speechRecognitionTitle) {
                         SwitchSettingItem(
-                            label = "Enable Speech-to-Text",
-                            description = "Convert voice input to text",
+                            label = translation.settings.enableSttLabel,
+                            description = translation.settings.sttDescription,
                             value = settings.enableStt,
                             onValueChange = { onSettingsChange(settings.copy(enableStt = it)) }
                         )
@@ -135,23 +135,23 @@ fun SettingsPanel(
                         // Only show STT settings if STT is enabled
                         if (settings.enableStt) {
                             DropdownSettingItem(
-                                label = "Recognition Language",
-                                description = "Speech recognition language",
+                                label = translation.settings.recognitionLanguageLabel,
+                                description = translation.settings.sttLanguageDescription,
                                 value = settings.sttMainLanguage,
                                 options = listOf("en", "ru", "es", "fr", "de", "zh", "ja"),
                                 onValueChange = { onSettingsChange(settings.copy(sttMainLanguage = it)) }
                             )
 
                             SwitchSettingItem(
-                                label = "Auto-send messages",
-                                description = "Send messages immediately after voice input",
+                                label = translation.settings.autoSendMessagesLabel,
+                                description = translation.settings.autoSendDescription,
                                 value = settings.autoSend,
                                 onValueChange = { onSettingsChange(settings.copy(autoSend = it)) }
                             )
 
                             SwitchSettingItem(
-                                label = "Global PTT Hotkey",
-                                description = "Enable push-to-talk from anywhere (Cmd+Shift+Space)",
+                                label = translation.settings.globalPttHotkeyLabel,
+                                description = translation.settings.globalPttDescription,
                                 value = settings.globalPttHotkeyEnabled,
                                 onValueChange = { onSettingsChange(settings.copy(globalPttHotkeyEnabled = it)) }
                             )
@@ -159,8 +159,8 @@ fun SettingsPanel(
                             // Only show mute option if global PTT is enabled
                             if (settings.globalPttHotkeyEnabled) {
                                 SwitchSettingItem(
-                                    label = "Mute system audio during PTT",
-                                    description = "Prevent audio feedback when recording",
+                                    label = translation.settings.muteAudioDuringPttLabel,
+                                    description = translation.settings.muteAudioDescription,
                                     value = settings.muteSystemAudioDuringPTT,
                                     onValueChange = { onSettingsChange(settings.copy(muteSystemAudioDuringPTT = it)) }
                                 )
@@ -169,18 +169,18 @@ fun SettingsPanel(
                     }
 
                     // AI Settings
-                    SettingsGroup(title = "AI") {
+                    SettingsGroup(title = translation.settings.aiSettingsTitle) {
                         DropdownSettingItem(
-                            label = "Claude Model",
-                            description = "AI model to use for responses",
+                            label = translation.settings.claudeModelLabel,
+                            description = translation.settings.claudeModelDescription,
                             value = settings.claudeModel,
                             options = listOf("sonnet", "haiku", "opus"),
                             onValueChange = { onSettingsChange(settings.copy(claudeModel = it)) }
                         )
 
                         DropdownSettingItem(
-                            label = "Response Format",
-                            description = "How AI structures voice responses (XML_INLINE recommended)",
+                            label = translation.settings.responseFormatLabel,
+                            description = translation.settings.responseFormatDescription,
                             value = settings.responseFormat.name,
                             options = ResponseFormat.values().map { it.name },
                             onValueChange = {
@@ -190,18 +190,18 @@ fun SettingsPanel(
                         )
 
                         SwitchSettingItem(
-                            label = "Include current time",
-                            description = "Add current date/time once at conversation start",
+                            label = translation.settings.includeCurrentTimeLabel,
+                            description = translation.settings.includeTimeDescription,
                             value = settings.includeCurrentTime,
                             onValueChange = { onSettingsChange(settings.copy(includeCurrentTime = it)) }
                         )
                     }
 
                     // API Keys
-                    SettingsGroup(title = "API Keys") {
+                    SettingsGroup(title = translation.settings.apiKeysTitle) {
                         PasswordSettingItem(
-                            label = "OpenAI API Key",
-                            description = "Required for TTS and STT services",
+                            label = translation.settings.openaiApiKeyLabel,
+                            description = translation.settings.openaiKeyDescription,
                             value = settings.openAiApiKey ?: "",
                             onValueChange = {
                                 onSettingsChange(settings.copy(openAiApiKey = it.ifBlank { null }))
@@ -210,28 +210,28 @@ fun SettingsPanel(
                     }
 
                     // UI Settings
-                    SettingsGroup(title = "Interface") {
+                    SettingsGroup(title = translation.settings.interfaceSettingsTitle) {
                         SwitchSettingItem(
-                            label = "Show system messages",
-                            description = "Display system notifications in chat (errors always shown)",
+                            label = translation.settings.showSystemMessagesLabel,
+                            description = translation.settings.showSystemDescription,
                             value = settings.showSystemMessages,
                             onValueChange = { onSettingsChange(settings.copy(showSystemMessages = it)) }
                         )
 
                         SwitchSettingItem(
-                            label = "Always on top",
-                            description = "Keep window above all other applications",
+                            label = translation.settings.alwaysOnTopLabel,
+                            description = translation.settings.alwaysOnTopDescription,
                             value = settings.alwaysOnTop,
                             onValueChange = { onSettingsChange(settings.copy(alwaysOnTop = it)) }
                         )
                     }
 
                     // Localization Settings
-                    SettingsGroup(title = translation.localizationTitle) {
+                    SettingsGroup(title = translation.settings.localizationTitle) {
                         // Language selection
                         DropdownSettingItem(
-                            label = "Language",
-                            description = "Select interface language",
+                            label = translation.switchLanguage,
+                            description = translation.settings.languageSelectionDescription,
                             value = settings.currentLanguageCode,
                             options = Translation.builtIn.keys.toList(),
                             optionLabel = { languageCode ->
@@ -243,8 +243,8 @@ fun SettingsPanel(
                         )
                         
                         InfoSettingItem(
-                            label = "Custom Translation Info",
-                            message = "💡 Custom translations are loaded automatically if override.json file exists. Use Export → Edit file → Check to customize.",
+                            label = translation.settings.customTranslationInfoLabel,
+                            message = translation.settings.customTranslationInfoMessage,
                             isError = false
                         )
                         
@@ -254,15 +254,15 @@ fun SettingsPanel(
                             when (result) {
                                 is com.gromozeka.bot.services.translation.TranslationOverrideResult.Success -> {
                                     InfoSettingItem(
-                                        label = "Translation Override Status",
-                                        message = "✅ Custom translations loaded. ${result.overriddenFields.size} fields customized.",
+                                        label = translation.settings.translationOverrideStatusLabel,
+                                        message = translation.settings.overrideSuccessMessage.format(result.overriddenFields.size),
                                         isError = false
                                     )
                                 }
                                 is com.gromozeka.bot.services.translation.TranslationOverrideResult.Failure -> {
                                     InfoSettingItem(
-                                        label = "Translation Override Status", 
-                                        message = "❌ Override failed: ${result.error}",
+                                        label = translation.settings.translationOverrideStatusLabel, 
+                                        message = translation.settings.overrideFailureMessage.format(result.error),
                                         isError = true
                                     )
                                 }
@@ -270,9 +270,9 @@ fun SettingsPanel(
                         }
                         
                         ButtonSettingItem(
-                            label = "Refresh Translations",
-                            description = "Apply current language settings and check for override files",
-                            buttonText = "Refresh",
+                            label = translation.settings.refreshTranslationsLabel,
+                            description = translation.settings.refreshTranslationsDescription,
+                            buttonText = translation.settings.refreshTranslationsButton,
                             onClick = {
                                 println("[SettingsPanel] Refreshing translations...")
                                 translationService.refreshTranslations()
@@ -280,9 +280,9 @@ fun SettingsPanel(
                         )
                         
                         ButtonSettingItem(
-                            label = "Export Current Translation",
-                            description = "Export current translation to override.json file for customization",
-                            buttonText = "Export",
+                            label = translation.settings.exportTranslationLabel,
+                            description = translation.settings.exportTranslationDescription,
+                            buttonText = translation.settings.exportTranslationButton,
                             onClick = {
                                 val success = translationService.exportToFile()
                                 
@@ -298,24 +298,24 @@ fun SettingsPanel(
                     }
 
                     // Notifications Settings
-                    SettingsGroup(title = "Notifications") {
+                    SettingsGroup(title = translation.settings.notificationsTitle) {
                         SwitchSettingItem(
-                            label = "Error sounds",
-                            description = "Play sound notification for error messages",
+                            label = translation.settings.errorSoundsLabel,
+                            description = translation.settings.errorSoundsDescription,
                             value = settings.enableErrorSounds,
                             onValueChange = { onSettingsChange(settings.copy(enableErrorSounds = it)) }
                         )
 
                         SwitchSettingItem(
-                            label = "Message sounds",
-                            description = "Play sound notification for new messages",
+                            label = translation.settings.messageSoundsLabel,
+                            description = translation.settings.messageSoundsDescription,
                             value = settings.enableMessageSounds,
                             onValueChange = { onSettingsChange(settings.copy(enableMessageSounds = it)) }
                         )
 
                         SwitchSettingItem(
-                            label = "Ready sounds",
-                            description = "Play sound when Claude finishes processing",
+                            label = translation.settings.readySoundsLabel,
+                            description = translation.settings.readySoundsDescription,
                             value = settings.enableReadySounds,
                             onValueChange = { onSettingsChange(settings.copy(enableReadySounds = it)) }
                         )
@@ -323,8 +323,8 @@ fun SettingsPanel(
                         // Volume control (show only if any sound is enabled)
                         if (settings.enableErrorSounds || settings.enableMessageSounds || settings.enableReadySounds) {
                             SliderSettingItem(
-                                label = "Sound Volume",
-                                description = "Volume level for all notification sounds",
+                                label = translation.settings.soundVolumeLabel,
+                                description = translation.settings.soundVolumeDescription,
                                 value = settings.soundVolume,
                                 min = 0.0f,
                                 max = 1.0f,
@@ -336,10 +336,10 @@ fun SettingsPanel(
                     }
 
                     // Developer Settings
-                    SettingsGroup(title = "Developer") {
+                    SettingsGroup(title = translation.settings.developerSettingsTitle) {
                         SwitchSettingItem(
-                            label = "Show original JSON",
-                            description = "Display raw API responses in chat",
+                            label = translation.settings.showOriginalJsonLabel,
+                            description = translation.settings.showJsonDescription,
                             value = settings.showOriginalJson,
                             onValueChange = { onSettingsChange(settings.copy(showOriginalJson = it)) }
                         )

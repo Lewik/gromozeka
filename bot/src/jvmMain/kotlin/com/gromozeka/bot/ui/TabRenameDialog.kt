@@ -15,6 +15,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import kotlinx.coroutines.delay
+import com.gromozeka.bot.ui.LocalTranslation
 
 /**
  * Modal dialog for renaming a tab
@@ -73,14 +74,14 @@ fun TabRenameDialog(
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     Text(
-                        text = "Переименовать таб",
+                        text = LocalTranslation.current.renameTabTitle,
                         style = MaterialTheme.typography.titleMedium
                     )
 
                     OutlinedTextField(
                         value = editingText,
                         onValueChange = { editingText = it },
-                        label = { Text("Имя таба") },
+                        label = { Text(LocalTranslation.current.tabNameLabel) },
                         modifier = Modifier
                             .fillMaxWidth()
                             .focusRequester(focusRequester)
@@ -111,13 +112,13 @@ fun TabRenameDialog(
                         TextButton(
                             onClick = onDismiss
                         ) {
-                            Text("Отмена")
+                            Text(LocalTranslation.current.cancelButton)
                         }
 
                         Button(
                             onClick = { confirmRename() }
                         ) {
-                            Text("Сохранить")
+                            Text(LocalTranslation.current.saveButton)
                         }
                     }
                 }

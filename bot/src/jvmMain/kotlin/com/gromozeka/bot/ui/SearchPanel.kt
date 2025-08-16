@@ -38,14 +38,14 @@ fun SearchPanel(
             value = query,
             onValueChange = onQueryChange,
             modifier = Modifier.weight(1f),
-            placeholder = { Text("Search in sessions...") },
+            placeholder = { Text(LocalTranslation.current.searchSessionsPlaceholder) },
             singleLine = true,
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
             keyboardActions = KeyboardActions(onSearch = { onSearch() }),
             trailingIcon = if (query.isNotEmpty()) {
                 {
                     IconButton(onClick = onClear) {
-                        Icon(Icons.Default.Clear, "Clear search")
+                        Icon(Icons.Default.Clear, LocalTranslation.current.clearSearchText)
                     }
                 }
             } else null
@@ -56,7 +56,7 @@ fun SearchPanel(
             onClick = onSearch,
             enabled = query.isNotBlank() && !isSearching,
             modifier = Modifier.fillMaxHeight(),
-            tooltip = "Search sessions"
+            tooltip = LocalTranslation.current.searchSessionsTooltip
         ) {
             if (isSearching) {
                 CircularProgressIndicator(
@@ -64,7 +64,7 @@ fun SearchPanel(
                     strokeWidth = 2.dp
                 )
             } else {
-                Icon(Icons.Default.Search, "Search", modifier = Modifier.size(16.dp))
+                Icon(Icons.Default.Search, LocalTranslation.current.searchSessionsTooltip, modifier = Modifier.size(16.dp))
             }
         }
     }

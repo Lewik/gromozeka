@@ -30,6 +30,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.gromozeka.bot.services.TTSQueueService
 import com.gromozeka.bot.settings.Settings
+import com.gromozeka.bot.ui.LocalTranslation
 import com.gromozeka.bot.utils.TokenUsageCalculator
 import com.gromozeka.shared.domain.message.ChatMessage
 import com.gromozeka.shared.domain.message.ClaudeCodeToolCallData
@@ -123,7 +124,7 @@ fun SessionScreen(
                 DisableSelection {
                     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         CompactButton(onClick = onNewSession) {
-                            Text("Новая")
+                            Text(LocalTranslation.current.newSessionShort)
                         }
 
                         Spacer(modifier = Modifier.weight(1f))
@@ -131,7 +132,7 @@ fun SessionScreen(
                         // Message count
                         CompactButton(
                             onClick = { },
-                            tooltip = "Всего сообщений: ${filteredHistory.size}\n(фильтрация по настройкам)"
+                            tooltip = LocalTranslation.current.messageCountTooltip.format(filteredHistory.size)
                         ) {
                             Text("💬 ${filteredHistory.size}")
                         }
@@ -151,9 +152,9 @@ fun SessionScreen(
                         // Settings button
                         CompactButton(
                             onClick = { onShowSettingsPanelChange(!showSettingsPanel) },
-                            tooltip = "Настройки"
+                            tooltip = LocalTranslation.current.settingsTooltip
                         ) {
-                            Icon(Icons.Default.Settings, contentDescription = "Settings")
+                            Icon(Icons.Default.Settings, contentDescription = LocalTranslation.current.settingsTooltip)
                         }
 
                         // Close tab button (if onCloseTab callback is provided)
@@ -161,7 +162,7 @@ fun SessionScreen(
                             Spacer(modifier = Modifier.width(8.dp))
                             CompactButton(
                                 onClick = closeCallback,
-                                tooltip = "Закрыть таб"
+                                tooltip = LocalTranslation.current.closeTabTooltip
                             ) {
                                 Text("✕")
                             }
@@ -227,7 +228,7 @@ fun SessionScreen(
                                     viewModel.captureAndAddToInput()
                                 }
                             },
-                            tooltip = "Скриншот окна"
+                            tooltip = LocalTranslation.current.screenshotTooltip
                         ) {
                             Text("📷")
                         }
@@ -276,6 +277,8 @@ private fun MessageItem(
     onShowJson: (String) -> Unit = {},
     onSpeakRequest: (String, String) -> Unit = { _, _ -> },
 ) {
+    val translation = LocalTranslation.current
+    
     // Combined metadata button data
     val roleIcon = when (message.role) {
         ChatMessage.Role.USER -> "👤"
@@ -337,7 +340,7 @@ private fun MessageItem(
             }
         }
 
-        append("\nПКМ - контекстное меню")
+        append(translation.contextMenuHint)
     }
 
     // Compact horizontal layout
@@ -359,25 +362,25 @@ private fun MessageItem(
 
                     buildList {
                         if (settings.showOriginalJson) {
-                            add(ContextMenuItem("Показать JSON") {
+                            add(ContextMenuItem(translation.showJsonMenuItem) {
                                 val jsonToShow = (message.originalJson ?: "No JSON available")
                                 onShowJson(jsonToShow)
                             })
                         }
 
-                        add(ContextMenuItem("Копировать в Markdown") {
+                        add(ContextMenuItem(translation.copyMarkdownMenuItem) {
                             val markdownContent = message.content
                                 .filterIsInstance<ChatMessage.ContentItem.AssistantMessage>()
                                 .firstOrNull()?.structured?.fullText
                                 ?: message.content
                                     .filterIsInstance<ChatMessage.ContentItem.UserMessage>()
                                     .firstOrNull()?.text
-                                ?: "Содержимое недоступно"
+                                ?: translation.contentUnavailable
                             clipboardManager.setText(AnnotatedString(markdownContent))
                         })
 
                         if (hasTtsText) {
-                            add(ContextMenuItem("Произнести") {
+                            add(ContextMenuItem(translation.speakMenuItem) {
                                 val ttsText = assistantContent!!.structured.ttsText!!
                                 val voiceTone = assistantContent.structured.voiceTone ?: ""
                                 onSpeakRequest(ttsText, voiceTone)
@@ -461,7 +464,7 @@ private fun MessageItem(
                             when (val source = content.source) {
                                 is ChatMessage.ImageSource.Base64ImageSource -> {
                                     // Base64 too long - show placeholder
-                                    Text("🖼️ [Image ${source.mediaType} - ${source.data.length} chars Base64]")
+                                    Text(LocalTranslation.current.imageDisplayText.format(source.mediaType, source.data.length))
                                 }
 
                                 is ChatMessage.ImageSource.UrlImageSource -> {
@@ -481,7 +484,7 @@ private fun MessageItem(
                         is ChatMessage.ContentItem.AssistantMessage -> GromozekaMarkdown(content = content.structured.fullText)
                         is ChatMessage.ContentItem.UnknownJson -> Column {
                             Text(text = jsonPrettyPrint(content.json))
-                            Text(text = "⚠️ Не удалось распарсить структуру")
+                            Text(text = LocalTranslation.current.parseErrorText)
                         }
                     }
                 }
@@ -544,7 +547,7 @@ private fun MessageInput(
                 onClick = {},
                 enabled = false,
                 modifier = Modifier.fillMaxHeight(),
-                tooltip = "Отправка сообщения..."
+                tooltip = LocalTranslation.current.sendingMessageTooltip
             ) {
                 CircularProgressIndicator(modifier = Modifier.size(16.dp))
             }
@@ -557,7 +560,7 @@ private fun MessageInput(
                     }
                 },
                 modifier = Modifier.fillMaxHeight(),
-                tooltip = "Отправить сообщение (Shift+Enter)"
+                tooltip = LocalTranslation.current.sendMessageTooltip
             ) {
                 Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Send", modifier = Modifier.size(16.dp))
             }
@@ -570,11 +573,11 @@ private fun MessageInput(
             CompactButton(
                 onClick = {},
                 modifier = modifierWithPushToTalk.fillMaxHeight(),
-                tooltip = if (isRecording) "Идет запись... (отпустите для остановки)" else "Нажать и удерживать для записи (PTT)"
+                tooltip = if (isRecording) LocalTranslation.current.recordingTooltip else LocalTranslation.current.pttButtonTooltip
             ) {
                 Icon(
                     imageVector = if (isRecording) Icons.Default.FiberManualRecord else Icons.Default.Mic,
-                    contentDescription = if (isRecording) "Recording" else "Push to Talk",
+                    contentDescription = if (isRecording) LocalTranslation.current.recordingText else LocalTranslation.current.pushToTalkText,
                     modifier = Modifier.size(16.dp),
                     tint = if (isRecording) MaterialTheme.colorScheme.error else LocalContentColor.current
                 )
@@ -641,7 +644,7 @@ private fun JsonDialog(
             Column {
                 // Header with title and close button
                 Row {
-                    Text("Original JSON")
+                    Text(LocalTranslation.current.viewOriginalJson)
                     CompactButton(onClick = onDismiss) {
                         Text("✕")
                     }
