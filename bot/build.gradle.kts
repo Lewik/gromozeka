@@ -108,7 +108,8 @@ compose.desktop {
         mainClass = "com.gromozeka.bot.ChatApplicationKt"
         jvmArgs += listOf(
             "-Xdock:icon=src/jvmMain/resources/logos/logo-256x256.png",
-            "-Xdock:name=Gromozeka"
+            "-Xdock:name=Gromozeka",
+            "-Dapple.awt.application.appearance=system"
         )
     }
 }
