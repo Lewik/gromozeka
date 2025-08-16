@@ -71,6 +71,7 @@ class Session(
     private val claudeModel: String? = null,
     private val responseFormat: com.gromozeka.bot.settings.ResponseFormat = com.gromozeka.bot.settings.ResponseFormat.JSON,
     private val customSystemPrompt: String? = null,
+    private val initialClaudeSessionId: ClaudeSessionUuid = ClaudeSessionUuid.DEFAULT,
 ) {
 
     // === ACTOR CHANNELS ===
@@ -82,11 +83,11 @@ class Session(
     // === ACTOR STATE ===  
     private var actorState: ActorState = ActorState.Inactive
     private var actorJob: Job? = null
-    private var currentSessionId = ClaudeSessionUuid.DEFAULT
+    private var currentSessionId = initialClaudeSessionId
     private var actorScope: CoroutineScope? = null
 
     // === OUTGOING CHANNELS (StateFlow/SharedFlow for UI consumption) ===
-    private val _claudeSessionId = MutableStateFlow(ClaudeSessionUuid.DEFAULT)
+    private val _claudeSessionId = MutableStateFlow(initialClaudeSessionId)
     val claudeSessionId: StateFlow<ClaudeSessionUuid> = _claudeSessionId.asStateFlow()
 
     private val _messageOutputStream = MutableSharedFlow<ChatMessage>(
@@ -110,7 +111,6 @@ class Session(
     sealed class Command {
         data class Start(
             val scope: CoroutineScope,
-            val resumeSessionId: ClaudeSessionUuid? = null,
         ) : Command()
 
         data object Stop : Command()
@@ -237,7 +237,7 @@ class Session(
 
             is Command.Start -> {
                 if (actorState == ActorState.Inactive) {
-                    performStart(command.scope, command.resumeSessionId)
+                    performStart(command.scope)
                 } else {
                     println("[Actor] Cannot start - already in state: $actorState")
                     _events.emit(StreamSessionEvent.Warning("Session already active or starting"))
@@ -402,7 +402,7 @@ class Session(
     /**
      * Actor implementation of start command
      */
-    private suspend fun performStart(scope: CoroutineScope, resumeSessionId: ClaudeSessionUuid? = null) {
+    private suspend fun performStart(scope: CoroutineScope) {
         println("[Actor] Starting session for project: $projectPath")
 
         require(actorState == ActorState.Inactive) {
@@ -413,10 +413,10 @@ class Session(
         actorState = ActorState.Starting
 
         try {
-            // Load historical messages if resuming
-            if (resumeSessionId != null) {
-                println("[Actor] Loading historical messages from session: $resumeSessionId")
-                loadHistoricalMessages(resumeSessionId)
+            // Load historical messages if resuming (skip if default/new session)
+            if (currentSessionId != ClaudeSessionUuid.DEFAULT) {
+                println("[Actor] Loading historical messages from session: $currentSessionId")
+                loadHistoricalMessages(currentSessionId)
             }
 
 
@@ -431,7 +431,7 @@ class Session(
                 projectPath = projectPath,
                 model = claudeModel,
                 responseFormat = responseFormat,
-                resumeSessionId = resumeSessionId,
+                resumeSessionId = currentSessionId.takeIf { it != ClaudeSessionUuid.DEFAULT },
                 customSystemPrompt = customSystemPrompt
             )
 
@@ -713,9 +713,9 @@ class Session(
      * @param scope CoroutineScope for session lifecycle
      * @param resumeSessionId Optional session ID to load historical messages from
      */
-    suspend fun start(scope: CoroutineScope, resumeSessionId: ClaudeSessionUuid? = null) {
+    suspend fun start(scope: CoroutineScope) {
         initializeActor(scope)
-        userCommandChannel.send(Command.Start(scope, resumeSessionId))
+        userCommandChannel.send(Command.Start(scope))
     }
 
     /**

@@ -49,9 +49,13 @@ class SessionManager(
         customSystemPrompt: String? = null
     ): Session = sessionMutex.withLock {
 
-        val session = createSessionInternal(projectPath, customSystemPrompt = customSystemPrompt)
+        val session = createSessionInternal(
+            projectPath = projectPath, 
+            customSystemPrompt = customSystemPrompt,
+            initialClaudeSessionId = resumeSessionId ?: ClaudeSessionUuid.DEFAULT
+        )
 
-        session.start(scope, resumeSessionId)
+        session.start(scope)
 
         val updatedSessions = _activeSessions.value + (session.id to session)
         _activeSessions.value = updatedSessions
@@ -67,6 +71,7 @@ class SessionManager(
         projectPath: String,
         claudeModel: String = settingsService.settings.claudeModel,
         customSystemPrompt: String? = null,
+        initialClaudeSessionId: ClaudeSessionUuid = ClaudeSessionUuid.DEFAULT,
     ): Session {
         // Create wrapper using factory
         val wrapperType = WrapperType.DIRECT_CLI
@@ -82,6 +87,7 @@ class SessionManager(
             claudeModel = claudeModel,
             responseFormat = settingsService.settings.responseFormat,
             customSystemPrompt = customSystemPrompt,
+            initialClaudeSessionId = initialClaudeSessionId,
         )
     }
 

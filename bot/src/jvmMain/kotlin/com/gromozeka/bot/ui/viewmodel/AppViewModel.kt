@@ -148,21 +148,35 @@ class AppViewModel(
     suspend fun restoreTabs(uiState: UIState) {
         println("[AppViewModel] Restoring ${uiState.tabs.size} tabs from UIState")
 
+        // Build all tabs first, then assign in one atomic operation
+        val restoredTabs = mutableListOf<SessionViewModel>()
+        
         uiState.tabs.forEach { tabUiState ->
-            val claudeSessionId = tabUiState.claudeSessionId.takeIf { it != ClaudeSessionUuid.DEFAULT }
-            val session = sessionManager.createSession(tabUiState.projectPath, claudeSessionId)
+            try {
+                val claudeSessionId = tabUiState.claudeSessionId
+                val session = sessionManager.createSession(tabUiState.projectPath, claudeSessionId)
 
-            val sessionViewModel = SessionViewModel(
-                session = session,
-                settingsFlow = settingsService.settingsFlow,
-                scope = scope,
-                initialTabUiState = tabUiState,
-                screenCaptureController = screenCaptureController
-            )
+                val sessionViewModel = SessionViewModel(
+                    session = session,
+                    settingsFlow = settingsService.settingsFlow,
+                    scope = scope,
+                    initialTabUiState = tabUiState,
+                    screenCaptureController = screenCaptureController
+                )
 
-            _tabs.value = _tabs.value + sessionViewModel
+                restoredTabs.add(sessionViewModel)
+                println("[AppViewModel] Successfully restored tab for project: ${tabUiState.projectPath}")
+            } catch (e: Exception) {
+                println("[AppViewModel] Failed to restore tab for project: ${tabUiState.projectPath}, error: ${e.message}")
+                // Continue with other tabs - partial restore is better than no restore
+            }
         }
 
+        // Atomic assignment - triggers tabs.onEach only ONCE
+        _tabs.value = restoredTabs.toList()
+        println("[AppViewModel] Restore completed: ${_tabs.value.size}/${uiState.tabs.size} tabs restored")
+
+        // Set current tab index after all tabs are restored
         if (uiState.currentTabIndex != null && uiState.currentTabIndex < _tabs.value.size) {
             selectTab(uiState.currentTabIndex)
         }
