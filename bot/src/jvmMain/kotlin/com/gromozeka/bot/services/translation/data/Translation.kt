@@ -88,6 +88,27 @@ sealed class Translation {
         // Language Selection
         abstract val languageSelectionDescription: String
 
+        // Theming Section
+        abstract val themingTitle: String
+        abstract val themeSelectionLabel: String
+        abstract val themeSelectionDescription: String
+        abstract val customThemeInfoLabel: String
+        abstract val customThemeInfoMessage: String
+        abstract val themeOverrideStatusLabel: String
+        abstract val themeOverrideSuccessMessage: String
+        abstract val themeOverrideFailureMessage: String
+        abstract val refreshThemesLabel: String
+        abstract val refreshThemesDescription: String
+        abstract val refreshThemesButton: String
+        abstract val exportThemeLabel: String
+        abstract val exportThemeDescription: String
+        abstract val exportThemeButton: String
+
+        // Theme Names
+        abstract val themeNameDark: String
+        abstract val themeNameLight: String
+        abstract val themeNameGromozeka: String
+
         // Settings UI
         abstract val settingsTitle: String
         abstract val closeSettingsText: String

@@ -20,6 +20,8 @@ import com.gromozeka.bot.settings.ResponseFormat
 import com.gromozeka.bot.settings.Settings
 import com.gromozeka.bot.services.translation.TranslationService
 import com.gromozeka.bot.services.translation.data.Translation
+import com.gromozeka.bot.services.theming.ThemeService
+import com.gromozeka.bot.services.theming.data.Theme
 import com.gromozeka.bot.ui.LocalTranslation
 import java.io.File
 
@@ -30,6 +32,7 @@ fun SettingsPanel(
     onSettingsChange: (Settings) -> Unit,
     onClose: () -> Unit,
     translationService: TranslationService,
+    themeService: ThemeService,
     modifier: Modifier = Modifier,
 ) {
     val translation = LocalTranslation.current
@@ -291,6 +294,79 @@ fun SettingsPanel(
                                     // TODO: Show success notification
                                 } else {
                                     println("[SettingsPanel] Failed to export translation")
+                                    // TODO: Show error notification  
+                                }
+                            }
+                        )
+                    }
+
+                    // Theming Settings
+                    SettingsGroup(title = translation.settings.themingTitle) {
+                        // Theme selection
+                        DropdownSettingItem(
+                            label = translation.settings.themeSelectionLabel,
+                            description = translation.settings.themeSelectionDescription,
+                            value = settings.currentThemeId,
+                            options = Theme.builtIn.keys.toList(),
+                            optionLabel = { themeId ->
+                                Theme.getThemeNameTranslated(themeId, translation)
+                            },
+                            onValueChange = { newThemeId ->
+                                onSettingsChange(settings.copy(currentThemeId = newThemeId))
+                            }
+                        )
+
+                        // Theme override info
+                        InfoSettingItem(
+                            label = translation.settings.customThemeInfoLabel,
+                            message = translation.settings.customThemeInfoMessage,
+                            isError = false
+                        )
+
+                        // Theme override status
+                        val overrideResult by themeService.lastOverrideResult.collectAsState()
+                        overrideResult?.let { result ->
+                            when (result) {
+                                is com.gromozeka.bot.services.theming.ThemeOverrideResult.Success -> {
+                                    InfoSettingItem(
+                                        label = translation.settings.themeOverrideStatusLabel,
+                                        message = translation.settings.themeOverrideSuccessMessage.format(result.overriddenFields.size),
+                                        isError = false
+                                    )
+                                }
+                                is com.gromozeka.bot.services.theming.ThemeOverrideResult.Failure -> {
+                                    InfoSettingItem(
+                                        label = translation.settings.themeOverrideStatusLabel,
+                                        message = translation.settings.themeOverrideFailureMessage.format(result.error),
+                                        isError = true
+                                    )
+                                }
+                            }
+                        }
+
+                        // Refresh themes button
+                        ButtonSettingItem(
+                            label = translation.settings.refreshThemesLabel,
+                            description = translation.settings.refreshThemesDescription,
+                            buttonText = translation.settings.refreshThemesButton,
+                            onClick = {
+                                println("[SettingsPanel] Refreshing themes...")
+                                themeService.refreshThemes()
+                            }
+                        )
+
+                        // Export theme button
+                        ButtonSettingItem(
+                            label = translation.settings.exportThemeLabel,
+                            description = translation.settings.exportThemeDescription,
+                            buttonText = translation.settings.exportThemeButton,
+                            onClick = {
+                                val success = themeService.exportToFile()
+                                if (success) {
+                                    println("[SettingsPanel] Successfully exported theme")
+                                    // TODO: Show success notification
+                                } else {
+                                    println("[SettingsPanel] Failed to export theme")
                                     // TODO: Show error notification  
                                 }
                             }

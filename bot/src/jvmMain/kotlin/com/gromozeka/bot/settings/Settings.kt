@@ -2,6 +2,7 @@ package com.gromozeka.bot.settings
 
 import kotlinx.serialization.Serializable
 import com.gromozeka.bot.services.translation.data.EnglishTranslation
+import com.gromozeka.bot.services.theming.data.DarkTheme
 
 @Serializable
 data class Settings(
@@ -34,6 +35,9 @@ data class Settings(
     
     // Localization Settings
     val currentLanguageCode: String = EnglishTranslation.LANGUAGE_CODE, // en, ru, he
+
+    // Theming Settings
+    val currentThemeId: String = DarkTheme.THEME_ID, // dark, light, gromozeka
 
     // Notification Settings
     val enableErrorSounds: Boolean = false,

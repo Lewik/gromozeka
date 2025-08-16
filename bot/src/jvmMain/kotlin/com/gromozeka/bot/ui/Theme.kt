@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -15,6 +17,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.mikepenz.markdown.m3.Markdown
 import com.mikepenz.markdown.m3.markdownTypography
+import com.gromozeka.bot.services.theming.ThemeService
 
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.SegmentedButton
@@ -22,7 +25,60 @@ import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 
 @Composable
-fun GromozekaTheme(content: @Composable () -> Unit) {
+fun GromozekaTheme(
+    themeService: ThemeService? = null,
+    content: @Composable () -> Unit
+) {
+    // Get current theme from service, fallback to default dark theme if service not available
+    val currentTheme by (themeService?.currentTheme?.collectAsState()
+        ?: androidx.compose.runtime.mutableStateOf(com.gromozeka.bot.services.theming.data.DarkTheme()))
+    
+    // Create ColorScheme from current theme data
+    val colorScheme = ColorScheme(
+        primary = Color(currentTheme.primary),
+        onPrimary = Color(currentTheme.onPrimary),
+        primaryContainer = Color(currentTheme.primaryContainer),
+        onPrimaryContainer = Color(currentTheme.onPrimaryContainer),
+        inversePrimary = Color(currentTheme.inversePrimary ?: 0xFFBEA6FF),
+        
+        secondary = Color(currentTheme.secondary),
+        onSecondary = Color(currentTheme.onSecondary),
+        secondaryContainer = Color(currentTheme.secondaryContainer),
+        onSecondaryContainer = Color(currentTheme.onSecondaryContainer),
+        
+        tertiary = Color(currentTheme.tertiary ?: 0xFF6750A4),
+        onTertiary = Color(currentTheme.onTertiary ?: 0xFFFFFFFF),
+        tertiaryContainer = Color(currentTheme.tertiaryContainer ?: 0xFFEADDFF),
+        onTertiaryContainer = Color(currentTheme.onTertiaryContainer ?: 0xFF21005D),
+        
+        background = Color(currentTheme.background),
+        onBackground = Color(currentTheme.onBackground),
+        surface = Color(currentTheme.surface),
+        onSurface = Color(currentTheme.onSurface),
+        surfaceVariant = Color(currentTheme.surfaceVariant),
+        onSurfaceVariant = Color(currentTheme.onSurfaceVariant),
+        surfaceTint = Color(currentTheme.primary), // Use primary as surface tint
+        inverseSurface = Color(currentTheme.inverseSurface ?: 0xFF313033),
+        inverseOnSurface = Color(currentTheme.inverseOnSurface ?: 0xFFF4EFF4),
+        
+        error = Color(currentTheme.error),
+        onError = Color(currentTheme.onError),
+        errorContainer = Color(currentTheme.errorContainer),
+        onErrorContainer = Color(currentTheme.onErrorContainer),
+        
+        outline = Color(currentTheme.outline),
+        outlineVariant = Color(currentTheme.outlineVariant ?: 0xFFCAC4D0),
+        scrim = Color(currentTheme.scrim ?: 0xFF000000),
+        
+        // Additional required surface colors - use calculated variants
+        surfaceBright = Color(currentTheme.surface).copy(alpha = 0.87f),
+        surfaceDim = Color(currentTheme.surface).copy(alpha = 0.12f),
+        surfaceContainer = Color(currentTheme.surfaceVariant),
+        surfaceContainerHigh = Color(currentTheme.surfaceVariant).copy(alpha = 0.87f),
+        surfaceContainerHighest = Color(currentTheme.surfaceVariant).copy(alpha = 1.0f),
+        surfaceContainerLow = Color(currentTheme.surfaceVariant).copy(alpha = 0.38f),
+        surfaceContainerLowest = Color(currentTheme.surfaceVariant).copy(alpha = 0.12f),
+    )
     val compactTypography = Typography(
         // Headers - максимум 24sp, пропорционально уменьшается
         displayLarge = MaterialTheme.typography.displayLarge.copy(fontSize = 24.sp, lineHeight = 28.sp),
@@ -49,6 +105,7 @@ fun GromozekaTheme(content: @Composable () -> Unit) {
     )
 
     MaterialTheme(
+        colorScheme = colorScheme,
         typography = compactTypography,
         content = content
     )

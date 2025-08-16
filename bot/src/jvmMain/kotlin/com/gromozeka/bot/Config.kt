@@ -5,6 +5,7 @@ import com.gromozeka.bot.platform.ScreenCaptureController
 import com.gromozeka.bot.platform.AudioPlayerController
 import com.gromozeka.bot.services.*
 import com.gromozeka.bot.services.translation.TranslationService
+import com.gromozeka.bot.services.theming.ThemeService
 import com.gromozeka.bot.ui.viewmodel.AppViewModel
 import com.gromozeka.shared.audio.AudioRecorder
 import io.ktor.client.*
@@ -102,6 +103,13 @@ class Config {
     @Bean
     fun translationService(settingsService: SettingsService): TranslationService {
         val service = TranslationService()
+        service.init(settingsService)
+        return service
+    }
+
+    @Bean
+    fun themeService(settingsService: SettingsService): ThemeService {
+        val service = ThemeService()
         service.init(settingsService)
         return service
     }

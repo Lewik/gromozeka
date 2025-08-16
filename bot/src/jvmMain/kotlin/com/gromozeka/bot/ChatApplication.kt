@@ -25,6 +25,7 @@ import androidx.compose.ui.window.*
 import com.gromozeka.bot.platform.GlobalHotkeyController
 import com.gromozeka.bot.services.*
 import com.gromozeka.bot.services.translation.TranslationService
+import com.gromozeka.bot.services.theming.ThemeService
 import com.gromozeka.bot.settings.Settings
 import com.gromozeka.bot.ui.*
 import com.gromozeka.bot.ui.viewmodel.AppViewModel
@@ -116,6 +117,7 @@ fun main() {
     val UIStateService = context.getBean<UIStateService>()
     val appViewModel = context.getBean<AppViewModel>()
     val translationService = context.getBean<TranslationService>()
+    val themeService = context.getBean<ThemeService>()
 
     // Explicit startup of TTS services
     ttsQueueService.start()
@@ -137,7 +139,7 @@ fun main() {
     
     println("[GROMOZEKA] Starting Compose Desktop UI...")
     application {
-        GromozekaTheme {
+        GromozekaTheme(themeService) {
             TranslationProvider(translationService) {
                 ChatWindow(
                     appViewModel,
@@ -151,6 +153,7 @@ fun main() {
                     windowStateService,
                     UIStateService,
                     translationService,
+                    themeService,
                     context
                 )
             }
@@ -173,6 +176,7 @@ fun ApplicationScope.ChatWindow(
     windowStateService: WindowStateService,
     UIStateService: UIStateService,
     translationService: TranslationService,
+    themeService: ThemeService,
     context: org.springframework.context.ConfigurableApplicationContext,
 ) {
     val coroutineScope = rememberCoroutineScope()
@@ -467,6 +471,7 @@ fun ApplicationScope.ChatWindow(
                                 showSettingsPanel = showSettingsPanel,
                                 onShowSettingsPanelChange = { showSettingsPanel = it },
                                 translationService = translationService,
+                                themeService = themeService,
                                 refreshTrigger = sessionListRefreshTrigger
                             )
                         }
@@ -509,6 +514,7 @@ fun ApplicationScope.ChatWindow(
                                     showSettingsPanel = showSettingsPanel,
                                     onShowSettingsPanelChange = { showSettingsPanel = it },
                                     translationService = translationService,
+                                    themeService = themeService,
 
                                     // Dev mode
                                     isDev = settingsService.mode == com.gromozeka.bot.settings.AppMode.DEV,

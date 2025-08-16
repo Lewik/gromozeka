@@ -154,6 +154,27 @@ data class EnglishTranslation(
         // Language Selection
         override val languageSelectionDescription: String = "Select interface language",
 
+        // Theming Section
+        override val themingTitle: String = "Theming",
+        override val themeSelectionLabel: String = "Theme",
+        override val themeSelectionDescription: String = "Select the visual theme for the application",
+        override val customThemeInfoLabel: String = "Custom Theme Override",
+        override val customThemeInfoMessage: String = "You can create a custom JSON file at ~/.gromozeka/themes/override.json to override theme colors. Use the export button below to get started.",
+        override val themeOverrideStatusLabel: String = "Theme Override Status",
+        override val themeOverrideSuccessMessage: String = "Successfully applied theme override with %d custom fields",
+        override val themeOverrideFailureMessage: String = "Failed to apply theme override: %s",
+        override val refreshThemesLabel: String = "Refresh Themes",
+        override val refreshThemesDescription: String = "Reload theme settings and apply any changes to the override file",
+        override val refreshThemesButton: String = "Refresh",
+        override val exportThemeLabel: String = "Export Current Theme",
+        override val exportThemeDescription: String = "Export the current theme as a JSON file that can be edited and used as override",
+        override val exportThemeButton: String = "Export Theme",
+
+        // Theme Names
+        override val themeNameDark: String = "Dark",
+        override val themeNameLight: String = "Light",
+        override val themeNameGromozeka: String = "Gromozeka",
+
         override val settingsTitle: String = "Settings",
         override val closeSettingsText: String = "Close settings"
     ) : SettingsTranslation()

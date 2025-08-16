@@ -66,6 +66,7 @@ fun SessionListScreen(
     showSettingsPanel: Boolean,
     onShowSettingsPanelChange: (Boolean) -> Unit,
     translationService: com.gromozeka.bot.services.translation.TranslationService,
+    themeService: com.gromozeka.bot.services.theming.ThemeService,
     // Trigger for refreshing sessions list
     refreshTrigger: Int = 0,
 ) {
@@ -289,7 +290,8 @@ fun SessionListScreen(
             settings = settings,
             onSettingsChange = onSettingsChange,
             onClose = { onShowSettingsPanelChange(false) },
-            translationService = translationService
+            translationService = translationService,
+            themeService = themeService
         )
     }
 }

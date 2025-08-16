@@ -154,6 +154,27 @@ data class HebrewTranslation(
         // Language Selection
         override val languageSelectionDescription: String = "בחר שפת ממשק",
 
+        // Theming Section
+        override val themingTitle: String = "עיצוב",
+        override val themeSelectionLabel: String = "ערכת נושא",
+        override val themeSelectionDescription: String = "בחר את ערכת הנושא החזותית עבור האפליקציה",
+        override val customThemeInfoLabel: String = "דריסת ערכת נושא מותאמת",
+        override val customThemeInfoMessage: String = "ניתן ליצור קובץ JSON בנתיב ~/.gromozeka/themes/override.json כדי לדרוס צבעי ערכת הנושא. השתמש בכפתור הייצוא למטה כדי להתחיל.",
+        override val themeOverrideStatusLabel: String = "סטטוס דריסת ערכת נושא",
+        override val themeOverrideSuccessMessage: String = "דריסת ערכת נושא יושמה בהצלחה עם %d שדות מותאמים",
+        override val themeOverrideFailureMessage: String = "נכשל ביישום דריסת ערכת נושא: %s",
+        override val refreshThemesLabel: String = "רענן ערכות נושא",
+        override val refreshThemesDescription: String = "טען מחדש הגדרות ערכות נושא והחל שינויים מקובץ הדריסה",
+        override val refreshThemesButton: String = "רענן",
+        override val exportThemeLabel: String = "ייצא ערכת נושא נוכחית",
+        override val exportThemeDescription: String = "ייצא את ערכת הנושא הנוכחית כקובץ JSON שניתן לערוך ולהשתמש בו כדריסה",
+        override val exportThemeButton: String = "ייצא ערכת נושא",
+
+        // Theme Names
+        override val themeNameDark: String = "כהה",
+        override val themeNameLight: String = "בהיר",
+        override val themeNameGromozeka: String = "גרומוזקה",
+
         override val settingsTitle: String = "הגדרות",
         override val closeSettingsText: String = "סגור הגדרות"
     ) : SettingsTranslation()

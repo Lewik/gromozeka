@@ -154,6 +154,27 @@ data class RussianTranslation(
         // Language Selection
         override val languageSelectionDescription: String = "Выбрать язык интерфейса",
 
+        // Theming Section
+        override val themingTitle: String = "Темы",
+        override val themeSelectionLabel: String = "Тема",
+        override val themeSelectionDescription: String = "Выберите визуальную тему для приложения",
+        override val customThemeInfoLabel: String = "Переопределение темы",
+        override val customThemeInfoMessage: String = "Вы можете создать JSON файл по пути ~/.gromozeka/themes/override.json для изменения цветов темы. Используйте кнопку экспорта ниже.",
+        override val themeOverrideStatusLabel: String = "Статус переопределения темы",
+        override val themeOverrideSuccessMessage: String = "Успешно применено переопределение темы с %d настройками",
+        override val themeOverrideFailureMessage: String = "Ошибка применения темы: %s",
+        override val refreshThemesLabel: String = "Обновить темы",
+        override val refreshThemesDescription: String = "Перезагрузить настройки тем и применить изменения из файла переопределения",
+        override val refreshThemesButton: String = "Обновить",
+        override val exportThemeLabel: String = "Экспортировать текущую тему",
+        override val exportThemeDescription: String = "Экспортировать текущую тему как JSON файл для редактирования",
+        override val exportThemeButton: String = "Экспортировать тему",
+
+        // Theme Names
+        override val themeNameDark: String = "Темная",
+        override val themeNameLight: String = "Светлая",
+        override val themeNameGromozeka: String = "Громозека",
+
         override val settingsTitle: String = "Настройки",
         override val closeSettingsText: String = "Закрыть настройки"
     ) : SettingsTranslation()
