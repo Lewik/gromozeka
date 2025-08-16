@@ -175,6 +175,11 @@ data class HebrewTranslation(
         override val themeNameLight: String = "בהיר",
         override val themeNameGromozeka: String = "גרומוזקה",
 
+        // Theme Errors
+        override val themeDeserializationError: String = "נכשל בניתוח",
+        override val themeFileError: String = "שגיאת קובץ",
+        override val themeInvalidFormat: String = "פורמט לא תקין",
+
         override val settingsTitle: String = "הגדרות",
         override val closeSettingsText: String = "סגור הגדרות"
     ) : SettingsTranslation()

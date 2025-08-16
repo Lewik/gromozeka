@@ -109,6 +109,11 @@ sealed class Translation {
         abstract val themeNameLight: String
         abstract val themeNameGromozeka: String
 
+        // Theme Errors
+        abstract val themeDeserializationError: String
+        abstract val themeFileError: String
+        abstract val themeInvalidFormat: String
+
         // Settings UI
         abstract val settingsTitle: String
         abstract val closeSettingsText: String

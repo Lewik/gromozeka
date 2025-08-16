@@ -48,12 +48,15 @@ class AppViewModel(
      * Creates a new tab with a Claude session
      * @param projectPath Path to the project directory
      * @param resumeSessionId Optional Claude session ID to resume
+     * @param initialMessage Optional initial message to send after creating the session
      * @return Index of the created tab
      */
     suspend fun createTab(
         projectPath: String, 
-        resumeSessionId: String? = null
+        resumeSessionId: String? = null,
+        initialMessage: String? = null
     ): Int = mutex.withLock {
+        
         val claudeSessionId = resumeSessionId?.let { ClaudeSessionUuid(it) }
         // Create session through SessionManager
         val session = sessionManager.createSession(projectPath, claudeSessionId)
@@ -78,6 +81,18 @@ class AppViewModel(
 
         val newTabIndex = updatedTabs.size - 1
         println("[AppViewModel] Created tab at index $newTabIndex for project: $projectPath")
+
+        // Send initial message if provided
+        if (initialMessage != null && initialMessage.isNotBlank()) {
+            println("[AppViewModel.createTab] Initial message preview: ${initialMessage.take(100)}...")
+            try {
+                session.sendMessage(initialMessage)
+                println("[AppViewModel.createTab] Initial message sent successfully")
+            } catch (e: Exception) {
+                println("[AppViewModel.createTab] Failed to send initial message: ${e.message}")
+                e.printStackTrace()
+            }
+        }
 
         return newTabIndex
     }

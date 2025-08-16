@@ -48,6 +48,8 @@ fun SessionScreen(
     // Navigation callbacks
     onBackToSessionList: () -> Unit,
     onNewSession: () -> Unit,
+    onOpenTab: (String) -> Unit, // Callback to open new tab with project path  
+    onOpenTabWithMessage: ((String, String) -> Unit)? = null, // Callback to open new tab with initial message
     onCloseTab: (() -> Unit)? = null,
 
     // Services
@@ -56,13 +58,10 @@ fun SessionScreen(
     modifierWithPushToTalk: Modifier,
     isRecording: Boolean = false,
 
-    // Settings
+    // Settings - moved to ChatApplication level, but we still need settings for UI
     settings: Settings,
-    onSettingsChange: (Settings) -> Unit,
     showSettingsPanel: Boolean,
     onShowSettingsPanelChange: (Boolean) -> Unit,
-    translationService: com.gromozeka.bot.services.translation.TranslationService,
-    themeService: com.gromozeka.bot.services.theming.ThemeService,
 
     // Dev mode
     isDev: Boolean = false,
@@ -250,15 +249,7 @@ fun SessionScreen(
             }
         }
 
-        // Settings panel
-        SettingsPanel(
-            isVisible = showSettingsPanel,
-            settings = settings,
-            onSettingsChange = onSettingsChange,
-            onClose = { onShowSettingsPanelChange(false) },
-            translationService = translationService,
-            themeService = themeService
-        )
+        // SettingsPanel moved to ChatApplication level for consistency
     }
 
     // JSON Dialog at top level to avoid hierarchy issues

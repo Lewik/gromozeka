@@ -112,6 +112,7 @@ fun main() {
     val ttsAutoplayService = context.getBean<TTSAutoplayService>()
     val sessionJsonlService = context.getBean<SessionJsonlService>()
     val sessionSearchService = context.getBean<SessionSearchService>()
+    val sessionManager = context.getBean<SessionManager>()
     val globalHotkeyController = context.getBean<GlobalHotkeyController>()
     val pttEventRouter = context.getBean<PTTEventRouter>()
     val pttService = context.getBean<PTTService>()
@@ -120,6 +121,14 @@ fun main() {
     val appViewModel = context.getBean<AppViewModel>()
     val translationService = context.getBean<TranslationService>()
     val themeService = context.getBean<ThemeService>()
+    val screenCaptureController = context.getBean<com.gromozeka.bot.platform.ScreenCaptureController>()
+    
+    // Create AI theme generator
+    val aiThemeGenerator = com.gromozeka.bot.services.theming.AIThemeGenerator(
+        screenCaptureController = screenCaptureController,
+        sessionManager = sessionManager,
+        settingsService = settingsService
+    )
 
     // Explicit startup of TTS services
     ttsQueueService.start()
@@ -149,6 +158,7 @@ fun main() {
                     settingsService,
                     sessionJsonlService,
                     sessionSearchService,
+                    sessionManager,
                     globalHotkeyController,
                     pttEventRouter,
                     pttService,
@@ -156,6 +166,8 @@ fun main() {
                     UIStateService,
                     translationService,
                     themeService,
+                    screenCaptureController,
+                    aiThemeGenerator,
                     context
                 )
             }
@@ -172,6 +184,7 @@ fun ApplicationScope.ChatWindow(
     settingsService: SettingsService,
     sessionJsonlService: SessionJsonlService,
     sessionSearchService: SessionSearchService,
+    sessionManager: SessionManager,
     globalHotkeyController: GlobalHotkeyController,
     pttEventRouter: PTTEventRouter,
     pttService: PTTService,
@@ -179,10 +192,11 @@ fun ApplicationScope.ChatWindow(
     UIStateService: UIStateService,
     translationService: TranslationService,
     themeService: ThemeService,
+    screenCaptureController: com.gromozeka.bot.platform.ScreenCaptureController,
+    aiThemeGenerator: com.gromozeka.bot.services.theming.AIThemeGenerator,
     context: org.springframework.context.ConfigurableApplicationContext,
 ) {
     val coroutineScope = rememberCoroutineScope()
-    val sessionManager = remember { context.getBean(SessionManager::class.java) }
     val sessionSearchViewModel = remember { 
         com.gromozeka.bot.ui.viewmodel.SessionSearchViewModel(sessionSearchService, coroutineScope) 
     }
@@ -231,6 +245,17 @@ fun ApplicationScope.ChatWindow(
         coroutineScope.launch {
             try {
                 val tabIndex = appViewModel.createTab(projectPath)
+                appViewModel.selectTab(tabIndex)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    val createNewSessionWithMessage: (String, String) -> Unit = { projectPath, initialMessage ->
+        coroutineScope.launch {
+            try {
+                val tabIndex = appViewModel.createTab(projectPath, null, initialMessage)
                 appViewModel.selectTab(tabIndex)
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -469,12 +494,8 @@ fun ApplicationScope.ChatWindow(
                                 sessionManager = sessionManager,
                                 appViewModel = appViewModel,
                                 searchViewModel = sessionSearchViewModel,
-                                settings = currentSettings,
-                                onSettingsChange = onSettingsChange,
                                 showSettingsPanel = showSettingsPanel,
                                 onShowSettingsPanelChange = { showSettingsPanel = it },
-                                translationService = translationService,
-                                themeService = themeService,
                                 refreshTrigger = sessionListRefreshTrigger
                             )
                         }
@@ -495,7 +516,9 @@ fun ApplicationScope.ChatWindow(
                                     onNewSession = {
                                         createNewSession(currentSession!!.projectPath)
                                     },
-
+                                    onOpenTab = createNewSession, // Reuse the same function for opening tabs
+                                    onOpenTabWithMessage = createNewSessionWithMessage, // For AI theme generation with initial message
+                                    
                                     // Close session callback - removes session and stops it
                                     onCloseTab = {
                                         coroutineScope.launch {
@@ -513,11 +536,8 @@ fun ApplicationScope.ChatWindow(
 
                                     // Settings
                                     settings = currentSettings,
-                                    onSettingsChange = onSettingsChange,
                                     showSettingsPanel = showSettingsPanel,
                                     onShowSettingsPanelChange = { showSettingsPanel = it },
-                                    translationService = translationService,
-                                    themeService = themeService,
 
                                     // Dev mode
                                     isDev = settingsService.mode == com.gromozeka.bot.settings.AppMode.DEV,
@@ -532,6 +552,19 @@ fun ApplicationScope.ChatWindow(
                 }
             }
 
+            // Global Settings Panel - works for both SessionListScreen and SessionScreen
+            SettingsPanel(
+                isVisible = showSettingsPanel,
+                settings = currentSettings,
+                onSettingsChange = onSettingsChange,
+                onClose = { showSettingsPanel = false },
+                translationService = translationService,
+                themeService = themeService,
+                aiThemeGenerator = aiThemeGenerator,
+                coroutineScope = coroutineScope,
+                onOpenTab = createNewSession,
+                onOpenTabWithMessage = createNewSessionWithMessage
+            )
         }
     }
 }

@@ -114,12 +114,13 @@ class ClaudeCodeStreamingWrapper(
         model: String?,
         responseFormat: ResponseFormat,
         resumeSessionId: ClaudeSessionUuid?,
+        customSystemPrompt: String?,
     ) = withContext(Dispatchers.IO) {
         try {
             println("=== STARTING CLAUDE CODE STREAMING WRAPPER ===")
 
 
-            val systemPrompt = loadSystemPrompt(responseFormat).replace("\"", "\\\"")
+            val systemPrompt = (customSystemPrompt ?: loadSystemPrompt(responseFormat)).replace("\"", "\\\"")
 
             // NOTE: In stream-json mode, Claude Code sends multiple init messages - this is NORMAL behavior.
             // We confirmed this by testing claude-code-sdk-python: each user message triggers a new init.

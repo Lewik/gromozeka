@@ -60,13 +60,9 @@ fun SessionListScreen(
     appViewModel: AppViewModel,
     // Search support
     searchViewModel: SessionSearchViewModel,
-    // Settings support
-    settings: com.gromozeka.bot.settings.Settings,
-    onSettingsChange: (com.gromozeka.bot.settings.Settings) -> Unit,
+    // Settings support - moved to ChatApplication level
     showSettingsPanel: Boolean,
     onShowSettingsPanelChange: (Boolean) -> Unit,
-    translationService: com.gromozeka.bot.services.translation.TranslationService,
-    themeService: com.gromozeka.bot.services.theming.ThemeService,
     // Trigger for refreshing sessions list
     refreshTrigger: Int = 0,
 ) {
@@ -284,15 +280,7 @@ fun SessionListScreen(
             }
         }
 
-        // Settings panel
-        SettingsPanel(
-            isVisible = showSettingsPanel,
-            settings = settings,
-            onSettingsChange = onSettingsChange,
-            onClose = { onShowSettingsPanelChange(false) },
-            translationService = translationService,
-            themeService = themeService
-        )
+        // SettingsPanel moved to ChatApplication level for consistency
     }
 }
 

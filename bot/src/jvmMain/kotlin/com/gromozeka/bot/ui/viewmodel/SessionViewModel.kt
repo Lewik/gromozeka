@@ -104,7 +104,10 @@ class SessionViewModel(
 
     // === Messages from messageOutputStream (no duplication) ===
     private val allMessages: StateFlow<List<ChatMessage>> = session.messageOutputStream
-        .scan(emptyList<ChatMessage>()) { acc, message -> acc + message }
+        .scan(emptyList<ChatMessage>()) { acc, message -> 
+            val newAcc = acc + message
+            newAcc
+        }
         .stateIn(
             scope = scope,
             started = SharingStarted.Eagerly,

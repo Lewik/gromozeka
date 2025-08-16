@@ -175,6 +175,11 @@ data class EnglishTranslation(
         override val themeNameLight: String = "Light",
         override val themeNameGromozeka: String = "Gromozeka",
 
+        // Theme Errors
+        override val themeDeserializationError: String = "Failed to deserialize",
+        override val themeFileError: String = "File error",
+        override val themeInvalidFormat: String = "Invalid format",
+
         override val settingsTitle: String = "Settings",
         override val closeSettingsText: String = "Close settings"
     ) : SettingsTranslation()

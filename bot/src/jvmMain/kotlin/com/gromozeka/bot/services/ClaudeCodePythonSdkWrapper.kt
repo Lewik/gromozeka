@@ -125,11 +125,12 @@ class ClaudeCodePythonSdkWrapper(
         model: String?,
         responseFormat: ResponseFormat,
         resumeSessionId: ClaudeSessionUuid?,
+        customSystemPrompt: String?,
     ) = withContext(Dispatchers.IO) {
         try {
             println("=== STARTING CLAUDE CODE PYTHON SDK WRAPPER ===")
 
-            val systemPrompt = loadSystemPrompt(responseFormat)
+            val systemPrompt = customSystemPrompt ?: loadSystemPrompt(responseFormat)
 
             // Find Python interpreter
             val pythonCommand = findPythonCommand()

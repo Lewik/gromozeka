@@ -20,6 +20,7 @@ interface ClaudeWrapper {
         model: String? = null,
         responseFormat: ResponseFormat = ResponseFormat.JSON,
         resumeSessionId: ClaudeSessionUuid? = null,
+        customSystemPrompt: String? = null,
     )
 
     /**

@@ -70,6 +70,7 @@ class Session(
     private val streamToChatMessageMapper: StreamToChatMessageMapper,
     private val claudeModel: String? = null,
     private val responseFormat: com.gromozeka.bot.settings.ResponseFormat = com.gromozeka.bot.settings.ResponseFormat.JSON,
+    private val customSystemPrompt: String? = null,
 ) {
 
     // === ACTOR CHANNELS ===
@@ -313,6 +314,7 @@ class Session(
      * This allows the first message to be sent immediately to trigger Claude's response
      */
     private suspend fun handleFirstMessageDuringInit(message: String, activeTags: List<MessageTagDefinition.Data>) {
+        
         if (message.isBlank()) {
             println("[Actor] Skipping empty first message")
             return
@@ -321,17 +323,20 @@ class Session(
         try {
             println("[Actor] Sending first message during init: ${message.take(50)}...")
 
-            // Emit user message to UI
-            _messageOutputStream.emit(
-                ChatMessage(
-                    role = ChatMessage.Role.USER,
-                    content = listOf(ChatMessage.ContentItem.UserMessage(message)),
-                    timestamp = Clock.System.now(),
-                    uuid = java.util.UUID.randomUUID().toString(),
-                    llmSpecificMetadata = null,
-                    activeTags = activeTags
-                )
+            // Create the ChatMessage
+            val chatMessage = ChatMessage(
+                role = ChatMessage.Role.USER,
+                content = listOf(ChatMessage.ContentItem.UserMessage(message)),
+                timestamp = Clock.System.now(),
+                uuid = java.util.UUID.randomUUID().toString(),
+                llmSpecificMetadata = null,
+                activeTags = activeTags
             )
+            
+            
+            // Emit user message to UI
+            _messageOutputStream.emit(chatMessage)
+            
 
             // Mark as waiting for response (but stay in WaitingForInit state)
             _isWaitingForResponse.value = true
@@ -426,7 +431,8 @@ class Session(
                 projectPath = projectPath,
                 model = claudeModel,
                 responseFormat = responseFormat,
-                resumeSessionId = resumeSessionId
+                resumeSessionId = resumeSessionId,
+                customSystemPrompt = customSystemPrompt
             )
 
             // Move to waiting for init state

@@ -23,6 +23,15 @@ sealed class ThemeOverrideResult {
     data class Failure(val error: String, val fallbackTheme: Theme) : ThemeOverrideResult()
 }
 
+data class ThemeInfo(
+    val themeId: String,
+    val themeName: String,
+    val isBuiltIn: Boolean,
+    val isValid: Boolean,
+    val errorMessage: String? = null,
+    val file: File? = null
+)
+
 class ThemeService {
     private lateinit var settingsService: SettingsService
 
@@ -35,9 +44,11 @@ class ThemeService {
     // Reactive state for UI
     private val _currentTheme = MutableStateFlow<Theme>(DarkTheme())
     private val _lastOverrideResult = MutableStateFlow<ThemeOverrideResult?>(null)
+    private val _availableThemes = MutableStateFlow<Map<String, ThemeInfo>>(emptyMap())
 
     val currentTheme: StateFlow<Theme> = _currentTheme.asStateFlow()
     val lastOverrideResult: StateFlow<ThemeOverrideResult?> = _lastOverrideResult.asStateFlow()
+    val availableThemes: StateFlow<Map<String, ThemeInfo>> = _availableThemes.asStateFlow()
 
     private val json = Json {
         ignoreUnknownKeys = true
@@ -50,6 +61,11 @@ class ThemeService {
 
     fun init(settingsService: SettingsService) {
         this.settingsService = settingsService
+
+        // Scan for available themes first
+        serviceScope.launch {
+            scanAvailableThemes()
+        }
 
         // Apply current settings immediately on startup
         serviceScope.launch {
@@ -75,10 +91,41 @@ class ThemeService {
         if (overrideFile?.exists() == true) {
             setThemeOverride(themeId, overrideFile)
         } else {
-            _currentTheme.value = Theme.builtIn[themeId]
-                ?: Theme.builtIn[DarkTheme.THEME_ID]!!
+            // Try to load as built-in theme first
+            val builtInTheme = Theme.builtIn[themeId]
+            if (builtInTheme != null) {
+                _currentTheme.value = builtInTheme
+                _lastOverrideResult.value = null
+                println("[ThemeService] Switched to builtin theme: ${_currentTheme.value.themeName}")
+            } else {
+                // Try to load as AI-generated theme
+                val themeInfo = _availableThemes.value[themeId]
+                if (themeInfo != null && themeInfo.isValid && themeInfo.file != null) {
+                    loadAiThemeAndApply(themeInfo.file)
+                } else {
+                    // Fallback to dark theme
+                    _currentTheme.value = Theme.builtIn[DarkTheme.THEME_ID]!!
+                    _lastOverrideResult.value = null
+                    println("[ThemeService] Theme '$themeId' not found, falling back to dark theme")
+                }
+            }
+        }
+    }
+
+    private suspend fun loadAiThemeAndApply(themeFile: File) {
+        try {
+            val jsonContent = themeFile.readText()
+            val theme = json.decodeFromString<AIGeneratedTheme>(jsonContent)
+            _currentTheme.value = theme
             _lastOverrideResult.value = null
-            println("[ThemeService] Switched to builtin theme: ${_currentTheme.value.themeName}")
+            println("[ThemeService] Switched to AI-generated theme: ${theme.themeName}")
+        } catch (e: Exception) {
+            _currentTheme.value = Theme.builtIn[DarkTheme.THEME_ID]!!
+            _lastOverrideResult.value = ThemeOverrideResult.Failure(
+                "Failed to load AI theme: ${e.message}",
+                _currentTheme.value
+            )
+            println("[ThemeService] Failed to load AI theme: ${e.message}")
         }
     }
 
@@ -90,8 +137,72 @@ class ThemeService {
     fun refreshThemes() {
         // Method for manual refresh from UI - launches in service scope
         serviceScope.launch {
+            scanAvailableThemes()
             val currentSettings = settingsService.settingsFlow.value
             applyThemeSettings(currentSettings)
+        }
+    }
+
+    // === Theme Scanning ===
+
+    private suspend fun scanAvailableThemes() = themeMutex.withLock {
+        val allThemes = mutableMapOf<String, ThemeInfo>()
+
+        // Add built-in themes
+        Theme.builtIn.forEach { (themeId, theme) ->
+            allThemes[themeId] = ThemeInfo(
+                themeId = themeId,
+                themeName = theme.themeName,
+                isBuiltIn = true,
+                isValid = true
+            )
+        }
+
+        // Scan AI-generated themes from themes directory
+        val themesDir = File(settingsService.gromozekaHome, "themes")
+        if (themesDir.exists() && themesDir.isDirectory) {
+            themesDir.listFiles { file -> 
+                file.isFile && file.extension == "json" && file.name.startsWith("ai_generated_")
+            }?.forEach { themeFile ->
+                val aiThemeInfo = loadAiTheme(themeFile)
+                allThemes[aiThemeInfo.themeId] = aiThemeInfo
+            }
+        }
+
+        _availableThemes.value = allThemes
+        println("[ThemeService] Scanned ${allThemes.size} available themes (${allThemes.count { it.value.isValid }} valid)")
+    }
+
+    private fun loadAiTheme(themeFile: File): ThemeInfo {
+        return try {
+            val jsonContent = themeFile.readText()
+            val theme = json.decodeFromString<AIGeneratedTheme>(jsonContent)
+            
+            ThemeInfo(
+                themeId = theme.themeId,
+                themeName = theme.themeName,
+                isBuiltIn = false,
+                isValid = true,
+                file = themeFile
+            )
+        } catch (e: SerializationException) {
+            ThemeInfo(
+                themeId = themeFile.nameWithoutExtension,
+                themeName = "${themeFile.nameWithoutExtension} (Invalid)",
+                isBuiltIn = false,
+                isValid = false,
+                errorMessage = "Failed to deserialize: ${e.message}", // Will be localized in UI
+                file = themeFile
+            )
+        } catch (e: Exception) {
+            ThemeInfo(
+                themeId = themeFile.nameWithoutExtension,
+                themeName = "${themeFile.nameWithoutExtension} (Error)",
+                isBuiltIn = false,
+                isValid = false,
+                errorMessage = "File error: ${e.message}", // Will be localized in UI
+                file = themeFile
+            )
         }
     }
 

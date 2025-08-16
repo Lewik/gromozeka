@@ -126,11 +126,12 @@ class ClaudeCodeNodeSdkWrapper(
         model: String?,
         responseFormat: ResponseFormat,
         resumeSessionId: ClaudeSessionUuid?,
+        customSystemPrompt: String?,
     ) = withContext(Dispatchers.IO) {
         try {
             println("=== STARTING CLAUDE CODE NODE SDK WRAPPER ===")
 
-            val systemPrompt = loadSystemPrompt(responseFormat)
+            val systemPrompt = customSystemPrompt ?: loadSystemPrompt(responseFormat)
 
             // Find Node.js interpreter
             val nodeCommand = findNodeCommand()

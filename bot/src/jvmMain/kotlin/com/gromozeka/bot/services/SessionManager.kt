@@ -43,19 +43,22 @@ class SessionManager(
      * @param resumeSessionId Optional Claude session ID to resume from (for loading history)
      * @return SessionUuid of the created session
      */
-    suspend fun createSession(projectPath: String, resumeSessionId: ClaudeSessionUuid? = null): Session =
-        sessionMutex.withLock {
+    suspend fun createSession(
+        projectPath: String, 
+        resumeSessionId: ClaudeSessionUuid? = null,
+        customSystemPrompt: String? = null
+    ): Session = sessionMutex.withLock {
 
-            val session = createSessionInternal(projectPath)
+        val session = createSessionInternal(projectPath, customSystemPrompt = customSystemPrompt)
 
-            session.start(scope, resumeSessionId)
+        session.start(scope, resumeSessionId)
 
-            val updatedSessions = _activeSessions.value + (session.id to session)
-            _activeSessions.value = updatedSessions
+        val updatedSessions = _activeSessions.value + (session.id to session)
+        _activeSessions.value = updatedSessions
 
-            println("[SessionManager] Created session: ${session.id}")
-            session
-        }
+        println("[SessionManager] Created session: ${session.id}")
+        session
+    }
 
     /**
      * Create Session instance with current settings
@@ -63,6 +66,7 @@ class SessionManager(
     private fun createSessionInternal(
         projectPath: String,
         claudeModel: String = settingsService.settings.claudeModel,
+        customSystemPrompt: String? = null,
     ): Session {
         // Create wrapper using factory
         val wrapperType = WrapperType.DIRECT_CLI
@@ -77,6 +81,7 @@ class SessionManager(
             streamToChatMessageMapper = streamToChatMessageMapper,
             claudeModel = claudeModel,
             responseFormat = settingsService.settings.responseFormat,
+            customSystemPrompt = customSystemPrompt,
         )
     }
 

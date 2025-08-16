@@ -175,6 +175,11 @@ data class RussianTranslation(
         override val themeNameLight: String = "Светлая",
         override val themeNameGromozeka: String = "Громозека",
 
+        // Theme Errors
+        override val themeDeserializationError: String = "Не удалось десериализовать",
+        override val themeFileError: String = "Ошибка файла",
+        override val themeInvalidFormat: String = "Неверный формат",
+
         override val settingsTitle: String = "Настройки",
         override val closeSettingsText: String = "Закрыть настройки"
     ) : SettingsTranslation()

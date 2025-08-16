@@ -13,6 +13,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -23,7 +24,12 @@ import com.gromozeka.bot.services.translation.data.Translation
 import com.gromozeka.bot.services.theming.ThemeService
 import com.gromozeka.bot.services.theming.data.Theme
 import com.gromozeka.bot.ui.LocalTranslation
-import java.io.File
+import com.gromozeka.bot.platform.ScreenCaptureController
+import com.gromozeka.bot.services.SessionManager
+import com.gromozeka.bot.services.SettingsService
+import com.gromozeka.bot.services.theming.AIThemeGenerator
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 
 @Composable
 fun SettingsPanel(
@@ -33,9 +39,21 @@ fun SettingsPanel(
     onClose: () -> Unit,
     translationService: TranslationService,
     themeService: ThemeService,
+    aiThemeGenerator: AIThemeGenerator,
+    coroutineScope: CoroutineScope,
+    onOpenTab: (String) -> Unit, // Callback to open new tab with project path
+    onOpenTabWithMessage: ((String, String) -> Unit)? = null, // Callback to open new tab with initial message
     modifier: Modifier = Modifier,
 ) {
     val translation = LocalTranslation.current
+    
+    // Refresh themes when panel opens
+    LaunchedEffect(isVisible) {
+        if (isVisible) {
+            themeService.refreshThemes()
+        }
+    }
+    
     AnimatedVisibility(
         visible = isVisible,
         enter = expandHorizontally(),
@@ -303,15 +321,30 @@ fun SettingsPanel(
                     // Theming Settings
                     SettingsGroup(title = translation.settings.themingTitle) {
                         // Theme selection
+                        val availableThemes by themeService.availableThemes.collectAsState()
                         DropdownSettingItem(
                             label = translation.settings.themeSelectionLabel,
                             description = translation.settings.themeSelectionDescription,
                             value = settings.currentThemeId,
-                            options = Theme.builtIn.keys.toList(),
+                            options = availableThemes.keys.toList(),
                             optionLabel = { themeId ->
-                                Theme.getThemeNameTranslated(themeId, translation)
+                                val themeInfo = availableThemes[themeId]
+                                when {
+                                    themeInfo == null -> themeId
+                                    themeInfo.isBuiltIn -> Theme.getThemeNameTranslated(themeId, translation)
+                                    !themeInfo.isValid -> "${themeInfo.themeName} (${translation.settings.themeInvalidFormat})"
+                                    else -> themeInfo.themeName
+                                }
+                            },
+                            optionEnabled = { themeId ->
+                                val themeInfo = availableThemes[themeId]
+                                themeInfo?.isValid ?: true
                             },
                             onValueChange = { newThemeId ->
+                                // Trigger refresh when opening dropdown (lazy loading)
+                                if (availableThemes.isEmpty()) {
+                                    themeService.refreshThemes()
+                                }
                                 onSettingsChange(settings.copy(currentThemeId = newThemeId))
                             }
                         )
@@ -368,6 +401,34 @@ fun SettingsPanel(
                                 } else {
                                     println("[SettingsPanel] Failed to export theme")
                                     // TODO: Show error notification  
+                                }
+                            }
+                        )
+
+                        // AI-powered theme generation from window screenshot
+                        ButtonSettingItem(
+                            label = "AI Generate Theme from Window",
+                            description = "Take a screenshot of a selected window and use AI to automatically generate a theme based on its colors. Opens a new tab with Claude Code for interactive theme generation.",
+                            buttonText = "Generate Theme from Window",
+                            onClick = {
+                                coroutineScope.launch {
+                                    val preparedMessage = aiThemeGenerator.prepareThemeGenerationData(coroutineScope)
+                                    if (preparedMessage != null) {
+                                        println("[SettingsPanel] Theme generation data prepared successfully")
+                                        println("[SettingsPanel] Message length: ${preparedMessage.length}")
+                                        
+                                        if (onOpenTabWithMessage != null) {
+                                            println("[SettingsPanel] Using onOpenTabWithMessage callback")
+                                            onOpenTabWithMessage(aiThemeGenerator.getWorkingDirectory(), preparedMessage)
+                                        } else {
+                                            println("[SettingsPanel] WARNING: onOpenTabWithMessage is null, using fallback onOpenTab")
+                                            onOpenTab(aiThemeGenerator.getWorkingDirectory())
+                                        }
+                                        
+                                        println("[SettingsPanel] AI theme generation tab should now be visible with initial message")
+                                    } else {
+                                        println("[SettingsPanel] AI theme generation failed - data preparation returned null")
+                                    }
                                 }
                             }
                         )
@@ -638,6 +699,7 @@ private fun <T> DropdownSettingItem(
     value: T,
     options: List<T>,
     optionLabel: (T) -> String,
+    optionEnabled: (T) -> Boolean = { true },
     onValueChange: (T) -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
@@ -678,12 +740,21 @@ private fun <T> DropdownSettingItem(
                 onDismissRequest = { expanded = false }
             ) {
                 options.forEach { option ->
+                    val enabled = optionEnabled(option)
                     DropdownMenuItem(
-                        text = { Text(optionLabel(option)) },
+                        text = { 
+                            Text(
+                                text = optionLabel(option),
+                                color = if (enabled) LocalContentColor.current else LocalContentColor.current.copy(alpha = 0.38f)
+                            )
+                        },
                         onClick = {
-                            onValueChange(option)
-                            expanded = false
-                        }
+                            if (enabled) {
+                                onValueChange(option)
+                                expanded = false
+                            }
+                        },
+                        enabled = enabled
                     )
                 }
             }
@@ -744,3 +815,4 @@ private fun InfoSettingItem(
         )
     }
 }
+
