@@ -373,49 +373,49 @@ fun ApplicationScope.ChatWindow(
                 }
         ) {
             if (initialized) {
-                // Tab-based UI: TabRow position based on settings
-                Column(modifier = Modifier.fillMaxSize()) {
-                    // Tab Row - position based on showTabsAtBottom setting  
-                    val selectedTabIndex = currentTabIndex?.plus(1) ?: 0
-                    val tabRowComponent = @Composable {
-                        CustomTabRow(
-                            selectedTabIndex = selectedTabIndex,
-                            showTabsAtBottom = currentSettings.showTabsAtBottom,
-                            tabs = tabs,
-                            hoveredTabIndex = hoveredTabIndex,
-                            onTabSelect = { tabIndex ->
-                                if (tabIndex == null) {
-                                    coroutineScope.launch {
-                                        appViewModel.selectTab(null)
-                                        // Trigger refresh when switching to projects tab
-                                        sessionListRefreshTrigger++
+                // Root layout: Row with main area and settings panel
+                Row(modifier = Modifier.fillMaxSize()) {
+                    // Main area with tabs and content
+                    Column(modifier = Modifier.weight(1f)) {
+                        // Tab Row - position based on showTabsAtBottom setting  
+                        val selectedTabIndex = currentTabIndex?.plus(1) ?: 0
+                        val tabRowComponent = @Composable {
+                            CustomTabRow(
+                                selectedTabIndex = selectedTabIndex,
+                                showTabsAtBottom = currentSettings.showTabsAtBottom,
+                                tabs = tabs,
+                                hoveredTabIndex = hoveredTabIndex,
+                                onTabSelect = { tabIndex ->
+                                    if (tabIndex == null) {
+                                        coroutineScope.launch {
+                                            appViewModel.selectTab(null)
+                                            // Trigger refresh when switching to projects tab
+                                            sessionListRefreshTrigger++
+                                        }
+                                    } else {
+                                        coroutineScope.launch {
+                                            appViewModel.selectTab(tabIndex)
+                                        }
                                     }
-                                } else {
+                                },
+                                onTabHover = { index -> hoveredTabIndex = index },
+                                onTabHoverExit = { hoveredTabIndex = -1 },
+                                onRenameTab = { tabIndexToRename, newName ->
                                     coroutineScope.launch {
-                                        appViewModel.selectTab(tabIndex)
+                                        appViewModel.renameTab(tabIndexToRename, newName)
                                     }
-                                }
-                            },
-                            onTabHover = { index -> hoveredTabIndex = index },
-                            onTabHoverExit = { hoveredTabIndex = -1 },
-                            onRenameTab = { tabIndexToRename, newName ->
-                                coroutineScope.launch {
-                                    appViewModel.renameTab(tabIndexToRename, newName)
-                                }
-                            },
-                            coroutineScope = coroutineScope
-                        )
-                    }
+                                },
+                                coroutineScope = coroutineScope
+                            )
+                        }
 
-                    // Conditional layout based on tab position setting
-                    if (!currentSettings.showTabsAtBottom) {
-                        // Tabs at top: show TabRow then content
-                        tabRowComponent()
-                    }
+                        // Conditional layout based on tab position setting
+                        if (!currentSettings.showTabsAtBottom) {
+                            // Tabs at top: show TabRow then content
+                            tabRowComponent()
+                        }
 
-                    // Content area
-                    Row(modifier = Modifier.weight(1f)) {
-                        // Main content area with padding
+                        // Content area with global 16dp padding according to design system
                         Column(modifier = Modifier.weight(1f).padding(16.dp)) {
                             // Tab Content - All tabs exist in parallel, only selected is visible
                             Box(modifier = Modifier.weight(1f)) {
@@ -489,26 +489,26 @@ fun ApplicationScope.ChatWindow(
                             }
                         }
 
-                        // Settings Panel
-                        SettingsPanel(
-                            isVisible = showSettingsPanel,
-                            settings = currentSettings,
-                            onSettingsChange = onSettingsChange,
-                            onClose = { showSettingsPanel = false },
-                            translationService = translationService,
-                            themeService = themeService,
-                            aiThemeGenerator = aiThemeGenerator,
-                            coroutineScope = coroutineScope,
-                            onOpenTab = createNewSession,
-                            onOpenTabWithMessage = createNewSessionWithMessage
-                        )
+                        // Conditional layout based on tab position setting
+                        if (currentSettings.showTabsAtBottom) {
+                            // Tabs at bottom: show TabRow after content
+                            tabRowComponent()
+                        }
                     }
 
-                    // Conditional layout based on tab position setting
-                    if (currentSettings.showTabsAtBottom) {
-                        // Tabs at bottom: show TabRow after content
-                        tabRowComponent()
-                    }
+                    // Settings Panel - now at the root level, outside of the tab area
+                    SettingsPanel(
+                        isVisible = showSettingsPanel,
+                        settings = currentSettings,
+                        onSettingsChange = onSettingsChange,
+                        onClose = { showSettingsPanel = false },
+                        translationService = translationService,
+                        themeService = themeService,
+                        aiThemeGenerator = aiThemeGenerator,
+                        coroutineScope = coroutineScope,
+                        onOpenTab = createNewSession,
+                        onOpenTabWithMessage = createNewSessionWithMessage
+                    )
                 }
             } else {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {

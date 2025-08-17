@@ -58,7 +58,7 @@ fun SettingsPanel(
         visible = isVisible,
         enter = expandHorizontally(),
         exit = shrinkHorizontally(),
-        modifier = modifier.padding(start = 16.dp, end = 0.dp) // Global spacing from main content, no right padding to show full panel
+        modifier = modifier // No external padding - panel goes to edge
     ) {
         Surface(
             modifier = Modifier
