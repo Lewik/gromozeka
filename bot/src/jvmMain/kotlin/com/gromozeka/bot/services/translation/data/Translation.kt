@@ -199,6 +199,8 @@ sealed class Translation {
             EnglishTranslation(),
             RussianTranslation(),
             HebrewTranslation(),
+            JapaneseTranslation(),
+            ChineseTranslation(),
         ).associateBy { it.languageCode }
     }
 }
