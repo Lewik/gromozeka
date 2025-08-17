@@ -1,6 +1,7 @@
 package com.gromozeka.bot.ui
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -9,6 +10,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -116,6 +118,7 @@ object CompactButtonDefaults {
     val ContentPadding = PaddingValues(horizontal = 6.dp, vertical = 4.dp)
     val ButtonHeight = 28.dp
     val CornerRadius = 6.dp
+    val SwitchScale = 0.8f
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -179,6 +182,25 @@ fun CompactIconButton(
             content = content
         )
     }
+}
+
+@Composable
+fun CompactSwitch(
+    checked: Boolean,
+    onCheckedChange: ((Boolean) -> Unit)?,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    colors: SwitchColors = SwitchDefaults.colors(),
+    interactionSource: MutableInteractionSource? = null,
+) {
+    Switch(
+        checked = checked,
+        onCheckedChange = onCheckedChange,
+        modifier = modifier.scale(CompactButtonDefaults.SwitchScale),
+        enabled = enabled,
+        colors = colors,
+        interactionSource = interactionSource
+    )
 }
 
 @Composable

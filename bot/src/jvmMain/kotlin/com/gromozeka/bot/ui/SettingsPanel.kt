@@ -553,7 +553,7 @@ private fun SwitchSettingItem(
             }
         }
 
-        Switch(
+        CompactSwitch(
             checked = value,
             onCheckedChange = onValueChange,
             enabled = enabled
