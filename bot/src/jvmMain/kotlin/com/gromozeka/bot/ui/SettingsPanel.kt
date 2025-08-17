@@ -791,7 +791,7 @@ private fun ButtonSettingItem(
             )
         }
 
-        Button(
+        CompactButton(
             onClick = onClick,
             modifier = Modifier.padding(top = 8.dp)
         ) {
