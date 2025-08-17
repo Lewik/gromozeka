@@ -38,6 +38,7 @@ sealed class Translation {
         abstract val openaiApiKeyLabel: String
         abstract val showSystemMessagesLabel: String
         abstract val alwaysOnTopLabel: String
+        abstract val showTabsAtBottomLabel: String
         abstract val errorSoundsLabel: String
         abstract val messageSoundsLabel: String
         abstract val readySoundsLabel: String
@@ -66,6 +67,7 @@ sealed class Translation {
         abstract val openaiKeyDescription: String
         abstract val showSystemDescription: String
         abstract val alwaysOnTopDescription: String
+        abstract val showTabsAtBottomDescription: String
         abstract val errorSoundsDescription: String
         abstract val messageSoundsDescription: String
         abstract val readySoundsDescription: String

@@ -26,6 +26,7 @@ import com.gromozeka.bot.settings.Settings
 import com.gromozeka.bot.ui.*
 import com.gromozeka.bot.ui.state.UIState
 import com.gromozeka.bot.ui.viewmodel.AppViewModel
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.springframework.beans.factory.getBean
@@ -354,7 +355,6 @@ fun ApplicationScope.ChatWindow(
             modifier = Modifier
                 .fillMaxSize()
                 .background(MaterialTheme.colorScheme.background)
-                .padding(16.dp)
                 .focusTarget()
                 .advancedEscape(pttEventRouter)
                 .onKeyEvent { event ->
@@ -373,192 +373,142 @@ fun ApplicationScope.ChatWindow(
                 }
         ) {
             if (initialized) {
-                // Tab-based UI: SessionListScreen as first tab, active sessions as additional tabs
-                Row(modifier = Modifier.fillMaxSize()) {
-                    Column(modifier = Modifier.weight(1f)) {
-
-                        // Determine selected tab index (0 = projects, 1+ = sessions)
-                        val selectedTabIndex = currentTabIndex?.plus(1) ?: 0
-
-                        // Tab Row
-                        TabRow(
+                // Tab-based UI: TabRow position based on settings
+                Column(modifier = Modifier.fillMaxSize()) {
+                    // Tab Row - position based on showTabsAtBottom setting  
+                    val selectedTabIndex = currentTabIndex?.plus(1) ?: 0
+                    val tabRowComponent = @Composable {
+                        CustomTabRow(
                             selectedTabIndex = selectedTabIndex,
-                            modifier = Modifier
-                                .padding(horizontal = 16.dp, vertical = 8.dp)
-                        ) {
-                            // Projects tab (first tab)
-                            OptionalTooltip("Проекты") {
-                                Tab(
-                                    selected = selectedTabIndex == 0,
-                                    onClick = {
-                                        coroutineScope.launch {
-                                            appViewModel.selectTab(null)
-                                            // Trigger refresh when switching to projects tab
-                                            sessionListRefreshTrigger++
-                                        }
-                                    },
-                                    text = { Text("📁") }
-                                )
-                            }
-
-                            // Session tabs with loading indicators and edit button
-                            tabs.forEachIndexed { index, tab ->
-                                val isLoading = tab.isWaitingForResponse.collectAsState().value
-                                val tabUiState = tab.uiState.collectAsState().value
-                                val tabIndex = index + 1
-
-                                Tab(
-                                    selected = selectedTabIndex == tabIndex,
-                                    onClick = {
-                                        coroutineScope.launch {
-                                            appViewModel.selectTab(index)
-                                        }
-                                    },
-                                    modifier = Modifier.onPointerEvent(PointerEventType.Enter) {
-                                        hoveredTabIndex = index
-                                    }
-                                        .onPointerEvent(PointerEventType.Exit) { hoveredTabIndex = -1 },
-                                    text = {
-                                        Box(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Text(getTabDisplayName(tabUiState, index))
-
-                                            // Edit button (pencil) - appears on hover
-                                            if (hoveredTabIndex == index) {
-                                                IconButton(
-                                                    onClick = {
-                                                        renameTabIndex = index
-                                                        renameCurrentName = getTabDisplayName(tabUiState, index)
-                                                        renameDialogOpen = true
-                                                    },
-                                                    modifier = Modifier
-                                                        .size(16.dp)
-                                                        .align(Alignment.CenterStart)
-                                                        .offset(x = (-8).dp)
-                                                ) {
-                                                    Text("✏️", fontSize = 10.sp)
-                                                }
-                                            }
-
-                                            if (isLoading) {
-                                                CircularProgressIndicator(
-                                                    modifier = Modifier
-                                                        .size(12.dp)
-                                                        .align(Alignment.CenterEnd),
-                                                    strokeWidth = 1.5.dp
-                                                )
-                                            }
-                                        }
-                                    }
-                                )
-                            }
-
-                            // Rename dialog
-                            TabRenameDialog(
-                                isOpen = renameDialogOpen,
-                                currentName = renameCurrentName,
-                                onRename = { newName ->
-                                    val tabIndexToRename = renameTabIndex
+                            showTabsAtBottom = currentSettings.showTabsAtBottom,
+                            tabs = tabs,
+                            hoveredTabIndex = hoveredTabIndex,
+                            onTabSelect = { tabIndex ->
+                                if (tabIndex == null) {
                                     coroutineScope.launch {
-                                        appViewModel.renameTab(tabIndexToRename, newName)
+                                        appViewModel.selectTab(null)
+                                        // Trigger refresh when switching to projects tab
+                                        sessionListRefreshTrigger++
                                     }
-                                },
-                                onDismiss = {
-                                    renameDialogOpen = false
-                                    renameTabIndex = -1
-                                    renameCurrentName = ""
+                                } else {
+                                    coroutineScope.launch {
+                                        appViewModel.selectTab(tabIndex)
+                                    }
                                 }
-                            )
-                        }
-
-                        // Tab Content - All tabs exist in parallel, only selected is visible
-                        Box(modifier = Modifier.weight(1f)) {
-                            // SessionListScreen tab - always exists
-                            val isSessionListVisible = selectedTabIndex == 0
-                            Box(
-                                modifier = Modifier.fillMaxSize()
-                                    .alpha(if (isSessionListVisible) 1f else 0f)
-                            ) {
-                                SessionListScreen(
-                                    onSessionMetadataSelected = { session ->
-                                        // Session and ViewModel already created in SessionListScreen
-                                        // Tab UI will automatically switch to the new session
-                                    },
-                                    coroutineScope = coroutineScope,
-                                    onNewSession = createNewSession,
-                                    sessionJsonlService = sessionJsonlService,
-                                    sessionManager = sessionManager,
-                                    appViewModel = appViewModel,
-                                    searchViewModel = sessionSearchViewModel,
-                                    showSettingsPanel = showSettingsPanel,
-                                    onShowSettingsPanelChange = { showSettingsPanel = it },
-                                    refreshTrigger = sessionListRefreshTrigger
-                                )
-                            }
-
-                            // Only render SessionScreen for current tab
-                            if (currentTab != null && currentSession != null) {
-                                currentTab?.let { sessionViewModel ->
-                                    SessionScreen(
-                                        viewModel = sessionViewModel,
-
-                                        // Navigation callbacks - modified to not stop sessions
-                                        onBackToSessionList = {
-                                            // Switch to SessionListScreen tab without stopping session
-                                            coroutineScope.launch {
-                                                appViewModel.selectTab(null)
-                                            }
-                                        },
-                                        onNewSession = {
-                                            createNewSession(currentSession!!.projectPath)
-                                        },
-                                        onOpenTab = createNewSession, // Reuse the same function for opening tabs
-                                        onOpenTabWithMessage = createNewSessionWithMessage, // For AI theme generation with initial message
-
-                                        // Close session callback - removes session and stops it
-                                        onCloseTab = {
-                                            coroutineScope.launch {
-                                                currentTabIndex?.let { index ->
-                                                    appViewModel.closeTab(index)
-                                                }
-                                            }
-                                        },
-
-                                        // Services
-                                        ttsQueueService = ttsQueueService,
-                                        coroutineScope = coroutineScope,
-                                        modifierWithPushToTalk = modifierWithPushToTalk,
-                                        isRecording = isRecording,
-
-                                        // Settings
-                                        settings = currentSettings,
-                                        showSettingsPanel = showSettingsPanel,
-                                        onShowSettingsPanelChange = { showSettingsPanel = it },
-
-                                        // Dev mode
-                                        isDev = settingsService.mode == com.gromozeka.bot.settings.AppMode.DEV,
-                                    )
+                            },
+                            onTabHover = { index -> hoveredTabIndex = index },
+                            onTabHoverExit = { hoveredTabIndex = -1 },
+                            onRenameTab = { tabIndexToRename, newName ->
+                                coroutineScope.launch {
+                                    appViewModel.renameTab(tabIndexToRename, newName)
                                 }
-                            }
-                        }
+                            },
+                            coroutineScope = coroutineScope
+                        )
                     }
 
-                    // Settings Panel
-                    SettingsPanel(
-                        isVisible = showSettingsPanel,
-                        settings = currentSettings,
-                        onSettingsChange = onSettingsChange,
-                        onClose = { showSettingsPanel = false },
-                        translationService = translationService,
-                        themeService = themeService,
-                        aiThemeGenerator = aiThemeGenerator,
-                        coroutineScope = coroutineScope,
-                        onOpenTab = createNewSession,
-                        onOpenTabWithMessage = createNewSessionWithMessage
-                    )
+                    // Conditional layout based on tab position setting
+                    if (!currentSettings.showTabsAtBottom) {
+                        // Tabs at top: show TabRow then content
+                        tabRowComponent()
+                    }
 
+                    // Content area
+                    Row(modifier = Modifier.weight(1f)) {
+                        // Main content area with padding
+                        Column(modifier = Modifier.weight(1f).padding(16.dp)) {
+                            // Tab Content - All tabs exist in parallel, only selected is visible
+                            Box(modifier = Modifier.weight(1f)) {
+                                // SessionListScreen tab - always exists
+                                val isSessionListVisible = selectedTabIndex == 0
+                                Box(
+                                    modifier = Modifier.fillMaxSize()
+                                        .alpha(if (isSessionListVisible) 1f else 0f)
+                                ) {
+                                    SessionListScreen(
+                                        onSessionMetadataSelected = { session ->
+                                            // Session and ViewModel already created in SessionListScreen
+                                            // Tab UI will automatically switch to the new session
+                                        },
+                                        coroutineScope = coroutineScope,
+                                        onNewSession = createNewSession,
+                                        sessionJsonlService = sessionJsonlService,
+                                        sessionManager = sessionManager,
+                                        appViewModel = appViewModel,
+                                        searchViewModel = sessionSearchViewModel,
+                                        showSettingsPanel = showSettingsPanel,
+                                        onShowSettingsPanelChange = { showSettingsPanel = it },
+                                        refreshTrigger = sessionListRefreshTrigger
+                                    )
+                                }
+
+                                // Only render SessionScreen for current tab
+                                if (currentTab != null && currentSession != null) {
+                                    currentTab?.let { sessionViewModel ->
+                                        SessionScreen(
+                                            viewModel = sessionViewModel,
+
+                                            // Navigation callbacks - modified to not stop sessions
+                                            onBackToSessionList = {
+                                                // Switch to SessionListScreen tab without stopping session
+                                                coroutineScope.launch {
+                                                    appViewModel.selectTab(null)
+                                                }
+                                            },
+                                            onNewSession = {
+                                                createNewSession(currentSession!!.projectPath)
+                                            },
+                                            onOpenTab = createNewSession, // Reuse the same function for opening tabs
+                                            onOpenTabWithMessage = createNewSessionWithMessage, // For AI theme generation with initial message
+
+                                            // Close session callback - removes session and stops it
+                                            onCloseTab = {
+                                                coroutineScope.launch {
+                                                    currentTabIndex?.let { index ->
+                                                        appViewModel.closeTab(index)
+                                                    }
+                                                }
+                                            },
+
+                                            // Services
+                                            ttsQueueService = ttsQueueService,
+                                            coroutineScope = coroutineScope,
+                                            modifierWithPushToTalk = modifierWithPushToTalk,
+                                            isRecording = isRecording,
+
+                                            // Settings
+                                            settings = currentSettings,
+                                            showSettingsPanel = showSettingsPanel,
+                                            onShowSettingsPanelChange = { showSettingsPanel = it },
+
+                                            // Dev mode
+                                            isDev = settingsService.mode == com.gromozeka.bot.settings.AppMode.DEV,
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        // Settings Panel
+                        SettingsPanel(
+                            isVisible = showSettingsPanel,
+                            settings = currentSettings,
+                            onSettingsChange = onSettingsChange,
+                            onClose = { showSettingsPanel = false },
+                            translationService = translationService,
+                            themeService = themeService,
+                            aiThemeGenerator = aiThemeGenerator,
+                            coroutineScope = coroutineScope,
+                            onOpenTab = createNewSession,
+                            onOpenTabWithMessage = createNewSessionWithMessage
+                        )
+                    }
+
+                    // Conditional layout based on tab position setting
+                    if (currentSettings.showTabsAtBottom) {
+                        // Tabs at bottom: show TabRow after content
+                        tabRowComponent()
+                    }
                 }
             } else {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -566,6 +516,120 @@ fun ApplicationScope.ChatWindow(
                 }
             }
         }
+    }
+}
+
+@OptIn(ExperimentalComposeUiApi::class, ExperimentalMaterial3Api::class)
+@Composable
+private fun CustomTabRow(
+    selectedTabIndex: Int,
+    showTabsAtBottom: Boolean,
+    tabs: List<com.gromozeka.bot.ui.viewmodel.SessionViewModel>,
+    hoveredTabIndex: Int,
+    onTabSelect: (Int?) -> Unit,
+    onTabHover: (Int) -> Unit,
+    onTabHoverExit: () -> Unit,
+    onRenameTab: (Int, String) -> Unit,
+    coroutineScope: CoroutineScope,
+) {
+    var renameDialogOpen by remember { mutableStateOf(false) }
+    var renameTabIndex by remember { mutableStateOf(-1) }
+    var renameCurrentName by remember { mutableStateOf("") }
+
+    SecondaryTabRow(
+        selectedTabIndex = selectedTabIndex,
+        indicator = {
+            TabRowDefaults.SecondaryIndicator(
+                Modifier
+                    .tabIndicatorOffset(selectedTabIndex, matchContentSize = false)
+                    .offset(y = if (showTabsAtBottom) (-46).dp else 0.dp)
+            )
+        },
+        divider = {},
+    ) {
+        // Projects tab (first tab)
+        OptionalTooltip("Проекты") {
+            Tab(
+                selected = selectedTabIndex == 0,
+                onClick = {
+                    coroutineScope.launch {
+                        onTabSelect(null)
+                    }
+                },
+                text = { Text("📁") }
+            )
+        }
+
+        // Session tabs with loading indicators and edit button
+        tabs.forEachIndexed { index, tab ->
+            val isLoading = tab.isWaitingForResponse.collectAsState().value
+            val tabUiState = tab.uiState.collectAsState().value
+            val tabIndex = index + 1
+
+            Tab(
+                selected = selectedTabIndex == tabIndex,
+                onClick = {
+                    coroutineScope.launch {
+                        onTabSelect(index)
+                    }
+                },
+                modifier = Modifier.onPointerEvent(PointerEventType.Enter) {
+                    onTabHover(index)
+                }
+                    .onPointerEvent(PointerEventType.Exit) { onTabHoverExit() },
+                text = {
+                    Box(
+                        modifier = Modifier.fillMaxWidth(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(getTabDisplayName(tabUiState, index))
+
+                        // Edit button (pencil) - appears on hover
+                        if (hoveredTabIndex == index) {
+                            IconButton(
+                                onClick = {
+                                    renameTabIndex = index
+                                    renameCurrentName = getTabDisplayName(tabUiState, index)
+                                    renameDialogOpen = true
+                                },
+                                modifier = Modifier
+                                    .size(16.dp)
+                                    .align(Alignment.CenterStart)
+                                    .offset(x = (-8).dp)
+                            ) {
+                                Text("✏️", fontSize = 10.sp)
+                            }
+                        }
+
+                        if (isLoading) {
+                            CircularProgressIndicator(
+                                modifier = Modifier
+                                    .size(12.dp)
+                                    .align(Alignment.CenterEnd),
+                                strokeWidth = 1.5.dp
+                            )
+                        }
+                    }
+                }
+            )
+        }
+
+        // Rename dialog
+        TabRenameDialog(
+            isOpen = renameDialogOpen,
+            currentName = renameCurrentName,
+            onRename = { newName ->
+                val tabIndexToRename = renameTabIndex
+                coroutineScope.launch {
+                    onRenameTab(tabIndexToRename, newName)
+                }
+            },
+            onDismiss = {
+                renameDialogOpen = false
+                renameTabIndex = -1
+                renameCurrentName = ""
+            }
+        )
     }
 }
 

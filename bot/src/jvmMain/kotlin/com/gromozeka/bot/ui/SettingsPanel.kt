@@ -58,13 +58,12 @@ fun SettingsPanel(
         visible = isVisible,
         enter = expandHorizontally(),
         exit = shrinkHorizontally(),
-        modifier = modifier
+        modifier = modifier.padding(start = 16.dp, end = 0.dp) // Global spacing from main content, no right padding to show full panel
     ) {
         Surface(
             modifier = Modifier
                 .width(400.dp)
-                .fillMaxHeight()
-                .clip(RoundedCornerShape(topStart = 16.dp)),
+                .fillMaxHeight(), // No corner radius for slide-out panel - it's part of the main interface
             color = MaterialTheme.colorScheme.surface,
             tonalElevation = 8.dp
         ) {
@@ -73,7 +72,7 @@ fun SettingsPanel(
                     top = 16.dp,
                     end = 16.dp,
                     bottom = 16.dp,
-                    start = 0.dp // No left padding - global window padding is enough
+                    start = 16.dp // Add left padding since panel is now in Row
                 )
             ) {
                 // Header
@@ -244,6 +243,13 @@ fun SettingsPanel(
                             description = translation.settings.alwaysOnTopDescription,
                             value = settings.alwaysOnTop,
                             onValueChange = { onSettingsChange(settings.copy(alwaysOnTop = it)) }
+                        )
+
+                        SwitchSettingItem(
+                            label = translation.settings.showTabsAtBottomLabel,
+                            description = translation.settings.showTabsAtBottomDescription,
+                            value = settings.showTabsAtBottom,
+                            onValueChange = { onSettingsChange(settings.copy(showTabsAtBottom = it)) }
                         )
                     }
 

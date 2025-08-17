@@ -32,6 +32,7 @@ data class Settings(
     // UI Settings  
     val showSystemMessages: Boolean = true,
     val alwaysOnTop: Boolean = false,
+    val showTabsAtBottom: Boolean = false,
     
     // Localization Settings
     val currentLanguageCode: String = EnglishTranslation.LANGUAGE_CODE, // en, ru, he
