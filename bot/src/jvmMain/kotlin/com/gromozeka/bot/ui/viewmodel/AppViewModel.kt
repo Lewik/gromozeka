@@ -116,7 +116,23 @@ class AppViewModel(
 
         // Update current tab index if needed
         if (_currentTabIndex.value == index) {
-            _currentTabIndex.value = null
+            // Closing the active tab - determine which tab to activate next
+            val newIndex = when {
+                index > 1 -> {
+                    // Closing tab with index > 1 -> activate left neighbor (index - 1)
+                    index - 1
+                }
+                index == 1 && tabList.size > 2 -> {
+                    // Closing first session (index 1) and there are tabs to the right -> stay at index 1
+                    // (the right tab will shift to this position after removal)
+                    1
+                }
+                else -> {
+                    // Closing the last remaining session -> return to session list
+                    null
+                }
+            }
+            _currentTabIndex.value = newIndex
         } else if (_currentTabIndex.value != null && _currentTabIndex.value!! > index) {
             _currentTabIndex.value = _currentTabIndex.value!! - 1
         }
