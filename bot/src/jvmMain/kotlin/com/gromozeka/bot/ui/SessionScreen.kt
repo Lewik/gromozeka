@@ -19,7 +19,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
@@ -30,7 +29,6 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.gromozeka.bot.services.TTSQueueService
 import com.gromozeka.bot.settings.Settings
-import com.gromozeka.bot.ui.LocalTranslation
 import com.gromozeka.bot.utils.TokenUsageCalculator
 import com.gromozeka.shared.domain.message.ChatMessage
 import com.gromozeka.shared.domain.message.ClaudeCodeToolCallData
@@ -218,7 +216,7 @@ fun SessionScreen(
                                 onToggleTag = { tag, controlIdx -> viewModel.toggleMessageTag(tag, controlIdx) }
                             )
                         }
-                        
+
                         // Screenshot button
                         CompactButton(
                             onClick = {
@@ -269,7 +267,7 @@ private fun MessageItem(
     onSpeakRequest: (String, String) -> Unit = { _, _ -> },
 ) {
     val translation = LocalTranslation.current
-    
+
     // Combined metadata button data
     val roleIcon = when (message.role) {
         ChatMessage.Role.USER -> "👤"
@@ -410,30 +408,20 @@ private fun MessageItem(
                 message.content.forEach { content ->
                     when (content) {
                         is ChatMessage.ContentItem.UserMessage -> {
-                            Column {
-                                // Show active tags for user messages
-                                if (message.activeTags.isNotEmpty()) {
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
-                                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                                    ) {
-                                        message.activeTags.forEach { tag ->
-                                            Surface(
-                                                shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
-                                                color = MaterialTheme.colorScheme.primaryContainer,
-                                                modifier = Modifier.height(20.dp)
-                                            ) {
-                                                Text(
-                                                    text = tag.title,
-                                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                                                    style = MaterialTheme.typography.labelSmall,
-                                                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                                                )
-                                            }
-                                        }
-                                    }
+                            GromozekaMarkdown(content = content.text)
+                            Row {
+                                message.activeTags.forEach { tag ->
+                                    AssistChip(
+                                        onClick = { },
+                                        label = {
+                                            Text(
+                                                text = tag.title,
+                                                style = MaterialTheme.typography.labelSmall
+                                            )
+                                        },
+                                        modifier = Modifier.height(24.dp)
+                                    )
                                 }
-                                GromozekaMarkdown(content = content.text)
                             }
                         }
 
@@ -454,7 +442,12 @@ private fun MessageItem(
                             when (val source = content.source) {
                                 is ChatMessage.ImageSource.Base64ImageSource -> {
                                     // Base64 too long - show placeholder
-                                    Text(LocalTranslation.current.imageDisplayText.format(source.mediaType, source.data.length))
+                                    Text(
+                                        LocalTranslation.current.imageDisplayText.format(
+                                            source.mediaType,
+                                            source.data.length
+                                        )
+                                    )
                                 }
 
                                 is ChatMessage.ImageSource.UrlImageSource -> {
@@ -842,7 +835,7 @@ private fun MultiStateMessageTagButton(
         control.data.id in activeMessageTags
     }
     val selectedIndex = if (activeControlIndex >= 0) activeControlIndex else messageTag.selectedByDefault
-    
+
     // Convert MessageTagDefinition.Controls to SegmentedButtonOptions
     val options = messageTag.controls.map { control ->
         SegmentedButtonOption(
@@ -850,7 +843,7 @@ private fun MultiStateMessageTagButton(
             tooltip = control.data.instruction
         )
     }
-    
+
     CustomSegmentedButtonGroup(
         options = options,
         selectedIndex = selectedIndex,

@@ -118,7 +118,13 @@ class Session(
         data class SendMessage(
             val message: String,
             val activeTags: List<MessageTagDefinition.Data> = emptyList(),
-        ) : Command()
+        ) : Command() {
+            fun getMessageWithInstructions() = if (activeTags.isNotEmpty()) {
+                 "$message\n\n<instructions>\n${activeTags.joinToString("\n") { it.instruction }}\n</instructions>"
+             } else {
+                 message
+             }
+        }
     }
 
     /**
@@ -219,12 +225,12 @@ class Session(
                     ActorState.WaitingForInit -> {
                         // First message during init - send immediately to trigger Claude
                         println("[Actor] First message during init - sending immediately")
-                        handleFirstMessageDuringInit(command.message, command.activeTags)
+                        handleFirstMessageDuringInit(command)
                     }
 
                     ActorState.Active.Ready -> {
                         // Normal message sending
-                        performSendMessage(command.message, command.activeTags)
+                        performSendMessage(command)
                     }
 
                     else -> {
@@ -283,7 +289,7 @@ class Session(
                                 println("[Actor] Force sending extracted message: ${pendingCommand.message.take(50)}...")
                                 try {
                                     // Directly send the message bypassing normal flow
-                                    performSendMessage(pendingCommand.message, pendingCommand.activeTags)
+                                    performSendMessage(pendingCommand)
                                 } catch (e: Exception) {
                                     println("[Actor] Force send failed: ${e.message}")
                                     _events.emit(StreamSessionEvent.Error("Force send failed: ${e.message}"))
@@ -313,36 +319,38 @@ class Session(
      * Handle first message during WaitingForInit state
      * This allows the first message to be sent immediately to trigger Claude's response
      */
-    private suspend fun handleFirstMessageDuringInit(message: String, activeTags: List<MessageTagDefinition.Data>) {
-        
-        if (message.isBlank()) {
+    private suspend fun handleFirstMessageDuringInit(sendMessageCommand: Command.SendMessage) {
+
+        if (sendMessageCommand.message.isBlank()) {
             println("[Actor] Skipping empty first message")
             return
         }
 
         try {
-            println("[Actor] Sending first message during init: ${message.take(50)}...")
+            val messageWithInstructions = sendMessageCommand.getMessageWithInstructions()
+
+            println("[Actor] Sending first message during init: ${messageWithInstructions.take(50)}...")
 
             // Create the ChatMessage
             val chatMessage = ChatMessage(
                 role = ChatMessage.Role.USER,
-                content = listOf(ChatMessage.ContentItem.UserMessage(message)),
+                content = listOf(ChatMessage.ContentItem.UserMessage(sendMessageCommand.message)),
                 timestamp = Clock.System.now(),
                 uuid = java.util.UUID.randomUUID().toString(),
                 llmSpecificMetadata = null,
-                activeTags = activeTags
+                activeTags = sendMessageCommand.activeTags
             )
-            
-            
+
+
             // Emit user message to UI
             _messageOutputStream.emit(chatMessage)
-            
+
 
             // Mark as waiting for response (but stay in WaitingForInit state)
             _isWaitingForResponse.value = true
 
             // Send message to Claude - this will trigger init response
-            claudeWrapper.sendMessage(message, currentSessionId)
+            claudeWrapper.sendMessage(messageWithInstructions, currentSessionId)
 
         } catch (e: Exception) {
             println("[Actor] Failed to send first message: ${e.message}")
@@ -496,30 +504,31 @@ class Session(
     /**
      * Actor implementation of sendMessage command
      */
-    private suspend fun performSendMessage(message: String, activeTags: List<MessageTagDefinition.Data>) {
+    private suspend fun performSendMessage(sendMessageCommand: Command.SendMessage) {
         // This should only be called when Active.Ready
         require(actorState == ActorState.Active.Ready) {
             "Can only send messages when Ready. Current state: $actorState"
         }
 
         // Skip empty or blank messages
-        if (message.isBlank()) {
+        if (sendMessageCommand.message.isBlank()) {
             println("[Actor] Skipping empty/blank message")
             return
         }
 
         try {
-            println("[Actor] Sending message: ${message.take(100)}${if (message.length > 100) "..." else ""}")
+            val messageWithInstructions = sendMessageCommand.getMessageWithInstructions()
 
+            println("[Actor] Sending message: ${messageWithInstructions.take(100)}${if (messageWithInstructions.length > 100) "..." else ""}")
             // Emit user message to stream
             _messageOutputStream.emit(
                 ChatMessage(
                     role = ChatMessage.Role.USER,
-                    content = listOf(ChatMessage.ContentItem.UserMessage(message)),
+                    content = listOf(ChatMessage.ContentItem.UserMessage(sendMessageCommand.message)),
                     timestamp = Clock.System.now(),
                     uuid = java.util.UUID.randomUUID().toString(),
                     llmSpecificMetadata = null,
-                    activeTags = activeTags
+                    activeTags = sendMessageCommand.activeTags
                 )
             )
 
@@ -528,7 +537,7 @@ class Session(
             _isWaitingForResponse.value = true
 
             // Send message to Claude
-            claudeWrapper.sendMessage(message, currentSessionId)
+            claudeWrapper.sendMessage(messageWithInstructions, currentSessionId)
 
         } catch (e: Exception) {
             println("[Actor] Failed to send message: ${e.message}")

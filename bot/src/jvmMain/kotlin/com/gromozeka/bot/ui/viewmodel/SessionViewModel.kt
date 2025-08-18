@@ -85,14 +85,14 @@ class SessionViewModel(
                 selectedByDefault = 0  // Readonly по умолчанию
             )
         )
-        
+
         fun getDefaultEnabledTags(): Set<String> {
             return ALL_MESSAGE_TAG_DEFINITIONS.map { tagDefinition ->
                 tagDefinition.controls[tagDefinition.selectedByDefault].data.id
             }.toSet()
         }
     }
-    
+
     val availableMessageTags = ALL_MESSAGE_TAG_DEFINITIONS
 
     // === Convenience accessors for backward compatibility ===
@@ -104,7 +104,7 @@ class SessionViewModel(
 
     // === Messages from messageOutputStream (no duplication) ===
     private val allMessages: StateFlow<List<ChatMessage>> = session.messageOutputStream
-        .scan(emptyList<ChatMessage>()) { acc, message -> 
+        .scan(emptyList<ChatMessage>()) { acc, message ->
             val newAcc = acc + message
             newAcc
         }
@@ -124,7 +124,7 @@ class SessionViewModel(
             // These are already displayed integrated into their corresponding ToolCall
             val containsOnlyToolResults = message.content.isNotEmpty() &&
                     message.content.all { it is ChatMessage.ContentItem.ToolResult }
-            
+
             if (containsOnlyToolResults) {
                 false // Hide messages with only ToolResult content
             } else if (settings.showSystemMessages) {
@@ -179,13 +179,13 @@ class SessionViewModel(
         _uiState.update { currentState ->
             if (controlIndex >= 0 && controlIndex < messageTag.controls.size) {
                 val selectedId = messageTag.controls[controlIndex].data.id
-                
+
                 // Get all IDs from this MessageTag group
                 val allIdsInGroup = messageTag.controls.map { it.data.id }.toSet()
-                
+
                 // Check if clicked ID is already active in this group
                 val isAlreadyActive = selectedId in currentState.activeMessageTags
-                
+
                 if (isAlreadyActive) {
                     // If already active, do nothing (ignore repeat clicks)
                     currentState
@@ -215,32 +215,26 @@ class SessionViewModel(
 
     suspend fun sendMessageToSession(message: String) {
         val currentState = _uiState.value
-        
+
         // Collect all active tag data that should be included in message
         val activeTagsData = availableMessageTags.mapNotNull { messageTag ->
             // Find which control should be active based on currentState.activeMessageTags
             val activeControlIndex = messageTag.controls.indexOfFirst { control ->
                 control.data.id in currentState.activeMessageTags
             }
-            
+
             val selectedControlIndex = if (activeControlIndex >= 0) activeControlIndex else messageTag.selectedByDefault
             val selectedControl = messageTag.controls[selectedControlIndex]
-            
+
             // Include only if this control should be sent to chat
             if (selectedControl.includeInMessage) {
                 selectedControl.data
             } else null
         }
 
-        val messageWithInstructions = if (activeTagsData.isNotEmpty()) {
-            "$message\n\n<instructions>\n${activeTagsData.joinToString("\n") { it.instruction }}\n</instructions>"
-        } else {
-            message
-        }
-
         // Send MessageTag.Data directly to Session
-        session.sendMessage(messageWithInstructions, activeTagsData)
-        
+        session.sendMessage(message, activeTagsData)
+
         // Clear input after sending
         _uiState.update { it.copy(userInput = "") }
     }
