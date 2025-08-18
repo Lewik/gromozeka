@@ -63,3 +63,12 @@ venv/
 __pycache__/
 *.pyc
 
+# Distribution packages and artifacts
+*.dmg
+*.msi
+*.deb
+*.rpm
+gromozeka-*/
+release-assets/
+release-notes.md
+

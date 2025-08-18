@@ -132,6 +132,9 @@ compose.desktop {
             macOS {
                 packageBuildVersion = "1.0.0"
                 dmgPackageVersion = "1.0.0"
+                signing {
+                    sign.set(false)
+                }
             }
             
             windows {

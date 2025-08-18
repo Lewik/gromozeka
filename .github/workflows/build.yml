@@ -72,38 +72,17 @@ jobs:
       - name: Update package version in build.gradle.kts
         shell: bash
         run: |
-          # Convert beta versions to platform-compatible formats
-          # 1.0.0-beta.1 -> 1.0.1 (for DMG/MSI), 1.0.0.beta1 (for RPM)
-          if [[ "$VERSION" == *"-beta."* ]]; then
-            BETA_NUM=$(echo "$VERSION" | sed 's/.*-beta\.\([0-9]*\).*/\1/')
-            BASE_VERSION=$(echo "$VERSION" | sed 's/-beta.*//')
-            
-            # For DMG (macOS): increment patch version
-            DMG_VERSION=$(echo "$BASE_VERSION" | awk -F. '{print $1"."$2"."($3+1)}')
-            
-            # For MSI (Windows): use same as DMG  
-            MSI_VERSION="$DMG_VERSION"
-            
-            # For RPM (Linux): replace dash with dot
-            RPM_VERSION=$(echo "$VERSION" | sed 's/-/./')
-            
-            echo "Converting beta version $VERSION:"
-            echo "  DMG/MSI: $DMG_VERSION"
-            echo "  RPM: $RPM_VERSION"
-          else
-            DMG_VERSION="$VERSION"
-            MSI_VERSION="$VERSION" 
-            RPM_VERSION="$VERSION"
-          fi
+          # Use same version for all platforms - no conversion
+          echo "Using version $VERSION for all platforms"
           
-          # Update build.gradle.kts with platform-specific versions
+          # Update build.gradle.kts with unified version
           sed -i.bak 's/packageVersion = ".*"/packageVersion = "'$VERSION'"/g' bot/build.gradle.kts
-          sed -i.bak 's/packageBuildVersion = ".*"/packageBuildVersion = "'$DMG_VERSION'"/g' bot/build.gradle.kts
-          sed -i.bak 's/dmgPackageVersion = ".*"/dmgPackageVersion = "'$DMG_VERSION'"/g' bot/build.gradle.kts
+          sed -i.bak 's/packageBuildVersion = ".*"/packageBuildVersion = "'$VERSION'"/g' bot/build.gradle.kts
+          sed -i.bak 's/dmgPackageVersion = ".*"/dmgPackageVersion = "'$VERSION'"/g' bot/build.gradle.kts
           
-          # Update platform-specific sections
-          sed -i.bak '/windows {/,/}/ s/packageVersion = ".*"/packageVersion = "'$MSI_VERSION'"/' bot/build.gradle.kts
-          sed -i.bak '/linux {/,/}/ s/packageVersion = ".*"/packageVersion = "'$RPM_VERSION'"/' bot/build.gradle.kts
+          # Update platform-specific sections with same version
+          sed -i.bak '/windows {/,/}/ s/packageVersion = ".*"/packageVersion = "'$VERSION'"/' bot/build.gradle.kts
+          sed -i.bak '/linux {/,/}/ s/packageVersion = ".*"/packageVersion = "'$VERSION'"/' bot/build.gradle.kts
 
       - name: Build native distributions
         shell: bash
