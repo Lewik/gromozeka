@@ -8,6 +8,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -55,7 +56,7 @@ fun SettingsPanel(
     ) {
         Surface(
             modifier = Modifier
-                .width(400.dp)
+                .width(533.dp)
                 .fillMaxHeight(), // No corner radius for slide-out panel - it's part of the main interface
             color = MaterialTheme.colorScheme.surface,
             tonalElevation = 8.dp
@@ -348,7 +349,7 @@ fun SettingsPanel(
 
                     // Theming Settings
                     SettingsGroup(title = translation.settings.themingTitle) {
-                        // Theme selection
+                        // Theme selection with refresh button
                         val availableThemes by themeService.availableThemes.collectAsState()
                         DropdownSettingItem(
                             label = translation.settings.themeSelectionLabel,
@@ -359,7 +360,7 @@ fun SettingsPanel(
                                 val themeInfo = availableThemes[themeId]
                                 when {
                                     themeInfo == null -> themeId
-                                    themeInfo.isBuiltIn -> Theme.getThemeNameTranslated(themeId, translation)
+                                    themeInfo.isBuiltIn -> "${Theme.getThemeNameTranslated(themeId, translation)} (built-in)"
                                     !themeInfo.isValid -> "${themeInfo.themeName} (${translation.settings.themeInvalidFormat})"
                                     else -> themeInfo.themeName
                                 }
@@ -374,6 +375,21 @@ fun SettingsPanel(
                                     themeService.refreshThemes()
                                 }
                                 onSettingsChange(settings.copy(currentThemeId = newThemeId))
+                            },
+                            trailingContent = {
+                                CompactButton(
+                                    onClick = {
+                                        println("[SettingsPanel] Refreshing themes...")
+                                        themeService.refreshThemes()
+                                    },
+                                    tooltip = translation.settings.refreshThemesDescription,
+                                    modifier = Modifier.fillMaxHeight()
+                                ) {
+                                    Icon(
+                                        Icons.Filled.Refresh,
+                                        contentDescription = translation.settings.refreshThemesLabel
+                                    )
+                                }
                             }
                         )
                         
@@ -418,16 +434,6 @@ fun SettingsPanel(
                             }
                         }
 
-                        // Refresh themes button
-                        ButtonSettingItem(
-                            label = translation.settings.refreshThemesLabel,
-                            description = translation.settings.refreshThemesDescription,
-                            buttonText = translation.settings.refreshThemesButton,
-                            onClick = {
-                                println("[SettingsPanel] Refreshing themes...")
-                                themeService.refreshThemes()
-                            }
-                        )
 
                         // Export theme button
                         ButtonSettingItem(
@@ -745,10 +751,12 @@ private fun <T> DropdownSettingItem(
     optionLabel: (T) -> String,
     optionEnabled: (T) -> Boolean = { true },
     onValueChange: (T) -> Unit,
+    modifier: Modifier = Modifier,
+    trailingContent: (@Composable () -> Unit)? = null,
 ) {
     var expanded by remember { mutableStateOf(false) }
 
-    Column {
+    Column(modifier = modifier) {
         Text(
             text = label,
             style = MaterialTheme.typography.bodyMedium,
@@ -764,42 +772,93 @@ private fun <T> DropdownSettingItem(
             )
         }
 
-        ExposedDropdownMenuBox(
-            expanded = expanded,
-            onExpandedChange = { expanded = !expanded },
-            modifier = Modifier.padding(top = 8.dp)
-        ) {
-            OutlinedTextField(
-                readOnly = true,
-                value = optionLabel(value),
-                onValueChange = { },
-                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
-                modifier = Modifier
-                    .menuAnchor()
-                    .fillMaxWidth()
-            )
-            ExposedDropdownMenu(
-                expanded = expanded,
-                onDismissRequest = { expanded = false }
+        if (trailingContent != null) {
+            Row(
+                modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min).padding(top = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                options.forEach { option ->
-                    val enabled = optionEnabled(option)
-                    DropdownMenuItem(
-                        text = {
-                            Text(
-                                text = optionLabel(option),
-                                color = if (enabled) LocalContentColor.current else LocalContentColor.current.copy(alpha = 0.38f)
-                            )
-                        },
-                        onClick = {
-                            if (enabled) {
-                                onValueChange(option)
-                                expanded = false
-                            }
-                        },
-                        enabled = enabled
+                ExposedDropdownMenuBox(
+                    expanded = expanded,
+                    onExpandedChange = { expanded = !expanded },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    OutlinedTextField(
+                        readOnly = true,
+                        value = optionLabel(value),
+                        onValueChange = { },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                        colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+                        modifier = Modifier
+                            .menuAnchor()
+                            .fillMaxWidth()
                     )
+                    ExposedDropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = { expanded = false }
+                    ) {
+                        options.forEach { option ->
+                            val enabled = optionEnabled(option)
+                            DropdownMenuItem(
+                                text = {
+                                    Text(
+                                        text = optionLabel(option),
+                                        color = if (enabled) LocalContentColor.current else LocalContentColor.current.copy(alpha = 0.38f)
+                                    )
+                                },
+                                onClick = {
+                                    if (enabled) {
+                                        onValueChange(option)
+                                        expanded = false
+                                    }
+                                },
+                                enabled = enabled
+                            )
+                        }
+                    }
+                }
+                
+                Spacer(modifier = Modifier.width(8.dp))
+                
+                trailingContent()
+            }
+        } else {
+            ExposedDropdownMenuBox(
+                expanded = expanded,
+                onExpandedChange = { expanded = !expanded },
+                modifier = Modifier.padding(top = 8.dp)
+            ) {
+                OutlinedTextField(
+                    readOnly = true,
+                    value = optionLabel(value),
+                    onValueChange = { },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                    colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+                    modifier = Modifier
+                        .menuAnchor()
+                        .fillMaxWidth()
+                )
+                ExposedDropdownMenu(
+                    expanded = expanded,
+                    onDismissRequest = { expanded = false }
+                ) {
+                    options.forEach { option ->
+                        val enabled = optionEnabled(option)
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    text = optionLabel(option),
+                                    color = if (enabled) LocalContentColor.current else LocalContentColor.current.copy(alpha = 0.38f)
+                                )
+                            },
+                            onClick = {
+                                if (enabled) {
+                                    onValueChange(option)
+                                    expanded = false
+                                }
+                            },
+                            enabled = enabled
+                        )
+                    }
                 }
             }
         }
