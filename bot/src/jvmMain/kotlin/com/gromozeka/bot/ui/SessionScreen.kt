@@ -439,29 +439,40 @@ private fun MessageItem(
                     ) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
                     else Color.Transparent
                 )
-                .padding(start = if (message.content.any { it is ChatMessage.ContentItem.ToolCall }) 0.dp else 4.dp),
+                .padding(horizontal = if (message.content.any { it is ChatMessage.ContentItem.ToolCall }) 0.dp else 4.dp),
             verticalArrangement = Arrangement.Center
         ) {
             message.content.forEach { content ->
                 when (content) {
                     is ChatMessage.ContentItem.UserMessage -> {
-                        Row {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
                             Column(
                                 modifier = Modifier.weight(1f),
                                 verticalArrangement = Arrangement.Center,
                             ) {
                                 GromozekaMarkdown(
                                     content = content.text,
+                                    modifier = Modifier
                                 )
                             }
-                            FlowRow {
+                            FlowRow(
+                                maxItemsInEachRow = 4,
+                                verticalArrangement = Arrangement.Top,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            ) {
                                 message.activeTags.forEach { tag ->
-                                    Badge {
-                                        Text(
-                                            text = tag.title,
-                                            style = MaterialTheme.typography.labelSmall
-                                        )
-                                    }
+                                    AssistChip(
+                                        onClick = {},
+                                        label = {
+                                            Text(
+                                                text = tag.title,
+                                                style = MaterialTheme.typography.labelSmall
+                                            )
+                                        },
+                                        colors = AssistChipDefaults.assistChipColors(),
+                                    )
                                 }
                             }
                         }
@@ -512,7 +523,7 @@ private fun MessageItem(
                         }
                     }
 
-                    is ChatMessage.ContentItem.Thinking -> Text(text = content.thinking)
+                    is ChatMessage.ContentItem.Thinking -> GromozekaMarkdown(content = content.thinking)
                     is ChatMessage.ContentItem.System -> Text(text = content.content)
                     is ChatMessage.ContentItem.AssistantMessage -> GromozekaMarkdown(content = content.structured.fullText)
                     is ChatMessage.ContentItem.UnknownJson -> Column {
@@ -551,7 +562,7 @@ private fun MessageInput(
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth().height(56.dp) // Fixed height instead of IntrinsicSize.Min
+        modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min)
     ) {
         OutlinedTextField(
             value = userInput,
