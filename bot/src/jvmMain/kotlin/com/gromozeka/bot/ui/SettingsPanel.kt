@@ -5,7 +5,6 @@ import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
@@ -13,21 +12,15 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.material3.LocalContentColor
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.gromozeka.bot.settings.ResponseFormat
-import com.gromozeka.bot.settings.Settings
-import com.gromozeka.bot.services.translation.TranslationService
-import com.gromozeka.bot.services.translation.data.Translation
+import com.gromozeka.bot.services.theming.AIThemeGenerator
 import com.gromozeka.bot.services.theming.ThemeService
 import com.gromozeka.bot.services.theming.data.Theme
-import com.gromozeka.bot.ui.LocalTranslation
-import com.gromozeka.bot.platform.ScreenCaptureController
-import com.gromozeka.bot.services.SessionManager
-import com.gromozeka.bot.services.SettingsService
-import com.gromozeka.bot.services.theming.AIThemeGenerator
+import com.gromozeka.bot.services.translation.TranslationService
+import com.gromozeka.bot.services.translation.data.Translation
+import com.gromozeka.bot.settings.ResponseFormat
+import com.gromozeka.bot.settings.Settings
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
@@ -46,14 +39,14 @@ fun SettingsPanel(
     modifier: Modifier = Modifier,
 ) {
     val translation = LocalTranslation.current
-    
+
     // Refresh themes when panel opens
     LaunchedEffect(isVisible) {
         if (isVisible) {
             themeService.refreshThemes()
         }
     }
-    
+
     AnimatedVisibility(
         visible = isVisible,
         enter = expandHorizontally(),
@@ -251,6 +244,34 @@ fun SettingsPanel(
                             value = settings.showTabsAtBottom,
                             onValueChange = { onSettingsChange(settings.copy(showTabsAtBottom = it)) }
                         )
+
+                        // UI Scale slider
+                        SliderSettingItem(
+                            label = "UI Scale",
+                            description = "Adjust interface size (0.5 = tiny, 1.0 = normal, 3.0 = huge). Auto-detected on first launch.",
+                            value = settings.uiScale,
+                            min = 0.5f,
+                            max = 3.0f,
+                            step = 0.1f,
+                            valueFormat = "${(settings.uiScale * 100).toInt()}%",
+                            onValueChange = {
+                                onSettingsChange(settings.copy(uiScale = it))
+                            }
+                        )
+
+                        // Font Scale slider
+                        SliderSettingItem(
+                            label = "Font Scale",
+                            description = "Adjust text size (0.5 = small, 1.0 = normal, 2.0 = large)",
+                            value = settings.fontScale,
+                            min = 0.5f,
+                            max = 2.0f,
+                            step = 0.1f,
+                            valueFormat = "${(settings.fontScale * 100).toInt()}%",
+                            onValueChange = {
+                                onSettingsChange(settings.copy(fontScale = it))
+                            }
+                        )
                     }
 
                     // Localization Settings
@@ -268,13 +289,13 @@ fun SettingsPanel(
                                 onSettingsChange(settings.copy(currentLanguageCode = newLanguageCode))
                             }
                         )
-                        
+
                         InfoSettingItem(
                             label = translation.settings.customTranslationInfoLabel,
                             message = translation.settings.customTranslationInfoMessage,
                             isError = false
                         )
-                        
+
                         // Show override status - automatically based on file existence
                         val overrideResult by translationService.lastOverrideResult.collectAsState()
                         overrideResult?.let { result ->
@@ -286,16 +307,17 @@ fun SettingsPanel(
                                         isError = false
                                     )
                                 }
+
                                 is com.gromozeka.bot.services.translation.TranslationOverrideResult.Failure -> {
                                     InfoSettingItem(
-                                        label = translation.settings.translationOverrideStatusLabel, 
+                                        label = translation.settings.translationOverrideStatusLabel,
                                         message = translation.settings.overrideFailureMessage.format(result.error),
                                         isError = true
                                     )
                                 }
                             }
                         }
-                        
+
                         ButtonSettingItem(
                             label = translation.settings.refreshTranslationsLabel,
                             description = translation.settings.refreshTranslationsDescription,
@@ -305,14 +327,14 @@ fun SettingsPanel(
                                 translationService.refreshTranslations()
                             }
                         )
-                        
+
                         ButtonSettingItem(
                             label = translation.settings.exportTranslationLabel,
                             description = translation.settings.exportTranslationDescription,
                             buttonText = translation.settings.exportTranslationButton,
                             onClick = {
                                 val success = translationService.exportToFile()
-                                
+
                                 if (success) {
                                     println("[SettingsPanel] Successfully exported translation")
                                     // TODO: Show success notification
@@ -373,6 +395,7 @@ fun SettingsPanel(
                                         isError = false
                                     )
                                 }
+
                                 is com.gromozeka.bot.services.theming.ThemeOverrideResult.Failure -> {
                                     InfoSettingItem(
                                         label = translation.settings.themeOverrideStatusLabel,
@@ -420,20 +443,14 @@ fun SettingsPanel(
                                 coroutineScope.launch {
                                     val preparedMessage = aiThemeGenerator.prepareThemeGenerationData(coroutineScope)
                                     if (preparedMessage != null) {
-                                        println("[SettingsPanel] Theme generation data prepared successfully")
-                                        println("[SettingsPanel] Message length: ${preparedMessage.length}")
-                                        
                                         if (onOpenTabWithMessage != null) {
-                                            println("[SettingsPanel] Using onOpenTabWithMessage callback")
-                                            onOpenTabWithMessage(aiThemeGenerator.getWorkingDirectory(), preparedMessage)
+                                            onOpenTabWithMessage(
+                                                aiThemeGenerator.getWorkingDirectory(),
+                                                preparedMessage
+                                            )
                                         } else {
-                                            println("[SettingsPanel] WARNING: onOpenTabWithMessage is null, using fallback onOpenTab")
                                             onOpenTab(aiThemeGenerator.getWorkingDirectory())
                                         }
-                                        
-                                        println("[SettingsPanel] AI theme generation tab should now be visible with initial message")
-                                    } else {
-                                        println("[SettingsPanel] AI theme generation failed - data preparation returned null")
                                     }
                                 }
                             }
@@ -472,7 +489,7 @@ fun SettingsPanel(
                                 min = 0.0f,
                                 max = 1.0f,
                                 step = 0.1f,
-                                valueFormat = "%.0f%%",
+                                valueFormat = "${(settings.soundVolume * 100).toInt()}%",
                                 onValueChange = { onSettingsChange(settings.copy(soundVolume = it)) }
                             )
                         }
@@ -553,7 +570,7 @@ private fun SwitchSettingItem(
             }
         }
 
-        CompactSwitch(
+        Switch(
             checked = value,
             onCheckedChange = onValueChange,
             enabled = enabled
@@ -570,6 +587,7 @@ private fun SliderSettingItem(
     max: Float,
     step: Float,
     valueFormat: String,
+    enabled: Boolean = true,
     onValueChange: (Float) -> Unit,
 ) {
     Column {
@@ -581,12 +599,17 @@ private fun SliderSettingItem(
             Text(
                 text = label,
                 style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium
+                fontWeight = FontWeight.Medium,
+                color = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(
+                    alpha = 0.38f
+                )
             )
             Text(
-                text = valueFormat.format(if (valueFormat.contains("%%")) value * 100 else value),
+                text = valueFormat,  // valueFormat is already a ready string, not a format template
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.primary
+                color = if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(
+                    alpha = 0.38f
+                )
             )
         }
 
@@ -594,7 +617,9 @@ private fun SliderSettingItem(
             Text(
                 text = description,
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                color = if (enabled) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurface.copy(
+                    alpha = 0.38f
+                )
             )
         }
 
@@ -602,7 +627,8 @@ private fun SliderSettingItem(
             value = value,
             onValueChange = onValueChange,
             valueRange = min..max,
-            steps = if (step > 0f) ((max - min) / step).toInt() - 1 else 0
+            steps = if (step > 0f) ((max - min) / step).toInt() - 1 else 0,
+            enabled = enabled
         )
     }
 }
@@ -748,7 +774,7 @@ private fun <T> DropdownSettingItem(
                 options.forEach { option ->
                     val enabled = optionEnabled(option)
                     DropdownMenuItem(
-                        text = { 
+                        text = {
                             Text(
                                 text = optionLabel(option),
                                 color = if (enabled) LocalContentColor.current else LocalContentColor.current.copy(alpha = 0.38f)

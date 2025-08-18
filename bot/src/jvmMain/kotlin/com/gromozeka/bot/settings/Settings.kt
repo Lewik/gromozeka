@@ -1,8 +1,8 @@
 package com.gromozeka.bot.settings
 
-import kotlinx.serialization.Serializable
-import com.gromozeka.bot.services.translation.data.EnglishTranslation
 import com.gromozeka.bot.services.theming.data.DarkTheme
+import com.gromozeka.bot.services.translation.data.EnglishTranslation
+import kotlinx.serialization.Serializable
 
 @Serializable
 data class Settings(
@@ -33,7 +33,9 @@ data class Settings(
     val showSystemMessages: Boolean = true,
     val alwaysOnTop: Boolean = false,
     val showTabsAtBottom: Boolean = false,
-    
+    val uiScale: Float = 1.0f, // 0.5-3.0 = UI scale (auto-detected on first launch, then user-controlled)
+    val fontScale: Float = 1.0f, // 0.5-2.0 = font scaling multiplier
+
     // Localization Settings
     val currentLanguageCode: String = EnglishTranslation.LANGUAGE_CODE, // en, ru, he
 

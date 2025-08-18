@@ -81,9 +81,7 @@ fun SessionScreen(
 
     // Format UI strings here in UI layer
     val formattedTokenUsage = remember(tokenUsage) {
-        val formatted = formatTokenUsageForDisplay(tokenUsage)
-        println("[SessionScreen] Token usage formatted: $formatted (total=${tokenUsage.grandTotal})")
-        formatted
+        formatTokenUsageForDisplay(tokenUsage)
     }
     val tokenUsageTooltip = remember(tokenUsage) {
         createTokenUsageTooltip(tokenUsage)
@@ -383,7 +381,7 @@ private fun MessageItem(
                 }
             ) {
                 CompactButton(
-                    onClick = { }, // Убираем ЛКМ функциональность
+                    onClick = { },
                     tooltip = tooltipText,
                     modifier = Modifier.pointerHoverIcon(PointerIcon.Hand)
                 ) {
@@ -406,7 +404,6 @@ private fun MessageItem(
         ) {
             Column(
                 modifier = Modifier
-                    .defaultMinSize(minHeight = CompactButtonDefaults.ButtonHeight)
                     .padding(start = if (message.content.any { it is ChatMessage.ContentItem.ToolCall }) 0.dp else 4.dp),
                 verticalArrangement = Arrangement.Center
             ) {
@@ -520,7 +517,6 @@ private fun MessageInput(
             modifier = Modifier
                 .onPreviewKeyEvent { event ->
                     if (!isWaitingForResponse && event.key == Key.Enter && event.isShiftPressed && event.type == KeyEventType.KeyDown && userInput.isNotBlank()) {
-                        println("🚀 Shift+Enter KeyDown detected, sending message: '$userInput'")
                         coroutineScope.launch {
                             onSendMessage(userInput)
                         }
@@ -547,7 +543,6 @@ private fun MessageInput(
         } else {
             CompactButton(
                 onClick = {
-                    println("📤 Send button clicked, sending message: '$userInput'")
                     coroutineScope.launch {
                         onSendMessage(userInput)
                     }

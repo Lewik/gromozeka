@@ -7,6 +7,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import java.awt.GraphicsEnvironment
+import java.awt.Toolkit
 import java.io.File
 import java.util.*
 
@@ -103,6 +105,7 @@ class SettingsService {
     }
 
     private fun createDefaultSettings(): Settings {
+        val detectedScale = detectOptimalUIScale()
         val defaults = Settings(
             enableTts = true,
             enableStt = true,
@@ -110,7 +113,8 @@ class SettingsService {
             enableErrorSounds = false,
             enableMessageSounds = false,
             enableReadySounds = false,
-            soundVolume = 1.0f
+            soundVolume = 1.0f,
+            uiScale = detectedScale // Auto-detect once on first launch, then user controls manually
         )
 
         settingsFile.writeText(json.encodeToString(defaults))
@@ -198,7 +202,6 @@ class SettingsService {
                     "Examples: 'en', 'ru', 'zh', 'es', 'fra', 'deu'"
         }
 
-        println("[SettingsService] STT language code validated: '$languageCode'")
     }
 
     /**
@@ -209,6 +212,61 @@ class SettingsService {
             "Invalid TTS speed: $speed. Must be between 0.25 (slowest) and 4.0 (fastest). Default: 1.0"
         }
 
-        println("[SettingsService] TTS speed validated: $speed")
     }
+
+    /**
+     * Auto-detect optimal UI scale based on platform and screen characteristics
+     */
+    private fun detectOptimalUIScale(): Float {
+        return try {
+            val toolkit = Toolkit.getDefaultToolkit()
+            val screenResolution = toolkit.screenResolution // DPI
+
+            // Get system scaling from Java 2D
+            val systemScale = try {
+                val gfxEnv = GraphicsEnvironment.getLocalGraphicsEnvironment()
+                val defaultScreen = gfxEnv.defaultScreenDevice
+                val defaultConfig = defaultScreen.defaultConfiguration
+                defaultConfig.defaultTransform.scaleX.toFloat()
+            } catch (e: Exception) {
+                1.0f
+            }
+
+            val osName = System.getProperty("os.name").lowercase()
+            val detectedScale = when {
+                // macOS - handle retina displays
+                osName.contains("mac") -> when {
+                    systemScale >= 2.0f -> 1.5f  // Retina: scale down from 2x
+                    screenResolution >= 150 -> 1.3f  // High DPI
+                    else -> 1.0f  // Standard DPI
+                }
+
+                // Windows - handle high DPI scaling  
+                osName.contains("windows") -> when {
+                    systemScale >= 2.0f -> 1.7f  // 200% scaling
+                    systemScale >= 1.5f -> 1.4f  // 150% scaling  
+                    systemScale >= 1.25f -> 1.2f // 125% scaling
+                    else -> 1.0f  // 100% scaling
+                }
+
+                // Linux - conservative scaling
+                osName.contains("linux") -> when {
+                    screenResolution >= 180 -> 1.3f  // High DPI
+                    screenResolution >= 120 -> 1.1f  // Medium DPI
+                    else -> 1.0f  // Standard DPI
+                }
+
+                // Other platforms - safe default
+                else -> 1.0f
+            }
+
+            println("[SettingsService] Auto-detected UI scale: $detectedScale (OS: $osName, DPI: $screenResolution, SystemScale: $systemScale)")
+            detectedScale
+
+        } catch (e: Exception) {
+            println("[SettingsService] Failed to auto-detect UI scale, using default: ${e.message}")
+            1.0f  // Safe fallback
+        }
+    }
+
 }

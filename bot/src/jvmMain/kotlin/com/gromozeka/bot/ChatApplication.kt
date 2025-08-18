@@ -13,7 +13,9 @@ import androidx.compose.ui.focus.focusTarget
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.onPointerEvent
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -145,7 +147,11 @@ fun main() {
 
     println("[GROMOZEKA] Starting Compose Desktop UI...")
     application {
-        GromozekaTheme(themeService) {
+        val currentSettings by settingsService.settingsFlow.collectAsState()
+
+        GromozekaTheme(
+            themeService = themeService
+        ) {
             TranslationProvider(translationService) {
                 ChatWindow(
                     appViewModel,
@@ -165,8 +171,8 @@ fun main() {
                     aiThemeGenerator,
                     context
                 )
-            }
-        }
+            }  // TranslationProvider
+        }  // GromozekaTheme
     }
 }
 
@@ -260,7 +266,6 @@ fun ApplicationScope.ChatWindow(
 
 
     val sendMessage: suspend (String) -> Unit = { message ->
-        println("[ChatApp] SEND MESSAGE CALLED: $message")
         try {
             currentSession?.sendMessage(message)
         } catch (e: Exception) {
@@ -351,168 +356,177 @@ fun ApplicationScope.ChatWindow(
         },
         icon = painterResource("logos/logo-256x256.png")
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(MaterialTheme.colorScheme.background)
-                .focusTarget()
-                .advancedEscape(pttEventRouter)
-                .onKeyEvent { event ->
-                    if (event.key == Key.T &&
-                        event.isMetaPressed &&
-                        event.type == KeyEventType.KeyDown
-                    ) {
+        CompositionLocalProvider(
+            LocalDensity provides Density(
+                density = settingsService.settings.uiScale,
+                fontScale = settingsService.settings.fontScale,
+            ),
+        )
+        {
 
-                        // Cmd+T работает только на экране сессии (не на экране проектов)
-                        val selectedTabIndex = currentTabIndex?.plus(1) ?: 0
-                        if (selectedTabIndex > 0 && currentSession != null) {
-                            createNewSession(currentSession!!.projectPath)
-                        }
-                        true
-                    } else false
-                }
-        ) {
-            if (initialized) {
-                // Root layout: Row with main area and settings panel
-                Row(modifier = Modifier.fillMaxSize()) {
-                    // Main area with tabs and content
-                    Column(modifier = Modifier.weight(1f)) {
-                        // Tab Row - position based on showTabsAtBottom setting  
-                        val selectedTabIndex = currentTabIndex?.plus(1) ?: 0
-                        val tabRowComponent = @Composable {
-                            CustomTabRow(
-                                selectedTabIndex = selectedTabIndex,
-                                showTabsAtBottom = currentSettings.showTabsAtBottom,
-                                tabs = tabs,
-                                hoveredTabIndex = hoveredTabIndex,
-                                onTabSelect = { tabIndex ->
-                                    if (tabIndex == null) {
-                                        coroutineScope.launch {
-                                            appViewModel.selectTab(null)
-                                            // Trigger refresh when switching to projects tab
-                                            sessionListRefreshTrigger++
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.background)
+                    .focusTarget()
+                    .advancedEscape(pttEventRouter)
+                    .onKeyEvent { event ->
+                        if (event.key == Key.T &&
+                            event.isMetaPressed &&
+                            event.type == KeyEventType.KeyDown
+                        ) {
+
+                            // Cmd+T работает только на экране сессии (не на экране проектов)
+                            val selectedTabIndex = currentTabIndex?.plus(1) ?: 0
+                            if (selectedTabIndex > 0 && currentSession != null) {
+                                createNewSession(currentSession!!.projectPath)
+                            }
+                            true
+                        } else false
+                    }
+            ) {
+                if (initialized) {
+                    // Root layout: Row with main area and settings panel
+                    Row(modifier = Modifier.fillMaxSize()) {
+                        // Main area with tabs and content
+                        Column(modifier = Modifier.weight(1f)) {
+                            // Tab Row - position based on showTabsAtBottom setting
+                            val selectedTabIndex = currentTabIndex?.plus(1) ?: 0
+                            val tabRowComponent = @Composable {
+                                CustomTabRow(
+                                    selectedTabIndex = selectedTabIndex,
+                                    showTabsAtBottom = currentSettings.showTabsAtBottom,
+                                    tabs = tabs,
+                                    hoveredTabIndex = hoveredTabIndex,
+                                    onTabSelect = { tabIndex ->
+                                        if (tabIndex == null) {
+                                            coroutineScope.launch {
+                                                appViewModel.selectTab(null)
+                                                // Trigger refresh when switching to projects tab
+                                                sessionListRefreshTrigger++
+                                            }
+                                        } else {
+                                            coroutineScope.launch {
+                                                appViewModel.selectTab(tabIndex)
+                                            }
                                         }
-                                    } else {
+                                    },
+                                    onTabHover = { index -> hoveredTabIndex = index },
+                                    onTabHoverExit = { hoveredTabIndex = -1 },
+                                    onRenameTab = { tabIndexToRename, newName ->
                                         coroutineScope.launch {
-                                            appViewModel.selectTab(tabIndex)
+                                            appViewModel.renameTab(tabIndexToRename, newName)
                                         }
-                                    }
-                                },
-                                onTabHover = { index -> hoveredTabIndex = index },
-                                onTabHoverExit = { hoveredTabIndex = -1 },
-                                onRenameTab = { tabIndexToRename, newName ->
-                                    coroutineScope.launch {
-                                        appViewModel.renameTab(tabIndexToRename, newName)
-                                    }
-                                },
-                                coroutineScope = coroutineScope
-                            )
-                        }
+                                    },
+                                    coroutineScope = coroutineScope
+                                )
+                            }
 
-                        // Conditional layout based on tab position setting
-                        if (!currentSettings.showTabsAtBottom) {
-                            // Tabs at top: show TabRow then content
-                            tabRowComponent()
-                        }
+                            // Conditional layout based on tab position setting
+                            if (!currentSettings.showTabsAtBottom) {
+                                // Tabs at top: show TabRow then content
+                                tabRowComponent()
+                            }
 
-                        // Content area with global 16dp padding according to design system
-                        Column(modifier = Modifier.weight(1f).padding(16.dp)) {
-                            // Tab Content - All tabs exist in parallel, only selected is visible
-                            Box(modifier = Modifier.weight(1f)) {
-                                // SessionListScreen tab - always exists
-                                val isSessionListVisible = selectedTabIndex == 0
-                                Box(
-                                    modifier = Modifier.fillMaxSize()
-                                        .alpha(if (isSessionListVisible) 1f else 0f)
-                                ) {
-                                    SessionListScreen(
-                                        onSessionMetadataSelected = { session ->
-                                            // Session and ViewModel already created in SessionListScreen
-                                            // Tab UI will automatically switch to the new session
-                                        },
-                                        coroutineScope = coroutineScope,
-                                        onNewSession = createNewSession,
-                                        sessionJsonlService = sessionJsonlService,
-                                        sessionManager = sessionManager,
-                                        appViewModel = appViewModel,
-                                        searchViewModel = sessionSearchViewModel,
-                                        showSettingsPanel = showSettingsPanel,
-                                        onShowSettingsPanelChange = { showSettingsPanel = it },
-                                        refreshTrigger = sessionListRefreshTrigger
-                                    )
-                                }
-
-                                // Only render SessionScreen for current tab
-                                if (currentTab != null && currentSession != null) {
-                                    currentTab?.let { sessionViewModel ->
-                                        SessionScreen(
-                                            viewModel = sessionViewModel,
-
-                                            // Navigation callbacks - modified to not stop sessions
-                                            onBackToSessionList = {
-                                                // Switch to SessionListScreen tab without stopping session
-                                                coroutineScope.launch {
-                                                    appViewModel.selectTab(null)
-                                                }
+                            // Content area with global 16dp padding according to design system
+                            Column(modifier = Modifier.weight(1f).padding(16.dp)) {
+                                // Tab Content - All tabs exist in parallel, only selected is visible
+                                Box(modifier = Modifier.weight(1f)) {
+                                    // SessionListScreen tab - always exists
+                                    val isSessionListVisible = selectedTabIndex == 0
+                                    Box(
+                                        modifier = Modifier.fillMaxSize()
+                                            .alpha(if (isSessionListVisible) 1f else 0f)
+                                    ) {
+                                        SessionListScreen(
+                                            onSessionMetadataSelected = { session ->
+                                                // Session and ViewModel already created in SessionListScreen
+                                                // Tab UI will automatically switch to the new session
                                             },
-                                            onNewSession = {
-                                                createNewSession(currentSession!!.projectPath)
-                                            },
-                                            onOpenTab = createNewSession, // Reuse the same function for opening tabs
-                                            onOpenTabWithMessage = createNewSessionWithMessage, // For AI theme generation with initial message
-
-                                            // Close session callback - removes session and stops it
-                                            onCloseTab = {
-                                                coroutineScope.launch {
-                                                    currentTabIndex?.let { index ->
-                                                        appViewModel.closeTab(index)
-                                                    }
-                                                }
-                                            },
-
-                                            // Services
-                                            ttsQueueService = ttsQueueService,
                                             coroutineScope = coroutineScope,
-                                            modifierWithPushToTalk = modifierWithPushToTalk,
-                                            isRecording = isRecording,
-
-                                            // Settings
-                                            settings = currentSettings,
+                                            onNewSession = createNewSession,
+                                            sessionJsonlService = sessionJsonlService,
+                                            sessionManager = sessionManager,
+                                            appViewModel = appViewModel,
+                                            searchViewModel = sessionSearchViewModel,
                                             showSettingsPanel = showSettingsPanel,
                                             onShowSettingsPanelChange = { showSettingsPanel = it },
-
-                                            // Dev mode
-                                            isDev = settingsService.mode == com.gromozeka.bot.settings.AppMode.DEV,
+                                            refreshTrigger = sessionListRefreshTrigger
                                         )
+                                    }
+
+                                    // Only render SessionScreen for current tab
+                                    if (currentTab != null && currentSession != null) {
+                                        currentTab?.let { sessionViewModel ->
+                                            SessionScreen(
+                                                viewModel = sessionViewModel,
+
+                                                // Navigation callbacks - modified to not stop sessions
+                                                onBackToSessionList = {
+                                                    // Switch to SessionListScreen tab without stopping session
+                                                    coroutineScope.launch {
+                                                        appViewModel.selectTab(null)
+                                                    }
+                                                },
+                                                onNewSession = {
+                                                    createNewSession(currentSession!!.projectPath)
+                                                },
+                                                onOpenTab = createNewSession, // Reuse the same function for opening tabs
+                                                onOpenTabWithMessage = createNewSessionWithMessage, // For AI theme generation with initial message
+
+                                                // Close session callback - removes session and stops it
+                                                onCloseTab = {
+                                                    coroutineScope.launch {
+                                                        currentTabIndex?.let { index ->
+                                                            appViewModel.closeTab(index)
+                                                        }
+                                                    }
+                                                },
+
+                                                // Services
+                                                ttsQueueService = ttsQueueService,
+                                                coroutineScope = coroutineScope,
+                                                modifierWithPushToTalk = modifierWithPushToTalk,
+                                                isRecording = isRecording,
+
+                                                // Settings
+                                                settings = currentSettings,
+                                                showSettingsPanel = showSettingsPanel,
+                                                onShowSettingsPanelChange = { showSettingsPanel = it },
+
+                                                // Dev mode
+                                                isDev = settingsService.mode == com.gromozeka.bot.settings.AppMode.DEV,
+                                            )
+                                        }
                                     }
                                 }
                             }
+
+                            // Conditional layout based on tab position setting
+                            if (currentSettings.showTabsAtBottom) {
+                                // Tabs at bottom: show TabRow after content
+                                tabRowComponent()
+                            }
                         }
 
-                        // Conditional layout based on tab position setting
-                        if (currentSettings.showTabsAtBottom) {
-                            // Tabs at bottom: show TabRow after content
-                            tabRowComponent()
-                        }
+                        // Settings Panel - now at the root level, outside of the tab area
+                        SettingsPanel(
+                            isVisible = showSettingsPanel,
+                            settings = currentSettings,
+                            onSettingsChange = onSettingsChange,
+                            onClose = { showSettingsPanel = false },
+                            translationService = translationService,
+                            themeService = themeService,
+                            aiThemeGenerator = aiThemeGenerator,
+                            coroutineScope = coroutineScope,
+                            onOpenTab = createNewSession,
+                            onOpenTabWithMessage = createNewSessionWithMessage
+                        )
                     }
-
-                    // Settings Panel - now at the root level, outside of the tab area
-                    SettingsPanel(
-                        isVisible = showSettingsPanel,
-                        settings = currentSettings,
-                        onSettingsChange = onSettingsChange,
-                        onClose = { showSettingsPanel = false },
-                        translationService = translationService,
-                        themeService = themeService,
-                        aiThemeGenerator = aiThemeGenerator,
-                        coroutineScope = coroutineScope,
-                        onOpenTab = createNewSession,
-                        onOpenTabWithMessage = createNewSessionWithMessage
-                    )
-                }
-            } else {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
+                } else {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator()
+                    }
                 }
             }
         }

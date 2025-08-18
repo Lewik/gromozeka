@@ -10,115 +10,92 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import com.mikepenz.markdown.m3.Markdown
-import com.mikepenz.markdown.m3.markdownTypography
 import com.gromozeka.bot.services.theming.ThemeService
-
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import com.mikepenz.markdown.m3.Markdown
 
 @Composable
 fun GromozekaTheme(
     themeService: ThemeService? = null,
-    content: @Composable () -> Unit
+    content: @Composable () -> Unit,
 ) {
     // Get current theme from service, fallback to default dark theme if service not available
     val currentTheme by (themeService?.currentTheme?.collectAsState()
         ?: androidx.compose.runtime.mutableStateOf(com.gromozeka.bot.services.theming.data.DarkTheme()))
-    
-    // Create ColorScheme from current theme data
+
+    // Create basic ColorScheme from current theme data - only required fields for now
     val colorScheme = ColorScheme(
         primary = currentTheme.primary.toComposeColor(),
         onPrimary = currentTheme.onPrimary.toComposeColor(),
         primaryContainer = currentTheme.primaryContainer.toComposeColor(),
         onPrimaryContainer = currentTheme.onPrimaryContainer.toComposeColor(),
-        inversePrimary = currentTheme.inversePrimary?.toComposeColor() ?: Color(0xFFBEA6FF),
-        
+        inversePrimary = Color(0xFFBEA6FF), // fallback
+
         secondary = currentTheme.secondary.toComposeColor(),
         onSecondary = currentTheme.onSecondary.toComposeColor(),
         secondaryContainer = currentTheme.secondaryContainer.toComposeColor(),
         onSecondaryContainer = currentTheme.onSecondaryContainer.toComposeColor(),
-        
-        tertiary = currentTheme.tertiary?.toComposeColor() ?: Color(0xFF6750A4),
-        onTertiary = currentTheme.onTertiary?.toComposeColor() ?: Color(0xFFFFFFFF),
-        tertiaryContainer = currentTheme.tertiaryContainer?.toComposeColor() ?: Color(0xFFEADDFF),
-        onTertiaryContainer = currentTheme.onTertiaryContainer?.toComposeColor() ?: Color(0xFF21005D),
-        
+
+        tertiary = currentTheme.tertiary?.toComposeColor() ?: currentTheme.primary.toComposeColor(),
+        onTertiary = currentTheme.onTertiary?.toComposeColor() ?: currentTheme.onPrimary.toComposeColor(),
+        tertiaryContainer = currentTheme.tertiaryContainer?.toComposeColor()
+            ?: currentTheme.primaryContainer.toComposeColor(),
+        onTertiaryContainer = currentTheme.onTertiaryContainer?.toComposeColor()
+            ?: currentTheme.onPrimaryContainer.toComposeColor(),
+
         background = currentTheme.background.toComposeColor(),
         onBackground = currentTheme.onBackground.toComposeColor(),
         surface = currentTheme.surface.toComposeColor(),
         onSurface = currentTheme.onSurface.toComposeColor(),
         surfaceVariant = currentTheme.surfaceVariant.toComposeColor(),
         onSurfaceVariant = currentTheme.onSurfaceVariant.toComposeColor(),
-        surfaceTint = currentTheme.primary.toComposeColor(), // Use primary as surface tint
-        inverseSurface = currentTheme.inverseSurface?.toComposeColor() ?: Color(0xFF313033),
-        inverseOnSurface = currentTheme.inverseOnSurface?.toComposeColor() ?: Color(0xFFF4EFF4),
-        
+        surfaceTint = currentTheme.primary.toComposeColor(),
+        inverseSurface = Color(0xFF313030),
+        inverseOnSurface = Color(0xFFF1F0F0),
+
         error = currentTheme.error.toComposeColor(),
         onError = currentTheme.onError.toComposeColor(),
         errorContainer = currentTheme.errorContainer.toComposeColor(),
         onErrorContainer = currentTheme.onErrorContainer.toComposeColor(),
-        
+
         outline = currentTheme.outline.toComposeColor(),
-        outlineVariant = currentTheme.outlineVariant?.toComposeColor() ?: Color(0xFFCAC4D0),
-        scrim = currentTheme.scrim?.toComposeColor() ?: Color(0xFF000000),
-        
-        // Additional required surface colors - use calculated variants
-        surfaceBright = currentTheme.surface.toComposeColor().copy(alpha = 0.87f),
-        surfaceDim = currentTheme.surface.toComposeColor().copy(alpha = 0.12f),
-        surfaceContainer = currentTheme.surfaceVariant.toComposeColor(),
-        surfaceContainerHigh = currentTheme.surfaceVariant.toComposeColor().copy(alpha = 0.87f),
+        outlineVariant = Color(0xFF444746),
+
+        scrim = Color(0xFF000000),
+
+        surfaceDim = currentTheme.surfaceVariant.toComposeColor().copy(alpha = 0.87f),
+        surfaceBright = currentTheme.surface.toComposeColor().copy(alpha = 1.0f),
+        surfaceContainer = currentTheme.surfaceVariant.toComposeColor().copy(alpha = 0.94f),
+        surfaceContainerHigh = currentTheme.surfaceVariant.toComposeColor().copy(alpha = 0.92f),
         surfaceContainerHighest = currentTheme.surfaceVariant.toComposeColor().copy(alpha = 1.0f),
         surfaceContainerLow = currentTheme.surfaceVariant.toComposeColor().copy(alpha = 0.38f),
         surfaceContainerLowest = currentTheme.surfaceVariant.toComposeColor().copy(alpha = 0.12f),
     )
-    val compactTypography = Typography(
-        // Headers - максимум 24sp, пропорционально уменьшается
-        displayLarge = MaterialTheme.typography.displayLarge.copy(fontSize = 24.sp, lineHeight = 28.sp),
-        displayMedium = MaterialTheme.typography.displayMedium.copy(fontSize = 22.sp, lineHeight = 26.sp),
-        displaySmall = MaterialTheme.typography.displaySmall.copy(fontSize = 20.sp, lineHeight = 24.sp),
 
-        headlineLarge = MaterialTheme.typography.headlineLarge.copy(fontSize = 20.sp, lineHeight = 24.sp),
-        headlineMedium = MaterialTheme.typography.headlineMedium.copy(fontSize = 18.sp, lineHeight = 22.sp),
-        headlineSmall = MaterialTheme.typography.headlineSmall.copy(fontSize = 16.sp, lineHeight = 20.sp),
+    val baseRadius = CompactButtonDefaults.CornerRadius
 
-        titleLarge = MaterialTheme.typography.titleLarge.copy(fontSize = 16.sp, lineHeight = 20.sp),
-        titleMedium = MaterialTheme.typography.titleMedium.copy(fontSize = 14.sp, lineHeight = 18.sp),
-        titleSmall = MaterialTheme.typography.titleSmall.copy(fontSize = 13.sp, lineHeight = 17.sp),
-
-        // Body text - основа 12sp
-        bodyLarge = MaterialTheme.typography.bodyLarge.copy(fontSize = 12.sp, lineHeight = 16.sp),
-        bodyMedium = MaterialTheme.typography.bodyMedium.copy(fontSize = 12.sp, lineHeight = 16.sp),
-        bodySmall = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp, lineHeight = 16.sp),
-
-        // Labels - 11sp как есть
-        labelLarge = MaterialTheme.typography.labelLarge.copy(fontSize = 11.sp, lineHeight = 15.sp),
-        labelMedium = MaterialTheme.typography.labelMedium.copy(fontSize = 11.sp, lineHeight = 15.sp),
-        labelSmall = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp, lineHeight = 15.sp)
+    val shapes = Shapes(
+        extraSmall = RoundedCornerShape(baseRadius * 0.5f), // 4dp / 11dp
+        small = RoundedCornerShape(baseRadius),              // 8dp / 22dp - main radius  
+        medium = RoundedCornerShape(baseRadius * 1.5f),     // 12dp / 33dp
+        large = RoundedCornerShape(baseRadius * 2f),        // 16dp / 44dp
+        extraLarge = RoundedCornerShape(baseRadius * 3f)    // 24dp / 66dp
     )
 
     MaterialTheme(
         colorScheme = colorScheme,
-        typography = compactTypography,
+        shapes = shapes,
         content = content
     )
 }
 
-// Compact Button Defaults
+// Keep existing compact components for backward compatibility
 object CompactButtonDefaults {
-    val ContentPadding = PaddingValues(horizontal = 6.dp, vertical = 4.dp)
-    val ButtonHeight = 28.dp
-    val CornerRadius = 6.dp
-    val SwitchScale = 0.8f
+    val ContentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+    val CornerRadius = 8.dp
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -144,64 +121,31 @@ fun CompactButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
-    tooltip: String? = null,
+    shape: Shape = MaterialTheme.shapes.small, // Default to our design system radius
+    colors: ButtonColors = ButtonDefaults.buttonColors(),
+    elevation: ButtonElevation? = ButtonDefaults.buttonElevation(),
+    border: BorderStroke? = null,
     contentPadding: PaddingValues = CompactButtonDefaults.ContentPadding,
+    interactionSource: MutableInteractionSource? = null,
+    tooltip: String? = null, // Additional parameter for tooltip support
     content: @Composable RowScope.() -> Unit,
 ) {
     OptionalTooltip(tooltip) {
         Button(
             onClick = onClick,
-            modifier = modifier.height(CompactButtonDefaults.ButtonHeight),
+            modifier = modifier, // Removed fixed height for global UI scaling compatibility
             enabled = enabled,
+            shape = shape,
+            colors = colors,
+            elevation = elevation,
+            border = border,
             contentPadding = contentPadding,
-            shape = RoundedCornerShape(CompactButtonDefaults.CornerRadius),
-            content = {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    content = content
-                )
-            }
-        )
-    }
-}
-
-@Composable
-fun CompactIconButton(
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    enabled: Boolean = true,
-    tooltip: String? = null,
-    content: @Composable () -> Unit,
-) {
-    OptionalTooltip(tooltip) {
-        FilledIconButton(
-            onClick = onClick,
-            modifier = modifier.size(CompactButtonDefaults.ButtonHeight),
-            shape = RoundedCornerShape(CompactButtonDefaults.CornerRadius),
-            enabled = enabled,
+            interactionSource = interactionSource,
             content = content
         )
     }
 }
 
-@Composable
-fun CompactSwitch(
-    checked: Boolean,
-    onCheckedChange: ((Boolean) -> Unit)?,
-    modifier: Modifier = Modifier,
-    enabled: Boolean = true,
-    colors: SwitchColors = SwitchDefaults.colors(),
-    interactionSource: MutableInteractionSource? = null,
-) {
-    Switch(
-        checked = checked,
-        onCheckedChange = onCheckedChange,
-        modifier = modifier.scale(CompactButtonDefaults.SwitchScale),
-        enabled = enabled,
-        colors = colors,
-        interactionSource = interactionSource
-    )
-}
 
 @Composable
 fun CompactCard(
@@ -210,7 +154,7 @@ fun CompactCard(
 ) {
     Card(
         modifier = modifier,
-        shape = RoundedCornerShape(CompactButtonDefaults.CornerRadius),
+        shape = MaterialTheme.shapes.small,
         content = content
     )
 }
@@ -222,18 +166,6 @@ fun GromozekaMarkdown(
 ) {
     Markdown(
         content = content,
-        typography = markdownTypography(
-            h1 = MaterialTheme.typography.displayMedium,    // 22sp (было 24sp)
-            h2 = MaterialTheme.typography.displaySmall,     // 20sp (было 22sp)  
-            h3 = MaterialTheme.typography.headlineMedium,   // 18sp (было 20sp)
-            h4 = MaterialTheme.typography.headlineSmall,    // 16sp (было 18sp)
-            h5 = MaterialTheme.typography.titleMedium,      // 14sp (было 16sp)
-            h6 = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold), // 12sp жирный
-            text = MaterialTheme.typography.bodyMedium,     // 12sp
-            paragraph = MaterialTheme.typography.bodyMedium, // 12sp
-            code = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace), // 12sp mono
-            inlineCode = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace) // 12sp mono
-        ),
         modifier = modifier
     )
 }
@@ -247,8 +179,11 @@ fun CustomSegmentedButtonGroup(
     onSelectionChange: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    // Извлекаем радиус из темы для консистентности
+    val cornerRadius = CompactButtonDefaults.CornerRadius // 8.dp, синхронизирован с MaterialTheme.shapes.small
+
     Row(
-        modifier = modifier.height(CompactButtonDefaults.ButtonHeight),
+        modifier = modifier, // .height(CompactButtonDefaults.ButtonHeight), // Removed: conflicts with global UI scaling
         horizontalArrangement = Arrangement.Start
     ) {
         options.forEachIndexed { index, option ->
@@ -256,29 +191,31 @@ fun CustomSegmentedButtonGroup(
             val isFirst = index == 0
             val isLast = index == options.size - 1
             val isSingle = options.size == 1
-            
-            // Определяем форму кнопки
+
+            // Определяем форму кнопки используя глобальные shapes
             val shape = when {
-                isSingle -> RoundedCornerShape(CompactButtonDefaults.CornerRadius)
+                isSingle -> MaterialTheme.shapes.small
                 isFirst -> RoundedCornerShape(
-                    topStart = CompactButtonDefaults.CornerRadius,
-                    bottomStart = CompactButtonDefaults.CornerRadius,
+                    topStart = cornerRadius,
+                    bottomStart = cornerRadius,
                     topEnd = 0.dp,
                     bottomEnd = 0.dp
                 )
+
                 isLast -> RoundedCornerShape(
                     topStart = 0.dp,
-                    bottomStart = 0.dp, 
-                    topEnd = CompactButtonDefaults.CornerRadius,
-                    bottomEnd = CompactButtonDefaults.CornerRadius
+                    bottomStart = 0.dp,
+                    topEnd = cornerRadius,
+                    bottomEnd = cornerRadius
                 )
+
                 else -> RoundedCornerShape(0.dp)
             }
-            
+
             OptionalTooltip(option.tooltip) {
                 Button(
                     onClick = { onSelectionChange(index) },
-                    modifier = Modifier.height(CompactButtonDefaults.ButtonHeight),
+                    modifier = Modifier, // .height(CompactButtonDefaults.ButtonHeight), // Removed: conflicts with global UI scaling
                     contentPadding = CompactButtonDefaults.ContentPadding,
                     shape = shape,
                     colors = if (isSelected) {
@@ -310,69 +247,8 @@ fun CustomSegmentedButtonGroup(
     }
 }
 
-// === Old Segmented Button Group using Material3 built-in components ===
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun SegmentedButtonGroup(
-    options: List<SegmentedButtonOption>,
-    selectedIndex: Int,
-    onSelectionChange: (Int) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    SingleChoiceSegmentedButtonRow(
-        modifier = modifier.height(CompactButtonDefaults.ButtonHeight)
-    ) {
-        options.forEachIndexed { index, option ->
-            OptionalTooltip(option.tooltip) {
-                SegmentedButton(
-                    shape = SegmentedButtonDefaults.itemShape(
-                        index = index,
-                        count = options.size,
-                        baseShape = RoundedCornerShape(CompactButtonDefaults.CornerRadius)
-                    ),
-                    onClick = { onSelectionChange(index) },
-                    selected = index == selectedIndex,
-                    colors = SegmentedButtonDefaults.colors(
-                        activeContainerColor = MaterialTheme.colorScheme.primary,
-                        activeContentColor = MaterialTheme.colorScheme.onPrimary,
-                        inactiveContainerColor = MaterialTheme.colorScheme.surface,
-                        inactiveContentColor = MaterialTheme.colorScheme.onSurface,
-                        activeBorderColor = MaterialTheme.colorScheme.primary,
-                        inactiveBorderColor = MaterialTheme.colorScheme.outline
-                    ),
-                    modifier = Modifier.height(CompactButtonDefaults.ButtonHeight)
-                ) {
-                    Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-            Row(
-                Modifier.defaultMinSize(
-                        minWidth = ButtonDefaults.MinWidth,
-                        minHeight = ButtonDefaults.MinHeight
-                    )
-                    .padding(CompactButtonDefaults.ContentPadding),
-
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically,
-
-            ) {
-                     Text(
-                        text = option.text,
-                        style = MaterialTheme.typography.bodyMedium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-        }
-
-                }
-                }
-            }
-        }
-    }
-}
 
 data class SegmentedButtonOption(
     val text: String,
-    val tooltip: String? = null
+    val tooltip: String? = null,
 )
