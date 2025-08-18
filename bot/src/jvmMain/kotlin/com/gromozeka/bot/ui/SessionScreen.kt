@@ -5,20 +5,21 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.ContextMenuArea
 import androidx.compose.foundation.ContextMenuItem
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.selection.DisableSelection
 import androidx.compose.foundation.text.selection.SelectionContainer
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
-import androidx.compose.material.icons.filled.FiberManualRecord
-import androidx.compose.material.icons.filled.Mic
-import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
@@ -64,8 +65,8 @@ fun SessionScreen(
     // Dev mode
     isDev: Boolean = false,
 ) {
-    // UI state management (only scroll remains local)
-    val scrollState = rememberScrollState()
+    // UI state management - LazyColumn state instead of scroll state
+    val lazyListState = rememberLazyListState()
     var stickyToBottom by remember { mutableStateOf(true) }
 
     // All data comes from ViewModel
@@ -92,26 +93,30 @@ fun SessionScreen(
         }
     }
 
+    // LazyColumn sticky to bottom logic
     val isAtBottom by remember {
         derivedStateOf {
-            scrollState.value >= scrollState.maxValue - 50
+            lazyListState.layoutInfo.let { layoutInfo ->
+                val lastVisibleItem = layoutInfo.visibleItemsInfo.lastOrNull()
+                val totalItems = layoutInfo.totalItemsCount
+                lastVisibleItem?.index == totalItems - 1 || totalItems == 0
+            }
         }
     }
 
-    LaunchedEffect(scrollState.value, isAtBottom) {
+    LaunchedEffect(lazyListState.firstVisibleItemIndex, isAtBottom) {
         if (isAtBottom) {
             stickyToBottom = true
-        } else if (scrollState.isScrollInProgress) {
+        } else if (lazyListState.isScrollInProgress) {
             stickyToBottom = false
         }
     }
 
     LaunchedEffect(filteredHistory.size) {
-        if (stickyToBottom) {
-            scrollState.animateScrollTo(scrollState.maxValue)
+        if (stickyToBottom && filteredHistory.isNotEmpty()) {
+            lazyListState.animateScrollToItem(filteredHistory.size - 1)
         }
     }
-
 
     Row(modifier = Modifier.fillMaxSize()) {
         // Main chat content
@@ -130,7 +135,14 @@ fun SessionScreen(
                             onClick = { },
                             tooltip = LocalTranslation.current.messageCountTooltip.format(filteredHistory.size)
                         ) {
-                            Text("💬 ${filteredHistory.size}")
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    Icons.Default.ChatBubbleOutline,
+                                    contentDescription = "Messages"
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("${filteredHistory.size}")
+                            }
                         }
 
                         Spacer(modifier = Modifier.width(8.dp))
@@ -140,7 +152,14 @@ fun SessionScreen(
                             onClick = { },
                             tooltip = tokenUsageTooltip
                         ) {
-                            Text("🪙 $formattedTokenUsage")
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    Icons.Default.MonetizationOn,
+                                    contentDescription = "Tokens"
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(formattedTokenUsage)
+                            }
                         }
 
                         Spacer(modifier = Modifier.width(8.dp))
@@ -160,7 +179,7 @@ fun SessionScreen(
                                 onClick = closeCallback,
                                 tooltip = LocalTranslation.current.closeTabTooltip
                             ) {
-                                Text("✕")
+                                Icon(Icons.Default.Close, contentDescription = LocalTranslation.current.closeTabTooltip)
                             }
                         }
                     }
@@ -168,21 +187,24 @@ fun SessionScreen(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                Column(modifier = Modifier.weight(1f).verticalScroll(scrollState)) {
-                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        filteredHistory.forEach { message ->
-                            MessageItem(
-                                message = message,
-                                settings = settings,
-                                toolResultsMap = toolResultsMap,
-                                onShowJson = { json -> viewModel.jsonToShow = json },
-                                onSpeakRequest = { text, tone ->
-                                    coroutineScope.launch {
-                                        ttsQueueService.enqueue(TTSQueueService.Task(text, tone))
-                                    }
+                // LazyColumn instead of Column + forEach
+                LazyColumn(
+                    modifier = Modifier.weight(1f),
+                    state = lazyListState,
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    items(filteredHistory) { message ->
+                        MessageItem(
+                            message = message,
+                            settings = settings,
+                            toolResultsMap = toolResultsMap,
+                            onShowJson = { json -> viewModel.jsonToShow = json },
+                            onSpeakRequest = { text, tone ->
+                                coroutineScope.launch {
+                                    ttsQueueService.enqueue(TTSQueueService.Task(text, tone))
                                 }
-                            )
-                        }
+                            }
+                        )
                     }
                 }
 
@@ -226,7 +248,10 @@ fun SessionScreen(
                             },
                             tooltip = LocalTranslation.current.screenshotTooltip
                         ) {
-                            Text("📷")
+                            Icon(
+                                Icons.Default.CameraAlt,
+                                contentDescription = LocalTranslation.current.screenshotTooltip
+                            )
                         }
                     }
 
@@ -270,32 +295,25 @@ private fun MessageItem(
 
     // Combined metadata button data
     val roleIcon = when (message.role) {
-        ChatMessage.Role.USER -> "👤"
-        ChatMessage.Role.ASSISTANT -> "🤖"
-        ChatMessage.Role.SYSTEM -> "⚙️"
+        ChatMessage.Role.USER -> Icons.Default.Person
+        ChatMessage.Role.ASSISTANT -> Icons.Default.DeveloperBoard
+        ChatMessage.Role.SYSTEM -> Icons.Default.Settings
     }
 
     val contentIcons = message.content.mapNotNull { content ->
         when (content) {
             is ChatMessage.ContentItem.UserMessage -> null
-            is ChatMessage.ContentItem.ToolCall -> "🔧"
+            is ChatMessage.ContentItem.ToolCall -> Icons.Default.Build
             is ChatMessage.ContentItem.ToolResult -> null // Don't show ToolResult icon - they're integrated into ToolCall
-            is ChatMessage.ContentItem.Thinking -> "🤔"
-            is ChatMessage.ContentItem.System -> "⚙️"
+            is ChatMessage.ContentItem.Thinking -> Icons.Default.Psychology
+            is ChatMessage.ContentItem.System -> Icons.Default.Settings
             is ChatMessage.ContentItem.AssistantMessage -> null
-            is ChatMessage.ContentItem.ImageItem -> "🖼️"
-            is ChatMessage.ContentItem.UnknownJson -> "⚠️"
+            is ChatMessage.ContentItem.ImageItem -> Icons.Default.Image
+            is ChatMessage.ContentItem.UnknownJson -> Icons.Default.Warning
         }
     }.distinct()
 
-    val buttonLabel = buildString {
-        append(roleIcon)
-        if (contentIcons.isNotEmpty()) {
-            contentIcons.forEach { append(" $it") }
-        } else {
-            append(" 💬") // Default chat bubble if no content icons
-        }
-    }
+    val hasContentIcons = contentIcons.isNotEmpty()
 
     val tooltipText = buildString {
         // Role / Type format
@@ -323,7 +341,7 @@ private fun MessageItem(
         assistantContent?.structured?.let { structured ->
             if (structured.ttsText != null || structured.voiceTone != null) {
                 append("\n\n")
-                structured.ttsText?.let { append("🗣️ TTS: $it") }
+                structured.ttsText?.let { append("🎵 TTS: $it") }
                 if (structured.ttsText != null && structured.voiceTone != null) append("\n")
                 structured.voiceTone?.let { append("🎭 Tone: $it") }
             }
@@ -332,10 +350,9 @@ private fun MessageItem(
         append(translation.contextMenuHint)
     }
 
-    // Compact horizontal layout
+    // Compact horizontal layout - simple Row without IntrinsicSize.Min
     Row(
         modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.Top,
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         // Metadata button (left, fixed width) with context menu
@@ -370,7 +387,7 @@ private fun MessageItem(
 
                         if (hasTtsText) {
                             add(ContextMenuItem(translation.speakMenuItem) {
-                                val ttsText = assistantContent!!.structured.ttsText!!
+                                val ttsText = assistantContent.structured.ttsText!!
                                 val voiceTone = assistantContent.structured.voiceTone ?: ""
                                 onSpeakRequest(ttsText, voiceTone)
                             })
@@ -383,92 +400,124 @@ private fun MessageItem(
                     tooltip = tooltipText,
                     modifier = Modifier.pointerHoverIcon(PointerIcon.Hand)
                 ) {
-                    Text(buttonLabel)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            roleIcon,
+                            contentDescription = message.role.name
+                        )
+
+                        // Content type icons
+                        if (hasContentIcons) {
+                            contentIcons.forEach { contentIcon ->
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Icon(
+                                    contentIcon,
+                                    contentDescription = "Content type"
+                                )
+                            }
+                        } else {
+                            // Default chat bubble icon
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Icon(
+                                Icons.Default.ChatBubbleOutline,
+                                contentDescription = "Message"
+                            )
+                        }
+                    }
                 }
             }
         }
 
-        // Message content (right, expandable)
-        Card(
-            modifier = Modifier.weight(1f),
-            shape = androidx.compose.foundation.shape.RoundedCornerShape(0.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.primary.copy(
-                    alpha = if (message.role == ChatMessage.Role.USER &&
+        // Message content (right, expandable) - LazyColumn should provide proper constraints
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .heightIn(min = 48.dp) // Should work now with LazyColumn constraints
+                .background(
+                    color = if (message.role == ChatMessage.Role.USER &&
                         message.content.any { it is ChatMessage.ContentItem.UserMessage }
-                    ) 0.1f else 0f
+                    ) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+                    else Color.Transparent
                 )
-            )
+                .padding(start = if (message.content.any { it is ChatMessage.ContentItem.ToolCall }) 0.dp else 4.dp),
+            verticalArrangement = Arrangement.Center
         ) {
-            Column(
-                modifier = Modifier
-                    .padding(start = if (message.content.any { it is ChatMessage.ContentItem.ToolCall }) 0.dp else 4.dp),
-                verticalArrangement = Arrangement.Center
-            ) {
-                message.content.forEach { content ->
-                    when (content) {
-                        is ChatMessage.ContentItem.UserMessage -> {
-                            GromozekaMarkdown(content = content.text)
-                            Row {
+            message.content.forEach { content ->
+                when (content) {
+                    is ChatMessage.ContentItem.UserMessage -> {
+                        Row {
+                            Column(
+                                modifier = Modifier.weight(1f),
+                                verticalArrangement = Arrangement.Center,
+                            ) {
+                                GromozekaMarkdown(
+                                    content = content.text,
+                                )
+                            }
+                            FlowRow {
                                 message.activeTags.forEach { tag ->
-                                    AssistChip(
-                                        onClick = { },
-                                        label = {
-                                            Text(
-                                                text = tag.title,
-                                                style = MaterialTheme.typography.labelSmall
-                                            )
-                                        },
-                                        modifier = Modifier.height(24.dp)
-                                    )
-                                }
-                            }
-                        }
-
-                        is ChatMessage.ContentItem.ToolCall -> {
-                            // Find corresponding result from entire chat history
-                            val correspondingResult = toolResultsMap[content.id]
-                            ToolCallItem(
-                                toolCall = content.call,
-                                toolResult = correspondingResult
-                            )
-                        }
-
-                        is ChatMessage.ContentItem.ToolResult -> {
-                            // Don't render ToolResult separately - it's shown in ToolCallItem
-                        }
-
-                        is ChatMessage.ContentItem.ImageItem -> {
-                            when (val source = content.source) {
-                                is ChatMessage.ImageSource.Base64ImageSource -> {
-                                    // Base64 too long - show placeholder
-                                    Text(
-                                        LocalTranslation.current.imageDisplayText.format(
-                                            source.mediaType,
-                                            source.data.length
+                                    Badge {
+                                        Text(
+                                            text = tag.title,
+                                            style = MaterialTheme.typography.labelSmall
                                         )
-                                    )
-                                }
-
-                                is ChatMessage.ImageSource.UrlImageSource -> {
-                                    // URL can be shown in full
-                                    Text("🖼️ ${source.url}")
-                                }
-
-                                is ChatMessage.ImageSource.FileImageSource -> {
-                                    // File ID can be shown in full
-                                    Text("🖼️ File: ${source.fileId}")
+                                    }
                                 }
                             }
                         }
+                    }
 
-                        is ChatMessage.ContentItem.Thinking -> Text(text = content.thinking)
-                        is ChatMessage.ContentItem.System -> Text(text = content.content)
-                        is ChatMessage.ContentItem.AssistantMessage -> GromozekaMarkdown(content = content.structured.fullText)
-                        is ChatMessage.ContentItem.UnknownJson -> Column {
-                            Text(text = jsonPrettyPrint(content.json))
-                            Text(text = LocalTranslation.current.parseErrorText)
+                    is ChatMessage.ContentItem.ToolCall -> {
+                        // Find corresponding result from entire chat history
+                        val correspondingResult = toolResultsMap[content.id]
+                        ToolCallItem(
+                            toolCall = content.call,
+                            toolResult = correspondingResult
+                        )
+                    }
+
+                    is ChatMessage.ContentItem.ToolResult -> {
+                        // Don't render ToolResult separately - it's shown in ToolCallItem
+                    }
+
+                    is ChatMessage.ContentItem.ImageItem -> {
+                        when (val source = content.source) {
+                            is ChatMessage.ImageSource.Base64ImageSource -> {
+                                // Base64 too long - show placeholder
+                                Text(
+                                    LocalTranslation.current.imageDisplayText.format(
+                                        source.mediaType,
+                                        source.data.length
+                                    )
+                                )
+                            }
+
+                            is ChatMessage.ImageSource.UrlImageSource -> {
+                                // URL can be shown in full
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Default.Image, contentDescription = "Image")
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(source.url)
+                                }
+                            }
+
+                            is ChatMessage.ImageSource.FileImageSource -> {
+                                // File ID can be shown in full
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Default.Image, contentDescription = "Image")
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("File: ${source.fileId}")
+                                }
+                            }
                         }
+                    }
+
+                    is ChatMessage.ContentItem.Thinking -> Text(text = content.thinking)
+                    is ChatMessage.ContentItem.System -> Text(text = content.content)
+                    is ChatMessage.ContentItem.AssistantMessage -> GromozekaMarkdown(content = content.structured.fullText)
+                    is ChatMessage.ContentItem.UnknownJson -> Column {
+                        Text(text = jsonPrettyPrint(content.json))
+                        Text(text = LocalTranslation.current.parseErrorText)
                     }
                 }
             }
@@ -502,7 +551,7 @@ private fun MessageInput(
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min)
+        modifier = Modifier.fillMaxWidth().height(56.dp) // Fixed height instead of IntrinsicSize.Min
     ) {
         OutlinedTextField(
             value = userInput,
@@ -543,7 +592,7 @@ private fun MessageInput(
                 modifier = Modifier.fillMaxHeight(),
                 tooltip = LocalTranslation.current.sendMessageTooltip
             ) {
-                Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Send", modifier = Modifier.size(16.dp))
+                Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Send")
             }
         }
 
@@ -559,7 +608,6 @@ private fun MessageInput(
                 Icon(
                     imageVector = if (isRecording) Icons.Default.FiberManualRecord else Icons.Default.Mic,
                     contentDescription = if (isRecording) LocalTranslation.current.recordingText else LocalTranslation.current.pushToTalkText,
-                    modifier = Modifier.size(16.dp),
                     tint = if (isRecording) MaterialTheme.colorScheme.error else LocalContentColor.current
                 )
             }
@@ -627,7 +675,7 @@ private fun JsonDialog(
                 Row {
                     Text(LocalTranslation.current.viewOriginalJson)
                     CompactButton(onClick = onDismiss) {
-                        Text("✕")
+                        Icon(Icons.Default.Close, contentDescription = "Close")
                     }
                 }
 
@@ -654,9 +702,9 @@ private fun ToolCallItem(
 
     // Determine status icon based on toolResult
     val statusIcon = when {
-        toolResult == null -> "⏳" // No result yet - in progress
-        toolResult.isError -> "❌" // Error
-        else -> "✅" // Success
+        toolResult == null -> Icons.Default.Schedule // No result yet - in progress
+        toolResult.isError -> Icons.Default.Error // Error
+        else -> Icons.Default.CheckCircle // Success
     }
 
     // Get tool name for display
@@ -721,7 +769,10 @@ private fun ToolCallItem(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     // Status icon
-                    Text(statusIcon)
+                    Icon(
+                        statusIcon,
+                        contentDescription = "Tool status"
+                    )
                     Spacer(modifier = Modifier.width(4.dp))
                     // Tool name and description
                     Text("$toolName: $toolDescription")
@@ -768,12 +819,21 @@ private fun ToolCallItem(
                                             when {
                                                 dataItem.mediaType.type == "image" -> {
                                                     // Base64 image - show placeholder with truncation
-                                                    Text(
-                                                        text = "🖼️ [Image ${dataItem.mediaType.value} - ${dataItem.data.length} chars Base64]",
-                                                        modifier = Modifier.fillMaxWidth(),
-                                                        style = MaterialTheme.typography.bodySmall,
-                                                        color = MaterialTheme.colorScheme.primary
-                                                    )
+                                                    Row(
+                                                        verticalAlignment = Alignment.CenterVertically,
+                                                        modifier = Modifier.fillMaxWidth()
+                                                    ) {
+                                                        Icon(
+                                                            Icons.Default.Image,
+                                                            contentDescription = "Image"
+                                                        )
+                                                        Spacer(modifier = Modifier.width(4.dp))
+                                                        Text(
+                                                            text = "[Image ${dataItem.mediaType.value} - ${dataItem.data.length} chars Base64]",
+                                                            style = MaterialTheme.typography.bodySmall,
+                                                            color = MaterialTheme.colorScheme.primary
+                                                        )
+                                                    }
                                                 }
 
                                                 else -> {
@@ -787,31 +847,58 @@ private fun ToolCallItem(
                                                     } else {
                                                         dataItem.data
                                                     }
-                                                    Text(
-                                                        text = "📄 [${dataItem.mediaType.value}] $truncated",
-                                                        modifier = Modifier.fillMaxWidth(),
-                                                        style = MaterialTheme.typography.bodySmall
-                                                    )
+                                                    Row(
+                                                        verticalAlignment = Alignment.CenterVertically,
+                                                        modifier = Modifier.fillMaxWidth()
+                                                    ) {
+                                                        Icon(
+                                                            Icons.Default.Description,
+                                                            contentDescription = "Document"
+                                                        )
+                                                        Spacer(modifier = Modifier.width(4.dp))
+                                                        Text(
+                                                            text = "[${dataItem.mediaType.value}] $truncated",
+                                                            style = MaterialTheme.typography.bodySmall
+                                                        )
+                                                    }
                                                 }
                                             }
                                         }
 
                                         is ChatMessage.ContentItem.ToolResult.Data.UrlData -> {
-                                            Text(
-                                                text = "🔗 ${dataItem.url}${dataItem.mediaType?.let { " (${it.value})" } ?: ""}",
-                                                modifier = Modifier.fillMaxWidth(),
-                                                style = MaterialTheme.typography.bodySmall,
-                                                color = MaterialTheme.colorScheme.primary
-                                            )
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                modifier = Modifier.fillMaxWidth()
+                                            ) {
+                                                Icon(
+                                                    Icons.Default.Link,
+                                                    contentDescription = "URL"
+                                                )
+                                                Spacer(modifier = Modifier.width(4.dp))
+                                                Text(
+                                                    text = "${dataItem.url}${dataItem.mediaType?.let { " (${it.value})" } ?: ""}",
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.primary
+                                                )
+                                            }
                                         }
 
                                         is ChatMessage.ContentItem.ToolResult.Data.FileData -> {
-                                            Text(
-                                                text = "📁 File: ${dataItem.fileId}${dataItem.mediaType?.let { " (${it.value})" } ?: ""}",
-                                                modifier = Modifier.fillMaxWidth(),
-                                                style = MaterialTheme.typography.bodySmall,
-                                                color = MaterialTheme.colorScheme.primary
-                                            )
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                modifier = Modifier.fillMaxWidth()
+                                            ) {
+                                                Icon(
+                                                    Icons.Default.Folder,
+                                                    contentDescription = "File"
+                                                )
+                                                Spacer(modifier = Modifier.width(4.dp))
+                                                Text(
+                                                    text = "File: ${dataItem.fileId}${dataItem.mediaType?.let { " (${it.value})" } ?: ""}",
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.primary
+                                                )
+                                            }
                                         }
                                     }
                                 }
@@ -880,17 +967,17 @@ private fun createTokenUsageTooltip(usage: TokenUsageCalculator.SessionTokenUsag
         appendLine("• Вывод: ${usage.totalOutputTokens}")
         appendLine("• Кэш чтение: ${usage.currentCacheReadTokens}")
         appendLine()
-        appendLine("🔄 Основной счет: ${usage.grandTotal}")
+        appendLine("Total: ${usage.grandTotal}")
         appendLine()
-        appendLine("🗂️ Кэш создание: ${usage.totalCacheCreationTokens} (отдельно)")
-        appendLine("💾 Всего с кэшем: ${usage.totalCacheTokens}")
+        appendLine("Cache creation: ${usage.totalCacheCreationTokens} (separate)")
+        appendLine("Total with cache: ${usage.totalCacheTokens}")
         appendLine()
         val percent = (usage.contextUsagePercent * 100).toInt()
-        appendLine("📈 Контекст: ${percent}% из ~200k")
+        appendLine("Context: ${percent}% of ~200k")
 
         if (percent > 80) {
             appendLine()
-            appendLine("⚠️ Приближается лимит контекста!")
+            appendLine("WARNING: Approaching context limit!")
         }
     }
 }

@@ -201,6 +201,7 @@ sealed class Translation {
             HebrewTranslation(),
             JapaneseTranslation(),
             ChineseTranslation(),
+            ThaiTranslation(),
         ).associateBy { it.languageCode }
     }
 }

@@ -64,7 +64,7 @@ fun SearchPanel(
                     strokeWidth = 2.dp
                 )
             } else {
-                Icon(Icons.Default.Search, LocalTranslation.current.searchSessionsTooltip, modifier = Modifier.size(16.dp))
+                Icon(Icons.Default.Search, LocalTranslation.current.searchSessionsTooltip)
             }
         }
     }

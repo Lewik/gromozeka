@@ -36,8 +36,9 @@ kotlin {
                 implementation(libs.filekit.compose)
                 
                 // Markdown renderer
-                implementation(libs.multiplatform.markdown.renderer)
+//                implementation(libs.multiplatform.markdown.renderer)
                 implementation(libs.multiplatform.markdown.renderer.m3)
+                implementation(libs.multiplatform.markdown.renderer.code)
                 
                 implementation(project(":shared"))
                 

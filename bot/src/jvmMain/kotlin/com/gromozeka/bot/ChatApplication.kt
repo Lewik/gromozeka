@@ -3,6 +3,9 @@ package com.gromozeka.bot
 import androidx.compose.desktop.ui.tooling.preview.Preview
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -570,7 +573,9 @@ private fun CustomTabRow(
                         onTabSelect(null)
                     }
                 },
-                text = { Text("📁") }
+                text = { Row(verticalAlignment = Alignment.CenterVertically) { 
+                    Icon(Icons.Default.Folder, contentDescription = "Sessions list")
+                } }
             )
         }
 
@@ -611,7 +616,7 @@ private fun CustomTabRow(
                                     .align(Alignment.CenterStart)
                                     .offset(x = (-8).dp)
                             ) {
-                                Text("✏️", fontSize = 10.sp)
+                                Icon(Icons.Default.Edit, contentDescription = "Edit tab name")
                             }
                         }
 
