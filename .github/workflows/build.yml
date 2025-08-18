@@ -106,6 +106,7 @@ jobs:
           sed -i.bak '/linux {/,/}/ s/packageVersion = ".*"/packageVersion = "'$RPM_VERSION'"/' bot/build.gradle.kts
 
       - name: Build native distributions
+        shell: bash
         env:
           TARGET_FORMATS: ${{ matrix.target-formats }}
         run: |

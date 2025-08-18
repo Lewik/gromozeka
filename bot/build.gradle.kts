@@ -132,17 +132,14 @@ compose.desktop {
             macOS {
                 packageBuildVersion = "1.0.0"
                 dmgPackageVersion = "1.0.0"
-                iconFile.set(project.file("src/jvmMain/resources/logos/logo-256x256.png"))
             }
             
             windows {
                 packageVersion = "1.0.0"
-                iconFile.set(project.file("src/jvmMain/resources/logos/logo-256x256.png"))
             }
             
             linux {
                 packageVersion = "1.0.0"
-                iconFile.set(project.file("src/jvmMain/resources/logos/logo-256x256.png"))
             }
         }
     }
