@@ -2,8 +2,15 @@ package com.gromozeka.bot
 
 import com.gromozeka.bot.model.StreamJsonLine
 import com.gromozeka.bot.services.StreamToChatMessageMapper
+import com.gromozeka.bot.services.SettingsService
+import com.gromozeka.bot.settings.Settings
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.Disabled
+import io.mockk.every
+import io.mockk.mockk
 import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertNotNull
@@ -19,6 +26,15 @@ class RealStreamLogsTest {
         ignoreUnknownKeys = true
         isLenient = true
     }
+
+    private val settingsService = mockk<SettingsService>().apply {
+        every { settingsFlow } returns MutableStateFlow(Settings())
+    }
+
+    private val mapper = StreamToChatMessageMapper(
+        settingsService = settingsService,
+        scope = CoroutineScope(Dispatchers.Unconfined)
+    )
 
     // DISABLED - This test is for research purposes only and should not run in CI
     @Disabled
@@ -111,7 +127,7 @@ class RealStreamLogsTest {
                 val streamMessage = json.decodeFromString<StreamJsonLine>(line.trim())
                 deserializeSuccess++
 
-                val chatMessage = StreamToChatMessageMapper.mapToChatMessage(streamMessage)
+                val chatMessage = mapper.mapToChatMessage(streamMessage)
                 mappingSuccess++
 
                 assertNotNull(chatMessage)
