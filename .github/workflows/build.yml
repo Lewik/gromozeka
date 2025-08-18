@@ -104,9 +104,6 @@ jobs:
           # Update platform-specific sections
           sed -i.bak '/windows {/,/}/ s/packageVersion = ".*"/packageVersion = "'$MSI_VERSION'"/' bot/build.gradle.kts
           sed -i.bak '/linux {/,/}/ s/packageVersion = ".*"/packageVersion = "'$RPM_VERSION'"/' bot/build.gradle.kts
-          
-      - name: Generate application logos
-        run: ./gradlew convertLogo
 
       - name: Build native distributions
         env:
