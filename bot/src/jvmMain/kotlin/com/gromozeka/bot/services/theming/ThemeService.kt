@@ -131,7 +131,8 @@ class ThemeService {
 
     private suspend fun applyThemeSettings(settings: Settings) {
         val overrideFile = File(File(settingsService.gromozekaHome, "themes"), "override.json")
-        applyTheme(settings.currentThemeId, overrideFile)
+        val shouldUseOverride = settings.themeOverrideEnabled && overrideFile.exists()
+        applyTheme(settings.currentThemeId, if (shouldUseOverride) overrideFile else null)
     }
 
     fun refreshThemes() {
@@ -269,6 +270,25 @@ class ThemeService {
             true
         } catch (e: Exception) {
             println("[ThemeService] Failed to save theme: ${e.message}")
+            false
+        }
+    }
+
+    fun removeOverrideFile(): Boolean {
+        val overrideFile = File(File(settingsService.gromozekaHome, "themes"), "override.json")
+        return try {
+            if (overrideFile.exists()) {
+                overrideFile.delete()
+                println("[ThemeService] Successfully removed override file")
+                // Refresh theme to apply removal
+                serviceScope.launch {
+                    val currentSettings = settingsService.settingsFlow.value
+                    applyThemeSettings(currentSettings)
+                }
+            }
+            true
+        } catch (e: Exception) {
+            println("[ThemeService] Failed to remove override file: ${e.message}")
             false
         }
     }

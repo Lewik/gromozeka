@@ -41,6 +41,7 @@ data class Settings(
 
     // Theming Settings
     val currentThemeId: String = DarkTheme.THEME_ID, // dark, light, gromozeka
+    val themeOverrideEnabled: Boolean = false, // Enable theme override from override.json
 
     // Notification Settings
     val enableErrorSounds: Boolean = false,

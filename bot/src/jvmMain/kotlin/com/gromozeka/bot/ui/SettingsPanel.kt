@@ -376,32 +376,44 @@ fun SettingsPanel(
                                 onSettingsChange(settings.copy(currentThemeId = newThemeId))
                             }
                         )
-
-                        // Theme override info
-                        InfoSettingItem(
-                            label = translation.settings.customThemeInfoLabel,
-                            message = translation.settings.customThemeInfoMessage,
-                            isError = false
+                        
+                        // Theme override toggle
+                        SwitchSettingItem(
+                            label = "Enable Theme Override",
+                            description = "Allow custom theme colors from override.json file to modify the selected theme",
+                            value = settings.themeOverrideEnabled,
+                            onValueChange = { onSettingsChange(settings.copy(themeOverrideEnabled = it)) }
                         )
 
-                        // Theme override status
-                        val overrideResult by themeService.lastOverrideResult.collectAsState()
-                        overrideResult?.let { result ->
-                            when (result) {
-                                is com.gromozeka.bot.services.theming.ThemeOverrideResult.Success -> {
-                                    InfoSettingItem(
-                                        label = translation.settings.themeOverrideStatusLabel,
-                                        message = translation.settings.themeOverrideSuccessMessage.format(result.overriddenFields.size),
-                                        isError = false
-                                    )
-                                }
+                        // Theme override info (only show when override is enabled)
+                        if (settings.themeOverrideEnabled) {
+                            InfoSettingItem(
+                                label = translation.settings.customThemeInfoLabel,
+                                message = translation.settings.customThemeInfoMessage,
+                                isError = false
+                            )
+                        }
 
-                                is com.gromozeka.bot.services.theming.ThemeOverrideResult.Failure -> {
-                                    InfoSettingItem(
-                                        label = translation.settings.themeOverrideStatusLabel,
-                                        message = translation.settings.themeOverrideFailureMessage.format(result.error),
-                                        isError = true
-                                    )
+                        // Theme override status (only show when override is enabled)
+                        if (settings.themeOverrideEnabled) {
+                            val overrideResult by themeService.lastOverrideResult.collectAsState()
+                            overrideResult?.let { result ->
+                                when (result) {
+                                    is com.gromozeka.bot.services.theming.ThemeOverrideResult.Success -> {
+                                        InfoSettingItem(
+                                            label = translation.settings.themeOverrideStatusLabel,
+                                            message = translation.settings.themeOverrideSuccessMessage.format(result.overriddenFields.size),
+                                            isError = false
+                                        )
+                                    }
+
+                                    is com.gromozeka.bot.services.theming.ThemeOverrideResult.Failure -> {
+                                        InfoSettingItem(
+                                            label = translation.settings.themeOverrideStatusLabel,
+                                            message = translation.settings.themeOverrideFailureMessage.format(result.error),
+                                            isError = true
+                                        )
+                                    }
                                 }
                             }
                         }
