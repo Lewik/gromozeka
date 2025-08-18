@@ -9,6 +9,8 @@ plugins {
     alias(libs.plugins.sqldelight)
 }
 
+import org.jetbrains.compose.desktop.application.dsl.TargetFormat
+
 // Force Kotlin version override for Spring Boot 3.4.4 (uses 1.9.25 by default)
 extra["kotlin.version"] = "2.2.0"
 
@@ -112,6 +114,37 @@ compose.desktop {
             "-Xdock:name=Gromozeka",
             "-Dapple.awt.application.appearance=system"
         )
+        
+        nativeDistributions {
+            targetFormats(
+                TargetFormat.Dmg,  // macOS universal
+                TargetFormat.Msi,  // Windows
+                TargetFormat.Deb,  // Ubuntu/Debian
+                TargetFormat.Rpm   // Red Hat/Fedora
+            )
+            
+            packageName = "Gromozeka"
+            packageVersion = "1.0.0"
+            description = "Multi-armed AI agent for comprehensive task automation"
+            copyright = "© 2024 Gromozeka Project"
+            vendor = "Gromozeka"
+            
+            macOS {
+                packageBuildVersion = "1.0.0"
+                dmgPackageVersion = "1.0.0"
+                iconFile.set(project.file("src/jvmMain/resources/logos/logo-256x256.png"))
+            }
+            
+            windows {
+                packageVersion = "1.0.0"
+                iconFile.set(project.file("src/jvmMain/resources/logos/logo-256x256.png"))
+            }
+            
+            linux {
+                packageVersion = "1.0.0"
+                iconFile.set(project.file("src/jvmMain/resources/logos/logo-256x256.png"))
+            }
+        }
     }
 }
 

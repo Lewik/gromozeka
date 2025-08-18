@@ -1,0 +1,206 @@
+name: Build Cross-Platform Packages
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to build (e.g., 1.0.0)'
+        required: true
+        default: '1.0.0'
+
+env:
+  JAVA_VERSION: '17'
+  GRADLE_VERSION: 'wrapper'
+
+jobs:
+  build:
+    name: Build ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macOS DMG
+            os: macos-latest
+            target-formats: Dmg
+            artifact-pattern: '**/*.dmg'
+            artifact-name: 'gromozeka-macos'
+            
+          - name: Windows MSI
+            os: windows-latest
+            target-formats: Msi
+            artifact-pattern: '**/*.msi'
+            artifact-name: 'gromozeka-windows'
+            
+          - name: Linux Packages
+            os: ubuntu-latest
+            target-formats: 'Deb,Rpm'
+            artifact-pattern: '**/*.{deb,rpm}'
+            artifact-name: 'gromozeka-linux'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        uses: gradle/gradle-build-action@v3
+        with:
+          gradle-version: ${{ env.GRADLE_VERSION }}
+
+      - name: Extract version from tag or input
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION="${GITHUB_REF#refs/tags/v}"
+          fi
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "Building version: $VERSION"
+
+      - name: Update package version in build.gradle.kts
+        shell: bash
+        run: |
+          sed -i.bak 's/packageVersion = ".*"/packageVersion = "'$VERSION'"/g' bot/build.gradle.kts
+          sed -i.bak 's/packageBuildVersion = ".*"/packageBuildVersion = "'$VERSION'"/g' bot/build.gradle.kts
+          sed -i.bak 's/dmgPackageVersion = ".*"/dmgPackageVersion = "'$VERSION'"/g' bot/build.gradle.kts
+          
+      - name: Generate application logos
+        run: ./gradlew convertLogo
+
+      - name: Build native distributions
+        env:
+          TARGET_FORMATS: ${{ matrix.target-formats }}
+        run: |
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            ./gradlew.bat :bot:packageDistributionForCurrentOS
+          else
+            ./gradlew :bot:packageDistributionForCurrentOS
+          fi
+
+      - name: Find and list built packages
+        shell: bash
+        run: |
+          echo "Built packages:"
+          find bot/build/compose/binaries -type f \( -name "*.dmg" -o -name "*.msi" -o -name "*.deb" -o -name "*.rpm" \) -exec ls -la {} \;
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact-name }}-${{ env.VERSION }}
+          path: |
+            bot/build/compose/binaries/**/*.dmg
+            bot/build/compose/binaries/**/*.msi
+            bot/build/compose/binaries/**/*.deb
+            bot/build/compose/binaries/**/*.rpm
+          retention-days: 30
+
+  release:
+    name: Create GitHub Release
+    needs: [build]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Extract version
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION="${GITHUB_REF#refs/tags/v}"
+          fi
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./artifacts
+
+      - name: Prepare release assets
+        run: |
+          mkdir -p release-assets
+          find artifacts -type f \( -name "*.dmg" -o -name "*.msi" -o -name "*.deb" -o -name "*.rpm" \) -exec cp {} release-assets/ \;
+          ls -la release-assets/
+
+      - name: Generate release notes
+        run: |
+          cat > release-notes.md << 'EOF'
+          # Gromozeka v${{ env.VERSION }}
+
+          ## Downloads
+
+          ### macOS
+          - **Universal Binary (M1/M2/M3/M4 + Intel)**: `Gromozeka-${{ env.VERSION }}.dmg`
+
+          ### Windows  
+          - **MSI Installer**: `Gromozeka-${{ env.VERSION }}.msi`
+
+          ### Linux
+          - **Ubuntu/Debian**: `gromozeka_${{ env.VERSION }}_amd64.deb`
+          - **Red Hat/Fedora**: `gromozeka-${{ env.VERSION }}.x86_64.rpm`
+
+          ## Installation
+
+          ### macOS
+          1. Download the `.dmg` file
+          2. Open it and drag Gromozeka to Applications folder
+          3. First launch: Right-click → Open (to bypass Gatekeeper)
+
+          ### Windows
+          1. Download the `.msi` file  
+          2. Run the installer as Administrator
+          3. Follow installation wizard
+
+          ### Linux (Ubuntu/Debian)
+          ```bash
+          sudo dpkg -i gromozeka_${{ env.VERSION }}_amd64.deb
+          sudo apt-get install -f  # Fix dependencies if needed
+          ```
+
+          ### Linux (Red Hat/Fedora)
+          ```bash
+          sudo rpm -i gromozeka-${{ env.VERSION }}.x86_64.rpm
+          # or
+          sudo dnf install gromozeka-${{ env.VERSION }}.x86_64.rpm
+          ```
+
+          ## What's New
+
+          - Multi-armed AI agent with Claude Code CLI integration
+          - Advanced Push-to-Talk (PTT) system with global hotkeys
+          - Real-time streaming interface
+          - Session management and history
+          - Cross-platform desktop application
+
+          ---
+          🤖 Generated with [Claude Code](https://claude.ai/code)
+          EOF
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ github.event_name == 'workflow_dispatch' && format('v{0}', env.VERSION) || github.ref_name }}
+          name: Gromozeka v${{ env.VERSION }}
+          body_path: release-notes.md
+          files: release-assets/*
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
