@@ -23,7 +23,7 @@ sealed class StreamJsonLine {
         val cwd: String? = null,
         val tools: List<String>? = null,
         @SerialName("mcp_servers")
-        val mcpServers: List<String>? = null,
+        val mcpServers: List<McpServerInfo>? = null,
         val model: String? = null,
         val permissionMode: String? = null,
         @SerialName("permission_denials")
@@ -248,6 +248,12 @@ data class CacheCreationInfo(
     val ephemeral5mInputTokens: Int? = null,
     @SerialName("ephemeral_1h_input_tokens")
     val ephemeral1hInputTokens: Int? = null,
+)
+
+@Serializable
+data class McpServerInfo(
+    val name: String,
+    val status: String,
 )
 
 object ContentItemsUnionSerializer : KSerializer<ContentItemsUnion> {

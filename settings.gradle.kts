@@ -7,6 +7,7 @@ rootProject.name = "gromozeka"
 
 include(":bot")
 include(":shared")
+include(":mcp-proxy")
 
 // Настройка репозиториев для всех проектов
 dependencyResolutionManagement {

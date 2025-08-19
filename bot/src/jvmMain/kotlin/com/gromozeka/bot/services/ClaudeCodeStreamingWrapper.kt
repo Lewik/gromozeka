@@ -115,6 +115,7 @@ class ClaudeCodeStreamingWrapper(
         responseFormat: ResponseFormat,
         resumeSessionId: ClaudeSessionUuid?,
         customSystemPrompt: String?,
+        mcpConfigPath: String?,
     ) = withContext(Dispatchers.IO) {
         try {
             println("=== STARTING CLAUDE CODE STREAMING WRAPPER ===")
@@ -151,6 +152,22 @@ class ClaudeCodeStreamingWrapper(
                 command.add("--resume")
                 command.add(resumeSessionId.value)
                 println("[ClaudeCodeStreamingWrapper] Resuming session: $resumeSessionId")
+            }
+
+            // Add MCP configuration if provided by session
+            if (!mcpConfigPath.isNullOrBlank()) {
+                val mcpConfigFile = File(mcpConfigPath)
+                if (mcpConfigFile.exists()) {
+                    command.add("--mcp-config")
+                    command.add(mcpConfigPath)
+                    command.add("--allowedTools")
+                    command.add("mcp__gromozeka-self-control")
+                    println("[ClaudeCodeStreamingWrapper] Added session MCP config: $mcpConfigPath")
+                } else {
+                    println("[ClaudeCodeStreamingWrapper] Session MCP config not found: $mcpConfigPath")
+                }
+            } else {
+                println("[ClaudeCodeStreamingWrapper] No MCP config provided - session will run without MCP")
             }
 
             // Truncate system prompt for cleaner logs

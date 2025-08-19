@@ -61,6 +61,9 @@ kotlin {
                 
                 implementation(libs.jnativehook)
                 
+                // MCP SDK for official protocol structures
+                implementation(libs.mcp.kotlin.sdk)
+                
                 // Batik for logo generation task
                 implementation(libs.batik.transcoder)
                 implementation(libs.batik.codec)
@@ -96,6 +99,27 @@ dependencyManagement {
 
 tasks.withType<Test> {
     useJUnitPlatform()
+}
+
+// Copy mcp-proxy.jar to resources during build
+val copyMcpJarToResources = tasks.register<Copy>("copyMcpJarToResources") {
+    dependsOn(":mcp-proxy:fatJar")
+    from("../mcp-proxy/build/libs/mcp-proxy.jar")
+    into("src/jvmMain/resources/mcp-jars/")
+    rename { "mcp-proxy.jar" }
+    
+    // Configure as resource processing task
+    inputs.files("../mcp-proxy/build/libs/mcp-proxy.jar")
+    outputs.file("src/jvmMain/resources/mcp-jars/mcp-proxy.jar")
+}
+
+// Ensure mcp-proxy.jar is built and copied before resource processing
+tasks.named("jvmProcessResources") {
+    dependsOn(copyMcpJarToResources)
+}
+
+tasks.named("build") {
+    dependsOn(":mcp-proxy:fatJar")
 }
 
 sqldelight {

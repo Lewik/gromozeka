@@ -105,7 +105,11 @@ fun main() {
         .run()
     println("[GROMOZEKA] Spring context initialized successfully")
 
+    // Initialize JAR resources (extract MCP proxy JAR to Gromozeka home)
     val settingsService = context.getBean<SettingsService>()
+    println("[GROMOZEKA] Initializing JAR resources...")
+    JarResourceManager.ensureMcpProxyJar(settingsService)
+    println("[GROMOZEKA] JAR resources initialized successfully")
     println("[GROMOZEKA] Starting application in ${settingsService.mode.name} mode...")
 
     val ttsQueueService = context.getBean<TTSQueueService>()
@@ -136,6 +140,10 @@ fun main() {
 
     ttsAutoplayService.start()
     println("[GROMOZEKA] TTS autoplay service started")
+
+    // Initialize JAR resources (copy from resources to Gromozeka home)
+    JarResourceManager.ensureMcpProxyJar(settingsService)
+    println("[GROMOZEKA] MCP proxy JAR initialized")
 
     // Initialize services
     globalHotkeyController.initializeService()

@@ -84,6 +84,7 @@ class SessionManager(
             soundNotificationService = soundNotificationService,
             claudeWrapper = claudeWrapper,
             streamToChatMessageMapper = streamToChatMessageMapper,
+            settingsService = settingsService,  // Added for MCP support
             claudeModel = claudeModel,
             responseFormat = settingsService.settings.responseFormat,
             customSystemPrompt = customSystemPrompt,

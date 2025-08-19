@@ -1,9 +1,6 @@
 package com.gromozeka.bot.model
 
-import com.gromozeka.bot.services.ClaudeWrapper
-import com.gromozeka.bot.services.SessionJsonlService
-import com.gromozeka.bot.services.SoundNotificationService
-import com.gromozeka.bot.services.StreamToChatMessageMapper
+import com.gromozeka.bot.services.*
 import com.gromozeka.bot.utils.ChatMessageSoundDetector
 import com.gromozeka.shared.domain.message.ChatMessage
 import com.gromozeka.shared.domain.message.MessageTagDefinition
@@ -68,11 +65,15 @@ class Session(
     private val soundNotificationService: SoundNotificationService,
     private val claudeWrapper: ClaudeWrapper,
     private val streamToChatMessageMapper: StreamToChatMessageMapper,
+    private val settingsService: SettingsService,  // Added for MCP helper
     private val claudeModel: String? = null,
     private val responseFormat: com.gromozeka.bot.settings.ResponseFormat = com.gromozeka.bot.settings.ResponseFormat.JSON,
     private val customSystemPrompt: String? = null,
     private val initialClaudeSessionId: ClaudeSessionUuid = ClaudeSessionUuid.DEFAULT,
 ) {
+
+    // === MCP SESSION SERVER ===
+    private val mcpServer = McpSessionServer(initialClaudeSessionId, settingsService)
 
     // === ACTOR CHANNELS ===
     private val userCommandChannel = Channel<Command>(capacity = Channel.UNLIMITED)      // Commands from user/UI
@@ -421,12 +422,15 @@ class Session(
         actorState = ActorState.Starting
 
         try {
+            // 1. FIRST: Start MCP server before Claude
+            val mcpConfigPath = mcpServer.start()
+            println("[Actor] MCP server started with config: $mcpConfigPath")
+
             // Load historical messages if resuming (skip if default/new session)
             if (currentSessionId != ClaudeSessionUuid.DEFAULT) {
                 println("[Actor] Loading historical messages from session: $currentSessionId")
                 loadHistoricalMessages(currentSessionId)
             }
-
 
             // Start stream collector coroutine
             launchStreamCollector()
@@ -434,13 +438,14 @@ class Session(
             // Start sound notification collection  
             launchSoundNotificationCollection()
 
-            // Start Claude CLI process
+            // 2. THEN: Start Claude CLI process with MCP config
             claudeWrapper.start(
                 projectPath = projectPath,
                 model = claudeModel,
                 responseFormat = responseFormat,
                 resumeSessionId = currentSessionId.takeIf { it != ClaudeSessionUuid.DEFAULT },
-                customSystemPrompt = customSystemPrompt
+                customSystemPrompt = customSystemPrompt,
+                mcpConfigPath = mcpConfigPath  // Pass MCP config to Claude
             )
 
             // Move to waiting for init state
@@ -452,6 +457,14 @@ class Session(
         } catch (e: Exception) {
             println("[Actor] Failed to start session: ${e.message}")
             actorState = ActorState.Error
+            
+            // Cleanup MCP on error
+            try {
+                mcpServer.stop()
+            } catch (cleanupError: Exception) {
+                println("[Actor] Error during MCP cleanup: ${cleanupError.message}")
+            }
+            
             performCleanup()
             _events.emit(StreamSessionEvent.Error("Failed to start session: ${e.message}"))
         }
@@ -478,11 +491,19 @@ class Session(
         try {
             println("[Actor] Stopping session...")
 
-            // Stop Claude process
+            // 1. FIRST: Stop Claude process (kills mcp-proxy automatically)
             try {
                 claudeWrapper.stop()
             } catch (e: Exception) {
                 println("[Actor] Error stopping Claude process: ${e.message}")
+            }
+
+            // 2. THEN: Stop MCP server
+            try {
+                mcpServer.stop()
+                println("[Actor] MCP server stopped")
+            } catch (e: Exception) {
+                println("[Actor] Error stopping MCP server: ${e.message}")
             }
 
             // Reset state
@@ -498,6 +519,13 @@ class Session(
             actorState = ActorState.Error
             _isWaitingForResponse.value = false
             actorScope = null
+            
+            // Force cleanup MCP on error
+            try {
+                mcpServer.stop()
+            } catch (cleanupError: Exception) {
+                println("[Actor] Error during forced MCP cleanup: ${cleanupError.message}")
+            }
         }
     }
 

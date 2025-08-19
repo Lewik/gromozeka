@@ -21,6 +21,7 @@ interface ClaudeWrapper {
         responseFormat: ResponseFormat = ResponseFormat.JSON,
         resumeSessionId: ClaudeSessionUuid? = null,
         customSystemPrompt: String? = null,
+        mcpConfigPath: String? = null,  // Added for MCP session support
     )
 
     /**
@@ -46,10 +47,8 @@ interface ClaudeWrapper {
 
 /**
  * Service for creating Claude wrappers based on configuration.
- * Allows switching between different implementations:
+ * Currently supports:
  * - Direct CLI wrapper (ClaudeCodeStreamingWrapper)
- * - Python SDK wrapper (ClaudeCodePythonSdkWrapper)
- * - Node.js SDK wrapper (ClaudeCodeNodeSdkWrapper)
  * - Future wrappers (OpenAI, local LLMs, etc.)
  */
 @Service
@@ -57,14 +56,12 @@ class WrapperFactory {
 
     enum class WrapperType {
         DIRECT_CLI,      // Direct Claude CLI invocation
-        PYTHON_SDK,      // Python SDK proxy
-        NODE_SDK,        // Node.js SDK proxy (native to Claude Code)
         // Future: OPENAI, LOCAL_LLM, etc.
     }
 
     /**
      * Creates a Claude wrapper based on the specified type.
-     * Default is DIRECT_CLI for backwards compatibility.
+     * Currently only supports DIRECT_CLI.
      */
     fun createWrapper(
         settingsService: SettingsService,
@@ -73,14 +70,6 @@ class WrapperFactory {
         return when (type) {
             WrapperType.DIRECT_CLI -> {
                 ClaudeCodeStreamingWrapper(settingsService)
-            }
-
-            WrapperType.PYTHON_SDK -> {
-                ClaudeCodePythonSdkWrapper(settingsService)
-            }
-
-            WrapperType.NODE_SDK -> {
-                ClaudeCodeNodeSdkWrapper(settingsService)
             }
         }
     }

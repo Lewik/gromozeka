@@ -175,6 +175,73 @@ Claude CLI stdout → parseStreamJsonLine() → StreamToChatMessageMapper → UI
 - Type-safe mapping via `ClaudeCodeToolCallData`/`ClaudeCodeToolResultData`
 - MCP tool compatibility framework
 
+## MCP SDK Architecture & Package Management
+
+**CRITICAL: Two Different MCP SDKs Coexist**
+
+The project uses **two separate MCP SDKs** that do NOT conflict due to different package namespaces:
+
+### Java MCP SDK (via Spring AI)
+- **Package**: `io.modelcontextprotocol.sdk.*`
+- **Version**: 0.10.0
+- **Dependency**: `org.springframework.ai:spring-ai-starter-mcp-client`
+- **Purpose**: Spring AI MCP client integration
+- **Usage**: Spring AI uses this internally for MCP connections
+
+### Kotlin MCP SDK (our choice)
+- **Package**: `io.modelcontextprotocol.kotlin.sdk.*` 
+- **Version**: 0.6.0 (latest for Kotlin SDK)
+- **Dependency**: `io.modelcontextprotocol:kotlin-sdk`
+- **Purpose**: Our MCP server implementation
+- **Usage**: Used in `McpTcpServer`, `mcp-proxy` module
+
+### No Package Conflicts
+**Key Insight**: Different package names = no classpath conflicts!
+- Java SDK: `io.modelcontextprotocol.sdk.TextContent`
+- Kotlin SDK: `io.modelcontextprotocol.kotlin.sdk.TextContent`
+
+Both can coexist safely in the same project.
+
+### When to Use Which SDK
+
+**Use Kotlin MCP SDK for:**
+- Our MCP server implementations (`McpTcpServer.kt`)
+- Custom MCP tools and handlers  
+- Type-safe MCP protocol objects (`Tool`, `CallToolResult`, `JSONRPCRequest`)
+- Kotlin-specific features (coroutines, data classes)
+
+**Use Java MCP SDK for:**
+- Spring AI integration (automatic)
+- Java-based MCP clients
+- Interoperability with Java ecosystem
+
+### Best Practices
+
+**1. Import Strategy:**
+```kotlin
+// Kotlin MCP SDK (preferred for our code)
+import io.modelcontextprotocol.kotlin.sdk.*
+import io.modelcontextprotocol.kotlin.sdk.shared.McpJson
+
+// Use typed objects instead of raw JSON
+val tool = Tool(name = "example", description = "...", inputSchema = Tool.Input())
+val result = CallToolResult(content = listOf(TextContent("response")))
+```
+
+**2. Avoid Raw JSON:**
+- **Bad**: `buildJsonObject { put("name", "tool") }`
+- **Good**: `Tool(name = "tool", description = "...", inputSchema = Tool.Input())`
+
+**3. Serialization:**
+- Use `McpJson.encodeToString()` for Kotlin MCP SDK objects
+- Use `McpJson.decodeFromString<JSONRPCRequest>()` for parsing
+
+### Version Management
+- **Kotlin SDK 0.6.0** is the latest version for Kotlin projects
+- **Java SDK 0.10.0** is used by Spring AI (different project)
+- Both are current and maintained
+- No need to upgrade - they serve different purposes
+
 ## GitHub Issues Usage
 
 Issues serve as our **shared project notebook** and **reference base**:
