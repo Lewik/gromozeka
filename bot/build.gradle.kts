@@ -1,3 +1,5 @@
+import org.jetbrains.compose.desktop.application.dsl.TargetFormat
+
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.kotlin.spring)
@@ -8,16 +10,16 @@ plugins {
     alias(libs.plugins.jetbrains.compose)
 }
 
-import org.jetbrains.compose.desktop.application.dsl.TargetFormat
-
 // Force Kotlin version override for Spring Boot 3.4.4 (uses 1.9.25 by default)
-extra["kotlin.version"] = "2.2.0"
+extra["kotlin.version"] = libs.versions.kotlin.get()
 
 // Override kotlinx-serialization version from Spring Boot BOM (1.6.3 -> 1.9.0)
-extra["kotlin-serialization.version"] = "1.9.0"
+extra["kotlin-serialization.version"] = libs.versions.kotlinx.serialization.get()
+
+val javaVersion = libs.versions.java.get().toInt()
 
 kotlin {
-    jvmToolchain(17)
+    jvmToolchain(javaVersion)
     
     jvm {
     }
@@ -91,7 +93,7 @@ kotlin {
 
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(17)
+        languageVersion = JavaLanguageVersion.of(javaVersion)
     }
 }
 

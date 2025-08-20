@@ -3,8 +3,10 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
 }
 
+val javaVersion = libs.versions.java.get().toInt()
+
 kotlin {
-    jvmToolchain(17)
+    jvmToolchain(javaVersion)
     
     jvm()
     

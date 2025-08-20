@@ -2,6 +2,7 @@
 # https://docs.gradle.org/current/userguide/platforms.html#sub::toml-dependencies-format
 
 [versions]
+java = "21"
 kotlin = "2.2.0"
 ktor = "3.0.2"
 spring-ai = "1.0.0"
