@@ -11,7 +11,6 @@ plugins {
     alias(libs.plugins.spring.boot) apply false
     alias(libs.plugins.spring.dependency.management) apply false
     alias(libs.plugins.jetbrains.compose) apply false
-    alias(libs.plugins.sqldelight) apply false
 }
 
 allprojects {

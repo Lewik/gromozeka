@@ -8,7 +8,6 @@ spring-ai = "1.0.0"
 spring-boot = "3.4.4"
 spring-dependency-management = "1.1.7"
 jetbrains-compose = "1.8.2"
-sqldelight = "2.1.0"
 junit = "5.13.4"
 mockk = "1.14.5"
 kotest = "5.9.1"
@@ -51,10 +50,6 @@ kotlin-reflect = { module = "org.jetbrains.kotlin:kotlin-reflect" }
 # Jackson
 jackson-module-kotlin = { module = "com.fasterxml.jackson.module:jackson-module-kotlin" }
 
-# SQLDelight
-sqldelight-sqlite-driver = { module = "app.cash.sqldelight:sqlite-driver", version.ref = "sqldelight" }
-sqldelight-coroutines-extensions = { module = "app.cash.sqldelight:coroutines-extensions", version.ref = "sqldelight" }
-sqldelight-primitive-adapters = { module = "app.cash.sqldelight:primitive-adapters", version.ref = "sqldelight" }
 
 # JNativeHook
 jnativehook = { module = "com.github.kwhat:jnativehook", version.ref = "jnativehook" }
@@ -94,4 +89,3 @@ kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "ko
 spring-boot = { id = "org.springframework.boot", version.ref = "spring-boot" }
 spring-dependency-management = { id = "io.spring.dependency-management", version.ref = "spring-dependency-management" }
 jetbrains-compose = { id = "org.jetbrains.compose", version.ref = "jetbrains-compose" }
-sqldelight = { id = "app.cash.sqldelight", version.ref = "sqldelight" }

@@ -6,7 +6,6 @@ plugins {
     alias(libs.plugins.spring.boot)
     alias(libs.plugins.spring.dependency.management)
     alias(libs.plugins.jetbrains.compose)
-    alias(libs.plugins.sqldelight)
 }
 
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
@@ -55,9 +54,6 @@ kotlin {
                 implementation(libs.kotlinx.serialization.json)
                 implementation(libs.jackson.module.kotlin)
                 
-                implementation(libs.sqldelight.sqlite.driver)
-                implementation(libs.sqldelight.coroutines.extensions)
-                implementation(libs.sqldelight.primitive.adapters)
                 
                 implementation(libs.jnativehook)
                 
@@ -122,13 +118,6 @@ tasks.named("build") {
     dependsOn(":mcp-proxy:fatJar")
 }
 
-sqldelight {
-    databases {
-        create("ChatDatabase") {
-            packageName.set("com.gromozeka.bot.db")
-        }
-    }
-}
 
 compose.desktop {
     application {
