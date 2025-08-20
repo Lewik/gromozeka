@@ -69,7 +69,6 @@ filekit-core = { module = "io.github.vinceglb:filekit-core", version.ref = "file
 filekit-compose = { module = "io.github.vinceglb:filekit-compose", version.ref = "filekit" }
 
 # Markdown renderer
-multiplatform-markdown-renderer = { module = "com.mikepenz:multiplatform-markdown-renderer", version.ref = "multiplatform-markdown-renderer" }
 multiplatform-markdown-renderer-m3 = { module = "com.mikepenz:multiplatform-markdown-renderer-m3", version.ref = "multiplatform-markdown-renderer" }
 multiplatform-markdown-renderer-code = { module = "com.mikepenz:multiplatform-markdown-renderer-code", version.ref = "multiplatform-markdown-renderer" }
 
