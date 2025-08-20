@@ -34,5 +34,7 @@ data class UIState(
         val userInput: String = "",
         val isWaitingForResponse: Boolean = false,
         val customName: String? = null,
+        val tabId: String,
+        val parentTabId: String? = null,
     )
 }

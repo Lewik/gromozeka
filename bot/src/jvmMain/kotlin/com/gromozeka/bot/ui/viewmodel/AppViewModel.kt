@@ -55,6 +55,8 @@ class AppViewModel(
         projectPath: String,
         resumeSessionId: String? = null,
         initialMessage: String? = null,
+        parentTabId: String? = null,
+        setAsCurrent: Boolean = true,
     ): Int = mutex.withLock {
 
         val claudeSessionId = resumeSessionId?.let { ClaudeSessionUuid(it) }
@@ -65,7 +67,9 @@ class AppViewModel(
         val initialTabUiState = UIState.Tab(
             projectPath = projectPath,
             claudeSessionId = claudeSessionId ?: ClaudeSessionUuid.DEFAULT,
-            activeMessageTags = SessionViewModel.getDefaultEnabledTags()
+            activeMessageTags = SessionViewModel.getDefaultEnabledTags(),
+            tabId = java.util.UUID.randomUUID().toString(),
+            parentTabId = parentTabId
         )
         val sessionViewModel = SessionViewModel(
             session = session,
@@ -81,6 +85,12 @@ class AppViewModel(
 
         val newTabIndex = updatedTabs.size - 1
         println("[AppViewModel] Created tab at index $newTabIndex for project: $projectPath")
+
+        // Switch to new tab if requested
+        if (setAsCurrent) {
+            _currentTabIndex.value = newTabIndex
+            println("[AppViewModel] Switched to new tab at index $newTabIndex")
+        }
 
         // Send initial message if provided
         if (initialMessage != null && initialMessage.isNotBlank()) {
