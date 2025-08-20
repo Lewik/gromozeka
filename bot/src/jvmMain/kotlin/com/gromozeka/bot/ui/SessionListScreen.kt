@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalTime::class)
+
 package com.gromozeka.bot.ui
 
 import androidx.compose.foundation.clickable
@@ -28,7 +30,9 @@ import com.gromozeka.bot.ui.viewmodel.SessionSearchViewModel
 import io.github.vinceglb.filekit.compose.rememberDirectoryPickerLauncher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
-import kotlinx.datetime.Instant
+import kotlin.time.Clock
+import kotlin.time.ExperimentalTime
+import kotlin.time.Instant
 
 private data class ProjectGroup(
     val projectPath: String,
@@ -39,7 +43,7 @@ private data class ProjectGroup(
 )
 
 private fun formatRelativeTime(timestamp: Instant): String {
-    val now = kotlinx.datetime.Clock.System.now()
+    val now = Clock.System.now()
     val duration = now - timestamp
     return when {
         duration.inWholeMinutes < 1 -> "now"

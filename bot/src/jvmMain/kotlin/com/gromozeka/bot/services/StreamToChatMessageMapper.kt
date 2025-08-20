@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalTime::class)
+
 package com.gromozeka.bot.services
 
 import com.gromozeka.bot.model.*
@@ -11,7 +13,6 @@ import com.gromozeka.shared.domain.session.toClaudeSessionUuid
 import jakarta.annotation.PostConstruct
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
-import kotlinx.datetime.Clock
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
@@ -19,6 +20,8 @@ import kotlinx.serialization.json.decodeFromJsonElement
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.stereotype.Service
 import java.util.*
+import kotlin.time.Clock
+import kotlin.time.ExperimentalTime
 
 /**
  * Maps StreamJsonLine to ChatMessage for UI consumption
@@ -73,7 +76,7 @@ class StreamToChatMessageMapper(
             parentUuid = null,
             role = ChatMessage.Role.SYSTEM,
             content = content,
-            timestamp = Clock.System.now(),
+            timestamp = kotlin.time.Clock.System.now(),
             llmSpecificMetadata = createStreamMetadata(
                 sessionId = message.sessionId ?: "unknown".toClaudeSessionUuid()
             )

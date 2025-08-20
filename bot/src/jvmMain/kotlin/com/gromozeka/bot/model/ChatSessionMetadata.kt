@@ -1,7 +1,11 @@
+@file:OptIn(ExperimentalTime::class)
+
 package com.gromozeka.bot.model
 
 import com.gromozeka.shared.domain.session.ClaudeSessionUuid
-import kotlinx.datetime.Instant
+import kotlin.time.Clock
+import kotlin.time.ExperimentalTime
+import kotlin.time.Instant
 
 /**
  * Represents a Claude Code chat session with metadata
@@ -27,7 +31,7 @@ data class ChatSessionMetadata(
      * Formatted timestamp for display
      */
     fun displayTime(): String {
-        val now = kotlinx.datetime.Clock.System.now()
+        val now = Clock.System.now()
         val duration = now - lastTimestamp
         val exactTime = lastTimestamp.toString().substring(0, 16).replace('T', ' ')
 

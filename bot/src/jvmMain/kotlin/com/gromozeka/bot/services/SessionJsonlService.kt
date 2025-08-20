@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalTime::class)
+
 package com.gromozeka.bot.services
 
 import com.gromozeka.bot.model.ChatSessionMetadata
@@ -22,6 +24,8 @@ import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import org.springframework.stereotype.Service
 import java.io.File
+import kotlin.time.ExperimentalTime
+import kotlin.time.Instant
 
 /**
  * Service for loading messages and metadata from Claude Code session JSONL files.
@@ -126,7 +130,7 @@ class SessionJsonlService(
 
         try {
             val lines = sessionFile.readLines()
-            val fileLastModified = kotlinx.datetime.Instant.fromEpochMilliseconds(sessionFile.lastModified())
+            val fileLastModified = Instant.fromEpochMilliseconds(sessionFile.lastModified())
                 .toLocalDateTime(TimeZone.currentSystemDefault())
 
             if (lines.isEmpty()) {

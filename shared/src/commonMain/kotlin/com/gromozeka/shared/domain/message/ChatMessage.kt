@@ -1,15 +1,17 @@
 package com.gromozeka.shared.domain.message
 
 import com.gromozeka.shared.domain.session.ClaudeSessionUuid
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlinx.serialization.*
 import kotlinx.serialization.json.JsonClassDiscriminator
 import kotlinx.serialization.json.JsonElement
+import kotlin.time.ExperimentalTime
 
 /**
  * Internal message representation for gromozeka.
  * Maps from various LLM-specific formats (ClaudeLogEntry, etc) to this unified structure.
  */
+@OptIn(ExperimentalTime::class)
 @Serializable
 data class ChatMessage(
     val uuid: String, //todo real uuid type

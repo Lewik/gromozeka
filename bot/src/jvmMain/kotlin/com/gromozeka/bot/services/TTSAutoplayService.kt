@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalTime::class)
+
 package com.gromozeka.bot.services
 
 import com.gromozeka.bot.ui.viewmodel.AppViewModel
@@ -9,6 +11,9 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.stereotype.Service
+import kotlin.time.Clock
+import kotlin.time.ExperimentalTime
+import kotlin.time.Instant
 
 @Service
 class TTSAutoplayService(
@@ -19,7 +24,7 @@ class TTSAutoplayService(
 ) {
     
     private var currentSessionJob: Job? = null
-    private var subscriptionTimestamp: kotlinx.datetime.Instant? = null
+    private var subscriptionTimestamp: Instant? = null
     
     fun start() {
         println("[TTSAutoplayService] Starting auto TTS service")
@@ -40,7 +45,7 @@ class TTSAutoplayService(
     
     private fun subscribeToSession(session: com.gromozeka.bot.model.Session) {
         // Capture subscription time to filter out replay messages
-        subscriptionTimestamp = kotlinx.datetime.Clock.System.now()
+        subscriptionTimestamp = Clock.System.now()
         
         currentSessionJob = session.messageOutputStream
             .filter { message -> 
