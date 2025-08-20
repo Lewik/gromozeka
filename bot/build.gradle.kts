@@ -13,6 +13,9 @@ import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 // Force Kotlin version override for Spring Boot 3.4.4 (uses 1.9.25 by default)
 extra["kotlin.version"] = "2.2.0"
 
+// Override kotlinx-serialization version from Spring Boot BOM (1.6.3 -> 1.9.0)
+extra["kotlin-serialization.version"] = "1.9.0"
+
 kotlin {
     jvmToolchain(17)
     
@@ -25,7 +28,6 @@ kotlin {
                 implementation(libs.spring.ai.openai)
                 implementation(libs.spring.ai.anthropic)
                 implementation(libs.spring.ai.starter.model.openai)
-                implementation(libs.spring.ai.starter.mcp.client)
                 
                 implementation(compose.desktop.currentOs)
                 implementation(compose.material3)
