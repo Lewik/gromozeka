@@ -31,6 +31,8 @@ sealed class StreamJsonLine {
         @SerialName("slash_commands")
         val slashCommands: List<String>? = null,
         val apiKeySource: String? = null,
+        @SerialName("output_style")
+        val outputStyle: String? = null,
         val data: JsonObject? = null,  // Fallback for other fields
         override val type: String = "system",
     ) : StreamJsonLine()
