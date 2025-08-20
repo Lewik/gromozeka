@@ -126,6 +126,7 @@ fun main() {
     val translationService = context.getBean<TranslationService>()
     val themeService = context.getBean<ThemeService>()
     val screenCaptureController = context.getBean<com.gromozeka.bot.platform.ScreenCaptureController>()
+    val mcpHttpServer = context.getBean<McpHttpServer>()
 
     // Create AI theme generator
     val aiThemeGenerator = com.gromozeka.bot.services.theming.AIThemeGenerator(
@@ -140,6 +141,10 @@ fun main() {
 
     ttsAutoplayService.start()
     println("[GROMOZEKA] TTS autoplay service started")
+    
+    // Start global MCP HTTP server
+    mcpHttpServer.start()
+    println("[GROMOZEKA] Global MCP HTTP server started")
 
     // Initialize JAR resources (copy from resources to Gromozeka home)
     JarResourceManager.ensureMcpProxyJar(settingsService)
@@ -180,6 +185,7 @@ fun main() {
                     themeService,
                     screenCaptureController,
                     aiThemeGenerator,
+                    mcpHttpServer,
                     context
                 )
             }  // TranslationProvider
@@ -206,6 +212,7 @@ fun ApplicationScope.ChatWindow(
     themeService: ThemeService,
     screenCaptureController: com.gromozeka.bot.platform.ScreenCaptureController,
     aiThemeGenerator: com.gromozeka.bot.services.theming.AIThemeGenerator,
+    mcpHttpServer: McpHttpServer,
     context: org.springframework.context.ConfigurableApplicationContext,
 ) {
     val coroutineScope = rememberCoroutineScope()
@@ -354,6 +361,8 @@ fun ApplicationScope.ChatWindow(
 
             globalHotkeyController.cleanup()
             ttsQueueService.shutdown()
+            mcpHttpServer.stop()
+            println("[GROMOZEKA] Global MCP HTTP server stopped")
             exitApplication()
         },
         title = buildString {

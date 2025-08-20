@@ -72,9 +72,6 @@ class Session(
     private val initialClaudeSessionId: ClaudeSessionUuid = ClaudeSessionUuid.DEFAULT,
 ) {
 
-    // === MCP SESSION SERVER ===
-    private val mcpServer = McpSessionServer(initialClaudeSessionId, settingsService)
-
     // === ACTOR CHANNELS ===
     private val userCommandChannel = Channel<Command>(capacity = Channel.UNLIMITED)      // Commands from user/UI
     private val priorityChannel = Channel<PriorityCommand>(capacity = Channel.UNLIMITED) // High priority commands
@@ -422,9 +419,9 @@ class Session(
         actorState = ActorState.Starting
 
         try {
-            // 1. FIRST: Start MCP server before Claude
-            val mcpConfigPath = mcpServer.start()
-            println("[Actor] MCP server started with config: $mcpConfigPath")
+            // 1. FIRST: Use global MCP config (server already running)
+            val mcpConfigPath = settingsService.getMcpConfigPath()
+            println("[Actor] Using global MCP config: $mcpConfigPath")
 
             // Load historical messages if resuming (skip if default/new session)
             if (currentSessionId != ClaudeSessionUuid.DEFAULT) {
@@ -457,14 +454,7 @@ class Session(
         } catch (e: Exception) {
             println("[Actor] Failed to start session: ${e.message}")
             actorState = ActorState.Error
-            
-            // Cleanup MCP on error
-            try {
-                mcpServer.stop()
-            } catch (cleanupError: Exception) {
-                println("[Actor] Error during MCP cleanup: ${cleanupError.message}")
-            }
-            
+
             performCleanup()
             _events.emit(StreamSessionEvent.Error("Failed to start session: ${e.message}"))
         }
@@ -498,14 +488,6 @@ class Session(
                 println("[Actor] Error stopping Claude process: ${e.message}")
             }
 
-            // 2. THEN: Stop MCP server
-            try {
-                mcpServer.stop()
-                println("[Actor] MCP server stopped")
-            } catch (e: Exception) {
-                println("[Actor] Error stopping MCP server: ${e.message}")
-            }
-
             // Reset state
             actorState = ActorState.Inactive
             _isWaitingForResponse.value = false
@@ -519,13 +501,7 @@ class Session(
             actorState = ActorState.Error
             _isWaitingForResponse.value = false
             actorScope = null
-            
-            // Force cleanup MCP on error
-            try {
-                mcpServer.stop()
-            } catch (cleanupError: Exception) {
-                println("[Actor] Error during forced MCP cleanup: ${cleanupError.message}")
-            }
+
         }
     }
 

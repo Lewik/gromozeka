@@ -46,11 +46,18 @@ kotlin {
                 implementation(libs.kotlin.reflect)
                 implementation(libs.kotlinx.datetime)
                 
+                // Ktor Client
                 implementation(libs.ktor.client.core)
                 implementation(libs.ktor.client.cio)
                 implementation(libs.ktor.client.auth)
                 implementation(libs.ktor.client.content.negotiation)
                 implementation(libs.ktor.serialization.kotlinx.json)
+                
+                // Ktor Server
+                implementation(libs.ktor.server.core)
+                implementation(libs.ktor.server.cio)
+                implementation(libs.ktor.server.sse)
+                implementation(libs.ktor.server.content.negotiation)
                 implementation(libs.kotlinx.serialization.json)
                 implementation(libs.jackson.module.kotlin)
                 
@@ -97,26 +104,12 @@ tasks.withType<Test> {
     useJUnitPlatform()
 }
 
-// Copy mcp-proxy.jar to resources during build
-val copyMcpJarToResources = tasks.register<Copy>("copyMcpJarToResources") {
-    dependsOn(":mcp-proxy:fatJar")
-    from("../mcp-proxy/build/libs/mcp-proxy.jar")
-    into("src/jvmMain/resources/mcp-jars/")
-    rename { "mcp-proxy.jar" }
-    
-    // Configure as resource processing task
-    inputs.files("../mcp-proxy/build/libs/mcp-proxy.jar")
-    outputs.file("src/jvmMain/resources/mcp-jars/mcp-proxy.jar")
-}
-
-// Ensure mcp-proxy.jar is built and copied before resource processing
-tasks.named("jvmProcessResources") {
-    dependsOn(copyMcpJarToResources)
-}
-
-tasks.named("build") {
-    dependsOn(":mcp-proxy:fatJar")
-}
+// Note: mcp-proxy JAR copying disabled - migrated to HTTP/SSE architecture
+// The following tasks were removed:
+// - copyMcpJarToResources 
+// - jvmProcessResources dependency
+// - build dependency on :mcp-proxy:fatJar
+// JAR files are preserved in mcp-proxy/ directory for potential future use
 
 
 compose.desktop {

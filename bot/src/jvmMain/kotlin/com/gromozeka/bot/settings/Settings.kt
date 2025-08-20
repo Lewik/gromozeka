@@ -51,6 +51,9 @@ data class Settings(
 
     // Developer Settings
     val showOriginalJson: Boolean = false,
+    
+    // MCP Settings
+    val mcpHttpPort: Int = 49152,
 )
 
 @Serializable

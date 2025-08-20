@@ -305,7 +305,7 @@ class SettingsService {
     /**
      * Get path to MCP config file for Claude Code CLI
      */
-    fun getMcpConfigPath(): String = File(gromozekaHome, "mcp-config.json").absolutePath
+    fun getMcpConfigPath(): String = File(gromozekaHome, "mcp-sse-config.json").absolutePath
 
 
 }
