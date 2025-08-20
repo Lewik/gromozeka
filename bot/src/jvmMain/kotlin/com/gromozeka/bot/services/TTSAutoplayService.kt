@@ -1,4 +1,3 @@
-@file:OptIn(ExperimentalTime::class)
 
 package com.gromozeka.bot.services
 
@@ -12,7 +11,6 @@ import kotlinx.coroutines.flow.onEach
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.stereotype.Service
 import kotlin.time.Clock
-import kotlin.time.ExperimentalTime
 import kotlin.time.Instant
 
 @Service

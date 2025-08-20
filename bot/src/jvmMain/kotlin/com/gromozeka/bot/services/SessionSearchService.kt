@@ -1,4 +1,3 @@
-@file:OptIn(ExperimentalTime::class)
 
 package com.gromozeka.bot.services
 
@@ -16,7 +15,6 @@ import org.springframework.stereotype.Service
 import java.io.File
 import kotlin.math.max
 import kotlin.math.min
-import kotlin.time.ExperimentalTime
 
 @Service
 class SessionSearchService(

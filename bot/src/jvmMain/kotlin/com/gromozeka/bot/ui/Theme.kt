@@ -102,7 +102,6 @@ object CompactButtonDefaults {
     val CornerRadius = 8.dp
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun OptionalTooltip(
     tooltip: String?,

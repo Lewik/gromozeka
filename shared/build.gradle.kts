@@ -8,7 +8,19 @@ val javaVersion = libs.versions.java.get().toInt()
 kotlin {
     jvmToolchain(javaVersion)
     
-    jvm()
+    jvm {
+        compilations.all {
+            compileTaskProvider.configure {
+                compilerOptions {
+                    // Use only relevant opt-ins for shared module (no Compose APIs)
+                    freeCompilerArgs.addAll(
+                        "-opt-in=kotlin.time.ExperimentalTime",
+                        "-opt-in=kotlinx.serialization.ExperimentalSerializationApi"
+                    )
+                }
+            }
+        }
+    }
     
     sourceSets {
         val commonMain by getting {

@@ -13,7 +13,18 @@ plugins {
     alias(libs.plugins.jetbrains.compose) apply false
 }
 
+// Centralized experimental API opt-ins for all Kotlin modules
+val experimentalOptIns = listOf(
+    "-opt-in=kotlin.time.ExperimentalTime",
+    "-opt-in=kotlinx.serialization.ExperimentalSerializationApi",
+    "-opt-in=androidx.compose.material3.ExperimentalMaterial3Api",
+    "-opt-in=androidx.compose.ui.ExperimentalComposeUiApi"
+)
+
 allprojects {
     group = "com.example"
     version = "0.0.1-SNAPSHOT"
+    
+    // Make experimentalOptIns available in all modules
+    extra["experimentalOptIns"] = experimentalOptIns
 }

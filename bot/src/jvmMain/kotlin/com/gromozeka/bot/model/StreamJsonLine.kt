@@ -8,7 +8,6 @@ import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.*
 
-@OptIn(ExperimentalSerializationApi::class)
 @Serializable
 @JsonClassDiscriminator("type")
 sealed class StreamJsonLine {
@@ -99,7 +98,6 @@ sealed class StreamJsonLine {
     ) : StreamJsonLine()
 }
 
-@OptIn(ExperimentalSerializationApi::class)
 @Serializable
 @JsonClassDiscriminator("role")
 sealed class StreamMessageContent {
@@ -128,7 +126,6 @@ sealed class StreamMessageContent {
     ) : StreamMessageContent()
 }
 
-@OptIn(ExperimentalSerializationApi::class)
 @Serializable
 @JsonClassDiscriminator("type")
 sealed class ContentBlock {
@@ -177,7 +174,6 @@ sealed class ContentBlock {
     ) : ContentBlock()
 }
 
-@OptIn(ExperimentalSerializationApi::class)
 @Serializable
 @JsonClassDiscriminator("type")
 sealed class ImageSource {

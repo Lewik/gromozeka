@@ -8,7 +8,6 @@ import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.*
 
-@OptIn(ExperimentalSerializationApi::class)
 @Serializable
 @JsonClassDiscriminator("type")
 sealed class ClaudeLogEntry {
@@ -91,7 +90,6 @@ sealed class ClaudeLogEntry {
         override val type: String = "system",
     ) : BaseEntry()
 
-    @OptIn(ExperimentalSerializationApi::class)
     @Serializable
     @JsonClassDiscriminator("role")
     sealed class Message {
@@ -146,7 +144,6 @@ sealed class ClaudeLogEntry {
     }
 
 
-    @OptIn(ExperimentalSerializationApi::class)
     @Serializable
     @JsonClassDiscriminator("type")
     sealed class UserContentItem {
@@ -218,7 +215,6 @@ sealed class ClaudeLogEntry {
         ) : UserContentItem()
     }
 
-    @OptIn(ExperimentalSerializationApi::class)
     @Serializable
     @JsonClassDiscriminator("type")
     sealed class ImageSource {
@@ -249,7 +245,6 @@ sealed class ClaudeLogEntry {
         ) : ImageSource()
     }
 
-    @OptIn(ExperimentalSerializationApi::class)
     @Serializable
     @JsonClassDiscriminator("type")
     sealed class ToolResultContent {
@@ -279,7 +274,6 @@ sealed class ClaudeLogEntry {
         ) : ToolResultContent()
     }
 
-    @OptIn(ExperimentalSerializationApi::class)
     @Serializable
     @JsonClassDiscriminator("type")
     sealed class AssistantContent {
@@ -325,7 +319,6 @@ sealed class ClaudeLogEntry {
     )
 }
 
-@OptIn(ExperimentalSerializationApi::class)
 object UserMessageContentSerializer : KSerializer<ClaudeLogEntry.Message.UserMessage.Content> {
     override val descriptor = buildClassSerialDescriptor("UserMessage.Content")
 

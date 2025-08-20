@@ -651,7 +651,6 @@ private fun SliderSettingItem(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun DropdownSettingItem(
     label: String,
@@ -741,7 +740,6 @@ private fun PasswordSettingItem(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun <T> DropdownSettingItem(
     label: String,

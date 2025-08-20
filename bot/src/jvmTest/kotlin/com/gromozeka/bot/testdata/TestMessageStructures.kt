@@ -1,7 +1,6 @@
 package com.gromozeka.bot
 
 import com.gromozeka.shared.domain.session.ClaudeSessionUuid
-import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonClassDiscriminator
@@ -11,7 +10,6 @@ import kotlinx.serialization.json.JsonElement
  * Test structures for message content deserialization
  */
 
-@OptIn(ExperimentalSerializationApi::class)
 @Serializable
 @JsonClassDiscriminator("type")
 sealed class TestMessageContent {

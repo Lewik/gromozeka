@@ -1,4 +1,3 @@
-@file:OptIn(ExperimentalTime::class)
 
 package com.gromozeka.bot.services
 
@@ -24,7 +23,6 @@ import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import org.springframework.stereotype.Service
 import java.io.File
-import kotlin.time.ExperimentalTime
 import kotlin.time.Instant
 
 /**

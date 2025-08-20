@@ -1,4 +1,3 @@
-@file:OptIn(ExperimentalTime::class)
 
 package com.gromozeka.bot.model
 
@@ -16,7 +15,6 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.selects.select
 import kotlin.time.Clock
-import kotlin.time.ExperimentalTime
 
 
 /**

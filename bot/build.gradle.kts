@@ -22,6 +22,13 @@ kotlin {
     jvmToolchain(javaVersion)
     
     jvm {
+        compilations.all {
+            compileTaskProvider.configure {
+                compilerOptions {
+                    freeCompilerArgs.addAll(project.extra["experimentalOptIns"] as List<String>)
+                }
+            }
+        }
     }
     
     sourceSets {

@@ -5,13 +5,11 @@ import kotlin.time.Instant
 import kotlinx.serialization.*
 import kotlinx.serialization.json.JsonClassDiscriminator
 import kotlinx.serialization.json.JsonElement
-import kotlin.time.ExperimentalTime
 
 /**
  * Internal message representation for gromozeka.
  * Maps from various LLM-specific formats (ClaudeLogEntry, etc) to this unified structure.
  */
-@OptIn(ExperimentalTime::class)
 @Serializable
 data class ChatMessage(
     val uuid: String, //todo real uuid type
@@ -176,7 +174,6 @@ data class ChatMessage(
         ) : ContentItem()
     }
     
-    @OptIn(ExperimentalSerializationApi::class)
     @Serializable
     @JsonClassDiscriminator("type")
     sealed class ImageSource {

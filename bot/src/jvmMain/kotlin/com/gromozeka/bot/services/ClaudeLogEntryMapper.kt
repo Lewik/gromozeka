@@ -1,4 +1,3 @@
-@file:OptIn(ExperimentalTime::class)
 
 package com.gromozeka.bot.services
 
@@ -9,7 +8,6 @@ import com.gromozeka.shared.domain.message.ToolCallData
 import kotlin.time.Instant
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.*
-import kotlin.time.ExperimentalTime
 
 /**
  * Maps ClaudeLogEntry to ChatMessage

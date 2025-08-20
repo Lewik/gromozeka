@@ -1,4 +1,3 @@
-@file:OptIn(ExperimentalTime::class)
 
 package com.gromozeka.bot.services
 
@@ -21,7 +20,6 @@ import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.stereotype.Service
 import java.util.*
 import kotlin.time.Clock
-import kotlin.time.ExperimentalTime
 
 /**
  * Maps StreamJsonLine to ChatMessage for UI consumption

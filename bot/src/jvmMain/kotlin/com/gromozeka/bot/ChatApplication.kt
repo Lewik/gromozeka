@@ -9,7 +9,6 @@ import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.focus.focusTarget
@@ -193,7 +192,6 @@ fun main() {
     }
 }
 
-@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 @Preview
 fun ApplicationScope.ChatWindow(
@@ -553,7 +551,6 @@ fun ApplicationScope.ChatWindow(
     }
 }
 
-@OptIn(ExperimentalComposeUiApi::class, ExperimentalMaterial3Api::class)
 @Composable
 private fun CustomTabRow(
     selectedTabIndex: Int,

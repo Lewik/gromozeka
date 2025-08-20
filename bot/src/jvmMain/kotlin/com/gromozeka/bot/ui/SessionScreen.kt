@@ -282,7 +282,6 @@ fun SessionScreen(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun MessageItem(
     message: ChatMessage,

@@ -30,7 +30,6 @@ class ClaudeCodeStreamingWrapper(
 
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
-    @OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
     private val json = Json {
         explicitNulls = true
         encodeDefaults = true

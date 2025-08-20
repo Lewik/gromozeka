@@ -1,10 +1,8 @@
-@file:OptIn(ExperimentalTime::class)
 
 package com.gromozeka.bot.model
 
 import com.gromozeka.shared.domain.session.ClaudeSessionUuid
 import kotlin.time.Clock
-import kotlin.time.ExperimentalTime
 import kotlin.time.Instant
 
 /**
