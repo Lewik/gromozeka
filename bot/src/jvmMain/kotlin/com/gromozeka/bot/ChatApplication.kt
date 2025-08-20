@@ -20,7 +20,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.*
 import com.gromozeka.bot.platform.GlobalHotkeyController
 import com.gromozeka.bot.services.*
@@ -140,7 +139,7 @@ fun main() {
 
     ttsAutoplayService.start()
     println("[GROMOZEKA] TTS autoplay service started")
-    
+
     // Start global MCP HTTP server
     mcpHttpServer.start()
     println("[GROMOZEKA] Global MCP HTTP server started")
@@ -587,9 +586,11 @@ private fun CustomTabRow(
                         onTabSelect(null)
                     }
                 },
-                text = { Row(verticalAlignment = Alignment.CenterVertically) { 
-                    Icon(Icons.Default.Folder, contentDescription = "Sessions list")
-                } }
+                text = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.Folder, contentDescription = "Sessions list")
+                    }
+                }
             )
         }
 

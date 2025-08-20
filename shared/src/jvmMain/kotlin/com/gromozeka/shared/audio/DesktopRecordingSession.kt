@@ -10,17 +10,17 @@ import kotlin.coroutines.coroutineContext
 
 class DesktopRecordingSession(
     private val config: AudioConfig,
-    private val scope: CoroutineScope
+    private val scope: CoroutineScope,
 ) : RecordingSession {
-    
+
     private val audioChannel = Channel<ByteArray>(capacity = Channel.UNLIMITED)
     private val audioBuffer = ByteArrayOutputStream()
-    
+
     private var targetDataLine: TargetDataLine? = null
     private var recordingJob: Job? = null
-    
+
     override val audioChunks: Flow<ByteArray> = audioChannel.consumeAsFlow()
-    
+
     fun start() {
         recordingJob = scope.launch(Dispatchers.IO) {
             try {
@@ -34,7 +34,7 @@ class DesktopRecordingSession(
             }
         }
     }
-    
+
     private suspend fun setupAudioLine() {
         val format = AudioFormat(
             config.sampleRate.toFloat(),
@@ -43,43 +43,43 @@ class DesktopRecordingSession(
             true,  // signed
             true   // bigEndian
         )
-        
+
         val info = DataLine.Info(TargetDataLine::class.java, format)
         if (!AudioSystem.isLineSupported(info)) {
             throw UnsupportedOperationException("Audio line not supported: $format")
         }
-        
+
         targetDataLine = (AudioSystem.getLine(info) as TargetDataLine).apply {
             open(format)
             start()
         }
     }
-    
+
     private suspend fun recordingLoop() {
         val chunkBuffer = ByteArray(config.chunkSizeBytes)
-        
+
         while (coroutineContext.isActive) {
             val bytesRead = targetDataLine?.read(chunkBuffer, 0, chunkBuffer.size) ?: 0
-            
+
             if (bytesRead > 0) {
                 val chunk = chunkBuffer.copyOfRange(0, bytesRead)
-                
+
                 audioBuffer.write(chunk)
                 audioChannel.send(chunk)
             }
-            
+
             yield()
         }
-        
+
         audioChannel.close()
     }
-    
+
     override suspend fun stop(): ByteArray {
         recordingJob?.cancel()
         recordingJob?.join()
-        
+
         val rawAudio = audioBuffer.toByteArray()
-        
+
         return when (config.outputFormat) {
             AudioOutputFormat.WAV -> createWavFile(rawAudio)
             AudioOutputFormat.AU -> createAuFile(rawAudio)
@@ -87,13 +87,13 @@ class DesktopRecordingSession(
             AudioOutputFormat.RAW_PCM -> rawAudio
         }
     }
-    
+
     override fun cancel() {
         recordingJob?.cancel()
         audioChannel.close()
         cleanup()
     }
-    
+
     private fun cleanup() {
         targetDataLine?.apply {
             stop()
@@ -101,7 +101,7 @@ class DesktopRecordingSession(
         }
         targetDataLine = null
     }
-    
+
     private fun createWavFile(rawAudio: ByteArray): ByteArray {
         val format = AudioFormat(
             config.sampleRate.toFloat(),
@@ -110,19 +110,19 @@ class DesktopRecordingSession(
             true,
             true
         )
-        
+
         return ByteArrayOutputStream().use { output ->
             val audioInputStream = AudioInputStream(
                 rawAudio.inputStream(),
                 format,
                 rawAudio.size.toLong() / format.frameSize
             )
-            
+
             AudioSystem.write(audioInputStream, AudioFileFormat.Type.WAVE, output)
             output.toByteArray()
         }
     }
-    
+
     private fun createAuFile(rawAudio: ByteArray): ByteArray {
         val format = AudioFormat(
             config.sampleRate.toFloat(),
@@ -131,19 +131,19 @@ class DesktopRecordingSession(
             true,
             true
         )
-        
+
         return ByteArrayOutputStream().use { output ->
             val audioInputStream = AudioInputStream(
                 rawAudio.inputStream(),
                 format,
                 rawAudio.size.toLong() / format.frameSize
             )
-            
+
             AudioSystem.write(audioInputStream, AudioFileFormat.Type.AU, output)
             output.toByteArray()
         }
     }
-    
+
     private fun createAiffFile(rawAudio: ByteArray): ByteArray {
         val format = AudioFormat(
             config.sampleRate.toFloat(),
@@ -152,14 +152,14 @@ class DesktopRecordingSession(
             true,
             true
         )
-        
+
         return ByteArrayOutputStream().use { output ->
             val audioInputStream = AudioInputStream(
                 rawAudio.inputStream(),
                 format,
                 rawAudio.size.toLong() / format.frameSize
             )
-            
+
             AudioSystem.write(audioInputStream, AudioFileFormat.Type.AIFF, output)
             output.toByteArray()
         }

@@ -1,6 +1,7 @@
 package com.gromozeka.bot.services.translation.data
-import kotlinx.serialization.Serializable
+
 import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
 @Serializable
 @SerialName("thai")
@@ -74,7 +75,7 @@ data class ThaiTranslation(
     override val parseErrorText: String = "⚠️ ไม่สามารถแปลงโครงสร้างได้",
     override val clearSearchText: String = "ล้างการค้นหา",
     override val recordingText: String = "บันทึก",
-    override val pushToTalkText: String = "กดเพื่อพูด"
+    override val pushToTalkText: String = "กดเพื่อพูด",
 ) : Translation() {
 
     @Serializable
@@ -176,7 +177,7 @@ data class ThaiTranslation(
         override val themeInvalidFormat: String = "รูปแบบไม่ถูกต้อง",
 
         override val settingsTitle: String = "การตั้งค่า",
-        override val closeSettingsText: String = "ปิดการตั้งค่า"
+        override val closeSettingsText: String = "ปิดการตั้งค่า",
     ) : SettingsTranslation()
 
     override val settings: SettingsTranslation = ThaiSettingsTranslation()

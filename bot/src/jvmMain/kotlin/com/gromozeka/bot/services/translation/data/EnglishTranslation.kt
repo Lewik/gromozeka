@@ -1,6 +1,7 @@
 package com.gromozeka.bot.services.translation.data
-import kotlinx.serialization.Serializable
+
 import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
 @Serializable
 @SerialName("english")
@@ -75,7 +76,7 @@ data class EnglishTranslation(
     override val parseErrorText: String = "⚠️ Failed to parse structure",
     override val clearSearchText: String = "Clear search",
     override val recordingText: String = "Recording",
-    override val pushToTalkText: String = "Push to Talk"
+    override val pushToTalkText: String = "Push to Talk",
 ) : Translation() {
 
     @Serializable
@@ -183,7 +184,7 @@ data class EnglishTranslation(
         override val themeInvalidFormat: String = "Invalid format",
 
         override val settingsTitle: String = "Settings",
-        override val closeSettingsText: String = "Close settings"
+        override val closeSettingsText: String = "Close settings",
     ) : SettingsTranslation()
 
     override val settings: SettingsTranslation = EnglishSettingsTranslation()

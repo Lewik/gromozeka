@@ -1,7 +1,6 @@
 package com.gromozeka.bot.services
 
 import com.gromozeka.bot.ui.UiWindowState
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.springframework.stereotype.Service
 import java.io.File

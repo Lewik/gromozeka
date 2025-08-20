@@ -1,6 +1,7 @@
 package com.gromozeka.bot.services.translation.data
-import kotlinx.serialization.Serializable
+
 import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
 @Serializable
 @SerialName("chinese")
@@ -74,7 +75,7 @@ data class ChineseTranslation(
     override val parseErrorText: String = "⚠️ 解析结构失败",
     override val clearSearchText: String = "清除搜索",
     override val recordingText: String = "录音中",
-    override val pushToTalkText: String = "按下通话"
+    override val pushToTalkText: String = "按下通话",
 ) : Translation() {
 
     @Serializable
@@ -176,7 +177,7 @@ data class ChineseTranslation(
         override val themeInvalidFormat: String = "无效格式",
 
         override val settingsTitle: String = "设置",
-        override val closeSettingsText: String = "关闭设置"
+        override val closeSettingsText: String = "关闭设置",
     ) : SettingsTranslation()
 
     override val settings: SettingsTranslation = ChineseSettingsTranslation()

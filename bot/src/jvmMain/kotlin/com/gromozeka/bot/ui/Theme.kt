@@ -15,11 +15,11 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.gromozeka.bot.services.theming.ThemeService
-import com.mikepenz.markdown.m3.Markdown
-import com.mikepenz.markdown.model.markdownPadding
 import com.mikepenz.markdown.compose.components.markdownComponents
 import com.mikepenz.markdown.compose.elements.highlightedCodeBlock
 import com.mikepenz.markdown.compose.elements.highlightedCodeFence
+import com.mikepenz.markdown.m3.Markdown
+import com.mikepenz.markdown.model.markdownPadding
 
 @Composable
 fun GromozekaTheme(

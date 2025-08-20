@@ -5,7 +5,7 @@ data class AudioConfig(
     val channels: Int = 1,
     val bitDepth: Int = 16,
     val chunkSizeBytes: Int = 2048,
-    val outputFormat: AudioOutputFormat = AudioOutputFormat.WAV
+    val outputFormat: AudioOutputFormat = AudioOutputFormat.WAV,
 )
 
 enum class AudioOutputFormat {

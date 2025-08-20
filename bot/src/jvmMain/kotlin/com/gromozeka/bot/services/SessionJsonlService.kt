@@ -1,4 +1,3 @@
-
 package com.gromozeka.bot.services
 
 import com.gromozeka.bot.model.ChatSessionMetadata

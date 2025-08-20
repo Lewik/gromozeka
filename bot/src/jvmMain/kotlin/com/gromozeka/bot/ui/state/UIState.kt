@@ -15,15 +15,15 @@ data class UIState(
     /**
      * UI state for a single tab
      * Follows Android's official UiState pattern with ViewModel
-     * 
+     *
      * Tabs represent UI concept - what user sees as tabs in interface.
      * Each tab can contain a Claude session, but tabs can exist without sessions
      * (e.g., settings tab, logs tab) and sessions can exist without tabs
      * (e.g., background processing sessions).
-     * 
+     *
      * This state is:
      * - Immutable (thread-safe)
-     * - Serializable (direct persistence) 
+     * - Serializable (direct persistence)
      * - Single source of truth for tab UI
      */
     @Serializable

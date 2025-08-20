@@ -21,7 +21,7 @@ class MacOSAudioPlayerController : AudioPlayerController {
 
             process = ProcessBuilder("afplay", audioFile.absolutePath)
                 .start()
-            
+
             currentProcess = process
             println("[AudioPlayer] Started playing: ${audioFile.name}")
 

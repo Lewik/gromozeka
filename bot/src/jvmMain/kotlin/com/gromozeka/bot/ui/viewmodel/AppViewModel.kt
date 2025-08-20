@@ -13,7 +13,7 @@ import kotlinx.coroutines.sync.withLock
 
 /**
  * Application-level ViewModel that manages all UI tabs
- * 
+ *
  * Clear separation of concepts:
  * - Tabs: UI concept (what user sees in interface)
  * - Sessions: Business concept (Claude connections)
@@ -52,11 +52,11 @@ class AppViewModel(
      * @return Index of the created tab
      */
     suspend fun createTab(
-        projectPath: String, 
+        projectPath: String,
         resumeSessionId: String? = null,
-        initialMessage: String? = null
+        initialMessage: String? = null,
     ): Int = mutex.withLock {
-        
+
         val claudeSessionId = resumeSessionId?.let { ClaudeSessionUuid(it) }
         // Create session through SessionManager
         val session = sessionManager.createSession(projectPath, claudeSessionId)
@@ -122,11 +122,13 @@ class AppViewModel(
                     // Closing tab with index > 1 -> activate left neighbor (index - 1)
                     index - 1
                 }
+
                 index == 1 && tabList.size > 2 -> {
                     // Closing first session (index 1) and there are tabs to the right -> stay at index 1
                     // (the right tab will shift to this position after removal)
                     1
                 }
+
                 else -> {
                     // Closing the last remaining session -> return to session list
                     null
@@ -166,7 +168,7 @@ class AppViewModel(
 
         // Build all tabs first, then assign in one atomic operation
         val restoredTabs = mutableListOf<SessionViewModel>()
-        
+
         uiState.tabs.forEach { tabUiState ->
             try {
                 val claudeSessionId = tabUiState.claudeSessionId
@@ -206,7 +208,7 @@ class AppViewModel(
     suspend fun renameTab(tabIndex: Int, newName: String?) = mutex.withLock {
         val tabList = _tabs.value
         val sessionViewModel = tabList.getOrNull(tabIndex) ?: return@withLock
-        
+
         sessionViewModel.updateCustomName(newName?.takeIf { it.isNotBlank() })
         println("[AppViewModel] Renamed tab at index $tabIndex to: ${newName ?: "default"}")
     }
@@ -218,7 +220,7 @@ class AppViewModel(
     suspend fun resetTabName(tabIndex: Int) = mutex.withLock {
         val tabList = _tabs.value
         val sessionViewModel = tabList.getOrNull(tabIndex) ?: return@withLock
-        
+
         sessionViewModel.updateCustomName(null)
         println("[AppViewModel] Reset tab name at index $tabIndex to default")
     }

@@ -1,6 +1,7 @@
 # AI Theme Generation Task
 
-I need you to analyze a screenshot and generate a color theme that **uses the exact same colors as what's in the screenshot**. Your goal is color matching, not improvement.
+I need you to analyze a screenshot and generate a color theme that **uses the exact same colors as what's in the
+screenshot**. Your goal is color matching, not improvement.
 
 ## Available Files
 
@@ -11,16 +12,19 @@ I need you to analyze a screenshot and generate a color theme that **uses the ex
 ## Reference Theme Examples
 
 ### Light Theme JSON Structure
+
 ```json
 {LIGHT_THEME_JSON}
 ```
 
 ### Dark Theme JSON Structure
+
 ```json
 {DARK_THEME_JSON}
 ```
 
 ## Your Task
+
 1. **Read and analyze the target screenshot**: `{SCREENSHOT_PATH}`
 2. **Extract exact colors** from the image (don't interpret or improve)
 3. **Generate a theme JSON** that uses the screenshot's exact colors
@@ -31,6 +35,7 @@ I need you to analyze a screenshot and generate a color theme that **uses the ex
 {DETAILED_GUIDE_CONTENT}
 
 ## Final Requirements
+
 - Use the Read tool to analyze the target screenshot
 - **Extract and copy colors directly** - don't interpret or "improve" them
 - Generate a theme that **uses the screenshot's colors**

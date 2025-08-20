@@ -2,7 +2,11 @@
   "mcpServers": {
     "gromozeka-self-control": {
       "command": "java",
-      "args": ["-jar", "{{JAR_PATH}}", "{{PORT_NUMBER}}"],
+      "args": [
+        "-jar",
+        "{{JAR_PATH}}",
+        "{{PORT_NUMBER}}"
+      ],
       "env": {}
     }
   }

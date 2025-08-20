@@ -14,7 +14,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.SerializationException
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.io.File
 
@@ -29,7 +28,7 @@ data class ThemeInfo(
     val isBuiltIn: Boolean,
     val isValid: Boolean,
     val errorMessage: String? = null,
-    val file: File? = null
+    val file: File? = null,
 )
 
 class ThemeService {
@@ -162,7 +161,7 @@ class ThemeService {
         // Scan AI-generated themes from themes directory
         val themesDir = File(settingsService.gromozekaHome, "themes")
         if (themesDir.exists() && themesDir.isDirectory) {
-            themesDir.listFiles { file -> 
+            themesDir.listFiles { file ->
                 file.isFile && file.extension == "json" && file.name.startsWith("ai_generated_")
             }?.forEach { themeFile ->
                 val aiThemeInfo = loadAiTheme(themeFile)
@@ -178,7 +177,7 @@ class ThemeService {
         return try {
             val jsonContent = themeFile.readText()
             val theme = json.decodeFromString<AIGeneratedTheme>(jsonContent)
-            
+
             ThemeInfo(
                 themeId = theme.themeId,
                 themeName = theme.themeName,

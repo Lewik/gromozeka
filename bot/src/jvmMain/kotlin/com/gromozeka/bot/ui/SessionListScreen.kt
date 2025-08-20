@@ -1,26 +1,21 @@
-
 package com.gromozeka.bot.ui
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.*
-import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.gromozeka.bot.ui.LocalTranslation
 import com.gromozeka.bot.model.ChatSessionMetadata
 import com.gromozeka.bot.services.SessionJsonlService
 import com.gromozeka.bot.services.SessionManager
@@ -71,7 +66,7 @@ fun SessionListScreen(
     var projectGroups by remember { mutableStateOf<List<ProjectGroup>>(emptyList()) }
     var expandedProjects by remember { mutableStateOf<Set<String>>(emptySet()) }
     var isLoading by remember { mutableStateOf(true) }
-    
+
     // Search state
     val searchQuery by searchViewModel.searchQuery.collectAsState()
     val isSearching by searchViewModel.isSearching.collectAsState()
@@ -167,7 +162,7 @@ fun SessionListScreen(
             }
 
             Spacer(modifier = Modifier.height(8.dp))
-            
+
             // Search panel
             SearchPanel(
                 query = searchQuery,
@@ -213,8 +208,8 @@ fun SessionListScreen(
                                     }
                                 } else {
                                     Text(
-                                        text = if (searchQuery.isBlank()) LocalTranslation.current.enterSearchQuery 
-                                              else LocalTranslation.current.nothingFoundForText.format(searchQuery),
+                                        text = if (searchQuery.isBlank()) LocalTranslation.current.enterSearchQuery
+                                        else LocalTranslation.current.nothingFoundForText.format(searchQuery),
                                         textAlign = TextAlign.Center
                                     )
                                 }
@@ -257,23 +252,23 @@ fun SessionListScreen(
                             // Show grouped sessions sorted by last activity
                             projectGroups.forEach { group ->
                                 ProjectGroupHeader(
-                                group = group,
-                                isExpanded = expandedProjects.contains(group.projectPath),
-                                onToggleExpanded = {
-                                    expandedProjects = if (expandedProjects.contains(group.projectPath)) {
-                                        expandedProjects - group.projectPath
-                                    } else {
-                                        expandedProjects + group.projectPath
+                                    group = group,
+                                    isExpanded = expandedProjects.contains(group.projectPath),
+                                    onToggleExpanded = {
+                                        expandedProjects = if (expandedProjects.contains(group.projectPath)) {
+                                            expandedProjects - group.projectPath
+                                        } else {
+                                            expandedProjects + group.projectPath
+                                        }
+                                    },
+                                    onNewSessionClick = onNewSession,
+                                    onSessionMetadataClick = { clickedSession ->
+                                        coroutineScope.handleSessionClick(
+                                            clickedSession,
+                                            onSessionMetadataSelected,
+                                            appViewModel
+                                        )
                                     }
-                                },
-                                onNewSessionClick = onNewSession,
-                                onSessionMetadataClick = { clickedSession ->
-                                    coroutineScope.handleSessionClick(
-                                        clickedSession,
-                                        onSessionMetadataSelected,
-                                        appViewModel
-                                    )
-                                }
                                 )
                             }
                         }

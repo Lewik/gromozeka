@@ -1,16 +1,16 @@
 package com.gromozeka.bot
 
 import com.gromozeka.bot.model.StreamJsonLine
-import com.gromozeka.bot.services.StreamToChatMessageMapper
 import com.gromozeka.bot.services.SettingsService
+import com.gromozeka.bot.services.StreamToChatMessageMapper
 import com.gromozeka.bot.settings.Settings
+import io.mockk.every
+import io.mockk.mockk
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.Disabled
-import io.mockk.every
-import io.mockk.mockk
 import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertNotNull

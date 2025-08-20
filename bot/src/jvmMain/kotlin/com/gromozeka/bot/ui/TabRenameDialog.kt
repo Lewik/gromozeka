@@ -15,11 +15,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import kotlinx.coroutines.delay
-import com.gromozeka.bot.ui.LocalTranslation
 
 /**
  * Modal dialog for renaming a tab
- * 
+ *
  * @param isOpen Whether the dialog is open
  * @param currentName Current tab name
  * @param onRename Callback when tab is renamed
@@ -30,7 +29,7 @@ fun TabRenameDialog(
     isOpen: Boolean,
     currentName: String,
     onRename: (String) -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
 ) {
     if (isOpen) {
         var editingText by remember { mutableStateOf(currentName) }
@@ -91,10 +90,12 @@ fun TabRenameDialog(
                                         confirmRename()
                                         true
                                     }
+
                                     event.key == Key.Escape && event.type == KeyEventType.KeyDown -> {
                                         onDismiss()
                                         true
                                     }
+
                                     else -> false
                                 }
                             },

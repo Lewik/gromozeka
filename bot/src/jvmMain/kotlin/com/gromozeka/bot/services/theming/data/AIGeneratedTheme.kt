@@ -1,29 +1,29 @@
 package com.gromozeka.bot.services.theming.data
 
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
 @Serializable
 @SerialName("ai_generated")
 data class AIGeneratedTheme(
     override val themeId: String,
     override val themeName: String,
-    
+
     override val primary: HexColor,
     override val onPrimary: HexColor,
     override val primaryContainer: HexColor,
     override val onPrimaryContainer: HexColor,
-    
+
     override val secondary: HexColor,
     override val onSecondary: HexColor,
     override val secondaryContainer: HexColor,
     override val onSecondaryContainer: HexColor,
-    
+
     override val error: HexColor,
     override val onError: HexColor,
     override val errorContainer: HexColor,
     override val onErrorContainer: HexColor,
-    
+
     override val background: HexColor,
     override val onBackground: HexColor,
     override val surface: HexColor,
@@ -31,7 +31,7 @@ data class AIGeneratedTheme(
     override val surfaceVariant: HexColor,
     override val onSurfaceVariant: HexColor,
     override val outline: HexColor,
-    
+
     // Optional colors with null defaults
     override val tertiary: HexColor? = null,
     override val onTertiary: HexColor? = null,

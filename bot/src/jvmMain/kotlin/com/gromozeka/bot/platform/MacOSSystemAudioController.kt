@@ -46,7 +46,7 @@ class MacOSSystemAudioController : SystemAudioController {
         try {
             val script = "output muted of (get volume settings)"
             val process = ProcessBuilder("osascript", "-e", script).start()
-            
+
             process.inputStream.bufferedReader().use { reader ->
                 val output = reader.readText().trim()
                 process.waitFor()
@@ -76,7 +76,7 @@ class MacOSSystemAudioController : SystemAudioController {
         try {
             val script = "output volume of (get volume settings)"
             val process = ProcessBuilder("osascript", "-e", script).start()
-            
+
             process.inputStream.bufferedReader().use { reader ->
                 val output = reader.readText().trim()
                 process.waitFor()

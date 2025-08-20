@@ -1,6 +1,6 @@
 package com.gromozeka.shared.domain.message
 
-import kotlinx.serialization.*
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
 
 /**
@@ -8,25 +8,25 @@ import kotlinx.serialization.json.JsonElement
  */
 @Serializable
 sealed class ClaudeCodeToolResultData : ToolResultData() {
-    
+
     /**
      * File system read result
      */
     @Serializable
     data class Read(
         val content: String, // File content with line numbers
-        val isEmpty: Boolean = false
+        val isEmpty: Boolean = false,
     ) : ClaudeCodeToolResultData()
-    
+
     /**
      * File system edit result
      */
     @Serializable
     data class Edit(
         val success: Boolean,
-        val message: String? = null
+        val message: String? = null,
     ) : ClaudeCodeToolResultData()
-    
+
     /**
      * Bash execution result
      */
@@ -35,9 +35,9 @@ sealed class ClaudeCodeToolResultData : ToolResultData() {
         val stdout: String? = null,
         val stderr: String? = null,
         val interrupted: Boolean = false,
-        val isImage: Boolean = false
+        val isImage: Boolean = false,
     ) : ClaudeCodeToolResultData()
-    
+
     /**
      * Grep search result
      */
@@ -45,44 +45,44 @@ sealed class ClaudeCodeToolResultData : ToolResultData() {
     data class Grep(
         val matches: List<String>? = null,
         val content: String? = null,
-        val count: Int? = null
+        val count: Int? = null,
     ) : ClaudeCodeToolResultData()
-    
+
     /**
      * TodoWrite result
      */
     @Serializable
     data class TodoWrite(
         val success: Boolean,
-        val message: String? = null
+        val message: String? = null,
     ) : ClaudeCodeToolResultData()
-    
+
     /**
      * WebSearch result
      */
     @Serializable
     data class WebSearch(
-        val results: JsonElement // Complex search results structure
+        val results: JsonElement, // Complex search results structure
     ) : ClaudeCodeToolResultData()
-    
+
     /**
      * WebFetch result
      */
     @Serializable
     data class WebFetch(
         val content: String,
-        val redirectUrl: String? = null
+        val redirectUrl: String? = null,
     ) : ClaudeCodeToolResultData()
-    
+
     /**
      * Subagent result
      */
-    @Serializable  
+    @Serializable
     data class Subagent(
         val response: String,
-        val success: Boolean = true
+        val success: Boolean = true,
     ) : ClaudeCodeToolResultData()
-    
+
     /**
      * Null result - when tool returns no content
      */

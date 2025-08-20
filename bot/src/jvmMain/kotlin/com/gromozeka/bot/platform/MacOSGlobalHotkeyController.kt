@@ -4,8 +4,8 @@ import com.github.kwhat.jnativehook.GlobalScreen
 import com.github.kwhat.jnativehook.NativeHookException
 import com.github.kwhat.jnativehook.keyboard.NativeKeyEvent
 import com.github.kwhat.jnativehook.keyboard.NativeKeyListener
-import com.gromozeka.bot.services.SettingsService
 import com.gromozeka.bot.services.PTTEventRouter
+import com.gromozeka.bot.services.SettingsService
 import com.gromozeka.bot.services.UnifiedGestureDetector
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.collectLatest

@@ -1,11 +1,11 @@
 package com.gromozeka.bot
 
-import com.gromozeka.bot.platform.SystemAudioController
-import com.gromozeka.bot.platform.ScreenCaptureController
 import com.gromozeka.bot.platform.AudioPlayerController
+import com.gromozeka.bot.platform.ScreenCaptureController
+import com.gromozeka.bot.platform.SystemAudioController
 import com.gromozeka.bot.services.*
-import com.gromozeka.bot.services.translation.TranslationService
 import com.gromozeka.bot.services.theming.ThemeService
+import com.gromozeka.bot.services.translation.TranslationService
 import com.gromozeka.bot.ui.viewmodel.AppViewModel
 import com.gromozeka.shared.audio.AudioRecorder
 import io.ktor.client.*
@@ -25,8 +25,6 @@ import org.springframework.context.annotation.Configuration
 
 @Configuration
 class Config {
-
-
 
 
     @Bean

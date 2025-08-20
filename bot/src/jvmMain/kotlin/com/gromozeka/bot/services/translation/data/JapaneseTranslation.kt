@@ -1,6 +1,7 @@
 package com.gromozeka.bot.services.translation.data
-import kotlinx.serialization.Serializable
+
 import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
 @Serializable
 @SerialName("japanese")
@@ -74,7 +75,7 @@ data class JapaneseTranslation(
     override val parseErrorText: String = "⚠️ 構造解析に失敗",
     override val clearSearchText: String = "検索をクリア",
     override val recordingText: String = "録音中",
-    override val pushToTalkText: String = "プッシュ・トゥ・トーク"
+    override val pushToTalkText: String = "プッシュ・トゥ・トーク",
 ) : Translation() {
 
     @Serializable
@@ -176,7 +177,7 @@ data class JapaneseTranslation(
         override val themeInvalidFormat: String = "無効なフォーマット",
 
         override val settingsTitle: String = "設定",
-        override val closeSettingsText: String = "設定を閉じる"
+        override val closeSettingsText: String = "設定を閉じる",
     ) : SettingsTranslation()
 
     override val settings: SettingsTranslation = JapaneseSettingsTranslation()

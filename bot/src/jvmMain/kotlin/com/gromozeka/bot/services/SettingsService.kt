@@ -5,7 +5,6 @@ import com.gromozeka.bot.settings.Settings
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.awt.GraphicsEnvironment
 import java.awt.Toolkit
@@ -280,22 +279,22 @@ class SettingsService {
             // Read template from resources
             val templateStream = this::class.java.getResourceAsStream("/mcp-config-template.json")
                 ?: throw IllegalStateException("MCP config template not found in resources")
-            
+
             val template = templateStream.bufferedReader().use { it.readText() }
-            
+
             // Determine JAR path - always use absolute path to built JAR
             val jarPath = JarResourceManager.getMcpProxyJarPath(this)
-            
+
             // Replace template placeholder
             val mcpConfig = template.replace("{{JAR_PATH}}", jarPath)
-            
+
             // Write to gromozeka home
             val mcpConfigFile = File(gromozekaHome, "mcp-config.json")
             mcpConfigFile.writeText(mcpConfig)
-            
+
             println("[SettingsService] Generated MCP config: ${mcpConfigFile.absolutePath}")
             println("[SettingsService] MCP JAR path: $jarPath")
-            
+
         } catch (e: Exception) {
             println("[SettingsService] Failed to generate MCP config: ${e.message}")
             e.printStackTrace()

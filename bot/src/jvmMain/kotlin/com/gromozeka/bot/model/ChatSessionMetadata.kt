@@ -1,4 +1,3 @@
-
 package com.gromozeka.bot.model
 
 import com.gromozeka.shared.domain.session.ClaudeSessionUuid

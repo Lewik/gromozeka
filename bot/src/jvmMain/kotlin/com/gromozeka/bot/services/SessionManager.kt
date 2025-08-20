@@ -44,13 +44,13 @@ class SessionManager(
      * @return SessionUuid of the created session
      */
     suspend fun createSession(
-        projectPath: String, 
+        projectPath: String,
         resumeSessionId: ClaudeSessionUuid? = null,
-        customSystemPrompt: String? = null
+        customSystemPrompt: String? = null,
     ): Session = sessionMutex.withLock {
 
         val session = createSessionInternal(
-            projectPath = projectPath, 
+            projectPath = projectPath,
             customSystemPrompt = customSystemPrompt,
             initialClaudeSessionId = resumeSessionId ?: ClaudeSessionUuid.DEFAULT
         )

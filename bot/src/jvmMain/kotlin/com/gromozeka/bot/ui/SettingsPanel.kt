@@ -360,7 +360,13 @@ fun SettingsPanel(
                                 val themeInfo = availableThemes[themeId]
                                 when {
                                     themeInfo == null -> themeId
-                                    themeInfo.isBuiltIn -> "${Theme.getThemeNameTranslated(themeId, translation)} (built-in)"
+                                    themeInfo.isBuiltIn -> "${
+                                        Theme.getThemeNameTranslated(
+                                            themeId,
+                                            translation
+                                        )
+                                    } (built-in)"
+
                                     !themeInfo.isValid -> "${themeInfo.themeName} (${translation.settings.themeInvalidFormat})"
                                     else -> themeInfo.themeName
                                 }
@@ -392,7 +398,7 @@ fun SettingsPanel(
                                 }
                             }
                         )
-                        
+
                         // Theme override toggle
                         SwitchSettingItem(
                             label = "Enable Theme Override",
@@ -800,7 +806,9 @@ private fun <T> DropdownSettingItem(
                                 text = {
                                     Text(
                                         text = optionLabel(option),
-                                        color = if (enabled) LocalContentColor.current else LocalContentColor.current.copy(alpha = 0.38f)
+                                        color = if (enabled) LocalContentColor.current else LocalContentColor.current.copy(
+                                            alpha = 0.38f
+                                        )
                                     )
                                 },
                                 onClick = {
@@ -814,9 +822,9 @@ private fun <T> DropdownSettingItem(
                         }
                     }
                 }
-                
+
                 Spacer(modifier = Modifier.width(8.dp))
-                
+
                 trailingContent()
             }
         } else {
@@ -845,7 +853,9 @@ private fun <T> DropdownSettingItem(
                             text = {
                                 Text(
                                     text = optionLabel(option),
-                                    color = if (enabled) LocalContentColor.current else LocalContentColor.current.copy(alpha = 0.38f)
+                                    color = if (enabled) LocalContentColor.current else LocalContentColor.current.copy(
+                                        alpha = 0.38f
+                                    )
                                 )
                             },
                             onClick = {

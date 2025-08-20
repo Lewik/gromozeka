@@ -8,7 +8,6 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.stereotype.Service
@@ -80,8 +79,8 @@ class UIStateService(
             tabs.forEach { tab ->
                 val tabId = tab.sessionId.value
                 if (tabId !in tabSubscriptions) {
-                    val job = tab.uiState.onEach { _ -> 
-                        requestSave() 
+                    val job = tab.uiState.onEach { _ ->
+                        requestSave()
                     }.launchIn(scope)
                     tabSubscriptions[tabId] = job
                 }

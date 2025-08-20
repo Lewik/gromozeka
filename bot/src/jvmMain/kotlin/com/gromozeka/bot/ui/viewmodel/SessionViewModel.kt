@@ -10,7 +10,6 @@ import com.gromozeka.bot.ui.state.UIState
 import com.gromozeka.bot.utils.TokenUsageCalculator
 import com.gromozeka.shared.domain.message.ChatMessage
 import com.gromozeka.shared.domain.message.MessageTagDefinition
-import com.gromozeka.shared.domain.session.ClaudeSessionUuid
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.*
 
@@ -65,7 +64,11 @@ class SessionViewModel(
                         includeInMessage = false
                     ),
                     MessageTagDefinition.Control(
-                        data = MessageTagDefinition.Data("thinking_ultrathink", "Ultrathink", "Режим глубокого анализа с пошаговыми рассуждениями и детальной проработкой"),
+                        data = MessageTagDefinition.Data(
+                            "thinking_ultrathink",
+                            "Ultrathink",
+                            "Режим глубокого анализа с пошаговыми рассуждениями и детальной проработкой"
+                        ),
                         includeInMessage = true
                     )
                 ),
@@ -74,7 +77,11 @@ class SessionViewModel(
             MessageTagDefinition(
                 controls = listOf(
                     MessageTagDefinition.Control(
-                        data = MessageTagDefinition.Data("mode_readonly", "Readonly", "Режим readonly - никаких изменений кода или команд применяющих изменения"),
+                        data = MessageTagDefinition.Data(
+                            "mode_readonly",
+                            "Readonly",
+                            "Режим readonly - никаких изменений кода или команд применяющих изменения"
+                        ),
                         includeInMessage = true
                     ),
                     MessageTagDefinition.Control(

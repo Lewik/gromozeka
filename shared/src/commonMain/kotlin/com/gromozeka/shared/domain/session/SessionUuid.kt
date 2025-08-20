@@ -1,7 +1,6 @@
 package com.gromozeka.shared.domain.session
 
 import kotlinx.serialization.Serializable
-import kotlin.jvm.JvmInline
 
 @Serializable
 @JvmInline
@@ -21,7 +20,7 @@ value class ClaudeSessionUuid(val value: String) {
     }
 
     override fun toString(): String = value
-    
+
     companion object {
         val DEFAULT = ClaudeSessionUuid("default")
     }

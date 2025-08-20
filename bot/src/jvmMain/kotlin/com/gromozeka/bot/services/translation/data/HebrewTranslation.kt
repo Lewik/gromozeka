@@ -1,6 +1,7 @@
 package com.gromozeka.bot.services.translation.data
-import kotlinx.serialization.Serializable
+
 import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
 @Serializable
 @SerialName("hebrew")
@@ -75,7 +76,7 @@ data class HebrewTranslation(
     override val parseErrorText: String = "⚠️ נכשל בפענוח המבנה",
     override val clearSearchText: String = "נקה חיפוש",
     override val recordingText: String = "מקליט",
-    override val pushToTalkText: String = "לחץ ודבר"
+    override val pushToTalkText: String = "לחץ ודבר",
 ) : Translation() {
 
     @Serializable
@@ -183,7 +184,7 @@ data class HebrewTranslation(
         override val themeInvalidFormat: String = "פורמט לא תקין",
 
         override val settingsTitle: String = "הגדרות",
-        override val closeSettingsText: String = "סגור הגדרות"
+        override val closeSettingsText: String = "סגור הגדרות",
     ) : SettingsTranslation()
 
     override val settings: SettingsTranslation = HebrewSettingsTranslation()

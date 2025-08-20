@@ -27,7 +27,7 @@ fun SearchPanel(
     onQueryChange: (String) -> Unit,
     isSearching: Boolean,
     onSearch: () -> Unit,
-    onClear: () -> Unit
+    onClear: () -> Unit,
 ) {
     Row(
         modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min),
@@ -50,7 +50,7 @@ fun SearchPanel(
                 }
             } else null
         )
-        
+
         // Search button with loading indicator
         CompactButton(
             onClick = onSearch,

@@ -7,23 +7,23 @@ import kotlinx.serialization.Serializable
 sealed class Theme {
     abstract val themeId: String
     abstract val themeName: String
-    
+
     // Core Material Design colors as HexColor values
     abstract val primary: HexColor
     abstract val onPrimary: HexColor
     abstract val primaryContainer: HexColor
     abstract val onPrimaryContainer: HexColor
-    
+
     abstract val secondary: HexColor
     abstract val onSecondary: HexColor
     abstract val secondaryContainer: HexColor
     abstract val onSecondaryContainer: HexColor
-    
+
     abstract val error: HexColor
     abstract val onError: HexColor
     abstract val errorContainer: HexColor
     abstract val onErrorContainer: HexColor
-    
+
     abstract val background: HexColor
     abstract val onBackground: HexColor
     abstract val surface: HexColor
@@ -31,7 +31,7 @@ sealed class Theme {
     abstract val surfaceVariant: HexColor
     abstract val onSurfaceVariant: HexColor
     abstract val outline: HexColor
-    
+
     // Optional colors with defaults
     abstract val tertiary: HexColor?
     abstract val onTertiary: HexColor?
@@ -42,7 +42,7 @@ sealed class Theme {
     abstract val inverseSurface: HexColor?
     abstract val inverseOnSurface: HexColor?
     abstract val inversePrimary: HexColor?
-    
+
     // Utility methods for Compose Color conversion
     fun getPrimaryColor(): Color = primary.toComposeColor()
     fun getOnPrimaryColor(): Color = onPrimary.toComposeColor()
@@ -54,15 +54,18 @@ sealed class Theme {
     fun getOnSecondaryColor(): Color = onSecondary.toComposeColor()
     fun getErrorColor(): Color = error.toComposeColor()
     fun getOnErrorColor(): Color = onError.toComposeColor()
-    
+
     companion object {
         val builtIn = listOf(
             DarkTheme(),
             LightTheme(),
             GromozekaTheme(),
         ).associateBy { it.themeId }
-        
-        fun getThemeNameTranslated(themeId: String, translation: com.gromozeka.bot.services.translation.data.Translation): String {
+
+        fun getThemeNameTranslated(
+            themeId: String,
+            translation: com.gromozeka.bot.services.translation.data.Translation,
+        ): String {
             return when (themeId) {
                 DarkTheme.THEME_ID -> translation.settings.themeNameDark
                 LightTheme.THEME_ID -> translation.settings.themeNameLight

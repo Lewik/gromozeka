@@ -1,4 +1,3 @@
-
 package com.gromozeka.bot.model
 
 import com.gromozeka.bot.services.*
@@ -119,10 +118,10 @@ class Session(
             val activeTags: List<MessageTagDefinition.Data> = emptyList(),
         ) : Command() {
             fun getMessageWithInstructions() = if (activeTags.isNotEmpty()) {
-                 "$message\n\n<instructions>\n${activeTags.joinToString("\n") { it.instruction }}\n</instructions>"
-             } else {
-                 message
-             }
+                "$message\n\n<instructions>\n${activeTags.joinToString("\n") { it.instruction }}\n</instructions>"
+            } else {
+                message
+            }
         }
     }
 

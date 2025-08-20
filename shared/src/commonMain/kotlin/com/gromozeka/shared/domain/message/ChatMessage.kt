@@ -1,10 +1,11 @@
 package com.gromozeka.shared.domain.message
 
 import com.gromozeka.shared.domain.session.ClaudeSessionUuid
-import kotlin.time.Instant
-import kotlinx.serialization.*
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonClassDiscriminator
 import kotlinx.serialization.json.JsonElement
+import kotlin.time.Instant
 
 /**
  * Internal message representation for gromozeka.
@@ -18,17 +19,17 @@ data class ChatMessage(
     val content: List<ContentItem>,
     val timestamp: Instant,
     val llmSpecificMetadata: LlmSpecificMetadata?,
-    
+
     // Development context at root level
     val gitBranch: String? = null,
     val cwd: String? = null,
-    
+
     // Indicates if this message is loaded from historical data (prevents TTS replay)
     val isHistorical: Boolean = false,
-    
+
     // Original JSON from LLM stream for debugging (when showOriginalJson setting enabled)
     val originalJson: String? = null,
-    
+
     // Message tags that were active when this message was sent
     val activeTags: List<MessageTagDefinition.Data> = emptyList(),
 ) {
@@ -37,14 +38,14 @@ data class ChatMessage(
     enum class Role {
         USER, ASSISTANT, SYSTEM
     }
-    
+
     /**
      * LLM-specific metadata, extensible for different engines
      */
     @Serializable
     @JsonClassDiscriminator("llm")
     sealed class LlmSpecificMetadata {
-        
+
         @Serializable
         data class ClaudeCodeSessionFileEntry(
             val sessionId: ClaudeSessionUuid? = null,
@@ -56,21 +57,21 @@ data class ChatMessage(
             val userType: String? = null,
             val isSidechain: Boolean = false,
             val isCompactSummary: Boolean = false,
-            val isMeta: Boolean = false
+            val isMeta: Boolean = false,
         ) : LlmSpecificMetadata() {
-            
+
             @Serializable
             data class UsageInfo(
                 val inputTokens: Int,
                 val outputTokens: Int,
                 val cacheCreationTokens: Int? = null,
-                val cacheReadTokens: Int? = null
+                val cacheReadTokens: Int? = null,
             )
         }
-        
+
         // Future: OpenAI, Anthropic API, DeepSeek, etc.
     }
-    
+
     /**
      * Structured text data for TTS and voice synthesis
      */
@@ -79,16 +80,16 @@ data class ChatMessage(
         val fullText: String,
         val ttsText: String? = null,
         val voiceTone: String? = null,
-        val failedToParse: Boolean = false  // true if response parser failed and fell back to raw text
+        val failedToParse: Boolean = false,  // true if response parser failed and fell back to raw text
     )
-    
+
     /**
      * Content item hierarchy with support for nested content
      */
     @Serializable
     @JsonClassDiscriminator("type")
     sealed class ContentItem {
-        
+
         @Serializable
         @SerialName("Message")
         data class UserMessage(
@@ -98,55 +99,55 @@ data class ChatMessage(
         @Serializable
         data class ToolCall(
             val id: String,
-            val call: ToolCallData
+            val call: ToolCallData,
         ) : ContentItem()
-        
+
         @Serializable
         data class ToolResult(
             val toolUseId: String,
             val result: List<Data>,
-            val isError: Boolean = false
+            val isError: Boolean = false,
         ) : ContentItem() {
 
             @Serializable
             sealed class Data {
-                
+
                 @Serializable
                 data class Text(val content: String) : Data()
-                
+
                 @Serializable
                 data class Base64Data(
                     val data: String,
-                    val mediaType: MediaType
+                    val mediaType: MediaType,
                 ) : Data()
-                
+
                 @Serializable
                 data class UrlData(
                     val url: String,
-                    val mediaType: MediaType? = null
+                    val mediaType: MediaType? = null,
                 ) : Data()
-                
+
                 @Serializable
                 data class FileData(
                     val fileId: String,
-                    val mediaType: MediaType? = null
+                    val mediaType: MediaType? = null,
                 ) : Data()
             }
         }
-        
+
         @Serializable
         data class Thinking(
             val signature: String,
-            val thinking: String
+            val thinking: String,
         ) : ContentItem()
-        
+
         @Serializable
         data class System(
             val level: SystemLevel,
             val content: String,
-            val toolUseId: String? = null
+            val toolUseId: String? = null,
         ) : ContentItem() {
-            
+
             @Serializable
             enum class SystemLevel {
                 INFO,
@@ -154,26 +155,25 @@ data class ChatMessage(
                 ERROR
             }
         }
-        
+
         @Serializable
         @SerialName("IntermediateMessage")
         data class AssistantMessage(
-            val structured: StructuredText
+            val structured: StructuredText,
         ) : ContentItem()
-        
-        
-        
+
+
         @Serializable
         data class ImageItem(
-            val source: ImageSource
+            val source: ImageSource,
         ) : ContentItem()
-        
+
         @Serializable
         data class UnknownJson(
-            val json: JsonElement
+            val json: JsonElement,
         ) : ContentItem()
     }
-    
+
     @Serializable
     @JsonClassDiscriminator("type")
     sealed class ImageSource {
@@ -203,14 +203,14 @@ data class ChatMessage(
             override val type: String = "file",
         ) : ImageSource()
     }
-    
+
     @Serializable
     data class MediaType(
         val type: String,      // "image", "text", "application", "audio", "video"
-        val subtype: String    // "png", "plain", "json", "pdf", "mp4"
+        val subtype: String,    // "png", "plain", "json", "pdf", "mp4"
     ) {
         val value: String get() = "$type/$subtype"
-        
+
         companion object {
             // Image types
             val IMAGE_PNG = MediaType("image", "png")
@@ -218,29 +218,29 @@ data class ChatMessage(
             val IMAGE_GIF = MediaType("image", "gif")
             val IMAGE_WEBP = MediaType("image", "webp")
             val IMAGE_SVG = MediaType("image", "svg+xml")
-            
+
             // Text types
             val TEXT_PLAIN = MediaType("text", "plain")
             val TEXT_HTML = MediaType("text", "html")
             val TEXT_CSS = MediaType("text", "css")
             val TEXT_JAVASCRIPT = MediaType("text", "javascript")
-            
+
             // Application types
             val APPLICATION_JSON = MediaType("application", "json")
             val APPLICATION_PDF = MediaType("application", "pdf")
             val APPLICATION_ZIP = MediaType("application", "zip")
             val APPLICATION_OCTET_STREAM = MediaType("application", "octet-stream")
-            
+
             // Audio types
             val AUDIO_MP3 = MediaType("audio", "mpeg")
             val AUDIO_WAV = MediaType("audio", "wav")
             val AUDIO_OGG = MediaType("audio", "ogg")
-            
+
             // Video types
             val VIDEO_MP4 = MediaType("video", "mp4")
             val VIDEO_WEBM = MediaType("video", "webm")
             val VIDEO_AVI = MediaType("video", "x-msvideo")
-            
+
             /**
              * Parse MediaType from string like "image/png"
              */

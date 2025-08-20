@@ -11,12 +11,12 @@ class MacOSScreenCaptureController : ScreenCaptureController {
     private fun getGromozekaScreenshotsDir(): File {
         val systemTempDir = System.getProperty("java.io.tmpdir")
         val gromozekaDir = File(systemTempDir, "gromozeka")
-        
+
         if (!gromozekaDir.exists()) {
             gromozekaDir.mkdirs()
             println("[ScreenCapture] Created directory: ${gromozekaDir.absolutePath}")
         }
-        
+
         return gromozekaDir
     }
 
@@ -26,14 +26,14 @@ class MacOSScreenCaptureController : ScreenCaptureController {
             val screenshotsDir = getGromozekaScreenshotsDir()
             val screenshotFile = File(screenshotsDir, "window_$timestamp.png")
             val filePath = screenshotFile.absolutePath
-            
+
             println("[ScreenCapture] Starting window capture to: $filePath")
-            
+
             val process = ProcessBuilder("screencapture", "-w", "-o", filePath)
                 .start()
-            
+
             val exitCode = process.waitFor()
-            
+
             if (exitCode == 0 && screenshotFile.exists()) {
                 println("[ScreenCapture] Window screenshot captured successfully: $filePath")
                 filePath
@@ -54,14 +54,14 @@ class MacOSScreenCaptureController : ScreenCaptureController {
             val screenshotsDir = getGromozekaScreenshotsDir()
             val screenshotFile = File(screenshotsDir, "fullscreen_$timestamp.png")
             val filePath = screenshotFile.absolutePath
-            
+
             println("[ScreenCapture] Starting fullscreen capture to: $filePath")
-            
+
             val process = ProcessBuilder("screencapture", "-o", filePath)
                 .start()
-            
+
             val exitCode = process.waitFor()
-            
+
             if (exitCode == 0 && screenshotFile.exists()) {
                 println("[ScreenCapture] Fullscreen screenshot captured successfully: $filePath")
                 filePath
@@ -82,14 +82,14 @@ class MacOSScreenCaptureController : ScreenCaptureController {
             val screenshotsDir = getGromozekaScreenshotsDir()
             val screenshotFile = File(screenshotsDir, "area_$timestamp.png")
             val filePath = screenshotFile.absolutePath
-            
+
             println("[ScreenCapture] Starting area capture to: $filePath")
-            
+
             val process = ProcessBuilder("screencapture", "-s", "-o", filePath)
                 .start()
-            
+
             val exitCode = process.waitFor()
-            
+
             if (exitCode == 0 && screenshotFile.exists()) {
                 println("[ScreenCapture] Area screenshot captured successfully: $filePath")
                 filePath

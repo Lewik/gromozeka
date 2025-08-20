@@ -1,6 +1,6 @@
 package com.gromozeka.shared.domain.message
 
-import kotlinx.serialization.*
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonClassDiscriminator
 import kotlinx.serialization.json.JsonElement
 
@@ -10,14 +10,14 @@ import kotlinx.serialization.json.JsonElement
 @Serializable
 @JsonClassDiscriminator("tool")
 sealed class ToolResultData {
-    
-    
+
+
     /**
      * Generic tool result for unknown/MCP tools
      */
     @Serializable
     data class Generic(
         val name: String,
-        val output: JsonElement
+        val output: JsonElement,
     ) : ToolResultData()
 }
