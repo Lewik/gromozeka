@@ -1,6 +1,9 @@
 package com.gromozeka.bot.model
 
-import com.gromozeka.bot.services.*
+import com.gromozeka.bot.services.ClaudeWrapper
+import com.gromozeka.bot.services.SessionJsonlService
+import com.gromozeka.bot.services.SoundNotificationService
+import com.gromozeka.bot.services.StreamToChatMessageMapper
 import com.gromozeka.bot.utils.ChatMessageSoundDetector
 import com.gromozeka.shared.domain.message.ChatMessage
 import com.gromozeka.shared.domain.message.MessageTagDefinition
@@ -65,18 +68,17 @@ class Session(
     private val soundNotificationService: SoundNotificationService,
     private val claudeWrapper: ClaudeWrapper,
     private val streamToChatMessageMapper: StreamToChatMessageMapper,
-    private val settingsService: SettingsService,  // Added for MCP helper
+    private val mcpConfigPath: String,
     private val claudeModel: String? = null,
     private val responseFormat: com.gromozeka.bot.settings.ResponseFormat = com.gromozeka.bot.settings.ResponseFormat.JSON,
-    private val customSystemPrompt: String? = null,
+    private val appendSystemPrompt: String = "",
     private val initialClaudeSessionId: ClaudeSessionUuid = ClaudeSessionUuid.DEFAULT,
 ) {
 
     // === ACTOR CHANNELS ===
-    private val userCommandChannel = Channel<Command>(capacity = Channel.UNLIMITED)      // Commands from user/UI
-    private val priorityChannel = Channel<PriorityCommand>(capacity = Channel.UNLIMITED) // High priority commands
-    private val claudeStreamChannel =
-        Channel<StreamJsonLinePacket>(capacity = Channel.UNLIMITED) // Stream from Claude CLI
+    private val userCommandChannel = Channel<Command>(capacity = Channel.UNLIMITED)
+    private val priorityChannel = Channel<PriorityCommand>(capacity = Channel.UNLIMITED)
+    private val claudeStreamChannel = Channel<StreamJsonLinePacket>(capacity = Channel.UNLIMITED)
 
     // === ACTOR STATE ===  
     private var actorState: ActorState = ActorState.Inactive
@@ -423,10 +425,6 @@ class Session(
         actorState = ActorState.Starting
 
         try {
-            // 1. FIRST: Use global MCP config (server already running)
-            val mcpConfigPath = settingsService.getMcpConfigPath()
-            println("[Actor] Using global MCP config: $mcpConfigPath")
-
             // Load historical messages if resuming (skip if default/new session)
             if (currentSessionId != ClaudeSessionUuid.DEFAULT) {
                 println("[Actor] Loading historical messages from session: $currentSessionId")
@@ -445,8 +443,9 @@ class Session(
                 model = claudeModel,
                 responseFormat = responseFormat,
                 resumeSessionId = currentSessionId.takeIf { it != ClaudeSessionUuid.DEFAULT },
-                customSystemPrompt = customSystemPrompt,
-                mcpConfigPath = mcpConfigPath  // Pass MCP config to Claude
+                appendSystemPrompt = appendSystemPrompt,
+                mcpConfigPath = mcpConfigPath,
+                tabId = id.value
             )
 
             // Move to waiting for init state

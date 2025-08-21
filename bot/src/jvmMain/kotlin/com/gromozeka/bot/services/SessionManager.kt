@@ -41,17 +41,18 @@ class SessionManager(
      * Create and start new session
      * @param projectPath Path to the project directory
      * @param resumeSessionId Optional Claude session ID to resume from (for loading history)
+     * @param tabId Optional tab ID for generating tab-specific MCP config
      * @return SessionUuid of the created session
      */
     suspend fun createSession(
         projectPath: String,
         resumeSessionId: ClaudeSessionUuid? = null,
-        customSystemPrompt: String? = null,
+        tabId: String,
     ): Session = sessionMutex.withLock {
 
         val session = createSessionInternal(
             projectPath = projectPath,
-            customSystemPrompt = customSystemPrompt,
+            tabId = tabId,
             initialClaudeSessionId = resumeSessionId ?: ClaudeSessionUuid.DEFAULT
         )
 
@@ -70,12 +71,14 @@ class SessionManager(
     private fun createSessionInternal(
         projectPath: String,
         claudeModel: String = settingsService.settings.claudeModel,
-        customSystemPrompt: String? = null,
+        tabId: String? = null,
         initialClaudeSessionId: ClaudeSessionUuid = ClaudeSessionUuid.DEFAULT,
     ): Session {
         // Create wrapper using factory
         val wrapperType = WrapperType.DIRECT_CLI
         val claudeWrapper = wrapperFactory.createWrapper(settingsService, wrapperType)
+
+        val appendSystemPrompt = if (tabId != null) "This tab ID: $tabId" else ""
 
         return Session(
             id = UUID.randomUUID().toString().toSessionUuid(),
@@ -84,10 +87,11 @@ class SessionManager(
             soundNotificationService = soundNotificationService,
             claudeWrapper = claudeWrapper,
             streamToChatMessageMapper = streamToChatMessageMapper,
-            settingsService = settingsService,  // Added for MCP support
+            // Added for MCP support
+            mcpConfigPath = settingsService.mcpConfigFile.absolutePath,
             claudeModel = claudeModel,
             responseFormat = settingsService.settings.responseFormat,
-            customSystemPrompt = customSystemPrompt,
+            appendSystemPrompt = appendSystemPrompt,
             initialClaudeSessionId = initialClaudeSessionId,
         )
     }

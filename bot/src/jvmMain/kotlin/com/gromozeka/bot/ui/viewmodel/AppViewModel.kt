@@ -19,7 +19,7 @@ import kotlinx.coroutines.sync.withLock
  * - Sessions: Business concept (Claude connections)
  * - Each tab currently contains one session, but architecture allows for other tab types
  */
-class AppViewModel(
+open class AppViewModel(
     private val sessionManager: SessionManager,
     private val settingsService: SettingsService,
     private val scope: CoroutineScope,
@@ -28,14 +28,14 @@ class AppViewModel(
     private val mutex = Mutex()
 
     // Tab management (UI layer)
-    private val _tabs = MutableStateFlow<List<SessionViewModel>>(emptyList())
-    val tabs: StateFlow<List<SessionViewModel>> = _tabs.asStateFlow()
+    private val _tabs = MutableStateFlow<List<TabViewModel>>(emptyList())
+    val tabs: StateFlow<List<TabViewModel>> = _tabs.asStateFlow()
 
     private val _currentTabIndex = MutableStateFlow<Int?>(null)
     val currentTabIndex: StateFlow<Int?> = _currentTabIndex.asStateFlow()
 
     // Computed properties
-    val currentTab: StateFlow<SessionViewModel?> = combine(tabs, currentTabIndex) { tabList, index ->
+    val currentTab: StateFlow<TabViewModel?> = combine(tabs, currentTabIndex) { tabList, index ->
         index?.let { tabList.getOrNull(it) }
     }.stateIn(scope, SharingStarted.Eagerly, null)
 
@@ -60,18 +60,26 @@ class AppViewModel(
     ): Int = mutex.withLock {
 
         val claudeSessionId = resumeSessionId?.let { ClaudeSessionUuid(it) }
-        // Create session through SessionManager
-        val session = sessionManager.createSession(projectPath, claudeSessionId)
+        
+        // Create tabId first
+        val tabId = java.util.UUID.randomUUID().toString()
+        
+        // Create session through SessionManager with tabId
+        val session = sessionManager.createSession(
+            projectPath = projectPath, 
+            resumeSessionId = claudeSessionId, 
+            tabId = tabId
+        )
 
-        // Create SessionViewModel for this tab
+        // Create TabViewModel for this tab
         val initialTabUiState = UIState.Tab(
             projectPath = projectPath,
             claudeSessionId = claudeSessionId ?: ClaudeSessionUuid.DEFAULT,
-            activeMessageTags = SessionViewModel.getDefaultEnabledTags(),
-            tabId = java.util.UUID.randomUUID().toString(),
+            activeMessageTags = TabViewModel.getDefaultEnabledTags(),
+            tabId = tabId,
             parentTabId = parentTabId
         )
-        val sessionViewModel = SessionViewModel(
+        val tabViewModel = TabViewModel(
             session = session,
             settingsFlow = settingsService.settingsFlow,
             scope = scope,
@@ -80,7 +88,7 @@ class AppViewModel(
         )
 
         // Add to tabs list
-        val updatedTabs = _tabs.value + sessionViewModel
+        val updatedTabs = _tabs.value + tabViewModel
         _tabs.value = updatedTabs
 
         val newTabIndex = updatedTabs.size - 1
@@ -169,6 +177,32 @@ class AppViewModel(
         println("[AppViewModel] Selected tab: $index")
     }
 
+    /**
+     * Selects a tab by id
+     * @param tabId The tab ID to select
+     * @return Selected TabViewModel if found, null otherwise
+     */
+    suspend fun selectTab(tabId: String): TabViewModel? {
+        val tab = findTabByTabId(tabId)
+        if (tab != null) {
+            val index = tabs.value.indexOf(tab)
+            selectTab(index)
+            return tab
+        } else {
+            println("[AppViewModel] Tab not found for ID: $tabId")
+            return null
+        }
+    }
+
+    /**
+     * Finds a tab by its tabId
+     * @param tabId The tab ID to search for
+     * @return TabViewModel if found, null otherwise
+     */
+    fun findTabByTabId(tabId: String): TabViewModel? {
+        return tabs.value.find { it.uiState.value.tabId == tabId }
+    }
+
 
     /**
      * Restores tabs from UIState
@@ -177,14 +211,18 @@ class AppViewModel(
         println("[AppViewModel] Restoring ${uiState.tabs.size} tabs from UIState")
 
         // Build all tabs first, then assign in one atomic operation
-        val restoredTabs = mutableListOf<SessionViewModel>()
+        val restoredTabs = mutableListOf<TabViewModel>()
 
         uiState.tabs.forEach { tabUiState ->
             try {
                 val claudeSessionId = tabUiState.claudeSessionId
-                val session = sessionManager.createSession(tabUiState.projectPath, claudeSessionId)
+                val session = sessionManager.createSession(
+                    projectPath = tabUiState.projectPath, 
+                    resumeSessionId = claudeSessionId,
+                    tabId = tabUiState.tabId
+                )
 
-                val sessionViewModel = SessionViewModel(
+                val tabViewModel = TabViewModel(
                     session = session,
                     settingsFlow = settingsService.settingsFlow,
                     scope = scope,
@@ -192,7 +230,7 @@ class AppViewModel(
                     screenCaptureController = screenCaptureController
                 )
 
-                restoredTabs.add(sessionViewModel)
+                restoredTabs.add(tabViewModel)
                 println("[AppViewModel] Successfully restored tab for project: ${tabUiState.projectPath}")
             } catch (e: Exception) {
                 println("[AppViewModel] Failed to restore tab for project: ${tabUiState.projectPath}, error: ${e.message}")

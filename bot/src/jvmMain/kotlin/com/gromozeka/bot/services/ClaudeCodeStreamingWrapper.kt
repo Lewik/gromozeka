@@ -34,7 +34,7 @@ class ClaudeCodeStreamingWrapper(
         encodeDefaults = true
     }
 
-    private fun loadSystemPrompt(responseFormat: ResponseFormat): String {
+    private fun loadSystemPrompt(responseFormat: ResponseFormat, tabId: String? = null): String {
         // Load format-specific prompt
         val basePrompt = SystemPromptLoader.loadPrompt(responseFormat)
         println("[ClaudeCodeStreamingWrapper] Loaded prompt for format: $responseFormat")
@@ -87,6 +87,13 @@ class ClaudeCodeStreamingWrapper(
                 } ${zoneId.id}"
             )
         }
+        
+        // Add tabId instruction tag if provided
+        if (!tabId.isNullOrBlank()) {
+            val tabIdBlock = """<instruction>You were created from tab with ID: $tabId</instruction>"""
+            prompt = "$prompt\n$tabIdBlock"
+            println("[ClaudeCodeStreamingWrapper] Added tabId instruction: $tabId")
+        }
 
         return prompt
     }
@@ -112,14 +119,15 @@ class ClaudeCodeStreamingWrapper(
         model: String?,
         responseFormat: ResponseFormat,
         resumeSessionId: ClaudeSessionUuid?,
-        customSystemPrompt: String?,
+        appendSystemPrompt: String,
         mcpConfigPath: String?,
+        tabId: String?,
     ) = withContext(Dispatchers.IO) {
         try {
             println("=== STARTING CLAUDE CODE STREAMING WRAPPER ===")
 
 
-            val systemPrompt = (customSystemPrompt ?: loadSystemPrompt(responseFormat)).replace("\"", "\\\"")
+            val systemPrompt = (loadSystemPrompt(responseFormat, tabId) + appendSystemPrompt).replace("\"", "\\\"")
 
             // NOTE: In stream-json mode, Claude Code sends multiple init messages - this is NORMAL behavior.
             // We confirmed this by testing claude-code-sdk-python: each user message triggers a new init.

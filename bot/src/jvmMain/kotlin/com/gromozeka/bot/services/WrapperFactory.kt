@@ -20,8 +20,9 @@ interface ClaudeWrapper {
         model: String? = null,
         responseFormat: ResponseFormat = ResponseFormat.JSON,
         resumeSessionId: ClaudeSessionUuid? = null,
-        customSystemPrompt: String? = null,
+        appendSystemPrompt: String = "",
         mcpConfigPath: String? = null,  // Added for MCP session support
+        tabId: String? = null,  // Added for tab identification in MCP tools
     )
 
     /**

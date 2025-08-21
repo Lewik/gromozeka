@@ -2,6 +2,7 @@ package com.gromozeka.bot.services
 
 import com.gromozeka.bot.settings.AppMode
 import com.gromozeka.bot.settings.Settings
+import com.gromozeka.bot.utils.findRandomAvailablePort
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -26,6 +27,9 @@ class SettingsService {
     val claudeHome: File = System.getProperty("claude.home")?.let { File(it) }
         ?: File(System.getProperty("user.home"), ".claude")
 
+    val mcpConfigFile = File(gromozekaHome, "mcp-sse-config.json")
+    val mcpPort = findRandomAvailablePort()
+
     private val settingsFile: File = File(gromozekaHome, "settings.json")
 
     private val _settingsFlow = MutableStateFlow<Settings>(Settings())
@@ -39,11 +43,9 @@ class SettingsService {
             println("[SettingsService] Created gromozeka home directory: ${gromozekaHome.absolutePath}")
         }
 
-        // Load settings
         _settingsFlow.value = loadSettings()
 
-        // Generate MCP config
-        generateMcpConfig()
+        generateMcpConfigFile()
 
         println("[SettingsService] Initialized with mode: ${mode.name}")
         println("[SettingsService] Gromozeka home: ${gromozekaHome.absolutePath}")
@@ -272,40 +274,23 @@ class SettingsService {
         }
     }
 
-    /**
-     * Generate MCP configuration file for Claude Code CLI integration
-     */
-    private fun generateMcpConfig() {
-        try {
-            // Read template from resources
-            val templateStream = this::class.java.getResourceAsStream("/mcp-config-template.json")
-                ?: throw IllegalStateException("MCP config template not found in resources")
+    fun generateMcpConfigFile() {
+        val url = "http://localhost:$mcpPort/sse"
 
-            val template = templateStream.bufferedReader().use { it.readText() }
-
-            // Determine JAR path - always use absolute path to built JAR
-            val jarPath = JarResourceManager.getMcpProxyJarPath(this)
-
-            // Replace template placeholder
-            val mcpConfig = template.replace("{{JAR_PATH}}", jarPath)
-
-            // Write to gromozeka home
-            val mcpConfigFile = File(gromozekaHome, "mcp-config.json")
-            mcpConfigFile.writeText(mcpConfig)
-
-            println("[SettingsService] Generated MCP config: ${mcpConfigFile.absolutePath}")
-            println("[SettingsService] MCP JAR path: $jarPath")
-
-        } catch (e: Exception) {
-            println("[SettingsService] Failed to generate MCP config: ${e.message}")
-            e.printStackTrace()
+        val configContent = """
+        {
+          "mcpServers": {
+            "gromozeka-self-control": {
+              "type": "sse",
+              "url": "$url"
+            }
+          }
         }
+        """.trimIndent()
+
+        mcpConfigFile.writeText(configContent)
+
+        val description = "[MCP HTTP Server] Generated global config: ${mcpConfigFile.absolutePath}"
+        println(description)
     }
-
-    /**
-     * Get path to MCP config file for Claude Code CLI
-     */
-    fun getMcpConfigPath(): String = File(gromozekaHome, "mcp-sse-config.json").absolutePath
-
-
 }

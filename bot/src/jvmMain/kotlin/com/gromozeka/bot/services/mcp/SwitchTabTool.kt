@@ -7,64 +7,58 @@ import io.modelcontextprotocol.kotlin.sdk.TextContent
 import io.modelcontextprotocol.kotlin.sdk.Tool
 import kotlinx.coroutines.flow.first
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.*
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.decodeFromJsonElement
+import kotlinx.serialization.json.put
+import org.springframework.context.ApplicationContext
 import org.springframework.stereotype.Service
 
 @Service
 class SwitchTabTool(
-    private val appViewModel: AppViewModel
+    private val applicationContext: ApplicationContext,
 ) : GromozekaMcpTool {
-    
+
     @Serializable
     data class Input(
-        val tab_index: Int
+        val tab_id: String,
     )
-    
+
     override val definition = Tool(
         name = "switch_tab",
-        description = "Switch to specified tab by index",
+        description = "Switch to specified tab id",
         inputSchema = Tool.Input(
             properties = buildJsonObject {
-                put("tab_index", buildJsonObject {
-                    put("type", "integer")
-                    put("description", "Index of the tab to switch to (0-based)")
-                    put("minimum", 0)
+                put("tab_id", buildJsonObject {
+                    put("type", "string")
+                    put("description", "Id of the tab to switch to")
                 })
             },
-            required = listOf("tab_index")
+            required = listOf("tab_id")
         ),
         outputSchema = null,
         annotations = null
     )
-    
+
     override suspend fun execute(request: CallToolRequest): CallToolResult {
-        return try {
-            val input = Json.decodeFromJsonElement<Input>(request.arguments ?: JsonObject(emptyMap()))
-            
-            val currentTabs = appViewModel.tabs.first()
-            
-            if (input.tab_index < 0 || input.tab_index >= currentTabs.size) {
-                return CallToolResult(
-                    content = listOf(TextContent("Error: tab_index ${input.tab_index} out of bounds (0..${currentTabs.size - 1})")),
-                    isError = true
-                )
-            }
-            
-            appViewModel.selectTab(input.tab_index)
-            
-            val selectedTab = currentTabs[input.tab_index]
-            val sessionId = selectedTab.sessionId
-            val projectPath = selectedTab.projectPath
-            
-            CallToolResult(
-                content = listOf(TextContent("Successfully switched to tab ${input.tab_index}: $projectPath (Session ID: ${sessionId.value})")),
-                isError = false
-            )
-        } catch (e: Exception) {
-            CallToolResult(
-                content = listOf(TextContent("Error switching tab: ${e.message}")),
-                isError = true
-            )
-        }
+        val appViewModel = applicationContext.getBean(AppViewModel::class.java)
+        val input = Json.decodeFromJsonElement<Input>(request.arguments)
+
+        // Select tab and get the selected tab back
+        val selectedTab = appViewModel.selectTab(input.tab_id) ?: return CallToolResult(
+            content = listOf(TextContent("Tab not found: ${input.tab_id}")),
+            isError = true
+        )
+
+        val sessionId = selectedTab.sessionId
+        val projectPath = selectedTab.projectPath
+        val currentTabs = appViewModel.tabs.first()
+        val tabIndex = currentTabs.indexOf(selectedTab)
+
+        return CallToolResult(
+            content = listOf(TextContent("Successfully switched to tab $tabIndex (${input.tab_id}): $projectPath (Session ID: ${sessionId.value})")),
+            isError = false
+        )
+
     }
 }

@@ -18,6 +18,9 @@ object SystemPromptLoader {
         val basePrompt = loadResourceFile("${PROMPTS_PATH}base-prompt.md")
             ?: "You're Gromozeka - a multi-armed AI buddy. Be direct, casual, and real with the user."
 
+        // Load domain language definitions
+        val domainLanguage = loadResourceFile("/gromozeka-domain-language.md") ?: ""
+
         // Load format-specific instructions
         val formatFilename = when (format) {
             ResponseFormat.JSON -> "json-format.md"
@@ -28,12 +31,15 @@ object SystemPromptLoader {
 
         val formatPrompt = loadResourceFile("$PROMPTS_PATH$formatFilename") ?: ""
 
-        // Combine base + format
-        return if (formatPrompt.isNotEmpty()) {
-            "$basePrompt\n\n$formatPrompt"
-        } else {
-            basePrompt
+        val combinedPrompt = buildString {
+            append(basePrompt)
+            append("\n\n")
+            append(domainLanguage)
+            append("\n\n")
+            append(formatPrompt)
         }
+
+        return combinedPrompt
     }
 
 

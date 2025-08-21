@@ -23,12 +23,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.*
 import com.gromozeka.bot.platform.GlobalHotkeyController
 import com.gromozeka.bot.services.*
+import com.gromozeka.bot.services.theming.AIThemeGenerator
 import com.gromozeka.bot.services.theming.ThemeService
 import com.gromozeka.bot.services.translation.TranslationService
 import com.gromozeka.bot.settings.Settings
 import com.gromozeka.bot.ui.*
 import com.gromozeka.bot.ui.state.UIState
 import com.gromozeka.bot.ui.viewmodel.AppViewModel
+import com.gromozeka.bot.ui.viewmodel.TabViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -106,7 +108,6 @@ fun main() {
     // Initialize JAR resources (extract MCP proxy JAR to Gromozeka home)
     val settingsService = context.getBean<SettingsService>()
     println("[GROMOZEKA] Initializing JAR resources...")
-    JarResourceManager.ensureMcpProxyJar(settingsService)
     println("[GROMOZEKA] JAR resources initialized successfully")
     println("[GROMOZEKA] Starting application in ${settingsService.mode.name} mode...")
 
@@ -119,7 +120,7 @@ fun main() {
     val pttEventRouter = context.getBean<PTTEventRouter>()
     val pttService = context.getBean<PTTService>()
     val windowStateService = context.getBean<WindowStateService>()
-    val UIStateService = context.getBean<UIStateService>()
+    val uiStateService = context.getBean<UIStateService>()
     val appViewModel = context.getBean<AppViewModel>()
     val translationService = context.getBean<TranslationService>()
     val themeService = context.getBean<ThemeService>()
@@ -127,7 +128,7 @@ fun main() {
     val mcpHttpServer = context.getBean<McpHttpServer>()
 
     // Create AI theme generator
-    val aiThemeGenerator = com.gromozeka.bot.services.theming.AIThemeGenerator(
+    val aiThemeGenerator = AIThemeGenerator(
         screenCaptureController = screenCaptureController,
         sessionManager = sessionManager,
         settingsService = settingsService
@@ -145,7 +146,6 @@ fun main() {
     println("[GROMOZEKA] Global MCP HTTP server started")
 
     // Initialize JAR resources (copy from resources to Gromozeka home)
-    JarResourceManager.ensureMcpProxyJar(settingsService)
     println("[GROMOZEKA] MCP proxy JAR initialized")
 
     // Initialize services
@@ -154,7 +154,7 @@ fun main() {
 
     // Initialize UIStateService (loads state, restores sessions, starts subscription)
     runBlocking {
-        UIStateService.initialize(appViewModel)
+        uiStateService.initialize(appViewModel)
     }
 
     // TranslationService automatically initializes via @Bean creation and subscribes to settings
@@ -178,13 +178,11 @@ fun main() {
                     pttEventRouter,
                     pttService,
                     windowStateService,
-                    UIStateService,
+                    uiStateService,
                     translationService,
                     themeService,
-                    screenCaptureController,
                     aiThemeGenerator,
-                    mcpHttpServer,
-                    context
+                    mcpHttpServer
                 )
             }  // TranslationProvider
         }  // GromozekaTheme
@@ -204,13 +202,11 @@ fun ApplicationScope.ChatWindow(
     pttEventRouter: PTTEventRouter,
     pttService: PTTService,
     windowStateService: WindowStateService,
-    UIStateService: UIStateService,
+    uiStateService: UIStateService,
     translationService: TranslationService,
     themeService: ThemeService,
-    screenCaptureController: com.gromozeka.bot.platform.ScreenCaptureController,
-    aiThemeGenerator: com.gromozeka.bot.services.theming.AIThemeGenerator,
+    aiThemeGenerator: AIThemeGenerator,
     mcpHttpServer: McpHttpServer,
-    context: org.springframework.context.ConfigurableApplicationContext,
 ) {
     val coroutineScope = rememberCoroutineScope()
     val sessionSearchViewModel = remember {
@@ -322,10 +318,10 @@ fun ApplicationScope.ChatWindow(
             println("[GROMOZEKA] Application window closing - stopping all sessions...")
 
             // Force save current state before cleanup
-            UIStateService.forceSave()
+            uiStateService.forceSave()
 
             // Disable auto-save during cleanup to prevent saving empty state
-            UIStateService.disableAutoSave()
+            uiStateService.disableAutoSave()
 
             coroutineScope.launch {
                 try {
@@ -544,7 +540,7 @@ fun ApplicationScope.ChatWindow(
 private fun CustomTabRow(
     selectedTabIndex: Int,
     showTabsAtBottom: Boolean,
-    tabs: List<com.gromozeka.bot.ui.viewmodel.SessionViewModel>,
+    tabs: List<TabViewModel>,
     hoveredTabIndex: Int,
     onTabSelect: (Int?) -> Unit,
     onTabHover: (Int) -> Unit,

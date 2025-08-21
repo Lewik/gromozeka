@@ -13,10 +13,10 @@ import com.gromozeka.shared.domain.message.MessageTagDefinition
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.*
 
-class SessionViewModel(
+class TabViewModel(
     // Session is intentionally private to maintain clean MVVM architecture.
-    // SessionViewModel is the "head" for headless Session - UI layer should only interact
-    // with SessionViewModel, not with Session directly. Session lives without any UI knowledge.
+    // TabViewModel is the "head" for headless Session - UI layer should only interact
+    // with TabViewModel, not with Session directly. Session lives without any UI knowledge.
     // This ensures isolation of business logic from the presentation layer.
     private val session: Session,
     private val settingsFlow: StateFlow<Settings>,
@@ -239,8 +239,15 @@ class SessionViewModel(
             } else null
         }
 
+        // Add sender tag if not already present (per domain language specification)
+        val messageWithSender = if (!message.contains("<sender>")) {
+            "<sender>user</sender>\n$message"
+        } else {
+            message // Already has sender tag (from inter-session communication)
+        }
+
         // Send MessageTag.Data directly to Session
-        session.sendMessage(message, activeTagsData)
+        session.sendMessage(messageWithSender, activeTagsData)
 
         // Clear input after sending
         _uiState.update { it.copy(userInput = "") }

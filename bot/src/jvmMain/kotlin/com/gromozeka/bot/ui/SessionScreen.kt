@@ -43,7 +43,7 @@ import kotlinx.serialization.json.JsonElement
 
 @Composable
 fun SessionScreen(
-    viewModel: com.gromozeka.bot.ui.viewmodel.SessionViewModel,
+    viewModel: com.gromozeka.bot.ui.viewmodel.TabViewModel,
 
     // Navigation callbacks
     onBackToSessionList: () -> Unit,
