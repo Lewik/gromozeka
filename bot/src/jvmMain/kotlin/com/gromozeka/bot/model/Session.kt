@@ -118,10 +118,15 @@ class Session(
             val activeTags: List<MessageTagDefinition.Data> = emptyList(),
         ) : Command() {
             fun getMessageWithInstructions() = if (activeTags.isNotEmpty()) {
-                "$message\n\n<instructions>\n${activeTags.joinToString("\n") { it.instruction }}\n</instructions>"
+                "${toXml()}\n$message"
             } else {
                 message
             }
+
+            private fun toXml(): String = activeTags.joinToString("\n") { it.toXml() }
+
+            private fun MessageTagDefinition.Data.toXml(): String =
+                "<instruction>${id}:${title}:${instruction}</instruction>"
         }
     }
 
@@ -332,11 +337,10 @@ class Session(
             // Create the ChatMessage
             val chatMessage = ChatMessage(
                 role = ChatMessage.Role.USER,
-                content = listOf(ChatMessage.ContentItem.UserMessage(sendMessageCommand.message)),
+                content = listOf(ChatMessage.ContentItem.UserMessage(messageWithInstructions)),
                 timestamp = Clock.System.now(),
                 uuid = java.util.UUID.randomUUID().toString(),
                 llmSpecificMetadata = null,
-                activeTags = sendMessageCommand.activeTags
             )
 
 
@@ -528,11 +532,10 @@ class Session(
             _messageOutputStream.emit(
                 ChatMessage(
                     role = ChatMessage.Role.USER,
-                    content = listOf(ChatMessage.ContentItem.UserMessage(sendMessageCommand.message)),
+                    content = listOf(ChatMessage.ContentItem.UserMessage(messageWithInstructions)),
                     timestamp = Clock.System.now(),
                     uuid = java.util.UUID.randomUUID().toString(),
                     llmSpecificMetadata = null,
-                    activeTags = sendMessageCommand.activeTags
                 )
             )
 

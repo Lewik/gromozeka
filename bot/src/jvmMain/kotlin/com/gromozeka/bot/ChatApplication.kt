@@ -280,16 +280,6 @@ fun ApplicationScope.ChatWindow(
     }
 
 
-    val sendMessage: suspend (String) -> Unit = { message ->
-        try {
-            currentSession?.sendMessage(message)
-        } catch (e: Exception) {
-            println("[ChatApp] Failed to send message: ${e.message}")
-            e.printStackTrace()
-        }
-    }
-
-
     // Get recording state from service
     val isRecording by pttService.recordingState.collectAsState()
 

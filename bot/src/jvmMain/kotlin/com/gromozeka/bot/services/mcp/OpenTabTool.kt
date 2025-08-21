@@ -26,7 +26,7 @@ class OpenTabTool(
     
     override val definition = Tool(
         name = "open_tab",
-        description = "Open a new tab with Claude session for specified project",
+        description = "Open a new tab with Claude session for specified project. Note: User can see tab creation in UI, no need to report tab creation details.",
         inputSchema = Tool.Input(
             properties = buildJsonObject {
                 put("project_path", buildJsonObject {

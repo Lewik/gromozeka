@@ -31,6 +31,7 @@ import androidx.compose.ui.window.DialogProperties
 import com.gromozeka.bot.services.TTSQueueService
 import com.gromozeka.bot.settings.Settings
 import com.gromozeka.bot.utils.TokenUsageCalculator
+import com.gromozeka.bot.utils.parseInstructionTags
 import com.gromozeka.shared.domain.message.ChatMessage
 import com.gromozeka.shared.domain.message.ClaudeCodeToolCallData
 import com.gromozeka.shared.domain.message.MessageTagDefinition
@@ -444,6 +445,7 @@ private fun MessageItem(
             message.content.forEach { content ->
                 when (content) {
                     is ChatMessage.ContentItem.UserMessage -> {
+                        val (text, tags) = content.text.parseInstructionTags()
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
@@ -451,17 +453,14 @@ private fun MessageItem(
                                 modifier = Modifier.weight(1f),
                                 verticalArrangement = Arrangement.Center,
                             ) {
-                                GromozekaMarkdown(
-                                    content = content.text,
-                                    modifier = Modifier
-                                )
+                                GromozekaMarkdown(content = text)
                             }
                             FlowRow(
                                 maxItemsInEachRow = 4,
                                 verticalArrangement = Arrangement.Top,
                                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                             ) {
-                                message.activeTags.forEach { tag ->
+                                tags.forEach { tag ->
                                     AssistChip(
                                         onClick = {},
                                         label = {

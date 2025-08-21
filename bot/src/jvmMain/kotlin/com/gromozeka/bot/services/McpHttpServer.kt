@@ -20,6 +20,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import org.springframework.stereotype.Service
 import java.io.File
+import com.gromozeka.bot.utils.findRandomAvailablePort
 
 @Service
 class McpHttpServer(
@@ -31,7 +32,8 @@ class McpHttpServer(
     private val activeMcpServers = ConcurrentMap<String, Server>()
 
     fun start(): String {
-        val port = settingsService.settings.mcpHttpPort
+        val port = findRandomAvailablePort()
+        println("[MCP HTTP Server] Found available port: $port")
 
         println("[MCP HTTP Server] Starting HTTP/SSE server on port $port")
 

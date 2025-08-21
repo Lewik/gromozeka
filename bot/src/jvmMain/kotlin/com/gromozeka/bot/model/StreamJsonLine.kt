@@ -35,6 +35,7 @@ sealed class StreamJsonLine {
         val apiKeySource: String? = null,
         @SerialName("output_style")
         val outputStyle: String? = null,
+        val uuid: String? = null,
         val data: JsonObject? = null,  // Fallback for other fields
         override val type: String = "system",
     ) : StreamJsonLine()
@@ -47,6 +48,7 @@ sealed class StreamJsonLine {
         val sessionId: ClaudeSessionUuid,
         @SerialName("parent_tool_use_id")
         val parentToolUseId: String? = null,
+        val uuid: String? = null,
         override val type: String = "user",
     ) : StreamJsonLine()
 
@@ -58,6 +60,7 @@ sealed class StreamJsonLine {
         val sessionId: ClaudeSessionUuid,
         @SerialName("parent_tool_use_id")
         val parentToolUseId: String? = null,
+        val uuid: String? = null,
         override val type: String = "assistant",
     ) : StreamJsonLine()
 
@@ -81,6 +84,7 @@ sealed class StreamJsonLine {
         val result: String? = null,
         @SerialName("permission_denials")
         val permissionDenials: JsonElement? = null,
+        val uuid: String? = null,
         override val type: String = "result",
     ) : StreamJsonLine()
 

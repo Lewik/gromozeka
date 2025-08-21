@@ -16,6 +16,7 @@ class SettingsService {
     private val json = Json {
         prettyPrint = true
         encodeDefaults = true
+        ignoreUnknownKeys = true
     }
 
     val mode: AppMode = determineMode()

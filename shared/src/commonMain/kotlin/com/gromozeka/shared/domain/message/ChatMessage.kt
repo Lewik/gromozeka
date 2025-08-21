@@ -29,9 +29,6 @@ data class ChatMessage(
 
     // Original JSON from LLM stream for debugging (when showOriginalJson setting enabled)
     val originalJson: String? = null,
-
-    // Message tags that were active when this message was sent
-    val activeTags: List<MessageTagDefinition.Data> = emptyList(),
 ) {
 
     @Serializable
