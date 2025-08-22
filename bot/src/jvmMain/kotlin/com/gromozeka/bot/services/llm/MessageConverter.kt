@@ -35,20 +35,4 @@ interface MessageConverter<IncomingFormat, OutgoingFormat, SessionId> {
      */
     fun fromMessage(chatMessage: ChatMessage, sessionId: SessionId): OutgoingFormat
 
-    /**
-     * Serialize message content with instructions and sender tags
-     * 
-     * This provides a convenience method for serializing message metadata
-     * in the format expected by the specific LLM engine.
-     * 
-     * @param content Message text content
-     * @param instructions List of instructions to include
-     * @param sender Message sender information  
-     * @return Serialized message text with metadata
-     */
-    fun serializeMessageWithTags(
-        content: String,
-        instructions: List<ChatMessage.Instruction> = emptyList(),
-        sender: ChatMessage.Sender? = null
-    ): String
 }

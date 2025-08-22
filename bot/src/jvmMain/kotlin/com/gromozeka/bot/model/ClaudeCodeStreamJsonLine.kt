@@ -14,7 +14,6 @@ import kotlinx.serialization.json.*
 @Serializable
 @JsonClassDiscriminator("type")
 sealed class ClaudeCodeStreamJsonLine {
-    abstract val type: String
 
     @Serializable
     @SerialName("system")
@@ -37,7 +36,6 @@ sealed class ClaudeCodeStreamJsonLine {
         val outputStyle: String? = null,
         val uuid: String? = null,
         val data: JsonObject? = null,  // Fallback for other fields
-        override val type: String = "system",
     ) : ClaudeCodeStreamJsonLine()
 
     @Serializable
@@ -49,7 +47,6 @@ sealed class ClaudeCodeStreamJsonLine {
         @SerialName("parent_tool_use_id")
         val parentToolUseId: String? = null,
         val uuid: String? = null,
-        override val type: String = "user",
     ) : ClaudeCodeStreamJsonLine()
 
     @Serializable
@@ -61,7 +58,6 @@ sealed class ClaudeCodeStreamJsonLine {
         @SerialName("parent_tool_use_id")
         val parentToolUseId: String? = null,
         val uuid: String? = null,
-        override val type: String = "assistant",
     ) : ClaudeCodeStreamJsonLine()
 
     @Serializable
@@ -85,7 +81,6 @@ sealed class ClaudeCodeStreamJsonLine {
         @SerialName("permission_denials")
         val permissionDenials: JsonElement? = null,
         val uuid: String? = null,
-        override val type: String = "result",
     ) : ClaudeCodeStreamJsonLine()
 
     @Serializable
@@ -94,14 +89,12 @@ sealed class ClaudeCodeStreamJsonLine {
         @SerialName("request_id")
         val requestId: String,
         val request: com.gromozeka.bot.model.ControlRequest,
-        override val type: String = "control_request",
     ) : ClaudeCodeStreamJsonLine()
 
     @Serializable
     @SerialName("control_response")
     data class ControlResponse(
         val response: com.gromozeka.bot.model.ControlResponse,
-        override val type: String = "control_response",
     ) : ClaudeCodeStreamJsonLine()
 }
 
@@ -136,13 +129,11 @@ sealed class StreamMessageContent {
 @Serializable
 @JsonClassDiscriminator("type")
 sealed class ContentBlock {
-    abstract val type: String
 
     @Serializable
     @SerialName("text")
     data class TextBlock(
         val text: String,
-        override val type: String = "text",
     ) : ContentBlock()
 
     @Serializable
@@ -151,7 +142,6 @@ sealed class ContentBlock {
         val id: String,
         val name: String,
         val input: JsonElement,
-        override val type: String = "tool_use",
     ) : ContentBlock()
 
     @Serializable
@@ -162,7 +152,6 @@ sealed class ContentBlock {
         val content: ContentResultUnion? = null,
         @SerialName("is_error")
         val isError: Boolean? = null,
-        override val type: String = "tool_result",
     ) : ContentBlock()
 
     @Serializable
@@ -170,21 +159,18 @@ sealed class ContentBlock {
     data class ThinkingItem(
         val thinking: String,
         val signature: String? = null,
-        override val type: String = "thinking",
     ) : ContentBlock()
 
     @Serializable
     @SerialName("image")
     data class ImageBlock(
         val source: ImageSource,
-        override val type: String = "image",
     ) : ContentBlock()
 }
 
 @Serializable
 @JsonClassDiscriminator("type")
 sealed class ImageSource {
-    abstract val type: String
 
     @Serializable
     @SerialName("base64")
@@ -192,14 +178,12 @@ sealed class ImageSource {
         val data: String,
         @SerialName("media_type")
         val mediaType: String,
-        override val type: String = "base64",
     ) : ImageSource()
 
     @Serializable
     @SerialName("url")
     data class UrlImageSource(
         val url: String,
-        override val type: String = "url",
     ) : ImageSource()
 
     @Serializable
@@ -207,7 +191,6 @@ sealed class ImageSource {
     data class FileImageSource(
         @SerialName("file_id")
         val fileId: String,
-        override val type: String = "file",
     ) : ImageSource()
 }
 

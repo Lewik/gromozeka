@@ -27,8 +27,9 @@ interface ClaudeWrapper {
 
     /**
      * Send a message to Claude
+     * @param streamMessage Complete Claude Code stream message (User, Assistant, etc.)
      */
-    suspend fun sendMessage(message: String, sessionId: ClaudeSessionUuid)
+    suspend fun sendMessage(streamMessage: ClaudeCodeStreamJsonLine)
 
     /**
      * Send a control message (e.g., interrupt)

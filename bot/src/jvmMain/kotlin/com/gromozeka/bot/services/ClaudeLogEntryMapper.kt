@@ -268,7 +268,7 @@ object ClaudeLogEntryMapper {
                                 }
 
                                 else -> {
-                                    dataItems.add(ChatMessage.ContentItem.ToolResult.Data.Text("[Unknown content type: ${contentItem.type}]"))
+                                    dataItems.add(ChatMessage.ContentItem.ToolResult.Data.Text("[Unknown content type: ${contentItem::class.simpleName}]"))
                                 }
                             }
                         }

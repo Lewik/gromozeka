@@ -46,22 +46,5 @@ class ClaudeMessageConverter(
         return chatToStreamConverter.convert(chatMessage, sessionId)
     }
 
-    /**
-     * Serialize message content with instructions and sender tags
-     * 
-     * This is a convenience method for cases where you only need the serialized text
-     * without creating full StreamJsonLine objects.
-     * 
-     * @param content Message text content
-     * @param instructions List of instructions to include
-     * @param sender Message sender information
-     * @return Message text with XML tags
-     */
-    override fun serializeMessageWithTags(
-        content: String,
-        instructions: List<ChatMessage.Instruction>,
-        sender: ChatMessage.Sender?
-    ): String {
-        return chatToStreamConverter.serializeMessageWithTags(content, instructions, sender)
-    }
+
 }

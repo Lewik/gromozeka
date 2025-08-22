@@ -10,8 +10,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.*
 import java.io.BufferedReader
@@ -87,7 +85,7 @@ class ClaudeCodeStreamingWrapper(
                 } ${zoneId.id}"
             )
         }
-        
+
         // Add tabId instruction tag if provided
         if (!tabId.isNullOrBlank()) {
             val tabIdBlock = """<instruction>You were created from tab with ID: $tabId</instruction>"""
@@ -215,29 +213,23 @@ class ClaudeCodeStreamingWrapper(
         }
     }
 
-    override suspend fun sendMessage(message: String, sessionId: ClaudeSessionUuid) = withContext(Dispatchers.IO) {
+    override suspend fun sendMessage(streamMessage: ClaudeCodeStreamJsonLine) = withContext(Dispatchers.IO) {
         try {
             val proc = process
             println("[ClaudeCodeStreamingWrapper] Process alive before sending: ${proc?.isAlive}")
 
-            // According to Claude Code SDK docs: don't send session_id at all
-            // When null, kotlinx.serialization won't include the field in JSON
-            val streamJsonMessage = UserInputMessage(
-                type = "user",
-                message = UserInputMessage.Content(
-                    role = "user",
-                    content = listOf(
-                        UserInputMessage.Content.TextBlock(
-                            text = message
-                        )
-                    )
-                ),
-                session_id = sessionId.value,  // Never send session_id - let Claude manage it
-                parent_tool_use_id = null
-            )
-
-            val jsonLine = json.encodeToString(streamJsonMessage)
+            // Serialize the complete stream message directly
+            val jsonLine = json.encodeToString(streamMessage)
             println("[ClaudeCodeStreamingWrapper] Writing to stdin: $jsonLine")
+
+            // Extract session ID for logging (if it's a User message)
+            val sessionId = when (streamMessage) {
+                is ClaudeCodeStreamJsonLine.User -> streamMessage.sessionId
+                is ClaudeCodeStreamJsonLine.Assistant -> streamMessage.sessionId
+                is ClaudeCodeStreamJsonLine.System -> streamMessage.sessionId
+                is ClaudeCodeStreamJsonLine.Result -> streamMessage.sessionId
+                else -> throw IllegalStateException("Can't send message to $streamMessage: no sessionId")
+            }
             println("[ClaudeCodeStreamingWrapper] Session ID used: $sessionId")
 
             val writer = stdinWriter ?: throw IllegalStateException("Process not started")
@@ -293,7 +285,7 @@ class ClaudeCodeStreamingWrapper(
 
         return try {
             val parsed = Json.decodeFromString<ClaudeCodeStreamJsonLine>(jsonLine)
-            println("[ClaudeCodeStreamingWrapper] Successfully parsed StreamJsonLine: ${parsed.type}")
+            println("[ClaudeCodeStreamingWrapper] Successfully parsed StreamJsonLine: ${parsed::class.simpleName}")
 
             // Special logging for control messages
             when (parsed) {
@@ -361,7 +353,7 @@ class ClaudeCodeStreamingWrapper(
 
                     // Parse and broadcast stream message
                     val streamMessagePacket = parseStreamJsonLine(line)
-                    println("[ClaudeWrapper] *** EMITTING STREAM MESSAGE: ${streamMessagePacket.streamMessage.type}")
+                    println("[ClaudeWrapper] *** EMITTING STREAM MESSAGE: ${streamMessagePacket.streamMessage::class.simpleName}")
 
                     _streamMessages.emit(streamMessagePacket)
                 } catch (e: Exception) {
@@ -419,51 +411,5 @@ class ClaudeCodeStreamingWrapper(
             streamLogger = null
         }
     }
-
-
-    @Serializable
-    data class UserInputMessage(
-        val type: String,
-        val message: Content,
-        val session_id: String? = null,  // Made nullable to test without session_id
-        val parent_tool_use_id: String? = null,
-    ) {
-        @Serializable
-        data class Content(
-            val role: String,
-            val content: List<ContentBlock>,
-        ) {
-            // Note: We can't have explicit 'type' field due to kotlinx.serialization limitation
-            // The 'type' field is added automatically as discriminator by @SerialName
-            // See: https://github.com/Kotlin/kotlinx.serialization/issues/1664
-            @Serializable
-            sealed class ContentBlock
-
-            @Serializable
-            @SerialName("text")
-            data class TextBlock(
-                // val type: String = "text",  // Added automatically by @SerialName
-                val text: String,
-            ) : ContentBlock()
-
-            @Serializable
-            @SerialName("image")
-            data class ImageBlock(
-                // val type: String = "image",  // Added automatically by @SerialName
-                val source: ImageSource,
-            ) : ContentBlock() {
-                @Serializable
-                data class ImageSource(
-                    val type: String = "base64",
-                    val media_type: String,  // "image/jpeg", "image/png", "image/gif", "image/webp"
-                    val data: String,  // base64 encoded image
-                )
-            }
-
-            // Tool results are handled by Claude Code CLI internally
-            // We only send user messages with text and images
-        }
-    }
-
 }
 

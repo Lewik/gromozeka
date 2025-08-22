@@ -321,7 +321,7 @@ class ClaudeStreamToChatConverter(
                         }
 
                         else -> {
-                            dataItems.add(ChatMessage.ContentItem.ToolResult.Data.Text("[Unknown content type: ${item.type}]"))
+                            dataItems.add(ChatMessage.ContentItem.ToolResult.Data.Text("[Unknown content type: ${item::class.simpleName}]"))
                         }
                     }
                 }

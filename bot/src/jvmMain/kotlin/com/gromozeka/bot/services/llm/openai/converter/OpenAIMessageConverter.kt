@@ -37,23 +37,6 @@ class OpenAIMessageConverter(
         // return chatToOpenAIConverter.convert(chatMessage, sessionId)
     }
 
-    /**
-     * Serialize message with OpenAI-specific formatting
-     * OpenAI might use JSON metadata instead of XML tags
-     */
-    override fun serializeMessageWithTags(
-        content: String,
-        instructions: List<ChatMessage.Instruction>,
-        sender: ChatMessage.Sender?
-    ): String {
-        TODO("OpenAI-specific serialization (probably JSON metadata)")
-        // Example: JSON metadata approach
-        // return jsonObject {
-        //     "content" to content
-        //     "instructions" to instructions.map { ... }
-        //     "sender" to sender?.let { ... }
-        // }.toString()
-    }
 }
 
 /**

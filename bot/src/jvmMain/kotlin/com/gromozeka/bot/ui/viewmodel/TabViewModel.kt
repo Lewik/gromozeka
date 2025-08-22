@@ -12,6 +12,8 @@ import com.gromozeka.shared.domain.message.ChatMessage
 import com.gromozeka.shared.domain.message.MessageTagDefinition
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.*
+import kotlin.time.Clock
+import java.util.UUID
 
 class TabViewModel(
     // Session is intentionally private to maintain clean MVVM architecture.
@@ -246,7 +248,19 @@ class TabViewModel(
         // Use provided sender or default to User
         val finalSender = sender ?: ChatMessage.Sender.User
         
-        session.sendMessage(message, instructions, finalSender)
+        // Create ChatMessage in UI layer for better control and consistency
+        val chatMessage = ChatMessage(
+            role = ChatMessage.Role.USER,
+            content = listOf(ChatMessage.ContentItem.UserMessage(message)),
+            instructions = instructions,
+            sender = finalSender,
+            uuid = UUID.randomUUID().toString(),
+            timestamp = Clock.System.now(),
+            llmSpecificMetadata = null
+        )
+        
+        // Send the complete ChatMessage
+        session.sendMessage(chatMessage)
 
         // Clear input after sending
         _uiState.update { it.copy(userInput = "") }

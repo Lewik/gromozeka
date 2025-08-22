@@ -15,7 +15,6 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.selects.select
-import kotlin.time.Clock
 
 
 /**
@@ -84,11 +83,11 @@ class Session(
     private var actorJob: Job? = null
     private var currentSessionId = initialClaudeSessionId
     private var actorScope: CoroutineScope? = null
-    
+
     private fun incrementPendingCount() {
         _pendingMessagesCount.value++
     }
-    
+
     private fun decrementPendingCount() {
         if (_pendingMessagesCount.value > 0) {
             _pendingMessagesCount.value--
@@ -128,9 +127,7 @@ class Session(
         data object Stop : Command()
 
         data class SendMessage(
-            val content: String,
-            val instructions: List<ChatMessage.Instruction> = emptyList(),
-            val sender: ChatMessage.Sender? = null,
+            val chatMessage: ChatMessage,
         ) : Command()
     }
 
@@ -204,7 +201,7 @@ class Session(
                 // PRIORITY 2: Claude stream - only when waiting for init or active
                 if (actorState == ActorState.WaitingForInit || actorState is ActorState.Active) {
                     claudeStreamChannel.onReceive { streamPacket ->
-                        println("[Actor] Processing Claude stream message: ${streamPacket.streamMessage.type}")
+                        println("[Actor] Processing Claude stream message: ${streamPacket.streamMessage::class.simpleName}")
                         handleClaudeStreamMessage(streamPacket)
                     }
                 }
@@ -295,7 +292,11 @@ class Session(
                         when {
                             pendingCommand is Command.SendMessage -> {
                                 decrementPendingCount() // Successfully extracted command
-                                println("[Actor] Force sending extracted message: ${pendingCommand.content.take(50)}...")
+                                // Extract text content from ChatMessage for logging
+                                val textContent = pendingCommand.chatMessage.content
+                                    .filterIsInstance<ChatMessage.ContentItem.UserMessage>()
+                                    .joinToString(" ") { it.text }
+                                println("[Actor] Force sending extracted message: ${textContent.take(50)}...")
                                 try {
                                     // Directly send the message bypassing normal flow
                                     performSendMessage(pendingCommand)
@@ -330,39 +331,38 @@ class Session(
      */
     private suspend fun handleFirstMessageDuringInit(sendMessageCommand: Command.SendMessage) {
 
-        if (sendMessageCommand.content.isBlank()) {
-            println("[Actor] Skipping empty first message")
+        val chatMessage = sendMessageCommand.chatMessage
+
+        // Skip empty messages - extract text content to check
+        val textContent = chatMessage.content
+            .filterIsInstance<ChatMessage.ContentItem.UserMessage>()
+            .joinToString(" ") { it.text }
+
+        if (textContent.isBlank()) {
+            println("[Actor] Skipping empty/blank message")
             return
         }
 
         try {
-            val messageWithInstructions = claudeMessageConverter.serializeMessageWithTags(
-                content = sendMessageCommand.content,
-                instructions = sendMessageCommand.instructions,
-                sender = sendMessageCommand.sender
-            )
+            // Convert to stream format for sending
+            val streamMessage = claudeMessageConverter.fromMessage(chatMessage, currentSessionId)
 
-            println("[Actor] Sending first message during init: ${messageWithInstructions.take(50)}...")
+            // Extract text content for logging
+            val messageText = when (val content = streamMessage.message.content) {
+                is ContentItemsUnion.StringContent -> content.content
+                is ContentItemsUnion.ArrayContent -> {
+                    content.items.filterIsInstance<ContentBlock.TextBlock>()
+                        .joinToString("\n") { it.text }
+                }
+            }
+            println("[Actor] Sending message: ${messageText.take(100)}${if (messageText.length > 100) "..." else ""}")
 
-            // Create the ChatMessage
-            val chatMessage = ChatMessage(
-                role = ChatMessage.Role.USER,
-                content = listOf(ChatMessage.ContentItem.UserMessage(messageWithInstructions)),
-                timestamp = Clock.System.now(),
-                uuid = java.util.UUID.randomUUID().toString(),
-                llmSpecificMetadata = null,
-            )
-
-
-            // Emit user message to UI
             _messageOutputStream.emit(chatMessage)
-
 
             // Mark as waiting for response (but stay in WaitingForInit state)
             _isWaitingForResponse.value = true
 
-            // Send message to Claude - this will trigger init response
-            claudeWrapper.sendMessage(messageWithInstructions, currentSessionId)
+            claudeWrapper.sendMessage(streamMessage)
 
         } catch (e: Exception) {
             println("[Actor] Failed to send first message: ${e.message}")
@@ -525,37 +525,39 @@ class Session(
             "Can only send messages when Ready. Current state: $actorState"
         }
 
-        // Skip empty or blank messages
-        if (sendMessageCommand.content.isBlank()) {
+        val chatMessage = sendMessageCommand.chatMessage
+
+        // Skip empty messages - extract text content to check
+        val textContent = chatMessage.content
+            .filterIsInstance<ChatMessage.ContentItem.UserMessage>()
+            .joinToString(" ") { it.text }
+
+        if (textContent.isBlank()) {
             println("[Actor] Skipping empty/blank message")
             return
         }
 
         try {
-            val messageWithInstructions = claudeMessageConverter.serializeMessageWithTags(
-                content = sendMessageCommand.content,
-                instructions = sendMessageCommand.instructions,
-                sender = sendMessageCommand.sender
-            )
+            // Convert to stream format for sending
+            val streamMessage = claudeMessageConverter.fromMessage(chatMessage, currentSessionId)
 
-            println("[Actor] Sending message: ${messageWithInstructions.take(100)}${if (messageWithInstructions.length > 100) "..." else ""}")
-            // Emit user message to stream
-            _messageOutputStream.emit(
-                ChatMessage(
-                    role = ChatMessage.Role.USER,
-                    content = listOf(ChatMessage.ContentItem.UserMessage(messageWithInstructions)),
-                    timestamp = Clock.System.now(),
-                    uuid = java.util.UUID.randomUUID().toString(),
-                    llmSpecificMetadata = null,
-                )
-            )
+            // Extract text content for logging
+            val messageText = when (val content = streamMessage.message.content) {
+                is ContentItemsUnion.StringContent -> content.content
+                is ContentItemsUnion.ArrayContent -> {
+                    content.items.filterIsInstance<ContentBlock.TextBlock>()
+                        .joinToString("\n") { it.text }
+                }
+            }
+            println("[Actor] Sending message: ${messageText.take(100)}${if (messageText.length > 100) "..." else ""}")
+
+            _messageOutputStream.emit(chatMessage)
 
             // Transition to WaitingForResponse state
             actorState = ActorState.Active.WaitingForResponse
             _isWaitingForResponse.value = true
 
-            // Send message to Claude
-            claudeWrapper.sendMessage(messageWithInstructions, currentSessionId)
+            claudeWrapper.sendMessage(streamMessage)
 
         } catch (e: Exception) {
             println("[Actor] Failed to send message: ${e.message}")
@@ -757,13 +759,13 @@ class Session(
     /**
      * Send a message through the Claude Code CLI process
      */
-    suspend fun sendMessage(
-        content: String, 
-        instructions: List<ChatMessage.Instruction> = emptyList(),
-        sender: ChatMessage.Sender? = null
-    ) {
+    /**
+     * Send a pre-constructed ChatMessage to Claude
+     * This is the primary method for sending messages with full control
+     */
+    suspend fun sendMessage(chatMessage: ChatMessage) {
         incrementPendingCount()
-        userCommandChannel.send(Command.SendMessage(content, instructions, sender))
+        userCommandChannel.send(Command.SendMessage(chatMessage))
     }
 
     /**
