@@ -60,7 +60,7 @@ class OpenTabTool(
 
     override suspend fun execute(request: CallToolRequest): CallToolResult {
         val appViewModel = applicationContext.getBean(AppViewModel::class.java)
-        val input = Json.decodeFromJsonElement<Input>(request.arguments ?: JsonObject(emptyMap()))
+        val input = Json.decodeFromJsonElement<Input>(request.arguments)
 
         // Get current tab ID if parent_tab_id is not specified but we need to track the parent
         val effectiveParentTabId = input.parent_tab_id ?: run {

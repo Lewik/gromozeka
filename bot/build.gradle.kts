@@ -69,6 +69,7 @@ kotlin {
                 implementation(libs.ktor.server.sse)
                 implementation(libs.ktor.server.content.negotiation)
                 implementation(libs.kotlinx.serialization.json)
+                implementation(libs.xmlutil.serialization)
                 implementation(libs.jackson.module.kotlin)
                 
                 

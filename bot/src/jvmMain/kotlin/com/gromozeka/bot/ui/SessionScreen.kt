@@ -31,6 +31,7 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.zIndex
 import com.gromozeka.bot.services.TTSQueueService
 import com.gromozeka.bot.settings.Settings
+import com.gromozeka.bot.ui.viewmodel.TabViewModel
 import com.gromozeka.bot.utils.TokenUsageCalculator
 import com.gromozeka.shared.domain.message.ChatMessage
 import com.gromozeka.shared.domain.message.ClaudeCodeToolCallData
@@ -42,8 +43,8 @@ import kotlinx.serialization.json.Json.Default.parseToJsonElement
 import kotlinx.serialization.json.JsonElement
 
 @Composable
-fun SessionScreen(
-    viewModel: com.gromozeka.bot.ui.viewmodel.TabViewModel,
+fun TabScreen(
+    viewModel: TabViewModel,
 
     // Navigation callbacks
     onBackToSessionList: () -> Unit,
@@ -62,6 +63,9 @@ fun SessionScreen(
     settings: Settings,
     showSettingsPanel: Boolean,
     onShowSettingsPanelChange: (Boolean) -> Unit,
+
+    // Context extraction
+    onExtractContexts: (() -> Unit)? = null,
 
     // Dev mode
     isDev: Boolean = false,
@@ -165,6 +169,18 @@ fun SessionScreen(
                         }
 
                         Spacer(modifier = Modifier.width(8.dp))
+
+                        // Context extraction button
+                        onExtractContexts?.let { extractCallback ->
+                            CompactButton(
+                                onClick = extractCallback,
+                                tooltip = "Extract contexts from conversation"
+                            ) {
+                                Icon(Icons.Default.FolderOpen, contentDescription = "Extract contexts")
+                            }
+                            
+                            Spacer(modifier = Modifier.width(8.dp))
+                        }
 
                         // Settings button
                         CompactButton(

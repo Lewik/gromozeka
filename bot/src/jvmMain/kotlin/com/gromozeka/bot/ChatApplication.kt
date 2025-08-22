@@ -32,6 +32,7 @@ import com.gromozeka.bot.ui.state.UIState
 import com.gromozeka.bot.ui.viewmodel.AppViewModel
 import com.gromozeka.bot.ui.viewmodel.TabViewModel
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.springframework.beans.factory.getBean
@@ -126,6 +127,7 @@ fun main() {
     val themeService = context.getBean<ThemeService>()
     val screenCaptureController = context.getBean<com.gromozeka.bot.platform.ScreenCaptureController>()
     val mcpHttpServer = context.getBean<McpHttpServer>()
+    val contextExtractionService = context.getBean<ContextExtractionService>()
 
     // Create AI theme generator
     val aiThemeGenerator = AIThemeGenerator(
@@ -182,7 +184,8 @@ fun main() {
                     translationService,
                     themeService,
                     aiThemeGenerator,
-                    mcpHttpServer
+                    mcpHttpServer,
+                    contextExtractionService
                 )
             }  // TranslationProvider
         }  // GromozekaTheme
@@ -207,6 +210,7 @@ fun ApplicationScope.ChatWindow(
     themeService: ThemeService,
     aiThemeGenerator: AIThemeGenerator,
     mcpHttpServer: McpHttpServer,
+    contextExtractionService: ContextExtractionService,
 ) {
     val coroutineScope = rememberCoroutineScope()
     val sessionSearchViewModel = remember {
@@ -460,9 +464,9 @@ fun ApplicationScope.ChatWindow(
 
                                     // Only render SessionScreen for current tab
                                     if (currentTab != null && currentSession != null) {
-                                        currentTab?.let { sessionViewModel ->
-                                            SessionScreen(
-                                                viewModel = sessionViewModel,
+                                        currentTab?.let { tabViewModel ->
+                                            TabScreen(
+                                                viewModel = tabViewModel,
 
                                                 // Navigation callbacks - modified to not stop sessions
                                                 onBackToSessionList = {
@@ -496,6 +500,19 @@ fun ApplicationScope.ChatWindow(
                                                 settings = currentSettings,
                                                 showSettingsPanel = showSettingsPanel,
                                                 onShowSettingsPanelChange = { showSettingsPanel = it },
+
+                                                // Context extraction
+                                                onExtractContexts = {
+                                                    coroutineScope.launch {
+                                                        try {
+                                                            contextExtractionService.extractContextsFromTab(tabViewModel.uiState.first().tabId)
+                                                            println("[ChatApplication] Context extraction")
+                                                        } catch (e: Exception) {
+                                                            println("[ChatApplication] Context extraction failed: ${e.message}")
+                                                            e.printStackTrace()
+                                                        }
+                                                    }
+                                                },
 
                                                 // Dev mode
                                                 isDev = settingsService.mode == com.gromozeka.bot.settings.AppMode.DEV,
