@@ -28,6 +28,7 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.zIndex
 import com.gromozeka.bot.services.TTSQueueService
 import com.gromozeka.bot.settings.Settings
 import com.gromozeka.bot.utils.TokenUsageCalculator
@@ -74,6 +75,7 @@ fun SessionScreen(
     val filteredHistory by viewModel.filteredMessages.collectAsState()
     val toolResultsMap by viewModel.toolResultsMap.collectAsState()
     val isWaitingForResponse by viewModel.isWaitingForResponse.collectAsState()
+    val pendingMessagesCount by viewModel.pendingMessagesCount.collectAsState()
     val tokenUsage by viewModel.tokenUsage.collectAsState()
     val uiState by viewModel.uiState.collectAsState()
     val userInput = uiState.userInput
@@ -216,6 +218,7 @@ fun SessionScreen(
                         userInput = userInput,
                         onUserInputChange = { viewModel.updateUserInput(it) },
                         isWaitingForResponse = isWaitingForResponse,
+                        pendingMessagesCount = pendingMessagesCount,
                         onSendMessage = { message ->
                             onSendMessage(message)
                         },
@@ -552,6 +555,7 @@ private fun MessageInput(
     userInput: String,
     onUserInputChange: (String) -> Unit,
     isWaitingForResponse: Boolean,
+    pendingMessagesCount: Int,
     onSendMessage: suspend (String) -> Unit,
     coroutineScope: CoroutineScope,
     modifierWithPushToTalk: Modifier,
@@ -567,7 +571,7 @@ private fun MessageInput(
             onValueChange = onUserInputChange,
             modifier = Modifier
                 .onPreviewKeyEvent { event ->
-                    if (!isWaitingForResponse && event.key == Key.Enter && event.isShiftPressed && event.type == KeyEventType.KeyDown && userInput.isNotBlank()) {
+                    if (event.key == Key.Enter && event.isShiftPressed && event.type == KeyEventType.KeyDown && userInput.isNotBlank()) {
                         coroutineScope.launch {
                             onSendMessage(userInput)
                         }
@@ -581,17 +585,19 @@ private fun MessageInput(
         )
         Spacer(modifier = Modifier.width(4.dp))
 
-        // Send button
-        if (isWaitingForResponse) {
-            CompactButton(
-                onClick = {},
-                enabled = false,
-                modifier = Modifier.fillMaxHeight(),
-                tooltip = LocalTranslation.current.sendingMessageTooltip
-            ) {
-                CircularProgressIndicator(modifier = Modifier.size(16.dp))
+        // Send button with queue badge
+        BadgedBox(
+            modifier = Modifier.zIndex(1f),
+            badge = {
+                if (pendingMessagesCount > 0) {
+                    Badge(
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    ) {
+                        Text("$pendingMessagesCount")
+                    }
+                }
             }
-        } else {
+        ) {
             CompactButton(
                 onClick = {
                     coroutineScope.launch {
@@ -599,7 +605,13 @@ private fun MessageInput(
                     }
                 },
                 modifier = Modifier.fillMaxHeight(),
-                tooltip = LocalTranslation.current.sendMessageTooltip
+                tooltip = if (isWaitingForResponse && pendingMessagesCount > 0) {
+                    "Отправляется... ($pendingMessagesCount в очереди)"
+                } else if (isWaitingForResponse) {
+                    LocalTranslation.current.sendingMessageTooltip
+                } else {
+                    LocalTranslation.current.sendMessageTooltip
+                }
             ) {
                 Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Send")
             }

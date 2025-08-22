@@ -85,6 +85,16 @@ class Session(
     private var actorJob: Job? = null
     private var currentSessionId = initialClaudeSessionId
     private var actorScope: CoroutineScope? = null
+    
+    private fun incrementPendingCount() {
+        _pendingMessagesCount.value++
+    }
+    
+    private fun decrementPendingCount() {
+        if (_pendingMessagesCount.value > 0) {
+            _pendingMessagesCount.value--
+        }
+    }
 
     // === OUTGOING CHANNELS (StateFlow/SharedFlow for UI consumption) ===
     private val _claudeSessionId = MutableStateFlow(initialClaudeSessionId)
@@ -102,6 +112,9 @@ class Session(
 
     private val _isWaitingForResponse = MutableStateFlow(false)
     val isWaitingForResponse: StateFlow<Boolean> = _isWaitingForResponse.asStateFlow()
+
+    private val _pendingMessagesCount = MutableStateFlow(0)
+    val pendingMessagesCount: StateFlow<Int> = _pendingMessagesCount.asStateFlow()
 
     // === ACTOR COMMAND DEFINITIONS ===
 
@@ -211,6 +224,7 @@ class Session(
                 if (actorState != ActorState.Active.WaitingForResponse) {
                     userCommandChannel.onReceive { command ->
                         println("[Actor] Processing user command: $command")
+                        decrementPendingCount()
                         handleUserCommand(command)
                     }
                 }
@@ -291,6 +305,7 @@ class Session(
                         val pendingCommand = userCommandChannel.tryReceive().getOrNull()
                         when {
                             pendingCommand is Command.SendMessage -> {
+                                decrementPendingCount() // Successfully extracted command
                                 println("[Actor] Force sending extracted message: ${pendingCommand.message.take(50)}...")
                                 try {
                                     // Directly send the message bypassing normal flow
@@ -302,7 +317,7 @@ class Session(
                             }
 
                             pendingCommand != null -> {
-                                // Put non-SendMessage command back
+                                // Put non-SendMessage command back (count stays the same)
                                 userCommandChannel.send(pendingCommand)
                                 println("[Actor] No SendMessage to force send, returned command to channel")
                                 _events.emit(StreamSessionEvent.Warning("No pending message to force send"))
@@ -730,6 +745,7 @@ class Session(
      */
     suspend fun start(scope: CoroutineScope) {
         initializeActor(scope)
+        incrementPendingCount()
         userCommandChannel.send(Command.Start(scope))
     }
 
@@ -737,6 +753,7 @@ class Session(
      * Stop the session: stop Claude Code CLI process and stream collection
      */
     suspend fun stop() {
+        incrementPendingCount()
         userCommandChannel.send(Command.Stop)
     }
 
@@ -744,6 +761,7 @@ class Session(
      * Send a message through the Claude Code CLI process
      */
     suspend fun sendMessage(message: String, activeTags: List<MessageTagDefinition.Data> = emptyList()) {
+        incrementPendingCount()
         userCommandChannel.send(Command.SendMessage(message, activeTags))
     }
 

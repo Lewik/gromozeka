@@ -180,6 +180,7 @@ class TabViewModel(
 
     // === Session State Forwarding ===
     val isWaitingForResponse: StateFlow<Boolean> = session.isWaitingForResponse
+    val pendingMessagesCount: StateFlow<Int> = session.pendingMessagesCount
 
     // === Commands (Immutable State Updates) ===
     fun toggleMessageTag(messageTag: MessageTagDefinition, controlIndex: Int) {
