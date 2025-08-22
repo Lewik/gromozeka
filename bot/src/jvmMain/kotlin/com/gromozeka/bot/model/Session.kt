@@ -3,10 +3,9 @@ package com.gromozeka.bot.model
 import com.gromozeka.bot.services.ClaudeWrapper
 import com.gromozeka.bot.services.SessionJsonlService
 import com.gromozeka.bot.services.SoundNotificationService
-import com.gromozeka.bot.services.StreamToChatMessageMapper
+import com.gromozeka.bot.services.llm.claudecode.converter.ClaudeMessageConverter
 import com.gromozeka.bot.utils.ChatMessageSoundDetector
 import com.gromozeka.shared.domain.message.ChatMessage
-import com.gromozeka.shared.domain.message.MessageTagDefinition
 import com.gromozeka.shared.domain.session.ClaudeSessionUuid
 import com.gromozeka.shared.domain.session.SessionUuid
 import kotlinx.coroutines.CoroutineScope
@@ -67,7 +66,7 @@ class Session(
     private val sessionJsonlService: SessionJsonlService,
     private val soundNotificationService: SoundNotificationService,
     private val claudeWrapper: ClaudeWrapper,
-    private val streamToChatMessageMapper: StreamToChatMessageMapper,
+    private val claudeMessageConverter: ClaudeMessageConverter,
     private val mcpConfigPath: String,
     private val claudeModel: String? = null,
     private val responseFormat: com.gromozeka.bot.settings.ResponseFormat = com.gromozeka.bot.settings.ResponseFormat.JSON,
@@ -129,20 +128,10 @@ class Session(
         data object Stop : Command()
 
         data class SendMessage(
-            val message: String,
-            val activeTags: List<MessageTagDefinition.Data> = emptyList(),
-        ) : Command() {
-            fun getMessageWithInstructions() = if (activeTags.isNotEmpty()) {
-                "${toXml()}\n$message"
-            } else {
-                message
-            }
-
-            private fun toXml(): String = activeTags.joinToString("\n") { it.toXml() }
-
-            private fun MessageTagDefinition.Data.toXml(): String =
-                "<instruction>${id}:${title}:${instruction}</instruction>"
-        }
+            val content: String,
+            val instructions: List<ChatMessage.Instruction> = emptyList(),
+            val sender: ChatMessage.Sender? = null,
+        ) : Command()
     }
 
     /**
@@ -306,7 +295,7 @@ class Session(
                         when {
                             pendingCommand is Command.SendMessage -> {
                                 decrementPendingCount() // Successfully extracted command
-                                println("[Actor] Force sending extracted message: ${pendingCommand.message.take(50)}...")
+                                println("[Actor] Force sending extracted message: ${pendingCommand.content.take(50)}...")
                                 try {
                                     // Directly send the message bypassing normal flow
                                     performSendMessage(pendingCommand)
@@ -341,13 +330,17 @@ class Session(
      */
     private suspend fun handleFirstMessageDuringInit(sendMessageCommand: Command.SendMessage) {
 
-        if (sendMessageCommand.message.isBlank()) {
+        if (sendMessageCommand.content.isBlank()) {
             println("[Actor] Skipping empty first message")
             return
         }
 
         try {
-            val messageWithInstructions = sendMessageCommand.getMessageWithInstructions()
+            val messageWithInstructions = claudeMessageConverter.serializeMessageWithTags(
+                content = sendMessageCommand.content,
+                instructions = sendMessageCommand.instructions,
+                sender = sendMessageCommand.sender
+            )
 
             println("[Actor] Sending first message during init: ${messageWithInstructions.take(50)}...")
 
@@ -386,7 +379,7 @@ class Session(
             val streamMessage = streamPacket.streamMessage
 
             // When we receive final result, transition back to Ready
-            if (streamMessage is StreamJsonLine.Result) {
+            if (streamMessage is ClaudeCodeStreamJsonLine.Result) {
                 if (actorState == ActorState.Active.WaitingForResponse) {
                     actorState = ActorState.Active.Ready
                     println("[Actor] Response complete - back to Ready state")
@@ -396,25 +389,25 @@ class Session(
             }
 
             when (streamMessage) {
-                is StreamJsonLine.System -> handleSystemMessage(streamMessage)
-                is StreamJsonLine.Assistant -> Unit // Expected - Claude's responses
-                is StreamJsonLine.Result -> Unit // Expected - final result with usage
-                is StreamJsonLine.ControlResponse -> handleControlResponse(streamMessage)
+                is ClaudeCodeStreamJsonLine.System -> handleSystemMessage(streamMessage)
+                is ClaudeCodeStreamJsonLine.Assistant -> Unit // Expected - Claude's responses
+                is ClaudeCodeStreamJsonLine.Result -> Unit // Expected - final result with usage
+                is ClaudeCodeStreamJsonLine.ControlResponse -> handleControlResponse(streamMessage)
 
                 // These should NEVER come from Claude CLI - log as warnings
-                is StreamJsonLine.User -> {
+                is ClaudeCodeStreamJsonLine.User -> {
                     println("[Actor] WARNING: Received User message from Claude stream - this shouldn't happen!")
                     _events.emit(StreamSessionEvent.Warning("Unexpected User message from Claude"))
                 }
 
-                is StreamJsonLine.ControlRequest -> {
+                is ClaudeCodeStreamJsonLine.ControlRequest -> {
                     println("[Actor] WARNING: Received ControlRequest from Claude stream - this shouldn't happen!")
                     _events.emit(StreamSessionEvent.Warning("Unexpected ControlRequest from Claude"))
                 }
             }
 
-            val chatMessage = streamToChatMessageMapper
-                .mapToChatMessage(streamPacket.streamMessage)
+            val chatMessage = claudeMessageConverter
+                .toMessage(streamPacket.streamMessage)
                 .copy(originalJson = streamPacket.originalJson)
             _messageOutputStream.emit(chatMessage)
 
@@ -533,13 +526,17 @@ class Session(
         }
 
         // Skip empty or blank messages
-        if (sendMessageCommand.message.isBlank()) {
+        if (sendMessageCommand.content.isBlank()) {
             println("[Actor] Skipping empty/blank message")
             return
         }
 
         try {
-            val messageWithInstructions = sendMessageCommand.getMessageWithInstructions()
+            val messageWithInstructions = claudeMessageConverter.serializeMessageWithTags(
+                content = sendMessageCommand.content,
+                instructions = sendMessageCommand.instructions,
+                sender = sendMessageCommand.sender
+            )
 
             println("[Actor] Sending message: ${messageWithInstructions.take(100)}${if (messageWithInstructions.length > 100) "..." else ""}")
             // Emit user message to stream
@@ -576,7 +573,7 @@ class Session(
             // Generate unique request ID
             val requestId = "req_${System.currentTimeMillis()}_${kotlin.random.Random.nextInt(10000)}"
 
-            val controlRequest = StreamJsonLine.ControlRequest(
+            val controlRequest = ClaudeCodeStreamJsonLine.ControlRequest(
                 requestId = requestId,
                 request = ControlRequest(subtype = "interrupt")
             )
@@ -677,7 +674,7 @@ class Session(
     /**
      * Handle system messages from Claude CLI (session initialization, etc.)
      */
-    private suspend fun handleSystemMessage(message: StreamJsonLine.System) {
+    private suspend fun handleSystemMessage(message: ClaudeCodeStreamJsonLine.System) {
         if (message.subtype == "init") {
             val newSessionId = message.sessionId!!
 
@@ -709,7 +706,7 @@ class Session(
     /**
      * Handle control responses from Claude CLI
      */
-    private suspend fun handleControlResponse(response: StreamJsonLine.ControlResponse) {
+    private suspend fun handleControlResponse(response: ClaudeCodeStreamJsonLine.ControlResponse) {
         println("[Actor] Control response: ${response.response.subtype}")
 
         when (response.response.subtype) {
@@ -760,9 +757,13 @@ class Session(
     /**
      * Send a message through the Claude Code CLI process
      */
-    suspend fun sendMessage(message: String, activeTags: List<MessageTagDefinition.Data> = emptyList()) {
+    suspend fun sendMessage(
+        content: String, 
+        instructions: List<ChatMessage.Instruction> = emptyList(),
+        sender: ChatMessage.Sender? = null
+    ) {
         incrementPendingCount()
-        userCommandChannel.send(Command.SendMessage(message, activeTags))
+        userCommandChannel.send(Command.SendMessage(content, instructions, sender))
     }
 
     /**

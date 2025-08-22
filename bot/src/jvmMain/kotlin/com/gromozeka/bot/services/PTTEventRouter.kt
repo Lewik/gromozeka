@@ -99,9 +99,8 @@ class PTTEventRouter(
             if (text.isNotEmpty() && targetViewModel != null) {
                 val currentSettings = settingsService.settingsFlow.value
                 if (currentSettings.autoSend) {
-                    // Send message directly to target session with sender tag
-                    val messageWithSender = "<sender>user</sender>\n$text"
-                    targetViewModel!!.sendMessageToSession(messageWithSender)
+                    // Send message directly to target session (sender tag added automatically)
+                    targetViewModel!!.sendMessageToSession(text)
                 } else {
                     // Set text in user input field for editing (no sender tag needed here)
                     targetViewModel!!.updateUserInput(text)

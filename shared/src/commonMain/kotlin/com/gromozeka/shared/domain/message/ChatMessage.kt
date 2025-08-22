@@ -20,6 +20,10 @@ data class ChatMessage(
     val timestamp: Instant,
     val llmSpecificMetadata: LlmSpecificMetadata?,
 
+    // Message metadata
+    val instructions: List<Instruction> = emptyList(),
+    val sender: Sender? = null,
+
     // Development context at root level
     val gitBranch: String? = null,
     val cwd: String? = null,
@@ -250,6 +254,28 @@ data class ChatMessage(
                 }
             }
         }
+    }
+
+    /**
+     * Instruction for message processing - self-contained like JSON token
+     */
+    @Serializable
+    data class Instruction(
+        val id: String,        // "thinking_ultrathink", "mode_readonly"
+        val title: String,     // "Ultrathink", "Readonly" 
+        val description: String // "Режим глубокого анализа..."
+    )
+
+    /**
+     * Source of the message
+     */
+    @Serializable
+    sealed class Sender {
+        @Serializable
+        data object User : Sender()
+        
+        @Serializable
+        data class Tab(val id: String) : Sender()
     }
 }
 

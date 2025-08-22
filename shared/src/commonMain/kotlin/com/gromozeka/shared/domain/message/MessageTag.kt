@@ -9,14 +9,7 @@ data class MessageTagDefinition(
 ) {
     @Serializable
     data class Control(
-        val data: Data,
+        val data: ChatMessage.Instruction,
         val includeInMessage: Boolean = true,
-    )
-
-    @Serializable
-    data class Data(
-        val id: String,
-        val title: String,
-        val instruction: String,
     )
 }

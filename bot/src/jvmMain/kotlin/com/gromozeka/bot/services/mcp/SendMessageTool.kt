@@ -1,6 +1,7 @@
 package com.gromozeka.bot.services.mcp
 
 import com.gromozeka.bot.ui.viewmodel.AppViewModel
+import com.gromozeka.shared.domain.message.ChatMessage
 import io.modelcontextprotocol.kotlin.sdk.CallToolRequest
 import io.modelcontextprotocol.kotlin.sdk.CallToolResult
 import io.modelcontextprotocol.kotlin.sdk.TextContent
@@ -55,7 +56,7 @@ class SendMessageTool(
 
     override suspend fun execute(request: CallToolRequest): CallToolResult {
         val appViewModel = applicationContext.getBean(AppViewModel::class.java)
-        val input = Json.decodeFromJsonElement<Input>(request.arguments ?: JsonObject(emptyMap()))
+        val input = Json.decodeFromJsonElement<Input>(request.arguments)
         val senderTabId = input.sender_tab_id
         println("[SendMessageTool] Executing with senderTabId=$senderTabId, targetTabId=${input.target_tab_id}")
 
@@ -84,16 +85,15 @@ class SendMessageTool(
 
         val targetTab = tabs[targetTabIndex]
 
-        // Create message with sender tag using provided senderTabId
-        val messageWithSender = if (senderTabId != null) {
-            "<sender>tab:$senderTabId</sender>\n${input.message}"
+        // Determine sender based on provided senderTabId
+        val sender = if (senderTabId != null) {
+            ChatMessage.Sender.Tab(senderTabId)
         } else {
-            // No sender tab ID provided - message from user
-            "<sender>user</sender>\n${input.message}"
+            ChatMessage.Sender.User
         }
 
         // Send message to target session via TabViewModel
-        targetTab.sendMessageToSession(messageWithSender)
+        targetTab.sendMessageToSession(input.message, sender)
         println("[SendMessageTool] Sent message from senderTabId=$senderTabId to targetTab=${targetTab.uiState.value.tabId} (sessionId=${targetTab.sessionId})")
 
         // Switch to target tab if requested

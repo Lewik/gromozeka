@@ -32,7 +32,6 @@ import androidx.compose.ui.zIndex
 import com.gromozeka.bot.services.TTSQueueService
 import com.gromozeka.bot.settings.Settings
 import com.gromozeka.bot.utils.TokenUsageCalculator
-import com.gromozeka.bot.utils.parseInstructionTags
 import com.gromozeka.shared.domain.message.ChatMessage
 import com.gromozeka.shared.domain.message.ClaudeCodeToolCallData
 import com.gromozeka.shared.domain.message.MessageTagDefinition
@@ -448,7 +447,6 @@ private fun MessageItem(
             message.content.forEach { content ->
                 when (content) {
                     is ChatMessage.ContentItem.UserMessage -> {
-                        val (text, tags) = content.text.parseInstructionTags()
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
@@ -456,19 +454,19 @@ private fun MessageItem(
                                 modifier = Modifier.weight(1f),
                                 verticalArrangement = Arrangement.Center,
                             ) {
-                                GromozekaMarkdown(content = text)
+                                GromozekaMarkdown(content = content.text)
                             }
                             FlowRow(
                                 maxItemsInEachRow = 4,
                                 verticalArrangement = Arrangement.Top,
                                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                             ) {
-                                tags.forEach { tag ->
+                                message.instructions.forEach { instruction ->
                                     AssistChip(
                                         onClick = {},
                                         label = {
                                             Text(
-                                                text = tag.title,
+                                                text = instruction.title,
                                                 style = MaterialTheme.typography.labelSmall
                                             )
                                         },
@@ -948,7 +946,7 @@ private fun MultiStateMessageTagButton(
     val options = messageTag.controls.map { control ->
         SegmentedButtonOption(
             text = control.data.title,
-            tooltip = control.data.instruction
+            tooltip = control.data.description
         )
     }
 

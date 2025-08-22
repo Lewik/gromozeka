@@ -1,6 +1,6 @@
 package com.gromozeka.bot.services
 
-import com.gromozeka.bot.model.StreamJsonLine
+import com.gromozeka.bot.model.ClaudeCodeStreamJsonLine
 import com.gromozeka.bot.model.StreamJsonLinePacket
 import com.gromozeka.bot.settings.AppMode
 import com.gromozeka.bot.settings.ResponseFormat
@@ -248,7 +248,7 @@ class ClaudeCodeStreamingWrapper(
         }
     }
 
-    override suspend fun sendControlMessage(controlMessage: StreamJsonLine.ControlRequest) =
+    override suspend fun sendControlMessage(controlMessage: ClaudeCodeStreamJsonLine.ControlRequest) =
         withContext(Dispatchers.IO) {
             try {
                 val proc = process
@@ -292,16 +292,16 @@ class ClaudeCodeStreamingWrapper(
         }
 
         return try {
-            val parsed = Json.decodeFromString<StreamJsonLine>(jsonLine)
+            val parsed = Json.decodeFromString<ClaudeCodeStreamJsonLine>(jsonLine)
             println("[ClaudeCodeStreamingWrapper] Successfully parsed StreamJsonLine: ${parsed.type}")
 
             // Special logging for control messages
             when (parsed) {
-                is StreamJsonLine.ControlResponse -> {
+                is ClaudeCodeStreamJsonLine.ControlResponse -> {
                     println("[ClaudeWrapper] Control response received: request_id=${parsed.response.requestId}, subtype=${parsed.response.subtype}, error=${parsed.response.error}")
                 }
 
-                is StreamJsonLine.ControlRequest -> {
+                is ClaudeCodeStreamJsonLine.ControlRequest -> {
                     println("[ClaudeWrapper] Control request parsed: request_id=${parsed.requestId}, subtype=${parsed.request.subtype}")
                 }
 
@@ -315,7 +315,7 @@ class ClaudeCodeStreamingWrapper(
             println("  JSON line: $jsonLine")
             println("  Stack trace: ${e.stackTraceToString()}")
             val fallbackMessage = try {
-                StreamJsonLine.System(
+                ClaudeCodeStreamJsonLine.System(
                     subtype = "parse_error",
                     data = Json.parseToJsonElement(jsonLine) as JsonObject,
                     sessionId = null
@@ -323,7 +323,7 @@ class ClaudeCodeStreamingWrapper(
             } catch (e: Exception) {
                 println("[ClaudeCodeStreamingWrapper] SECONDARY ERROR: Failed to parse as JsonObject")
                 println("  Exception: ${e.javaClass.simpleName}: ${e.message}")
-                StreamJsonLine.System(
+                ClaudeCodeStreamJsonLine.System(
                     subtype = "raw_output",
                     data = buildJsonObject { put("raw_line", JsonPrimitive(jsonLine)) },
                     sessionId = null
@@ -335,7 +335,7 @@ class ClaudeCodeStreamingWrapper(
             println("[ClaudeCodeStreamingWrapper] UNEXPECTED ERROR in parseStreamJsonLine: ${e.javaClass.simpleName}: ${e.message}")
             println("  JSON line: $jsonLine")
             println("  Stack trace: ${e.stackTraceToString()}")
-            val fallbackMessage = StreamJsonLine.System(
+            val fallbackMessage = ClaudeCodeStreamJsonLine.System(
                 subtype = "error",
                 data = buildJsonObject { put("error", JsonPrimitive(e.message ?: "Unknown error")) },
                 sessionId = null

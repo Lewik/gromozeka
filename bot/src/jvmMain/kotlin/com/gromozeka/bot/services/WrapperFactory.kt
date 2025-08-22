@@ -1,6 +1,6 @@
 package com.gromozeka.bot.services
 
-import com.gromozeka.bot.model.StreamJsonLine
+import com.gromozeka.bot.model.ClaudeCodeStreamJsonLine
 import com.gromozeka.bot.model.StreamJsonLinePacket
 import com.gromozeka.bot.settings.ResponseFormat
 import com.gromozeka.shared.domain.session.ClaudeSessionUuid
@@ -33,7 +33,7 @@ interface ClaudeWrapper {
     /**
      * Send a control message (e.g., interrupt)
      */
-    suspend fun sendControlMessage(controlMessage: StreamJsonLine.ControlRequest)
+    suspend fun sendControlMessage(controlMessage: ClaudeCodeStreamJsonLine.ControlRequest)
 
     /**
      * Get the stream of output messages

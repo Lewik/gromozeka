@@ -60,11 +60,11 @@ class TabViewModel(
             MessageTagDefinition(
                 controls = listOf(
                     MessageTagDefinition.Control(
-                        data = MessageTagDefinition.Data("thinking_off", "Off", "Обычный режим работы"),
+                        data = ChatMessage.Instruction("thinking_off", "Off", "Обычный режим работы"),
                         includeInMessage = false
                     ),
                     MessageTagDefinition.Control(
-                        data = MessageTagDefinition.Data(
+                        data = ChatMessage.Instruction(
                             "thinking_ultrathink",
                             "Ultrathink",
                             "Режим глубокого анализа с пошаговыми рассуждениями и детальной проработкой"
@@ -77,7 +77,7 @@ class TabViewModel(
             MessageTagDefinition(
                 controls = listOf(
                     MessageTagDefinition.Control(
-                        data = MessageTagDefinition.Data(
+                        data = ChatMessage.Instruction(
                             "mode_readonly",
                             "Readonly",
                             "Режим readonly - никаких изменений кода или команд применяющих изменения"
@@ -85,7 +85,7 @@ class TabViewModel(
                         includeInMessage = true
                     ),
                     MessageTagDefinition.Control(
-                        data = MessageTagDefinition.Data("mode_writable", "Writable", "Разрешено исправление файлов"),
+                        data = ChatMessage.Instruction("mode_writable", "Writable", "Разрешено исправление файлов"),
                         includeInMessage = true
                     )
                 ),
@@ -221,7 +221,7 @@ class TabViewModel(
         }
     }
 
-    suspend fun sendMessageToSession(message: String) {
+    suspend fun sendMessageToSession(message: String, sender: ChatMessage.Sender? = null) {
         val currentState = _uiState.value
 
         // Collect all active tag data that should be included in message
@@ -240,15 +240,13 @@ class TabViewModel(
             } else null
         }
 
-        // Add sender tag if not already present (per domain language specification)
-        val messageWithSender = if (!message.contains("<sender>")) {
-            "<sender>user</sender>\n$message"
-        } else {
-            message // Already has sender tag (from inter-session communication)
-        }
-
-        // Send MessageTag.Data directly to Session
-        session.sendMessage(messageWithSender, activeTagsData)
+        // activeTagsData now already contains ChatMessage.Instruction
+        val instructions = activeTagsData
+        
+        // Use provided sender or default to User
+        val finalSender = sender ?: ChatMessage.Sender.User
+        
+        session.sendMessage(message, instructions, finalSender)
 
         // Clear input after sending
         _uiState.update { it.copy(userInput = "") }

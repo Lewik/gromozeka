@@ -1,8 +1,8 @@
 package com.gromozeka.bot
 
-import com.gromozeka.bot.model.StreamJsonLine
+import com.gromozeka.bot.model.ClaudeCodeStreamJsonLine
 import com.gromozeka.bot.services.SettingsService
-import com.gromozeka.bot.services.StreamToChatMessageMapper
+import com.gromozeka.bot.services.llm.claudecode.converter.ClaudeStreamToChatConverter
 import com.gromozeka.bot.settings.Settings
 import io.mockk.every
 import io.mockk.mockk
@@ -31,7 +31,7 @@ class RealStreamLogsTest {
         every { settingsFlow } returns MutableStateFlow(Settings())
     }
 
-    private val mapper = StreamToChatMessageMapper(
+    private val mapper = ClaudeStreamToChatConverter(
         settingsService = settingsService,
         scope = CoroutineScope(Dispatchers.Unconfined)
     )
@@ -71,7 +71,7 @@ class RealStreamLogsTest {
 
         for ((index, line) in lines.withIndex()) {
             try {
-                val streamMessage = json.decodeFromString<StreamJsonLine>(line.trim())
+                val streamMessage = json.decodeFromString<ClaudeCodeStreamJsonLine>(line.trim())
                 assertNotNull(streamMessage)
                 successCount++
 
@@ -124,7 +124,7 @@ class RealStreamLogsTest {
 
         for ((index, line) in lines.withIndex()) {
             try {
-                val streamMessage = json.decodeFromString<StreamJsonLine>(line.trim())
+                val streamMessage = json.decodeFromString<ClaudeCodeStreamJsonLine>(line.trim())
                 deserializeSuccess++
 
                 val chatMessage = mapper.mapToChatMessage(streamMessage)
@@ -147,14 +147,14 @@ class RealStreamLogsTest {
         assertTrue(mappingRate >= 0.8, "Mapping rate too low: ${(mappingRate * 100).toInt()}%")
     }
 
-    private fun getMessageInfo(streamMessage: StreamJsonLine): String {
+    private fun getMessageInfo(streamMessage: ClaudeCodeStreamJsonLine): String {
         return when (streamMessage) {
-            is StreamJsonLine.System -> "subtype=${streamMessage.subtype}"
-            is StreamJsonLine.User -> "sessionId=${streamMessage.sessionId}"
-            is StreamJsonLine.Assistant -> "sessionId=${streamMessage.sessionId}"
-            is StreamJsonLine.Result -> "subtype=${streamMessage.subtype}, error=${streamMessage.isError}"
-            is StreamJsonLine.ControlRequest -> "control_request"
-            is StreamJsonLine.ControlResponse -> "control_response"
+            is ClaudeCodeStreamJsonLine.System -> "subtype=${streamMessage.subtype}"
+            is ClaudeCodeStreamJsonLine.User -> "sessionId=${streamMessage.sessionId}"
+            is ClaudeCodeStreamJsonLine.Assistant -> "sessionId=${streamMessage.sessionId}"
+            is ClaudeCodeStreamJsonLine.Result -> "subtype=${streamMessage.subtype}, error=${streamMessage.isError}"
+            is ClaudeCodeStreamJsonLine.ControlRequest -> "control_request"
+            is ClaudeCodeStreamJsonLine.ControlResponse -> "control_response"
         }
     }
 }

@@ -2,6 +2,7 @@ package com.gromozeka.bot.services
 
 import com.gromozeka.bot.model.Session
 import com.gromozeka.bot.services.WrapperFactory.WrapperType
+import com.gromozeka.bot.services.llm.claudecode.converter.ClaudeMessageConverter
 import com.gromozeka.shared.domain.session.ClaudeSessionUuid
 import com.gromozeka.shared.domain.session.SessionUuid
 import com.gromozeka.shared.domain.session.toSessionUuid
@@ -27,7 +28,7 @@ class SessionManager(
     private val soundNotificationService: SoundNotificationService,
     private val settingsService: SettingsService,
     private val wrapperFactory: WrapperFactory,
-    private val streamToChatMessageMapper: StreamToChatMessageMapper,
+    private val claudeMessageConverter: ClaudeMessageConverter,
     @Qualifier("coroutineScope") private val scope: CoroutineScope,
 ) {
 
@@ -86,7 +87,7 @@ class SessionManager(
             sessionJsonlService = sessionJsonlService,
             soundNotificationService = soundNotificationService,
             claudeWrapper = claudeWrapper,
-            streamToChatMessageMapper = streamToChatMessageMapper,
+            claudeMessageConverter = claudeMessageConverter,
             // Added for MCP support
             mcpConfigPath = settingsService.mcpConfigFile.absolutePath,
             claudeModel = claudeModel,

@@ -13,7 +13,7 @@ import kotlinx.serialization.json.*
 
 @Serializable
 @JsonClassDiscriminator("type")
-sealed class StreamJsonLine {
+sealed class ClaudeCodeStreamJsonLine {
     abstract val type: String
 
     @Serializable
@@ -38,7 +38,7 @@ sealed class StreamJsonLine {
         val uuid: String? = null,
         val data: JsonObject? = null,  // Fallback for other fields
         override val type: String = "system",
-    ) : StreamJsonLine()
+    ) : ClaudeCodeStreamJsonLine()
 
     @Serializable
     @SerialName("user")
@@ -50,7 +50,7 @@ sealed class StreamJsonLine {
         val parentToolUseId: String? = null,
         val uuid: String? = null,
         override val type: String = "user",
-    ) : StreamJsonLine()
+    ) : ClaudeCodeStreamJsonLine()
 
     @Serializable
     @SerialName("assistant")
@@ -62,7 +62,7 @@ sealed class StreamJsonLine {
         val parentToolUseId: String? = null,
         val uuid: String? = null,
         override val type: String = "assistant",
-    ) : StreamJsonLine()
+    ) : ClaudeCodeStreamJsonLine()
 
     @Serializable
     @SerialName("result")
@@ -86,7 +86,7 @@ sealed class StreamJsonLine {
         val permissionDenials: JsonElement? = null,
         val uuid: String? = null,
         override val type: String = "result",
-    ) : StreamJsonLine()
+    ) : ClaudeCodeStreamJsonLine()
 
     @Serializable
     @SerialName("control_request")
@@ -95,14 +95,14 @@ sealed class StreamJsonLine {
         val requestId: String,
         val request: com.gromozeka.bot.model.ControlRequest,
         override val type: String = "control_request",
-    ) : StreamJsonLine()
+    ) : ClaudeCodeStreamJsonLine()
 
     @Serializable
     @SerialName("control_response")
     data class ControlResponse(
         val response: com.gromozeka.bot.model.ControlResponse,
         override val type: String = "control_response",
-    ) : StreamJsonLine()
+    ) : ClaudeCodeStreamJsonLine()
 }
 
 @Serializable
@@ -353,6 +353,6 @@ data class ControlResponse(
  * Allows passing both parsed StreamMessage and raw JSON through the processing pipeline.
  */
 data class StreamJsonLinePacket(
-    val streamMessage: StreamJsonLine,
+    val streamMessage: ClaudeCodeStreamJsonLine,
     val originalJson: String?,
 )

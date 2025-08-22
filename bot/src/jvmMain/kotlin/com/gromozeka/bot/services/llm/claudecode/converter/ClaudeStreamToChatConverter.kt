@@ -1,7 +1,8 @@
-package com.gromozeka.bot.services
+package com.gromozeka.bot.services.llm.claudecode.converter
 
 import com.gromozeka.bot.model.*
 import com.gromozeka.bot.parsers.ResponseParserFactory
+import com.gromozeka.bot.services.SettingsService
 import com.gromozeka.bot.settings.ResponseFormat
 import com.gromozeka.shared.domain.message.ChatMessage
 import com.gromozeka.shared.domain.message.ClaudeCodeToolCallData
@@ -21,10 +22,10 @@ import java.util.*
 import kotlin.time.Clock
 
 /**
- * Maps StreamJsonLine to ChatMessage for UI consumption
+ * Converts ClaudeCodeStreamJsonLine to ChatMessage for UI consumption
  */
 @Service
-class StreamToChatMessageMapper(
+class ClaudeStreamToChatConverter(
     private val settingsService: SettingsService,
     @Qualifier("coroutineScope") private val scope: CoroutineScope,
 ) {
@@ -42,18 +43,18 @@ class StreamToChatMessageMapper(
         }
     }
 
-    fun mapToChatMessage(streamMessage: StreamJsonLine): ChatMessage {
+    fun mapToChatMessage(streamMessage: ClaudeCodeStreamJsonLine): ChatMessage {
         return when (streamMessage) {
-            is StreamJsonLine.System -> mapSystemMessage(streamMessage)
-            is StreamJsonLine.User -> mapUserMessage(streamMessage)
-            is StreamJsonLine.Assistant -> mapAssistantMessage(streamMessage)
-            is StreamJsonLine.Result -> mapResultMessage(streamMessage)
-            is StreamJsonLine.ControlRequest -> mapControlRequestMessage(streamMessage)
-            is StreamJsonLine.ControlResponse -> mapControlResponseMessage(streamMessage)
+            is ClaudeCodeStreamJsonLine.System -> mapSystemMessage(streamMessage)
+            is ClaudeCodeStreamJsonLine.User -> mapUserMessage(streamMessage)
+            is ClaudeCodeStreamJsonLine.Assistant -> mapAssistantMessage(streamMessage)
+            is ClaudeCodeStreamJsonLine.Result -> mapResultMessage(streamMessage)
+            is ClaudeCodeStreamJsonLine.ControlRequest -> mapControlRequestMessage(streamMessage)
+            is ClaudeCodeStreamJsonLine.ControlResponse -> mapControlResponseMessage(streamMessage)
         }
     }
 
-    private fun mapSystemMessage(message: StreamJsonLine.System): ChatMessage {
+    private fun mapSystemMessage(message: ClaudeCodeStreamJsonLine.System): ChatMessage {
         val level = when (message.subtype) {
             "error" -> ChatMessage.ContentItem.System.SystemLevel.ERROR
             "warning" -> ChatMessage.ContentItem.System.SystemLevel.WARNING
@@ -73,21 +74,23 @@ class StreamToChatMessageMapper(
             parentUuid = null,
             role = ChatMessage.Role.SYSTEM,
             content = content,
-            timestamp = kotlin.time.Clock.System.now(),
+            timestamp = Clock.System.now(),
             llmSpecificMetadata = createStreamMetadata(
                 sessionId = message.sessionId ?: "unknown".toClaudeSessionUuid()
             )
         )
     }
 
-    private fun mapUserMessage(message: StreamJsonLine.User): ChatMessage {
-        val content = when (message.message.content) {
+    private fun mapUserMessage(message: ClaudeCodeStreamJsonLine.User): ChatMessage {
+        val (content, instructions, sender) = when (message.message.content) {
             is ContentItemsUnion.StringContent -> {
-                listOf(parseText(message.message.content.content))
+                parseUserMessageWithTags(message.message.content.content)
             }
 
             is ContentItemsUnion.ArrayContent -> {
-                message.message.content.items.map { mapUserContentItem(it) }
+                // For array content, don't parse tags (assume they're already processed)
+                val contentItems = message.message.content.items.map { mapUserContentItem(it) }
+                Triple(contentItems, emptyList<ChatMessage.Instruction>(), null)
             }
         }
 
@@ -99,11 +102,13 @@ class StreamToChatMessageMapper(
             timestamp = Clock.System.now(),
             llmSpecificMetadata = createStreamMetadata(
                 sessionId = message.sessionId
-            )
+            ),
+            instructions = instructions,
+            sender = sender
         )
     }
 
-    private fun mapAssistantMessage(message: StreamJsonLine.Assistant): ChatMessage {
+    private fun mapAssistantMessage(message: ClaudeCodeStreamJsonLine.Assistant): ChatMessage {
         val contentItems = message.message.content.flatMap { item ->
             listOf(mapAssistantContentItem(item))
         }
@@ -123,7 +128,7 @@ class StreamToChatMessageMapper(
         )
     }
 
-    private fun mapResultMessage(message: StreamJsonLine.Result): ChatMessage {
+    private fun mapResultMessage(message: ClaudeCodeStreamJsonLine.Result): ChatMessage {
         val level = if (message.isError) {
             ChatMessage.ContentItem.System.SystemLevel.ERROR
         } else {
@@ -343,7 +348,7 @@ class StreamToChatMessageMapper(
             }
         } catch (e: Exception) {
             // Fallback to generic if deserialization fails
-            println("[StreamToChatMessageMapper] TOOL CALL PARSE ERROR: Failed to deserialize tool call '$name'")
+            println("[ClaudeStreamToChatConverter] TOOL CALL PARSE ERROR: Failed to deserialize tool call '$name'")
             println("  Exception: ${e.javaClass.simpleName}: ${e.message}")
             println("  Input JSON: $input")
             println("  Stack trace: ${e.stackTraceToString()}")
@@ -360,7 +365,7 @@ class StreamToChatMessageMapper(
                 ChatMessage.ContentItem.AssistantMessage(structured = structured)
             } catch (_: SerializationException) {
                 // Not a Gromozeka format, return as generic JSON
-                println("[StreamToChatMessageMapper] PARSE: Text is not Gromozeka JSON, fallback to UnknownJson")
+                println("[ClaudeStreamToChatConverter] PARSE: Text is not Gromozeka JSON, fallback to UnknownJson")
                 println("  Text preview: ${text.take(100)}${if (text.length > 100) "..." else ""}")
                 ChatMessage.ContentItem.UnknownJson(jsonElement)
             }
@@ -377,7 +382,7 @@ class StreamToChatMessageMapper(
             ChatMessage.ContentItem.AssistantMessage(structured = parsed)
         } catch (e: Exception) {
             // Parser failed - log and fallback to raw text
-            println("[StreamToChatMessageMapper] Parser failed for format $currentResponseFormat: ${e.message}")
+            println("[ClaudeStreamToChatConverter] Parser failed for format $currentResponseFormat: ${e.message}")
             println("  Text: ${text.take(100)}${if (text.length > 100) "..." else ""}")
 
             // Return as raw text fallback
@@ -445,7 +450,7 @@ class StreamToChatMessageMapper(
     }
 
     private fun createResultStatisticsContent(
-        message: StreamJsonLine.Result,
+        message: ClaudeCodeStreamJsonLine.Result,
         level: ChatMessage.ContentItem.System.SystemLevel,
     ): ChatMessage.ContentItem.System {
         val statisticsText = buildString {
@@ -465,7 +470,7 @@ class StreamToChatMessageMapper(
         )
     }
 
-    private fun mapControlRequestMessage(message: StreamJsonLine.ControlRequest): ChatMessage {
+    private fun mapControlRequestMessage(message: ClaudeCodeStreamJsonLine.ControlRequest): ChatMessage {
         val content = listOf(
             ChatMessage.ContentItem.System(
                 level = ChatMessage.ContentItem.System.SystemLevel.INFO,
@@ -486,7 +491,7 @@ class StreamToChatMessageMapper(
         )
     }
 
-    private fun mapControlResponseMessage(message: StreamJsonLine.ControlResponse): ChatMessage {
+    private fun mapControlResponseMessage(message: ClaudeCodeStreamJsonLine.ControlResponse): ChatMessage {
         val level = when (message.response.subtype) {
             "error" -> ChatMessage.ContentItem.System.SystemLevel.ERROR
             else -> ChatMessage.ContentItem.System.SystemLevel.INFO
@@ -520,5 +525,54 @@ class StreamToChatMessageMapper(
 
     private fun generateUuid(): String {
         return UUID.randomUUID().toString()
+    }
+
+    /**
+     * Parse user message text to extract instructions, sender tags, and clean content
+     */
+    private fun parseUserMessageWithTags(text: String): Triple<List<ChatMessage.ContentItem>, List<ChatMessage.Instruction>, ChatMessage.Sender?> {
+        var remainingText = text.trim()
+        val instructions = mutableListOf<ChatMessage.Instruction>()
+        var sender: ChatMessage.Sender? = null
+
+        // Parse sender tag first
+        val senderMatch = Regex("<sender>(.*?)</sender>").find(remainingText)
+        senderMatch?.let { match ->
+            val senderValue = match.groupValues[1]
+            sender = when {
+                senderValue == "user" -> ChatMessage.Sender.User
+                senderValue.startsWith("tab:") -> ChatMessage.Sender.Tab(senderValue.removePrefix("tab:"))
+                else -> null
+            }
+            remainingText = remainingText.replace(match.value, "").trim()
+        }
+
+        // Parse instruction tags
+        val instructionRegex = Regex("<instruction>(.*?)</instruction>")
+        var match = instructionRegex.find(remainingText)
+        while (match != null) {
+            val instructionContent = match.groupValues[1]
+            val parts = instructionContent.split(":", limit = 3)
+            if (parts.size == 3) {
+                instructions.add(
+                    ChatMessage.Instruction(
+                        id = parts[0].trim(),
+                        title = parts[1].trim(),
+                        description = parts[2].trim()
+                    )
+                )
+            }
+            remainingText = remainingText.replace(match.value, "").trim()
+            match = instructionRegex.find(remainingText)
+        }
+
+        // Create content from remaining text
+        val content = if (remainingText.isNotEmpty()) {
+            listOf(parseText(remainingText))
+        } else {
+            emptyList()
+        }
+
+        return Triple(content, instructions, sender)
     }
 }
