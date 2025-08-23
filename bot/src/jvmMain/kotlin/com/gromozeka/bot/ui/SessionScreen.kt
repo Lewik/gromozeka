@@ -66,6 +66,9 @@ fun TabScreen(
 
     // Context extraction
     onExtractContexts: (() -> Unit)? = null,
+    
+    // Context panel
+    onShowContextsPanel: (() -> Unit)? = null,
 
     // Dev mode
     isDev: Boolean = false,
@@ -177,6 +180,18 @@ fun TabScreen(
                                 tooltip = "Extract contexts from conversation"
                             ) {
                                 Icon(Icons.Default.FolderOpen, contentDescription = "Extract contexts")
+                            }
+                            
+                            Spacer(modifier = Modifier.width(8.dp))
+                        }
+
+                        // Context panel button
+                        onShowContextsPanel?.let { showContextsCallback ->
+                            CompactButton(
+                                onClick = showContextsCallback,
+                                tooltip = "View saved contexts"
+                            ) {
+                                Icon(Icons.Default.Book, contentDescription = "View contexts")
                             }
                             
                             Spacer(modifier = Modifier.width(8.dp))

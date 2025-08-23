@@ -30,6 +30,7 @@ import com.gromozeka.bot.settings.Settings
 import com.gromozeka.bot.ui.*
 import com.gromozeka.bot.ui.state.UIState
 import com.gromozeka.bot.ui.viewmodel.AppViewModel
+import com.gromozeka.bot.ui.viewmodel.ContextsPanelViewModel
 import com.gromozeka.bot.ui.viewmodel.TabViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.first
@@ -128,6 +129,7 @@ fun main() {
     val screenCaptureController = context.getBean<com.gromozeka.bot.platform.ScreenCaptureController>()
     val mcpHttpServer = context.getBean<McpHttpServer>()
     val contextExtractionService = context.getBean<ContextExtractionService>()
+    val contextFileService = context.getBean<ContextFileService>()
 
     // Create AI theme generator
     val aiThemeGenerator = AIThemeGenerator(
@@ -185,7 +187,8 @@ fun main() {
                     themeService,
                     aiThemeGenerator,
                     mcpHttpServer,
-                    contextExtractionService
+                    contextExtractionService,
+                    contextFileService
                 )
             }  // TranslationProvider
         }  // GromozekaTheme
@@ -211,10 +214,20 @@ fun ApplicationScope.ChatWindow(
     aiThemeGenerator: AIThemeGenerator,
     mcpHttpServer: McpHttpServer,
     contextExtractionService: ContextExtractionService,
+    contextFileService: ContextFileService,
 ) {
     val coroutineScope = rememberCoroutineScope()
     val sessionSearchViewModel = remember {
         com.gromozeka.bot.ui.viewmodel.SessionSearchViewModel(sessionSearchService, coroutineScope)
+    }
+    
+    val contextsPanelViewModel = remember {
+        ContextsPanelViewModel(
+            contextFileService = contextFileService,
+            contextExtractionService = contextExtractionService,
+            appViewModel = appViewModel,
+            scope = coroutineScope
+        )
     }
 
     var initialized by remember { mutableStateOf(false) }
@@ -232,6 +245,7 @@ fun ApplicationScope.ChatWindow(
     val currentTab by appViewModel.currentTab.collectAsState()
     val currentSession by appViewModel.currentSession.collectAsState()
     var showSettingsPanel by remember { mutableStateOf(false) }
+    var showContextsPanel by remember { mutableStateOf(false) }
     var sessionListRefreshTrigger by remember { mutableStateOf(0) }
 
     // State for rename dialog
@@ -513,6 +527,9 @@ fun ApplicationScope.ChatWindow(
                                                         }
                                                     }
                                                 },
+                                                
+                                                // Context panel
+                                                onShowContextsPanel = { showContextsPanel = true },
 
                                                 // Dev mode
                                                 isDev = settingsService.mode == com.gromozeka.bot.settings.AppMode.DEV,
@@ -541,6 +558,13 @@ fun ApplicationScope.ChatWindow(
                             coroutineScope = coroutineScope,
                             onOpenTab = createNewSession,
                             onOpenTabWithMessage = createNewSessionWithMessage
+                        )
+                        
+                        // Contexts Panel - positioned at the root level for full height overlay
+                        ContextsPanel(
+                            isVisible = showContextsPanel,
+                            onClose = { showContextsPanel = false },
+                            viewModel = contextsPanelViewModel
                         )
                     }
                 } else {

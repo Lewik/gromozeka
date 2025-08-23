@@ -55,6 +55,7 @@ data class ContextItem(
     val links: List<String> = emptyList(),
     val content: String,
     val extractedAt: String? = null,
+    val filePath: String = "",
 )
 
 sealed class ContextFileSpec {
