@@ -293,6 +293,23 @@ fun ApplicationScope.ChatWindow(
         }
     }
 
+    val createForkSession: () -> Unit = {
+        coroutineScope.launch {
+            try {
+                val currentClaudeSessionId = currentSession?.claudeSessionId?.first()?.value
+                if (currentClaudeSessionId != null) {
+                    val tabIndex = appViewModel.createTab(
+                        projectPath = currentSession!!.projectPath,
+                        resumeSessionId = currentClaudeSessionId,
+                        initialMessage = null // Key difference from Extract Context
+                    )
+                    appViewModel.selectTab(tabIndex)
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
 
     // Get recording state from service
     val isRecording by pttService.recordingState.collectAsState()
@@ -492,6 +509,7 @@ fun ApplicationScope.ChatWindow(
                                                 onNewSession = {
                                                     createNewSession(currentSession!!.projectPath)
                                                 },
+                                                onForkSession = createForkSession,
                                                 onOpenTab = createNewSession, // Reuse the same function for opening tabs
                                                 onOpenTabWithMessage = createNewSessionWithMessage, // For AI theme generation with initial message
 

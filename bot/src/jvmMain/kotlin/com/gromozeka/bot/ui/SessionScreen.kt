@@ -49,6 +49,7 @@ fun TabScreen(
     // Navigation callbacks
     onBackToSessionList: () -> Unit,
     onNewSession: () -> Unit,
+    onForkSession: () -> Unit,
     onOpenTab: (String) -> Unit, // Callback to open new tab with project path  
     onOpenTabWithMessage: ((String, String) -> Unit)? = null, // Callback to open new tab with initial message
     onCloseTab: (() -> Unit)? = null,
@@ -135,6 +136,12 @@ fun TabScreen(
                     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         CompactButton(onClick = onNewSession) {
                             Text(LocalTranslation.current.newSessionShort)
+                        }
+
+                        Spacer(modifier = Modifier.width(8.dp))
+
+                        CompactButton(onClick = onForkSession) {
+                            Text(LocalTranslation.current.forkButton)
                         }
 
                         Spacer(modifier = Modifier.weight(1f))

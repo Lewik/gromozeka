@@ -16,6 +16,7 @@ data class ChineseTranslation(
 
     override val newSessionButton: String = "新建会话",
     override val newButton: String = "新建",
+    override val forkButton: String = "分叉",
     override val continueButton: String = "继续",
     override val newSessionShort: String = "新建",
     override val cancelButton: String = "取消",

@@ -133,6 +133,7 @@ sealed class Translation {
 
     abstract val newSessionButton: String
     abstract val newButton: String
+    abstract val forkButton: String
     abstract val continueButton: String
     abstract val newSessionShort: String
     abstract val cancelButton: String

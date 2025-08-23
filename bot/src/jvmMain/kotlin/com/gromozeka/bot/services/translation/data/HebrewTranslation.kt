@@ -16,6 +16,7 @@ data class HebrewTranslation(
 
     override val newSessionButton: String = "סשן חדש",
     override val newButton: String = "חדש",
+    override val forkButton: String = "פורק",
     override val continueButton: String = "המשך",
     override val newSessionShort: String = "חדש",
     override val cancelButton: String = "ביטול",
