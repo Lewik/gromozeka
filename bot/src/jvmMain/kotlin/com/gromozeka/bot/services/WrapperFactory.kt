@@ -1,5 +1,6 @@
 package com.gromozeka.bot.services
 
+import com.gromozeka.bot.model.AgentDefinition
 import com.gromozeka.bot.model.ClaudeCodeStreamJsonLine
 import com.gromozeka.bot.model.StreamJsonLinePacket
 import com.gromozeka.bot.settings.ResponseFormat
@@ -23,6 +24,7 @@ interface ClaudeWrapper {
         appendSystemPrompt: String = "",
         mcpConfigPath: String? = null,  // Added for MCP session support
         tabId: String? = null,  // Added for tab identification in MCP tools
+        agentDefinition: AgentDefinition,
     )
 
     /**

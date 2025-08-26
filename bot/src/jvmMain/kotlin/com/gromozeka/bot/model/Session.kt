@@ -4,6 +4,7 @@ import com.gromozeka.bot.services.ClaudeWrapper
 import com.gromozeka.bot.services.SessionJsonlService
 import com.gromozeka.bot.services.SoundNotificationService
 import com.gromozeka.bot.services.llm.claudecode.converter.ClaudeMessageConverter
+import com.gromozeka.bot.settings.ResponseFormat
 import com.gromozeka.bot.utils.ChatMessageSoundDetector
 import com.gromozeka.shared.domain.message.ChatMessage
 import com.gromozeka.shared.domain.session.ClaudeSessionUuid
@@ -68,9 +69,10 @@ class Session(
     private val claudeMessageConverter: ClaudeMessageConverter,
     private val mcpConfigPath: String,
     private val claudeModel: String? = null,
-    private val responseFormat: com.gromozeka.bot.settings.ResponseFormat = com.gromozeka.bot.settings.ResponseFormat.JSON,
+    private val responseFormat: ResponseFormat = ResponseFormat.JSON,
     private val appendSystemPrompt: String = "",
     private val initialClaudeSessionId: ClaudeSessionUuid = ClaudeSessionUuid.DEFAULT,
+    private val agentDefinition: AgentDefinition,
 ) {
 
     // === ACTOR CHANNELS ===
@@ -453,7 +455,8 @@ class Session(
                 resumeSessionId = currentSessionId.takeIf { it != ClaudeSessionUuid.DEFAULT },
                 appendSystemPrompt = appendSystemPrompt,
                 mcpConfigPath = mcpConfigPath,
-                tabId = id.value
+                tabId = id.value,
+                agentDefinition = agentDefinition,
             )
 
             // Move to waiting for init state

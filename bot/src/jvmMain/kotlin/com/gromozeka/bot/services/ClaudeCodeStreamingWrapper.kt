@@ -1,5 +1,6 @@
 package com.gromozeka.bot.services
 
+import com.gromozeka.bot.model.AgentDefinition
 import com.gromozeka.bot.model.ClaudeCodeStreamJsonLine
 import com.gromozeka.bot.model.StreamJsonLinePacket
 import com.gromozeka.bot.settings.AppMode
@@ -32,9 +33,12 @@ class ClaudeCodeStreamingWrapper(
         encodeDefaults = true
     }
 
-    private fun loadSystemPrompt(responseFormat: ResponseFormat, tabId: String? = null): String {
+    private fun loadSystemPrompt(
+        responseFormat: ResponseFormat,
+        agentPrompt: String,
+    ): String {
         // Load format-specific prompt
-        val basePrompt = SystemPromptLoader.loadPrompt(responseFormat)
+        val basePrompt = SystemPromptLoader.loadPrompt(responseFormat, agentPrompt)
         println("[ClaudeCodeStreamingWrapper] Loaded prompt for format: $responseFormat")
 
         var prompt = if (settingsService.mode == AppMode.DEV) {
@@ -86,13 +90,6 @@ class ClaudeCodeStreamingWrapper(
             )
         }
 
-        // Add tabId instruction tag if provided
-        if (!tabId.isNullOrBlank()) {
-            val tabIdBlock = """<instruction>You were created from tab with ID: $tabId</instruction>"""
-            prompt = "$prompt\n$tabIdBlock"
-            println("[ClaudeCodeStreamingWrapper] Added tabId instruction: $tabId")
-        }
-
         return prompt
     }
 
@@ -120,12 +117,13 @@ class ClaudeCodeStreamingWrapper(
         appendSystemPrompt: String,
         mcpConfigPath: String?,
         tabId: String?,
+        agentDefinition: AgentDefinition
     ) = withContext(Dispatchers.IO) {
         try {
             println("=== STARTING CLAUDE CODE STREAMING WRAPPER ===")
 
 
-            val systemPrompt = (loadSystemPrompt(responseFormat, tabId) + appendSystemPrompt).replace("\"", "\\\"")
+            val systemPrompt = (loadSystemPrompt(responseFormat, agentDefinition.prompt) + appendSystemPrompt).replace("\"", "\\\"")
 
             // NOTE: In stream-json mode, Claude Code sends multiple init messages - this is NORMAL behavior.
             // We confirmed this by testing claude-code-sdk-python: each user message triggers a new init.

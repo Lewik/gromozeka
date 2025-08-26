@@ -1,11 +1,13 @@
 package com.gromozeka.bot.services
 
+import com.gromozeka.bot.model.AgentDefinition
 import com.gromozeka.bot.model.Session
 import com.gromozeka.bot.services.WrapperFactory.WrapperType
 import com.gromozeka.bot.services.llm.claudecode.converter.ClaudeMessageConverter
 import com.gromozeka.shared.domain.session.ClaudeSessionUuid
 import com.gromozeka.shared.domain.session.SessionUuid
 import com.gromozeka.shared.domain.session.toSessionUuid
+import jdk.internal.agent.Agent
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -46,12 +48,14 @@ class SessionManager(
      * @return SessionUuid of the created session
      */
     suspend fun createSession(
+        agentDefinition: AgentDefinition,
         projectPath: String,
         resumeSessionId: ClaudeSessionUuid? = null,
         tabId: String,
     ): Session = sessionMutex.withLock {
 
         val session = createSessionInternal(
+            agentDefinition = agentDefinition,
             projectPath = projectPath,
             tabId = tabId,
             initialClaudeSessionId = resumeSessionId ?: ClaudeSessionUuid.DEFAULT
@@ -70,6 +74,7 @@ class SessionManager(
      * Create Session instance with current settings
      */
     private fun createSessionInternal(
+        agentDefinition: AgentDefinition,
         projectPath: String,
         claudeModel: String = settingsService.settings.claudeModel,
         tabId: String? = null,
@@ -94,6 +99,7 @@ class SessionManager(
             responseFormat = settingsService.settings.responseFormat,
             appendSystemPrompt = appendSystemPrompt,
             initialClaudeSessionId = initialClaudeSessionId,
+            agentDefinition = agentDefinition,
         )
     }
 

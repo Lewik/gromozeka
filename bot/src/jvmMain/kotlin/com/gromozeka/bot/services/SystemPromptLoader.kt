@@ -13,15 +13,10 @@ object SystemPromptLoader {
     /**
      * Get system prompt for specified format
      */
-    fun loadPrompt(format: ResponseFormat): String {
-        // Load base prompt
-        val basePrompt = loadResourceFile("${PROMPTS_PATH}base-prompt.md")
-            ?: "You're Gromozeka - a multi-armed AI buddy. Be direct, casual, and real with the user."
-
-        // Load domain language definitions
-        val domainLanguage = loadResourceFile("/gromozeka-domain-language.md") ?: ""
-
-        // Load format-specific instructions
+    fun loadPrompt(
+        format: ResponseFormat,
+        agentPrompt: String,
+    ): String {
         val formatFilename = when (format) {
             ResponseFormat.JSON -> "json-format.md"
             ResponseFormat.XML_STRUCTURED -> "xml-structured.md"
@@ -29,17 +24,13 @@ object SystemPromptLoader {
             ResponseFormat.PLAIN_TEXT -> "plain-text.md"
         }
 
-        val formatPrompt = loadResourceFile("$PROMPTS_PATH$formatFilename") ?: ""
-
-        val combinedPrompt = buildString {
-            append(basePrompt)
-            append("\n\n")
-            append(domainLanguage)
-            append("\n\n")
-            append(formatPrompt)
-        }
-
-        return combinedPrompt
+        return listOfNotNull(
+            loadResourceFile("${PROMPTS_PATH}domain-model.md"),
+            agentPrompt,
+            loadResourceFile("${PROMPTS_PATH}tech-prompt.md"),
+            loadResourceFile("$PROMPTS_PATH$formatFilename")
+        )
+            .joinToString("\n\n")
     }
 
 

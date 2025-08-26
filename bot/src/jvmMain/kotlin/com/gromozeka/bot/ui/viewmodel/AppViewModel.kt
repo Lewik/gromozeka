@@ -1,5 +1,6 @@
 package com.gromozeka.bot.ui.viewmodel
 
+import com.gromozeka.bot.model.AgentDefinition
 import com.gromozeka.bot.model.Session
 import com.gromozeka.bot.platform.ScreenCaptureController
 import com.gromozeka.bot.services.SessionManager
@@ -11,7 +12,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import kotlin.time.Clock
 
 /**
  * Application-level ViewModel that manages all UI tabs
@@ -50,14 +50,13 @@ open class AppViewModel(
      * Creates a new tab with a Claude session
      * @param projectPath Path to the project directory
      * @param resumeSessionId Optional Claude session ID to resume
-     * @param initialMessage Optional initial message to send after creating the session
+     * @param initialMessage Optional initial message (as ChatMessage) to send after creating the session
      * @return Index of the created tab
      */
     suspend fun createTab(
         projectPath: String,
         resumeSessionId: String? = null,
-        initialMessage: String? = null,
-        parentTabId: String? = null,
+        initialMessage: ChatMessage? = null,
         setAsCurrent: Boolean = true,
     ): Int = mutex.withLock {
 
@@ -68,10 +67,17 @@ open class AppViewModel(
 
         // Create session through SessionManager with tabId
         val session = sessionManager.createSession(
+            agentDefinition = AgentDefinition.DEFAULT,
             projectPath = projectPath,
             resumeSessionId = claudeSessionId,
             tabId = tabId
         )
+
+        // Extract parentTabId from ChatMessage.sender if present
+        val parentTabId = when (val sender = initialMessage?.sender) {
+            is ChatMessage.Sender.Tab -> sender.id
+            else -> null
+        }
 
         // Create TabViewModel for this tab
         val initialTabUiState = UIState.Tab(
@@ -103,20 +109,12 @@ open class AppViewModel(
         }
 
         // Send initial message if provided
-        if (initialMessage != null && initialMessage.isNotBlank()) {
-            println("[AppViewModel.createTab] Initial message preview: ${initialMessage.take(100)}...")
+        if (initialMessage != null) {
+            val messageContent = initialMessage.content.filterIsInstance<ChatMessage.ContentItem.UserMessage>()
+                .firstOrNull()?.text ?: "Ready to work on this project"
+            println("[AppViewModel.createTab] Initial message preview: ${messageContent.take(100)}...")
             try {
-                session.sendMessage(
-                    ChatMessage(
-                        role = ChatMessage.Role.USER,
-                        content = listOf(ChatMessage.ContentItem.UserMessage(initialMessage)),
-                        instructions = emptyList(),
-                        sender = null,
-                        uuid = java.util.UUID.randomUUID().toString(),
-                        timestamp = Clock.System.now(),
-                        llmSpecificMetadata = null
-                    )
-                )
+                session.sendMessage(initialMessage)
                 println("[AppViewModel.createTab] Initial message sent successfully")
             } catch (e: Exception) {
                 println("[AppViewModel.createTab] Failed to send initial message: ${e.message}")
@@ -229,6 +227,7 @@ open class AppViewModel(
             try {
                 val claudeSessionId = tabUiState.claudeSessionId
                 val session = sessionManager.createSession(
+                    agentDefinition = AgentDefinition.DEFAULT,
                     projectPath = tabUiState.projectPath,
                     resumeSessionId = claudeSessionId,
                     tabId = tabUiState.tabId
