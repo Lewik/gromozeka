@@ -223,7 +223,7 @@ class TabViewModel(
         }
     }
 
-    suspend fun sendMessageToSession(message: String, sender: ChatMessage.Sender? = null) {
+    suspend fun sendMessageToSession(message: String, sender: ChatMessage.Sender = ChatMessage.Sender.User) {
         val currentState = _uiState.value
 
         // Collect all active tag data that should be included in message
@@ -245,15 +245,12 @@ class TabViewModel(
         // activeTagsData now already contains ChatMessage.Instruction
         val instructions = activeTagsData
         
-        // Use provided sender or default to User
-        val finalSender = sender ?: ChatMessage.Sender.User
-        
         // Create ChatMessage in UI layer for better control and consistency
         val chatMessage = ChatMessage(
             role = ChatMessage.Role.USER,
             content = listOf(ChatMessage.ContentItem.UserMessage(message)),
             instructions = instructions,
-            sender = finalSender,
+            sender = sender,
             uuid = UUID.randomUUID().toString(),
             timestamp = Clock.System.now(),
             llmSpecificMetadata = null

@@ -1,9 +1,11 @@
 package com.gromozeka.bot.services
 
 import com.gromozeka.bot.ui.viewmodel.AppViewModel
+import com.gromozeka.shared.domain.message.ChatMessage
 import kotlinx.coroutines.flow.first
 import org.springframework.context.ApplicationContext
 import org.springframework.stereotype.Service
+import kotlin.time.Clock
 
 @Service
 class ContextExtractionService(
@@ -24,10 +26,27 @@ class ContextExtractionService(
 
         val instructions = loadContextExtractionInstructions()
 
+        // Create ChatMessage with instructions for context extraction
+        val chatMessage = ChatMessage(
+            role = ChatMessage.Role.USER,
+            content = listOf(ChatMessage.ContentItem.UserMessage(instructions)),
+            instructions = listOf(
+                ChatMessage.Instruction(
+                    "thinking_ultrathink",
+                    "Ultrathink",
+                    "Use ultrathink mode"
+                )
+            ),
+            sender = ChatMessage.Sender.User, // Context extraction comes from system/user
+            uuid = java.util.UUID.randomUUID().toString(),
+            timestamp = Clock.System.now(),
+            llmSpecificMetadata = null
+        )
+
         val backgroundTabIndex = appViewModel.createTab(
             projectPath = projectPath,
             resumeSessionId = claudeSessionId.value,
-            initialMessage = instructions,
+            initialMessage = chatMessage,
             setAsCurrent = false  // Работаем в фоне
         )
 

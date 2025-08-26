@@ -20,7 +20,7 @@ class SendMessageTool(
     @Serializable
     data class Input(
         val message: String,
-        val sender_tab_id: String? = null,
+        val sender_tab_id: String,
         val target_tab_id: String? = null,
         val set_as_current: Boolean = false,
     )
@@ -36,7 +36,7 @@ class SendMessageTool(
                 })
                 put("sender_tab_id", buildJsonObject {
                     put("type", "string")
-                    put("description", "ID of the sender tab (you received tab is in prompt)")
+                    put("description", "ID of the sender (current) tab (you received tab is in prompt)")
                 })
                 put("target_tab_id", buildJsonObject {
                     put("type", "string")
@@ -85,12 +85,7 @@ class SendMessageTool(
 
         val targetTab = tabs[targetTabIndex]
 
-        // Determine sender based on provided senderTabId
-        val sender = if (senderTabId != null) {
-            ChatMessage.Sender.Tab(senderTabId)
-        } else {
-            ChatMessage.Sender.User
-        }
+        val sender = ChatMessage.Sender.Tab(senderTabId)
 
         // Send message to target session via TabViewModel
         targetTab.sendMessageToSession(input.message, sender)

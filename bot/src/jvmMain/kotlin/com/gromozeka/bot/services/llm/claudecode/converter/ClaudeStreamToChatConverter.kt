@@ -536,7 +536,7 @@ class ClaudeStreamToChatConverter(
         var sender: ChatMessage.Sender? = null
 
         // Parse sender tag first
-        val senderMatch = Regex("<sender>(.*?)</sender>").find(remainingText)
+        val senderMatch = Regex("<message_source>(.*?)</message_source>").find(remainingText)
         senderMatch?.let { match ->
             val senderValue = match.groupValues[1]
             sender = when {

@@ -32,6 +32,7 @@ import com.gromozeka.bot.ui.state.UIState
 import com.gromozeka.bot.ui.viewmodel.AppViewModel
 import com.gromozeka.bot.ui.viewmodel.ContextsPanelViewModel
 import com.gromozeka.bot.ui.viewmodel.TabViewModel
+import com.gromozeka.shared.domain.message.ChatMessage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -41,6 +42,8 @@ import org.springframework.boot.WebApplicationType
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.builder.SpringApplicationBuilder
 import java.io.File
+import java.util.*
+import kotlin.time.Clock
 
 /**
  * Format folder name to human readable format
@@ -220,7 +223,7 @@ fun ApplicationScope.ChatWindow(
     val sessionSearchViewModel = remember {
         com.gromozeka.bot.ui.viewmodel.SessionSearchViewModel(sessionSearchService, coroutineScope)
     }
-    
+
     val contextsPanelViewModel = remember {
         ContextsPanelViewModel(
             contextFileService = contextFileService,
@@ -285,7 +288,17 @@ fun ApplicationScope.ChatWindow(
     val createNewSessionWithMessage: (String, String) -> Unit = { projectPath, initialMessage ->
         coroutineScope.launch {
             try {
-                val tabIndex = appViewModel.createTab(projectPath, null, initialMessage)
+                // Create ChatMessage from user input
+                val chatMessage = ChatMessage(
+                    role = ChatMessage.Role.USER,
+                    content = listOf(ChatMessage.ContentItem.UserMessage(initialMessage)),
+                    instructions = emptyList(),
+                    sender = ChatMessage.Sender.User,
+                    uuid = UUID.randomUUID().toString(),
+                    timestamp = Clock.System.now(),
+                    llmSpecificMetadata = null
+                )
+                val tabIndex = appViewModel.createTab(projectPath, null, chatMessage)
                 appViewModel.selectTab(tabIndex)
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -301,7 +314,7 @@ fun ApplicationScope.ChatWindow(
                     val tabIndex = appViewModel.createTab(
                         projectPath = currentSession!!.projectPath,
                         resumeSessionId = currentClaudeSessionId,
-                        initialMessage = null // Key difference from Extract Context
+                        initialMessage = null // No initial message for fork
                     )
                     appViewModel.selectTab(tabIndex)
                 }
@@ -545,7 +558,7 @@ fun ApplicationScope.ChatWindow(
                                                         }
                                                     }
                                                 },
-                                                
+
                                                 // Context panel
                                                 onShowContextsPanel = { showContextsPanel = true },
 
@@ -577,7 +590,7 @@ fun ApplicationScope.ChatWindow(
                             onOpenTab = createNewSession,
                             onOpenTabWithMessage = createNewSessionWithMessage
                         )
-                        
+
                         // Contexts Panel - positioned at the root level for full height overlay
                         ContextsPanel(
                             isVisible = showContextsPanel,

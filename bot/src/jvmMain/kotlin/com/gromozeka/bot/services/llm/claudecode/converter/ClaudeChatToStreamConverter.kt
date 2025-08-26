@@ -83,8 +83,8 @@ class ClaudeChatToStreamConverter {
      * Serialize ChatMessage.Sender to XML tag
      */
     fun serializeSenderToXml(sender: ChatMessage.Sender): String = when (sender) {
-        is ChatMessage.Sender.User -> "<sender>user</sender>"
-        is ChatMessage.Sender.Tab -> "<sender>tab:${sender.id}</sender>"
+        is ChatMessage.Sender.User -> "<message_source>user</message_source>"
+        is ChatMessage.Sender.Tab -> "<message_source>tab:${sender.id}</message_source>"
     }
 
     /**

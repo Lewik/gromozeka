@@ -3,6 +3,7 @@ package com.gromozeka.bot.ui.viewmodel
 import com.gromozeka.bot.services.ContextExtractionService
 import com.gromozeka.bot.services.ContextFileService
 import com.gromozeka.bot.services.ContextItem
+import com.gromozeka.shared.domain.message.ChatMessage
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -13,6 +14,7 @@ import java.io.File
 import java.time.Duration
 import java.time.Instant
 import java.util.*
+import kotlin.time.Clock
 
 class ContextsPanelViewModel(
     private val contextFileService: ContextFileService,
@@ -117,10 +119,20 @@ class ContextsPanelViewModel(
             val currentTab = appViewModel.currentTab.value
             val parentTabId = currentTab?.uiState?.value?.tabId
 
+            // Create ChatMessage with context content and proper sender
+            val chatMessage = ChatMessage(
+                role = ChatMessage.Role.USER,
+                content = listOf(ChatMessage.ContentItem.UserMessage(contextContent)),
+                instructions = emptyList(),
+                sender = parentTabId?.let { ChatMessage.Sender.Tab(it) } ?: ChatMessage.Sender.User,
+                uuid = UUID.randomUUID().toString(),
+                timestamp = Clock.System.now(),
+                llmSpecificMetadata = null
+            )
+            
             appViewModel.createTab(
                 projectPath = context.projectPath,
-                initialMessage = contextContent,
-                parentTabId = parentTabId
+                initialMessage = chatMessage
             )
 
         } catch (e: Exception) {
