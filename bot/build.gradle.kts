@@ -158,6 +158,15 @@ compose.desktop {
             macOS {
                 packageBuildVersion = rootProject.version.toString()
                 dmgPackageVersion = rootProject.version.toString()
+                
+                // Permissions for macOS
+                infoPlist {
+                    extraKeysRawXml = """
+                        <key>NSMicrophoneUsageDescription</key>
+                        <string>Gromozeka needs microphone access for voice input and speech-to-text functionality</string>
+                    """
+                }
+                
                 signing {
                     sign.set(false)
                 }
