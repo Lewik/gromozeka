@@ -146,6 +146,9 @@ compose.desktop {
             copyright = "© 2024 Gromozeka Project"
             vendor = "Gromozeka"
             
+            // Include all JDK modules to ensure Java 21 compatibility
+            includeAllModules = true
+            
             macOS {
                 packageBuildVersion = "1.0.0"
                 dmgPackageVersion = "1.0.0"
