@@ -9,7 +9,6 @@ data class Settings(
     // Audio Settings
     val enableTts: Boolean = false,
     val enableStt: Boolean = false,
-    val enableAutoTTS: Boolean = true,
     val ttsSpeed: Float = 1.0f,
     val ttsModel: String = "gpt-4o-mini-tts", // tts-1, tts-1-hd, gpt-4o-mini-tts
     val ttsVoice: String = "alloy", // alloy, echo, fable, onyx, nova, shimmer

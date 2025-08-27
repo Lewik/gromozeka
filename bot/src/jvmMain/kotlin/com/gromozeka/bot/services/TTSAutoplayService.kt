@@ -68,9 +68,6 @@ class TTSAutoplayService(
     private fun shouldPlayAutoTTS(message: ChatMessage): Boolean {
         val settings = settingsService.settings
 
-        // Check if auto TTS is enabled
-        if (!settings.enableAutoTTS) return false
-
         // Check if TTS is enabled at all
         if (!settings.enableTts) return false
 
