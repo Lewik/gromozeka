@@ -34,10 +34,11 @@ Named after the multi-armed character from "The Mystery of the Third Planet". Cu
 
 ### Installation & Setup
 
-1. **Clone the repository**:
+1. **Development Setup**:
    ```bash
-   git clone https://github.com/Lewik/gromozeka
-   cd gromozeka
+   # This is currently a local development repository
+   # Clone instructions will be provided when project is published publicly
+   cd /path/to/gromozeka
    ```
 
 2. **Configure Claude Code**:
@@ -102,14 +103,14 @@ Named after the multi-armed character from "The Mystery of the Third Planet". Cu
 ### Project Structure
 ```
 bot/           # Main application module
-shared/        # Shared models and utilities  
+shared/        # Shared models and utilities
 docs/          # Architecture documentation
 ├── ptt-system.md          # PTT implementation details
 └── claude-code-*.md       # Claude Code integration notes
 ```
 
 ### Contributing
-1. Check existing [GitHub Issues](https://github.com/Lewik/gromozeka/issues) for planned features
+1. Check existing project documentation and issues for planned features
 2. Focus on real-world utility and desktop UX
 3. Test voice features on actual hardware
 4. Follow Kotlin/Compose best practices

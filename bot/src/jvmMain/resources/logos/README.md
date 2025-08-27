@@ -10,19 +10,15 @@ This directory contains generated PNG logos from the source SVG file.
 
 ## Regenerating Logo
 
-To regenerate the PNG logo from SVG source using Apache Batik:
+To regenerate the PNG logos from SVG source using Apache Batik:
 
-**Single 256x256 logo:**
-
-```bash
-./gradlew :bot:jvmTest --tests "LogoGenerationTest.generateLogo"
-```
-
-**Multiple sizes (32x32, 64x64, 128x128, 256x256, 512x512):**
+**Generate all sizes (32x32, 64x64, 128x128, 256x256, 512x512):**
 
 ```bash
-./gradlew :bot:jvmTest --tests "LogoGenerationTest.generateMultipleSizes"
+./gradlew :bot:jvmTest --tests "LogoGenerationTest.generateLogos"
 ```
+
+This single command generates all logo sizes at once.
 
 **Quick reference (shows commands):**
 

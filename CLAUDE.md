@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This is a Kotlin Multiplatform Project (MPP) with the following modules:
 - `bot` - The main application module containing the gromozeka bot application
-- `shared` - A library module with shared code and models  
+- `shared` - A library module with shared code and models
 - `docs/` - Project documentation including architectural decisions and philosophy
 - `logs/` - Development logs directory (ignored in git)
 
@@ -87,7 +87,7 @@ This significantly reduces the need for extensive unit testing compared to dynam
 **Key components**:
 1. **ClaudeCodeStreamingWrapper** - Process management and stream communication
 2. **Session** - Session lifecycle, message handling, and state management  
-3. **StreamToChatMessageMapper** - Maps Claude stream format to internal ChatMessage format
+3. **ClaudeStreamToChatConverter** - Maps Claude stream format to internal ChatMessage format
 4. **SessionJsonlService** - Historical session loading from .jsonl files for resume functionality
 
 **Claude Code CLI invocation**:
@@ -115,7 +115,7 @@ claude --output-format stream-json --input-format stream-json --verbose --permis
 - **Button Down**: Optimistic recording start + audio mute
 
 **Technical Implementation**:
-- **GlobalHotkeyService**: Manages § key remapping and global hotkey detection
+- **GlobalHotkeyController**: Manages § key remapping and global hotkey detection
 - **UnifiedGestureDetector**: Recognizes gesture patterns by timing
 - **PTTEventRouter**: Routes gesture events to appropriate handlers
 - **AudioMuteManager**: System audio muting during recording
@@ -147,7 +147,7 @@ Uses § key remapped to F13 via hidutil to avoid conflicts with system shortcuts
 **Stream Processing Flow**:
 ```
 User Input → Session.sendMessage() → ClaudeWrapper.sendMessage() → Claude CLI stdin
-Claude CLI stdout → parseStreamJsonLine() → StreamToChatMessageMapper → UI Updates
+Claude CLI stdout → parseStreamJsonLine() → ClaudeStreamToChatConverter → UI Updates
 ```
 
 **Key Patterns**:
@@ -173,7 +173,7 @@ Claude CLI stdout → parseStreamJsonLine() → StreamToChatMessageMapper → UI
 **Tool Integration**:
 - Full Claude Code tool support (Read, Edit, Bash, Grep, WebSearch, etc.)
 - Type-safe mapping via `ClaudeCodeToolCallData`/`ClaudeCodeToolResultData`
-- MCP tool compatibility framework
+- Internal MCP HTTP server (`McpHttpServer`) for custom tool extensibility
 
 ## MCP SDK Architecture & Package Management
 
@@ -193,7 +193,7 @@ The project uses **two separate MCP SDKs** that do NOT conflict due to different
 - **Version**: 0.6.0 (latest for Kotlin SDK)
 - **Dependency**: `io.modelcontextprotocol:kotlin-sdk`
 - **Purpose**: Our MCP server implementation
-- **Usage**: Used in `McpTcpServer`, `mcp-proxy` module
+- **Usage**: Used in internal `McpHttpServer` implementation
 
 ### No Package Conflicts
 **Key Insight**: Different package names = no classpath conflicts!
@@ -205,7 +205,7 @@ Both can coexist safely in the same project.
 ### When to Use Which SDK
 
 **Use Kotlin MCP SDK for:**
-- Our MCP server implementations (`McpTcpServer.kt`)
+- Internal MCP server implementation (`bot/services/McpHttpServer.kt`)
 - Custom MCP tools and handlers  
 - Type-safe MCP protocol objects (`Tool`, `CallToolResult`, `JSONRPCRequest`)
 - Kotlin-specific features (coroutines, data classes)
