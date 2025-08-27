@@ -164,6 +164,8 @@ compose.desktop {
                     extraKeysRawXml = """
                         <key>NSMicrophoneUsageDescription</key>
                         <string>Gromozeka needs microphone access for voice input and speech-to-text functionality</string>
+                        <key>NSAccessibilityUsageDescription</key>
+                        <string>Gromozeka needs accessibility access for global hotkeys (§ key for push-to-talk)</string>
                     """
                 }
                 
