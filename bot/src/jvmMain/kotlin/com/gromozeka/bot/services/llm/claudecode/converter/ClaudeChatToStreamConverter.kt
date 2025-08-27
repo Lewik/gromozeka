@@ -34,8 +34,7 @@ class ClaudeChatToStreamConverter {
         // Serialize tags and combine with message text  
         val messageWithTags = serializeMessageWithTags(
             content = messageText,
-            instructions = chatMessage.instructions,
-            sender = chatMessage.sender
+            instructions = chatMessage.instructions
         )
 
         // Create ContentItemsUnion - for simple text we use StringContent
@@ -54,24 +53,15 @@ class ClaudeChatToStreamConverter {
     }
 
     /**
-     * Serialize instructions, sender and content into message with XML tags
-     * 
-     * This centralizes the XML serialization logic that was previously in Session.Command.SendMessage
+     * Serialize instructions and content into message with XMLL tags
      */
     fun serializeMessageWithTags(
         content: String,
-        instructions: List<ChatMessage.Instruction> = emptyList(),
-        sender: ChatMessage.Sender? = null
+        instructions: List<ChatMessage.Instruction> = emptyList()
     ): String = buildString {
-        // Add sender tag first
-        sender?.let { 
-            append(serializeSenderToXml(it))
-            append("\n")
-        }
-        
-        // Add instruction tags
+        // Add instruction tags (XMLL format - one per line)
         instructions.forEach { instruction ->
-            append(serializeInstructionToXml(instruction))
+            append("<${instruction.tagName}>${instruction.serializeContent()}</${instruction.tagName}>")
             append("\n")
         }
         
@@ -79,19 +69,6 @@ class ClaudeChatToStreamConverter {
         append(content)
     }
 
-    /**
-     * Serialize ChatMessage.Sender to XML tag
-     */
-    fun serializeSenderToXml(sender: ChatMessage.Sender): String = when (sender) {
-        is ChatMessage.Sender.User -> "<message_source>user</message_source>"
-        is ChatMessage.Sender.Tab -> "<message_source>tab:${sender.id}</message_source>"
-    }
-
-    /**
-     * Serialize ChatMessage.Instruction to XML tag
-     */
-    fun serializeInstructionToXml(instruction: ChatMessage.Instruction): String =
-        "<instruction>${instruction.id}:${instruction.title}:${instruction.description}</instruction>"
 
     /**
      * Extract text content from ChatMessage ContentItems

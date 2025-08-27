@@ -1,7 +1,20 @@
 package com.gromozeka.bot.ui.state
 
+import com.gromozeka.bot.model.AgentDefinition
 import com.gromozeka.shared.domain.session.ClaudeSessionUuid
 import kotlinx.serialization.Serializable
+
+@Serializable
+sealed class ConversationInitiator {
+    @Serializable
+    object User : ConversationInitiator()
+    
+    @Serializable
+    data class Agent(val tabId: String) : ConversationInitiator()
+    
+    @Serializable
+    object System : ConversationInitiator()  // Resume, context, etc.
+}
 
 /**
  * Root UI state for the entire Gromozeka application
@@ -36,5 +49,7 @@ data class UIState(
         val customName: String? = null,
         val tabId: String,
         val parentTabId: String? = null,
+        val agentDefinition: AgentDefinition,
+        val initiator: ConversationInitiator = ConversationInitiator.User,
     )
 }

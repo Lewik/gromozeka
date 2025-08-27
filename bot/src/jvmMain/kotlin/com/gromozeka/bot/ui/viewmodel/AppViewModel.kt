@@ -6,6 +6,7 @@ import com.gromozeka.bot.platform.ScreenCaptureController
 import com.gromozeka.bot.services.SessionManager
 import com.gromozeka.bot.services.SettingsService
 import com.gromozeka.bot.ui.state.UIState
+import com.gromozeka.bot.ui.state.ConversationInitiator
 import com.gromozeka.shared.domain.message.ChatMessage
 import com.gromozeka.shared.domain.session.ClaudeSessionUuid
 import kotlinx.coroutines.CoroutineScope
@@ -55,9 +56,11 @@ open class AppViewModel(
      */
     suspend fun createTab(
         projectPath: String,
+        agentDefinition: AgentDefinition = AgentDefinition.DEFAULT,
         resumeSessionId: String? = null,
         initialMessage: ChatMessage? = null,
         setAsCurrent: Boolean = true,
+        initiator: ConversationInitiator = ConversationInitiator.User,
     ): Int = mutex.withLock {
 
         val claudeSessionId = resumeSessionId?.let { ClaudeSessionUuid(it) }
@@ -67,17 +70,16 @@ open class AppViewModel(
 
         // Create session through SessionManager with tabId
         val session = sessionManager.createSession(
-            agentDefinition = AgentDefinition.DEFAULT,
+            agentDefinition = agentDefinition,
             projectPath = projectPath,
             resumeSessionId = claudeSessionId,
-            tabId = tabId
+            tabId = tabId,
+            initiator = initiator
         )
 
-        // Extract parentTabId from ChatMessage.sender if present
-        val parentTabId = when (val sender = initialMessage?.sender) {
-            is ChatMessage.Sender.Tab -> sender.id
-            else -> null
-        }
+        // Extract parentTabId from ChatMessage.instructions if present
+        val parentTabId = initialMessage?.instructions?.filterIsInstance<ChatMessage.Instruction.Source>()
+            ?.firstOrNull { !it.user }?.agentTabId
 
         // Create TabViewModel for this tab
         val initialTabUiState = UIState.Tab(
@@ -85,7 +87,9 @@ open class AppViewModel(
             claudeSessionId = claudeSessionId ?: ClaudeSessionUuid.DEFAULT,
             activeMessageTags = TabViewModel.getDefaultEnabledTags(),
             tabId = tabId,
-            parentTabId = parentTabId
+            parentTabId = parentTabId,
+            agentDefinition = agentDefinition,
+            initiator = initiator
         )
         val tabViewModel = TabViewModel(
             session = session,
@@ -227,10 +231,11 @@ open class AppViewModel(
             try {
                 val claudeSessionId = tabUiState.claudeSessionId
                 val session = sessionManager.createSession(
-                    agentDefinition = AgentDefinition.DEFAULT,
+                    agentDefinition = tabUiState.agentDefinition,
                     projectPath = tabUiState.projectPath,
                     resumeSessionId = claudeSessionId,
-                    tabId = tabUiState.tabId
+                    tabId = tabUiState.tabId,
+                    initiator = tabUiState.initiator
                 )
 
                 val tabViewModel = TabViewModel(

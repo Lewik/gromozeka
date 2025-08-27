@@ -1,6 +1,7 @@
 package com.gromozeka.bot.services
 
 import com.gromozeka.bot.ui.viewmodel.AppViewModel
+import com.gromozeka.bot.ui.state.ConversationInitiator
 import com.gromozeka.shared.domain.message.ChatMessage
 import kotlinx.coroutines.flow.first
 import org.springframework.context.ApplicationContext
@@ -31,13 +32,13 @@ class ContextExtractionService(
             role = ChatMessage.Role.USER,
             content = listOf(ChatMessage.ContentItem.UserMessage(instructions)),
             instructions = listOf(
-                ChatMessage.Instruction(
+                ChatMessage.Instruction.UserInstruction(
                     "thinking_ultrathink",
                     "Ultrathink",
                     "Use ultrathink mode"
-                )
+                ),
+                ChatMessage.Instruction.Source(user = true)
             ),
-            sender = ChatMessage.Sender.User, // Context extraction comes from system/user
             uuid = java.util.UUID.randomUUID().toString(),
             timestamp = Clock.System.now(),
             llmSpecificMetadata = null
@@ -47,7 +48,8 @@ class ContextExtractionService(
             projectPath = projectPath,
             resumeSessionId = claudeSessionId.value,
             initialMessage = chatMessage,
-            setAsCurrent = false  // Работаем в фоне
+            setAsCurrent = false,  // Работаем в фоне
+            initiator = ConversationInitiator.System
         )
 
         println("[ContextExtractionService] Created background tab $backgroundTabIndex for context extraction")

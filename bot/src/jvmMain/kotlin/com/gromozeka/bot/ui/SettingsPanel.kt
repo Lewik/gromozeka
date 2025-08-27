@@ -1,5 +1,6 @@
 package com.gromozeka.bot.ui
 
+import com.gromozeka.bot.model.AgentDefinition
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.shrinkHorizontally
@@ -36,7 +37,7 @@ fun SettingsPanel(
     aiThemeGenerator: AIThemeGenerator,
     coroutineScope: CoroutineScope,
     onOpenTab: (String) -> Unit, // Callback to open new tab with project path
-    onOpenTabWithMessage: ((String, String) -> Unit)? = null, // Callback to open new tab with initial message
+    onOpenTabWithMessage: ((String, String, AgentDefinition) -> Unit)? = null, // Callback to open new tab with initial message
     modifier: Modifier = Modifier,
 ) {
     val translation = LocalTranslation.current
@@ -470,7 +471,8 @@ fun SettingsPanel(
                                         if (onOpenTabWithMessage != null) {
                                             onOpenTabWithMessage(
                                                 aiThemeGenerator.getWorkingDirectory(),
-                                                preparedMessage
+                                                preparedMessage,
+                                                AgentDefinition.DEFAULT
                                             )
                                         } else {
                                             onOpenTab(aiThemeGenerator.getWorkingDirectory())

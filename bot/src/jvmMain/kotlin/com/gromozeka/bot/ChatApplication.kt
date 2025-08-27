@@ -1,5 +1,7 @@
 package com.gromozeka.bot
 
+import com.gromozeka.bot.model.AgentDefinition
+import com.gromozeka.bot.ui.state.ConversationInitiator
 import androidx.compose.desktop.ui.tooling.preview.Preview
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -277,7 +279,10 @@ fun ApplicationScope.ChatWindow(
     val createNewSession: (String) -> Unit = { projectPath ->
         coroutineScope.launch {
             try {
-                val tabIndex = appViewModel.createTab(projectPath)
+                val tabIndex = appViewModel.createTab(
+                    projectPath = projectPath,
+                    initiator = ConversationInitiator.User
+                )
                 appViewModel.selectTab(tabIndex)
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -285,20 +290,24 @@ fun ApplicationScope.ChatWindow(
         }
     }
 
-    val createNewSessionWithMessage: (String, String) -> Unit = { projectPath, initialMessage ->
+    val createNewSessionWithMessage: (String, String, AgentDefinition) -> Unit = { projectPath, initialMessage, agentDefinition ->
         coroutineScope.launch {
             try {
                 // Create ChatMessage from user input
                 val chatMessage = ChatMessage(
                     role = ChatMessage.Role.USER,
                     content = listOf(ChatMessage.ContentItem.UserMessage(initialMessage)),
-                    instructions = emptyList(),
-                    sender = ChatMessage.Sender.User,
+                    instructions = listOf(ChatMessage.Instruction.Source(user = true)),
                     uuid = UUID.randomUUID().toString(),
                     timestamp = Clock.System.now(),
                     llmSpecificMetadata = null
                 )
-                val tabIndex = appViewModel.createTab(projectPath, null, chatMessage)
+                val tabIndex = appViewModel.createTab(
+                    projectPath = projectPath,
+                    agentDefinition = agentDefinition,
+                    initialMessage = chatMessage,
+                    initiator = ConversationInitiator.User
+                )
                 appViewModel.selectTab(tabIndex)
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -314,7 +323,8 @@ fun ApplicationScope.ChatWindow(
                     val tabIndex = appViewModel.createTab(
                         projectPath = currentSession!!.projectPath,
                         resumeSessionId = currentClaudeSessionId,
-                        initialMessage = null // No initial message for fork
+                        initialMessage = null, // No initial message for fork
+                        initiator = ConversationInitiator.User
                     )
                     appViewModel.selectTab(tabIndex)
                 }

@@ -82,7 +82,7 @@ class ClaudeStreamToChatConverter(
     }
 
     private fun mapUserMessage(message: ClaudeCodeStreamJsonLine.User): ChatMessage {
-        val (content, instructions, sender) = when (message.message.content) {
+        val (content, instructions) = when (message.message.content) {
             is ContentItemsUnion.StringContent -> {
                 parseUserMessageWithTags(message.message.content.content)
             }
@@ -90,7 +90,7 @@ class ClaudeStreamToChatConverter(
             is ContentItemsUnion.ArrayContent -> {
                 // For array content, don't parse tags (assume they're already processed)
                 val contentItems = message.message.content.items.map { mapUserContentItem(it) }
-                Triple(contentItems, emptyList<ChatMessage.Instruction>(), null)
+                Pair(contentItems, emptyList<ChatMessage.Instruction>())
             }
         }
 
@@ -103,8 +103,7 @@ class ClaudeStreamToChatConverter(
             llmSpecificMetadata = createStreamMetadata(
                 sessionId = message.sessionId
             ),
-            instructions = instructions,
-            sender = sender
+            instructions = instructions
         )
     }
 
@@ -528,51 +527,39 @@ class ClaudeStreamToChatConverter(
     }
 
     /**
-     * Parse user message text to extract instructions, sender tags, and clean content
+     * Parse user message text to extract instructions using XMLL format and clean content
+     * Instructions are only parsed at the beginning - once a non-instruction line is found, all remaining content is treated as message text
      */
-    private fun parseUserMessageWithTags(text: String): Triple<List<ChatMessage.ContentItem>, List<ChatMessage.Instruction>, ChatMessage.Sender?> {
-        var remainingText = text.trim()
+    private fun parseUserMessageWithTags(text: String): Pair<List<ChatMessage.ContentItem>, List<ChatMessage.Instruction>> {
         val instructions = mutableListOf<ChatMessage.Instruction>()
-        var sender: ChatMessage.Sender? = null
-
-        // Parse sender tag first
-        val senderMatch = Regex("<message_source>(.*?)</message_source>").find(remainingText)
-        senderMatch?.let { match ->
-            val senderValue = match.groupValues[1]
-            sender = when {
-                senderValue == "user" -> ChatMessage.Sender.User
-                senderValue.startsWith("tab:") -> ChatMessage.Sender.Tab(senderValue.removePrefix("tab:"))
-                else -> null
+        val lines = text.lines()
+        var instructionParsingFinished = false
+        val contentLines = mutableListOf<String>()
+        
+        for (line in lines) {
+            if (!instructionParsingFinished) {
+                val instruction = ChatMessage.Instruction.parseFromXmlLine(line)
+                if (instruction != null) {
+                    instructions.add(instruction)
+                } else {
+                    // First non-instruction line found - stop parsing instructions
+                    instructionParsingFinished = true
+                    contentLines.add(line)
+                }
+            } else {
+                // Already finished parsing instructions, everything goes to content
+                contentLines.add(line)
             }
-            remainingText = remainingText.replace(match.value, "").trim()
-        }
-
-        // Parse instruction tags
-        val instructionRegex = Regex("<instruction>(.*?)</instruction>")
-        var match = instructionRegex.find(remainingText)
-        while (match != null) {
-            val instructionContent = match.groupValues[1]
-            val parts = instructionContent.split(":", limit = 3)
-            if (parts.size == 3) {
-                instructions.add(
-                    ChatMessage.Instruction(
-                        id = parts[0].trim(),
-                        title = parts[1].trim(),
-                        description = parts[2].trim()
-                    )
-                )
-            }
-            remainingText = remainingText.replace(match.value, "").trim()
-            match = instructionRegex.find(remainingText)
         }
 
         // Create content from remaining text
-        val content = if (remainingText.isNotEmpty()) {
-            listOf(parseText(remainingText))
+        val contentText = contentLines.joinToString("\n").trim()
+        val content = if (contentText.isNotEmpty()) {
+            listOf(parseText(contentText))
         } else {
             emptyList()
         }
 
-        return Triple(content, instructions, sender)
+        return Pair(content, instructions)
     }
 }

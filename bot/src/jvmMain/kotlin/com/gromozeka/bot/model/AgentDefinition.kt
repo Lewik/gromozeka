@@ -1,8 +1,11 @@
 package com.gromozeka.bot.model
 
+import kotlinx.serialization.Serializable
+
 /**
  * Defines an AI agent with name and system prompt
  */
+@Serializable
 data class AgentDefinition(
     val name: String,    // Display name for UI and coordination
     val prompt: String,   // System prompt content defining behavior

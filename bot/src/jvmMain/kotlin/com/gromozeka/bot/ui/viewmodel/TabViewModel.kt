@@ -62,11 +62,11 @@ class TabViewModel(
             MessageTagDefinition(
                 controls = listOf(
                     MessageTagDefinition.Control(
-                        data = ChatMessage.Instruction("thinking_off", "Off", "Обычный режим работы"),
+                        data = ChatMessage.Instruction.UserInstruction("thinking_off", "Off", "Обычный режим работы"),
                         includeInMessage = false
                     ),
                     MessageTagDefinition.Control(
-                        data = ChatMessage.Instruction(
+                        data = ChatMessage.Instruction.UserInstruction(
                             "thinking_ultrathink",
                             "Ultrathink",
                             "Режим глубокого анализа с пошаговыми рассуждениями и детальной проработкой"
@@ -79,7 +79,7 @@ class TabViewModel(
             MessageTagDefinition(
                 controls = listOf(
                     MessageTagDefinition.Control(
-                        data = ChatMessage.Instruction(
+                        data = ChatMessage.Instruction.UserInstruction(
                             "mode_readonly",
                             "Readonly",
                             "Режим readonly - никаких изменений кода или команд применяющих изменения"
@@ -87,7 +87,7 @@ class TabViewModel(
                         includeInMessage = true
                     ),
                     MessageTagDefinition.Control(
-                        data = ChatMessage.Instruction("mode_writable", "Writable", "Разрешено исправление файлов"),
+                        data = ChatMessage.Instruction.UserInstruction("mode_writable", "Writable", "Разрешено исправление файлов"),
                         includeInMessage = true
                     )
                 ),
@@ -97,7 +97,7 @@ class TabViewModel(
 
         fun getDefaultEnabledTags(): Set<String> {
             return ALL_MESSAGE_TAG_DEFINITIONS.map { tagDefinition ->
-                tagDefinition.controls[tagDefinition.selectedByDefault].data.id
+                (tagDefinition.controls[tagDefinition.selectedByDefault].data as ChatMessage.Instruction.UserInstruction).id
             }.toSet()
         }
     }
@@ -188,10 +188,10 @@ class TabViewModel(
     fun toggleMessageTag(messageTag: MessageTagDefinition, controlIndex: Int) {
         _uiState.update { currentState ->
             if (controlIndex >= 0 && controlIndex < messageTag.controls.size) {
-                val selectedId = messageTag.controls[controlIndex].data.id
+                val selectedId = (messageTag.controls[controlIndex].data as ChatMessage.Instruction.UserInstruction).id
 
                 // Get all IDs from this MessageTag group
-                val allIdsInGroup = messageTag.controls.map { it.data.id }.toSet()
+                val allIdsInGroup = messageTag.controls.map { (it.data as ChatMessage.Instruction.UserInstruction).id }.toSet()
 
                 // Check if clicked ID is already active in this group
                 val isAlreadyActive = selectedId in currentState.activeMessageTags
@@ -223,14 +223,21 @@ class TabViewModel(
         }
     }
 
-    suspend fun sendMessageToSession(message: String, sender: ChatMessage.Sender = ChatMessage.Sender.User) {
+    suspend fun sendMessageToSession(message: String) {
+        sendMessageToSession(message, emptyList())
+    }
+
+    suspend fun sendMessageToSession(
+        message: String,
+        additionalInstructions: List<ChatMessage.Instruction>
+    ) {
         val currentState = _uiState.value
 
         // Collect all active tag data that should be included in message
         val activeTagsData = availableMessageTags.mapNotNull { messageTag ->
             // Find which control should be active based on currentState.activeMessageTags
             val activeControlIndex = messageTag.controls.indexOfFirst { control ->
-                control.data.id in currentState.activeMessageTags
+                (control.data as ChatMessage.Instruction.UserInstruction).id in currentState.activeMessageTags
             }
 
             val selectedControlIndex = if (activeControlIndex >= 0) activeControlIndex else messageTag.selectedByDefault
@@ -242,15 +249,14 @@ class TabViewModel(
             } else null
         }
 
-        // activeTagsData now already contains ChatMessage.Instruction
-        val instructions = activeTagsData
+        // Combine UI instructions with additional ones
+        val instructions = activeTagsData + additionalInstructions
         
         // Create ChatMessage in UI layer for better control and consistency
         val chatMessage = ChatMessage(
             role = ChatMessage.Role.USER,
             content = listOf(ChatMessage.ContentItem.UserMessage(message)),
             instructions = instructions,
-            sender = sender,
             uuid = UUID.randomUUID().toString(),
             timestamp = Clock.System.now(),
             llmSpecificMetadata = null

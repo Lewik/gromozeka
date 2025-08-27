@@ -22,7 +22,6 @@ data class ChatMessage(
 
     // Message metadata
     val instructions: List<Instruction> = emptyList(),
-    val sender: Sender? = null,
 
     // Development context at root level
     val gitBranch: String? = null,
@@ -257,25 +256,83 @@ data class ChatMessage(
     }
 
     /**
-     * Instruction for message processing - self-contained like JSON token
+     * Instructions for message processing with XMLL serialization
      */
     @Serializable
-    data class Instruction(
-        val id: String,        // "thinking_ultrathink", "mode_readonly"
-        val title: String,     // "Ultrathink", "Readonly" 
-        val description: String // "Режим глубокого анализа..."
-    )
-
-    /**
-     * Source of the message
-     */
-    @Serializable
-    sealed class Sender {
-        @Serializable
-        data object User : Sender()
+    sealed class Instruction {
+        abstract val tagName: String
+        abstract val title: String
+        abstract val description: String
+        abstract fun serializeContent(): String
+        
+        companion object {
+            fun parseFromXmlLine(line: String): Instruction? {
+                val trimmed = line.trim()
+                
+                if (trimmed.startsWith("<user-instruction>") && trimmed.endsWith("</user-instruction>")) {
+                    val content = trimmed.removePrefix("<user-instruction>").removeSuffix("</user-instruction>")
+                    val parts = content.split(":", limit = 3)
+                    if (parts.size == 3) {
+                        return UserInstruction(parts[0].trim(), parts[1].trim(), parts[2].trim())
+                    }
+                }
+                
+                if (trimmed.startsWith("<source>") && trimmed.endsWith("</source>")) {
+                    val content = trimmed.removePrefix("<source>").removeSuffix("</source>")
+                    return when {
+                        content == "user" -> Source(user = true)
+                        content.startsWith("agent:") -> Source(user = false, agentTabId = content.removePrefix("agent:"))
+                        else -> null
+                    }
+                }
+                
+                if (trimmed.startsWith("<response-expected>") && trimmed.endsWith("</response-expected>")) {
+                    val content = trimmed.removePrefix("<response-expected>").removeSuffix("</response-expected>")
+                    val match = Regex("target_tab_id: (.+)").find(content)
+                    if (match != null) {
+                        return ResponseExpected(match.groupValues[1])
+                    }
+                }
+                
+                return null
+            }
+        }
         
         @Serializable
-        data class Tab(val id: String) : Sender()
+        data class UserInstruction(
+            val id: String,        // "thinking_ultrathink", "mode_readonly"
+            override val title: String,     // "Ultrathink", "Readonly" 
+            override val description: String // "Режим глубокого анализа..."
+        ) : Instruction() {
+            override val tagName = "user-instruction"
+            override fun serializeContent() = "$id:$title:$description"
+        }
+        
+        @Serializable
+        data class Source(
+            val user: Boolean = true,
+            val agentTabId: String? = null
+        ) : Instruction() {
+            override val tagName = "source"
+            override val title = if (user) "User" else "Agent"
+            override val description = if (user) {
+                "Message from user"
+            } else {
+                "Message from agent (Tab ID: ${agentTabId ?: "unknown"})"
+            }
+            override fun serializeContent() = if (user) "user" else "agent:$agentTabId"
+        }
+        
+        @Serializable
+        data class ResponseExpected(
+            val targetTabId: String
+        ) : Instruction() {
+            override val tagName = "response-expected"
+            override val title = "Response Expected"
+            override val description = "This agent expects a response back to Tab ID: $targetTabId"
+            override fun serializeContent() = "Use mcp__gromozeka-self-control__tell_agent with target_tab_id: $targetTabId"
+        }
     }
+
 }
 

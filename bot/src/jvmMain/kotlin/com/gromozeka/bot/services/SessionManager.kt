@@ -1,13 +1,13 @@
 package com.gromozeka.bot.services
 
 import com.gromozeka.bot.model.AgentDefinition
+import com.gromozeka.bot.ui.state.ConversationInitiator
 import com.gromozeka.bot.model.Session
 import com.gromozeka.bot.services.WrapperFactory.WrapperType
 import com.gromozeka.bot.services.llm.claudecode.converter.ClaudeMessageConverter
 import com.gromozeka.shared.domain.session.ClaudeSessionUuid
 import com.gromozeka.shared.domain.session.SessionUuid
 import com.gromozeka.shared.domain.session.toSessionUuid
-import jdk.internal.agent.Agent
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -52,12 +52,14 @@ class SessionManager(
         projectPath: String,
         resumeSessionId: ClaudeSessionUuid? = null,
         tabId: String,
+        initiator: ConversationInitiator = ConversationInitiator.User,
     ): Session = sessionMutex.withLock {
 
         val session = createSessionInternal(
             agentDefinition = agentDefinition,
             projectPath = projectPath,
             tabId = tabId,
+            initiator = initiator,
             initialClaudeSessionId = resumeSessionId ?: ClaudeSessionUuid.DEFAULT
         )
 
@@ -78,13 +80,24 @@ class SessionManager(
         projectPath: String,
         claudeModel: String = settingsService.settings.claudeModel,
         tabId: String? = null,
+        initiator: ConversationInitiator = ConversationInitiator.User,
         initialClaudeSessionId: ClaudeSessionUuid = ClaudeSessionUuid.DEFAULT,
     ): Session {
         // Create wrapper using factory
         val wrapperType = WrapperType.DIRECT_CLI
         val claudeWrapper = wrapperFactory.createWrapper(settingsService, wrapperType)
 
-        val appendSystemPrompt = if (tabId != null) "This tab ID: $tabId" else ""
+        val initiatorInfo = when (initiator) {
+            is ConversationInitiator.User -> "This conversation was initiated by the user"
+            is ConversationInitiator.Agent -> "This conversation was initiated by agent (tab:${initiator.tabId})"  
+            is ConversationInitiator.System -> "This conversation was initiated by the system (resume/context/etc)"
+        }
+        
+        val appendSystemPrompt = if (tabId != null) {
+            "This tab ID: $tabId\n$initiatorInfo"
+        } else {
+            initiatorInfo
+        }
 
         return Session(
             id = UUID.randomUUID().toString().toSessionUuid(),

@@ -1,6 +1,7 @@
 package com.gromozeka.bot.ui.viewmodel
 
 import com.gromozeka.bot.services.ContextExtractionService
+import com.gromozeka.bot.ui.state.ConversationInitiator
 import com.gromozeka.bot.services.ContextFileService
 import com.gromozeka.bot.services.ContextItem
 import com.gromozeka.shared.domain.message.ChatMessage
@@ -119,12 +120,17 @@ class ContextsPanelViewModel(
             val currentTab = appViewModel.currentTab.value
             val parentTabId = currentTab?.uiState?.value?.tabId
 
-            // Create ChatMessage with context content and proper sender
+            // Create ChatMessage with context content and proper source
+            val sourceInstruction = if (parentTabId != null) {
+                ChatMessage.Instruction.Source(user = false, agentTabId = parentTabId)
+            } else {
+                ChatMessage.Instruction.Source(user = true)
+            }
+            
             val chatMessage = ChatMessage(
                 role = ChatMessage.Role.USER,
                 content = listOf(ChatMessage.ContentItem.UserMessage(contextContent)),
-                instructions = emptyList(),
-                sender = parentTabId?.let { ChatMessage.Sender.Tab(it) } ?: ChatMessage.Sender.User,
+                instructions = listOf(sourceInstruction),
                 uuid = UUID.randomUUID().toString(),
                 timestamp = Clock.System.now(),
                 llmSpecificMetadata = null
@@ -132,7 +138,8 @@ class ContextsPanelViewModel(
             
             appViewModel.createTab(
                 projectPath = context.projectPath,
-                initialMessage = chatMessage
+                initialMessage = chatMessage,
+                initiator = ConversationInitiator.User
             )
 
         } catch (e: Exception) {

@@ -1,10 +1,13 @@
 package com.gromozeka.bot.ui
 
+import com.gromozeka.bot.model.AgentDefinition
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.ContextMenuArea
 import androidx.compose.foundation.ContextMenuItem
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.TooltipArea
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -16,6 +19,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.ui.draw.shadow
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -51,7 +55,7 @@ fun TabScreen(
     onNewSession: () -> Unit,
     onForkSession: () -> Unit,
     onOpenTab: (String) -> Unit, // Callback to open new tab with project path  
-    onOpenTabWithMessage: ((String, String) -> Unit)? = null, // Callback to open new tab with initial message
+    onOpenTabWithMessage: ((String, String, AgentDefinition) -> Unit)? = null, // Callback to open new tab with initial message
     onCloseTab: (() -> Unit)? = null,
 
     // Services
@@ -323,6 +327,7 @@ fun TabScreen(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun MessageItem(
     message: ChatMessage,
@@ -500,16 +505,33 @@ private fun MessageItem(
                                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                             ) {
                                 message.instructions.forEach { instruction ->
-                                    AssistChip(
-                                        onClick = {},
-                                        label = {
-                                            Text(
-                                                text = instruction.title,
-                                                style = MaterialTheme.typography.labelSmall
-                                            )
-                                        },
-                                        colors = AssistChipDefaults.assistChipColors(),
-                                    )
+                                    TooltipArea(
+                                        tooltip = {
+                                            Surface(
+                                                modifier = Modifier.shadow(4.dp),
+                                                color = MaterialTheme.colorScheme.inverseOnSurface,
+                                                shape = MaterialTheme.shapes.small
+                                            ) {
+                                                Text(
+                                                    modifier = Modifier.padding(12.dp),
+                                                    text = instruction.description,
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.inverseSurface
+                                                )
+                                            }
+                                        }
+                                    ) {
+                                        AssistChip(
+                                            onClick = {},
+                                            label = {
+                                                Text(
+                                                    text = instruction.title,
+                                                    style = MaterialTheme.typography.labelSmall
+                                                )
+                                            },
+                                            colors = AssistChipDefaults.assistChipColors(),
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -976,15 +998,15 @@ private fun MultiStateMessageTagButton(
 ) {
     // Find which control is currently active based on activeMessageTags
     val activeControlIndex = messageTag.controls.indexOfFirst { control ->
-        control.data.id in activeMessageTags
+        (control.data as ChatMessage.Instruction.UserInstruction).id in activeMessageTags
     }
     val selectedIndex = if (activeControlIndex >= 0) activeControlIndex else messageTag.selectedByDefault
 
     // Convert MessageTagDefinition.Controls to SegmentedButtonOptions
     val options = messageTag.controls.map { control ->
         SegmentedButtonOption(
-            text = control.data.title,
-            tooltip = control.data.description
+            text = (control.data as ChatMessage.Instruction.UserInstruction).title,
+            tooltip = (control.data as ChatMessage.Instruction.UserInstruction).description
         )
     }
 

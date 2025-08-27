@@ -13,7 +13,7 @@ import org.springframework.context.ApplicationContext
 import org.springframework.stereotype.Service
 
 @Service
-class SendMessageTool(
+class TellAgentTool(
     private val applicationContext: ApplicationContext,
 ) : GromozekaMcpTool {
 
@@ -23,28 +23,34 @@ class SendMessageTool(
         val sender_tab_id: String,
         val target_tab_id: String? = null,
         val set_as_current: Boolean = false,
+        val expects_response: Boolean = false,
     )
 
     override val definition = Tool(
-        name = "send_message",
-        description = "Send a message to a specific tab/session for inter-tab communication",
+        name = "tell_agent",
+        description = "Send a message to another agent for collaboration and communication",
         inputSchema = Tool.Input(
             properties = buildJsonObject {
                 put("message", buildJsonObject {
                     put("type", "string")
-                    put("description", "Message content to send")
+                    put("description", "Message to send to the target agent")
                 })
                 put("sender_tab_id", buildJsonObject {
                     put("type", "string")
-                    put("description", "ID of the sender (current) tab (you received tab is in prompt)")
+                    put("description", "ID of the current agent (sender)")
                 })
                 put("target_tab_id", buildJsonObject {
                     put("type", "string")
-                    put("description", "ID of the target tab to send message to")
+                    put("description", "ID of the target agent to send message to")
                 })
                 put("set_as_current", buildJsonObject {
                     put("type", "boolean")
-                    put("description", "Whether to set target tab as current after sending (default: false)")
+                    put("description", "Whether to switch focus to target agent conversation after sending (default: false)")
+                    put("default", false)
+                })
+                put("expects_response", buildJsonObject {
+                    put("type", "boolean")
+                    put("description", "Whether sender expects a response back from the target agent (default: false)")
                     put("default", false)
                 })
             },
@@ -85,10 +91,19 @@ class SendMessageTool(
 
         val targetTab = tabs[targetTabIndex]
 
-        val sender = ChatMessage.Sender.Tab(senderTabId)
+        // Create instructions for the message
+        val allInstructions = mutableListOf<ChatMessage.Instruction>()
+        
+        // Add source instruction (replaces sender)
+        allInstructions.add(ChatMessage.Instruction.Source(user = false, agentTabId = senderTabId))
+        
+        // Add response expected instruction if needed
+        if (input.expects_response) {
+            allInstructions.add(ChatMessage.Instruction.ResponseExpected(targetTabId = senderTabId))
+        }
 
-        // Send message to target session via TabViewModel
-        targetTab.sendMessageToSession(input.message, sender)
+        // Send message to target session via TabViewModel with structured instructions
+        targetTab.sendMessageToSession(input.message, allInstructions)
         println("[SendMessageTool] Sent message from senderTabId=$senderTabId to targetTab=${targetTab.uiState.value.tabId} (sessionId=${targetTab.sessionId})")
 
         // Switch to target tab if requested
@@ -104,8 +119,8 @@ class SendMessageTool(
         return CallToolResult(
             content = listOf(
                 TextContent(
-                    "Successfully sent message to tab $targetTabIndex ($tabIdInfo): $targetProjectPath$switchInfo\n" +
-                            "Target session: $targetSessionUuid\n" +
+                    "Successfully sent message to agent at $targetProjectPath$switchInfo\n" +
+                            "Agent ID: $tabIdInfo\n" +
                             "Message: ${input.message.take(100)}${if (input.message.length > 100) "..." else ""}"
                 )
             ),

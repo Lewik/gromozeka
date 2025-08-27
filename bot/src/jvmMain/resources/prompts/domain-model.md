@@ -2,39 +2,46 @@
 
 ## Core Concepts
 
-**Agent** = LLM + LLM Configuration + System Prompt + Agent Name + Role Description
-- **LLM** - Base model (Claude Sonnet 4, GPT-4, Llama, etc.)
-- **LLM Configuration** - Model settings (temperature, max_tokens, top_p, etc.)
-- **Agent Name** - Simple nickname for addressing ("Developer", "Tester")
-- **System Prompt** - Role, behavior, personality ("you are a code reviewer", "you are a researcher")  
-- **Role Description** - Detailed description of what the agent does and how it behaves
-- At the current moment agent has no persistent memory, only session
+**AgentDefinition** = Role Template (name + system prompt + behavior)
+- **Agent Name** - Role identifier ("Code Reviewer", "Security Expert", "Researcher")  
+- **System Prompt** - Defines role, behavior, personality
+- Templates can be reused to create multiple agent sessions
 
-**Session** = Tab = Thread - Communication channel between participants
-- **Session** - Technical term for communication context
-- **Tab** - UI term (what user sees in interface). Tab has non uniq name and uniq id.
-- **Thread** - Alternative naming
-- **Participants** - Multiple agents and multiple users can participate in work
+**Agent Session** = Concrete conversation instance with an agent
+- **Session** - Active conversation with agent (has message history and context)
+- **Multiple sessions** per agent definition are normal and expected
+- Each session is independent (separate context, conversation history)
+
+**Tab** = UI Container for agent session
+- **Tab** - Visual representation of an agent session in UI
+- **Tab ID** - Used for inter-agent communication addressing
+- One tab contains one agent session
+
+**Agent-First Principle**: Communication is between agents, not tabs
+- Agents create colleague agents for collaboration
+- Agents send messages to other agents for consultation
+- UI (tabs) is just the visual container for agent conversations
 
 
 ## Agent Creation and Interaction
 
 **Decentralized Agent Creation:**
-- Any agent can create other agents when needed
-- "I'm stuck with SQL" → create Database Expert agent
-- "Need code review" → create Code Reviewer agent
+- Any agent can create colleague agents when needed for specialization
+- "Need code review expertise" → create Code Reviewer agent
+- "Need security analysis" → create Security Expert agent  
+- "Need research assistance" → create Research Agent
 - Recursive creation allowed: agents can create sub-specialists
 
 **Agent-to-Agent Communication:**
-- Agents communicate through MCP `send_message` to specific sessions
+- Agents communicate through MCP `tell_agent` to specific agent sessions
 - Message source automatically tagged: `<message_source>tab:abc123</message_source>`
-- Can specify sender for clarity: "Backend agent asks..." or "Colleague from tab 2..."
+- Communication is peer-to-peer between agent colleagues
 
 **Communication Patterns:**
-- **Direct messaging** - Agent A sends result to Agent B's session
+- **Direct consultation** - Agent A asks Agent B for expertise
 - **Collaborative work** - Multiple agents coordinate on shared task
-- **Delegation** - Agent creates specialist and delegates subtask
-- **Consultation** - Agent asks expert for advice and continues work
+- **Task delegation** - Agent creates specialist and delegates subtask
+- **Knowledge sharing** - Agent shares results with relevant colleagues
 
 # Application Architecture
 
@@ -46,38 +53,64 @@
 
 **CRITICAL: Check message_source first in every message**
 
-**Response Rules:**
-- **User message** → respond directly to user (standard behavior)
-- **Agent message** → MUST acknowledge inter-tab context: mention "agent asks..." OR use `send_message` to respond 
-  to agent
-- **Need help** → use `open_tab` or `send_message`
+## Smart Response Rules (Enhanced AutoGen Pattern)
 
-**MCP Tools for Tab Coordination:**
-- `mcp__gromozeka-self-control__send_message` - message specific tab
-- `mcp__gromozeka-self-control__open_tab` - create new colleague tab  
-- `mcp__gromozeka-self-control__switch_tab` - switch user focus
+**CRITICAL: Two-tier priority system for response routing**
 
-**Tab References (natural language):**
-- Tab name: "Frontend tab", "API Design"  
-- Index: "tab 2", "first tab"
-- Relative: "another tab", "background tab"
-- Project: "API project tab"
-- Descriptive: "research tab"
+### Priority 1: Response Expected Tag
+If message starts with `<response_expected>`:
+- Follow the exact MCP instruction inside the tag
+- Agent explicitly requested a response via specific tool call
+- This prevents infinite response loops
 
-If unclear which tab → ask for clarification.
+### Priority 2: Message Source Fallback
+If no `<response_expected>` tag:
+- **From User** (`message_source=user`) → Respond directly to user
+- **From Agent** (`message_source=tab:xyz`) → Use `tell_agent` to respond back to agent xyz
+
+### Usage Patterns
+**Question with Expected Response:**
+```
+Agent A: tell_agent("Calculate 2+2", expects_response=true)
+→ Agent B sees: <response_expected>Use tell_agent with target_tab_id: A</response_expected>Calculate 2+2
+→ Agent B: Uses tell_agent to send "4" back to Agent A
+```
+
+**Information Sharing (no response expected):**
+```
+Agent A: tell_agent("Analysis complete", expects_response=false)  
+→ Agent B sees: Analysis complete
+→ Agent B: Can acknowledge back via tell_agent OR inform user (agent's choice)
+```
+
+**This prevents infinite loops while maintaining AutoGen-style direct communication**
+
+**MCP Tools for Agent Coordination:**
+- `mcp__gromozeka-self-control__tell_agent` - send message to specific agent
+- `mcp__gromozeka-self-control__create_agent` - create new colleague agent
+- `mcp__gromozeka-self-control__switch_tab` - switch user focus to agent conversation
+
+**Agent References (natural language):**
+- Agent role: "Code Reviewer", "Security Expert"
+- Agent context: "the agent working on frontend", "API design agent"  
+- Relative: "another agent", "colleague agent"
+- Project-specific: "agent working on API project"
+- Descriptive: "research agent", "the expert I created"
+
+If unclear which agent → ask for clarification.
 
 ## Working Scenarios
 
 **Parallel Work:** Different aspects of one project across multiple specialized agents.
-Exchange results via `send_message`.
+Exchange results via `tell_agent`.
 
-**Context Window Management:** Create new tabs when approaching limits. Transfer key concepts and terms, not files or reasoning paths.
+**Context Window Management:** Create new agents when approaching limits. Transfer key concepts and terms, not files or reasoning paths.
 
-**Background Work:** Create tabs with `set_as_current: false`. Results sent back to parent tab later.
+**Background Work:** Create agents with `set_as_current: false`. Results sent back to parent agent later.
 
-**Devil's Advocate:** Create critical reviewer tabs for code review, architecture decisions. Initiator controls termination.
+**Devil's Advocate:** Create critical reviewer agents for code review, architecture decisions. Creator controls termination.
 
-**Task Decomposition:** Break large tasks into independent subtasks. Each tab resolves own errors, returns clean results.
+**Task Decomposition:** Break large tasks into independent subtasks. Each agent resolves own errors, returns clean results.
 
 ## Communication Efficiency (Agent-to-Agent and Agent-to-User)
 
