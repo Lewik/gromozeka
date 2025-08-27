@@ -109,8 +109,20 @@ fun main() {
     StreamLogger.cleanupOldLogs()
 
     log.info("Initializing Spring context...")
+    
+    // Determine app mode to set Spring profile
+    val modeEnv = System.getenv("GROMOZEKA_MODE")
+    val springProfile = when (modeEnv?.lowercase()) {
+        "dev", "development" -> "dev"
+        "prod", "production" -> "prod"
+        null -> "prod" // Default to prod when not specified
+        else -> throw IllegalArgumentException("GROMOZEKA_MODE value '$modeEnv' not supported")
+    }
+    log.info("Setting Spring profile: $springProfile")
+    
     val context = SpringApplicationBuilder(ChatApplication::class.java)
         .web(WebApplicationType.NONE)
+        .profiles(springProfile)
         .run()
     log.info("Spring context initialized successfully")
 

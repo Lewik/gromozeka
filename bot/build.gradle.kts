@@ -144,7 +144,7 @@ compose.desktop {
             )
             
             packageName = "Gromozeka"
-            packageVersion = "1.0.1"
+            packageVersion = "1.1.1"
             description = "Multi-armed AI agent for comprehensive task automation"
             copyright = "© 2024 Gromozeka Project"
             vendor = "Gromozeka"
@@ -153,19 +153,19 @@ compose.desktop {
             includeAllModules = true
             
             macOS {
-                packageBuildVersion = "1.0.1"
-                dmgPackageVersion = "1.0.1"
+                packageBuildVersion = "1.1.1"
+                dmgPackageVersion = "1.1.1"
                 signing {
                     sign.set(false)
                 }
             }
             
             windows {
-                packageVersion = "1.0.1"
+                packageVersion = "1.1.1"
             }
             
             linux {
-                packageVersion = "1.0.1"
+                packageVersion = "1.1.1"
             }
         }
     }
