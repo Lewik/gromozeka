@@ -42,6 +42,9 @@ kotlin {
                 implementation(compose.material3)
                 implementation(compose.materialIconsExtended)
                 implementation(libs.spring.boot.starter)
+                
+                // Janino for Logback conditional processing
+                implementation("org.codehaus.janino:janino:3.1.12")
 
                 // klog - Kotlin logging framework
                 implementation(libs.klog)
