@@ -21,9 +21,12 @@ val experimentalOptIns = listOf(
     "-opt-in=androidx.compose.ui.ExperimentalComposeUiApi"
 )
 
+// Centralized version for the entire project
+val projectVersion = "1.1.3"
+
 allprojects {
     group = "com.example"
-    version = "0.0.1-SNAPSHOT"
+    version = projectVersion
     
     // Make experimentalOptIns available in all modules
     extra["experimentalOptIns"] = experimentalOptIns

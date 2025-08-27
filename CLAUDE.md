@@ -2,6 +2,18 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Version Management
+
+**To update application version:**
+1. Edit `build.gradle.kts` in the root directory
+2. Change the `projectVersion` variable (line ~25)
+3. This automatically updates:
+   - JAR file names (bot-jvm-X.X.X.jar)
+   - Package versions for all platforms (DMG, MSI, DEB, RPM)
+   - Info.plist version on macOS
+4. Create and push a git tag with matching version (e.g., v1.1.3)
+5. GitHub Actions will build and release automatically
+
 ## Project Structure
 
 This is a Kotlin Multiplatform Project (MPP) with the following modules:
