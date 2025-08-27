@@ -23,8 +23,11 @@ import com.gromozeka.bot.services.translation.TranslationService
 import com.gromozeka.bot.services.translation.data.Translation
 import com.gromozeka.bot.settings.ResponseFormat
 import com.gromozeka.bot.settings.Settings
+import klog.KLoggers
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+
+private val log = KLoggers.logger("SettingsPanel")
 
 @Composable
 fun SettingsPanel(
@@ -325,7 +328,7 @@ fun SettingsPanel(
                             description = translation.settings.refreshTranslationsDescription,
                             buttonText = translation.settings.refreshTranslationsButton,
                             onClick = {
-                                println("[SettingsPanel] Refreshing translations...")
+                                log.info("Refreshing translations...")
                                 translationService.refreshTranslations()
                             }
                         )
@@ -338,10 +341,10 @@ fun SettingsPanel(
                                 val success = translationService.exportToFile()
 
                                 if (success) {
-                                    println("[SettingsPanel] Successfully exported translation")
+                                    log.info("Successfully exported translation")
                                     // TODO: Show success notification
                                 } else {
-                                    println("[SettingsPanel] Failed to export translation")
+                                    log.warn("Failed to export translation")
                                     // TODO: Show error notification  
                                 }
                             }
@@ -386,7 +389,7 @@ fun SettingsPanel(
                             trailingContent = {
                                 CompactButton(
                                     onClick = {
-                                        println("[SettingsPanel] Refreshing themes...")
+                                        log.info("Refreshing themes...")
                                         themeService.refreshThemes()
                                     },
                                     tooltip = translation.settings.refreshThemesDescription,
@@ -450,10 +453,10 @@ fun SettingsPanel(
                             onClick = {
                                 val success = themeService.exportToFile()
                                 if (success) {
-                                    println("[SettingsPanel] Successfully exported theme")
+                                    log.info("Successfully exported theme")
                                     // TODO: Show success notification
                                 } else {
-                                    println("[SettingsPanel] Failed to export theme")
+                                    log.warn("Failed to export theme")
                                     // TODO: Show error notification  
                                 }
                             }

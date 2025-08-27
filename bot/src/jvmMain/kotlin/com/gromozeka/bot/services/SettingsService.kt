@@ -2,6 +2,7 @@ package com.gromozeka.bot.services
 
 import com.gromozeka.bot.settings.AppMode
 import com.gromozeka.bot.settings.Settings
+import klog.KLoggers
 import com.gromozeka.bot.utils.findRandomAvailablePort
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -14,6 +15,8 @@ import java.util.*
 
 class SettingsService {
 
+    private val log = KLoggers.logger("SettingsService")
+    
     private val json = Json {
         prettyPrint = true
         encodeDefaults = true
@@ -40,20 +43,20 @@ class SettingsService {
      */
     fun initialize() {
         if (gromozekaHome.mkdirs()) {
-            println("[SettingsService] Created gromozeka home directory: ${gromozekaHome.absolutePath}")
+            log.info("Created gromozeka home directory: ${gromozekaHome.absolutePath}")
         }
 
         _settingsFlow.value = loadSettings()
 
         generateMcpConfigFile()
 
-        println("[SettingsService] Initialized with mode: ${mode.name}")
-        println("[SettingsService] Gromozeka home: ${gromozekaHome.absolutePath}")
+        log.info("Initialized with mode: ${mode.name}")
+        log.info("Gromozeka home: ${gromozekaHome.absolutePath}")
     }
 
     private fun determineMode(): AppMode {
         val modeEnv = System.getenv("GROMOZEKA_MODE")
-        println("[SettingsService] Environment variable GROMOZEKA_MODE = $modeEnv")
+        log.info("Environment variable GROMOZEKA_MODE = $modeEnv")
 
         return when (modeEnv?.lowercase()) {
             "dev", "development" -> AppMode.DEV
@@ -69,7 +72,7 @@ class SettingsService {
         return when {
             customPath != null -> {
                 val customDir = File(customPath)
-                println("[SettingsService] Using custom gromozeka home from system property: ${customDir.absolutePath}")
+                log.info("Using custom gromozeka home from system property: ${customDir.absolutePath}")
                 customDir
             }
 
@@ -83,13 +86,13 @@ class SettingsService {
                     // Running from project root
                     File(projectDir, "bot/dev-data/.gromozeka")
                 }
-                println("[SettingsService] DEV mode - using project dev-data: ${devDataDir.absolutePath}")
+                log.info("DEV mode - using project dev-data: ${devDataDir.absolutePath}")
                 devDataDir
             }
 
             else -> {
                 val prodDir = File(System.getProperty("user.home"), ".gromozeka")
-                println("[SettingsService] PROD mode - using user home directory: ${prodDir.absolutePath}")
+                log.info("PROD mode - using user home directory: ${prodDir.absolutePath}")
                 prodDir
             }
         }
@@ -101,11 +104,11 @@ class SettingsService {
             validateSettings(settings)
             settings
         } catch (e: Exception) {
-            println("[SettingsService] Failed to load settings: ${e.message}")
+            log.info("Failed to load settings: ${e.message}")
             createDefaultSettings()
         }
     } else {
-        println("[SettingsService] Settings file not found, creating defaults")
+        log.info("Settings file not found, creating defaults")
         createDefaultSettings()
     }
 
@@ -123,7 +126,7 @@ class SettingsService {
         )
 
         settingsFile.writeText(json.encodeToString(defaults))
-        println("[SettingsService] Created default settings file: ${settingsFile.absolutePath}")
+        log.info("Created default settings file: ${settingsFile.absolutePath}")
 
         return defaults
     }
@@ -133,7 +136,7 @@ class SettingsService {
         // Always save to file in both modes
         settingsFile.writeText(json.encodeToString(settings))
         _settingsFlow.value = settings
-        println("[SettingsService] Settings saved to: ${settingsFile.absolutePath}")
+        log.info("Settings saved to: ${settingsFile.absolutePath}")
     }
 
     fun saveSettings(block: Settings.() -> Settings) {
@@ -143,7 +146,7 @@ class SettingsService {
 
     fun reloadSettings() {
         _settingsFlow.value = loadSettings()
-        println("[SettingsService] Settings reloaded from file")
+        log.info("Settings reloaded from file")
     }
 
     // Utility methods
@@ -265,11 +268,11 @@ class SettingsService {
                 else -> 1.0f
             }
 
-            println("[SettingsService] Auto-detected UI scale: $detectedScale (OS: $osName, DPI: $screenResolution, SystemScale: $systemScale)")
+            log.info("Auto-detected UI scale: $detectedScale (OS: $osName, DPI: $screenResolution, SystemScale: $systemScale)")
             detectedScale
 
         } catch (e: Exception) {
-            println("[SettingsService] Failed to auto-detect UI scale, using default: ${e.message}")
+            log.info("Failed to auto-detect UI scale, using default: ${e.message}")
             1.0f  // Safe fallback
         }
     }
@@ -290,7 +293,6 @@ class SettingsService {
 
         mcpConfigFile.writeText(configContent)
 
-        val description = "[MCP HTTP Server] Generated global config: ${mcpConfigFile.absolutePath}"
-        println(description)
+        log.info("Generated global config: ${mcpConfigFile.absolutePath}")
     }
 }

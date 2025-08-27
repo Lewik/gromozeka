@@ -2,10 +2,13 @@ package com.gromozeka.bot.services.theming
 
 import com.gromozeka.bot.platform.ScreenCaptureController
 import com.gromozeka.bot.services.SessionManager
+import klog.KLoggers
 import com.gromozeka.bot.services.SettingsService
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.serialization.json.Json
 import java.io.File
+
+private val log = KLoggers.logger("AIThemeGenerator")
 
 /**
  * AI-powered service for generating themes from screenshots using Claude analysis.
@@ -25,23 +28,23 @@ class AIThemeGenerator(
      */
     suspend fun prepareThemeGenerationData(coroutineScope: CoroutineScope): String? {
         return try {
-            println("[AIThemeGenerator] Starting AI-powered theme generation process...")
+            log.info("Starting AI-powered theme generation process...")
 
             // Step 1: Take screenshot - let user select window
-            println("[AIThemeGenerator] Taking screenshot - please select a window...")
+            log.info(" Taking screenshot - please select a window...")
             val screenshotPath = screenCaptureController.captureWindow()
             if (screenshotPath == null) {
-                println("[AIThemeGenerator] Failed to capture window screenshot (cancelled by user or error)")
+                log.info(" Failed to capture window screenshot (cancelled by user or error)")
                 return null
             }
-            println("[AIThemeGenerator] Window screenshot saved to: $screenshotPath")
+            log.info(" Window screenshot saved to: $screenshotPath")
 
             // Step 2: Prepare working directory in gromozekaHome
             val aiWorkingDir = File(settingsService.gromozekaHome, "ai-theme-generator")
             if (!aiWorkingDir.exists()) {
                 aiWorkingDir.mkdirs()
             }
-            println("[AIThemeGenerator] Working directory: ${aiWorkingDir.absolutePath}")
+            log.info(" Working directory: ${aiWorkingDir.absolutePath}")
 
             // Step 3: Copy theme examples to working directory
             copyExampleThemes(aiWorkingDir)
@@ -49,13 +52,13 @@ class AIThemeGenerator(
             // Step 4: Prepare comprehensive initial message with instructions
             val initialMessage = prepareInitialMessage(screenshotPath, aiWorkingDir)
 
-            println("[AIThemeGenerator] AI theme generation data prepared successfully")
-            println("[AIThemeGenerator] Working directory: ${aiWorkingDir.absolutePath}")
+            log.info(" AI theme generation data prepared successfully")
+            log.info(" Working directory: ${aiWorkingDir.absolutePath}")
 
             initialMessage
 
         } catch (e: Exception) {
-            println("[AIThemeGenerator] Error during AI theme generation setup: ${e.message}")
+            log.info(" Error during AI theme generation setup: ${e.message}")
             e.printStackTrace()
             null
         }
@@ -68,11 +71,11 @@ class AIThemeGenerator(
         try {
             val lightExamplePath = copyExampleScreenshot(aiWorkingDir, "light-theme-example.png")
             val darkExamplePath = copyExampleScreenshot(aiWorkingDir, "dark-theme-example.png")
-            println("[AIThemeGenerator] Theme examples copied:")
-            println("  - Light: $lightExamplePath")
-            println("  - Dark: $darkExamplePath")
+            log.info(" Theme examples copied:")
+            log.info("  - Light: $lightExamplePath")
+            log.info("  - Dark: $darkExamplePath")
         } catch (e: Exception) {
-            println("[AIThemeGenerator] Error copying theme examples: ${e.message}")
+            log.info(" Error copying theme examples: ${e.message}")
         }
     }
 
@@ -126,7 +129,7 @@ class AIThemeGenerator(
                 .replace("{DETAILED_GUIDE_CONTENT}", guideContent)
 
         } catch (e: Exception) {
-            println("[AIThemeGenerator] Error preparing initial message: ${e.message}")
+            log.info(" Error preparing initial message: ${e.message}")
             // Fallback to simple message
             "Please analyze the screenshot at `$screenshotPath` and generate a Material Design 3 theme JSON. Save the result to the themes directory."
         }
@@ -154,11 +157,11 @@ class AIThemeGenerator(
                 }
                 targetFile.absolutePath
             } else {
-                println("[AIThemeGenerator] Warning: Example screenshot $filename not found in resources")
+                log.info(" Warning: Example screenshot $filename not found in resources")
                 filename // Return filename as fallback
             }
         } catch (e: Exception) {
-            println("[AIThemeGenerator] Error copying example screenshot $filename: ${e.message}")
+            log.info(" Error copying example screenshot $filename: ${e.message}")
             filename // Return filename as fallback
         }
     }

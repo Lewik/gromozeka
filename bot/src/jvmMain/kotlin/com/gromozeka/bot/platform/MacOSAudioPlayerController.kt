@@ -1,5 +1,7 @@
 package com.gromozeka.bot.platform
 
+import klog.KLoggers
+
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
@@ -9,6 +11,7 @@ import java.io.File
 
 @Service
 class MacOSAudioPlayerController : AudioPlayerController {
+    private val log = KLoggers.logger(this)
 
     @Volatile
     private var currentProcess: Process? = null
@@ -23,7 +26,7 @@ class MacOSAudioPlayerController : AudioPlayerController {
                 .start()
 
             currentProcess = process
-            println("[AudioPlayer] Started playing: ${audioFile.name}")
+            log.info("Started playing: ${audioFile.name}")
 
             // Cancellation-aware waiting
             while (process.isAlive) {
@@ -31,14 +34,14 @@ class MacOSAudioPlayerController : AudioPlayerController {
                 Thread.sleep(50) // Short intervals for quick response
             }
 
-            println("[AudioPlayer] Finished playing: ${audioFile.name}")
+            log.info("Finished playing: ${audioFile.name}")
 
         } catch (e: CancellationException) {
-            println("[AudioPlayer] Audio playback cancelled")
+            log.info("Audio playback cancelled")
             process?.destroyForcibly()
             throw e
         } catch (e: Exception) {
-            println("[AudioPlayer] Error playing audio: ${e.message}")
+            log.error("Error playing audio: ${e.message}")
             e.printStackTrace()
         } finally {
             if (currentProcess == process) {
@@ -52,12 +55,12 @@ class MacOSAudioPlayerController : AudioPlayerController {
         currentProcess?.let { process ->
             try {
                 if (process.isAlive) {
-                    println("[AudioPlayer] Stopping current playback")
+                    log.info("Stopping current playback")
                     process.destroyForcibly()
                     process.waitFor() // Ensure process is fully stopped
                 }
             } catch (e: Exception) {
-                println("[AudioPlayer] Error stopping playback: ${e.message}")
+                log.error("Error stopping playback: ${e.message}")
             } finally {
                 currentProcess = null
             }

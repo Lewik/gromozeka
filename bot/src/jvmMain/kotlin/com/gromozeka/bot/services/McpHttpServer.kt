@@ -1,6 +1,8 @@
 package com.gromozeka.bot.services
 
 import com.gromozeka.bot.services.mcp.GromozekaMcpTool
+import klog.KLoggers
+
 import io.ktor.http.*
 import io.ktor.server.cio.*
 import io.ktor.server.engine.*
@@ -22,6 +24,7 @@ class McpHttpServer(
     private val settingsService: SettingsService,
     private val mcpTools: List<GromozekaMcpTool>,
 ) {
+    private val log = KLoggers.logger(this)
     private var httpServer: EmbeddedServer<CIOApplicationEngine, CIOApplicationEngine.Configuration>? = null
     private val serverScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
@@ -42,7 +45,7 @@ class McpHttpServer(
                     )
                 ).apply {
                     addTools(mcpTools.map { it.toRegisteredTool() })
-                    println("[MCP HTTP Server] Created MCP server with ${mcpTools.size} tools")
+                    log.info("Created MCP server with ${mcpTools.size} tools")
                 }
             }
 
@@ -53,14 +56,14 @@ class McpHttpServer(
             }
         }.start(wait = false)
 
-        println("[MCP HTTP Server] Server started on port $port")
+        log.info("Server started on port $port")
     }
 
     fun stop() {
-        println("[MCP HTTP Server] Stopping server...")
+        log.info("Stopping server...")
         httpServer?.stop(1000, 2000)
         serverScope.cancel()
-        println("[MCP HTTP Server] Server stopped")
+        log.info("Server stopped")
     }
 
 

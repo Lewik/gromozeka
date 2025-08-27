@@ -1,10 +1,13 @@
 package com.gromozeka.bot.services
 
+import klog.KLoggers
+
 import org.springframework.stereotype.Service
 import java.io.File
 
 @Service
 class GitService {
+    private val log = KLoggers.logger(this)
 
     fun initializeRepository(directory: File): Boolean {
         return try {
@@ -14,15 +17,15 @@ class GitService {
             
             val gitDir = File(directory, ".git")
             if (gitDir.exists()) {
-                println("[GitService] Git repository already exists in $directory")
+                log.info("Git repository already exists in $directory")
                 return true
             }
             
-            println("[GitService] Initializing git repository in $directory")
+            log.info("Initializing git repository in $directory")
             
             val initResult = runGitCommand(directory, "git", "init")
             if (!initResult) {
-                println("[GitService] Failed to initialize git repository")
+                log.warn("Failed to initialize git repository")
                 return false
             }
             
@@ -40,11 +43,11 @@ class GitService {
                 """.trimIndent())
             }
             
-            println("[GitService] Git repository initialized successfully")
+            log.info("Git repository initialized successfully")
             true
             
         } catch (e: Exception) {
-            println("[GitService] Error initializing git repository: ${e.message}")
+            log.warn("Error initializing git repository: ${e.message}")
             false
         }
     }
@@ -54,29 +57,29 @@ class GitService {
             // Add all changes
             val addResult = runGitCommand(directory, "git", "add", ".")
             if (!addResult) {
-                println("[GitService] Failed to add files to git")
+                log.warn("Failed to add files to git")
                 return false
             }
             
             // Check if there are changes to commit
             val statusResult = runGitCommandWithOutput(directory, "git", "status", "--porcelain")
             if (statusResult.isNullOrBlank()) {
-                println("[GitService] No changes to commit")
+                log.debug("No changes to commit")
                 return true
             }
             
             // Commit changes
             val commitResult = runGitCommand(directory, "git", "commit", "-m", message)
             if (commitResult) {
-                println("[GitService] Successfully committed: $message")
+                log.info("Successfully committed: $message")
                 true
             } else {
-                println("[GitService] Failed to commit changes")
+                log.warn("Failed to commit changes")
                 false
             }
             
         } catch (e: Exception) {
-            println("[GitService] Error during git commit: ${e.message}")
+            log.warn("Error during git commit: ${e.message}")
             false
         }
     }
@@ -86,21 +89,21 @@ class GitService {
             // Check if remote exists
             val remoteResult = runGitCommandWithOutput(directory, "git", "remote")
             if (remoteResult?.contains(remote) != true) {
-                println("[GitService] Remote '$remote' not configured, skipping push")
+                log.debug("Remote '$remote' not configured, skipping push")
                 return true // Not an error, just no remote configured
             }
             
             val pushResult = runGitCommand(directory, "git", "push", remote, branch)
             if (pushResult) {
-                println("[GitService] Successfully pushed to $remote/$branch")
+                log.info("Successfully pushed to $remote/$branch")
                 true
             } else {
-                println("[GitService] Push failed or no changes to push")
+                log.warn("Push failed or no changes to push")
                 false
             }
             
         } catch (e: Exception) {
-            println("[GitService] Error during git push: ${e.message}")
+            log.warn("Error during git push: ${e.message}")
             false
         }
     }
@@ -109,13 +112,13 @@ class GitService {
         return try {
             val result = runGitCommand(directory, "git", "remote", "add", name, url)
             if (result) {
-                println("[GitService] Successfully added remote '$name': $url")
+                log.info("Successfully added remote '$name': $url")
             } else {
-                println("[GitService] Failed to add remote '$name'")
+                log.warn("Failed to add remote '$name'")
             }
             result
         } catch (e: Exception) {
-            println("[GitService] Error adding remote: ${e.message}")
+            log.warn("Error adding remote: ${e.message}")
             false
         }
     }
@@ -125,7 +128,7 @@ class GitService {
             val output = runGitCommandWithOutput(directory, "git", "remote", "-v")
             output?.lines()?.filter { it.isNotBlank() } ?: emptyList()
         } catch (e: Exception) {
-            println("[GitService] Error getting remotes: ${e.message}")
+            log.warn("Error getting remotes: ${e.message}")
             emptyList()
         }
     }
@@ -134,7 +137,7 @@ class GitService {
         return try {
             runGitCommandWithOutput(directory, "git", "status", "--porcelain")
         } catch (e: Exception) {
-            println("[GitService] Error getting git status: ${e.message}")
+            log.warn("Error getting git status: ${e.message}")
             null
         }
     }
@@ -150,13 +153,13 @@ class GitService {
             
             if (exitCode != 0) {
                 val errorOutput = process.inputStream.bufferedReader().readText()
-                println("[GitService] Git command failed (exit code $exitCode): ${command.joinToString(" ")}")
-                println("[GitService] Output: $errorOutput")
+                log.warn("Git command failed (exit code $exitCode): ${command.joinToString(" ")}")
+                log.debug("Output: $errorOutput")
             }
             
             exitCode == 0
         } catch (e: Exception) {
-            println("[GitService] Exception running git command: ${e.message}")
+            log.warn("Exception running git command: ${e.message}")
             false
         }
     }
@@ -174,12 +177,12 @@ class GitService {
             if (exitCode == 0) {
                 output
             } else {
-                println("[GitService] Git command failed (exit code $exitCode): ${command.joinToString(" ")}")
-                println("[GitService] Output: $output")
+                log.warn("Git command failed (exit code $exitCode): ${command.joinToString(" ")}")
+                log.debug("Output: $output")
                 null
             }
         } catch (e: Exception) {
-            println("[GitService] Exception running git command: ${e.message}")
+            log.warn("Exception running git command: ${e.message}")
             null
         }
     }

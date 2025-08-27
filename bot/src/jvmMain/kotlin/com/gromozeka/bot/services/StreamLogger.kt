@@ -2,6 +2,8 @@ package com.gromozeka.bot.services
 
 import com.gromozeka.shared.domain.session.ClaudeSessionUuid
 import com.gromozeka.shared.domain.session.toClaudeSessionUuid
+import klog.KLoggers
+
 import java.io.BufferedWriter
 import java.io.FileWriter
 import java.nio.file.Files
@@ -25,6 +27,7 @@ class StreamLogger(
     companion object {
         private const val BASE_DIR = ".gromozeka/streamlogs"
         private const val LOG_RETENTION_DAYS = 30L
+        private val log = KLoggers.logger(StreamLogger::class.java)
 
         /**
          * Encode project path to directory-safe format (like Claude does)
@@ -55,10 +58,10 @@ class StreamLogger(
 
                             if (lastModified.isBefore(cutoffTime)) {
                                 Files.delete(file)
-                                println("[StreamLogger] Deleted old log: ${file.fileName}")
+                                log.debug("Deleted old log: ${file.fileName}")
                             }
                         } catch (e: Exception) {
-                            println("[StreamLogger] Error checking/deleting file $file: ${e.message}")
+                            log.error(e) { "Error checking/deleting file $file: ${e.message}" }
                         }
                     }
 
@@ -70,14 +73,14 @@ class StreamLogger(
                         try {
                             if (dir.listDirectoryEntries().isEmpty()) {
                                 Files.delete(dir)
-                                println("[StreamLogger] Deleted empty directory: ${dir.fileName}")
+                                log.debug("Deleted empty directory: ${dir.fileName}")
                             }
                         } catch (e: Exception) {
                             // Directory not empty or other error, skip
                         }
                     }
             } catch (e: Exception) {
-                println("[StreamLogger] Error during cleanup: ${e.message}")
+                log.error(e) { "Error during cleanup: ${e.message}" }
             }
         }
     }
@@ -97,8 +100,8 @@ class StreamLogger(
         // Initialize writer if session ID is already known
         sessionId?.let { initWriter(it) }
 
-        println("[StreamLogger] Initialized for project: $projectPath")
-        println("[StreamLogger] Log directory: $logDir")
+        log.debug("Initialized for project: $projectPath")
+        log.debug("Log directory: $logDir")
     }
 
     /**
@@ -127,12 +130,12 @@ class StreamLogger(
                     writer.newLine()
                     writer.flush() // Immediate flush for crash safety
                 } catch (e: Exception) {
-                    println("[StreamLogger] Error writing log: ${e.message}")
+                    log.error(e) { "Error writing log: ${e.message}" }
                 }
             } ?: run {
                 // Fallback: create writer with unix timestamp if no session ID yet
                 val fallbackId = System.currentTimeMillis().toString()
-                println("[StreamLogger] No session ID yet, creating fallback log: $fallbackId.jsonl")
+                log.warn("No session ID yet, creating fallback log: $fallbackId.jsonl")
                 initWriter(fallbackId.toClaudeSessionUuid())
 
                 // Try to write the line immediately
@@ -142,7 +145,7 @@ class StreamLogger(
                         writer.newLine()
                         writer.flush()
                     } catch (e: Exception) {
-                        println("[StreamLogger] Error writing to fallback log: ${e.message}")
+                        log.error(e) { "Error writing to fallback log: ${e.message}" }
                     }
                 }
             }
@@ -156,9 +159,9 @@ class StreamLogger(
         try {
             val logFile = logDir.resolve("${sessionId.value}.jsonl").toFile()
             currentWriter = BufferedWriter(FileWriter(logFile, true)) // Append mode
-            println("[StreamLogger] Started logging to: ${logFile.absolutePath}")
+            log.debug("Started logging to: ${logFile.absolutePath}")
         } catch (e: Exception) {
-            println("[StreamLogger] Error creating log writer: ${e.message}")
+            log.error(e) { "Error creating log writer: ${e.message}" }
         }
     }
 
@@ -171,7 +174,7 @@ class StreamLogger(
                 writer.flush()
                 writer.close()
             } catch (e: Exception) {
-                println("[StreamLogger] Error closing writer: ${e.message}")
+                log.error(e) { "Error closing writer: ${e.message}" }
             }
             currentWriter = null
         }

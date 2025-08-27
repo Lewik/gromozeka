@@ -22,11 +22,14 @@ import com.gromozeka.bot.services.SessionManager
 import com.gromozeka.bot.ui.viewmodel.AppViewModel
 import com.gromozeka.bot.ui.state.ConversationInitiator
 import com.gromozeka.bot.ui.viewmodel.SessionSearchViewModel
+import klog.KLoggers
 import io.github.vinceglb.filekit.compose.rememberDirectoryPickerLauncher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlin.time.Clock
 import kotlin.time.Instant
+
+private val log = KLoggers.logger("SessionListScreen")
 
 private data class ProjectGroup(
     val projectPath: String,
@@ -107,10 +110,9 @@ fun SessionListScreen(
 
             projectGroups = groupedProjects.sortedByDescending { it.latestSessionMetadata?.lastTimestamp }
 
-            println("[SessionListScreen] Loaded ${loadedSessions.size} sessions in ${projectGroups.size} projects")
+            log.info("Loaded ${loadedSessions.size} sessions in ${projectGroups.size} projects")
         } catch (e: Exception) {
-            println("[SessionListScreen] Error loading sessions: ${e.message}")
-            e.printStackTrace()
+            log.warn(e, "Error loading sessions: ${e.message}")
         } finally {
             isLoading = false
         }
@@ -451,14 +453,13 @@ private fun CoroutineScope.handleSessionClick(
             )
             appViewModel.selectTab(tabIndex)
 
-            println("[SessionListScreen] Created tab at index $tabIndex, resume from: ${clickedSessionMetadata.claudeSessionId}")
+            log.info("Created tab at index $tabIndex, resume from: ${clickedSessionMetadata.claudeSessionId}")
 
             // Notify parent that session was selected and created
             onSessionMetadataSelected(clickedSessionMetadata)
 
         } catch (e: Exception) {
-            println("[SessionListScreen] Failed to create tab: ${e.message}")
-            e.printStackTrace()
+            log.warn(e, "Failed to create tab: ${e.message}")
         }
     }
 }

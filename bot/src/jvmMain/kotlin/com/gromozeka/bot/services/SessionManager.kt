@@ -2,6 +2,8 @@ package com.gromozeka.bot.services
 
 import com.gromozeka.bot.model.AgentDefinition
 import com.gromozeka.bot.ui.state.ConversationInitiator
+import klog.KLoggers
+
 import com.gromozeka.bot.model.Session
 import com.gromozeka.bot.services.WrapperFactory.WrapperType
 import com.gromozeka.bot.services.llm.claudecode.converter.ClaudeMessageConverter
@@ -33,6 +35,7 @@ class SessionManager(
     private val claudeMessageConverter: ClaudeMessageConverter,
     @Qualifier("coroutineScope") private val scope: CoroutineScope,
 ) {
+    private val log = KLoggers.logger(this)
 
     private val sessionMutex = Mutex()
 
@@ -68,7 +71,7 @@ class SessionManager(
         val updatedSessions = _activeSessions.value + (session.id to session)
         _activeSessions.value = updatedSessions
 
-        println("[SessionManager] Created session: ${session.id}")
+        log.info("Created session: ${session.id}")
         session
     }
 
@@ -129,7 +132,7 @@ class SessionManager(
             val updatedSessions = _activeSessions.value - sessionId
             _activeSessions.value = updatedSessions
 
-            println("[SessionManager] Stopped session: $sessionId")
+            log.info("Stopped session: $sessionId")
         }
     }
 
@@ -138,19 +141,19 @@ class SessionManager(
      */
     suspend fun stopAllSessions() = sessionMutex.withLock {
         val sessions = _activeSessions.value
-        println("[SessionManager] Stopping ${sessions.size} active sessions...")
+        log.info("Stopping ${sessions.size} active sessions...")
 
         sessions.values.forEach { session ->
             try {
                 session.stop()
             } catch (e: Exception) {
-                println("[SessionManager] Error stopping session: ${e.message}")
+                log.warn(e, "Error stopping session: ${e.message}")
             }
         }
 
         _activeSessions.value = emptyMap()
 
-        println("[SessionManager] All sessions stopped")
+        log.info("All sessions stopped")
     }
 
 }

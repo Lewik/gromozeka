@@ -3,6 +3,8 @@ package com.gromozeka.bot.services
 import com.gromozeka.bot.model.AgentDefinition
 import com.gromozeka.bot.model.ClaudeCodeStreamJsonLine
 import com.gromozeka.bot.model.StreamJsonLinePacket
+import klog.KLoggers
+
 import com.gromozeka.bot.settings.AppMode
 import com.gromozeka.bot.settings.ResponseFormat
 import com.gromozeka.shared.domain.session.ClaudeSessionUuid
@@ -25,6 +27,7 @@ import java.time.format.DateTimeFormatter
 class ClaudeCodeStreamingWrapper(
     private val settingsService: SettingsService,
 ) : ClaudeWrapper {
+    private val log = KLoggers.logger(this)
 
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
@@ -39,24 +42,24 @@ class ClaudeCodeStreamingWrapper(
     ): String {
         // Load format-specific prompt
         val basePrompt = SystemPromptLoader.loadPrompt(responseFormat, agentPrompt)
-        println("[ClaudeCodeStreamingWrapper] Loaded prompt for format: $responseFormat")
+        log.debug("Loaded prompt for format: $responseFormat")
 
         var prompt = if (settingsService.mode == AppMode.DEV) {
-            println("[ClaudeCodeStreamingWrapper] DEV mode detected - loading additional DEV prompt")
+            log.debug("DEV mode detected - loading additional DEV prompt")
             val devPrompt = this::class.java.getResourceAsStream("/dev-mode-prompt.md")
                 ?.bufferedReader()
                 ?.readText()
                 ?: ""
 
             if (devPrompt.isNotEmpty()) {
-                println("[ClaudeCodeStreamingWrapper] DEV prompt loaded successfully (${devPrompt.length} chars)")
+                log.debug("DEV prompt loaded successfully (${devPrompt.length} chars)")
                 "$basePrompt\n\n$devPrompt"
             } else {
-                println("[ClaudeCodeStreamingWrapper] WARNING: DEV prompt file empty or not found")
+                log.warn("DEV prompt file empty or not found")
                 basePrompt
             }
         } else {
-            println("[ClaudeCodeStreamingWrapper] PROD mode - using base prompt only")
+            log.debug("PROD mode - using base prompt only")
             basePrompt
         }
 
@@ -81,8 +84,8 @@ class ClaudeCodeStreamingWrapper(
             """.trimIndent()
 
             prompt = "$prompt\n$envBlock"
-            println(
-                "[ClaudeCodeStreamingWrapper] Added current time to prompt: ${now.format(dateFormatter)} ${
+            log.info(
+                "Added current time to prompt: ${now.format(dateFormatter)} ${
                     now.format(
                         timeFormatter
                     )
@@ -120,7 +123,7 @@ class ClaudeCodeStreamingWrapper(
         agentDefinition: AgentDefinition
     ) = withContext(Dispatchers.IO) {
         try {
-            println("=== STARTING CLAUDE CODE STREAMING WRAPPER ===")
+            log.info("=== STARTING CLAUDE CODE STREAMING WRAPPER ===")
 
 
             val systemPrompt = (loadSystemPrompt(responseFormat, agentDefinition.prompt) + appendSystemPrompt).replace("\"", "\\\"")
@@ -146,14 +149,14 @@ class ClaudeCodeStreamingWrapper(
             if (!model.isNullOrBlank()) {
                 command.add("--model")
                 command.add(model)
-                println("[ClaudeCodeStreamingWrapper] Using model: $model")
+                log.info("Using model: $model")
             }
 
             // Add resume parameter if specified
             if (resumeSessionId != null) {
                 command.add("--resume")
                 command.add(resumeSessionId.value)
-                println("[ClaudeCodeStreamingWrapper] Resuming session: $resumeSessionId")
+                log.info("Resuming session: $resumeSessionId")
             }
 
             // Add MCP configuration if provided by session
@@ -164,12 +167,12 @@ class ClaudeCodeStreamingWrapper(
                     command.add(mcpConfigPath)
                     command.add("--allowedTools")
                     command.add("mcp__gromozeka-self-control")
-                    println("[ClaudeCodeStreamingWrapper] Added session MCP config: $mcpConfigPath")
+                    log.info("Added session MCP config: $mcpConfigPath")
                 } else {
-                    println("[ClaudeCodeStreamingWrapper] Session MCP config not found: $mcpConfigPath")
+                    log.warn("Session MCP config not found: $mcpConfigPath")
                 }
             } else {
-                println("[ClaudeCodeStreamingWrapper] No MCP config provided - session will run without MCP")
+                log.debug("No MCP config provided - session will run without MCP")
             }
 
             // Truncate system prompt for cleaner logs
@@ -180,8 +183,8 @@ class ClaudeCodeStreamingWrapper(
                     arg
                 }
             }
-            println("[ClaudeCodeStreamingWrapper] EXECUTING COMMAND: ${truncatedCommand.joinToString(" ")}")
-            println("[ClaudeCodeStreamingWrapper] FULL COMMAND: $truncatedCommand")
+            log.info { "EXECUTING COMMAND: ${truncatedCommand.joinToString(" ")}" }
+            log.debug("FULL COMMAND: $truncatedCommand")
 
             val processBuilder = ProcessBuilder(command)
                 .redirectErrorStream(false)
@@ -197,7 +200,7 @@ class ClaudeCodeStreamingWrapper(
             process = processBuilder.start()
 
             val proc = process ?: throw IllegalStateException("Failed to start process")
-            println("[ClaudeCodeStreamingWrapper] Process started with PID: ${proc.pid()}")
+            log.info { "Process started with PID: ${proc.pid()}" }
 
             stdinWriter = BufferedWriter(OutputStreamWriter(proc.outputStream))
             stdoutReader = BufferedReader(proc.inputStream.reader())
@@ -207,18 +210,18 @@ class ClaudeCodeStreamingWrapper(
             stderrJob = scope.launchReadErrorStream()
 
         } catch (e: Exception) {
-            e.printStackTrace()
+            log.error(e) { "Failed to start Claude Code process" }
         }
     }
 
     override suspend fun sendMessage(streamMessage: ClaudeCodeStreamJsonLine) = withContext(Dispatchers.IO) {
         try {
             val proc = process
-            println("[ClaudeCodeStreamingWrapper] Process alive before sending: ${proc?.isAlive}")
+            log.debug("Process alive before sending: ${proc?.isAlive}")
 
             // Serialize the complete stream message directly
             val jsonLine = json.encodeToString(streamMessage)
-            println("[ClaudeCodeStreamingWrapper] Writing to stdin: $jsonLine")
+            log.debug("Writing to stdin: $jsonLine")
 
             // Extract session ID for logging (if it's a User message)
             val sessionId = when (streamMessage) {
@@ -228,13 +231,13 @@ class ClaudeCodeStreamingWrapper(
                 is ClaudeCodeStreamJsonLine.Result -> streamMessage.sessionId
                 else -> throw IllegalStateException("Can't send message to $streamMessage: no sessionId")
             }
-            println("[ClaudeCodeStreamingWrapper] Session ID used: $sessionId")
+            log.debug("Session ID used: $sessionId")
 
             val writer = stdinWriter ?: throw IllegalStateException("Process not started")
             writer.write("$jsonLine\n")
             writer.flush()
         } catch (e: Exception) {
-            e.printStackTrace()
+            log.error(e) { "Failed to send message" }
         }
     }
 
@@ -261,12 +264,12 @@ class ClaudeCodeStreamingWrapper(
                 }
 
                 val jsonLine = controlRequestJson.toString()
-                println("[ClaudeWrapper] Sending control message: $jsonLine")
+                log.debug("Sending control message: $jsonLine")
 
                 writer.write("$jsonLine\n")
                 writer.flush()
             } catch (e: Exception) {
-                println("[ClaudeWrapper] Control message failed: ${e.message}")
+                log.error(e) { "Control message failed" }
                 throw e
             }
         }
@@ -283,16 +286,16 @@ class ClaudeCodeStreamingWrapper(
 
         return try {
             val parsed = Json.decodeFromString<ClaudeCodeStreamJsonLine>(jsonLine)
-            println("[ClaudeCodeStreamingWrapper] Successfully parsed StreamJsonLine: ${parsed::class.simpleName}")
+            log.debug("Successfully parsed StreamJsonLine: ${parsed::class.simpleName}")
 
             // Special logging for control messages
             when (parsed) {
                 is ClaudeCodeStreamJsonLine.ControlResponse -> {
-                    println("[ClaudeWrapper] Control response received: request_id=${parsed.response.requestId}, subtype=${parsed.response.subtype}, error=${parsed.response.error}")
+                    log.debug("Control response received: request_id=${parsed.response.requestId}, subtype=${parsed.response.subtype}, error=${parsed.response.error}")
                 }
 
                 is ClaudeCodeStreamJsonLine.ControlRequest -> {
-                    println("[ClaudeWrapper] Control request parsed: request_id=${parsed.requestId}, subtype=${parsed.request.subtype}")
+                    log.debug("Control request parsed: request_id=${parsed.requestId}, subtype=${parsed.request.subtype}")
                 }
 
                 else -> {}
@@ -300,10 +303,8 @@ class ClaudeCodeStreamingWrapper(
 
             StreamJsonLinePacket(parsed, originalJson)
         } catch (e: SerializationException) {
-            println("[ClaudeCodeStreamingWrapper] STREAM PARSE ERROR: Failed to deserialize StreamJsonLine")
-            println("  Exception: ${e.javaClass.simpleName}: ${e.message}")
-            println("  JSON line: $jsonLine")
-            println("  Stack trace: ${e.stackTraceToString()}")
+            log.error(e) { "STREAM PARSE ERROR: Failed to deserialize StreamJsonLine" }
+            log.debug("JSON line: $jsonLine")
             val fallbackMessage = try {
                 ClaudeCodeStreamJsonLine.System(
                     subtype = "parse_error",
@@ -311,8 +312,7 @@ class ClaudeCodeStreamingWrapper(
                     sessionId = null
                 )
             } catch (e: Exception) {
-                println("[ClaudeCodeStreamingWrapper] SECONDARY ERROR: Failed to parse as JsonObject")
-                println("  Exception: ${e.javaClass.simpleName}: ${e.message}")
+                log.error(e) { "SECONDARY ERROR: Failed to parse as JsonObject" }
                 ClaudeCodeStreamJsonLine.System(
                     subtype = "raw_output",
                     data = buildJsonObject { put("raw_line", JsonPrimitive(jsonLine)) },
@@ -322,9 +322,8 @@ class ClaudeCodeStreamingWrapper(
 
             StreamJsonLinePacket(fallbackMessage, originalJson)
         } catch (e: Exception) {
-            println("[ClaudeCodeStreamingWrapper] UNEXPECTED ERROR in parseStreamJsonLine: ${e.javaClass.simpleName}: ${e.message}")
-            println("  JSON line: $jsonLine")
-            println("  Stack trace: ${e.stackTraceToString()}")
+            log.error(e) { "UNEXPECTED ERROR in parseStreamJsonLine" }
+            log.debug("JSON line: $jsonLine")
             val fallbackMessage = ClaudeCodeStreamJsonLine.System(
                 subtype = "error",
                 data = buildJsonObject { put("error", JsonPrimitive(e.message ?: "Unknown error")) },
@@ -345,17 +344,17 @@ class ClaudeCodeStreamingWrapper(
                 if (line.trim().isEmpty()) continue
 
                 try {
-                    println("=== CLAUDE CODE LIVE STREAM ===")
-                    println(line)
-                    println("=== END LIVE STREAM ===")
+                    log.debug("=== CLAUDE CODE LIVE STREAM ===")
+                    log.debug(line)
+                    log.debug("=== END LIVE STREAM ===")
 
                     // Parse and broadcast stream message
                     val streamMessagePacket = parseStreamJsonLine(line)
-                    println("[ClaudeWrapper] *** EMITTING STREAM MESSAGE: ${streamMessagePacket.streamMessage::class.simpleName}")
+                    log.debug("*** EMITTING STREAM MESSAGE: ${streamMessagePacket.streamMessage::class.simpleName}")
 
                     _streamMessages.emit(streamMessagePacket)
                 } catch (e: Exception) {
-                    e.printStackTrace()
+                    log.error(e) { "Error processing stream line" }
                 } finally {
                     // Log raw JSONL line after all processing (guaranteed)
                     streamLogger?.logLine(line)
@@ -363,7 +362,7 @@ class ClaudeCodeStreamingWrapper(
             }
 
         } catch (e: Exception) {
-            e.printStackTrace()
+            log.error(e) { "Error reading stdout stream" }
         }
     }
 
@@ -376,12 +375,11 @@ class ClaudeCodeStreamingWrapper(
                 val line = reader.readLine() ?: break
                 if (line.trim().isEmpty()) continue
 
-                println("[ClaudeCodeStreamingWrapper] STDERR: $line")
+                log.warn { "STDERR: $line" }
             }
 
         } catch (e: Exception) {
-            println("[ClaudeCodeStreamingWrapper] Error reading stderr: ${e.message}")
-            e.printStackTrace()
+            log.error(e) { "Error reading stderr" }
         }
     }
 
@@ -404,7 +402,7 @@ class ClaudeCodeStreamingWrapper(
             }
 
         } catch (e: Exception) {
-            e.printStackTrace()
+            log.error(e) { "Error stopping Claude Code process" }
         } finally {
             streamLogger = null
         }

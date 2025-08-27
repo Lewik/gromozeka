@@ -2,6 +2,8 @@ package com.gromozeka.bot.services.mcp
 
 import com.gromozeka.bot.services.ContextFileService
 import com.gromozeka.bot.ui.viewmodel.AppViewModel
+import klog.KLoggers
+
 import io.modelcontextprotocol.kotlin.sdk.CallToolRequest
 import io.modelcontextprotocol.kotlin.sdk.CallToolResult
 import io.modelcontextprotocol.kotlin.sdk.TextContent
@@ -19,6 +21,7 @@ import org.springframework.stereotype.Service
 class SaveContextsTool(
     private val applicationContext: ApplicationContext,
 ) : GromozekaMcpTool {
+    private val log = KLoggers.logger(this)
 
     @Serializable
     data class Input(
@@ -81,7 +84,7 @@ Required fields: name, content. Optional: files, links.""",
         )
 
         val projectPath = currentTab.projectPath
-        println("[SaveContextsTool] Processing XML content (${input.xml_content.length} chars) for project: $projectPath")
+        log.info("Processing XML content (${input.xml_content.length} chars) for project: $projectPath")
 
         contextFileService.parseXmlAndSaveContexts(input.xml_content, projectPath)
 

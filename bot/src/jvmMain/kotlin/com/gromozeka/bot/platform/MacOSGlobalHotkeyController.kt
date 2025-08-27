@@ -4,6 +4,8 @@ import com.github.kwhat.jnativehook.GlobalScreen
 import com.github.kwhat.jnativehook.NativeHookException
 import com.github.kwhat.jnativehook.keyboard.NativeKeyEvent
 import com.github.kwhat.jnativehook.keyboard.NativeKeyListener
+import klog.KLoggers
+
 import com.gromozeka.bot.services.PTTEventRouter
 import com.gromozeka.bot.services.SettingsService
 import com.gromozeka.bot.services.UnifiedGestureDetector
@@ -18,6 +20,7 @@ class MacOSGlobalHotkeyController(
     private val settingsService: SettingsService,
     private val pttEventRouter: PTTEventRouter,
 ) : GlobalHotkeyController {
+    private val log = KLoggers.logger(this)
 
     companion object {
         // Global hotkey: Section/Paragraph key (§) remapped to F13 via hidutil
@@ -61,10 +64,10 @@ class MacOSGlobalHotkeyController(
     private fun handleSettingsUpdate(enabled: Boolean) {
         if (enabled && !isRegistered) {
             initialize()
-            println("[HOTKEY] Global hotkey service enabled via settings")
+            log.info("Global hotkey service enabled via settings")
         } else if (!enabled && isRegistered) {
             shutdown()
-            println("[HOTKEY] Global hotkey service disabled via settings")
+            log.info("Global hotkey service disabled via settings")
         }
     }
 
@@ -98,9 +101,9 @@ class MacOSGlobalHotkeyController(
                 """{"UserKeyMapping":[{"HIDKeyboardModifierMappingSrc":0x700000064,"HIDKeyboardModifierMappingDst":0x700000068}]}"""
             )
             ProcessBuilder(command).start().waitFor()
-            println("[HOTKEY] Remapped § key to F13 via hidutil")
+            log.info("Remapped § key to F13 via hidutil")
         } catch (e: Exception) {
-            println("[HOTKEY] Warning: Could not remap § key: ${e.message}")
+            log.warn("Could not remap § key: ${e.message}")
         }
     }
 
@@ -109,9 +112,9 @@ class MacOSGlobalHotkeyController(
             // Clear all key remappings
             val command = listOf("hidutil", "property", "--set", """{"UserKeyMapping":[]}""")
             ProcessBuilder(command).start().waitFor()
-            println("[HOTKEY] Cleared key remapping via hidutil")
+            log.info("Cleared key remapping via hidutil")
         } catch (e: Exception) {
-            println("[HOTKEY] Warning: Could not clear key remapping: ${e.message}")
+            log.warn("Could not clear key remapping: ${e.message}")
         }
     }
 
@@ -128,11 +131,11 @@ class MacOSGlobalHotkeyController(
             GlobalScreen.registerNativeHook()
             GlobalScreen.addNativeKeyListener(keyListener)
             isRegistered = true
-            println("[HOTKEY] Global hotkey service initialized (Section § key via rawCode)")
+            log.info("Global hotkey service initialized (Section § key via rawCode)")
             return true
         } catch (ex: NativeHookException) {
-            println("[HOTKEY] Failed to register native hook: ${ex.message}")
-            println("[HOTKEY] Make sure Input Monitoring permission is granted in System Settings")
+            log.error("Failed to register native hook: ${ex.message}")
+            log.error("Make sure Input Monitoring permission is granted in System Settings")
             return false
         }
     }
@@ -146,9 +149,9 @@ class MacOSGlobalHotkeyController(
                 GlobalScreen.unregisterNativeHook()
                 isRegistered = false
                 clearKeyRemapping()
-                println("[HOTKEY] Global hotkey service shutdown")
+                log.info("Global hotkey service shutdown")
             } catch (ex: NativeHookException) {
-                println("[HOTKEY] Failed to unregister native hook: ${ex.message}")
+                log.error("Failed to unregister native hook: ${ex.message}")
             }
         }
     }

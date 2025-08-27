@@ -2,6 +2,8 @@ package com.gromozeka.bot.services.llm.claudecode.converter
 
 import com.gromozeka.bot.model.*
 import com.gromozeka.bot.parsers.ResponseParserFactory
+import klog.KLoggers
+
 import com.gromozeka.bot.services.SettingsService
 import com.gromozeka.bot.settings.ResponseFormat
 import com.gromozeka.shared.domain.message.ChatMessage
@@ -29,6 +31,7 @@ class ClaudeStreamToChatConverter(
     private val settingsService: SettingsService,
     @Qualifier("coroutineScope") private val scope: CoroutineScope,
 ) {
+    private val log = KLoggers.logger(this)
 
     // Current response format - updated from settings
     private var currentResponseFormat: ResponseFormat = ResponseFormat.JSON
@@ -347,10 +350,8 @@ class ClaudeStreamToChatConverter(
             }
         } catch (e: Exception) {
             // Fallback to generic if deserialization fails
-            println("[ClaudeStreamToChatConverter] TOOL CALL PARSE ERROR: Failed to deserialize tool call '$name'")
-            println("  Exception: ${e.javaClass.simpleName}: ${e.message}")
-            println("  Input JSON: $input")
-            println("  Stack trace: ${e.stackTraceToString()}")
+            log.warn(e, "TOOL CALL PARSE ERROR: Failed to deserialize tool call '$name'")
+            log.debug("Input JSON: $input")
             ToolCallData.Generic(name, input)
         }
     }
@@ -364,8 +365,8 @@ class ClaudeStreamToChatConverter(
                 ChatMessage.ContentItem.AssistantMessage(structured = structured)
             } catch (_: SerializationException) {
                 // Not a Gromozeka format, return as generic JSON
-                println("[ClaudeStreamToChatConverter] PARSE: Text is not Gromozeka JSON, fallback to UnknownJson")
-                println("  Text preview: ${text.take(100)}${if (text.length > 100) "..." else ""}")
+                log.debug("PARSE: Text is not Gromozeka JSON, fallback to UnknownJson")
+                log.debug("Text preview: ${text.take(100)}${if (text.length > 100) "..." else ""}")
                 ChatMessage.ContentItem.UnknownJson(jsonElement)
             }
         } catch (_: Exception) {
@@ -381,8 +382,8 @@ class ClaudeStreamToChatConverter(
             ChatMessage.ContentItem.AssistantMessage(structured = parsed)
         } catch (e: Exception) {
             // Parser failed - log and fallback to raw text
-            println("[ClaudeStreamToChatConverter] Parser failed for format $currentResponseFormat: ${e.message}")
-            println("  Text: ${text.take(100)}${if (text.length > 100) "..." else ""}")
+            log.warn("Parser failed for format $currentResponseFormat: ${e.message}")
+            log.debug("Text: ${text.take(100)}${if (text.length > 100) "..." else ""}")
 
             // Return as raw text fallback
             ChatMessage.ContentItem.AssistantMessage(

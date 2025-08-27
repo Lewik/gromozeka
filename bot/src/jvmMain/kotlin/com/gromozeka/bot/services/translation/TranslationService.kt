@@ -2,6 +2,7 @@ package com.gromozeka.bot.services.translation
 
 import com.gromozeka.bot.services.SettingsService
 import com.gromozeka.bot.services.translation.data.EnglishTranslation
+import klog.KLoggers
 import com.gromozeka.bot.services.translation.data.HebrewTranslation
 import com.gromozeka.bot.services.translation.data.RussianTranslation
 import com.gromozeka.bot.services.translation.data.Translation
@@ -27,6 +28,7 @@ sealed class TranslationOverrideResult {
 
 class TranslationService {
     private lateinit var settingsService: SettingsService
+    private val log = KLoggers.logger(this)
 
     // Coroutine scope for background operations
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -80,7 +82,7 @@ class TranslationService {
             _currentTranslation.value = Translation.builtIn[languageCode]
                 ?: Translation.builtIn[EnglishTranslation.LANGUAGE_CODE]!!
             _lastOverrideResult.value = null
-            println("[TranslationService] Switched to builtin language: ${_currentTranslation.value.languageName}")
+            log.info(" Switched to builtin language: ${_currentTranslation.value.languageName}")
         }
     }
 
@@ -127,19 +129,19 @@ class TranslationService {
             _lastOverrideResult.value = result
             _currentTranslation.value = overriddenTranslation
 
-            println("[TranslationService] Applied translation override successfully")
+            log.info(" Applied translation override successfully")
             result
         } catch (e: SerializationException) {
             val result = TranslationOverrideResult.Failure("JSON parsing error: ${e.message}", baseTranslation)
             _lastOverrideResult.value = result
             _currentTranslation.value = baseTranslation
-            println("[TranslationService] Translation override failed: ${e.message}")
+            log.info(" Translation override failed: ${e.message}")
             result
         } catch (e: Exception) {
             val result = TranslationOverrideResult.Failure("File error: ${e.message}", baseTranslation)
             _lastOverrideResult.value = result
             _currentTranslation.value = baseTranslation
-            println("[TranslationService] Translation override failed: ${e.message}")
+            log.info(" Translation override failed: ${e.message}")
             result
         }
     }
@@ -159,10 +161,10 @@ class TranslationService {
         return try {
             overrideFile.parentFile?.mkdirs()
             overrideFile.writeText(jsonContent)
-            println("[TranslationService] Successfully exported builtin translation to: ${overrideFile.absolutePath}")
+            log.info(" Successfully exported builtin translation to: ${overrideFile.absolutePath}")
             true
         } catch (e: Exception) {
-            println("[TranslationService] Failed to save translation: ${e.message}")
+            log.info(" Failed to save translation: ${e.message}")
             false
         }
     }

@@ -1,6 +1,7 @@
 package com.gromozeka.bot.services
 
 import com.gromozeka.bot.settings.ResponseFormat
+import klog.KLoggers
 import java.io.InputStream
 
 /**
@@ -9,6 +10,7 @@ import java.io.InputStream
 object SystemPromptLoader {
 
     private const val PROMPTS_PATH = "/prompts/"
+    private val log = KLoggers.logger("SystemPromptLoader")
 
     /**
      * Get system prompt for specified format
@@ -42,7 +44,7 @@ object SystemPromptLoader {
             val inputStream: InputStream? = this::class.java.getResourceAsStream(path)
             inputStream?.bufferedReader()?.use { it.readText() }
         } catch (e: Exception) {
-            println("[SystemPromptLoader] Failed to load prompt from $path: ${e.message}")
+            log.warn(e, "Failed to load prompt from $path: ${e.message}")
             null
         }
     }

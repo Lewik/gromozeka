@@ -1,5 +1,7 @@
 package com.gromozeka.bot.services
 
+import klog.KLoggers
+
 import com.gromozeka.shared.audio.AudioConfig
 import com.gromozeka.shared.audio.AudioOutputFormat
 import com.gromozeka.shared.audio.getAudioDuration
@@ -19,20 +21,21 @@ class SttService(
     private val openAiAudioTranscriptionModel: OpenAiAudioTranscriptionModel,
     private val settingsService: SettingsService,
 ) {
+    private val log = KLoggers.logger(this)
 
 
     suspend fun transcribe(audioData: ByteArray): String = withContext(Dispatchers.IO) {
-        println("[STT] Transcribing audio data (${audioData.size} bytes)")
+        log.debug("Transcribing audio data (${audioData.size} bytes)")
 
         // Check audio duration before sending to OpenAI
         val audioConfig = AudioConfig(sampleRate = 16000, channels = 1, bitDepth = 16)
         val audioDurationSeconds = audioData.getAudioDuration(AudioOutputFormat.WAV, audioConfig)
 
-        println("[STT] Audio duration: ${audioDurationSeconds}s")
+        log.debug("Audio duration: ${audioDurationSeconds}s")
 
         // OpenAI requires minimum 0.1 seconds of audio
         if (!audioData.isAudioLongEnough(AudioOutputFormat.WAV, audioConfig, minSeconds = 0.1)) {
-            println("[STT] Audio too short (${audioDurationSeconds}s < 0.1s), skipping transcription")
+            log.debug("Audio too short (${audioDurationSeconds}s < 0.1s), skipping transcription")
             return@withContext ""
         }
 
@@ -52,7 +55,7 @@ class SttService(
             tempFile.delete()
             result
         } catch (e: Exception) {
-            println("[STT] Transcription error: ${e.message}")
+            log.error("Transcription error: ${e.message}")
             ""
         }
         return@withContext text

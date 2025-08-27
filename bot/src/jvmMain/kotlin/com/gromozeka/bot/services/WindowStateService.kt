@@ -1,6 +1,8 @@
 package com.gromozeka.bot.services
 
 import com.gromozeka.bot.ui.UiWindowState
+import klog.KLoggers
+
 import kotlinx.serialization.json.Json
 import org.springframework.stereotype.Service
 import java.io.File
@@ -9,6 +11,7 @@ import java.io.File
 class WindowStateService(
     private val settingsService: SettingsService,
 ) {
+    private val log = KLoggers.logger(this)
 
     private val json = Json {
         prettyPrint = true
@@ -24,11 +27,11 @@ class WindowStateService(
             try {
                 json.decodeFromString<UiWindowState>(windowStateFile.readText())
             } catch (e: Exception) {
-                println("[WindowStateService] Failed to load window state: ${e.message}")
+                log.warn("Failed to load window state: ${e.message}")
                 UiWindowState() // Return default
             }
         } else {
-            println("[WindowStateService] Window state file not found, using defaults")
+            log.debug("Window state file not found, using defaults")
             UiWindowState() // Default state
         }
     }
@@ -36,9 +39,9 @@ class WindowStateService(
     fun saveWindowState(windowState: UiWindowState) {
         try {
             windowStateFile.writeText(json.encodeToString(windowState))
-            println("[WindowStateService] Window state saved to: ${windowStateFile.absolutePath}")
+            log.info("Window state saved to: ${windowStateFile.absolutePath}")
         } catch (e: Exception) {
-            println("[WindowStateService] Failed to save window state: ${e.message}")
+            log.warn("Failed to save window state: ${e.message}")
         }
     }
 }

@@ -2,6 +2,8 @@ package com.gromozeka.bot.ui.viewmodel
 
 import com.gromozeka.bot.model.ChatSessionMetadata
 import com.gromozeka.bot.services.SessionSearchService
+import klog.KLoggers
+
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -13,6 +15,7 @@ class SessionSearchViewModel(
     private val sessionSearchService: SessionSearchService,
     private val scope: CoroutineScope,
 ) {
+    private val log = KLoggers.logger(this)
 
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
@@ -47,10 +50,9 @@ class SessionSearchViewModel(
                 val results = sessionSearchService.searchSessions(query)
                 _searchResults.value = results
 
-                println("[SessionSearchViewModel] Found ${results.size} sessions matching '$query'")
+                log.info("Found ${results.size} sessions matching '$query'")
             } catch (e: Exception) {
-                println("[SessionSearchViewModel] Search error: ${e.message}")
-                e.printStackTrace()
+                log.warn(e, "Search error: ${e.message}")
                 _searchResults.value = emptyList()
             } finally {
                 _isSearching.value = false

@@ -2,6 +2,7 @@ package com.gromozeka.bot
 
 import com.gromozeka.bot.model.AgentDefinition
 import com.gromozeka.bot.ui.state.ConversationInitiator
+import klog.KLoggers
 import androidx.compose.desktop.ui.tooling.preview.Preview
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -93,6 +94,7 @@ fun getTabDisplayName(tabUiState: UIState.Tab, index: Int): String {
 }
 
 fun main() {
+    val log = KLoggers.logger("ChatApplication")
     System.setProperty("java.awt.headless", "false")
 
     // Check Claude Code is installed before starting
@@ -100,23 +102,23 @@ fun main() {
     if (!claudeProjectsDir.exists()) {
         throw IllegalStateException("Claude Code not installed - directory does not exist: ${claudeProjectsDir.absolutePath}")
     }
-    println("[GROMOZEKA] Claude Code installation verified")
+    log.info("Claude Code installation verified")
 
     // Clean up old stream logs on startup
-    println("[GROMOZEKA] Cleaning up old stream logs...")
+    log.info("Cleaning up old stream logs...")
     StreamLogger.cleanupOldLogs()
 
-    println("[GROMOZEKA] Initializing Spring context...")
+    log.info("Initializing Spring context...")
     val context = SpringApplicationBuilder(ChatApplication::class.java)
         .web(WebApplicationType.NONE)
         .run()
-    println("[GROMOZEKA] Spring context initialized successfully")
+    log.info("Spring context initialized successfully")
 
     // Initialize JAR resources (extract MCP proxy JAR to Gromozeka home)
     val settingsService = context.getBean<SettingsService>()
-    println("[GROMOZEKA] Initializing JAR resources...")
-    println("[GROMOZEKA] JAR resources initialized successfully")
-    println("[GROMOZEKA] Starting application in ${settingsService.mode.name} mode...")
+    log.info("Initializing JAR resources...")
+    log.info("JAR resources initialized successfully")
+    log.info("Starting application in ${settingsService.mode.name} mode...")
 
     val ttsQueueService = context.getBean<TTSQueueService>()
     val ttsAutoplayService = context.getBean<TTSAutoplayService>()
@@ -145,17 +147,17 @@ fun main() {
 
     // Explicit startup of TTS services
     ttsQueueService.start()
-    println("[GROMOZEKA] TTS queue service started")
+    log.info("TTS queue service started")
 
     ttsAutoplayService.start()
-    println("[GROMOZEKA] TTS autoplay service started")
+    log.info("TTS autoplay service started")
 
     // Start global MCP HTTP server
     mcpHttpServer.start()
-    println("[GROMOZEKA] Global MCP HTTP server started")
+    log.info("Global MCP HTTP server started")
 
     // Initialize JAR resources (copy from resources to Gromozeka home)
-    println("[GROMOZEKA] MCP proxy JAR initialized")
+    log.info("MCP proxy JAR initialized")
 
     // Initialize services
     globalHotkeyController.initializeService()
@@ -168,7 +170,7 @@ fun main() {
 
     // TranslationService automatically initializes via @Bean creation and subscribes to settings
 
-    println("[GROMOZEKA] Starting Compose Desktop UI...")
+    log.info("Starting Compose Desktop UI...")
     application {
         val currentSettings by settingsService.settingsFlow.collectAsState()
 
@@ -221,6 +223,7 @@ fun ApplicationScope.ChatWindow(
     contextExtractionService: ContextExtractionService,
     contextFileService: ContextFileService,
 ) {
+    val log = KLoggers.logger("ChatWindow")
     val coroutineScope = rememberCoroutineScope()
     val sessionSearchViewModel = remember {
         com.gromozeka.bot.ui.viewmodel.SessionSearchViewModel(sessionSearchService, coroutineScope)
@@ -373,7 +376,7 @@ fun ApplicationScope.ChatWindow(
         state = windowState,
         alwaysOnTop = currentSettings.alwaysOnTop,
         onCloseRequest = {
-            println("[GROMOZEKA] Application window closing - stopping all sessions...")
+            log.info("Application window closing - stopping all sessions...")
 
             // Force save current state before cleanup
             uiStateService.forceSave()
@@ -384,10 +387,9 @@ fun ApplicationScope.ChatWindow(
             coroutineScope.launch {
                 try {
                     appViewModel.cleanup()
-                    println("[GROMOZEKA] All sessions stopped and UI state saved")
+                    log.info("All sessions stopped and UI state saved")
                 } catch (e: Exception) {
-                    println("[GROMOZEKA] Error during cleanup: ${e.message}")
-                    e.printStackTrace()
+                    log.warn(e) { "Error during cleanup: ${e.message}" }
                 }
             }
 
@@ -403,7 +405,7 @@ fun ApplicationScope.ChatWindow(
             globalHotkeyController.cleanup()
             ttsQueueService.shutdown()
             mcpHttpServer.stop()
-            println("[GROMOZEKA] Global MCP HTTP server stopped")
+            log.info("Global MCP HTTP server stopped")
             exitApplication()
         },
         title = buildString {
@@ -561,10 +563,9 @@ fun ApplicationScope.ChatWindow(
                                                     coroutineScope.launch {
                                                         try {
                                                             contextExtractionService.extractContextsFromTab(tabViewModel.uiState.first().tabId)
-                                                            println("[ChatApplication] Context extraction")
+                                                            log.info("Context extraction")
                                                         } catch (e: Exception) {
-                                                            println("[ChatApplication] Context extraction failed: ${e.message}")
-                                                            e.printStackTrace()
+                                                            log.warn(e) { "Context extraction failed: ${e.message}" }
                                                         }
                                                     }
                                                 },

@@ -1,5 +1,7 @@
 package com.gromozeka.bot.services
 
+import klog.KLoggers
+
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -10,6 +12,7 @@ class UnifiedGestureDetector(
     private val pttEventRouter: PTTEventRouter,
     private val coroutineScope: CoroutineScope,
 ) {
+    private val log = KLoggers.logger(this)
     private val doubleClickWindow = 400.milliseconds
     private val shortClickThreshold = 150.milliseconds
     private var state = GestureState.IDLE

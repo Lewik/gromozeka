@@ -42,6 +42,9 @@ kotlin {
                 implementation(compose.material3)
                 implementation(compose.materialIconsExtended)
                 implementation(libs.spring.boot.starter)
+
+                // klog - Kotlin logging framework
+                implementation(libs.klog)
                 
                 // FileKit for file picker
                 implementation(libs.filekit.core)

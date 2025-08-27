@@ -1,5 +1,7 @@
 package com.gromozeka.bot.services
 
+import klog.KLoggers
+
 import com.gromozeka.bot.platform.SystemAudioController
 import com.gromozeka.shared.audio.AudioConfig
 import com.gromozeka.shared.audio.AudioRecorder
@@ -15,7 +17,7 @@ class PTTService(
     private val settingsService: SettingsService,
     private val systemAudioController: SystemAudioController,
 ) {
-
+    private val log = KLoggers.logger(this)
 
     private val _recordingState = MutableStateFlow(false)
     val recordingState: StateFlow<Boolean> = _recordingState.asStateFlow()
@@ -47,13 +49,13 @@ class PTTService(
         try {
             // Mute audio first (inside try-catch to ensure cleanup)
             if (settings.muteSystemAudioDuringPTT) {
-                println("[PTT] MUTING audio")
+                log.info("MUTING audio")
                 isMuted = true  // Set flag BEFORE actual mute to prevent race condition
                 originalMuteState = systemAudioController.isSystemMuted()
                 systemAudioController.mute()
             }
 
-            println("[PTT] Starting recording")
+            log.debug("Starting recording")
             val session = audioRecorder.launchRecording(CoroutineScope(SupervisorJob() + Dispatchers.IO), audioConfig)
             currentRecordingSession = session
             _recordingState.value = true
@@ -72,16 +74,16 @@ class PTTService(
             }
 
         } catch (e: Exception) {
-            println("[PTT] Failed to start recording: ${e.message}")
+            log.error("Failed to start recording: ${e.message}")
             _recordingState.value = false
             currentRecordingSession = null
 
             // ALWAYS cleanup on failure (including mute restore)
             if (isMuted) {
-                println("[PTT] RESTORING audio mute after startRecording error")
+                log.debug("RESTORING audio mute after startRecording error")
                 restoreOriginalMuteState()
             } else {
-                println("[PTT] startRecording error but isMuted=false")
+                log.debug("startRecording error but isMuted=false")
             }
             throw e
         }
@@ -95,7 +97,7 @@ class PTTService(
         val wasRecording = _recordingState.value
 
         if (!wasRecording || session == null) {
-            println("[PTT] Not recording - ignoring stop")
+            log.debug("Not recording - ignoring stop")
             return@withContext ""
         }
 
@@ -107,7 +109,7 @@ class PTTService(
             // Handle minimum duration
             val recordingDuration = System.currentTimeMillis() - recordingStartTime
             if (recordingDuration < minRecordingDurationMs) {
-                println("[PTT] Recording too short (${recordingDuration}ms), waiting...")
+                log.debug("Recording too short (${recordingDuration}ms), waiting...")
                 delay(minRecordingDurationMs - recordingDuration)
             }
 
@@ -117,7 +119,7 @@ class PTTService(
             }
 
         } catch (e: Exception) {
-            println("[PTT] Failed to stop recording: ${e.message}")
+            log.error("Failed to stop recording: ${e.message}")
             null
 
         } finally {
@@ -125,10 +127,10 @@ class PTTService(
             withContext(NonCancellable) {
                 session.cancel()
                 if (isMuted) {
-                    println("[PTT] RESTORING audio mute after stopAndTranscribe")
+                    log.debug("RESTORING audio mute after stopAndTranscribe")
                     restoreOriginalMuteState()
                 } else {
-                    println("[PTT] stopAndTranscribe but isMuted=false - no restore needed")
+                    log.debug("stopAndTranscribe but isMuted=false - no restore needed")
                 }
             }
         }
@@ -137,10 +139,10 @@ class PTTService(
         if (finalAudio != null) {
             try {
                 val text = sttService.transcribe(finalAudio)
-                println("[PTT] Recording stopped, transcribed: '${text.take(50)}${if (text.length > 50) "..." else ""}'")
+                log.info("Recording stopped, transcribed: '${text.take(50)}${if (text.length > 50) "..." else ""}'")
                 text
             } catch (e: Exception) {
-                println("[PTT] Failed to transcribe audio: ${e.message}")
+                log.error("Failed to transcribe audio: ${e.message}")
                 ""
             }
         } else {
@@ -155,7 +157,7 @@ class PTTService(
         val session = currentRecordingSession
         val wasRecording = _recordingState.value
 
-        println("[PTT] Canceling recording (wasRecording=$wasRecording, session=${session != null}, isMuted=$isMuted)")
+        log.debug("Canceling recording (wasRecording=$wasRecording, session=${session != null}, isMuted=$isMuted)")
 
         // Always reset recording state
         _recordingState.value = false
@@ -171,12 +173,12 @@ class PTTService(
         // ALWAYS restore mute if it was set (independent of session state)
         if (isMuted) {
             withContext(NonCancellable) {
-                println("[PTT] RESTORING audio mute after cancel")
+                log.debug("RESTORING audio mute after cancel")
                 restoreOriginalMuteState()
             }
-            println("[PTT] Audio mute restored after cancel")
+            log.debug("Audio mute restored after cancel")
         } else {
-            println("[PTT] Cancel called but isMuted=false - no restore needed")
+            log.debug("Cancel called but isMuted=false - no restore needed")
         }
     }
 
@@ -184,9 +186,9 @@ class PTTService(
         originalMuteState?.let { wasMuted ->
             if (!wasMuted) {
                 systemAudioController.unmute()
-                println("[PTT] Audio unmuted (restored to original state)")
+                log.debug("Audio unmuted (restored to original state)")
             } else {
-                println("[PTT] Audio kept muted (was originally muted)")
+                log.debug("Audio kept muted (was originally muted)")
             }
         }
         originalMuteState = null

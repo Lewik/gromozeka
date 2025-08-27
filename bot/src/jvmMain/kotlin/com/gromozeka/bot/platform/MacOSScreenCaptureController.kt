@@ -1,5 +1,7 @@
 package com.gromozeka.bot.platform
 
+import klog.KLoggers
+
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.springframework.stereotype.Service
@@ -7,6 +9,7 @@ import java.io.File
 
 @Service
 class MacOSScreenCaptureController : ScreenCaptureController {
+    private val log = KLoggers.logger(this)
 
     private fun getGromozekaScreenshotsDir(): File {
         val systemTempDir = System.getProperty("java.io.tmpdir")
@@ -14,7 +17,7 @@ class MacOSScreenCaptureController : ScreenCaptureController {
 
         if (!gromozekaDir.exists()) {
             gromozekaDir.mkdirs()
-            println("[ScreenCapture] Created directory: ${gromozekaDir.absolutePath}")
+            log.debug("Created directory: ${gromozekaDir.absolutePath}")
         }
 
         return gromozekaDir
@@ -27,7 +30,7 @@ class MacOSScreenCaptureController : ScreenCaptureController {
             val screenshotFile = File(screenshotsDir, "window_$timestamp.png")
             val filePath = screenshotFile.absolutePath
 
-            println("[ScreenCapture] Starting window capture to: $filePath")
+            log.debug("Starting window capture to: $filePath")
 
             val process = ProcessBuilder("screencapture", "-w", "-o", filePath)
                 .start()
@@ -35,14 +38,14 @@ class MacOSScreenCaptureController : ScreenCaptureController {
             val exitCode = process.waitFor()
 
             if (exitCode == 0 && screenshotFile.exists()) {
-                println("[ScreenCapture] Window screenshot captured successfully: $filePath")
+                log.info("Window screenshot captured successfully: $filePath")
                 filePath
             } else {
-                println("[ScreenCapture] Window screenshot failed with exit code: $exitCode")
+                log.error("Window screenshot failed with exit code: $exitCode")
                 null
             }
         } catch (e: Exception) {
-            println("[ScreenCapture] Exception during window screenshot: ${e.message}")
+            log.error("Exception during window screenshot: ${e.message}")
             e.printStackTrace()
             null
         }
@@ -55,7 +58,7 @@ class MacOSScreenCaptureController : ScreenCaptureController {
             val screenshotFile = File(screenshotsDir, "fullscreen_$timestamp.png")
             val filePath = screenshotFile.absolutePath
 
-            println("[ScreenCapture] Starting fullscreen capture to: $filePath")
+            log.debug("Starting fullscreen capture to: $filePath")
 
             val process = ProcessBuilder("screencapture", "-o", filePath)
                 .start()
@@ -63,14 +66,14 @@ class MacOSScreenCaptureController : ScreenCaptureController {
             val exitCode = process.waitFor()
 
             if (exitCode == 0 && screenshotFile.exists()) {
-                println("[ScreenCapture] Fullscreen screenshot captured successfully: $filePath")
+                log.info("Fullscreen screenshot captured successfully: $filePath")
                 filePath
             } else {
-                println("[ScreenCapture] Fullscreen screenshot failed with exit code: $exitCode")
+                log.error("Fullscreen screenshot failed with exit code: $exitCode")
                 null
             }
         } catch (e: Exception) {
-            println("[ScreenCapture] Exception during fullscreen screenshot: ${e.message}")
+            log.error("Exception during fullscreen screenshot: ${e.message}")
             e.printStackTrace()
             null
         }
@@ -83,7 +86,7 @@ class MacOSScreenCaptureController : ScreenCaptureController {
             val screenshotFile = File(screenshotsDir, "area_$timestamp.png")
             val filePath = screenshotFile.absolutePath
 
-            println("[ScreenCapture] Starting area capture to: $filePath")
+            log.debug("Starting area capture to: $filePath")
 
             val process = ProcessBuilder("screencapture", "-s", "-o", filePath)
                 .start()
@@ -91,14 +94,14 @@ class MacOSScreenCaptureController : ScreenCaptureController {
             val exitCode = process.waitFor()
 
             if (exitCode == 0 && screenshotFile.exists()) {
-                println("[ScreenCapture] Area screenshot captured successfully: $filePath")
+                log.info("Area screenshot captured successfully: $filePath")
                 filePath
             } else {
-                println("[ScreenCapture] Area screenshot failed with exit code: $exitCode")
+                log.error("Area screenshot failed with exit code: $exitCode")
                 null
             }
         } catch (e: Exception) {
-            println("[ScreenCapture] Exception during area screenshot: ${e.message}")
+            log.error("Exception during area screenshot: ${e.message}")
             e.printStackTrace()
             null
         }

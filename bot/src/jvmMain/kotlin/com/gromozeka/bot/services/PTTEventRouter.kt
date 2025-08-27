@@ -1,5 +1,7 @@
 package com.gromozeka.bot.services
 
+import klog.KLoggers
+
 import com.gromozeka.bot.ui.viewmodel.AppViewModel
 import com.gromozeka.bot.ui.viewmodel.TabViewModel
 import kotlinx.coroutines.*
@@ -21,6 +23,7 @@ class PTTEventRouter(
     private val appViewModel: AppViewModel,
     private val settingsService: SettingsService,
 ) {
+    private val log = KLoggers.logger(this)
 
     private val serviceScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
 
@@ -107,7 +110,7 @@ class PTTEventRouter(
                 }
             }
         } catch (e: Exception) {
-            println("[PTT] Failed to transcribe recording: ${e.message}")
+            log.error("Failed to transcribe recording: ${e.message}")
         } finally {
             // Clear target session reference
             targetViewModel = null
@@ -132,11 +135,11 @@ class PTTEventRouter(
                     awaitCancellation()
                 }
             } catch (e: TimeoutCancellationException) {
-                println("[PTT] Recording timeout after 5 minutes")
+                log.warn("Recording timeout after 5 minutes")
             } catch (e: CancellationException) {
                 // Normal PTT release, don't log
             } catch (e: Exception) {
-                println("[PTT] Failed to start recording: ${e.message}")
+                log.error("Failed to start recording: ${e.message}")
             } finally {
                 // Recording state is managed by PTTService
             }
@@ -152,7 +155,7 @@ class PTTEventRouter(
         try {
             pttService.cancelRecording()
         } catch (e: Exception) {
-            println("[PTT] Failed to cancel recording: ${e.message}")
+            log.error("Failed to cancel recording: ${e.message}")
         }
     }
 

@@ -2,6 +2,8 @@ package com.gromozeka.bot.services
 
 import kotlinx.serialization.decodeFromString
 import nl.adaptivity.xmlutil.serialization.XML
+import klog.KLoggers
+
 import org.springframework.stereotype.Service
 import java.io.File
 import java.time.LocalDateTime
@@ -13,6 +15,7 @@ class ContextFileService(
     private val gitService: GitService,
     private val settingsService: SettingsService,
 ) {
+    private val log = KLoggers.logger(this)
 
     private val contextsDir = File(settingsService.gromozekaHome, "contexts")
 
@@ -46,7 +49,7 @@ class ContextFileService(
             file.writeText(mdContent)
             savedFiles.add(filename)
 
-            println("[ContextFileService] Saved context: $filename")
+            log.info("Saved context: $filename")
         }
 
         val commitMessage = "Add contexts: ${savedFiles.joinToString(", ")}"
@@ -157,7 +160,7 @@ class ContextFileService(
                     parseContextFromMarkdown(file.readText())
                         .copy(filePath = file.absolutePath)
                 } catch (e: Exception) {
-                    println("[ContextFileService] Failed to parse context file: ${file.name}, error: ${e.message}")
+                    log.warn(e, "Failed to parse context file: ${file.name}, error: ${e.message}")
                     null
                 }
             } ?: emptyList()
@@ -183,7 +186,7 @@ class ContextFileService(
             try {
                 gitService.addAndCommit(contextsDir, "Delete context: $contextName")
             } catch (e: Exception) {
-                println("[ContextFileService] Git commit failed for context deletion: ${e.message}")
+                log.warn(e, "Git commit failed for context deletion: ${e.message}")
             }
         }
     }

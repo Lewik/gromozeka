@@ -2,6 +2,8 @@ package com.gromozeka.bot.services
 
 import com.gromozeka.bot.ui.viewmodel.AppViewModel
 import com.gromozeka.shared.domain.message.ChatMessage
+import klog.KLoggers
+
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.filter
@@ -19,12 +21,13 @@ class TTSAutoplayService(
     private val settingsService: SettingsService,
     @Qualifier("coroutineScope") private val scope: CoroutineScope,
 ) {
+    private val log = KLoggers.logger(this)
 
     private var currentSessionJob: Job? = null
     private var subscriptionTimestamp: Instant? = null
 
     fun start() {
-        println("[TTSAutoplayService] Starting auto TTS service")
+        log.info("Starting auto TTS service")
 
         // Subscribe to currentSession changes
         appViewModel.currentSession
@@ -96,12 +99,12 @@ class TTSAutoplayService(
                 )
             )
         } catch (e: Exception) {
-            println("[TTSAutoplayService] Error playing auto TTS: ${e.message}")
+            log.warn("Error playing auto TTS: ${e.message}")
         }
     }
 
     fun shutdown() {
-        println("[TTSAutoplayService] Shutting down auto TTS service")
+        log.info("Shutting down auto TTS service")
         currentSessionJob?.cancel()
         currentSessionJob = null
     }

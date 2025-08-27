@@ -2,6 +2,8 @@ package com.gromozeka.bot.services.mcp
 
 import com.gromozeka.bot.ui.viewmodel.AppViewModel
 import com.gromozeka.shared.domain.message.ChatMessage
+import klog.KLoggers
+
 import io.modelcontextprotocol.kotlin.sdk.CallToolRequest
 import io.modelcontextprotocol.kotlin.sdk.CallToolResult
 import io.modelcontextprotocol.kotlin.sdk.TextContent
@@ -16,6 +18,7 @@ import org.springframework.stereotype.Service
 class TellAgentTool(
     private val applicationContext: ApplicationContext,
 ) : GromozekaMcpTool {
+    private val log = KLoggers.logger(this)
 
     @Serializable
     data class Input(
@@ -64,7 +67,7 @@ class TellAgentTool(
         val appViewModel = applicationContext.getBean(AppViewModel::class.java)
         val input = Json.decodeFromJsonElement<Input>(request.arguments)
         val senderTabId = input.sender_tab_id
-        println("[SendMessageTool] Executing with senderTabId=$senderTabId, targetTabId=${input.target_tab_id}")
+        log.info("Executing with senderTabId=$senderTabId, targetTabId=${input.target_tab_id}")
 
         if (input.target_tab_id == null) {
             return CallToolResult(
@@ -104,7 +107,7 @@ class TellAgentTool(
 
         // Send message to target session via TabViewModel with structured instructions
         targetTab.sendMessageToSession(input.message, allInstructions)
-        println("[SendMessageTool] Sent message from senderTabId=$senderTabId to targetTab=${targetTab.uiState.value.tabId} (sessionId=${targetTab.sessionId})")
+        log.info("Sent message from senderTabId=$senderTabId to targetTab=${targetTab.uiState.value.tabId} (sessionId=${targetTab.sessionId})")
 
         // Switch to target tab if requested
         if (input.set_as_current) {

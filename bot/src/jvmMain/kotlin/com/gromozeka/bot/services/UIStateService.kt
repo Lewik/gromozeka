@@ -2,6 +2,8 @@ package com.gromozeka.bot.services
 
 import com.gromozeka.bot.ui.state.UIState
 import com.gromozeka.bot.ui.viewmodel.AppViewModel
+import klog.KLoggers
+
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -23,6 +25,7 @@ class UIStateService(
     private val settingsService: SettingsService,
     @Qualifier("coroutineScope") private val scope: CoroutineScope,
 ) {
+    private val log = KLoggers.logger(this)
 
     private val json = Json {
         prettyPrint = true
@@ -58,7 +61,7 @@ class UIStateService(
         // Load saved state
         val savedState = loadState()
         if (savedState.tabs.isNotEmpty()) {
-            println("[UIStateService] Restoring ${savedState.tabs.size} saved tabs")
+            log.info("Restoring ${savedState.tabs.size} saved tabs")
             appViewModel.restoreTabs(savedState)
         }
 
@@ -143,7 +146,7 @@ class UIStateService(
                 UIState()
             }
         } catch (e: Exception) {
-            println("[UIStateService] Failed to load UI state: ${e.message}")
+            log.warn("Failed to load UI state: ${e.message}")
             UIState()
         }
     }
@@ -153,7 +156,7 @@ class UIStateService(
             val jsonContent = json.encodeToString(state)
             stateFile.writeText(jsonContent)
         } catch (e: Exception) {
-            println("[UIStateService] Failed to save UI state: ${e.message}")
+            log.warn("Failed to save UI state: ${e.message}")
         }
     }
 }

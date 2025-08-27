@@ -20,6 +20,7 @@ filekit = "0.8.2"
 multiplatform-markdown-renderer = "0.30.0"
 constraintlayout-compose = "1.1.0"
 mcp-kotlin-sdk = "0.6.0"
+klog = "v2.1.1"
 kotlinx-coroutines = "1.10.2"
 kotlinx-io = "0.6.0"
 xmlutil = "0.91.2"
@@ -78,6 +79,9 @@ constraintlayout-compose = { module = "androidx.constraintlayout:constraintlayou
 
 # MCP (Model Context Protocol)
 mcp-kotlin-sdk = { module = "io.modelcontextprotocol:kotlin-sdk", version.ref = "mcp-kotlin-sdk" }
+
+# Logging
+klog = { module = "com.github.lewik.klog:klog-jvm", version.ref = "klog" }
 
 # XML Utilities
 xmlutil-serialization = { module = "io.github.pdvrieze.xmlutil:serialization", version.ref = "xmlutil" }

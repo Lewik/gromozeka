@@ -9,6 +9,8 @@ import com.gromozeka.bot.ui.state.UIState
 import com.gromozeka.bot.ui.state.ConversationInitiator
 import com.gromozeka.shared.domain.message.ChatMessage
 import com.gromozeka.shared.domain.session.ClaudeSessionUuid
+import klog.KLoggers
+
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.sync.Mutex
@@ -28,6 +30,7 @@ open class AppViewModel(
     private val scope: CoroutineScope,
     private val screenCaptureController: ScreenCaptureController,
 ) {
+    private val log = KLoggers.logger(this)
     private val mutex = Mutex()
 
     // Tab management (UI layer)
@@ -104,25 +107,24 @@ open class AppViewModel(
         _tabs.value = updatedTabs
 
         val newTabIndex = updatedTabs.size - 1
-        println("[AppViewModel] Created tab at index $newTabIndex for project: $projectPath")
+        log.info("Created tab at index $newTabIndex for project: $projectPath")
 
         // Switch to new tab if requested
         if (setAsCurrent) {
             _currentTabIndex.value = newTabIndex
-            println("[AppViewModel] Switched to new tab at index $newTabIndex")
+            log.info("Switched to new tab at index $newTabIndex")
         }
 
         // Send initial message if provided
         if (initialMessage != null) {
             val messageContent = initialMessage.content.filterIsInstance<ChatMessage.ContentItem.UserMessage>()
                 .firstOrNull()?.text ?: "Ready to work on this project"
-            println("[AppViewModel.createTab] Initial message preview: ${messageContent.take(100)}...")
+            log.debug("Initial message preview: ${messageContent.take(100)}...")
             try {
                 session.sendMessage(initialMessage)
-                println("[AppViewModel.createTab] Initial message sent successfully")
+                log.info("Initial message sent successfully")
             } catch (e: Exception) {
-                println("[AppViewModel.createTab] Failed to send initial message: ${e.message}")
-                e.printStackTrace()
+                log.warn(e, "Failed to send initial message: ${e.message}")
             }
         }
 
@@ -174,7 +176,7 @@ open class AppViewModel(
         // Stop the session
         sessionManager.stopSession(tab.sessionId)
 
-        println("[AppViewModel] Closed tab at index $index")
+        log.info("Closed tab at index $index")
     }
 
     /**
@@ -188,7 +190,7 @@ open class AppViewModel(
             }
         }
         _currentTabIndex.value = index
-        println("[AppViewModel] Selected tab: $index")
+        log.info("Selected tab: $index")
     }
 
     /**
@@ -203,7 +205,7 @@ open class AppViewModel(
             selectTab(index)
             return tab
         } else {
-            println("[AppViewModel] Tab not found for ID: $tabId")
+            log.warn("Tab not found for ID: $tabId")
             return null
         }
     }
@@ -222,7 +224,7 @@ open class AppViewModel(
      * Restores tabs from UIState
      */
     suspend fun restoreTabs(uiState: UIState) {
-        println("[AppViewModel] Restoring ${uiState.tabs.size} tabs from UIState")
+        log.info("Restoring ${uiState.tabs.size} tabs from UIState")
 
         // Build all tabs first, then assign in one atomic operation
         val restoredTabs = mutableListOf<TabViewModel>()
@@ -247,16 +249,16 @@ open class AppViewModel(
                 )
 
                 restoredTabs.add(tabViewModel)
-                println("[AppViewModel] Successfully restored tab for project: ${tabUiState.projectPath}")
+                log.info("Successfully restored tab for project: ${tabUiState.projectPath}")
             } catch (e: Exception) {
-                println("[AppViewModel] Failed to restore tab for project: ${tabUiState.projectPath}, error: ${e.message}")
+                log.warn("Failed to restore tab for project: ${tabUiState.projectPath}, error: ${e.message}")
                 // Continue with other tabs - partial restore is better than no restore
             }
         }
 
         // Atomic assignment - triggers tabs.onEach only ONCE
         _tabs.value = restoredTabs.toList()
-        println("[AppViewModel] Restore completed: ${_tabs.value.size}/${uiState.tabs.size} tabs restored")
+        log.info("Restore completed: ${_tabs.value.size}/${uiState.tabs.size} tabs restored")
 
         // Set current tab index after all tabs are restored
         if (uiState.currentTabIndex != null && uiState.currentTabIndex < _tabs.value.size) {
@@ -274,7 +276,7 @@ open class AppViewModel(
         val sessionViewModel = tabList.getOrNull(tabIndex) ?: return@withLock
 
         sessionViewModel.updateCustomName(newName?.takeIf { it.isNotBlank() })
-        println("[AppViewModel] Renamed tab at index $tabIndex to: ${newName ?: "default"}")
+        log.info("Renamed tab at index $tabIndex to: ${newName ?: "default"}")
     }
 
     /**
@@ -286,7 +288,7 @@ open class AppViewModel(
         val sessionViewModel = tabList.getOrNull(tabIndex) ?: return@withLock
 
         sessionViewModel.updateCustomName(null)
-        println("[AppViewModel] Reset tab name at index $tabIndex to default")
+        log.info("Reset tab name at index $tabIndex to default")
     }
 
     /**

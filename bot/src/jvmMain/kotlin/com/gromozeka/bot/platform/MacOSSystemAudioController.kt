@@ -1,11 +1,14 @@
 package com.gromozeka.bot.platform
 
+import klog.KLoggers
+
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.springframework.stereotype.Service
 
 @Service
 class MacOSSystemAudioController : SystemAudioController {
+    private val log = KLoggers.logger(this)
 
     override suspend fun mute(): Boolean = withContext(Dispatchers.IO) {
         try {
@@ -22,10 +25,10 @@ class MacOSSystemAudioController : SystemAudioController {
                 output.equals("true", ignoreCase = true)
             }
 
-            println("[SystemAudio] Audio muted, original state was: $originalMuteState")
+            log.info("Audio muted, original state was: $originalMuteState")
             true
         } catch (e: Exception) {
-            println("[SystemAudio] Failed to mute audio: ${e.message}")
+            log.error("Failed to mute audio: ${e.message}")
             false
         }
     }
@@ -34,10 +37,10 @@ class MacOSSystemAudioController : SystemAudioController {
         try {
             val process = ProcessBuilder("osascript", "-e", "set volume without output muted").start()
             process.waitFor()
-            println("[SystemAudio] Audio unmuted")
+            log.info("Audio unmuted")
             true
         } catch (e: Exception) {
-            println("[SystemAudio] Failed to unmute audio: ${e.message}")
+            log.error("Failed to unmute audio: ${e.message}")
             false
         }
     }
@@ -53,7 +56,7 @@ class MacOSSystemAudioController : SystemAudioController {
                 output.equals("true", ignoreCase = true)
             }
         } catch (e: Exception) {
-            println("[SystemAudio] Failed to check mute state: ${e.message}")
+            log.error("Failed to check mute state: ${e.message}")
             false
         }
     }
@@ -64,10 +67,10 @@ class MacOSSystemAudioController : SystemAudioController {
             val script = "set volume output volume $volumeLevel"
             val process = ProcessBuilder("osascript", "-e", script).start()
             process.waitFor()
-            println("[SystemAudio] Volume set to: $volumeLevel%")
+            log.info("Volume set to: $volumeLevel%")
             true
         } catch (e: Exception) {
-            println("[SystemAudio] Failed to set volume: ${e.message}")
+            log.error("Failed to set volume: ${e.message}")
             false
         }
     }
@@ -83,7 +86,7 @@ class MacOSSystemAudioController : SystemAudioController {
                 output.toFloatOrNull()?.div(100f)
             }
         } catch (e: Exception) {
-            println("[SystemAudio] Failed to get volume: ${e.message}")
+            log.error("Failed to get volume: ${e.message}")
             null
         }
     }

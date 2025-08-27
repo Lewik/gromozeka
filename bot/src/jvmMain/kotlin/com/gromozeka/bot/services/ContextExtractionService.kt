@@ -2,6 +2,7 @@ package com.gromozeka.bot.services
 
 import com.gromozeka.bot.ui.viewmodel.AppViewModel
 import com.gromozeka.bot.ui.state.ConversationInitiator
+import klog.KLoggers
 import com.gromozeka.shared.domain.message.ChatMessage
 import kotlinx.coroutines.flow.first
 import org.springframework.context.ApplicationContext
@@ -12,6 +13,7 @@ import kotlin.time.Clock
 class ContextExtractionService(
     private val applicationContext: ApplicationContext,
 ) {
+    private val log = KLoggers.logger(this)
 
     suspend fun extractContextsFromTab(tabId: String) {
         val appViewModel = applicationContext.getBean(AppViewModel::class.java)
@@ -21,9 +23,9 @@ class ContextExtractionService(
         val claudeSessionId = sourceTab.claudeSessionId.first()
         val projectPath = sourceTab.projectPath
 
-        println("[ContextExtractionService] Extracting contexts from tab: $tabId")
-        println("[ContextExtractionService] Source session: ${claudeSessionId.value}")
-        println("[ContextExtractionService] Project path: $projectPath")
+        log.info("Extracting contexts from tab: $tabId")
+        log.info("Source session: ${claudeSessionId.value}")
+        log.info("Project path: $projectPath")
 
         val instructions = loadContextExtractionInstructions()
 
@@ -52,7 +54,7 @@ class ContextExtractionService(
             initiator = ConversationInitiator.System
         )
 
-        println("[ContextExtractionService] Created background tab $backgroundTabIndex for context extraction")
+        log.info("Created background tab $backgroundTabIndex for context extraction")
     }
 
     private suspend fun findTabById(appViewModel: AppViewModel, tabId: String) =

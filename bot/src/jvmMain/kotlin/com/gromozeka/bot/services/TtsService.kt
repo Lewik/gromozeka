@@ -1,6 +1,8 @@
 package com.gromozeka.bot.services
 
 import com.gromozeka.bot.platform.AudioPlayerController
+import klog.KLoggers
+
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.springframework.ai.openai.OpenAiAudioSpeechModel
@@ -14,6 +16,7 @@ class TtsService(
     private val settingsService: SettingsService,
     private val audioPlayerController: AudioPlayerController,
 ) {
+    private val log = KLoggers.logger(this)
 
     suspend fun generateSpeech(
         text: String,
@@ -44,7 +47,7 @@ class TtsService(
             return@withContext outputFile
 
         } catch (e: Exception) {
-            e.printStackTrace()
+            log.warn(e, "Failed to generate speech: ${e.message}")
             return@withContext null
         }
     }

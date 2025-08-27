@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    
+    <!-- Console appender for all profiles -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+    
+    <!-- Development profile - logs to project logs/ directory -->
+    <springProfile name="dev,default,!prod">
+        <property name="LOG_PATH" value="logs"/>
+        
+        <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+            <file>${LOG_PATH}/dev.log</file>
+            <encoder>
+                <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{50} - %msg%n</pattern>
+            </encoder>
+            <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+                <fileNamePattern>${LOG_PATH}/dev.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+                <timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
+                    <maxFileSize>50MB</maxFileSize>
+                </timeBasedFileNamingAndTriggeringPolicy>
+                <maxHistory>7</maxHistory>
+                <totalSizeCap>500MB</totalSizeCap>
+            </rollingPolicy>
+        </appender>
+        
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+            <appender-ref ref="FILE"/>
+        </root>
+        
+        <!-- Debug level for our components in dev -->
+        <logger name="com.gromozeka.bot" level="DEBUG"/>
+    </springProfile>
+    
+    <!-- Production profile - platform-specific log directories -->
+    <springProfile name="prod">
+        <!-- Platform-specific log directories -->
+        <if condition='property("os.name").toLowerCase().contains("mac")'>
+            <then>
+                <property name="LOG_PATH" value="${user.home}/Library/Logs/Gromozeka"/>
+            </then>
+        </if>
+        <if condition='property("os.name").toLowerCase().contains("windows")'>
+            <then>
+                <property name="LOG_PATH" value="${user.home}/AppData/Local/Gromozeka/logs"/>
+            </then>
+        </if>
+        <if condition='property("os.name").toLowerCase().contains("linux")'>
+            <then>
+                <property name="LOG_PATH" value="${user.home}/.local/share/Gromozeka/logs"/>
+            </then>
+        </if>
+        
+        <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+            <file>${LOG_PATH}/gromozeka.log</file>
+            <encoder>
+                <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{50} - %msg%n</pattern>
+            </encoder>
+            <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+                <fileNamePattern>${LOG_PATH}/gromozeka.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+                <timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
+                    <maxFileSize>100MB</maxFileSize>
+                </timeBasedFileNamingAndTriggeringPolicy>
+                <maxHistory>30</maxHistory>
+                <totalSizeCap>3GB</totalSizeCap>
+            </rollingPolicy>
+        </appender>
+        
+        <root level="INFO">
+            <appender-ref ref="FILE"/>
+        </root>
+        
+        <!-- Production logging levels -->
+        <logger name="com.gromozeka.bot" level="INFO"/>
+        <logger name="com.gromozeka.bot.services.StreamLogger" level="WARN"/>
+        <logger name="org.springframework" level="WARN"/>
+        <logger name="org.apache" level="WARN"/>
+    </springProfile>
+    
+    <!-- Specific logger configurations -->
+    <logger name="org.springframework.boot" level="WARN"/>
+    <logger name="org.springframework.web" level="WARN"/>
+    <logger name="org.springframework.ai" level="INFO"/>
+    <logger name="com.fasterxml.jackson" level="WARN"/>
+    <logger name="io.ktor" level="INFO"/>
+    <logger name="org.apache.batik" level="WARN"/>
+    
+</configuration>

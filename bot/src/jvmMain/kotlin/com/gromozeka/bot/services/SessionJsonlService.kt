@@ -3,6 +3,8 @@ package com.gromozeka.bot.services
 import com.gromozeka.bot.model.ChatSessionMetadata
 import com.gromozeka.bot.model.ClaudeLogEntry
 import com.gromozeka.bot.model.StreamSessionMetadata
+import klog.KLoggers
+
 import com.gromozeka.bot.utils.SessionDeduplicator
 import com.gromozeka.bot.utils.decodeProjectPath
 import com.gromozeka.bot.utils.encodeProjectPath
@@ -32,6 +34,7 @@ import kotlin.time.Instant
 class SessionJsonlService(
     private val settingsService: SettingsService,
 ) {
+    private val log = KLoggers.logger(this)
 
     private val json = Json {
         ignoreUnknownKeys = true
@@ -50,14 +53,14 @@ class SessionJsonlService(
     ): List<ChatMessage> = withContext(Dispatchers.IO) {
         val sessionFile = findSessionFile(sessionId.value, projectPath)
         if (sessionFile == null || !sessionFile.exists()) {
-            println("[SessionJsonlService] Session file not found for ID: $sessionId")
+            log.warn("Session file not found for ID: $sessionId")
             return@withContext emptyList()
         }
 
         try {
             val lines = sessionFile.readLines()
             if (lines.isEmpty()) {
-                println("[SessionJsonlService] Session file is empty: $sessionId")
+                log.warn("Session file is empty: $sessionId")
                 return@withContext emptyList()
             }
 
@@ -66,13 +69,13 @@ class SessionJsonlService(
                 try {
                     json.decodeFromString<ClaudeLogEntry>(line.trim())
                 } catch (e: SerializationException) {
-                    println("[SessionJsonlService] Error parsing line ${index + 1} in session $sessionId: ${e.message}")
-                    println("  Problematic line: ${line.take(200)}${if (line.length > 200) "..." else ""}")
+                    log.error(e) { "Error parsing line ${index + 1} in session $sessionId: ${e.message}" }
+                    log.debug { "  Problematic line: ${line.take(200)}${if (line.length > 200) "..." else ""}" }
                     null
                 } catch (e: Exception) {
-                    println("[SessionJsonlService] Unexpected error parsing line ${index + 1} in session $sessionId: ${e.message}")
-                    println("  Exception type: ${e::class.simpleName}")
-                    println("  Problematic line: ${line.take(200)}${if (line.length > 200) "..." else ""}")
+                    log.error(e) { "Unexpected error parsing line ${index + 1} in session $sessionId: ${e.message}" }
+                    log.debug("  Exception type: ${e::class.simpleName}")
+                    log.debug { "  Problematic line: ${line.take(200)}${if (line.length > 200) "..." else ""}" }
                     null
                 }
             }
@@ -83,7 +86,7 @@ class SessionJsonlService(
             // Log deduplication stats if duplicates were found
             if (deduplicatedEntries.size < claudeEntries.size) {
                 val stats = SessionDeduplicator.getDeduplicationStats(claudeEntries, deduplicatedEntries)
-                println("[SessionJsonlService] Deduplicated ${stats.duplicatesRemoved} duplicate entries (${stats.userDuplicates} user, ${stats.assistantDuplicates} assistant)")
+                log.debug("Deduplicated ${stats.duplicatesRemoved} duplicate entries (${stats.userDuplicates} user, ${stats.assistantDuplicates} assistant)")
             }
 
             // Convert deduplicated entries to chat messages
@@ -91,20 +94,19 @@ class SessionJsonlService(
                 try {
                     ClaudeLogEntryMapper.mapToChatMessage(claudeEntry)
                 } catch (e: Exception) {
-                    println("[SessionJsonlService] Error mapping Claude entry to chat message: ${e.message}")
+                    log.error(e) { "Error mapping Claude entry to chat message: ${e.message}" }
                     null
                 }
             }
 
-            println("[SessionJsonlService] Successfully loaded ${messages.size} messages from session $sessionId")
+            log.debug("Successfully loaded ${messages.size} messages from session $sessionId")
             return@withContext messages
 
         } catch (e: Exception) {
-            println("[SessionJsonlService] Error loading messages for session $sessionId: ${e.message}")
-            println("  Session file: ${sessionFile.absolutePath}")
-            println("  File exists: ${sessionFile.exists()}")
-            println("  File size: ${sessionFile.length()} bytes")
-            e.printStackTrace()
+            log.error(e) { "Error loading messages for session $sessionId: ${e.message}" }
+            log.debug("  Session file: ${sessionFile.absolutePath}")
+            log.debug("  File exists: ${sessionFile.exists()}")
+            log.debug("  File size: ${sessionFile.length()} bytes")
             return@withContext emptyList()
         }
     }
@@ -121,7 +123,7 @@ class SessionJsonlService(
     ): StreamSessionMetadata? = withContext(Dispatchers.IO) {
         val sessionFile = findSessionFile(sessionId.value, projectPath)
         if (sessionFile == null || !sessionFile.exists()) {
-            println("[SessionJsonlService] Session file not found for metadata: $sessionId")
+            log.warn("Session file not found for metadata: $sessionId")
             return@withContext null
         }
 
@@ -146,7 +148,7 @@ class SessionJsonlService(
                     val claudeEntry = json.decodeFromString<ClaudeLogEntry>(line.trim())
                     ClaudeLogEntryMapper.mapToChatMessage(claudeEntry)
                 } catch (e: Exception) {
-                    println("[SessionJsonlService] Error parsing line ${index + 1} for metadata in session $sessionId: ${e.message}")
+                    log.error(e) { "Error parsing line ${index + 1} for metadata in session $sessionId: ${e.message}" }
                     null
                 }
             }
@@ -162,7 +164,7 @@ class SessionJsonlService(
             )
 
         } catch (e: Exception) {
-            println("[SessionJsonlService] Error loading metadata for session $sessionId: ${e.message}")
+            log.error(e) { "Error loading metadata for session $sessionId: ${e.message}" }
             return@withContext null
         }
     }
@@ -178,7 +180,7 @@ class SessionJsonlService(
         return if (sessionFile.exists()) {
             sessionFile
         } else {
-            println("[SessionJsonlService] Session file not found at: ${sessionFile.absolutePath}")
+            log.debug("Session file not found at: ${sessionFile.absolutePath}")
             null
         }
     }
@@ -217,7 +219,7 @@ class SessionJsonlService(
     suspend fun loadAllSessionsMetadata(): List<ChatSessionMetadata> = withContext(Dispatchers.IO) {
         val projectsDir = settingsService.getClaudeProjectsDir()
         if (!projectsDir.exists()) {
-            println("[SessionJsonlService] Projects directory doesn't exist: ${projectsDir.absolutePath}")
+            log.warn("Projects directory doesn't exist: ${projectsDir.absolutePath}")
             return@withContext emptyList()
         }
 
@@ -226,7 +228,7 @@ class SessionJsonlService(
             .filter { it.isFile && it.extension == "jsonl" && it.isSessionFile() }
             .toList()
 
-        println("[SessionJsonlService] Found ${sessionFiles.size} session files")
+        log.info("Found ${sessionFiles.size} session files")
 
         // Load sessions in parallel
         val sessions = sessionFiles.map { file ->
@@ -252,13 +254,13 @@ class SessionJsonlService(
                         null
                     }
                 } catch (e: Exception) {
-                    println("[SessionJsonlService] Error loading session from file ${file.path}: ${e.message}")
+                    log.error(e) { "Error loading session from file ${file.path}: ${e.message}" }
                     null
                 }
             }
         }.awaitAll().filterNotNull()
 
-        println("[SessionJsonlService] Successfully loaded ${sessions.size} sessions")
+        log.info("Successfully loaded ${sessions.size} sessions")
         return@withContext sessions.sortedByDescending { it.lastTimestamp }
     }
 }

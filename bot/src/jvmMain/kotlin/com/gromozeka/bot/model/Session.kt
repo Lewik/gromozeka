@@ -4,6 +4,8 @@ import com.gromozeka.bot.services.ClaudeWrapper
 import com.gromozeka.bot.services.SessionJsonlService
 import com.gromozeka.bot.services.SoundNotificationService
 import com.gromozeka.bot.services.llm.claudecode.converter.ClaudeMessageConverter
+import klog.KLoggers
+
 import com.gromozeka.bot.settings.ResponseFormat
 import com.gromozeka.bot.utils.ChatMessageSoundDetector
 import com.gromozeka.shared.domain.message.ChatMessage
@@ -74,6 +76,7 @@ class Session(
     private val initialClaudeSessionId: ClaudeSessionUuid = ClaudeSessionUuid.DEFAULT,
     private val agentDefinition: AgentDefinition,
 ) {
+    private val log = KLoggers.logger(this)
 
     // === ACTOR CHANNELS ===
     private val userCommandChannel = Channel<Command>(capacity = Channel.UNLIMITED)
@@ -190,20 +193,20 @@ class Session(
      * - No mutex needed: Single-threaded actor eliminates race conditions
      */
     private suspend fun actorLoop() {
-        println("[Actor] Starting actor loop")
+        log.debug("Starting actor loop")
 
         while (true) {
             select<Unit> {
                 // PRIORITY 1: Priority commands - always processed
                 priorityChannel.onReceive { command ->
-                    println("[Actor] Processing priority command: $command")
+                    log.debug("Processing priority command: $command")
                     handlePriorityCommand(command)
                 }
 
                 // PRIORITY 2: Claude stream - only when waiting for init or active
                 if (actorState == ActorState.WaitingForInit || actorState is ActorState.Active) {
                     claudeStreamChannel.onReceive { streamPacket ->
-                        println("[Actor] Processing Claude stream message: ${streamPacket.streamMessage::class.simpleName}")
+                        log.debug("Processing Claude stream message: ${streamPacket.streamMessage::class.simpleName}")
                         handleClaudeStreamMessage(streamPacket)
                     }
                 }
@@ -211,7 +214,7 @@ class Session(
                 // PRIORITY 3: User commands - only when ready to process them
                 if (actorState != ActorState.Active.WaitingForResponse) {
                     userCommandChannel.onReceive { command ->
-                        println("[Actor] Processing user command: $command")
+                        log.debug("Processing user command: $command")
                         decrementPendingCount()
                         handleUserCommand(command)
                     }
@@ -231,7 +234,7 @@ class Session(
                 when (actorState) {
                     ActorState.WaitingForInit -> {
                         // First message during init - send immediately to trigger Claude
-                        println("[Actor] First message during init - sending immediately")
+                        log.debug("First message during init - sending immediately")
                         handleFirstMessageDuringInit(command)
                     }
 
@@ -242,7 +245,7 @@ class Session(
 
                     else -> {
                         // Inactive, Starting, Stopping, Error states
-                        println("[Actor] Cannot send message in state: $actorState")
+                        log.warn { "Cannot send message in state: $actorState" }
                         _events.emit(StreamSessionEvent.Warning("Cannot send message: session not active"))
                     }
                 }
@@ -252,7 +255,7 @@ class Session(
                 if (actorState == ActorState.Inactive) {
                     performStart(command.scope)
                 } else {
-                    println("[Actor] Cannot start - already in state: $actorState")
+                    log.warn { "Cannot start - already in state: $actorState" }
                     _events.emit(StreamSessionEvent.Warning("Session already active or starting"))
                 }
             }
@@ -261,7 +264,7 @@ class Session(
                 if (actorState != ActorState.Inactive && actorState != ActorState.Stopping) {
                     performStop()
                 } else {
-                    println("[Actor] Already stopping or inactive")
+                    log.debug("Already stopping or inactive")
                 }
             }
         }
@@ -276,7 +279,7 @@ class Session(
                 if (actorState is ActorState.Active) {
                     performInterrupt()
                 } else {
-                    println("[Actor] Cannot interrupt - session not active (state: $actorState)")
+                    log.warn { "Cannot interrupt - session not active (state: $actorState)" }
                     _events.emit(StreamSessionEvent.Warning("Cannot interrupt inactive session"))
                 }
             }
@@ -284,7 +287,7 @@ class Session(
             is PriorityCommand.ForceSend -> {
                 when {
                     actorState !is ActorState.Active -> {
-                        println("[Actor] Cannot force send - session not active (state: $actorState)")
+                        log.warn { "Cannot force send - session not active (state: $actorState)" }
                         _events.emit(StreamSessionEvent.Warning("Cannot force send: session inactive"))
                     }
 
@@ -298,12 +301,12 @@ class Session(
                                 val textContent = pendingCommand.chatMessage.content
                                     .filterIsInstance<ChatMessage.ContentItem.UserMessage>()
                                     .joinToString(" ") { it.text }
-                                println("[Actor] Force sending extracted message: ${textContent.take(50)}...")
+                                log.debug("Force sending extracted message: ${textContent.take(50)}...")
                                 try {
                                     // Directly send the message bypassing normal flow
                                     performSendMessage(pendingCommand)
                                 } catch (e: Exception) {
-                                    println("[Actor] Force send failed: ${e.message}")
+                                    log.error(e) { "Force send failed" }
                                     _events.emit(StreamSessionEvent.Error("Force send failed: ${e.message}"))
                                 }
                             }
@@ -311,12 +314,12 @@ class Session(
                             pendingCommand != null -> {
                                 // Put non-SendMessage command back (count stays the same)
                                 userCommandChannel.send(pendingCommand)
-                                println("[Actor] No SendMessage to force send, returned command to channel")
+                                log.debug("No SendMessage to force send, returned command to channel")
                                 _events.emit(StreamSessionEvent.Warning("No pending message to force send"))
                             }
 
                             else -> {
-                                println("[Actor] No commands in channel to force send")
+                                log.debug("No commands in channel to force send")
                                 _events.emit(StreamSessionEvent.Warning("No pending commands to force send"))
                             }
                         }
@@ -341,7 +344,7 @@ class Session(
             .joinToString(" ") { it.text }
 
         if (textContent.isBlank()) {
-            println("[Actor] Skipping empty/blank message")
+            log.debug("Skipping empty/blank message")
             return
         }
 
@@ -357,7 +360,7 @@ class Session(
                         .joinToString("\n") { it.text }
                 }
             }
-            println("[Actor] Sending message: ${messageText.take(100)}${if (messageText.length > 100) "..." else ""}")
+            log.debug { "Sending message: ${messageText.take(100)}${if (messageText.length > 100) "..." else ""}" }
 
             _messageOutputStream.emit(chatMessage)
 
@@ -367,7 +370,7 @@ class Session(
             claudeWrapper.sendMessage(streamMessage)
 
         } catch (e: Exception) {
-            println("[Actor] Failed to send first message: ${e.message}")
+            log.error(e) { "Failed to send first message" }
             _events.emit(StreamSessionEvent.Error("First message failed: ${e.message}"))
         }
     }
@@ -384,7 +387,7 @@ class Session(
             if (streamMessage is ClaudeCodeStreamJsonLine.Result) {
                 if (actorState == ActorState.Active.WaitingForResponse) {
                     actorState = ActorState.Active.Ready
-                    println("[Actor] Response complete - back to Ready state")
+                    log.debug("Response complete - back to Ready state")
                     soundNotificationService.playReadySound()
                 }
                 _isWaitingForResponse.value = false
@@ -398,12 +401,12 @@ class Session(
 
                 // These should NEVER come from Claude CLI - log as warnings
                 is ClaudeCodeStreamJsonLine.User -> {
-                    println("[Actor] WARNING: Received User message from Claude stream - this shouldn't happen!")
+                    log.warn("Received User message from Claude stream - this shouldn't happen!")
                     _events.emit(StreamSessionEvent.Warning("Unexpected User message from Claude"))
                 }
 
                 is ClaudeCodeStreamJsonLine.ControlRequest -> {
-                    println("[Actor] WARNING: Received ControlRequest from Claude stream - this shouldn't happen!")
+                    log.warn("Received ControlRequest from Claude stream - this shouldn't happen!")
                     _events.emit(StreamSessionEvent.Warning("Unexpected ControlRequest from Claude"))
                 }
             }
@@ -414,7 +417,7 @@ class Session(
             _messageOutputStream.emit(chatMessage)
 
         } catch (e: Exception) {
-            println("[Actor] Error processing stream message: ${e.message}")
+            log.error(e) { "Error processing stream message" }
             _events.emit(StreamSessionEvent.Error("Message processing error: ${e.message}"))
         }
     }
@@ -425,7 +428,7 @@ class Session(
      * Actor implementation of start command
      */
     private suspend fun performStart(scope: CoroutineScope) {
-        println("[Actor] Starting session for project: $projectPath")
+        log.info { "Starting session for project: $projectPath" }
 
         require(actorState == ActorState.Inactive) {
             "Session is already active or starting. Current state: $actorState"
@@ -437,7 +440,7 @@ class Session(
         try {
             // Load historical messages if resuming (skip if default/new session)
             if (currentSessionId != ClaudeSessionUuid.DEFAULT) {
-                println("[Actor] Loading historical messages from session: $currentSessionId")
+                log.info { "Loading historical messages from session: $currentSessionId" }
                 loadHistoricalMessages(currentSessionId)
             }
 
@@ -463,10 +466,10 @@ class Session(
             actorState = ActorState.WaitingForInit
             _events.emit(StreamSessionEvent.Started)
 
-            println("[Actor] Session started successfully")
+            log.info("Session started successfully")
 
         } catch (e: Exception) {
-            println("[Actor] Failed to start session: ${e.message}")
+            log.error(e) { "Failed to start session" }
             actorState = ActorState.Error
 
             performCleanup()
@@ -481,25 +484,25 @@ class Session(
         val currentState = actorState
 
         if (currentState == ActorState.Inactive) {
-            println("[Actor] Session is already inactive")
+            log.debug("Session is already inactive")
             return
         }
 
         if (currentState == ActorState.Stopping) {
-            println("[Actor] Session is already stopping")
+            log.debug("Session is already stopping")
             return
         }
 
         actorState = ActorState.Stopping
 
         try {
-            println("[Actor] Stopping session...")
+            log.info("Stopping session...")
 
             // 1. FIRST: Stop Claude process (kills mcp-proxy automatically)
             try {
                 claudeWrapper.stop()
             } catch (e: Exception) {
-                println("[Actor] Error stopping Claude process: ${e.message}")
+                log.error(e) { "Error stopping Claude process" }
             }
 
             // Reset state
@@ -508,10 +511,10 @@ class Session(
             actorScope = null
 
             _events.emit(StreamSessionEvent.Stopped)
-            println("[Actor] Session stopped successfully")
+            log.info("Session stopped successfully")
 
         } catch (e: Exception) {
-            println("[Actor] Error during stop: ${e.message}")
+            log.error(e) { "Error during stop" }
             actorState = ActorState.Error
             _isWaitingForResponse.value = false
             actorScope = null
@@ -536,7 +539,7 @@ class Session(
             .joinToString(" ") { it.text }
 
         if (textContent.isBlank()) {
-            println("[Actor] Skipping empty/blank message")
+            log.debug("Skipping empty/blank message")
             return
         }
 
@@ -552,7 +555,7 @@ class Session(
                         .joinToString("\n") { it.text }
                 }
             }
-            println("[Actor] Sending message: ${messageText.take(100)}${if (messageText.length > 100) "..." else ""}")
+            log.debug { "Sending message: ${messageText.take(100)}${if (messageText.length > 100) "..." else ""}" }
 
             _messageOutputStream.emit(chatMessage)
 
@@ -563,7 +566,7 @@ class Session(
             claudeWrapper.sendMessage(streamMessage)
 
         } catch (e: Exception) {
-            println("[Actor] Failed to send message: ${e.message}")
+            log.error(e) { "Failed to send message" }
             _events.emit(StreamSessionEvent.Error("Send failed: ${e.message}"))
         }
     }
@@ -573,7 +576,7 @@ class Session(
      */
     private suspend fun performInterrupt() {
         try {
-            println("[Actor] Sending interrupt request...")
+            log.debug("Sending interrupt request...")
 
             // Generate unique request ID
             val requestId = "req_${System.currentTimeMillis()}_${kotlin.random.Random.nextInt(10000)}"
@@ -586,10 +589,10 @@ class Session(
             claudeWrapper.sendControlMessage(controlRequest)
 
             _events.emit(StreamSessionEvent.InterruptSent)
-            println("[Actor] Interrupt sent successfully")
+            log.debug("Interrupt sent successfully")
 
         } catch (e: Exception) {
-            println("[Actor] Interrupt failed: ${e.message}")
+            log.error(e) { "Interrupt failed" }
             _events.emit(StreamSessionEvent.Error("Interrupt failed: ${e.message}"))
         }
     }
@@ -608,7 +611,7 @@ class Session(
                         claudeStreamChannel.send(streamPacket)
                     }
             } catch (e: Exception) {
-                println("[Actor] Stream collector error: ${e.message}")
+                log.error(e) { "Stream collector error" }
                 _events.emit(StreamSessionEvent.Error("Stream collection failed: ${e.message}"))
             }
         }
@@ -625,17 +628,17 @@ class Session(
                     try {
                         when {
                             ChatMessageSoundDetector.shouldPlayErrorSound(chatMessage) -> {
-                                println("[Actor] Playing error sound for message type: ${chatMessage.role}")
+                                log.debug("Playing error sound for message type: ${chatMessage.role}")
                                 soundNotificationService.playErrorSound()
                             }
 
                             ChatMessageSoundDetector.shouldPlayMessageSound(chatMessage) -> {
-                                println("[Actor] Playing message sound for message type: ${chatMessage.role}")
+                                log.debug("Playing message sound for message type: ${chatMessage.role}")
                                 soundNotificationService.playMessageSound()
                             }
                         }
                     } catch (e: Exception) {
-                        println("[Actor] Sound notification error: ${e.message}")
+                        log.error(e) { "Sound notification error" }
                     }
                 }
         }
@@ -649,7 +652,7 @@ class Session(
             claudeWrapper.stop()
             actorScope = null
         } catch (e: Exception) {
-            println("[Actor] Error during cleanup: ${e.message}")
+            log.error(e) { "Error during cleanup" }
         }
     }
 
@@ -663,15 +666,15 @@ class Session(
             val historicalMessages = sessionJsonlService.loadMessagesFromSession(oldSessionId, projectPath)
 
             if (historicalMessages.isNotEmpty()) {
-                println("[Actor] Loaded ${historicalMessages.size} historical messages")
+                log.info { "Loaded ${historicalMessages.size} historical messages" }
                 historicalMessages.forEach { _messageOutputStream.emit(it.copy(isHistorical = true)) }
                 _events.emit(StreamSessionEvent.HistoricalMessagesLoaded(historicalMessages.size))
             } else {
-                println("[Actor] No historical messages found for session: $oldSessionId")
+                log.debug("No historical messages found for session: $oldSessionId")
             }
 
         } catch (e: Exception) {
-            println("[Actor] Failed to load historical messages: ${e.message}")
+            log.error(e) { "Failed to load historical messages" }
             _events.emit(StreamSessionEvent.Warning("Failed to load history: ${e.message}"))
         }
     }
@@ -685,7 +688,7 @@ class Session(
 
             // Update session ID if changed
             if (currentSessionId != newSessionId) {
-                println("[Actor] Session ID updated: $currentSessionId -> $newSessionId")
+                log.info { "Session ID updated: $currentSessionId -> $newSessionId" }
                 currentSessionId = newSessionId
                 _claudeSessionId.value = newSessionId
                 _events.emit(StreamSessionEvent.SessionIdChangedOnStart(newSessionId))
@@ -693,15 +696,15 @@ class Session(
                 // Reset to waiting state on session change (like after /compact)
                 if (actorState is ActorState.Active) {
                     actorState = ActorState.WaitingForInit
-                    println("[Actor] Session ID changed - back to WaitingForInit")
+                    log.debug("Session ID changed - back to WaitingForInit")
                 }
             }
 
             // Move from WaitingForInit to Active.Ready on init message
             if (actorState == ActorState.WaitingForInit) {
                 actorState = ActorState.Active.Ready
-                println("[Actor] Session initialized with ID: $newSessionId")
-                println("[Actor] Session now Active.Ready - user commands unblocked")
+                log.info { "Session initialized with ID: $newSessionId" }
+                log.debug("Session now Active.Ready - user commands unblocked")
 
                 // No need to process buffered messages - they're waiting in channel!
             }
@@ -712,7 +715,7 @@ class Session(
      * Handle control responses from Claude CLI
      */
     private suspend fun handleControlResponse(response: ClaudeCodeStreamJsonLine.ControlResponse) {
-        println("[Actor] Control response: ${response.response.subtype}")
+        log.debug("Control response: ${response.response.subtype}")
 
         when (response.response.subtype) {
             "success" -> {
@@ -736,7 +739,7 @@ class Session(
     fun initializeActor(scope: CoroutineScope) {
         if (actorJob == null) {
             actorJob = scope.launch { actorLoop() }
-            println("[Session] Actor initialized")
+            log.debug("Actor initialized")
         }
     }
 
