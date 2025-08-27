@@ -101,7 +101,7 @@ class CreateAgentTool(
         val allInstructions = mutableListOf<ChatMessage.Instruction>()
         
         // Add source instruction (replaces sender)
-        allInstructions.add(ChatMessage.Instruction.Source(user = false, agentTabId = input.parent_tab_id))
+        allInstructions.add(ChatMessage.Instruction.Source.Agent(input.parent_tab_id))
         
         // Add response expected instruction if needed
         if (input.expects_response) {

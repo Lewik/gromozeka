@@ -95,7 +95,7 @@ class TellAgentTool(
         val allInstructions = mutableListOf<ChatMessage.Instruction>()
         
         // Add source instruction (replaces sender)
-        allInstructions.add(ChatMessage.Instruction.Source(user = false, agentTabId = senderTabId))
+        allInstructions.add(ChatMessage.Instruction.Source.Agent(senderTabId))
         
         // Add response expected instruction if needed
         if (input.expects_response) {

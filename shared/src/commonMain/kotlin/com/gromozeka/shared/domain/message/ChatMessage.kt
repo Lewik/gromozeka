@@ -260,37 +260,33 @@ data class ChatMessage(
      */
     @Serializable
     sealed class Instruction {
-        abstract val tagName: String
         abstract val title: String
         abstract val description: String
         abstract fun serializeContent(): String
+        abstract fun toXmlLine(): String
         
         companion object {
+            private data class InstructionParser(
+                val tagName: String,
+                val fromContent: (String) -> Instruction?
+            )
+            
+            private val instructionParsers = listOf(
+                InstructionParser(UserInstruction.TAG_NAME, UserInstruction::fromContent),
+                InstructionParser(Source.TAG_NAME, Source::fromContent),
+                InstructionParser(ResponseExpected.TAG_NAME, ResponseExpected::fromContent)
+            )
+            
             fun parseFromXmlLine(line: String): Instruction? {
                 val trimmed = line.trim()
                 
-                if (trimmed.startsWith("<user-instruction>") && trimmed.endsWith("</user-instruction>")) {
-                    val content = trimmed.removePrefix("<user-instruction>").removeSuffix("</user-instruction>")
-                    val parts = content.split(":", limit = 3)
-                    if (parts.size == 3) {
-                        return UserInstruction(parts[0].trim(), parts[1].trim(), parts[2].trim())
-                    }
-                }
-                
-                if (trimmed.startsWith("<source>") && trimmed.endsWith("</source>")) {
-                    val content = trimmed.removePrefix("<source>").removeSuffix("</source>")
-                    return when {
-                        content == "user" -> Source(user = true)
-                        content.startsWith("agent:") -> Source(user = false, agentTabId = content.removePrefix("agent:"))
-                        else -> null
-                    }
-                }
-                
-                if (trimmed.startsWith("<response-expected>") && trimmed.endsWith("</response-expected>")) {
-                    val content = trimmed.removePrefix("<response-expected>").removeSuffix("</response-expected>")
-                    val match = Regex("target_tab_id: (.+)").find(content)
-                    if (match != null) {
-                        return ResponseExpected(match.groupValues[1])
+                for (parser in instructionParsers) {
+                    val startTag = "<${parser.tagName}>"
+                    val endTag = "</${parser.tagName}>"
+                    
+                    if (trimmed.startsWith(startTag) && trimmed.endsWith(endTag)) {
+                        val content = trimmed.removePrefix(startTag).removeSuffix(endTag)
+                        return parser.fromContent(content)
                     }
                 }
                 
@@ -304,33 +300,73 @@ data class ChatMessage(
             override val title: String,     // "Ultrathink", "Readonly" 
             override val description: String // "Режим глубокого анализа..."
         ) : Instruction() {
-            override val tagName = "user-instruction"
             override fun serializeContent() = "$id:$title:$description"
+            override fun toXmlLine() = "<$TAG_NAME>${serializeContent()}</$TAG_NAME>"
+            
+            companion object {
+                const val TAG_NAME = "user-instruction"
+                
+                fun fromContent(content: String): UserInstruction? {
+                    val parts = content.split(":", limit = 3)
+                    return if (parts.size == 3) {
+                        UserInstruction(parts[0].trim(), parts[1].trim(), parts[2].trim())
+                    } else null
+                }
+            }
         }
         
         @Serializable
-        data class Source(
-            val user: Boolean = true,
-            val agentTabId: String? = null
-        ) : Instruction() {
-            override val tagName = "source"
-            override val title = if (user) "User" else "Agent"
-            override val description = if (user) {
-                "Message from user"
-            } else {
-                "Message from agent (Tab ID: ${agentTabId ?: "unknown"})"
+        sealed class Source : Instruction() {
+            override fun toXmlLine() = "<$TAG_NAME>${serializeContent()}</$TAG_NAME>"
+            
+            @Serializable
+            @SerialName("user")
+            object User : Source() {
+                override val title = "User"
+                override val description = "Message from user"
+                override fun serializeContent() = "user"
             }
-            override fun serializeContent() = if (user) "user" else "agent:$agentTabId"
+            
+            @Serializable
+            @SerialName("agent")
+            data class Agent(val tabId: String) : Source() {
+                override val title = "Agent"
+                override val description = "Message from agent (Tab ID: $tabId)"
+                override fun serializeContent() = "agent:$tabId"
+            }
+            
+            companion object {
+                const val TAG_NAME = "source"
+                
+                fun fromContent(content: String): Source? {
+                    return when {
+                        content == "user" -> User
+                        content.startsWith("agent:") -> Agent(content.removePrefix("agent:"))
+                        else -> null
+                    }
+                }
+            }
         }
         
         @Serializable
         data class ResponseExpected(
             val targetTabId: String
         ) : Instruction() {
-            override val tagName = "response-expected"
             override val title = "Response Expected"
             override val description = "This agent expects a response back to Tab ID: $targetTabId"
             override fun serializeContent() = "Use mcp__gromozeka-self-control__tell_agent with target_tab_id: $targetTabId"
+            override fun toXmlLine() = "<$TAG_NAME>${serializeContent()}</$TAG_NAME>"
+            
+            companion object {
+                const val TAG_NAME = "response-expected"
+                
+                fun fromContent(content: String): ResponseExpected? {
+                    val match = Regex("target_tab_id: (.+)").find(content)
+                    return if (match != null) {
+                        ResponseExpected(match.groupValues[1])
+                    } else null
+                }
+            }
         }
     }
 

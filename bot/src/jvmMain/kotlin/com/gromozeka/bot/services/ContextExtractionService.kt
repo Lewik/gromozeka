@@ -37,7 +37,7 @@ class ContextExtractionService(
                     "Ultrathink",
                     "Use ultrathink mode"
                 ),
-                ChatMessage.Instruction.Source(user = true)
+                ChatMessage.Instruction.Source.User
             ),
             uuid = java.util.UUID.randomUUID().toString(),
             timestamp = Clock.System.now(),

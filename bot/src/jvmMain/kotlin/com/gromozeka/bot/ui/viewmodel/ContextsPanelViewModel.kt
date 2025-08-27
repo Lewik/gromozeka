@@ -122,9 +122,9 @@ class ContextsPanelViewModel(
 
             // Create ChatMessage with context content and proper source
             val sourceInstruction = if (parentTabId != null) {
-                ChatMessage.Instruction.Source(user = false, agentTabId = parentTabId)
+                ChatMessage.Instruction.Source.Agent(parentTabId)
             } else {
-                ChatMessage.Instruction.Source(user = true)
+                ChatMessage.Instruction.Source.User
             }
             
             val chatMessage = ChatMessage(

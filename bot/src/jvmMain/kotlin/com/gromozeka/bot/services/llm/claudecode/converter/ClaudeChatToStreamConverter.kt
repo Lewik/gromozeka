@@ -61,7 +61,7 @@ class ClaudeChatToStreamConverter {
     ): String = buildString {
         // Add instruction tags (XMLL format - one per line)
         instructions.forEach { instruction ->
-            append("<${instruction.tagName}>${instruction.serializeContent()}</${instruction.tagName}>")
+            append(instruction.toXmlLine())
             append("\n")
         }
         

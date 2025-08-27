@@ -78,8 +78,8 @@ open class AppViewModel(
         )
 
         // Extract parentTabId from ChatMessage.instructions if present
-        val parentTabId = initialMessage?.instructions?.filterIsInstance<ChatMessage.Instruction.Source>()
-            ?.firstOrNull { !it.user }?.agentTabId
+        val parentTabId = initialMessage?.instructions?.filterIsInstance<ChatMessage.Instruction.Source.Agent>()
+            ?.firstOrNull()?.tabId
 
         // Create TabViewModel for this tab
         val initialTabUiState = UIState.Tab(

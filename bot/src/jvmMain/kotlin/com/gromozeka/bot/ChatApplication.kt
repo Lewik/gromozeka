@@ -297,7 +297,7 @@ fun ApplicationScope.ChatWindow(
                 val chatMessage = ChatMessage(
                     role = ChatMessage.Role.USER,
                     content = listOf(ChatMessage.ContentItem.UserMessage(initialMessage)),
-                    instructions = listOf(ChatMessage.Instruction.Source(user = true)),
+                    instructions = listOf(ChatMessage.Instruction.Source.User),
                     uuid = UUID.randomUUID().toString(),
                     timestamp = Clock.System.now(),
                     llmSpecificMetadata = null
