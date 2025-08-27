@@ -35,6 +35,7 @@ class MacOSGlobalHotkeyController(
 
     private var isRegistered = false
     private var isPTTActive = false
+    private var isKeyRemapped = false
 
     override fun initializeService() {
         startListeningToSettings()
@@ -94,6 +95,11 @@ class MacOSGlobalHotkeyController(
     }
 
     private fun setupKeyRemapping() {
+        if (isKeyRemapped) {
+            log.debug("Key remapping already active, skipping")
+            return
+        }
+        
         try {
             // Remap § key to F13 to prevent character typing
             val command = listOf(
@@ -101,6 +107,7 @@ class MacOSGlobalHotkeyController(
                 """{"UserKeyMapping":[{"HIDKeyboardModifierMappingSrc":0x700000064,"HIDKeyboardModifierMappingDst":0x700000068}]}"""
             )
             ProcessBuilder(command).start().waitFor()
+            isKeyRemapped = true
             log.info("Remapped § key to F13 via hidutil")
         } catch (e: Exception) {
             log.warn("Could not remap § key: ${e.message}")
@@ -108,10 +115,15 @@ class MacOSGlobalHotkeyController(
     }
 
     private fun clearKeyRemapping() {
+        if (!isKeyRemapped) {
+            return
+        }
+        
         try {
             // Clear all key remappings
             val command = listOf("hidutil", "property", "--set", """{"UserKeyMapping":[]}""")
             ProcessBuilder(command).start().waitFor()
+            isKeyRemapped = false
             log.info("Cleared key remapping via hidutil")
         } catch (e: Exception) {
             log.warn("Could not clear key remapping: ${e.message}")
@@ -119,6 +131,12 @@ class MacOSGlobalHotkeyController(
     }
 
     private fun initialize(): Boolean {
+        // Prevent double initialization
+        if (isRegistered) {
+            log.debug("Global hotkey service already initialized, skipping")
+            return true
+        }
+        
         try {
             // § key is remapped to F13 via hidutil to prevent typing
             setupKeyRemapping()
@@ -136,6 +154,9 @@ class MacOSGlobalHotkeyController(
         } catch (ex: NativeHookException) {
             log.error("Failed to register native hook: ${ex.message}")
             log.error("Make sure Input Monitoring permission is granted in System Settings")
+            
+            // Clear remapping if registration failed
+            clearKeyRemapping()
             return false
         }
     }
