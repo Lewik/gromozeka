@@ -216,13 +216,14 @@ val extractNativeLibraries = tasks.register("extractNativeLibraries") {
     group = "build"
     
     val nativeLibsDir = layout.projectDirectory.dir("src/jvmMain/resources/native-libs")
+    val tempDir = layout.buildDirectory.dir("tmp/jnativehook")
+    val runtimeClasspath = configurations.named("jvmRuntimeClasspath")
     
-    inputs.files(configurations.named("jvmRuntimeClasspath"))
+    inputs.files(runtimeClasspath)
     outputs.dir(nativeLibsDir)
     
     doLast {
-        val runtimeClasspath = configurations.getByName("jvmRuntimeClasspath")
-        val jnativeHookJar = runtimeClasspath.files
+        val jnativeHookJar = runtimeClasspath.get().files
             .find { it.name.contains("jnativehook") && it.name.endsWith(".jar") }
         
         if (jnativeHookJar == null) {
@@ -231,18 +232,30 @@ val extractNativeLibraries = tasks.register("extractNativeLibraries") {
         
         println("Extracting JNativeHook native libraries for macOS...")
         
-        val tempDir = layout.buildDirectory.dir("tmp/jnativehook").get()
+        // Clean temp directory first
+        val tempDirFile = tempDir.get().asFile
+        if (tempDirFile.exists()) {
+            tempDirFile.deleteRecursively()
+        }
         
-        // Extract native libraries using copy
-        copy {
-            from(zipTree(jnativeHookJar)) {
-                include("com/github/kwhat/jnativehook/lib/darwin/**/*.dylib")
-            }
-            into(tempDir)
+        // Extract using java.util.zip instead of Gradle's zipTree
+        tempDirFile.mkdirs()
+        
+        java.util.zip.ZipFile(jnativeHookJar).use { zip ->
+            zip.entries().asSequence()
+                .filter { it.name.contains("com/github/kwhat/jnativehook/lib/darwin/") && it.name.endsWith(".dylib") }
+                .forEach { entry ->
+                    val outputFile = File(tempDirFile, entry.name)
+                    outputFile.parentFile.mkdirs()
+                    zip.getInputStream(entry).use { input ->
+                        outputFile.outputStream().use { output ->
+                            input.copyTo(output)
+                        }
+                    }
+                }
         }
         
         // Move to target location with proper names
-        val tempDirFile = tempDir.asFile
         val x86File = File(tempDirFile, "com/github/kwhat/jnativehook/lib/darwin/x86_64/libJNativeHook.dylib")
         val armFile = File(tempDirFile, "com/github/kwhat/jnativehook/lib/darwin/arm64/libJNativeHook.dylib")
         
@@ -260,7 +273,7 @@ val extractNativeLibraries = tasks.register("extractNativeLibraries") {
         }
         
         // Clean up temp directory
-        delete(tempDir)
+        tempDirFile.deleteRecursively()
     }
 }
 
