@@ -211,19 +211,22 @@ tasks.register<Test>("convertLogo") {
     outputs.dir("src/jvmMain/resources/logos")
 }
 
-val extractNativeLibraries = tasks.register("extractNativeLibraries") {
-    description = "Extract JNativeHook native libraries for packaged applications"
-    group = "build"
+abstract class ExtractNativeLibrariesTask : DefaultTask() {
+    @get:InputFiles
+    abstract val runtimeClasspath: ConfigurableFileCollection
     
-    val nativeLibsDir = layout.projectDirectory.dir("src/jvmMain/resources/native-libs")
-    val tempDir = layout.buildDirectory.dir("tmp/jnativehook")
-    val runtimeClasspath = configurations.named("jvmRuntimeClasspath")
+    @get:OutputDirectory
+    abstract val nativeLibsDir: DirectoryProperty
     
-    inputs.files(runtimeClasspath)
-    outputs.dir(nativeLibsDir)
+    @get:Inject
+    abstract val fileOperations: FileSystemOperations
     
-    doLast {
-        val jnativeHookJar = runtimeClasspath.get().files
+    @get:Inject
+    abstract val archiveOperations: ArchiveOperations
+    
+    @TaskAction
+    fun extract() {
+        val jnativeHookJar = runtimeClasspath.files
             .find { it.name.contains("jnativehook") && it.name.endsWith(".jar") }
         
         if (jnativeHookJar == null) {
@@ -232,34 +235,22 @@ val extractNativeLibraries = tasks.register("extractNativeLibraries") {
         
         println("Extracting JNativeHook native libraries for macOS...")
         
-        // Clean temp directory first
-        val tempDirFile = tempDir.get().asFile
-        if (tempDirFile.exists()) {
-            tempDirFile.deleteRecursively()
-        }
+        val tempDir = temporaryDir
+        tempDir.mkdirs()
         
-        // Extract using java.util.zip instead of Gradle's zipTree
-        tempDirFile.mkdirs()
-        
-        java.util.zip.ZipFile(jnativeHookJar).use { zip ->
-            zip.entries().asSequence()
-                .filter { it.name.contains("com/github/kwhat/jnativehook/lib/darwin/") && it.name.endsWith(".dylib") }
-                .forEach { entry ->
-                    val outputFile = File(tempDirFile, entry.name)
-                    outputFile.parentFile.mkdirs()
-                    zip.getInputStream(entry).use { input ->
-                        outputFile.outputStream().use { output ->
-                            input.copyTo(output)
-                        }
-                    }
-                }
+        // Use injected services instead of project references
+        fileOperations.copy {
+            from(archiveOperations.zipTree(jnativeHookJar)) {
+                include("com/github/kwhat/jnativehook/lib/darwin/**/*.dylib")
+            }
+            into(tempDir)
         }
         
         // Move to target location with proper names
-        val x86File = File(tempDirFile, "com/github/kwhat/jnativehook/lib/darwin/x86_64/libJNativeHook.dylib")
-        val armFile = File(tempDirFile, "com/github/kwhat/jnativehook/lib/darwin/arm64/libJNativeHook.dylib")
+        val x86File = File(tempDir, "com/github/kwhat/jnativehook/lib/darwin/x86_64/libJNativeHook.dylib")
+        val armFile = File(tempDir, "com/github/kwhat/jnativehook/lib/darwin/arm64/libJNativeHook.dylib")
         
-        val nativeLibsDirFile = nativeLibsDir.asFile
+        val nativeLibsDirFile = nativeLibsDir.asFile.get()
         nativeLibsDirFile.mkdirs()
         
         if (x86File.exists()) {
@@ -271,10 +262,15 @@ val extractNativeLibraries = tasks.register("extractNativeLibraries") {
             armFile.copyTo(File(nativeLibsDirFile, "libJNativeHook-arm64.dylib"), true)
             println("Extracted arm64 library")
         }
-        
-        // Clean up temp directory
-        tempDirFile.deleteRecursively()
     }
+}
+
+val extractNativeLibraries = tasks.register<ExtractNativeLibrariesTask>("extractNativeLibraries") {
+    description = "Extract JNativeHook native libraries for packaged applications"
+    group = "build"
+    
+    runtimeClasspath.from(configurations.named("jvmRuntimeClasspath"))
+    nativeLibsDir.set(layout.projectDirectory.dir("src/jvmMain/resources/native-libs"))
 }
 
 // Автоматически извлекать нативные библиотеки перед обработкой ресурсов и сборкой DMG
