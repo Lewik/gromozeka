@@ -134,8 +134,9 @@ class ClaudeCodeStreamingWrapper(
             // See docs/claude-code-streaming-behavior.md for detailed analysis.
             
             // Build claude command arguments as list for proper shell escaping
+            // Use full path to claude to avoid PATH issues in macOS app bundle
             val claudeArgs = mutableListOf(
-                "claude",
+                "/Users/lewik/.nvm/versions/node/v20.10.0/bin/claude",
                 "--output-format", "stream-json",
                 "--input-format", "stream-json",
                 "--verbose",
