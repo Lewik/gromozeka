@@ -22,6 +22,7 @@ data class Settings(
 
     // AI Settings
     val claudeModel: String = "sonnet",
+    val claudeCliPath: String? = null, // Path to Claude CLI executable (auto-detected if null)
     val includeCurrentTime: Boolean = true,
     val responseFormat: ResponseFormat = ResponseFormat.XML_INLINE,
 

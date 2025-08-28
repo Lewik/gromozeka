@@ -114,6 +114,8 @@ class SettingsService {
 
     private fun createDefaultSettings(): Settings {
         val detectedScale = detectOptimalUIScale()
+        val detectedClaudePath = ClaudeCodeStreamingWrapper.detectClaudePath()
+        
         val defaults = Settings(
             enableTts = true,
             enableStt = true,
@@ -122,8 +124,15 @@ class SettingsService {
             enableMessageSounds = false,
             enableReadySounds = false,
             soundVolume = 1.0f,
-            uiScale = detectedScale // Auto-detect once on first launch, then user controls manually
+            uiScale = detectedScale, // Auto-detect once on first launch, then user controls manually
+            claudeCliPath = detectedClaudePath // Auto-detect Claude CLI path
         )
+        
+        if (detectedClaudePath != null) {
+            log.info("Auto-detected Claude CLI path: $detectedClaudePath")
+        } else {
+            log.warn("Could not auto-detect Claude CLI path, will use fallback")
+        }
 
         settingsFile.writeText(json.encodeToString(defaults))
         log.info("Created default settings file: ${settingsFile.absolutePath}")

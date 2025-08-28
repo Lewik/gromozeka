@@ -1,6 +1,7 @@
 package com.gromozeka.bot.ui
 
 import com.gromozeka.bot.model.AgentDefinition
+import com.gromozeka.bot.services.ClaudeCodeStreamingWrapper
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.shrinkHorizontally
@@ -195,6 +196,40 @@ fun SettingsPanel(
                             options = listOf("sonnet", "haiku", "opus"),
                             onValueChange = { onSettingsChange(settings.copy(claudeModel = it)) }
                         )
+                        
+                        // Claude CLI Path with auto-detect button
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.Bottom,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                TextFieldSettingItem(
+                                    label = "Claude CLI Path",
+                                    description = "Path to Claude CLI executable",
+                                    value = settings.claudeCliPath ?: "",
+                                    placeholder = "/path/to/claude",
+                                    onValueChange = { 
+                                        onSettingsChange(settings.copy(claudeCliPath = it.ifBlank { null })) 
+                                    }
+                                )
+                            }
+                            
+                            Button(
+                                onClick = {
+                                    val detectedPath = ClaudeCodeStreamingWrapper.detectClaudePath()
+                                    if (detectedPath != null) {
+                                        onSettingsChange(settings.copy(claudeCliPath = detectedPath))
+                                        log.info { "Auto-detected Claude CLI path: $detectedPath" }
+                                    } else {
+                                        log.warn { "Could not auto-detect Claude CLI path" }
+                                    }
+                                },
+                                modifier = Modifier.padding(top = 24.dp)
+                            ) {
+                                Text("Auto-detect")
+                            }
+                        }
 
                         DropdownSettingItem(
                             label = translation.settings.responseFormatLabel,
@@ -746,6 +781,41 @@ private fun PasswordSettingItem(
             onValueChange = onValueChange,
             modifier = Modifier.fillMaxWidth(),
             visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
+            singleLine = true
+        )
+    }
+}
+
+@Composable
+private fun TextFieldSettingItem(
+    label: String,
+    description: String,
+    value: String,
+    placeholder: String = "",
+    onValueChange: (String) -> Unit,
+) {
+    Column {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium
+        )
+
+        if (description.isNotEmpty()) {
+            Text(
+                text = description,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+            )
+        }
+
+        OutlinedTextField(
+            value = value,
+            onValueChange = onValueChange,
+            modifier = Modifier.fillMaxWidth(),
+            placeholder = if (placeholder.isNotEmpty()) {
+                { Text(placeholder, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)) }
+            } else null,
             singleLine = true
         )
     }

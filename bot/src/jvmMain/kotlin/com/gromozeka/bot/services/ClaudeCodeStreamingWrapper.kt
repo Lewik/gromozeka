@@ -28,6 +28,74 @@ class ClaudeCodeStreamingWrapper(
     private val settingsService: SettingsService,
 ) : ClaudeWrapper {
     private val log = KLoggers.logger(this)
+    
+    companion object {
+        /**
+         * Attempts to auto-detect Claude CLI installation path
+         * Tries multiple strategies to find the executable
+         */
+        fun detectClaudePath(): String? {
+            val logger = KLoggers.logger(ClaudeCodeStreamingWrapper::class)
+            
+            // Strategy 1: Try to find via login shell (works for most installations)
+            try {
+                val process = ProcessBuilder("/bin/zsh", "-l", "-c", "command -v claude")
+                    .redirectError(ProcessBuilder.Redirect.DISCARD)
+                    .start()
+                
+                val result = process.inputStream.bufferedReader().readText().trim()
+                if (result.isNotEmpty() && File(result).exists()) {
+                    logger.info { "Found Claude CLI via zsh login shell: $result" }
+                    return result
+                }
+            } catch (e: Exception) {
+                logger.debug { "Failed to find Claude via zsh: ${e.message}" }
+            }
+            
+            // Strategy 2: Check common installation paths
+            val commonPaths = listOf(
+                // NVM installations (various node versions)
+                "/Users/${System.getProperty("user.name")}/.nvm/versions/node/v20.10.0/bin/claude",
+                "/Users/${System.getProperty("user.name")}/.nvm/versions/node/v22.0.0/bin/claude",
+                "/Users/${System.getProperty("user.name")}/.nvm/versions/node/v21.0.0/bin/claude",
+                "/Users/${System.getProperty("user.name")}/.nvm/versions/node/v19.0.0/bin/claude",
+                "/Users/${System.getProperty("user.name")}/.nvm/versions/node/v18.0.0/bin/claude",
+                
+                // Homebrew installations
+                "/opt/homebrew/bin/claude",
+                "/usr/local/bin/claude",
+                
+                // Direct npm global installation
+                "/Users/${System.getProperty("user.name")}/.npm-global/bin/claude",
+                "/Users/${System.getProperty("user.name")}/node_modules/.bin/claude",
+                
+                // System-wide installations
+                "/usr/bin/claude",
+                "/bin/claude"
+            )
+            
+            for (path in commonPaths) {
+                if (File(path).exists() && File(path).canExecute()) {
+                    logger.info { "Found Claude CLI at common path: $path" }
+                    return path
+                }
+            }
+            
+            // Strategy 3: Try to find any claude executable in NVM directory
+            val nvmDir = File("/Users/${System.getProperty("user.name")}/.nvm/versions/node")
+            if (nvmDir.exists() && nvmDir.isDirectory) {
+                nvmDir.walkTopDown()
+                    .filter { it.name == "claude" && it.canExecute() }
+                    .firstOrNull()?.let { claudeFile ->
+                        logger.info { "Found Claude CLI in NVM directory: ${claudeFile.absolutePath}" }
+                        return claudeFile.absolutePath
+                    }
+            }
+            
+            logger.warn { "Could not auto-detect Claude CLI installation path" }
+            return null
+        }
+    }
 
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
@@ -134,9 +202,14 @@ class ClaudeCodeStreamingWrapper(
             // See docs/claude-code-streaming-behavior.md for detailed analysis.
             
             // Build claude command arguments as list for proper shell escaping
-            // Use full path to claude to avoid PATH issues in macOS app bundle
+            // Use Claude CLI path from settings or fallback to default
+            val claudePath = settingsService.settings.claudeCliPath
+                ?: "/Users/lewik/.nvm/versions/node/v20.10.0/bin/claude" // Hardcoded fallback if not configured
+            
+            log.info { "Using Claude CLI path: $claudePath" }
+            
             val claudeArgs = mutableListOf(
-                "/Users/lewik/.nvm/versions/node/v20.10.0/bin/claude",
+                claudePath,
                 "--output-format", "stream-json",
                 "--input-format", "stream-json",
                 "--verbose",
