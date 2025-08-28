@@ -14,6 +14,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 4. Create and push a git tag with matching version (e.g., v1.1.3)
 5. GitHub Actions will build and release automatically
 
+**For beta versions:**
+- Use format: `X.Y.ZbetaN` (e.g., `1.1.7beta1`, `1.1.7beta2`)
+- **No dashes allowed** in version strings
+- Beta versions are for testing new features before stable release
+- Beta releases follow same tagging process: `v1.1.7beta1`
+- Progression: `1.1.6` → `1.1.7beta1` → `1.1.7beta2` → `1.1.7` (stable)
+
 ## Project Structure
 
 This is a Kotlin Multiplatform Project (MPP) with the following modules:

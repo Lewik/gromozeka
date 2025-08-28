@@ -135,15 +135,19 @@ compose.desktop {
         jvmArgs += listOf(
             "-Xdock:icon=src/jvmMain/resources/logos/logo-256x256.png",
             "-Xdock:name=Gromozeka",
-            "-Dapple.awt.application.appearance=system"
+            "-Dapple.awt.application.appearance=system",
+            
+            // JNativeHook native library configuration for packaged apps
+            "-Djava.library.path=\$APP_DIR/native-libs",
+            "-Djnativehook.lib.path=\$APP_DIR/native-libs"
         )
         
         nativeDistributions {
             targetFormats(
                 TargetFormat.Dmg,  // macOS universal
-                TargetFormat.Msi,  // Windows
-                TargetFormat.Deb,  // Ubuntu/Debian
-                TargetFormat.Rpm   // Red Hat/Fedora
+//                TargetFormat.Msi,  // Windows
+//                TargetFormat.Deb,  // Ubuntu/Debian
+//                TargetFormat.Rpm   // Red Hat/Fedora
             )
             
             packageName = "Gromozeka"
@@ -151,6 +155,9 @@ compose.desktop {
             description = "Multi-armed AI agent for comprehensive task automation"
             copyright = "© 2024 Gromozeka Project"
             vendor = "Gromozeka"
+            
+            // Include native libraries and resources in the app bundle
+            appResourcesRootDir.set(project.layout.projectDirectory.dir("bot/src/jvmMain/resources"))
             
             // Include all JDK modules to ensure Java 21 compatibility
             includeAllModules = true
@@ -174,6 +181,8 @@ compose.desktop {
                 }
             }
             
+            // Windows and Linux distributions disabled
+            /*
             windows {
                 packageVersion = rootProject.version.toString()
             }
@@ -181,6 +190,7 @@ compose.desktop {
             linux {
                 packageVersion = rootProject.version.toString()
             }
+            */
         }
     }
 }
@@ -199,4 +209,62 @@ tasks.register<Test>("convertLogo") {
     
     inputs.file("src/jvmMain/resources/logo.svg")
     outputs.dir("src/jvmMain/resources/logos")
+}
+
+tasks.register("extractNativeLibraries") {
+    description = "Extract JNativeHook native libraries for packaged applications"
+    group = "build"
+    
+    val nativeLibsDir = file("src/jvmMain/resources/native-libs")
+    
+    inputs.files(configurations.getByName("jvmRuntimeClasspath"))
+    outputs.dir(nativeLibsDir)
+    
+    doLast {
+        // Find jnativehook JAR in configurations
+        val jnativeHookJar = configurations.getByName("jvmRuntimeClasspath")
+            .files
+            .find { it.name.contains("jnativehook") && it.name.endsWith(".jar") }
+        
+        if (jnativeHookJar == null) {
+            throw GradleException("JNativeHook JAR not found in dependencies")
+        }
+        
+        println("Extracting JNativeHook native libraries for macOS...")
+        
+        // Extract native libraries using copy
+        copy {
+            from(zipTree(jnativeHookJar)) {
+                include("com/github/kwhat/jnativehook/lib/darwin/**/*.dylib")
+            }
+            into(layout.buildDirectory.dir("tmp/jnativehook"))
+        }
+        
+        // Move to target location with proper names
+        val tempDir = layout.buildDirectory.dir("tmp/jnativehook").get().asFile
+        val x86File = File("$tempDir/com/github/kwhat/jnativehook/lib/darwin/x86_64/libJNativeHook.dylib")
+        val armFile = File("$tempDir/com/github/kwhat/jnativehook/lib/darwin/arm64/libJNativeHook.dylib")
+        
+        nativeLibsDir.mkdirs()
+        
+        if (x86File.exists()) {
+            x86File.copyTo(File(nativeLibsDir, "libJNativeHook-x86_64.dylib"), true)
+            println("Extracted x86_64 library")
+        }
+        
+        if (armFile.exists()) {
+            armFile.copyTo(File(nativeLibsDir, "libJNativeHook-arm64.dylib"), true)
+            println("Extracted arm64 library")
+        }
+        
+        // Clean up temp directory
+        delete(tempDir)
+    }
+}
+
+// Автоматически извлекать нативные библиотеки перед сборкой DMG
+afterEvaluate {
+    tasks.findByName("createDistributable")?.dependsOn("extractNativeLibraries")
+    tasks.findByName("packageDistributionForCurrentOS")?.dependsOn("extractNativeLibraries")
+    tasks.findByName("packageDmg")?.dependsOn("extractNativeLibraries")
 }
