@@ -132,30 +132,26 @@ class ClaudeCodeStreamingWrapper(
             // We confirmed this by testing claude-code-sdk-python: each user message triggers a new init.
             // The session ID remains the same across all init messages.
             // See docs/claude-code-streaming-behavior.md for detailed analysis.
-            val command = mutableListOf(
+            
+            // Build claude command arguments as string for zsh execution
+            val claudeArgs = mutableListOf(
                 "claude",
-                "--output-format",
-                "stream-json",
-                "--input-format",
-                "stream-json",
+                "--output-format stream-json",
+                "--input-format stream-json",
                 "--verbose",
-                "--permission-mode",
-                "acceptEdits",
-                "--append-system-prompt",
-                systemPrompt
+                "--permission-mode acceptEdits",
+                "--append-system-prompt \"${systemPrompt.replace("\"", "\\\"")}\"" 
             )
 
             // Add model parameter if specified
             if (!model.isNullOrBlank()) {
-                command.add("--model")
-                command.add(model)
+                claudeArgs.add("--model $model")
                 log.info("Using model: $model")
             }
 
             // Add resume parameter if specified
             if (resumeSessionId != null) {
-                command.add("--resume")
-                command.add(resumeSessionId.value)
+                claudeArgs.add("--resume ${resumeSessionId.value}")
                 log.info("Resuming session: $resumeSessionId")
             }
 
@@ -163,10 +159,8 @@ class ClaudeCodeStreamingWrapper(
             if (!mcpConfigPath.isNullOrBlank()) {
                 val mcpConfigFile = File(mcpConfigPath)
                 if (mcpConfigFile.exists()) {
-                    command.add("--mcp-config")
-                    command.add(mcpConfigPath)
-                    command.add("--allowedTools")
-                    command.add("mcp__gromozeka-self-control")
+                    claudeArgs.add("--mcp-config \"$mcpConfigPath\"")
+                    claudeArgs.add("--allowedTools mcp__gromozeka-self-control")
                     log.info("Added session MCP config: $mcpConfigPath")
                 } else {
                     log.warn("Session MCP config not found: $mcpConfigPath")
@@ -175,16 +169,19 @@ class ClaudeCodeStreamingWrapper(
                 log.debug("No MCP config provided - session will run without MCP")
             }
 
+            // Execute through zsh to inherit user PATH from .zshrc (fixes macOS app PATH issue)
+            val claudeCommand = claudeArgs.joinToString(" ")
+            val command = listOf("/bin/zsh", "-l", "-c", claudeCommand)
+
             // Truncate system prompt for cleaner logs
-            val truncatedCommand = command.mapIndexed { index, arg ->
-                if (index > 0 && command.getOrNull(index - 1) == "--append-system-prompt" && arg.length > 100) {
-                    "<SYSTEM_PROMPT_TRUNCATED_${arg.length}_CHARS>"
-                } else {
-                    arg
-                }
+            val truncatedClaudeCommand = if (claudeCommand.length > 500) {
+                claudeCommand.substring(0, 200) + "<COMMAND_TRUNCATED_${claudeCommand.length}_CHARS>" + 
+                claudeCommand.substring(claudeCommand.length - 100)
+            } else {
+                claudeCommand
             }
-            log.info { "EXECUTING COMMAND: ${truncatedCommand.joinToString(" ")}" }
-            log.debug("FULL COMMAND: $truncatedCommand")
+            log.info { "EXECUTING COMMAND: /bin/zsh -l -c '$truncatedClaudeCommand'" }
+            log.debug("FULL COMMAND: ${command.joinToString(" ")}")
 
             val processBuilder = ProcessBuilder(command)
                 .redirectErrorStream(false)
