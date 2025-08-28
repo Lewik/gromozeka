@@ -28,18 +28,6 @@ jobs:
             target-formats: Dmg
             artifact-pattern: '**/*.dmg'
             artifact-name: 'gromozeka-macos'
-            
-          - name: Windows MSI
-            os: windows-latest
-            target-formats: Msi
-            artifact-pattern: '**/*.msi'
-            artifact-name: 'gromozeka-windows'
-            
-          - name: Linux Packages
-            os: ubuntu-latest
-            target-formats: 'Deb,Rpm'
-            artifact-pattern: '**/*.{deb,rpm}'
-            artifact-name: 'gromozeka-linux'
 
     steps:
       - name: Checkout code
@@ -72,17 +60,13 @@ jobs:
       - name: Update package version in build.gradle.kts
         shell: bash
         run: |
-          # Use same version for all platforms - no conversion
-          echo "Using version $VERSION for all platforms"
+          # Update macOS package version
+          echo "Using version $VERSION for macOS"
           
           # Update build.gradle.kts with unified version
           sed -i.bak 's/packageVersion = ".*"/packageVersion = "'$VERSION'"/g' bot/build.gradle.kts
           sed -i.bak 's/packageBuildVersion = ".*"/packageBuildVersion = "'$VERSION'"/g' bot/build.gradle.kts
           sed -i.bak 's/dmgPackageVersion = ".*"/dmgPackageVersion = "'$VERSION'"/g' bot/build.gradle.kts
-          
-          # Update platform-specific sections with same version
-          sed -i.bak '/windows {/,/}/ s/packageVersion = ".*"/packageVersion = "'$VERSION'"/' bot/build.gradle.kts
-          sed -i.bak '/linux {/,/}/ s/packageVersion = ".*"/packageVersion = "'$VERSION'"/' bot/build.gradle.kts
 
       - name: Build native distributions
         shell: bash
@@ -99,17 +83,13 @@ jobs:
         shell: bash
         run: |
           echo "Built packages:"
-          find bot/build/compose/binaries -type f \( -name "*.dmg" -o -name "*.msi" -o -name "*.deb" -o -name "*.rpm" \) -exec ls -la {} \;
+          find bot/build/compose/binaries -type f -name "*.dmg" -exec ls -la {} \;
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact-name }}-${{ env.VERSION }}
-          path: |
-            bot/build/compose/binaries/**/*.dmg
-            bot/build/compose/binaries/**/*.msi
-            bot/build/compose/binaries/**/*.deb
-            bot/build/compose/binaries/**/*.rpm
+          path: bot/build/compose/binaries/**/*.dmg
           retention-days: 30
 
   release:
@@ -142,7 +122,7 @@ jobs:
       - name: Prepare release assets
         run: |
           mkdir -p release-assets
-          find artifacts -type f \( -name "*.dmg" -o -name "*.msi" -o -name "*.deb" -o -name "*.rpm" \) -exec cp {} release-assets/ \;
+          find artifacts -type f -name "*.dmg" -exec cp {} release-assets/ \;
           ls -la release-assets/
 
       - name: Generate release notes
@@ -155,37 +135,13 @@ jobs:
           ### macOS
           - **Universal Binary (M1/M2/M3/M4 + Intel)**: `Gromozeka-${{ env.VERSION }}.dmg`
 
-          ### Windows  
-          - **MSI Installer**: `Gromozeka-${{ env.VERSION }}.msi`
-
-          ### Linux
-          - **Ubuntu/Debian**: `gromozeka_${{ env.VERSION }}_amd64.deb`
-          - **Red Hat/Fedora**: `gromozeka-${{ env.VERSION }}.x86_64.rpm`
-
           ## Installation
 
           ### macOS
           1. Download the `.dmg` file
           2. Open it and drag Gromozeka to Applications folder
           3. First launch: Right-click → Open (to bypass Gatekeeper)
-
-          ### Windows
-          1. Download the `.msi` file  
-          2. Run the installer as Administrator
-          3. Follow installation wizard
-
-          ### Linux (Ubuntu/Debian)
-          ```bash
-          sudo dpkg -i gromozeka_${{ env.VERSION }}_amd64.deb
-          sudo apt-get install -f  # Fix dependencies if needed
-          ```
-
-          ### Linux (Red Hat/Fedora)
-          ```bash
-          sudo rpm -i gromozeka-${{ env.VERSION }}.x86_64.rpm
-          # or
-          sudo dnf install gromozeka-${{ env.VERSION }}.x86_64.rpm
-          ```
+          4. Grant accessibility permissions when prompted for global hotkey support
 
           ## What's New
 
@@ -193,7 +149,7 @@ jobs:
           - Advanced Push-to-Talk (PTT) system with global hotkeys
           - Real-time streaming interface
           - Session management and history
-          - Cross-platform desktop application
+          - Native library bundling for improved macOS compatibility
 
           ---
           🤖 Generated with [Claude Code](https://claude.ai/code)

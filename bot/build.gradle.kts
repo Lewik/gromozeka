@@ -211,19 +211,18 @@ tasks.register<Test>("convertLogo") {
     outputs.dir("src/jvmMain/resources/logos")
 }
 
-tasks.register("extractNativeLibraries") {
+val extractNativeLibraries = tasks.register("extractNativeLibraries") {
     description = "Extract JNativeHook native libraries for packaged applications"
     group = "build"
     
-    val nativeLibsDir = file("src/jvmMain/resources/native-libs")
+    val nativeLibsDir = layout.projectDirectory.dir("src/jvmMain/resources/native-libs")
     
-    inputs.files(configurations.getByName("jvmRuntimeClasspath"))
+    inputs.files(configurations.named("jvmRuntimeClasspath"))
     outputs.dir(nativeLibsDir)
     
     doLast {
-        // Find jnativehook JAR in configurations
-        val jnativeHookJar = configurations.getByName("jvmRuntimeClasspath")
-            .files
+        val runtimeClasspath = configurations.getByName("jvmRuntimeClasspath")
+        val jnativeHookJar = runtimeClasspath.files
             .find { it.name.contains("jnativehook") && it.name.endsWith(".jar") }
         
         if (jnativeHookJar == null) {
@@ -232,28 +231,31 @@ tasks.register("extractNativeLibraries") {
         
         println("Extracting JNativeHook native libraries for macOS...")
         
+        val tempDir = layout.buildDirectory.dir("tmp/jnativehook").get()
+        
         // Extract native libraries using copy
         copy {
             from(zipTree(jnativeHookJar)) {
                 include("com/github/kwhat/jnativehook/lib/darwin/**/*.dylib")
             }
-            into(layout.buildDirectory.dir("tmp/jnativehook"))
+            into(tempDir)
         }
         
         // Move to target location with proper names
-        val tempDir = layout.buildDirectory.dir("tmp/jnativehook").get().asFile
-        val x86File = File("$tempDir/com/github/kwhat/jnativehook/lib/darwin/x86_64/libJNativeHook.dylib")
-        val armFile = File("$tempDir/com/github/kwhat/jnativehook/lib/darwin/arm64/libJNativeHook.dylib")
+        val tempDirFile = tempDir.asFile
+        val x86File = File(tempDirFile, "com/github/kwhat/jnativehook/lib/darwin/x86_64/libJNativeHook.dylib")
+        val armFile = File(tempDirFile, "com/github/kwhat/jnativehook/lib/darwin/arm64/libJNativeHook.dylib")
         
-        nativeLibsDir.mkdirs()
+        val nativeLibsDirFile = nativeLibsDir.asFile
+        nativeLibsDirFile.mkdirs()
         
         if (x86File.exists()) {
-            x86File.copyTo(File(nativeLibsDir, "libJNativeHook-x86_64.dylib"), true)
+            x86File.copyTo(File(nativeLibsDirFile, "libJNativeHook-x86_64.dylib"), true)
             println("Extracted x86_64 library")
         }
         
         if (armFile.exists()) {
-            armFile.copyTo(File(nativeLibsDir, "libJNativeHook-arm64.dylib"), true)
+            armFile.copyTo(File(nativeLibsDirFile, "libJNativeHook-arm64.dylib"), true)
             println("Extracted arm64 library")
         }
         
@@ -262,9 +264,10 @@ tasks.register("extractNativeLibraries") {
     }
 }
 
-// Автоматически извлекать нативные библиотеки перед сборкой DMG
+// Автоматически извлекать нативные библиотеки перед обработкой ресурсов и сборкой DMG
 afterEvaluate {
-    tasks.findByName("createDistributable")?.dependsOn("extractNativeLibraries")
-    tasks.findByName("packageDistributionForCurrentOS")?.dependsOn("extractNativeLibraries")
-    tasks.findByName("packageDmg")?.dependsOn("extractNativeLibraries")
+    tasks.findByName("jvmProcessResources")?.dependsOn(extractNativeLibraries)
+    tasks.findByName("createDistributable")?.dependsOn(extractNativeLibraries)
+    tasks.findByName("packageDistributionForCurrentOS")?.dependsOn(extractNativeLibraries)
+    tasks.findByName("packageDmg")?.dependsOn(extractNativeLibraries)
 }

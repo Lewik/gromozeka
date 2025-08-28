@@ -15,11 +15,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 5. GitHub Actions will build and release automatically
 
 **For beta versions:**
-- Use format: `X.Y.ZbetaN` (e.g., `1.1.7beta1`, `1.1.7beta2`)
-- **No dashes allowed** in version strings
-- Beta versions are for testing new features before stable release
-- Beta releases follow same tagging process: `v1.1.7beta1`
-- Progression: `1.1.6` → `1.1.7beta1` → `1.1.7beta2` → `1.1.7` (stable)
+- **Use numeric-only format** (e.g., `1.1.7`, `1.1.8`) due to macOS CFBundleVersion/jpackage limitations
+- **macOS packaging requires** pure `X.Y.Z` format - no alpha/beta suffixes supported by Apple
+- **Beta strategy:** Increment Z (patch) for beta → increment Y (minor) for stable
+- **Git tags contain beta info:** Use `v1.1.7beta1` for tagging (informative only)
+- **Version progression example:** `1.1.6` (stable) → `1.1.7` (beta) → `1.2.0` (next stable)
+- **Multiple betas:** `1.1.7`, `1.1.8`, `1.1.9` (all beta) → `1.2.0` (stable release)
 
 ## Project Structure
 
