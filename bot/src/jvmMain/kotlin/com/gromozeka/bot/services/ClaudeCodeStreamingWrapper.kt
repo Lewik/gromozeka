@@ -133,25 +133,27 @@ class ClaudeCodeStreamingWrapper(
             // The session ID remains the same across all init messages.
             // See docs/claude-code-streaming-behavior.md for detailed analysis.
             
-            // Build claude command arguments as string for zsh execution
+            // Build claude command arguments as list for proper shell escaping
             val claudeArgs = mutableListOf(
                 "claude",
-                "--output-format stream-json",
-                "--input-format stream-json",
+                "--output-format", "stream-json",
+                "--input-format", "stream-json",
                 "--verbose",
-                "--permission-mode acceptEdits",
-                "--append-system-prompt \"${systemPrompt.replace("\"", "\\\"")}\"" 
+                "--permission-mode", "acceptEdits",
+                "--append-system-prompt", systemPrompt
             )
 
             // Add model parameter if specified
             if (!model.isNullOrBlank()) {
-                claudeArgs.add("--model $model")
+                claudeArgs.add("--model")
+                claudeArgs.add(model)
                 log.info("Using model: $model")
             }
 
             // Add resume parameter if specified
             if (resumeSessionId != null) {
-                claudeArgs.add("--resume ${resumeSessionId.value}")
+                claudeArgs.add("--resume")
+                claudeArgs.add(resumeSessionId.value)
                 log.info("Resuming session: $resumeSessionId")
             }
 
@@ -159,8 +161,10 @@ class ClaudeCodeStreamingWrapper(
             if (!mcpConfigPath.isNullOrBlank()) {
                 val mcpConfigFile = File(mcpConfigPath)
                 if (mcpConfigFile.exists()) {
-                    claudeArgs.add("--mcp-config \"$mcpConfigPath\"")
-                    claudeArgs.add("--allowedTools mcp__gromozeka-self-control")
+                    claudeArgs.add("--mcp-config")
+                    claudeArgs.add(mcpConfigPath)
+                    claudeArgs.add("--allowedTools")
+                    claudeArgs.add("mcp__gromozeka-self-control")
                     log.info("Added session MCP config: $mcpConfigPath")
                 } else {
                     log.warn("Session MCP config not found: $mcpConfigPath")
@@ -170,7 +174,15 @@ class ClaudeCodeStreamingWrapper(
             }
 
             // Execute through zsh to inherit user PATH from .zshrc (fixes macOS app PATH issue)
-            val claudeCommand = claudeArgs.joinToString(" ")
+            // Properly quote arguments for shell execution
+            val claudeCommand = claudeArgs.joinToString(" ") { arg ->
+                // Quote arguments containing spaces or special characters
+                if (arg.contains(' ') || arg.contains('"') || arg.contains('\'') || arg.contains('$')) {
+                    "'${arg.replace("'", "'\\''")}'"
+                } else {
+                    arg
+                }
+            }
             val command = listOf("/bin/zsh", "-l", "-c", claudeCommand)
 
             // Truncate system prompt for cleaner logs
