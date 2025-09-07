@@ -89,7 +89,7 @@ UI кнопка/MCP extract_context → ContextExtractionService → созда�
 - Добавить вызов ContextExtractionService из ViewModel
 
 **1.3** Создание фоновой табы с resume
-- Внутренняя логика использования `mcp__gromozeka-self-control__open_tab` с `resume_session_id`
+- Внутренняя логика использования `mcp__gromozeka__open_tab` с `resume_session_id`
 - **Ключевая особенность**: resume создает НОВЫЙ session ID с полной копией истории (см. "Claude Code CLI Особенности")
 - Загрузка MD файла как `initial_message`
 - Установка `set_as_current = false` (работа в фоне)
@@ -103,17 +103,17 @@ UI кнопка/MCP extract_context → ContextExtractionService → созда�
 **2.2** Обновить MD инструкцию
 - Добавить в конец `context-extraction-instructions.md`
 - Инструкция автоматически вызвать MCP с результатом в XML формате
-- Указать что нужно вызвать `mcp__gromozeka-self-control__save_contexts` с XML
+- Указать что нужно вызвать `mcp__gromozeka__save_contexts` с XML
 - **Рассмотреть подходы memory-manager агента** к структурированным MD файлам при создании финального формата
 
 ### Этап 3: MCP Tools
-**3.1** Создать `ExtractContextsTool.kt` (`mcp__gromozeka-self-control__extract_context`)
+**3.1** Создать `ExtractContextsTool.kt` (`mcp__gromozeka__extract_context`)
 - MCP tool для запуска процесса извлечения контекста
 - Параметр: `tabId` (опционально - по умолчанию текущая таба)
 - Внутри вызывает `ContextExtractionService.extractContextsFromTab(tabId)`
 - ContextExtractionService делает всю работу включая открытие фоновой табы
 
-**3.2** Создать `SaveContextsTool.kt` (`mcp__gromozeka-self-control__save_contexts`)
+**3.2** Создать `SaveContextsTool.kt` (`mcp__gromozeka__save_contexts`)
 - MCP tool для получения XML результата от Claude
 - **XML валидация**: проверка корректности XML структуры
 - **Error handling**: если XML невалидный → вернуть ошибку обратно Claude для исправления

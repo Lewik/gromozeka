@@ -86,9 +86,9 @@ Agent A: tell_agent("Analysis complete", expects_response=false)
 **This prevents infinite loops while maintaining AutoGen-style direct communication**
 
 **MCP Tools for Agent Coordination:**
-- `mcp__gromozeka-self-control__tell_agent` - send message to specific agent
-- `mcp__gromozeka-self-control__create_agent` - create new colleague agent
-- `mcp__gromozeka-self-control__switch_tab` - switch user focus to agent conversation
+- `mcp__gromozeka__tell_agent` - send message to specific agent
+- `mcp__gromozeka__create_agent` - create new colleague agent
+- `mcp__gromozeka__switch_tab` - switch user focus to agent conversation
 
 **Agent References (natural language):**
 - Agent role: "Code Reviewer", "Security Expert"

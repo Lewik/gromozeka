@@ -33,7 +33,7 @@ The generated JAR will be located at: `mcp-proxy/build/libs/mcp-proxy.jar`
 Add the MCP server to your Claude Code CLI configuration:
 
 ```bash
-claude mcp add gromozeka-self-control -- java -jar /path/to/mcp-proxy.jar 42777
+claude mcp add gromozeka -- java -jar /path/to/mcp-proxy.jar 42777
 ```
 
 Replace `/path/to/mcp-proxy.jar` with the absolute path to your built JAR file.
@@ -138,7 +138,7 @@ By default, the MCP server uses port 42777. To change this:
 1. Modify `DEFAULT_PORT` in `McpSelfControlServer.kt`
 2. Update the MCP proxy command to use the new port:
    ```bash
-   claude mcp add gromozeka-self-control -- java -jar mcp-proxy.jar 43000
+   claude mcp add gromozeka -- java -jar mcp-proxy.jar 43000
    ```
 
 ## Security Notes

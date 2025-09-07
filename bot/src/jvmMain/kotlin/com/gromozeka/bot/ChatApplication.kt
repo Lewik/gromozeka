@@ -1,8 +1,5 @@
 package com.gromozeka.bot
 
-import com.gromozeka.bot.model.AgentDefinition
-import com.gromozeka.bot.ui.state.ConversationInitiator
-import klog.KLoggers
 import androidx.compose.desktop.ui.tooling.preview.Preview
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -24,6 +21,7 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.*
+import com.gromozeka.bot.model.AgentDefinition
 import com.gromozeka.bot.platform.GlobalHotkeyController
 import com.gromozeka.bot.services.*
 import com.gromozeka.bot.services.theming.AIThemeGenerator
@@ -31,11 +29,13 @@ import com.gromozeka.bot.services.theming.ThemeService
 import com.gromozeka.bot.services.translation.TranslationService
 import com.gromozeka.bot.settings.Settings
 import com.gromozeka.bot.ui.*
+import com.gromozeka.bot.ui.state.ConversationInitiator
 import com.gromozeka.bot.ui.state.UIState
 import com.gromozeka.bot.ui.viewmodel.AppViewModel
 import com.gromozeka.bot.ui.viewmodel.ContextsPanelViewModel
 import com.gromozeka.bot.ui.viewmodel.TabViewModel
 import com.gromozeka.shared.domain.message.ChatMessage
+import klog.KLoggers
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -109,7 +109,7 @@ fun main() {
     StreamLogger.cleanupOldLogs()
 
     log.info("Initializing Spring context...")
-    
+
     // Determine app mode to set Spring profile
     val modeEnv = System.getenv("GROMOZEKA_MODE")
     val springProfile = when (modeEnv?.lowercase()) {
@@ -119,7 +119,7 @@ fun main() {
         else -> throw IllegalArgumentException("GROMOZEKA_MODE value '$modeEnv' not supported")
     }
     log.info("Setting Spring profile: $springProfile")
-    
+
     val context = SpringApplicationBuilder(ChatApplication::class.java)
         .web(WebApplicationType.NONE)
         .profiles(springProfile)
@@ -206,6 +206,7 @@ fun main() {
                     themeService,
                     aiThemeGenerator,
                     mcpHttpServer,
+                    context.getBean("hookPermissionService") as HookPermissionService,
                     contextExtractionService,
                     contextFileService
                 )
@@ -232,6 +233,7 @@ fun ApplicationScope.ChatWindow(
     themeService: ThemeService,
     aiThemeGenerator: AIThemeGenerator,
     mcpHttpServer: McpHttpServer,
+    hookPermissionService: HookPermissionService,
     contextExtractionService: ContextExtractionService,
     contextFileService: ContextFileService,
 ) {
@@ -276,6 +278,9 @@ fun ApplicationScope.ChatWindow(
     // State for tab hover
     var hoveredTabIndex by remember { mutableStateOf(-1) }
 
+    // Claude hook permission dialog state  
+    val currentClaudeHook by appViewModel.claudeHookPayload.collectAsState()
+
     // Initialization
     LaunchedEffect(Unit) {
         initialized = true
@@ -305,30 +310,31 @@ fun ApplicationScope.ChatWindow(
         }
     }
 
-    val createNewSessionWithMessage: (String, String, AgentDefinition) -> Unit = { projectPath, initialMessage, agentDefinition ->
-        coroutineScope.launch {
-            try {
-                // Create ChatMessage from user input
-                val chatMessage = ChatMessage(
-                    role = ChatMessage.Role.USER,
-                    content = listOf(ChatMessage.ContentItem.UserMessage(initialMessage)),
-                    instructions = listOf(ChatMessage.Instruction.Source.User),
-                    uuid = UUID.randomUUID().toString(),
-                    timestamp = Clock.System.now(),
-                    llmSpecificMetadata = null
-                )
-                val tabIndex = appViewModel.createTab(
-                    projectPath = projectPath,
-                    agentDefinition = agentDefinition,
-                    initialMessage = chatMessage,
-                    initiator = ConversationInitiator.User
-                )
-                appViewModel.selectTab(tabIndex)
-            } catch (e: Exception) {
-                e.printStackTrace()
+    val createNewSessionWithMessage: (String, String, AgentDefinition) -> Unit =
+        { projectPath, initialMessage, agentDefinition ->
+            coroutineScope.launch {
+                try {
+                    // Create ChatMessage from user input
+                    val chatMessage = ChatMessage(
+                        role = ChatMessage.Role.USER,
+                        content = listOf(ChatMessage.ContentItem.UserMessage(initialMessage)),
+                        instructions = listOf(ChatMessage.Instruction.Source.User),
+                        uuid = UUID.randomUUID().toString(),
+                        timestamp = Clock.System.now(),
+                        llmSpecificMetadata = null
+                    )
+                    val tabIndex = appViewModel.createTab(
+                        projectPath = projectPath,
+                        agentDefinition = agentDefinition,
+                        initialMessage = chatMessage,
+                        initiator = ConversationInitiator.User
+                    )
+                    appViewModel.selectTab(tabIndex)
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
             }
         }
-    }
 
     val createForkSession: () -> Unit = {
         coroutineScope.launch {
@@ -628,6 +634,20 @@ fun ApplicationScope.ChatWindow(
                 }
             }
         }
+
+        // Claude hook permission dialog
+        ClaudeHookPermissionDialog(
+            hookPayload = currentClaudeHook,
+            onDecision = { decision ->
+                currentClaudeHook?.let { hookPayload ->
+                    hookPermissionService.resolveHookPermission(hookPayload.session_id, decision)
+                }
+                appViewModel.hideClaudeHookPermissionDialog()
+            },
+            onDismiss = {
+                appViewModel.hideClaudeHookPermissionDialog()
+            }
+        )
     }
 }
 

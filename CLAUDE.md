@@ -41,6 +41,18 @@ This is a Kotlin Multiplatform Project (MPP) with the following modules:
 
 **Usage**: Monitor `logs/dev.log` during development to debug performance issues, memory leaks, and thread pool problems.
 
+## Production Logging
+
+**Production Log Locations** (platform-specific):
+- **macOS**: `~/Library/Logs/Gromozeka/gromozeka.log`
+- **Windows**: `~/AppData/Local/Gromozeka/logs/gromozeka.log`  
+- **Linux**: `~/.local/share/Gromozeka/logs/gromozeka.log`
+
+**Production Log Configuration**:
+- Rolling policy: 100MB files, 30 days history, max 3GB total
+- Log level: INFO for application, WARN for frameworks
+- No console output (file only)
+
 ## Build and Test Commands
 
 **Primary development workflow** (compile + test):

@@ -238,7 +238,7 @@ class ClaudeCodeStreamingWrapper(
                     claudeArgs.add("--mcp-config")
                     claudeArgs.add(mcpConfigPath)
                     claudeArgs.add("--allowedTools")
-                    claudeArgs.add("mcp__gromozeka-self-control")
+                    claudeArgs.add("mcp__gromozeka")
                     log.info("Added session MCP config: $mcpConfigPath")
                 } else {
                     log.warn("Session MCP config not found: $mcpConfigPath")

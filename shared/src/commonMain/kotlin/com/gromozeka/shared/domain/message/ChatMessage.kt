@@ -354,7 +354,7 @@ data class ChatMessage(
         ) : Instruction() {
             override val title = "Response Expected"
             override val description = "This agent expects a response back to Tab ID: $targetTabId"
-            override fun serializeContent() = "Use mcp__gromozeka-self-control__tell_agent with target_tab_id: $targetTabId"
+            override fun serializeContent() = "Use mcp__gromozeka__tell_agent with target_tab_id: $targetTabId"
             override fun toXmlLine() = "<$TAG_NAME>${serializeContent()}</$TAG_NAME>"
             
             companion object {

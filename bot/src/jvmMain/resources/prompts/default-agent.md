@@ -22,7 +22,7 @@ If no `response_expected` instruction:
 
 **Examples:**
 ```
-<instruction>response_expected:Response Expected:Use mcp__gromozeka-self-control__tell_agent with target_tab_id: abc123</instruction>
+<instruction>response_expected:Response Expected:Use mcp__gromozeka__tell_agent with target_tab_id: abc123</instruction>
 Calculate 2+2
 ```
 → Calculate 2+2, then use `tell_agent` with `target_tab_id: abc123` to send answer

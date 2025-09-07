@@ -1,6 +1,7 @@
 package com.gromozeka.bot.ui.viewmodel
 
 import com.gromozeka.bot.model.AgentDefinition
+import com.gromozeka.bot.model.ClaudeHookPayload
 import com.gromozeka.bot.model.Session
 import com.gromozeka.bot.platform.ScreenCaptureController
 import com.gromozeka.bot.services.SessionManager
@@ -49,6 +50,10 @@ open class AppViewModel(
         if (tab == null) flowOf(null)
         else sessionManager.activeSessions.map { sessions -> sessions[tab.sessionId] }
     }.stateIn(scope, SharingStarted.Eagerly, null)
+    
+    // Claude hook permission dialog state
+    private val _claudeHookPayload = MutableStateFlow<ClaudeHookPayload?>(null)
+    val claudeHookPayload: StateFlow<ClaudeHookPayload?> = _claudeHookPayload.asStateFlow()
 
     /**
      * Creates a new tab with a Claude session
@@ -289,6 +294,23 @@ open class AppViewModel(
 
         sessionViewModel.updateCustomName(null)
         log.info("Reset tab name at index $tabIndex to default")
+    }
+
+    /**
+     * Show Claude hook permission dialog
+     * Called by HookPermissionService when permission is needed
+     */
+    fun showClaudeHookPermissionDialog(hookPayload: ClaudeHookPayload) {
+        _claudeHookPayload.value = hookPayload
+        log.info("Showing Claude hook permission dialog for tool: ${hookPayload.tool_name} (session: ${hookPayload.session_id})")
+    }
+    
+    /**
+     * Hide Claude hook permission dialog
+     */
+    fun hideClaudeHookPermissionDialog() {
+        _claudeHookPayload.value = null
+        log.info("Hiding Claude hook permission dialog")
     }
 
     /**
