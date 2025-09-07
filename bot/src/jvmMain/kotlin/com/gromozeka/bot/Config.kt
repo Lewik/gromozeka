@@ -67,7 +67,8 @@ class Config {
         settingsService: SettingsService,
         @Qualifier("coroutineScope") scope: CoroutineScope,
         screenCaptureController: ScreenCaptureController,
-    ) = AppViewModel(sessionManager, settingsService, scope, screenCaptureController)
+        hookPermissionService: HookPermissionService,
+    ) = AppViewModel(sessionManager, settingsService, scope, screenCaptureController, hookPermissionService)
 
     @Bean
     fun pttEventRouter(

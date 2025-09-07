@@ -2,127 +2,240 @@ package com.gromozeka.bot.services
 
 import com.gromozeka.bot.model.ClaudeHookPayload
 import com.gromozeka.bot.model.HookDecision
-import com.gromozeka.bot.ui.viewmodel.AppViewModel
 import klog.KLoggers
-import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.TimeoutCancellationException
-import kotlinx.coroutines.withTimeout
-import org.springframework.context.ApplicationContext
+import kotlinx.coroutines.*
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.selects.select
+import kotlin.time.Clock
+import kotlin.time.Instant
 import org.springframework.stereotype.Service
-import java.util.concurrent.ConcurrentHashMap
 
 @Service
-class HookPermissionService(
-    private val applicationContext: ApplicationContext,
-) {
+class HookPermissionService {
     private val log = KLoggers.logger(this)
 
-    private val pendingRequests = ConcurrentHashMap<String, CompletableDeferred<HookDecision>>()
+    // === ACTOR CHANNELS ===
+    private val commandChannel = Channel<Command>(capacity = Channel.UNLIMITED)
+    
+    // === ACTOR STATE ===
+    private var actorState = ActorState()
+    private var actorJob: Job? = null
+    private var actorScope: CoroutineScope? = null
+    
+    // === OUTGOING FLOWS FOR UI ===
+    private val _pendingRequests = MutableStateFlow<Map<String, ClaudeHookPayload>>(emptyMap())
+    val pendingRequests: StateFlow<Map<String, ClaudeHookPayload>> = _pendingRequests.asStateFlow()
+    
+    private val _resolvedRequests = MutableSharedFlow<Pair<String, HookDecision>>()
+    val resolvedRequests: SharedFlow<Pair<String, HookDecision>> = _resolvedRequests.asSharedFlow()
 
+    // === ACTOR COMMAND DEFINITIONS ===
+    
     /**
-     * Handle incoming Claude Code CLI hook permission request
-     * This method blocks until user makes a decision or timeout occurs
+     * Commands for the HookPermission actor
      */
-    suspend fun handleHookPermission(hookPayload: ClaudeHookPayload): HookDecision {
-        val requestId = hookPayload.session_id // Use session_id as request identifier
-        val timeoutMs = 30000L // Fixed 30 second timeout
+    sealed class Command {
+        data class ProcessRequest(
+            val hookPayload: ClaudeHookPayload,
+            val responseDeferred: CompletableDeferred<HookDecision>
+        ) : Command()
+        
+        data class ResolveRequest(
+            val sessionId: String,
+            val decision: HookDecision
+        ) : Command()
+        
+        data class TimeoutRequest(val sessionId: String) : Command()
+        
+        data object CancelAllRequests : Command()
+    }
+    
+    /**
+     * Actor state containing pending requests
+     */
+    private data class ActorState(
+        val pendingRequests: Map<String, PendingRequest> = emptyMap()
+    )
+    
+    /**
+     * Internal pending request state
+     */
+    private data class PendingRequest(
+        val hookPayload: ClaudeHookPayload,
+        val responseDeferred: CompletableDeferred<HookDecision>,
+        val createdAt: Instant,
+        val timeoutJob: Job?
+    )
 
-        log.info("Processing hook permission for tool ${hookPayload.tool_name} (session: $requestId)")
-
-        val decisionFuture = CompletableDeferred<HookDecision>()
-        pendingRequests[requestId] = decisionFuture
-
-        try {
-            showPermissionDialog(hookPayload)
-            val decision = withTimeout(timeoutMs) {
-                decisionFuture.await()
+    // === ACTOR LOOP ===
+    
+    /**
+     * Main actor loop processing commands sequentially
+     */
+    private suspend fun actorLoop() {
+        log.debug("Starting HookPermission actor loop")
+        
+        while (true) {
+            select<Unit> {
+                commandChannel.onReceive { command ->
+                    log.debug("Processing command: $command")
+                    handleCommand(command)
+                }
             }
-
-            log.info("Hook permission for $requestId resolved: allow=${decision.allow}")
-            return decision
-
-        } catch (e: TimeoutCancellationException) {
-            log.warn("Hook permission request $requestId timed out after 30s")
-            return HookDecision(
+        }
+    }
+    
+    /**
+     * Handle actor commands
+     */
+    private suspend fun handleCommand(command: Command) {
+        when (command) {
+            is Command.ProcessRequest -> handleProcessRequest(command)
+            is Command.ResolveRequest -> handleResolveRequest(command)
+            is Command.TimeoutRequest -> handleTimeoutRequest(command)
+            is Command.CancelAllRequests -> handleCancelAllRequests()
+        }
+    }
+    
+    /**
+     * Handle incoming permission request from HTTP
+     */
+    private suspend fun handleProcessRequest(cmd: Command.ProcessRequest) {
+        val sessionId = cmd.hookPayload.session_id
+        val timeoutMs = 30000L
+        
+        log.info("Processing hook permission for tool ${cmd.hookPayload.tool_name} (session: $sessionId)")
+        
+        // Create timeout job
+        val timeoutJob = actorScope?.launch {
+            delay(timeoutMs)
+            commandChannel.send(Command.TimeoutRequest(sessionId))
+        }
+        
+        val pendingRequest = PendingRequest(
+            hookPayload = cmd.hookPayload,
+            responseDeferred = cmd.responseDeferred,
+            createdAt = Clock.System.now(),
+            timeoutJob = timeoutJob
+        )
+        
+        // Update actor state
+        actorState = actorState.copy(
+            pendingRequests = actorState.pendingRequests + (sessionId to pendingRequest)
+        )
+        
+        // Update UI flow - dialog will be shown automatically via reactive subscription
+        _pendingRequests.value = actorState.pendingRequests.mapValues { it.value.hookPayload }
+        
+        log.info("Hook permission request added to pending queue for tool: ${cmd.hookPayload.tool_name}")
+    }
+    
+    /**
+     * Handle user decision from UI
+     */
+    private suspend fun handleResolveRequest(cmd: Command.ResolveRequest) {
+        val pendingRequest = actorState.pendingRequests[cmd.sessionId]
+        
+        if (pendingRequest != null) {
+            log.info("Resolved hook permission for session ${cmd.sessionId}: allow=${cmd.decision.allow}")
+            
+            // Cancel timeout job
+            pendingRequest.timeoutJob?.cancel()
+            
+            // Complete the HTTP request
+            pendingRequest.responseDeferred.complete(cmd.decision)
+            
+            // Remove from state
+            actorState = actorState.copy(
+                pendingRequests = actorState.pendingRequests - cmd.sessionId
+            )
+            
+            // Update UI flow
+            _pendingRequests.value = actorState.pendingRequests.mapValues { it.value.hookPayload }
+            _resolvedRequests.emit(cmd.sessionId to cmd.decision)
+            
+        } else {
+            log.warn("Attempted to resolve unknown or already completed request: ${cmd.sessionId}")
+        }
+    }
+    
+    /**
+     * Handle timeout for a request
+     */
+    private suspend fun handleTimeoutRequest(cmd: Command.TimeoutRequest) {
+        val pendingRequest = actorState.pendingRequests[cmd.sessionId]
+        
+        if (pendingRequest != null) {
+            log.warn("Hook permission request ${cmd.sessionId} timed out after 30s")
+            
+            val timeoutDecision = HookDecision(
                 allow = false,
                 reason = "Request timed out after 30 seconds"
             )
-        } catch (e: Exception) {
-            log.error(e, "Error processing hook permission request $requestId")
-            return HookDecision(
-                allow = false,
-                reason = "Internal error: ${e.message}"
+            
+            // Complete the HTTP request
+            pendingRequest.responseDeferred.complete(timeoutDecision)
+            
+            // Remove from state
+            actorState = actorState.copy(
+                pendingRequests = actorState.pendingRequests - cmd.sessionId
             )
-        } finally {
-            pendingRequests.remove(requestId)
+            
+            // Update UI flow
+            _pendingRequests.value = actorState.pendingRequests.mapValues { it.value.hookPayload }
+            _resolvedRequests.emit(cmd.sessionId to timeoutDecision)
         }
     }
-
+    
     /**
-     * Called by UI when user makes a decision
+     * Handle cancel all requests (shutdown)
      */
-    fun resolveHookPermission(sessionId: String, decision: HookDecision) {
-        val future = pendingRequests[sessionId]
-        if (future != null && !future.isCompleted) {
-            future.complete(decision)
-            log.info("Resolved hook permission for session $sessionId: allow=${decision.allow}")
-        } else {
-            log.warn("Attempted to resolve unknown or already completed request: $sessionId")
-        }
-    }
-
-    /**
-     * Show permission dialog in UI
-     */
-    private suspend fun showPermissionDialog(hookPayload: ClaudeHookPayload) {
-        try {
-            val appViewModel = applicationContext.getBean(AppViewModel::class.java)
-
-            // UI operations via StateFlow are thread-safe
-            appViewModel.showClaudeHookPermissionDialog(hookPayload)
-
-            log.info("Permission dialog shown for Claude hook: ${hookPayload.tool_name}")
-
-        } catch (e: Exception) {
-            log.error(e, "Failed to show permission dialog for Claude hook")
-
-            // Auto-deny if we can't show UI
-            resolveHookPermission(
-                hookPayload.session_id,
-                HookDecision(
-                    allow = false,
-                    reason = "Failed to show permission dialog: ${e.message}"
-                )
-            )
-        }
-    }
-
-    /**
-     * Get list of currently pending permission requests
-     */
-    fun getPendingRequests(): Map<String, Boolean> {
-        return pendingRequests.mapValues { !it.value.isCompleted }
-    }
-
-    /**
-     * Cancel all pending requests (e.g., on shutdown)
-     */
-    fun cancelAllPendingRequests() {
-        val count = pendingRequests.size
-        pendingRequests.forEach { (sessionId, future) ->
-            if (!future.isCompleted) {
-                future.complete(
-                    HookDecision(
-                        allow = false,
-                        reason = "Service shutting down"
-                    )
-                )
-            }
-        }
-        pendingRequests.clear()
-
+    private suspend fun handleCancelAllRequests() {
+        val count = actorState.pendingRequests.size
+        
         if (count > 0) {
+            val shutdownDecision = HookDecision(
+                allow = false,
+                reason = "Service shutting down"
+            )
+            
+            actorState.pendingRequests.forEach { (sessionId, pendingRequest) ->
+                // Cancel timeout job
+                pendingRequest.timeoutJob?.cancel()
+                
+                // Complete HTTP request
+                if (!pendingRequest.responseDeferred.isCompleted) {
+                    pendingRequest.responseDeferred.complete(shutdownDecision)
+                }
+            }
+            
+            // Clear state
+            actorState = actorState.copy(pendingRequests = emptyMap())
+            _pendingRequests.value = emptyMap()
+            
             log.info("Cancelled $count pending hook permission requests due to service shutdown")
         }
+    }
+    
+    
+    // === PUBLIC API (Actor Command Proxies) ===
+    
+    /**
+     * Initialize the actor system
+     */
+    fun initializeActor(scope: CoroutineScope) {
+        if (actorJob == null) {
+            actorScope = scope
+            actorJob = scope.launch { actorLoop() }
+            log.debug("HookPermission actor initialized")
+        }
+    }
+    
+    /**
+     * Send command directly to actor - this is the primary Actor API
+     */
+    suspend fun sendCommand(command: Command) {
+        commandChannel.send(command)
     }
 }

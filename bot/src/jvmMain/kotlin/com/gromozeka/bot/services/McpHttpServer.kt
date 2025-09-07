@@ -2,6 +2,7 @@ package com.gromozeka.bot.services
 
 import com.gromozeka.bot.model.ClaudeHookPayload
 import com.gromozeka.bot.model.ClaudeHookResponse
+import com.gromozeka.bot.model.HookDecision
 import com.gromozeka.bot.services.mcp.GromozekaMcpTool
 import io.ktor.http.*
 import io.ktor.server.cio.*
@@ -19,6 +20,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.serialization.json.Json
 import org.springframework.stereotype.Service
 
@@ -76,9 +78,13 @@ class McpHttpServer(
 //                            return@post
 //                        }
 
-                        val response = hookPermissionService
-                            .handleHookPermission(hookPayload)
-                            .toClaudeResponse()
+                        val responseDeferred = CompletableDeferred<HookDecision>()
+                        hookPermissionService.sendCommand(
+                            HookPermissionService.Command.ProcessRequest(hookPayload, responseDeferred)
+                        )
+                        
+                        val hookDecision = responseDeferred.await()
+                        val response = hookDecision.toClaudeResponse()
 
                         log.info("Hook decision for ${hookPayload.tool_name}: ${response.decision} - ${response.reason}")
 

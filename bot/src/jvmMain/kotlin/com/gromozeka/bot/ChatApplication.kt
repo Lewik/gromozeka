@@ -149,6 +149,7 @@ fun main() {
     val mcpHttpServer = context.getBean<McpHttpServer>()
     val contextExtractionService = context.getBean<ContextExtractionService>()
     val contextFileService = context.getBean<ContextFileService>()
+    val hookPermissionService = context.getBean<HookPermissionService>()
 
     // Create AI theme generator
     val aiThemeGenerator = AIThemeGenerator(
@@ -174,6 +175,11 @@ fun main() {
     // Initialize services
     globalHotkeyController.initializeService()
     pttEventRouter.initialize()
+    
+    // Initialize HookPermissionService actor
+    val coroutineScope = context.getBean("coroutineScope") as CoroutineScope
+    hookPermissionService.initializeActor(coroutineScope)
+    log.info("HookPermissionService actor initialized")
 
     // Initialize UIStateService (loads state, restores sessions, starts subscription)
     runBlocking {
@@ -635,17 +641,35 @@ fun ApplicationScope.ChatWindow(
             }
         }
 
-        // Claude hook permission dialog
+        // Claude hook permission dialog (reactive from HookPermissionService)
+        val coroutineScope = rememberCoroutineScope()
         ClaudeHookPermissionDialog(
             hookPayload = currentClaudeHook,
             onDecision = { decision ->
                 currentClaudeHook?.let { hookPayload ->
-                    hookPermissionService.resolveHookPermission(hookPayload.session_id, decision)
+                    coroutineScope.launch {
+                        hookPermissionService.sendCommand(
+                            HookPermissionService.Command.ResolveRequest(hookPayload.session_id, decision)
+                        )
+                    }
                 }
-                appViewModel.hideClaudeHookPermissionDialog()
+                // Dialog will be hidden automatically when pending request is removed
             },
             onDismiss = {
-                appViewModel.hideClaudeHookPermissionDialog()
+                // For dismissal (X button), we deny the permission
+                currentClaudeHook?.let { hookPayload ->
+                    coroutineScope.launch {
+                        hookPermissionService.sendCommand(
+                            HookPermissionService.Command.ResolveRequest(
+                                sessionId = hookPayload.session_id, 
+                                decision = com.gromozeka.bot.model.HookDecision(
+                                    allow = false,
+                                    reason = "User dismissed the dialog"
+                                )
+                            )
+                        )
+                    }
+                }
             }
         )
     }

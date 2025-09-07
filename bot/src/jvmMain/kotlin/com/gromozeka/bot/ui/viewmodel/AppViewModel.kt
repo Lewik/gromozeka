@@ -6,6 +6,7 @@ import com.gromozeka.bot.model.Session
 import com.gromozeka.bot.platform.ScreenCaptureController
 import com.gromozeka.bot.services.SessionManager
 import com.gromozeka.bot.services.SettingsService
+import com.gromozeka.bot.services.HookPermissionService
 import com.gromozeka.bot.ui.state.UIState
 import com.gromozeka.bot.ui.state.ConversationInitiator
 import com.gromozeka.shared.domain.message.ChatMessage
@@ -30,6 +31,7 @@ open class AppViewModel(
     private val settingsService: SettingsService,
     private val scope: CoroutineScope,
     private val screenCaptureController: ScreenCaptureController,
+    private val hookPermissionService: HookPermissionService,
 ) {
     private val log = KLoggers.logger(this)
     private val mutex = Mutex()
@@ -51,9 +53,13 @@ open class AppViewModel(
         else sessionManager.activeSessions.map { sessions -> sessions[tab.sessionId] }
     }.stateIn(scope, SharingStarted.Eagerly, null)
     
-    // Claude hook permission dialog state
-    private val _claudeHookPayload = MutableStateFlow<ClaudeHookPayload?>(null)
-    val claudeHookPayload: StateFlow<ClaudeHookPayload?> = _claudeHookPayload.asStateFlow()
+    // Claude hook permission dialog state (reactive from HookPermissionService)
+    val claudeHookPayload: StateFlow<ClaudeHookPayload?> = hookPermissionService.pendingRequests
+        .map { pendingRequests -> 
+            // Show the first pending request, or null if none
+            pendingRequests.values.firstOrNull()
+        }
+        .stateIn(scope, SharingStarted.Eagerly, null)
 
     /**
      * Creates a new tab with a Claude session
@@ -296,22 +302,6 @@ open class AppViewModel(
         log.info("Reset tab name at index $tabIndex to default")
     }
 
-    /**
-     * Show Claude hook permission dialog
-     * Called by HookPermissionService when permission is needed
-     */
-    fun showClaudeHookPermissionDialog(hookPayload: ClaudeHookPayload) {
-        _claudeHookPayload.value = hookPayload
-        log.info("Showing Claude hook permission dialog for tool: ${hookPayload.tool_name} (session: ${hookPayload.session_id})")
-    }
-    
-    /**
-     * Hide Claude hook permission dialog
-     */
-    fun hideClaudeHookPermissionDialog() {
-        _claudeHookPayload.value = null
-        log.info("Hiding Claude hook permission dialog")
-    }
 
     /**
      * Stops all sessions and clears tabs
