@@ -23,7 +23,6 @@ import com.gromozeka.bot.ui.LocalTranslation
 import com.gromozeka.bot.utils.jsonPrettyPrint
 import com.gromozeka.shared.domain.message.ChatMessage
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun MessageItem(
     message: ChatMessage,

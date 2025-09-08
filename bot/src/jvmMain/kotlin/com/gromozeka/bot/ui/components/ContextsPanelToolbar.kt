@@ -11,7 +11,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.gromozeka.bot.ui.viewmodel.ContextsPanelViewModel
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ContextsPanelToolbar(
     searchQuery: String,

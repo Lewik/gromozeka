@@ -18,7 +18,8 @@ val experimentalOptIns = listOf(
     "-opt-in=kotlin.time.ExperimentalTime",
     "-opt-in=kotlinx.serialization.ExperimentalSerializationApi",
     "-opt-in=androidx.compose.material3.ExperimentalMaterial3Api",
-    "-opt-in=androidx.compose.ui.ExperimentalComposeUiApi"
+    "-opt-in=androidx.compose.ui.ExperimentalComposeUiApi",
+    "-opt-in=androidx.compose.foundation.ExperimentalFoundationApi"
 )
 
 // Centralized version for the entire project
