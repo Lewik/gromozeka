@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -c '.' | curl -X POST http://localhost:{{MCP_PORT}}/hook-permission -H 'Content-Type: application/json' --max-time 30 --silent -d @-"
+          }
+        ]
+      }
+    ]
+  }
+}

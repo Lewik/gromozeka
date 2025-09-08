@@ -104,6 +104,34 @@ class ClaudeCodeStreamingWrapper(
         encodeDefaults = true
     }
 
+    private fun generateClaudeSettingsWithHooks(): String {
+        return try {
+            // Choose hooks template based on autoApproveAllTools setting
+            val hooksTemplateFile = if (settingsService.settings.autoApproveAllTools) {
+                "/claude-gromozeka-hooks-auto.json" // Auto-approve mode without HTTP requests
+            } else {
+                "/claude-gromozeka-hooks.json" // Interactive mode with HTTP requests to Gromozeka
+            }
+            
+            // Load hooks template from resources
+            val hooksTemplateStream = this::class.java.getResourceAsStream(hooksTemplateFile)
+                ?: throw IllegalStateException("Gromozeka hooks template not found: $hooksTemplateFile")
+            
+            val hooksTemplate = hooksTemplateStream.bufferedReader().readText()
+            
+            // Replace port placeholder with actual MCP port (if present)
+            val hooksJson = hooksTemplate.replace("{{MCP_PORT}}", settingsService.mcpPort.toString())
+            
+            val mode = if (settingsService.settings.autoApproveAllTools) "auto-approve" else "interactive"
+            log.debug("Generated Gromozeka hooks settings in $mode mode (${hooksJson.length} chars)")
+            hooksJson
+            
+        } catch (e: Exception) {
+            log.error(e) { "Failed to generate Gromozeka hooks settings, using empty settings" }
+            "{}"
+        }
+    }
+
     private fun loadSystemPrompt(
         responseFormat: ResponseFormat,
         agentPrompt: String,
@@ -208,12 +236,16 @@ class ClaudeCodeStreamingWrapper(
             
             log.info { "Using Claude CLI path: $claudePath" }
             
+            // Generate Claude settings with Gromozeka hooks
+            val claudeSettings = generateClaudeSettingsWithHooks()
+            
             val claudeArgs = mutableListOf(
                 claudePath,
                 "--output-format", "stream-json",
                 "--input-format", "stream-json",
                 "--verbose",
                 "--permission-mode", "acceptEdits",
+                "--settings", claudeSettings,
                 "--append-system-prompt", systemPrompt
             )
 

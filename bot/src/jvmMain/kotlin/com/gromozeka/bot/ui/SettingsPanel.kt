@@ -251,7 +251,7 @@ fun SettingsPanel(
 
                         SwitchSettingItem(
                             label = "Auto-approve all tool requests",
-                            description = "Automatically allow all Claude Code tool executions without showing permission dialogs",
+                            description = "Automatically allow all Claude Code tool executions without showing permission dialogs (affects new sessions only)",
                             value = settings.autoApproveAllTools,
                             onValueChange = { onSettingsChange(settings.copy(autoApproveAllTools = it)) }
                         )

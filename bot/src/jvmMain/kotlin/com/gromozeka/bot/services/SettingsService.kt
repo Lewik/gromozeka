@@ -49,7 +49,6 @@ class SettingsService {
         _settingsFlow.value = loadSettings()
 
         generateMcpConfigFile()
-        generateHooksConfig()
 
         log.info("Initialized with mode: ${mode.name}")
         log.info("Gromozeka home: ${gromozekaHome.absolutePath}")
@@ -306,65 +305,4 @@ class SettingsService {
         log.info("Generated global config: ${mcpConfigFile.absolutePath}")
     }
 
-    /**
-     * Generate official Anthropic Claude Code CLI hooks configuration
-     * Uses jq for JSON processing (mandatory requirement)
-     * No fallback - jq must be installed
-     */
-    fun generateHooksConfig() {
-        val claudeSettingsFile = File(System.getProperty("user.home"), ".claude/settings.json")
-
-        try {
-            // Read existing global settings or create empty object
-            val existingContent = if (claudeSettingsFile.exists()) {
-                Json.parseToJsonElement(claudeSettingsFile.readText()).jsonObject
-            } else {
-                buildJsonObject {}
-            }
-
-            // Official Anthropic hook command: jq passes stdin JSON directly to HTTP endpoint
-            val jqHookCommand = buildString {
-                append("jq -c '.' | ")
-                append("curl -X POST http://localhost:$mcpPort/hook-permission ")
-                append("-H 'Content-Type: application/json' ")
-                append("--max-time 30 --silent ")
-                append("-d @-")
-            }
-
-            // Official hooks configuration format
-            val hooksConfig = buildJsonObject {
-                put("PreToolUse", buildJsonArray {
-                    add(buildJsonObject {
-                        put("matcher", "*")  // Match all tools
-                        put("hooks", buildJsonArray {
-                            add(buildJsonObject {
-                                put("type", "command")
-                                put("command", jqHookCommand)
-                            })
-                        })
-                    })
-                })
-            }
-
-            // Merge with existing settings
-            val updatedContent = buildJsonObject {
-                existingContent.forEach { (key, value) ->
-                    if (key != "hooks") {  // Don't duplicate hooks
-                        put(key, value)
-                    }
-                }
-                put("hooks", hooksConfig)
-            }
-
-            // Write back to file with pretty formatting
-            claudeSettingsFile.parentFile?.mkdirs()
-            claudeSettingsFile.writeText(Json { prettyPrint = true }.encodeToString(updatedContent))
-
-            log.info("Generated official Anthropic hooks config (jq required) with port $mcpPort: ${claudeSettingsFile.absolutePath}")
-            log.info("IMPORTANT: jq must be installed for hooks to work")
-
-        } catch (e: Exception) {
-            log.error(e, "Failed to generate hooks config")
-        }
-    }
 }
