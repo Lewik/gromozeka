@@ -130,29 +130,6 @@ class MacOSGlobalHotkeyController(
         }
     }
 
-    private fun setupNativeLibraryPath() {
-        try {
-            // For packaged applications, configure JNativeHook to use bundled native libraries
-            val appResourcesDir = System.getProperty("compose.application.resources.dir")
-            if (appResourcesDir != null) {
-                val osArch = System.getProperty("os.arch")
-                val libName = when (osArch) {
-                    "aarch64" -> "libJNativeHook-arm64.dylib"
-                    else -> "libJNativeHook-x86_64.dylib"
-                }
-                
-                val nativeLibsPath = "$appResourcesDir/native-libs"
-                System.setProperty("java.library.path", nativeLibsPath)
-                System.setProperty("jnativehook.lib.path", nativeLibsPath)
-                
-                log.info("Configured native library path: $nativeLibsPath (arch: $osArch, lib: $libName)")
-            } else {
-                log.debug("Not in packaged app - using default JNativeHook library loading")
-            }
-        } catch (e: Exception) {
-            log.warn("Failed to setup native library path: ${e.message}")
-        }
-    }
 
     private fun initialize(): Boolean {
         // Prevent double initialization
@@ -162,9 +139,6 @@ class MacOSGlobalHotkeyController(
         }
         
         try {
-            // Configure native library paths for packaged applications
-            setupNativeLibraryPath()
-            
             // § key is remapped to F13 via hidutil to prevent typing
             setupKeyRemapping()
 
