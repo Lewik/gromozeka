@@ -38,6 +38,7 @@ import com.gromozeka.shared.domain.message.ChatMessage
 import klog.KLoggers
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.springframework.beans.factory.getBean
@@ -284,8 +285,6 @@ fun ApplicationScope.ChatWindow(
     // State for tab hover
     var hoveredTabIndex by remember { mutableStateOf(-1) }
 
-    // Claude hook permission dialog state  
-    val currentClaudeHook by appViewModel.claudeHookPayload.collectAsState()
 
     // Initialization
     LaunchedEffect(Unit) {
@@ -641,27 +640,25 @@ fun ApplicationScope.ChatWindow(
             }
         }
 
-        // Claude hook permission dialog (reactive from HookPermissionService)
-        val coroutineScope = rememberCoroutineScope()
+        // Hook permission dialog - session-aware через TabViewModel
+        val currentTabHookPayload by (currentTab?.claudeHookPayload ?: flowOf(null)).collectAsState(initial = null)
         ClaudeHookPermissionDialog(
-            hookPayload = currentClaudeHook,
+            hookPayload = currentTabHookPayload,
             onDecision = { decision ->
-                currentClaudeHook?.let { hookPayload ->
+                currentTabHookPayload?.let { payload ->
                     coroutineScope.launch {
                         hookPermissionService.sendCommand(
-                            HookPermissionService.Command.ResolveRequest(hookPayload.session_id, decision)
+                            HookPermissionService.Command.ResolveRequest(payload.session_id, decision)
                         )
                     }
                 }
-                // Dialog will be hidden automatically when pending request is removed
             },
             onDismiss = {
-                // For dismissal (X button), we deny the permission
-                currentClaudeHook?.let { hookPayload ->
+                currentTabHookPayload?.let { payload ->
                     coroutineScope.launch {
                         hookPermissionService.sendCommand(
                             HookPermissionService.Command.ResolveRequest(
-                                sessionId = hookPayload.session_id, 
+                                sessionId = payload.session_id,
                                 decision = com.gromozeka.bot.model.HookDecision(
                                     allow = false,
                                     reason = "User dismissed the dialog"

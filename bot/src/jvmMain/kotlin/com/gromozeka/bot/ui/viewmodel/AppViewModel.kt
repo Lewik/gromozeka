@@ -1,7 +1,6 @@
 package com.gromozeka.bot.ui.viewmodel
 
 import com.gromozeka.bot.model.AgentDefinition
-import com.gromozeka.bot.model.ClaudeHookPayload
 import com.gromozeka.bot.model.Session
 import com.gromozeka.bot.platform.ScreenCaptureController
 import com.gromozeka.bot.services.SessionManager
@@ -52,14 +51,6 @@ open class AppViewModel(
         if (tab == null) flowOf(null)
         else sessionManager.activeSessions.map { sessions -> sessions[tab.sessionId] }
     }.stateIn(scope, SharingStarted.Eagerly, null)
-    
-    // Claude hook permission dialog state (reactive from HookPermissionService)
-    val claudeHookPayload: StateFlow<ClaudeHookPayload?> = hookPermissionService.pendingRequests
-        .map { pendingRequests -> 
-            // Show the first pending request, or null if none
-            pendingRequests.values.firstOrNull()
-        }
-        .stateIn(scope, SharingStarted.Eagerly, null)
 
     /**
      * Creates a new tab with a Claude session
@@ -110,7 +101,8 @@ open class AppViewModel(
             settingsFlow = settingsService.settingsFlow,
             scope = scope,
             initialTabUiState = initialTabUiState,
-            screenCaptureController = screenCaptureController
+            screenCaptureController = screenCaptureController,
+            hookPermissionService = hookPermissionService
         )
 
         // Add to tabs list
@@ -256,7 +248,8 @@ open class AppViewModel(
                     settingsFlow = settingsService.settingsFlow,
                     scope = scope,
                     initialTabUiState = tabUiState,
-                    screenCaptureController = screenCaptureController
+                    screenCaptureController = screenCaptureController,
+                    hookPermissionService = hookPermissionService
                 )
 
                 restoredTabs.add(tabViewModel)

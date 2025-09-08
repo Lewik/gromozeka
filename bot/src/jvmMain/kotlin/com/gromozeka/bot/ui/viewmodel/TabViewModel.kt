@@ -3,8 +3,10 @@ package com.gromozeka.bot.ui.viewmodel
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import com.gromozeka.bot.model.ClaudeHookPayload
 import com.gromozeka.bot.model.Session
 import com.gromozeka.bot.platform.ScreenCaptureController
+import com.gromozeka.bot.services.HookPermissionService
 import com.gromozeka.bot.settings.Settings
 import com.gromozeka.bot.ui.state.UIState
 import com.gromozeka.bot.utils.TokenUsageCalculator
@@ -25,6 +27,7 @@ class TabViewModel(
     private val scope: CoroutineScope,
     initialTabUiState: UIState.Tab,
     private val screenCaptureController: ScreenCaptureController,
+    private val hookPermissionService: HookPermissionService,
 ) {
 
     // === Public accessors for AppViewModel ===
@@ -183,6 +186,17 @@ class TabViewModel(
     // === Session State Forwarding ===
     val isWaitingForResponse: StateFlow<Boolean> = session.isWaitingForResponse
     val pendingMessagesCount: StateFlow<Int> = session.pendingMessagesCount
+
+    // === Hook Permission (Session-aware) ===
+    val claudeHookPayload: StateFlow<ClaudeHookPayload?> = combine(
+        hookPermissionService.pendingRequests,
+        session.claudeSessionId
+    ) { pendingRequests, currentClaudeSessionId ->
+        // Filter requests that belong to this session and get the first one
+        pendingRequests.values.firstOrNull { hookPayload ->
+            hookPayload.session_id == currentClaudeSessionId.value
+        }
+    }.stateIn(scope, SharingStarted.Eagerly, null)
 
     // === Commands (Immutable State Updates) ===
     fun toggleMessageTag(messageTag: MessageTagDefinition, controlIndex: Int) {
