@@ -25,6 +25,7 @@ data class Settings(
     val claudeCliPath: String? = null, // Path to Claude CLI executable (auto-detected if null)
     val includeCurrentTime: Boolean = true,
     val responseFormat: ResponseFormat = ResponseFormat.XML_INLINE,
+    val autoApproveAllTools: Boolean = true, // Auto-approve all Claude Code tool requests without showing dialogs
 
     // API Keys
     val openAiApiKey: String? = null,

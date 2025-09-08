@@ -248,6 +248,13 @@ fun SettingsPanel(
                             value = settings.includeCurrentTime,
                             onValueChange = { onSettingsChange(settings.copy(includeCurrentTime = it)) }
                         )
+
+                        SwitchSettingItem(
+                            label = "Auto-approve all tool requests",
+                            description = "Automatically allow all Claude Code tool executions without showing permission dialogs",
+                            value = settings.autoApproveAllTools,
+                            onValueChange = { onSettingsChange(settings.copy(autoApproveAllTools = it)) }
+                        )
                     }
 
                     // API Keys

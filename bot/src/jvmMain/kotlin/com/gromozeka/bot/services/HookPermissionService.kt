@@ -12,7 +12,9 @@ import kotlin.time.Instant
 import org.springframework.stereotype.Service
 
 @Service
-class HookPermissionService {
+class HookPermissionService(
+    private val settingsService: SettingsService
+) {
     private val log = KLoggers.logger(this)
 
     // === ACTOR CHANNELS ===
@@ -106,6 +108,20 @@ class HookPermissionService {
         val timeoutMs = 30000L
         
         log.info("Processing hook permission for tool ${cmd.hookPayload.tool_name} (session: $sessionId)")
+        
+        // Check auto-approval setting
+        if (settingsService.settings.autoApproveAllTools) {
+            log.info("Auto-approving tool ${cmd.hookPayload.tool_name} (session: $sessionId) due to user settings")
+            
+            val autoDecision = HookDecision(
+                allow = true,
+                reason = "Auto-approved by user settings"
+            )
+            
+            // Immediately complete the HTTP request
+            cmd.responseDeferred.complete(autoDecision)
+            return
+        }
         
         // Create timeout job
         val timeoutJob = actorScope?.launch {
