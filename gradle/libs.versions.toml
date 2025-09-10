@@ -14,7 +14,6 @@ mockk = "1.14.5"
 kotest = "5.9.1"
 kotlinx-datetime = "0.7.1"
 kotlinx-serialization = "1.9.0"
-jnativehook = "2.2.1"
 batik = "1.19"
 filekit = "0.8.2"
 multiplatform-markdown-renderer = "0.30.0"
@@ -59,8 +58,6 @@ kotlin-reflect = { module = "org.jetbrains.kotlin:kotlin-reflect" }
 jackson-module-kotlin = { module = "com.fasterxml.jackson.module:jackson-module-kotlin" }
 
 
-# JNativeHook
-jnativehook = { module = "com.github.kwhat:jnativehook", version.ref = "jnativehook" }
 
 # Batik (for SVG to PNG conversion)
 batik-transcoder = { module = "org.apache.xmlgraphics:batik-transcoder", version.ref = "batik" }

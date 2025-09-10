@@ -174,6 +174,14 @@ fun SettingsPanel(
                                 value = settings.globalPttHotkeyEnabled,
                                 onValueChange = { onSettingsChange(settings.copy(globalPttHotkeyEnabled = it)) }
                             )
+                            
+                            // Warning about disabled global hotkeys
+                            Text(
+                                text = "⚠️ Global hotkeys temporarily disabled - UI PTT button available",
+                                color = MaterialTheme.colorScheme.secondary,
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.padding(start = 8.dp, top = 4.dp, bottom = 8.dp)
+                            )
 
                             // Only show mute option if global PTT is enabled
                             if (settings.globalPttHotkeyEnabled) {

@@ -79,7 +79,6 @@ kotlin {
                 implementation(libs.jackson.module.kotlin)
                 
                 
-                implementation(libs.jnativehook)
                 
                 // MCP SDK for official protocol structures
                 implementation(libs.mcp.kotlin.sdk)
@@ -139,7 +138,6 @@ compose.desktop {
             
             // JNativeHook native library configuration for packaged apps
             "-Djava.library.path=\$APP_DIR/native-libs",
-            "-Djnativehook.lib.path=\$APP_DIR/native-libs"
         )
         
         nativeDistributions {
@@ -157,7 +155,7 @@ compose.desktop {
             vendor = "Gromozeka"
             
             // Include native libraries and resources in the app bundle
-            appResourcesRootDir.set(project.layout.projectDirectory.dir("bot/src/jvmMain/resources"))
+            appResourcesRootDir.set(project.layout.projectDirectory.dir("src/jvmMain/resources"))
             
             // Include all JDK modules to ensure Java 21 compatibility
             includeAllModules = true
@@ -173,6 +171,8 @@ compose.desktop {
                         <string>Gromozeka needs microphone access for voice input and speech-to-text functionality</string>
                         <key>NSAccessibilityUsageDescription</key>
                         <string>Gromozeka needs accessibility access for global hotkeys (§ key for push-to-talk)</string>
+                        <key>NSInputMonitoringUsageDescription</key>
+                        <string>Gromozeka needs input monitoring access for global hotkeys (§ key for push-to-talk)</string>
                     """
                 }
                 
@@ -211,72 +211,3 @@ tasks.register<Test>("convertLogo") {
     outputs.dir("src/jvmMain/resources/logos")
 }
 
-abstract class ExtractNativeLibrariesTask : DefaultTask() {
-    @get:InputFiles
-    abstract val runtimeClasspath: ConfigurableFileCollection
-    
-    @get:OutputDirectory
-    abstract val nativeLibsDir: DirectoryProperty
-    
-    @get:Inject
-    abstract val fileOperations: FileSystemOperations
-    
-    @get:Inject
-    abstract val archiveOperations: ArchiveOperations
-    
-    @TaskAction
-    fun extract() {
-        val jnativeHookJar = runtimeClasspath.files
-            .find { it.name.contains("jnativehook") && it.name.endsWith(".jar") }
-        
-        if (jnativeHookJar == null) {
-            throw GradleException("JNativeHook JAR not found in dependencies")
-        }
-        
-        println("Extracting JNativeHook native libraries for macOS...")
-        
-        val tempDir = temporaryDir
-        tempDir.mkdirs()
-        
-        // Use injected services instead of project references
-        fileOperations.copy {
-            from(archiveOperations.zipTree(jnativeHookJar)) {
-                include("com/github/kwhat/jnativehook/lib/darwin/**/*.dylib")
-            }
-            into(tempDir)
-        }
-        
-        // Move to target location with proper names
-        val x86File = File(tempDir, "com/github/kwhat/jnativehook/lib/darwin/x86_64/libJNativeHook.dylib")
-        val armFile = File(tempDir, "com/github/kwhat/jnativehook/lib/darwin/arm64/libJNativeHook.dylib")
-        
-        val nativeLibsDirFile = nativeLibsDir.asFile.get()
-        nativeLibsDirFile.mkdirs()
-        
-        if (x86File.exists()) {
-            x86File.copyTo(File(nativeLibsDirFile, "libJNativeHook-x86_64.dylib"), true)
-            println("Extracted x86_64 library")
-        }
-        
-        if (armFile.exists()) {
-            armFile.copyTo(File(nativeLibsDirFile, "libJNativeHook-arm64.dylib"), true)
-            println("Extracted arm64 library")
-        }
-    }
-}
-
-val extractNativeLibraries = tasks.register<ExtractNativeLibrariesTask>("extractNativeLibraries") {
-    description = "Extract JNativeHook native libraries for packaged applications"
-    group = "build"
-    
-    runtimeClasspath.from(configurations.named("jvmRuntimeClasspath"))
-    nativeLibsDir.set(layout.projectDirectory.dir("src/jvmMain/resources/native-libs"))
-}
-
-// Автоматически извлекать нативные библиотеки перед обработкой ресурсов и сборкой DMG
-afterEvaluate {
-    tasks.findByName("jvmProcessResources")?.dependsOn(extractNativeLibraries)
-    tasks.findByName("createDistributable")?.dependsOn(extractNativeLibraries)
-    tasks.findByName("packageDistributionForCurrentOS")?.dependsOn(extractNativeLibraries)
-    tasks.findByName("packageDmg")?.dependsOn(extractNativeLibraries)
-}
