@@ -170,9 +170,9 @@ compose.desktop {
                         <key>NSMicrophoneUsageDescription</key>
                         <string>Gromozeka needs microphone access for voice input and speech-to-text functionality</string>
                         <key>NSAccessibilityUsageDescription</key>
-                        <string>Gromozeka needs accessibility access for global hotkeys (§ key for push-to-talk)</string>
+                        <string>Gromozeka may request accessibility access for future global hotkey functionality</string>
                         <key>NSInputMonitoringUsageDescription</key>
-                        <string>Gromozeka needs input monitoring access for global hotkeys (§ key for push-to-talk)</string>
+                        <string>Gromozeka may request input monitoring access for future global hotkey functionality</string>
                     """
                 }
                 

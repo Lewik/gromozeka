@@ -9,10 +9,10 @@ Named after the multi-armed character from "The Mystery of the Third Planet". Cu
 ## ✨ What Gromozeka Adds
 
 ### 🎤 Advanced Voice Interface (PTT)
-- **Global hotkey**: Press `§` (paragraph key) anywhere in macOS to talk to AI
-- **Zero conflicts**: Uses innovative key remapping to avoid system shortcut conflicts
+- **UI Button**: Press and hold PTT button in the interface to talk to AI
 - **Multiple input patterns**: Click, double-click, hold variations for different actions  
 - **Audio management**: Automatic background music muting during recording
+- **Global hotkeys**: Currently disabled (development in progress)
 
 ### 🖥️ Desktop Interface
 - **Native UI**: JetBrains Compose Desktop chat interface
@@ -53,15 +53,15 @@ Named after the multi-armed character from "The Mystery of the Third Planet". Cu
 
 4. **Enable permissions** (macOS):
    - **Microphone**: For voice input
-   - **Accessibility**: For global § key hotkey
+   - **Accessibility**: May be requested (global hotkeys currently disabled)
 
 ## 🎮 How to Use
 
 ### Voice Interaction
-- **Quick talk**: Press and hold `§` key, speak, release to send
-- **Stop AI**: Quick press `§` to stop TTS playback
-- **Interrupt & talk**: Double-click + hold `§` to interrupt AI and provide new input
-- **On-screen button**: Alternative to global hotkey in the UI
+- **Quick talk**: Press and hold PTT button in UI, speak, release to send
+- **Stop AI**: Quick click PTT button to stop TTS playback
+- **Interrupt & talk**: Double-click + hold PTT button to interrupt AI and provide new input
+- **Global hotkeys**: Currently disabled (UI buttons are primary method)
 
 ### Chat Interface
 - Type messages normally in the text input
@@ -72,7 +72,7 @@ Named after the multi-armed character from "The Mystery of the Third Planet". Cu
 
 ### Core Components
 - **ClaudeCodeStreamingWrapper**: Manages Claude CLI process and streaming communication
-- **PTT System**: Advanced voice input with global hotkeys
+- **PTT System**: Advanced voice input via UI buttons
 - **UI Layer**: Reactive Compose Desktop interface
 
 ### Technology Stack

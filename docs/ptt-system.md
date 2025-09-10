@@ -1,15 +1,18 @@
 # PTT (Push-to-Talk) System Architecture
 
+## Current Status
+
+**⚠️ Global Hotkeys Currently Disabled**: As of September 2025, global hotkey functionality (§ key) has been temporarily disabled due to removal of jnativehook dependency. The system currently operates through UI buttons only. This documentation describes both current implementation and previous/planned functionality.
+
 ## Overview
 
-Gromozeka implements an advanced PTT system with sophisticated gesture recognition and dual input methods. The system is designed for seamless voice interaction with minimal interruption to the user's workflow.
+Gromozeka implements an advanced PTT system with sophisticated gesture recognition. The system is designed for seamless voice interaction with minimal interruption to the user's workflow.
 
 ## Key Components
 
 ### Input Methods
 
-1. **On-screen PTT Button** - Always visible in the UI, responds to mouse/touch interactions
-2. **§ (paragraph) Key** - Global hotkey that works system-wide, even when Gromozeka is not focused
+1. **On-screen PTT Button** - Always visible in the UI, responds to mouse/touch interactions (currently active)
 
 ### Gesture Recognition
 
@@ -42,11 +45,13 @@ The system recognizes 5 distinct gesture patterns:
 
 ## Technical Implementation
 
-### Global Hotkey: § Key Magic
+### Global Hotkey: § Key Implementation (Currently Disabled)
+
+**Previous Implementation** (removed as of September 2025):
 
 **Problem**: Standard hotkeys conflict with system shortcuts (Ctrl+Tab, Ctrl+C, etc.)
 
-**Solution**: Remap § key to F13 using macOS hidutil:
+**Solution**: Remapped § key to F13 using macOS hidutil:
 ```bash
 # Remap § to F13 (on startup)
 hidutil property --set '{"UserKeyMapping":[{"HIDKeyboardModifierMappingSrc":0x700000064,"HIDKeyboardModifierMappingDst":0x700000068}]}'
@@ -79,7 +84,7 @@ AudioRecorder → STTService → Session.sendMessage()
 
 #### Core Services
 
-- **GlobalHotkeyService**: JNativeHook integration for § key detection
+- **NoOpGlobalHotkeyController**: Placeholder implementation (global hotkeys disabled)
 - **UnifiedGestureDetector**: Analyzes press/release timings to identify gestures
 - **PTTEventRouter**: Routes gesture events to appropriate handlers (TTS stop, Claude interrupt, recording)
 - **PTTService**: Manages audio recording lifecycle and state

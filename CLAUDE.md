@@ -106,7 +106,7 @@ This significantly reduces the need for extensive unit testing compared to dynam
 
 **Key Differentiators**:
 - Advanced voice interface wrapper for AI interaction
-- Sophisticated PTT (Push-to-Talk) system with global hotkeys  
+- Sophisticated PTT (Push-to-Talk) system via UI buttons  
 - Multiple session management with history and resume support in tabs
 - Context management and organization (work in progress)
 
@@ -135,9 +135,9 @@ claude --output-format stream-json --input-format stream-json --verbose --permis
 
 ### PTT (Push-to-Talk) System
 
-**Advanced PTT Implementation** with two input types:
-1. **On-screen PTT button** - Always available in UI
-2. **§ (paragraph) key** - Global hotkey via hidutil remapping to F13
+**Current PTT Implementation** via UI button:
+1. **On-screen PTT button** - Primary input method, always available in UI
+2. **Global hotkeys** - Currently disabled (NoOp implementation)
 
 **5 Gesture Types Supported**:
 - **Single Click**: Stop TTS
@@ -147,13 +147,13 @@ claude --output-format stream-json --input-format stream-json --verbose --permis
 - **Button Down**: Optimistic recording start + audio mute
 
 **Technical Implementation**:
-- **GlobalHotkeyController**: Manages § key remapping and global hotkey detection
+- **NoOpGlobalHotkeyController**: Placeholder implementation (global hotkeys disabled)
 - **UnifiedGestureDetector**: Recognizes gesture patterns by timing
 - **PTTEventRouter**: Routes gesture events to appropriate handlers
 - **AudioMuteManager**: System audio muting during recording
 - **STTService**: Speech-to-text transcription
 
-Uses § key remapped to F13 via hidutil to avoid conflicts with system shortcuts.
+Global hotkeys temporarily disabled. Previous implementation used § key remapped to F13 via hidutil.
 
 ### Session Management & Resume
 
