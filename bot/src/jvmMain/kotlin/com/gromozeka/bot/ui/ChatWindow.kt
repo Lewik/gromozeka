@@ -193,6 +193,11 @@ fun ApplicationScope.ChatWindow(
 
     // Create modifier with PTT event router
     val modifierWithPushToTalk = Modifier.advancedPttGestures(pttEventRouter, coroutineScope)
+    
+    // Local keyboard PTT gesture detector
+    val keyboardPttGestureDetector = remember { 
+        UnifiedGestureDetector(pttEventRouter, coroutineScope)
+    }
 
     // Load window state
     val savedWindowState = remember { windowStateService.loadWindowState() }
@@ -274,18 +279,39 @@ fun ApplicationScope.ChatWindow(
                     .focusTarget()
                     .advancedEscape(pttEventRouter)
                     .onKeyEvent { event ->
-                        if (event.key == Key.T &&
+                        
+                        when {
+                            // Cmd+T - новая сессия
+                            event.key == Key.T &&
                             event.isMetaPressed &&
-                            event.type == KeyEventType.KeyDown
-                        ) {
-
-                            // Cmd+T работает только на экране сессии (не на экране проектов)
-                            val selectedTabIndex = currentTabIndex?.plus(1) ?: 0
-                            if (selectedTabIndex > 0 && currentSession != null) {
-                                createNewSession(currentSession!!.projectPath)
+                            event.type == KeyEventType.KeyDown -> {
+                                // Cmd+T работает только на экране сессии (не на экране проектов)
+                                val selectedTabIndex = currentTabIndex?.plus(1) ?: 0
+                                if (selectedTabIndex > 0 && currentSession != null) {
+                                    createNewSession(currentSession!!.projectPath)
+                                }
+                                true
                             }
-                            true
-                        } else false
+                            
+                            // Backtick клавиша для PTT (тестирование)
+                            event.key == Key.Grave -> { // ` backtick для PTT
+                                when (event.type) {
+                                    KeyEventType.KeyDown -> {
+                                        coroutineScope.launch {
+                                            keyboardPttGestureDetector.onGestureDown()
+                                        }
+                                    }
+                                    KeyEventType.KeyUp -> {
+                                        coroutineScope.launch {
+                                            keyboardPttGestureDetector.onGestureUp()
+                                        }
+                                    }
+                                }
+                                true
+                            }
+                            
+                            else -> false
+                        }
                     }
             ) {
                 if (initialized) {

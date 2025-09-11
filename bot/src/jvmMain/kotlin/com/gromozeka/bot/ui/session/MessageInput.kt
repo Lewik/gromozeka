@@ -38,13 +38,18 @@ fun MessageInput(
             onValueChange = onUserInputChange,
             modifier = Modifier
                 .onPreviewKeyEvent { event ->
-                    if (event.key == Key.Enter && event.isShiftPressed && event.type == KeyEventType.KeyDown && userInput.isNotBlank()) {
-                        coroutineScope.launch {
-                            onSendMessage(userInput)
+                    
+                    when {
+                        // Shift+Enter для отправки сообщения
+                        event.key == Key.Enter && event.isShiftPressed && event.type == KeyEventType.KeyDown && userInput.isNotBlank() -> {
+                            coroutineScope.launch {
+                                onSendMessage(userInput)
+                            }
+                            true
                         }
-                        true
-                    } else {
-                        false
+                        
+                        
+                        else -> false
                     }
                 }
                 .weight(1f),
