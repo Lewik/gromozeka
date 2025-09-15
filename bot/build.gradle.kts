@@ -25,6 +25,7 @@ kotlin {
         compilations.all {
             compileTaskProvider.configure {
                 compilerOptions {
+                    @Suppress("UNCHECKED_CAST")
                     freeCompilerArgs.addAll(project.extra["experimentalOptIns"] as List<String>)
                 }
             }
@@ -128,10 +129,7 @@ tasks.withType<Test> {
 // JAR files are preserved in mcp-proxy/ directory for potential future use
 
 
-// Configure JAR archive name
-tasks.jar {
-    archiveBaseName.set("gromozeka-jvm")
-}
+// JAR archive name configuration removed - not applicable for KMP
 
 compose.desktop {
     application {
