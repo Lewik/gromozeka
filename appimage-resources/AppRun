@@ -1,0 +1,204 @@
+#!/bin/bash
+# AppRun launcher script for Gromozeka AppImage
+# Handles Claude Code CLI detection, dependency validation, and application startup
+
+set -e  # Exit on any error
+
+# Get the directory where this AppImage is located
+HERE="$(dirname "$(readlink -f "${0}")")"
+
+# Configuration
+APP_NAME="Gromozeka"
+MIN_GLIBC_VERSION="2.17"
+REQUIRED_ARCH="x86_64"
+
+# Color output for better UX
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+log_info() {
+    echo -e "${GREEN}[INFO]${NC} $1"
+}
+
+log_warn() {
+    echo -e "${YELLOW}[WARN]${NC} $1"
+}
+
+log_error() {
+    echo -e "${RED}[ERROR]${NC} $1"
+}
+
+show_error_dialog() {
+    local message="$1"
+    
+    # Try different dialog tools in order of preference
+    if command -v zenity >/dev/null 2>&1; then
+        zenity --error --width=400 --title="$APP_NAME Error" --text="$message" 2>/dev/null || true
+    elif command -v kdialog >/dev/null 2>&1; then
+        kdialog --error "$message" 2>/dev/null || true
+    elif command -v notify-send >/dev/null 2>&1; then
+        notify-send "$APP_NAME Error" "$message" --urgency=critical 2>/dev/null || true
+    fi
+    
+    # Always log to stderr as fallback
+    log_error "$message"
+}
+
+check_architecture() {
+    local current_arch=$(uname -m)
+    if [ "$current_arch" != "$REQUIRED_ARCH" ]; then
+        show_error_dialog "Unsupported architecture: $current_arch. This AppImage requires $REQUIRED_ARCH."
+        exit 1
+    fi
+}
+
+check_glibc_version() {
+    if command -v ldd >/dev/null 2>&1; then
+        local glibc_version=$(ldd --version 2>/dev/null | head -1 | grep -o '[0-9]\+\.[0-9]\+' | head -1)
+        if [ -n "$glibc_version" ]; then
+            # Compare versions using sort -V (version sort)
+            if [ "$(printf '%s\n' "$MIN_GLIBC_VERSION" "$glibc_version" | sort -V | head -n1)" != "$MIN_GLIBC_VERSION" ]; then
+                show_error_dialog "Incompatible glibc version: $glibc_version. Minimum required: $MIN_GLIBC_VERSION."
+                exit 1
+            fi
+        fi
+    fi
+}
+
+find_claude_cli() {
+    log_info "Searching for Claude Code CLI..."
+    
+    # Try which command first (fastest)
+    if command -v claude >/dev/null 2>&1; then
+        echo "claude"
+        return 0
+    fi
+    
+    # Search in common installation paths
+    local search_paths=(
+        "/usr/local/bin/claude"
+        "/usr/bin/claude"
+        "/opt/claude/bin/claude"
+        "$HOME/.local/bin/claude"
+        "$HOME/.cargo/bin/claude"
+        "/snap/bin/claude"
+    )
+    
+    for path in "${search_paths[@]}"; do
+        if [ -f "$path" ] && [ -x "$path" ]; then
+            echo "$path"
+            return 0
+        fi
+    done
+    
+    return 1
+}
+
+validate_claude_cli() {
+    local claude_path="$1"
+    
+    log_info "Validating Claude Code CLI at: $claude_path"
+    
+    # Test if claude command works
+    if ! "$claude_path" --version >/dev/null 2>&1; then
+        show_error_dialog "Claude Code CLI found at '$claude_path' but failed to execute. Please check your installation."
+        exit 1
+    fi
+    
+    log_info "Claude Code CLI validated successfully"
+}
+
+setup_java_environment() {
+    # Set up embedded JRE environment
+    export JAVA_HOME="$HERE/runtime"
+    
+    # Verify embedded JRE exists
+    if [ ! -d "$JAVA_HOME" ]; then
+        show_error_dialog "Embedded Java Runtime not found. AppImage may be corrupted."
+        exit 1
+    fi
+    
+    local java_bin="$JAVA_HOME/bin/java"
+    if [ ! -x "$java_bin" ]; then
+        show_error_dialog "Java executable not found at '$java_bin'. AppImage may be corrupted."
+        exit 1
+    fi
+    
+    # Update PATH to use embedded JRE
+    export PATH="$JAVA_HOME/bin:$PATH"
+    
+    log_info "Using embedded JRE at: $JAVA_HOME"
+}
+
+find_main_jar() {
+    # Look for the main Gromozeka JAR file
+    local jar_patterns=(
+        "$HERE/app/bot-jvm-*.jar"
+        "$HERE/lib/gromozeka*.jar"
+        "$HERE/gromozeka*.jar"
+    )
+    
+    for pattern in "${jar_patterns[@]}"; do
+        # Use shell globbing to find matching files
+        for jar_file in $pattern; do
+            if [ -f "$jar_file" ]; then
+                echo "$jar_file"
+                return 0
+            fi
+        done
+    done
+    
+    show_error_dialog "Main application JAR not found. AppImage may be corrupted."
+    exit 1
+}
+
+main() {
+    log_info "Starting $APP_NAME AppImage..."
+    
+    # System compatibility checks
+    check_architecture
+    check_glibc_version
+    
+    # Find and validate Claude Code CLI
+    local claude_path
+    if ! claude_path=$(find_claude_cli); then
+        show_error_dialog "Claude Code CLI not found on system.
+
+Please install Claude Code CLI first:
+https://claude.ai/code
+
+The CLI should be available in your PATH or installed in one of these locations:
+• /usr/local/bin/claude
+• /usr/bin/claude  
+• ~/.local/bin/claude"
+        exit 1
+    fi
+    
+    validate_claude_cli "$claude_path"
+    
+    # Set up Java environment
+    setup_java_environment
+    
+    # Find main JAR
+    local main_jar
+    main_jar=$(find_main_jar)
+    
+    log_info "Starting application..."
+    log_info "JAR: $main_jar"
+    log_info "Claude CLI: $claude_path"
+    
+    # Launch the application
+    # Pass all command line arguments to the Java application
+    exec "$JAVA_HOME/bin/java" \
+        -Djava.library.path="$HERE/native-libs" \
+        -jar "$main_jar" \
+        "$@"
+}
+
+# Error handling for the entire script
+trap 'show_error_dialog "An unexpected error occurred during startup. Check the terminal for details."' ERR
+
+# Run main function
+main "$@"

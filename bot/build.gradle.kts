@@ -145,7 +145,8 @@ compose.desktop {
                 TargetFormat.Dmg,  // macOS universal
 //                TargetFormat.Msi,  // Windows
 //                TargetFormat.Deb,  // Ubuntu/Debian
-//                TargetFormat.Rpm   // Red Hat/Fedora
+//                TargetFormat.Rpm,  // Red Hat/Fedora
+//                TargetFormat.AppImage  // Linux AppImage (requires appimagetool)
             )
             
             packageName = "Gromozeka"
@@ -209,5 +210,52 @@ tasks.register<Test>("convertLogo") {
     
     inputs.file("src/jvmMain/resources/logo.svg")
     outputs.dir("src/jvmMain/resources/logos")
+}
+
+tasks.register<Exec>("buildAppImage") {
+    description = "Build AppImage distribution for Linux"
+    group = "distribution"
+    
+    // Only run on Linux systems
+    onlyIf {
+        System.getProperty("os.name").lowercase().contains("linux")
+    }
+    
+    workingDir = project.rootDir
+    commandLine = listOf("bash", "./build-appimage.sh")
+    
+    // Set up proper dependencies
+    dependsOn("build")
+    
+    // Define inputs and outputs for up-to-date checking
+    inputs.files(
+        "build-appimage.sh",
+        "appimage-resources/AppRun", 
+        "appimage-resources/gromozeka.desktop",
+        "bot/src/jvmMain/resources/logos/logo-256x256.png"
+    )
+    inputs.dir("bot/src")
+    inputs.dir("shared/src")
+    inputs.files("bot/build.gradle.kts", "build.gradle.kts")
+    
+    outputs.dir("build/appimage")
+    
+    doFirst {
+        if (!System.getProperty("os.name").lowercase().contains("linux")) {
+            throw GradleException(
+                "AppImage can only be built on Linux systems. " +
+                "Current OS: ${System.getProperty("os.name")}\n" +
+                "Use a Linux VM, container, or CI system to build AppImage."
+            )
+        }
+        
+        logger.lifecycle("Building AppImage for Gromozeka...")
+        logger.lifecycle("This may take several minutes on first run...")
+    }
+    
+    doLast {
+        logger.lifecycle("AppImage build completed!")
+        logger.lifecycle("Check build/appimage/ directory for the generated AppImage file")
+    }
 }
 

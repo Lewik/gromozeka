@@ -71,6 +71,46 @@ This is a Kotlin Multiplatform Project (MPP) with the following modules:
 
 **CRITICAL**: Never run `./gradlew :bot:run` unless user explicitly requests it or gives consent. Always ask permission before starting the application.
 
+## AppImage Distribution (Linux)
+
+**AppImage build** (Linux only):
+- `./gradlew buildAppImage` - Build AppImage distribution
+- `./build-appimage.sh` - Direct script execution
+- `./build-appimage.sh --clean` - Clean build artifacts
+
+**Requirements**:
+- Linux system (x86_64 architecture)
+- Java Development Kit (JDK 21+)
+- `curl` or `wget` for downloading appimagetool
+
+**Build Process**:
+1. Automatically downloads `appimagetool` if not present
+2. Temporarily enables `TargetFormat.AppImage` in Gradle build
+3. Builds Compose Desktop application with embedded JRE
+4. Creates AppDir structure with AppRun launcher and desktop integration
+5. Converts AppDir to final AppImage using appimagetool
+6. Restores original Gradle configuration
+
+**Output**: `build/appimage/Gromozeka-{version}-x86_64.AppImage`
+
+**AppImage Features**:
+- **Embedded JRE**: No Java installation required on target system
+- **System Claude CLI Detection**: Automatically finds and validates Claude Code CLI
+- **Desktop Integration**: Appears in application menus with proper icon
+- **Cross-Distribution Compatibility**: Works on Ubuntu, Fedora, openSUSE, Arch, etc.
+- **Error Handling**: User-friendly dialogs for missing dependencies
+
+**Architecture**: 
+- AppRun launcher script handles Claude CLI discovery and Java environment setup
+- Embedded OpenJDK 21 runtime for maximum compatibility (glibc 2.17+)
+- Desktop file provides proper application registration and MIME types
+- Robust dependency validation (architecture, glibc version, Claude CLI availability)
+
+**Troubleshooting**:
+- **"Claude Code CLI not found"**: Install Claude CLI and ensure it's in PATH
+- **"Unsupported architecture"**: AppImage is built for x86_64 only
+- **"Incompatible glibc version"**: Target system needs glibc 2.17+ (Ubuntu 14.04+)
+
 ## Test Status
 
 **Current Test State**: All tests are currently **disabled** using `@Disabled` annotation. There are no active/enabled tests running in CI.
