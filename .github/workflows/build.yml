@@ -33,6 +33,11 @@ jobs:
             target-formats: AppImage
             artifact-pattern: '**/*.AppImage'
             artifact-name: 'gromozeka-linux'
+          - name: Cross-Platform JAR
+            os: ubuntu-latest
+            target-formats: Jar
+            artifact-pattern: '**/*.jar'
+            artifact-name: 'gromozeka-jar'
 
     steps:
       - name: Checkout code
@@ -82,6 +87,9 @@ jobs:
             echo "Building AppImage for Linux..."
             chmod +x build-appimage.sh
             ./build-appimage.sh
+          elif [ "${{ matrix.target-formats }}" = "Jar" ]; then
+            echo "Building cross-platform JAR..."
+            ./gradlew :bot:packageUberJarForCurrentOS
           elif [ "$RUNNER_OS" = "Windows" ]; then
             ./gradlew.bat :bot:packageDistributionForCurrentOS
           else
@@ -94,6 +102,8 @@ jobs:
           echo "Built packages:"
           if [ "${{ matrix.target-formats }}" = "AppImage" ]; then
             find build/appimage -type f -name "*.AppImage" -exec ls -la {} \; 2>/dev/null || echo "No AppImage files found"
+          elif [ "${{ matrix.target-formats }}" = "Jar" ]; then
+            find bot/build/compose/jars -type f -name "*.jar" -exec ls -la {} \; 2>/dev/null || echo "No JAR files found"
           else
             find bot/build/compose/binaries -type f -name "*.dmg" -exec ls -la {} \; 2>/dev/null || echo "No DMG files found"
           fi
@@ -103,7 +113,7 @@ jobs:
         with:
           name: ${{ matrix.artifact-name }}-${{ env.VERSION }}
           path: |
-            ${{ matrix.target-formats == 'AppImage' && 'build/appimage/*.AppImage' || 'bot/build/compose/binaries/**/*.dmg' }}
+            ${{ matrix.target-formats == 'AppImage' && 'build/appimage/*.AppImage' || matrix.target-formats == 'Jar' && 'bot/build/compose/jars/*.jar' || 'bot/build/compose/binaries/**/*.dmg' }}
           retention-days: 30
 
   release:
@@ -138,6 +148,7 @@ jobs:
           mkdir -p release-assets
           find artifacts -type f -name "*.dmg" -exec cp {} release-assets/ \;
           find artifacts -type f -name "*.AppImage" -exec cp {} release-assets/ \;
+          find artifacts -type f -name "*.jar" -exec cp {} release-assets/ \;
           ls -la release-assets/
 
       - name: Generate release notes
@@ -153,6 +164,9 @@ jobs:
           ### Linux
           - **AppImage (x86_64)**: `Gromozeka-${{ env.VERSION }}-x86_64.AppImage`
 
+          ### Cross-Platform (Java)
+          - **JAR file**: `bot-jvm-${{ env.VERSION }}.jar`
+
           ## Installation
 
           ### macOS
@@ -167,6 +181,13 @@ jobs:
           3. Run it: `./Gromozeka-${{ env.VERSION }}-x86_64.AppImage`
           4. **Requirements**: Claude Code CLI must be installed and available in PATH
           5. **Compatibility**: Works on Ubuntu 14.04+, Fedora, openSUSE, Arch, and other distributions (glibc 2.17+)
+
+          ### Cross-Platform JAR
+          1. **Requirements**: Java 21+ installed on your system
+          2. Download the `.jar` file
+          3. Run it: `java -jar bot-jvm-${{ env.VERSION }}.jar`
+          4. **Claude Code CLI**: Must be installed and available in PATH
+          5. **Works on**: Any platform with Java 21+ (Windows, macOS, Linux, etc.)
 
           ## What's New
 
