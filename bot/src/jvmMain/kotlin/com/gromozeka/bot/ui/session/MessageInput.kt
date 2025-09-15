@@ -48,6 +48,8 @@ fun MessageInput(
                             true
                         }
                         
+                        // Блокируем символ § - используется для PTT хоткея
+                        event.utf16CodePoint == 167 -> true // § параграф
                         
                         else -> false
                     }

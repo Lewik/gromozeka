@@ -278,7 +278,7 @@ fun ApplicationScope.ChatWindow(
                     .background(MaterialTheme.colorScheme.background)
                     .focusTarget()
                     .advancedEscape(pttEventRouter)
-                    .onKeyEvent { event ->
+                    .onPreviewKeyEvent { event ->
                         
                         when {
                             // Cmd+T - новая сессия
@@ -293,8 +293,8 @@ fun ApplicationScope.ChatWindow(
                                 true
                             }
                             
-                            // Backtick клавиша для PTT (тестирование)
-                            event.key == Key.Grave -> { // ` backtick для PTT
+                            // Символ § используется как PTT хоткей  
+                            event.utf16CodePoint == 167 -> { // § параграф
                                 when (event.type) {
                                     KeyEventType.KeyDown -> {
                                         coroutineScope.launch {
