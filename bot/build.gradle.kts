@@ -262,3 +262,21 @@ tasks.register<Exec>("buildAppImage") {
     }
 }
 
+// Fix for "Invalid signature file digest" error from signed dependencies (janino)
+// Use afterEvaluate to configure task that's created dynamically
+afterEvaluate {
+    tasks.findByName("packageUberJarForCurrentOS")?.let { task ->
+        task.doLast {
+            val jarFiles = outputs.files.filter { it.extension == "jar" }
+            jarFiles.forEach { jarFile ->
+                println("Removing signature files from: ${jarFile.name}")
+                exec {
+                    commandLine("zip", "-d", jarFile.absolutePath, 
+                        "META-INF/*.SF", "META-INF/*.DSA", "META-INF/*.RSA")
+                    isIgnoreExitValue = true // Don't fail if files don't exist
+                }
+            }
+        }
+    }
+}
+
