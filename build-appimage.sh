@@ -230,7 +230,7 @@ build_appimage() {
     
     log "Building AppImage from AppDir..."
     
-    local version=$(grep 'version = projectVersion' "$PROJECT_ROOT/build.gradle.kts" | head -1 | sed 's/.*"\(.*\)".*/\1/' || echo "unknown")
+    local version=$(grep 'val projectVersion = ' "$PROJECT_ROOT/build.gradle.kts" | head -1 | sed 's/.*"\(.*\)".*/\1/' || echo "unknown")
     local output_name="Gromozeka-$version-x86_64.AppImage"
     local output_path="$BUILD_DIR/$output_name"
     
