@@ -165,7 +165,7 @@ jobs:
           - **AppImage (x86_64)**: `Gromozeka-${{ env.VERSION }}-x86_64.AppImage`
 
           ### Cross-Platform (Java)
-          - **JAR file**: `bot-jvm-${{ env.VERSION }}.jar`
+          - **JAR file**: `gromozeka-jvm-${{ env.VERSION }}.jar`
 
           ## Installation
 
@@ -185,7 +185,7 @@ jobs:
           ### Cross-Platform JAR
           1. **Requirements**: Java 21+ installed on your system
           2. Download the `.jar` file
-          3. Run it: `java -jar bot-jvm-${{ env.VERSION }}.jar`
+          3. Run it: `java -jar gromozeka-jvm-${{ env.VERSION }}.jar`
           4. **Claude Code CLI**: Must be installed and available in PATH
           5. **Works on**: Any platform with Java 21+ (Windows, macOS, Linux, etc.)
 

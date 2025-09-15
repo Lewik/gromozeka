@@ -128,6 +128,11 @@ tasks.withType<Test> {
 // JAR files are preserved in mcp-proxy/ directory for potential future use
 
 
+// Configure JAR archive name
+tasks.jar {
+    archiveBaseName.set("gromozeka-jvm")
+}
+
 compose.desktop {
     application {
         mainClass = "com.gromozeka.bot.ChatApplicationKt"
