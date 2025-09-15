@@ -19,19 +19,19 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 log() {
-    echo -e "${GREEN}[$(date '+%H:%M:%S')]${NC} $1"
+    echo -e "${GREEN}[$(date '+%H:%M:%S')]${NC} $1" >&2
 }
 
 warn() {
-    echo -e "${YELLOW}[WARN]${NC} $1"
+    echo -e "${YELLOW}[WARN]${NC} $1" >&2
 }
 
 error() {
-    echo -e "${RED}[ERROR]${NC} $1"
+    echo -e "${RED}[ERROR]${NC} $1" >&2
 }
 
 info() {
-    echo -e "${BLUE}[INFO]${NC} $1"
+    echo -e "${BLUE}[INFO]${NC} $1" >&2
 }
 
 check_linux() {
