@@ -28,6 +28,11 @@ jobs:
             target-formats: Dmg
             artifact-pattern: '**/*.dmg'
             artifact-name: 'gromozeka-macos'
+          - name: Linux AppImage
+            os: ubuntu-latest
+            target-formats: AppImage
+            artifact-pattern: '**/*.AppImage'
+            artifact-name: 'gromozeka-linux'
 
     steps:
       - name: Checkout code
@@ -73,7 +78,11 @@ jobs:
         env:
           TARGET_FORMATS: ${{ matrix.target-formats }}
         run: |
-          if [ "$RUNNER_OS" = "Windows" ]; then
+          if [ "${{ matrix.target-formats }}" = "AppImage" ]; then
+            echo "Building AppImage for Linux..."
+            chmod +x build-appimage.sh
+            ./build-appimage.sh
+          elif [ "$RUNNER_OS" = "Windows" ]; then
             ./gradlew.bat :bot:packageDistributionForCurrentOS
           else
             ./gradlew :bot:packageDistributionForCurrentOS
@@ -83,13 +92,18 @@ jobs:
         shell: bash
         run: |
           echo "Built packages:"
-          find bot/build/compose/binaries -type f -name "*.dmg" -exec ls -la {} \;
+          if [ "${{ matrix.target-formats }}" = "AppImage" ]; then
+            find build/appimage -type f -name "*.AppImage" -exec ls -la {} \; 2>/dev/null || echo "No AppImage files found"
+          else
+            find bot/build/compose/binaries -type f -name "*.dmg" -exec ls -la {} \; 2>/dev/null || echo "No DMG files found"
+          fi
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact-name }}-${{ env.VERSION }}
-          path: bot/build/compose/binaries/**/*.dmg
+          path: |
+            ${{ matrix.target-formats == 'AppImage' && 'build/appimage/*.AppImage' || 'bot/build/compose/binaries/**/*.dmg' }}
           retention-days: 30
 
   release:
@@ -123,6 +137,7 @@ jobs:
         run: |
           mkdir -p release-assets
           find artifacts -type f -name "*.dmg" -exec cp {} release-assets/ \;
+          find artifacts -type f -name "*.AppImage" -exec cp {} release-assets/ \;
           ls -la release-assets/
 
       - name: Generate release notes
@@ -135,6 +150,9 @@ jobs:
           ### macOS
           - **Universal Binary (M1/M2/M3/M4 + Intel)**: `Gromozeka-${{ env.VERSION }}.dmg`
 
+          ### Linux
+          - **AppImage (x86_64)**: `Gromozeka-${{ env.VERSION }}-x86_64.AppImage`
+
           ## Installation
 
           ### macOS
@@ -142,6 +160,13 @@ jobs:
           2. Open it and drag Gromozeka to Applications folder
           3. First launch: Right-click → Open (to bypass Gatekeeper)
           4. Grant accessibility permissions when prompted for global hotkey support
+
+          ### Linux
+          1. Download the `.AppImage` file
+          2. Make it executable: `chmod +x Gromozeka-${{ env.VERSION }}-x86_64.AppImage`
+          3. Run it: `./Gromozeka-${{ env.VERSION }}-x86_64.AppImage`
+          4. **Requirements**: Claude Code CLI must be installed and available in PATH
+          5. **Compatibility**: Works on Ubuntu 14.04+, Fedora, openSUSE, Arch, and other distributions (glibc 2.17+)
 
           ## What's New
 
