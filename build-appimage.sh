@@ -219,7 +219,7 @@ prepare_appdir() {
     
     # List AppDir contents for verification
     info "AppDir structure:"
-    ls -la "$appdir" | head -10
+    ls -la "$appdir" | head -10 >&2
     
     echo "$appdir"
 }
