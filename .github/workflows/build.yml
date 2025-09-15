@@ -78,6 +78,16 @@ jobs:
           sed -i.bak 's/packageBuildVersion = ".*"/packageBuildVersion = "'$VERSION'"/g' bot/build.gradle.kts
           sed -i.bak 's/dmgPackageVersion = ".*"/dmgPackageVersion = "'$VERSION'"/g' bot/build.gradle.kts
 
+      - name: Install FUSE for AppImage
+        if: matrix.target-formats == 'AppImage'
+        shell: bash
+        run: |
+          echo "Installing FUSE library for AppImage support..."
+          sudo apt-get update
+          # Try libfuse2t64 first (Ubuntu 24.04+), fallback to libfuse2 (Ubuntu 22.04)
+          sudo apt-get install -y libfuse2t64 || sudo apt-get install -y libfuse2
+          echo "FUSE installation completed"
+
       - name: Build native distributions
         shell: bash
         env:
