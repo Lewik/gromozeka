@@ -262,19 +262,45 @@ tasks.register<Exec>("buildAppImage") {
     }
 }
 
-// Fix for "Invalid signature file digest" error from signed dependencies (janino)
-// Use afterEvaluate to configure task that's created dynamically
-afterEvaluate {
-    tasks.findByName("packageUberJarForCurrentOS")?.let { task ->
-        task.doLast {
-            val jarFiles = outputs.files.filter { it.extension == "jar" }
-            jarFiles.forEach { jarFile ->
-                println("Removing signature files from: ${jarFile.name}")
-                exec {
-                    commandLine("zip", "-d", jarFile.absolutePath, 
-                        "META-INF/*.SF", "META-INF/*.DSA", "META-INF/*.RSA")
-                    isIgnoreExitValue = true // Don't fail if files don't exist
+// Fix for "Invalid signature file digest" error from signed dependencies (janino)  
+// Configuration cache compatible approach using Provider API
+tasks.register("removeJarSignatures") {
+    description = "Remove signature files from JAR to prevent SecurityException"
+    group = "build"
+    
+    // This task should run after JAR creation
+    dependsOn("packageUberJarForCurrentOS")
+    
+    // Use Provider API for configuration cache compatibility
+    val jarDir = layout.buildDirectory.dir("compose/jars")
+    inputs.dir(jarDir)
+    
+    doLast {
+        val jarsDir = jarDir.get().asFile
+        val jarFiles = jarsDir.listFiles { _, name -> name.endsWith(".jar") } ?: emptyArray()
+        
+        if (jarFiles.isEmpty()) {
+            logger.warn("No JAR files found in ${jarsDir.absolutePath}")
+            return@doLast
+        }
+        
+        jarFiles.forEach { jarFile ->
+            logger.lifecycle("Removing signature files from: ${jarFile.name}")
+            
+            try {
+                val process = ProcessBuilder(
+                    "zip", "-d", jarFile.absolutePath,
+                    "META-INF/*.SF", "META-INF/*.DSA", "META-INF/*.RSA"
+                ).start()
+                
+                val exitCode = process.waitFor()
+                when (exitCode) {
+                    0 -> logger.info("Successfully removed signature files from ${jarFile.name}")
+                    12 -> logger.info("No signature files found in ${jarFile.name} (expected)")
+                    else -> logger.warn("zip command returned exit code $exitCode for ${jarFile.name}")
                 }
+            } catch (e: Exception) {
+                logger.error("Failed to remove signatures from ${jarFile.name}: ${e.message}")
             }
         }
     }

@@ -99,7 +99,7 @@ jobs:
             ./build-appimage.sh
           elif [ "${{ matrix.target-formats }}" = "Jar" ]; then
             echo "Building cross-platform JAR..."
-            ./gradlew :bot:packageUberJarForCurrentOS
+            ./gradlew :bot:removeJarSignatures
           elif [ "$RUNNER_OS" = "Windows" ]; then
             ./gradlew.bat :bot:packageDistributionForCurrentOS
           else
