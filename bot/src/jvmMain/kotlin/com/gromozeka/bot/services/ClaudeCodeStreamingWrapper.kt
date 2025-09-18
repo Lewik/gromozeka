@@ -26,6 +26,7 @@ import java.time.format.DateTimeFormatter
 // No longer a Spring @Component - created per Session for proper isolation
 class ClaudeCodeStreamingWrapper(
     private val settingsService: SettingsService,
+    private val sanitizer: StreamMessageSanitizer,
 ) : ClaudeWrapper {
     private val log = KLoggers.logger(this)
     
@@ -310,7 +311,7 @@ class ClaudeCodeStreamingWrapper(
             }
 
             // Initialize stream logger for this project
-            streamLogger = StreamLogger(actualProjectPath)
+            streamLogger = StreamLogger(actualProjectPath, sanitizer)
 
             process = processBuilder.start()
 
@@ -459,19 +460,17 @@ class ClaudeCodeStreamingWrapper(
                 if (line.trim().isEmpty()) continue
 
                 try {
-                    log.debug("=== CLAUDE CODE LIVE STREAM ===")
-                    log.debug(line)
-                    log.debug("=== END LIVE STREAM ===")
-
-                    // Parse and broadcast stream message
+                    // Parse stream message first
                     val streamMessagePacket = parseStreamJsonLine(line)
                     log.debug("*** EMITTING STREAM MESSAGE: ${streamMessagePacket.streamMessage::class.simpleName}")
 
                     _streamMessages.emit(streamMessagePacket)
+                    
+                    // Log sanitized parsed message after successful processing
+                    streamLogger?.logStreamMessage(streamMessagePacket.streamMessage, line)
                 } catch (e: Exception) {
                     log.error(e) { "Error processing stream line" }
-                } finally {
-                    // Log raw JSONL line after all processing (guaranteed)
+                    // If parsing failed, log original line as fallback
                     streamLogger?.logLine(line)
                 }
             }

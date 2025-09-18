@@ -69,12 +69,9 @@ class WrapperFactory {
      */
     fun createWrapper(
         settingsService: SettingsService,
+        streamMessageSanitizer: StreamMessageSanitizer,
         type: WrapperType,
-    ): ClaudeWrapper {
-        return when (type) {
-            WrapperType.DIRECT_CLI -> {
-                ClaudeCodeStreamingWrapper(settingsService)
-            }
-        }
+    ) = when (type) {
+        WrapperType.DIRECT_CLI -> ClaudeCodeStreamingWrapper(settingsService, streamMessageSanitizer)
     }
 }

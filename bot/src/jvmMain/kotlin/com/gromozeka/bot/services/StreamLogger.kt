@@ -1,9 +1,9 @@
 package com.gromozeka.bot.services
 
+import com.gromozeka.bot.model.ClaudeCodeStreamJsonLine
 import com.gromozeka.shared.domain.session.ClaudeSessionUuid
 import com.gromozeka.shared.domain.session.toClaudeSessionUuid
 import klog.KLoggers
-
 import java.io.BufferedWriter
 import java.io.FileWriter
 import java.nio.file.Files
@@ -22,6 +22,7 @@ import kotlin.io.path.*
  */
 class StreamLogger(
     private val projectPath: String,
+    private val sanitizer: StreamMessageSanitizer,
     private val sessionId: ClaudeSessionUuid? = null,
 ) {
     companion object {
@@ -118,15 +119,36 @@ class StreamLogger(
     }
 
     /**
-     * Log a raw JSONL line from Claude stream
+     * Log a parsed stream message after sanitization.
+     * If parsing failed, logs the original line as-is.
+     */
+    fun logStreamMessage(streamMessage: ClaudeCodeStreamJsonLine, originalLine: String) {
+        val sanitizedLine = try {
+            sanitizer.sanitize(streamMessage)
+        } catch (e: Exception) {
+            log.debug("Failed to sanitize parsed stream message: ${e.message}, logging original line")
+            originalLine
+        }
+
+        writeToLog(sanitizedLine)
+    }
+
+    /**
+     * Log a raw JSONL line from Claude stream (fallback method).
+     * Used only when parsing fails - logs generic placeholder.
      */
     fun logLine(line: String) {
         if (line.isBlank()) return
+        // Simple fallback - don't try to sanitize unparseable JSON
+        val placeholder = sanitizer.createParseErrorPlaceholder(line.length)
+        writeToLog(placeholder)
+    }
 
+    private fun writeToLog(content: String) {
         synchronized(writerLock) {
             currentWriter?.let { writer ->
                 try {
-                    writer.write(line)
+                    writer.write(content)
                     writer.newLine()
                     writer.flush() // Immediate flush for crash safety
                 } catch (e: Exception) {
@@ -141,7 +163,7 @@ class StreamLogger(
                 // Try to write the line immediately
                 currentWriter?.let { writer ->
                     try {
-                        writer.write(line)
+                        writer.write(content)
                         writer.newLine()
                         writer.flush()
                     } catch (e: Exception) {

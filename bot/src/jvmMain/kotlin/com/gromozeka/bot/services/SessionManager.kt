@@ -1,15 +1,14 @@
 package com.gromozeka.bot.services
 
 import com.gromozeka.bot.model.AgentDefinition
-import com.gromozeka.bot.ui.state.ConversationInitiator
-import klog.KLoggers
-
 import com.gromozeka.bot.model.Session
 import com.gromozeka.bot.services.WrapperFactory.WrapperType
 import com.gromozeka.bot.services.llm.claudecode.converter.ClaudeMessageConverter
+import com.gromozeka.bot.ui.state.ConversationInitiator
 import com.gromozeka.shared.domain.session.ClaudeSessionUuid
 import com.gromozeka.shared.domain.session.SessionUuid
 import com.gromozeka.shared.domain.session.toSessionUuid
+import klog.KLoggers
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -33,6 +32,7 @@ class SessionManager(
     private val settingsService: SettingsService,
     private val wrapperFactory: WrapperFactory,
     private val claudeMessageConverter: ClaudeMessageConverter,
+    private val streamMessageSanitizer: StreamMessageSanitizer,
     @Qualifier("coroutineScope") private val scope: CoroutineScope,
 ) {
     private val log = KLoggers.logger(this)
@@ -88,14 +88,14 @@ class SessionManager(
     ): Session {
         // Create wrapper using factory
         val wrapperType = WrapperType.DIRECT_CLI
-        val claudeWrapper = wrapperFactory.createWrapper(settingsService, wrapperType)
+        val claudeWrapper = wrapperFactory.createWrapper(settingsService, streamMessageSanitizer, wrapperType)
 
         val initiatorInfo = when (initiator) {
             is ConversationInitiator.User -> "This conversation was initiated by the user"
-            is ConversationInitiator.Agent -> "This conversation was initiated by agent (tab:${initiator.tabId})"  
+            is ConversationInitiator.Agent -> "This conversation was initiated by agent (tab:${initiator.tabId})"
             is ConversationInitiator.System -> "This conversation was initiated by the system (resume/context/etc)"
         }
-        
+
         val appendSystemPrompt = if (tabId != null) {
             "This tab ID: $tabId\n$initiatorInfo"
         } else {

@@ -301,7 +301,7 @@ class Session(
                                 val textContent = pendingCommand.chatMessage.content
                                     .filterIsInstance<ChatMessage.ContentItem.UserMessage>()
                                     .joinToString(" ") { it.text }
-                                log.debug("Force sending extracted message: ${textContent.take(50)}...")
+                                log.debug("Force sending extracted message: length=${textContent.length} chars")
                                 try {
                                     // Directly send the message bypassing normal flow
                                     performSendMessage(pendingCommand)
@@ -360,7 +360,7 @@ class Session(
                         .joinToString("\n") { it.text }
                 }
             }
-            log.debug { "Sending message: ${messageText.take(100)}${if (messageText.length > 100) "..." else ""}" }
+            log.debug { "Sending message: length=${messageText.length} chars, type=${chatMessage.role}" }
 
             _messageOutputStream.emit(chatMessage)
 
@@ -555,7 +555,7 @@ class Session(
                         .joinToString("\n") { it.text }
                 }
             }
-            log.debug { "Sending message: ${messageText.take(100)}${if (messageText.length > 100) "..." else ""}" }
+            log.debug { "Sending message: length=${messageText.length} chars, type=${chatMessage.role}" }
 
             _messageOutputStream.emit(chatMessage)
 

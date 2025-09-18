@@ -351,7 +351,7 @@ class ClaudeStreamToChatConverter(
         } catch (e: Exception) {
             // Fallback to generic if deserialization fails
             log.warn(e, "TOOL CALL PARSE ERROR: Failed to deserialize tool call '$name'")
-            log.debug("Input JSON: $input")
+            log.debug("Input JSON: [SANITIZED] tool=$name")
             ToolCallData.Generic(name, input)
         }
     }
@@ -366,7 +366,7 @@ class ClaudeStreamToChatConverter(
             } catch (_: SerializationException) {
                 // Not a Gromozeka format, return as generic JSON
                 log.debug("PARSE: Text is not Gromozeka JSON, fallback to UnknownJson")
-                log.debug("Text preview: ${text.take(100)}${if (text.length > 100) "..." else ""}")
+                log.debug("Text preview: length=${text.length} chars")
                 ChatMessage.ContentItem.UnknownJson(jsonElement)
             }
         } catch (_: Exception) {
@@ -383,7 +383,7 @@ class ClaudeStreamToChatConverter(
         } catch (e: Exception) {
             // Parser failed - log and fallback to raw text
             log.warn("Parser failed for format $currentResponseFormat: ${e.message}")
-            log.debug("Text: ${text.take(100)}${if (text.length > 100) "..." else ""}")
+            log.debug("Text: length=${text.length} chars")
 
             // Return as raw text fallback
             ChatMessage.ContentItem.AssistantMessage(

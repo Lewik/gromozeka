@@ -139,7 +139,7 @@ class PTTService(
         if (finalAudio != null) {
             try {
                 val text = sttService.transcribe(finalAudio)
-                log.info("Recording stopped, transcribed: '${text.take(50)}${if (text.length > 50) "..." else ""}'")
+                log.info("Recording stopped, transcribed: length=${text.length} chars")
                 text
             } catch (e: Exception) {
                 log.error("Failed to transcribe audio: ${e.message}")

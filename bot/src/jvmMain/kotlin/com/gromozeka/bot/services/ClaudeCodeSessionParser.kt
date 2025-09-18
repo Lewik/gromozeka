@@ -43,17 +43,17 @@ class ClaudeCodeSessionParser {
                 }
 
                 null -> {
-                    log.error("Missing 'type' field in JSON. Line: $line")
+                    log.error("Missing 'type' field in JSON. Line length: ${line.length} chars")
                     throw IllegalArgumentException("Missing 'type' field in JSON")
                 }
 
                 else -> {
-                    log.warn("Unknown entry type: $type. Line: $line")
+                    log.warn("Unknown entry type: $type. Line length: ${line.length} chars")
                     throw IllegalArgumentException("Unknown entry type: $type")
                 }
             }
         } catch (e: Exception) {
-            log.error(e, "Exception in parseJsonLine: ${e.javaClass.simpleName}: ${e.message}. Line: $line")
+            log.error(e, "Exception in parseJsonLine: ${e.javaClass.simpleName}: ${e.message}. Line length: ${line.length} chars")
             throw e
         }
     }
@@ -73,7 +73,7 @@ class ClaudeCodeSessionParser {
                 try {
                     parseJsonLine(line)
                 } catch (e: Exception) {
-                    log.error(e, "JSONL PARSE ERROR at line ${index + 1}. Exception: ${e.javaClass.simpleName}: ${e.message}. Line content: $line. Line length: ${line.length}")
+                    log.error(e, "JSONL PARSE ERROR at line ${index + 1}. Exception: ${e.javaClass.simpleName}: ${e.message}. Line length: ${line.length}")
                     // Log but continue parsing other lines
                     null
                 }
