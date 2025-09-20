@@ -89,6 +89,7 @@ data class HebrewTranslation(
         override val interfaceSettingsTitle: String = "ממשק",
         override val localizationTitle: String = "לוקליזציה",
         override val notificationsTitle: String = "התראות",
+        override val logsAndDiagnosticsTitle: String = "לוגים ואבחון",
         override val developerSettingsTitle: String = "פיתוח",
 
         override val enableTtsLabel: String = "הפעל סינתזת קול",

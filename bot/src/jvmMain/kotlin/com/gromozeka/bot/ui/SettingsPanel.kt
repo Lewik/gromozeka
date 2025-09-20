@@ -17,6 +17,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.gromozeka.bot.services.LogEncryptor
 import com.gromozeka.bot.services.theming.AIThemeGenerator
 import com.gromozeka.bot.services.theming.ThemeService
 import com.gromozeka.bot.services.theming.data.Theme
@@ -27,6 +28,7 @@ import com.gromozeka.bot.settings.Settings
 import klog.KLoggers
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import kotlin.io.path.exists
 
 private val log = KLoggers.logger("SettingsPanel")
 
@@ -39,6 +41,7 @@ fun SettingsPanel(
     translationService: TranslationService,
     themeService: ThemeService,
     aiThemeGenerator: AIThemeGenerator,
+    logEncryptor: LogEncryptor,
     coroutineScope: CoroutineScope,
     onOpenTab: (String) -> Unit, // Callback to open new tab with project path
     onOpenTabWithMessage: ((String, String, AgentDefinition) -> Unit)? = null, // Callback to open new tab with initial message
@@ -572,6 +575,118 @@ fun SettingsPanel(
                                 onValueChange = { onSettingsChange(settings.copy(soundVolume = it)) }
                             )
                         }
+                    }
+
+                    // Logs & Diagnostics
+                    SettingsGroup(title = translation.settings.logsAndDiagnosticsTitle) {
+                        ButtonSettingItem(
+                            label = "View Application Logs",
+                            description = "Open the folder containing application logs to review activity and troubleshoot issues",
+                            buttonText = "Open Folder",
+                            onClick = {
+                                coroutineScope.launch {
+                                    try {
+                                        val logsPath = java.nio.file.Path.of("logs")
+                                        if (logsPath.exists()) {
+                                            val osName = System.getProperty("os.name").lowercase()
+                                            when {
+                                                osName.contains("mac") -> {
+                                                    ProcessBuilder("open", logsPath.toString()).start()
+                                                }
+                                                osName.contains("windows") -> {
+                                                    ProcessBuilder("explorer", logsPath.toString()).start()
+                                                }
+                                                else -> {
+                                                    ProcessBuilder("xdg-open", logsPath.toString()).start()
+                                                }
+                                            }
+                                            log.info("Opened logs folder: $logsPath")
+                                        } else {
+                                            log.warn("Logs folder does not exist: $logsPath")
+                                        }
+                                    } catch (e: Exception) {
+                                        log.error(e) { "Failed to open logs folder" }
+                                    }
+                                }
+                            }
+                        )
+                        
+                        ButtonSettingItem(
+                            label = "Encrypt Logs",
+                            description = "Encrypt logs for secure transmission to developer. Personal information is not logged.",
+                            buttonText = "Encrypt Logs",
+                            onClick = {
+                                coroutineScope.launch {
+                                    try {
+                                        log.info("Starting log encryption...")
+                                        val result = logEncryptor.encryptLogs()
+                                        
+                                        if (result.success && result.encryptedFile != null) {
+                                            log.info("Log encryption successful: ${result.encryptedFile}")
+                                            
+                                            // Open folder with encrypted file
+                                            try {
+                                                val encryptedFolder = result.encryptedFile.parent
+                                                val osName = System.getProperty("os.name").lowercase()
+                                                when {
+                                                    osName.contains("mac") -> {
+                                                        ProcessBuilder("open", encryptedFolder.toString()).start()
+                                                    }
+                                                    osName.contains("windows") -> {
+                                                        ProcessBuilder("explorer", encryptedFolder.toString()).start()
+                                                    }
+                                                    else -> {
+                                                        ProcessBuilder("xdg-open", encryptedFolder.toString()).start()
+                                                    }
+                                                }
+                                                log.info("Opened encrypted logs folder: $encryptedFolder")
+                                            } catch (e: Exception) {
+                                                log.error(e) { "Failed to open encrypted logs folder" }
+                                            }
+                                        } else {
+                                            log.error { "Log encryption failed: ${result.error}" }
+                                            // TODO: Show error notification
+                                        }
+                                    } catch (e: Exception) {
+                                        log.error(e) { "Unexpected error during log encryption" }
+                                        // TODO: Show error notification
+                                    }
+                                }
+                            }
+                        )
+                        
+                        ButtonSettingItem(
+                            label = "Clear Application Logs",
+                            description = "Delete all log files to immediately free up disk space and start fresh logging.",
+                            buttonText = "Clear All",
+                            onClick = {
+                                coroutineScope.launch {
+                                    try {
+                                        val logsPath = java.nio.file.Path.of("logs")
+                                        if (logsPath.exists()) {
+                                            var deletedCount = 0
+                                            java.nio.file.Files.walk(logsPath)
+                                                .filter { java.nio.file.Files.isRegularFile(it) }
+                                                .forEach { file ->
+                                                    try {
+                                                        java.nio.file.Files.delete(file)
+                                                        deletedCount++
+                                                    } catch (e: Exception) {
+                                                        log.warn(e) { "Failed to delete log file: $file" }
+                                                    }
+                                                }
+                                            log.info("Cleared $deletedCount log files from $logsPath")
+                                            // TODO: Show success notification
+                                        } else {
+                                            log.warn("Logs folder does not exist: $logsPath")
+                                        }
+                                    } catch (e: Exception) {
+                                        log.error(e) { "Failed to clear logs" }
+                                        // TODO: Show error notification
+                                    }
+                                }
+                            }
+                        )
                     }
 
                     // Developer Settings

@@ -89,6 +89,7 @@ data class EnglishTranslation(
         override val interfaceSettingsTitle: String = "Interface",
         override val localizationTitle: String = "Localization",
         override val notificationsTitle: String = "Notifications",
+        override val logsAndDiagnosticsTitle: String = "Logs & Diagnostics",
         override val developerSettingsTitle: String = "Developer",
 
         override val enableTtsLabel: String = "Enable Text-to-Speech",

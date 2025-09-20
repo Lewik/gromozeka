@@ -88,6 +88,7 @@ data class JapaneseTranslation(
         override val interfaceSettingsTitle: String = "インターフェース",
         override val localizationTitle: String = "ローカライゼーション",
         override val notificationsTitle: String = "通知",
+        override val logsAndDiagnosticsTitle: String = "ログと診断",
         override val developerSettingsTitle: String = "開発者",
 
         override val enableTtsLabel: String = "テキスト読み上げを有効",

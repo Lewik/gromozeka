@@ -10,14 +10,14 @@ import kotlinx.serialization.json.put
 import org.springframework.stereotype.Service
 
 /**
- * Sanitizer for Claude Code stream messages to remove sensitive content while preserving
+ * Sanitizer for Claude Code stream messages to prevent logging of sensitive content while preserving
  * diagnostic information useful for debugging and monitoring.
  * 
  * This class handles sanitization of different message types:
- * - System messages: Anonymizes paths and sanitizes data
- * - User messages: Removes all user content 
- * - Assistant messages: Preserves structure but removes content and tool arguments
- * - Result messages: Sanitizes result content but keeps metadata
+ * - System messages: Anonymizes paths and prevents data logging
+ * - User messages: Replaces user content with placeholders
+ * - Assistant messages: Preserves structure but replaces content and tool arguments with placeholders
+ * - Result messages: Replaces result content with placeholders but keeps metadata
  * - Control messages: Left as-is (typically safe)
  */
 @Service
@@ -53,7 +53,7 @@ class StreamMessageSanitizer {
         return message.copy(
             cwd = message.cwd?.let { anonymizePath(it) },
             data = if (message.data != null) buildJsonObject {
-                put("sanitized", "[SANITIZED - System data removed]")
+                put("sanitized", "[PLACEHOLDER - System data not logged]")
             } else null
         )
     }
@@ -61,7 +61,7 @@ class StreamMessageSanitizer {
     private fun sanitizeUserMessage(message: ClaudeCodeStreamJsonLine.User): ClaudeCodeStreamJsonLine.User {
         return message.copy(
             message = message.message.copy(
-                content = ContentItemsUnion.StringContent("[SANITIZED - User message content removed]")
+                content = ContentItemsUnion.StringContent("[PLACEHOLDER - User message content not logged]")
             )
         )
     }
@@ -70,13 +70,13 @@ class StreamMessageSanitizer {
         val sanitizedContent = message.message.content.map { contentBlock ->
             when (contentBlock) {
                 is ContentBlock.TextBlock -> contentBlock.copy(
-                    text = "[SANITIZED - Assistant text removed]"
+                    text = "[PLACEHOLDER - Assistant text not logged]"
                 )
                 is ContentBlock.ToolUseBlock -> contentBlock.copy(
-                    input = JsonPrimitive("[SANITIZED - Tool arguments removed]")
+                    input = JsonPrimitive("[PLACEHOLDER - Tool arguments not logged]")
                 )
                 is ContentBlock.ThinkingItem -> contentBlock.copy(
-                    thinking = "[SANITIZED - Thinking content removed]"
+                    thinking = "[PLACEHOLDER - Thinking content not logged]"
                 )
                 else -> contentBlock // Keep other blocks as-is
             }
@@ -89,7 +89,7 @@ class StreamMessageSanitizer {
     
     private fun sanitizeResultMessage(message: ClaudeCodeStreamJsonLine.Result): ClaudeCodeStreamJsonLine.Result {
         return message.copy(
-            result = message.result?.let { "[SANITIZED - Result content removed]" }
+            result = message.result?.let { "[PLACEHOLDER - Result content not logged]" }
         )
     }
     

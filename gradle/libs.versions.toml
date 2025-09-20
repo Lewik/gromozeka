@@ -23,6 +23,7 @@ klog = "v2.1.1"
 kotlinx-coroutines = "1.10.2"
 kotlinx-io = "0.6.0"
 xmlutil = "0.91.2"
+jagged = "1.0.0"
 
 [libraries]
 # Ktor
@@ -82,6 +83,11 @@ klog = { module = "com.github.lewik.klog:klog-jvm", version.ref = "klog" }
 
 # XML Utilities
 xmlutil-serialization = { module = "io.github.pdvrieze.xmlutil:serialization", version.ref = "xmlutil" }
+
+# Age Encryption
+jagged-api = { module = "com.exceptionfactory.jagged:jagged-api", version.ref = "jagged" }
+jagged-x25519 = { module = "com.exceptionfactory.jagged:jagged-x25519", version.ref = "jagged" }
+jagged-framework = { module = "com.exceptionfactory.jagged:jagged-framework", version.ref = "jagged" }
 
 # Testing
 junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit" }

@@ -125,6 +125,7 @@ fun main() {
     val contextExtractionService = context.getBean<ContextExtractionService>()
     val contextFileService = context.getBean<ContextFileService>()
     val hookPermissionService = context.getBean<HookPermissionService>()
+    val logEncryptor = context.getBean<com.gromozeka.bot.services.LogEncryptor>()
 
     // Create AI theme generator
     val aiThemeGenerator = AIThemeGenerator(
@@ -186,6 +187,7 @@ fun main() {
                     translationService,
                     themeService,
                     aiThemeGenerator,
+                    logEncryptor,
                     mcpHttpServer,
                     context.getBean("hookPermissionService") as HookPermissionService,
                     contextExtractionService,

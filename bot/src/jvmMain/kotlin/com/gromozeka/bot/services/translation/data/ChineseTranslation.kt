@@ -88,6 +88,7 @@ data class ChineseTranslation(
         override val interfaceSettingsTitle: String = "界面",
         override val localizationTitle: String = "本地化",
         override val notificationsTitle: String = "通知",
+        override val logsAndDiagnosticsTitle: String = "日志和诊断",
         override val developerSettingsTitle: String = "开发者",
 
         override val enableTtsLabel: String = "启用文本转语音",

@@ -84,6 +84,11 @@ kotlin {
                 // MCP SDK for official protocol structures
                 implementation(libs.mcp.kotlin.sdk)
                 
+                // Age encryption for secure log packaging
+                implementation(libs.jagged.api)
+                implementation(libs.jagged.x25519)
+                implementation(libs.jagged.framework)
+                
                 // Batik for logo generation task
                 implementation(libs.batik.transcoder)
                 implementation(libs.batik.codec)
@@ -214,6 +219,7 @@ tasks.register<Test>("convertLogo") {
     inputs.file("src/jvmMain/resources/logo.svg")
     outputs.dir("src/jvmMain/resources/logos")
 }
+
 
 tasks.register<Exec>("buildAppImage") {
     description = "Build AppImage distribution for Linux"

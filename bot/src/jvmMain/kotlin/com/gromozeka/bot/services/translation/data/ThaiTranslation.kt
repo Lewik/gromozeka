@@ -88,6 +88,7 @@ data class ThaiTranslation(
         override val interfaceSettingsTitle: String = "อินเทอร์เฟซ",
         override val localizationTitle: String = "การแปลภาษา",
         override val notificationsTitle: String = "การแจ้งเตือน",
+        override val logsAndDiagnosticsTitle: String = "ล็อกและการวินิจฉัย",
         override val developerSettingsTitle: String = "การพัฒนา",
 
         override val enableTtsLabel: String = "เปิดการแปลงข้อความเป็นเสียง",

@@ -56,6 +56,7 @@ fun ApplicationScope.ChatWindow(
     translationService: TranslationService,
     themeService: ThemeService,
     aiThemeGenerator: AIThemeGenerator,
+    logEncryptor: LogEncryptor,
     mcpHttpServer: McpHttpServer,
     hookPermissionService: HookPermissionService,
     contextExtractionService: ContextExtractionService,
@@ -457,6 +458,7 @@ fun ApplicationScope.ChatWindow(
                             translationService = translationService,
                             themeService = themeService,
                             aiThemeGenerator = aiThemeGenerator,
+                            logEncryptor = logEncryptor,
                             coroutineScope = coroutineScope,
                             onOpenTab = createNewSession,
                             onOpenTabWithMessage = createNewSessionWithMessage

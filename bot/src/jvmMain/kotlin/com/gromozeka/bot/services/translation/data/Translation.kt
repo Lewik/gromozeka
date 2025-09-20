@@ -20,6 +20,7 @@ sealed class Translation {
         abstract val interfaceSettingsTitle: String
         abstract val localizationTitle: String
         abstract val notificationsTitle: String
+        abstract val logsAndDiagnosticsTitle: String
         abstract val developerSettingsTitle: String
 
         // Settings Control Labels

@@ -89,6 +89,7 @@ data class RussianTranslation(
         override val interfaceSettingsTitle: String = "Интерфейс",
         override val localizationTitle: String = "Локализация",
         override val notificationsTitle: String = "Уведомления",
+        override val logsAndDiagnosticsTitle: String = "Логи и диагностика",
         override val developerSettingsTitle: String = "Разработка",
 
         override val enableTtsLabel: String = "Включить синтез речи",

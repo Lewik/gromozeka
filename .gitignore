@@ -56,6 +56,10 @@ application-local.yaml
 **/*-secret.properties
 bot/src/jvmMain/resources/mcp-bup.json
 
+# Age encryption private keys
+developer_private.age
+**/developer_private.age
+
 # Python virtual environments
 python-sdk-venv/
 venv/

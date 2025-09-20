@@ -353,6 +353,28 @@ Issues serve as our **shared project notebook** and **reference base**:
 - **Manual validation**: Stream behavior and PTT system require real testing
 - **No mocks**: External process timing cannot be reliably mocked
 
+## Log Encryption for Bug Reports
+
+**How to decrypt user-submitted logs**
+
+When users submit encrypted logs via GitHub issues, decrypt them:
+
+```bash
+age --decrypt --identity developer_private.age --output logs/logs.zip path/to/encrypted_logs.age && unzip logs/logs.zip -d logs/
+```
+
+*Tip: Use `logs/` directory - it's already gitignored*
+
+**Key locations**:
+- Public key: `bot/src/jvmMain/resources/encryption/developer_public.age`  
+- Private key: `developer_private.age` (repo root, gitignored)
+
+**User workflow**: Settings → "Encrypt Logs" → creates sanitized .age file in Gromozeka home directory
+**File locations**:
+- **Production mode**: `~/.gromozeka/encrypted-logs/`
+- **Development mode**: `bot/dev-data/.gromozeka/encrypted-logs/`
+**Security**: Personal data should not be logged, only technical diagnostics preserved
+
 ## Known Issues and Future Work
 
 ### Current Limitations:
