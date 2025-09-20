@@ -1,9 +1,6 @@
 package com.gromozeka.bot
 
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.window.application
-import com.gromozeka.bot.config.LoggingPathListener
 import com.gromozeka.bot.platform.GlobalHotkeyController
 import com.gromozeka.bot.services.*
 import com.gromozeka.bot.services.theming.AIThemeGenerator
@@ -96,10 +93,13 @@ fun main() {
     }
     log.info("Setting Spring profile: $springProfile")
 
+    // Set logging path BEFORE Spring initialization
+    val logPath = determineLogPath(modeEnv)
+    System.setProperty("logging.file.path", logPath)
+
     val context = SpringApplicationBuilder(ChatApplication::class.java)
         .web(WebApplicationType.NONE)
         .profiles(springProfile)
-        .listeners(LoggingPathListener())
         .run()
     log.info("Spring context initialized successfully")
 
@@ -127,7 +127,7 @@ fun main() {
     val contextExtractionService = context.getBean<ContextExtractionService>()
     val contextFileService = context.getBean<ContextFileService>()
     val hookPermissionService = context.getBean<HookPermissionService>()
-    val logEncryptor = context.getBean<com.gromozeka.bot.services.LogEncryptor>()
+    val logEncryptor = context.getBean<LogEncryptor>()
 
     // Create AI theme generator
     val aiThemeGenerator = AIThemeGenerator(
@@ -168,8 +168,6 @@ fun main() {
 
     log.info("Starting Compose Desktop UI...")
     application {
-        val currentSettings by settingsService.settingsFlow.collectAsState()
-
         GromozekaTheme(
             themeService = themeService
         ) {
@@ -197,6 +195,26 @@ fun main() {
                 )
             }  // TranslationProvider
         }  // GromozekaTheme
+    }
+}
+
+/**
+ * Determines the appropriate log directory based on application mode and platform.
+ * Must be called BEFORE Spring initialization to set system properties early.
+ */
+private fun determineLogPath(modeEnv: String?): String {
+    val mode = modeEnv?.lowercase() ?: "prod"
+    val osName = System.getProperty("os.name").lowercase()
+    val userHome = System.getProperty("user.home")
+
+    return when (mode) {
+        "dev", "development" -> "logs"
+        else -> when {
+            osName.contains("mac") -> "$userHome/Library/Logs/Gromozeka"
+            osName.contains("windows") -> "$userHome/AppData/Local/Gromozeka/logs"
+            osName.contains("linux") -> "$userHome/.local/share/Gromozeka/logs"
+            else -> "logs" // Fallback for unknown platforms
+        }
     }
 }
 

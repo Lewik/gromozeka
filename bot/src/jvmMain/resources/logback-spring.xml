@@ -8,7 +8,7 @@
         </encoder>
     </appender>
     
-    <!-- Single LOG_PATH property set programmatically by LoggingPathListener -->
+    <!-- LOG_PATH property set programmatically via System.setProperty before Spring initialization -->
     <property name="LOG_PATH" value="${logging.file.path}"/>
     
     <!-- Development profile - logs to programmatically determined directory -->
