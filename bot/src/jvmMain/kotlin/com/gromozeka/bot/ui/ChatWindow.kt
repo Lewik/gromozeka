@@ -459,6 +459,7 @@ fun ApplicationScope.ChatWindow(
                             themeService = themeService,
                             aiThemeGenerator = aiThemeGenerator,
                             logEncryptor = logEncryptor,
+                            settingsService = settingsService,
                             coroutineScope = coroutineScope,
                             onOpenTab = createNewSession,
                             onOpenTabWithMessage = createNewSessionWithMessage

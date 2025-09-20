@@ -8,10 +8,11 @@
         </encoder>
     </appender>
     
-    <!-- Development profile - logs to project logs/ directory -->
+    <!-- Single LOG_PATH property set programmatically by LoggingPathListener -->
+    <property name="LOG_PATH" value="${logging.file.path}"/>
+    
+    <!-- Development profile - logs to programmatically determined directory -->
     <springProfile name="dev,default,!prod">
-        <property name="LOG_PATH" value="logs"/>
-        
         <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
             <file>${LOG_PATH}/dev.log</file>
             <encoder>
@@ -36,25 +37,8 @@
         <logger name="com.gromozeka.bot" level="DEBUG"/>
     </springProfile>
     
-    <!-- Production profile - platform-specific log directories -->
+    <!-- Production profile - logs to programmatically determined directory -->
     <springProfile name="prod">
-        <!-- Platform-specific log directories -->
-        <if condition='property("os.name").toLowerCase().contains("mac")'>
-            <then>
-                <property name="LOG_PATH" value="${user.home}/Library/Logs/Gromozeka"/>
-            </then>
-        </if>
-        <if condition='property("os.name").toLowerCase().contains("windows")'>
-            <then>
-                <property name="LOG_PATH" value="${user.home}/AppData/Local/Gromozeka/logs"/>
-            </then>
-        </if>
-        <if condition='property("os.name").toLowerCase().contains("linux")'>
-            <then>
-                <property name="LOG_PATH" value="${user.home}/.local/share/Gromozeka/logs"/>
-            </then>
-        </if>
-        
         <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
             <file>${LOG_PATH}/gromozeka.log</file>
             <encoder>

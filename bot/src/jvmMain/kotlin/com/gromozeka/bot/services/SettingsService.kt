@@ -8,10 +8,13 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.serialization.json.*
+import org.springframework.beans.factory.annotation.Value
 import java.awt.GraphicsEnvironment
 import java.awt.Toolkit
 import java.io.File
+import java.nio.file.Path
 import java.util.*
+import kotlin.io.path.Path
 
 class SettingsService {
 
@@ -32,6 +35,9 @@ class SettingsService {
 
     val mcpConfigFile = File(gromozekaHome, "mcp-sse-config.json")
     val mcpPort = findRandomAvailablePort()
+
+    @Value("\${logging.file.path}")
+    private lateinit var logPath: String
 
     private val settingsFile: File = File(gromozekaHome, "settings.json")
 
@@ -183,6 +189,9 @@ class SettingsService {
     fun getClaudeConfigDir(): File {
         return File(claudeHome, "config")
     }
+
+    // Log directory paths (single source of truth)
+    fun getLogsDirectory(): Path = Path(logPath)
 
     /**
      * Validates settings for correctness and fail-fast behavior

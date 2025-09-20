@@ -18,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.gromozeka.bot.services.LogEncryptor
+import com.gromozeka.bot.services.SettingsService
 import com.gromozeka.bot.services.theming.AIThemeGenerator
 import com.gromozeka.bot.services.theming.ThemeService
 import com.gromozeka.bot.services.theming.data.Theme
@@ -42,6 +43,7 @@ fun SettingsPanel(
     themeService: ThemeService,
     aiThemeGenerator: AIThemeGenerator,
     logEncryptor: LogEncryptor,
+    settingsService: SettingsService,
     coroutineScope: CoroutineScope,
     onOpenTab: (String) -> Unit, // Callback to open new tab with project path
     onOpenTabWithMessage: ((String, String, AgentDefinition) -> Unit)? = null, // Callback to open new tab with initial message
@@ -586,7 +588,7 @@ fun SettingsPanel(
                             onClick = {
                                 coroutineScope.launch {
                                     try {
-                                        val logsPath = java.nio.file.Path.of("logs")
+                                        val logsPath = settingsService.getLogsDirectory()
                                         if (logsPath.exists()) {
                                             val osName = System.getProperty("os.name").lowercase()
                                             when {
@@ -662,7 +664,7 @@ fun SettingsPanel(
                             onClick = {
                                 coroutineScope.launch {
                                     try {
-                                        val logsPath = java.nio.file.Path.of("logs")
+                                        val logsPath = settingsService.getLogsDirectory()
                                         if (logsPath.exists()) {
                                             var deletedCount = 0
                                             java.nio.file.Files.walk(logsPath)

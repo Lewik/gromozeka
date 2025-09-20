@@ -3,6 +3,7 @@ package com.gromozeka.bot
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.window.application
+import com.gromozeka.bot.config.LoggingPathListener
 import com.gromozeka.bot.platform.GlobalHotkeyController
 import com.gromozeka.bot.services.*
 import com.gromozeka.bot.services.theming.AIThemeGenerator
@@ -98,6 +99,7 @@ fun main() {
     val context = SpringApplicationBuilder(ChatApplication::class.java)
         .web(WebApplicationType.NONE)
         .profiles(springProfile)
+        .listeners(LoggingPathListener())
         .run()
     log.info("Spring context initialized successfully")
 

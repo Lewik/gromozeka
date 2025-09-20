@@ -44,8 +44,6 @@ kotlin {
                 implementation(compose.materialIconsExtended)
                 implementation(libs.spring.boot.starter)
                 
-                // Janino for Logback conditional processing
-                implementation("org.codehaus.janino:janino:3.1.12")
 
                 // klog - Kotlin logging framework
                 implementation(libs.klog)
@@ -268,7 +266,7 @@ tasks.register<Exec>("buildAppImage") {
     }
 }
 
-// Fix for "Invalid signature file digest" error from signed dependencies (janino)  
+// Fix for "Invalid signature file digest" error from signed dependencies  
 // Configuration cache compatible approach using Provider API
 tasks.register("removeJarSignatures") {
     description = "Remove signature files from JAR to prevent SecurityException"

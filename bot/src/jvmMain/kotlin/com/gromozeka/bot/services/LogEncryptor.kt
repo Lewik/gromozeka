@@ -53,7 +53,7 @@ class LogEncryptor(
      */
     suspend fun encryptLogs(): EncryptionResult = withContext(Dispatchers.IO) {
         try {
-            val logsPath = getLogsDirectory()
+            val logsPath = settingsService.getLogsDirectory()
             if (!logsPath.exists()) {
                 return@withContext EncryptionResult(false, error = "Logs directory not found: $logsPath")
             }
@@ -179,47 +179,6 @@ class LogEncryptor(
             .atZone(ZoneOffset.UTC)
             .toLocalDateTime()
             .format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH-mm-ss'Z'"))
-    }
-    
-    
-    /**
-     * Get platform-specific logs directory based on current mode.
-     * 
-     * Mirrors the logic from logback-spring.xml:
-     * - DEV mode: "logs" (project local directory)
-     * - PROD mode: platform-specific directories
-     *   - macOS: ~/Library/Logs/Gromozeka
-     *   - Windows: ~/AppData/Local/Gromozeka/logs  
-     *   - Linux: ~/.local/share/Gromozeka/logs
-     */
-    private fun getLogsDirectory(): Path {
-        return when (settingsService.mode) {
-            AppMode.DEV -> {
-                // Development mode - use local logs directory
-                Path.of("logs")
-            }
-            AppMode.PROD -> {
-                // Production mode - use platform-specific directories
-                val userHome = System.getProperty("user.home")
-                val osName = System.getProperty("os.name").lowercase()
-                
-                when {
-                    osName.contains("mac") -> {
-                        Path.of(userHome, "Library", "Logs", "Gromozeka")
-                    }
-                    osName.contains("windows") -> {
-                        Path.of(userHome, "AppData", "Local", "Gromozeka", "logs")
-                    }
-                    osName.contains("linux") -> {
-                        Path.of(userHome, ".local", "share", "Gromozeka", "logs")
-                    }
-                    else -> {
-                        // Fallback to logs directory for unknown platforms
-                        Path.of("logs")
-                    }
-                }
-            }
-        }
     }
     
     /**
