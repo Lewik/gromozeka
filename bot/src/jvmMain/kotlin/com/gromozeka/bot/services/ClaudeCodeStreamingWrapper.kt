@@ -103,6 +103,7 @@ class ClaudeCodeStreamingWrapper(
     private val json = Json {
         explicitNulls = true
         encodeDefaults = true
+        ignoreUnknownKeys = true // Critical: Claude Code CLI may add new fields in updates
     }
 
     private fun generateClaudeSettingsWithHooks(): String {
@@ -401,7 +402,7 @@ class ClaudeCodeStreamingWrapper(
         }
 
         return try {
-            val parsed = Json.decodeFromString<ClaudeCodeStreamJsonLine>(jsonLine)
+            val parsed = json.decodeFromString<ClaudeCodeStreamJsonLine>(jsonLine)
             log.debug("Successfully parsed StreamJsonLine: ${parsed::class.simpleName}")
 
             // Special logging for control messages
