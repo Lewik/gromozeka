@@ -1,7 +1,7 @@
 package com.gromozeka.bot.ui.viewmodel
 
 import com.gromozeka.bot.model.AgentDefinition
-import com.gromozeka.bot.model.Session
+import com.gromozeka.bot.model.SessionSpringAI
 import com.gromozeka.bot.platform.ScreenCaptureController
 import com.gromozeka.bot.services.SessionManager
 import com.gromozeka.bot.services.SettingsService
@@ -47,7 +47,7 @@ open class AppViewModel(
         index?.let { tabList.getOrNull(it) }
     }.stateIn(scope, SharingStarted.Eagerly, null)
 
-    val currentSession: StateFlow<Session?> = currentTab.flatMapLatest { tab ->
+    val currentSession: StateFlow<SessionSpringAI?> = currentTab.flatMapLatest { tab ->
         if (tab == null) flowOf(null)
         else sessionManager.activeSessions.map { sessions -> sessions[tab.sessionId] }
     }.stateIn(scope, SharingStarted.Eagerly, null)

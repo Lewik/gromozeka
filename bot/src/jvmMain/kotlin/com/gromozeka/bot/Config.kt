@@ -15,10 +15,8 @@ import io.ktor.serialization.kotlinx.json.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import org.springframework.ai.chat.client.ChatClient
 import org.springframework.ai.openai.OpenAiAudioSpeechModel
 import org.springframework.ai.openai.OpenAiAudioTranscriptionModel
-import org.springframework.ai.openai.OpenAiChatModel
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -50,8 +48,8 @@ class Config {
         }
     }
 
-    @Bean
-    fun chatClient(chatModel: OpenAiChatModel) = ChatClient.create(chatModel)
+//    @Bean
+//    fun chatClient(chatModel: OpenAiChatModel) = ChatClient.create(chatModel)
 
     @Bean
     fun pttService(

@@ -11,6 +11,7 @@ import com.gromozeka.bot.ui.GromozekaTheme
 import com.gromozeka.bot.ui.TranslationProvider
 import com.gromozeka.bot.ui.state.UIState
 import com.gromozeka.bot.ui.viewmodel.AppViewModel
+import jakarta.annotation.PostConstruct
 import klog.KLoggers
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.runBlocking
@@ -123,7 +124,6 @@ fun main() {
     val translationService = context.getBean<TranslationService>()
     val themeService = context.getBean<ThemeService>()
     val screenCaptureController = context.getBean<com.gromozeka.bot.platform.ScreenCaptureController>()
-    val mcpHttpServer = context.getBean<McpHttpServer>()
     val contextExtractionService = context.getBean<ContextExtractionService>()
     val contextFileService = context.getBean<ContextFileService>()
     val hookPermissionService = context.getBean<HookPermissionService>()
@@ -142,10 +142,6 @@ fun main() {
 
     ttsAutoplayService.start()
     log.info("TTS autoplay service started")
-
-    // Start global MCP HTTP server
-    mcpHttpServer.start()
-    log.info("Global MCP HTTP server started")
 
     // Initialize JAR resources (copy from resources to Gromozeka home)
     log.info("MCP proxy JAR initialized")
@@ -188,7 +184,6 @@ fun main() {
                     themeService,
                     aiThemeGenerator,
                     logEncryptor,
-                    mcpHttpServer,
                     context.getBean("hookPermissionService") as HookPermissionService,
                     contextExtractionService,
                     contextFileService
@@ -228,4 +223,14 @@ private fun determineLogPath(modeEnv: String?): String {
         OpenAiModerationAutoConfiguration::class
     ]
 )
-class ChatApplication
+class ChatApplication(
+    private val settingsService: SettingsService,
+) {
+
+    @PostConstruct
+    fun setupEnvironment() {
+        // Set GROMOZEKA_HOME system property for Spring configuration resolution
+        // This ensures application.yaml can resolve ${GROMOZEKA_HOME} placeholder
+        System.setProperty("GROMOZEKA_HOME", settingsService.gromozekaHome.absolutePath)
+    }
+}

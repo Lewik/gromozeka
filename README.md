@@ -88,18 +88,6 @@ Named after the multi-armed character from "The Mystery of the Third Planet". Cu
 
 ## 🛠️ Development
 
-### Building
-```bash
-# Compile and test
-./gradlew :bot:compileKotlinJvm -q && ./gradlew :bot:allTests -q
-
-# Full build
-./gradlew :bot:build
-
-# Run application  
-./gradlew :bot:run
-```
-
 ### Project Structure
 ```
 bot/           # Main application module

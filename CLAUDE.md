@@ -55,15 +55,13 @@ This is a Kotlin Multiplatform Project (MPP) with the following modules:
 
 ## Build and Test Commands
 
-**Primary development workflow** (compile + test):
-- `./gradlew :bot:compileKotlinJvm -q && ./gradlew :bot:allTests -q`
 
 **Individual commands** (for reference):
 - Build project: `./gradlew :bot:build`
 - Run application: `./gradlew :bot:run`
 - Run all tests: `./gradlew :bot:allTests -q || ./gradlew :bot:allTests`
 - Clean build: `./gradlew clean`
-- Compilation check: `./gradlew :bot:compileKotlinJvm -q || ./gradlew :bot:compileKotlinJvm`
+- Build check: `./gradlew :bot:build -q || ./gradlew :bot:build`
 
 **Gradle optimization**: Always use quiet mode first (`-q`) for token efficiency, then full output only if errors occur.
 
@@ -246,6 +244,73 @@ Claude CLI stdout → parseStreamJsonLine() → ClaudeStreamToChatConverter → 
 - Full Claude Code tool support (Read, Edit, Bash, Grep, WebSearch, etc.)
 - Type-safe mapping via `ClaudeCodeToolCallData`/`ClaudeCodeToolResultData`
 - Internal MCP HTTP server (`McpHttpServer`) for custom tool extensibility
+
+## Spring AI Integration Strategy
+
+**Goal**: Model-agnostic AI integration through Spring AI unified API.
+
+### Target Architecture
+
+```
+SessionSpringAI (business logic)
+    ↓
+Spring AI ChatClient (unified interface)
+    ↓
+ToolCallingManager (single tool execution point + permission checks)
+    ↓
+@Bean tools: bashTool, readTool, editTool, etc.
+    ↓
+Multiple ChatModel implementations:
+  - Gemini (native Spring AI)
+  - Claude Code CLI (custom implementation)
+  - OpenAI/Anthropic API (future)
+```
+
+**Key Principles**:
+- Model-agnostic: All models use same ChatClient API
+- Unified tool execution: All tools execute through Spring AI ToolCallingManager with centralized permission checks, not model-specific built-ins
+
+**Legacy Components (deprecated)**:
+- `McpHttpServer` - Old MCP HTTP server for tool execution, replaced by Spring AI ToolCallingManager
+- Tool invocation and permission checks now centralized in `ToolCallingManager`, not via HTTP MCP protocol
+
+### Session Architecture
+
+**SessionSpringAI** - Target implementation (~160 lines):
+- Simple linear request-response flow
+- Spring AI `ChatClient` integration
+- Model-agnostic design
+- Straightforward message history management
+
+**Session** (legacy) - Current production (~500+ lines):
+- Actor model with channels (priority, user, stream)
+- Direct `ClaudeWrapper` integration
+- Complex state machine and buffering
+- Production-ready but model-specific
+
+**Duck Typing**: Both implement identical interface (start/stop, sendMessage, messageOutputStream, events) allowing seamless switching without shared base class.
+
+**Migration Path**: Session remains as fallback until Spring AI tool execution complete. SessionSpringAI becomes primary after user-controlled mode implemented.
+
+### Claude Code CLI Integration (Custom Implementation)
+
+**Location**: `bot/src/jvmMain/java/org/springframework/ai/claudecode/`
+
+Official Spring AI does not include Claude Code CLI support. Custom implementation mimics Spring AI native ChatModel patterns for seamless compatibility.
+
+**Tool Execution**: User-controlled mode (`internalToolExecutionEnabled=false`)
+- Claude returns `tool_use` blocks in assistant messages
+- Spring AI intercepts and executes via ToolCallingManager
+- Same execution path as Gemini, OpenAI, other providers
+- No model-specific built-in tools used
+
+**Protocol Flow**:
+1. Send message history to Claude CLI
+2. Receive streaming response with `tool_use` blocks
+3. Spring AI ToolCallingManager detects tool calls, checks permissions
+4. Execute approved calls via ToolCallback beans
+5. Send `tool_result` back to Claude
+6. Continue until `stop_reason != "tool_use"`
 
 ## MCP SDK Architecture & Package Management
 

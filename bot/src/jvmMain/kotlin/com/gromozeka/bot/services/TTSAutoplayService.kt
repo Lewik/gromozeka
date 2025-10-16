@@ -43,7 +43,7 @@ class TTSAutoplayService(
             .launchIn(scope)
     }
 
-    private fun subscribeToSession(session: com.gromozeka.bot.model.Session) {
+    private fun subscribeToSession(session: com.gromozeka.bot.model.SessionSpringAI) {
         // Capture subscription time to filter out replay messages
         subscriptionTimestamp = Clock.System.now()
 

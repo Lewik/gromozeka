@@ -1,7 +1,6 @@
 package com.gromozeka.bot.ui
 
 import com.gromozeka.bot.model.AgentDefinition
-import com.gromozeka.bot.services.ClaudeCodeStreamingWrapper
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.shrinkHorizontally
@@ -19,6 +18,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.gromozeka.bot.services.LogEncryptor
 import com.gromozeka.bot.services.SettingsService
+import com.gromozeka.bot.services.detectClaudePath
 import com.gromozeka.bot.services.theming.AIThemeGenerator
 import com.gromozeka.bot.services.theming.ThemeService
 import com.gromozeka.bot.services.theming.data.Theme
@@ -230,7 +230,7 @@ fun SettingsPanel(
                             
                             Button(
                                 onClick = {
-                                    val detectedPath = ClaudeCodeStreamingWrapper.detectClaudePath()
+                                    val detectedPath = detectClaudePath()
                                     if (detectedPath != null) {
                                         onSettingsChange(settings.copy(claudeCliPath = detectedPath))
                                         log.info { "Auto-detected Claude CLI path: $detectedPath" }

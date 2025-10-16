@@ -1,15 +1,12 @@
 package com.gromozeka.bot.services
 
 import com.gromozeka.bot.model.ChatSessionMetadata
-import com.gromozeka.bot.model.ClaudeLogEntry
 import com.gromozeka.bot.model.StreamSessionMetadata
 import klog.KLoggers
 
-import com.gromozeka.bot.utils.SessionDeduplicator
 import com.gromozeka.bot.utils.decodeProjectPath
 import com.gromozeka.bot.utils.encodeProjectPath
 import com.gromozeka.bot.utils.isSessionFile
-import com.gromozeka.shared.domain.message.ChatMessage
 import com.gromozeka.shared.domain.session.ClaudeSessionUuid
 import com.gromozeka.shared.domain.session.toClaudeSessionUuid
 import com.gromozeka.shared.domain.session.toSessionUuid
@@ -20,7 +17,6 @@ import kotlinx.coroutines.withContext
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toInstant
 import kotlinx.datetime.toLocalDateTime
-import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import org.springframework.stereotype.Service
 import java.io.File
@@ -39,76 +35,6 @@ class SessionJsonlService(
     private val json = Json {
         ignoreUnknownKeys = true
         coerceInputValues = false
-    }
-
-    /**
-     * Load messages from a specific session file.
-     * @param sessionId The session ID (filename without .jsonl extension)
-     * @param projectPath The project path where the session was created
-     * @return List of ChatMessage from the session, empty if file doesn't exist or errors occur
-     */
-    suspend fun loadMessagesFromSession(
-        sessionId: ClaudeSessionUuid,
-        projectPath: String,
-    ): List<ChatMessage> = withContext(Dispatchers.IO) {
-        val sessionFile = findSessionFile(sessionId.value, projectPath)
-        if (sessionFile == null || !sessionFile.exists()) {
-            log.warn("Session file not found for ID: $sessionId")
-            return@withContext emptyList()
-        }
-
-        try {
-            val lines = sessionFile.readLines()
-            if (lines.isEmpty()) {
-                log.warn("Session file is empty: $sessionId")
-                return@withContext emptyList()
-            }
-
-            // Parse all Claude log entries first
-            val claudeEntries = lines.mapIndexedNotNull { index, line ->
-                try {
-                    json.decodeFromString<ClaudeLogEntry>(line.trim())
-                } catch (e: SerializationException) {
-                    log.error(e) { "Error parsing line ${index + 1} in session $sessionId: ${e.message}" }
-                    log.debug { "  Problematic line: ${line.take(200)}${if (line.length > 200) "..." else ""}" }
-                    null
-                } catch (e: Exception) {
-                    log.error(e) { "Unexpected error parsing line ${index + 1} in session $sessionId: ${e.message}" }
-                    log.debug("  Exception type: ${e::class.simpleName}")
-                    log.debug { "  Problematic line: ${line.take(200)}${if (line.length > 200) "..." else ""}" }
-                    null
-                }
-            }
-
-            // Apply deduplication to fix Claude Code CLI bug with stream-json
-            val deduplicatedEntries = SessionDeduplicator.deduplicate(claudeEntries)
-
-            // Log deduplication stats if duplicates were found
-            if (deduplicatedEntries.size < claudeEntries.size) {
-                val stats = SessionDeduplicator.getDeduplicationStats(claudeEntries, deduplicatedEntries)
-                log.debug("Deduplicated ${stats.duplicatesRemoved} duplicate entries (${stats.userDuplicates} user, ${stats.assistantDuplicates} assistant)")
-            }
-
-            // Convert deduplicated entries to chat messages
-            val messages = deduplicatedEntries.mapNotNull { claudeEntry ->
-                try {
-                    ClaudeLogEntryMapper.mapToChatMessage(claudeEntry)
-                } catch (e: Exception) {
-                    log.error(e) { "Error mapping Claude entry to chat message: ${e.message}" }
-                    null
-                }
-            }
-
-            log.debug("Successfully loaded ${messages.size} messages from session $sessionId")
-            return@withContext messages
-
-        } catch (e: Exception) {
-            log.error(e) { "Error loading messages for session $sessionId: ${e.message}" }
-            log.debug("  Session file: ${sessionFile.absolutePath}")
-            log.debug("  File exists: ${sessionFile.exists()}")
-            log.debug("  File size: ${sessionFile.length()} bytes")
-            return@withContext emptyList()
-        }
     }
 
     /**
@@ -142,18 +68,21 @@ class SessionJsonlService(
                 )
             }
 
-            // Parse first few messages to generate title
-            val messages = lines.take(3).mapIndexedNotNull { index, line ->
-                try {
-                    val claudeEntry = json.decodeFromString<ClaudeLogEntry>(line.trim())
-                    ClaudeLogEntryMapper.mapToChatMessage(claudeEntry)
-                } catch (e: Exception) {
-                    log.error(e) { "Error parsing line ${index + 1} for metadata in session $sessionId: ${e.message}" }
-                    null
-                }
-            }
+            // TODO: JSONL message parsing temporarily disabled - will be removed completely
+//            // Parse first few messages to generate title
+//            val messages = lines.take(3).mapIndexedNotNull { index, line ->
+//                try {
+//                    val claudeEntry = json.decodeFromString<ClaudeLogEntry>(line.trim())
+//                    ClaudeLogEntryMapper.mapToChatMessage(claudeEntry)
+//                } catch (e: Exception) {
+//                    log.error(e) { "Error parsing line ${index + 1} for metadata in session $sessionId: ${e.message}" }
+//                    null
+//                }
+//            }
+//
+//            val title = generateSessionTitle(messages)
 
-            val title = generateSessionTitle(messages)
+            val title = "Session ${sessionId.value.take(8)}..."
 
             return@withContext StreamSessionMetadata(
                 sessionId = sessionId.value.toSessionUuid(),
@@ -185,32 +114,33 @@ class SessionJsonlService(
         }
     }
 
-    /**
-     * Generate session title from first messages.
-     */
-    private fun generateSessionTitle(messages: List<ChatMessage>): String {
-        val firstUserMessage = messages.firstOrNull { it.role == ChatMessage.Role.USER }
-
-        return when {
-            firstUserMessage != null -> {
-                val contentText = firstUserMessage.content
-                    .filterIsInstance<ChatMessage.ContentItem.UserMessage>()
-                    .joinToString(" ") { it.text }
-                val content = contentText.take(50)
-                if (contentText.length > 50) "$content..." else content
-            }
-
-            messages.isNotEmpty() -> {
-                val contentText = messages.first().content
-                    .filterIsInstance<ChatMessage.ContentItem.UserMessage>()
-                    .joinToString(" ") { it.text }
-                val content = contentText.take(50)
-                if (contentText.length > 50) "$content..." else content
-            }
-
-            else -> "Empty Session"
-        }
-    }
+    // TODO: JSONL message parsing temporarily disabled - will be removed completely
+//    /**
+//     * Generate session title from first messages.
+//     */
+//    private fun generateSessionTitle(messages: List<ChatMessage>): String {
+//        val firstUserMessage = messages.firstOrNull { it.role == ChatMessage.Role.USER }
+//
+//        return when {
+//            firstUserMessage != null -> {
+//                val contentText = firstUserMessage.content
+//                    .filterIsInstance<ChatMessage.ContentItem.UserMessage>()
+//                    .joinToString(" ") { it.text }
+//                val content = contentText.take(50)
+//                if (contentText.length > 50) "$content..." else content
+//            }
+//
+//            messages.isNotEmpty() -> {
+//                val contentText = messages.first().content
+//                    .filterIsInstance<ChatMessage.ContentItem.UserMessage>()
+//                    .joinToString(" ") { it.text }
+//                val content = contentText.take(50)
+//                if (contentText.length > 50) "$content..." else content
+//            }
+//
+//            else -> "Empty Session"
+//        }
+//    }
 
     /**
      * Load all sessions from Claude Code's projects directory

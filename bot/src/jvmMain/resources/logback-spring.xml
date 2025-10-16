@@ -68,7 +68,11 @@
     <!-- Specific logger configurations -->
     <logger name="org.springframework.boot" level="WARN"/>
     <logger name="org.springframework.web" level="WARN"/>
-    <logger name="org.springframework.ai" level="INFO"/>
+    <logger name="org.springframework.ai" level="DEBUG"/>
+    <logger name="org.springframework.ai.claudecode" level="DEBUG"/>
+    <logger name="org.springframework.ai.claudecode.api.ClaudeCodeApi" level="DEBUG"/>
+    <logger name="org.springframework.ai.claudecode.converter" level="DEBUG"/>
+    <logger name="com.gromozeka.bot.model.SessionSpringAI" level="DEBUG"/>
     <logger name="com.fasterxml.jackson" level="WARN"/>
     <logger name="io.ktor" level="INFO"/>
     <logger name="org.apache.batik" level="WARN"/>

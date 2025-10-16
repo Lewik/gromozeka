@@ -1,257 +1,45 @@
 package com.gromozeka.bot.services
 
 import com.gromozeka.bot.model.ChatSessionMetadata
-import com.gromozeka.bot.model.ClaudeLogEntry
-import com.gromozeka.shared.domain.message.ChatMessage
-import com.gromozeka.shared.domain.message.ClaudeCodeToolCallData
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.json.Json
 import org.springframework.stereotype.Service
-import java.io.File
-import kotlin.math.max
-import kotlin.math.min
 
 @Service
 class SessionSearchService(
-    private val sessionJsonlService: SessionJsonlService,
-    private val settingsService: SettingsService,
+    // Kept for backward compatibility during migration
+    @Suppress("UNUSED_PARAMETER") private val sessionJsonlService: SessionJsonlService,
+    @Suppress("UNUSED_PARAMETER") private val settingsService: SettingsService,
 ) {
-
-    private val json = Json {
-        ignoreUnknownKeys = true
-        coerceInputValues = true
-    }
+    // TODO: Remove this service entirely after UI cleanup
 
     suspend fun searchSessions(query: String): List<ChatSessionMetadata> = withContext(Dispatchers.IO) {
-        if (query.isBlank()) return@withContext emptyList()
-
-        println("[SessionSearchService] Starting search for: '$query'")
-
-        // 1. Get all sessions (reuse loadAllSessionsMetadata)
-        val allSessions = sessionJsonlService.loadAllSessionsMetadata()
-        println("[SessionSearchService] Searching in ${allSessions.size} sessions")
-
-        // 2. Search in parallel across all sessions
-        val matchingSessions = allSessions.mapNotNull { session ->
-            async {
-                try {
-                    if (searchInSession(session, query)) {
-                        session
-                    } else {
-                        null
-                    }
-                } catch (e: Exception) {
-                    println("[SessionSearchService] Error searching session ${session.claudeSessionId}: ${e.message}")
-                    null
-                }
-            }
-        }.awaitAll().filterNotNull()
-
-        println("[SessionSearchService] Found ${matchingSessions.size} sessions matching '$query'")
-        return@withContext matchingSessions.sortedByDescending { it.lastTimestamp }
+        // TODO: Search disabled - JSONL parsing deprecated, will be removed
+        return@withContext emptyList()
     }
 
-    /**
-     * Search within a single session - collect all text into one string, then search
-     */
-    private suspend fun searchInSession(session: ChatSessionMetadata, query: String): Boolean =
-        withContext(Dispatchers.IO) {
-            val sessionFile = findSessionFile(session.claudeSessionId.value, session.projectPath)
-                ?: return@withContext false
+    // TODO: Disabled - JSONL parsing deprecated
+    // private suspend fun searchInSession(...): Boolean { ... }
 
-            if (!sessionFile.exists() || !sessionFile.canRead()) {
-                return@withContext false
-            }
+    // TODO: Disabled - JSONL parsing deprecated
+    // private fun searchInFullText(...): Boolean { ... }
 
-            return@withContext try {
-                // Collect all textual content of the session into one string
-                val fullSessionText = StringBuilder()
+    // TODO: Disabled - JSONL parsing deprecated
+    // private fun extractConversationText(...): String { ... }
 
-                sessionFile.useLines { lines ->
-                    lines.forEach { line ->
-                        try {
-                            val claudeEntry = json.decodeFromString<ClaudeLogEntry>(line.trim())
-                            val chatMessage = ClaudeLogEntryMapper.mapToChatMessage(claudeEntry)
-                            val messageText = extractConversationText(chatMessage)
-                            if (messageText.isNotEmpty()) {
-                                fullSessionText.append(messageText).append(" ")
-                            }
-                        } catch (e: Exception) {
-                            // Skip lines that cannot be parsed
-                        }
-                    }
-                }
+    // TODO: Disabled - JSONL parsing deprecated
+    // private fun searchInLine(...): Boolean { ... }
 
-                val sessionText = fullSessionText.toString().trim()
-                if (sessionText.isEmpty()) return@withContext false
+    // TODO: Disabled - JSONL parsing deprecated
+    // private fun extractSearchableText(...): String { ... }
 
-                // Apply search to the full session text
-                searchInFullText(query, sessionText)
+    // TODO: Disabled - JSONL parsing deprecated
+    // private fun findSessionFile(...): File? { ... }
 
-            } catch (e: Exception) {
-                println("[SessionSearchService] Error reading session file ${sessionFile.path}: ${e.message}")
-                false
-            }
-        }
+    // ==================== FUZZY SEARCH ALGORITHMS (DISABLED) ====================
 
-    /**
-     * Search within full session text
-     */
-    private fun searchInFullText(query: String, sessionText: String): Boolean {
-        // Apply search: first exact match, then fuzzy
-        if (sessionText.contains(query, ignoreCase = true)) {
-            return true
-        }
-
-        // Fuzzy search with three algorithms
-        val partialScore = partialRatio(query, sessionText)
-        val jaroScore = jaroWinklerSimilarity(query, sessionText)
-        val tokenScore = tokenSetRatio(query, sessionText)
-
-        // Adaptive threshold: short queries require high accuracy
-        val threshold = when {
-            query.length <= 2 -> 0.95  // Very short - almost exact match
-            query.length <= 5 -> 0.8   // Short - high accuracy  
-            query.length <= 15 -> 0.65 // Medium queries
-            else -> 0.5               // Long queries - softer threshold
-        }
-
-        val bestScore = maxOf(partialScore, jaroScore, tokenScore)
-
-        // Additional check: at least 2 algorithms must give reasonable score
-        val goodScores = listOf(partialScore, jaroScore, tokenScore).count { it > 0.4 }
-
-        return bestScore > threshold && goodScores >= 2
-    }
-
-    /**
-     * Extract only conversational text (exclude files, code, technical details)
-     */
-    private fun extractConversationText(message: ChatMessage?): String {
-        if (message == null) return ""
-
-        return message.content.joinToString(" ") { content ->
-            when (content) {
-                is ChatMessage.ContentItem.UserMessage -> content.text
-                is ChatMessage.ContentItem.AssistantMessage -> content.structured.fullText
-                is ChatMessage.ContentItem.System -> content.content
-                is ChatMessage.ContentItem.Thinking -> content.thinking
-                // Exclude technical details: tool calls, tool results
-                else -> ""
-            }
-        }
-    }
-
-    /**
-     * Search within a single line of jsonl file (deprecated - now using searchInFullText)
-     */
-    private fun searchInLine(line: String, query: String): Boolean {
-        return try {
-            // Deserialize the line
-            val claudeEntry = json.decodeFromString<ClaudeLogEntry>(line.trim())
-            val chatMessage = ClaudeLogEntryMapper.mapToChatMessage(claudeEntry)
-
-            // Extract text from the message
-            val messageText = extractSearchableText(chatMessage)
-            if (messageText.isEmpty()) return false
-
-            // Apply search: first exact match, then fuzzy
-            if (messageText.contains(query, ignoreCase = true)) {
-                return true
-            }
-
-            // Fuzzy search with three algorithms
-            val partialScore = partialRatio(query, messageText)
-            val jaroScore = jaroWinklerSimilarity(query, messageText)
-            val tokenScore = tokenSetRatio(query, messageText)
-
-            // Adaptive threshold: short queries require high accuracy
-            val threshold = when {
-                query.length <= 2 -> 0.95  // Very short - almost exact match
-                query.length <= 5 -> 0.8   // Short - high accuracy  
-                query.length <= 15 -> 0.65 // Medium queries
-                else -> 0.5               // Long queries - softer threshold
-            }
-
-            val bestScore = maxOf(partialScore, jaroScore, tokenScore)
-
-            // Additional check: at least 2 algorithms must give reasonable score
-            val goodScores = listOf(partialScore, jaroScore, tokenScore).count { it > 0.4 }
-
-            return bestScore > threshold && goodScores >= 2
-
-        } catch (e: Exception) {
-            // If line cannot be parsed - skip it
-            false
-        }
-    }
-
-    /**
-     * Extract searchable text from ChatMessage
-     */
-    private fun extractSearchableText(message: ChatMessage?): String {
-        if (message == null) return ""
-
-        return message.content.joinToString(" ") { content ->
-            when (content) {
-                is ChatMessage.ContentItem.UserMessage -> content.text
-                is ChatMessage.ContentItem.AssistantMessage -> content.structured.fullText
-                is ChatMessage.ContentItem.ToolCall -> {
-                    // Search within tool call parameters
-                    when (val call = content.call) {
-                        is ClaudeCodeToolCallData.Bash -> call.command
-                        is ClaudeCodeToolCallData.Read -> call.filePath
-                        is ClaudeCodeToolCallData.Edit -> "${call.filePath} ${call.oldString} ${call.newString}"
-                        is ClaudeCodeToolCallData.Grep -> call.pattern
-                        is ClaudeCodeToolCallData.WebSearch -> call.query
-                        is ClaudeCodeToolCallData.WebFetch -> call.url
-                        is ClaudeCodeToolCallData.Task -> call.description
-                        is ClaudeCodeToolCallData.TodoWrite -> "todo list"
-                        else -> ""
-                    }
-                }
-
-                is ChatMessage.ContentItem.ToolResult -> {
-                    content.result.joinToString(" ") { data ->
-                        when (data) {
-                            is ChatMessage.ContentItem.ToolResult.Data.Text -> data.content
-                            else -> ""
-                        }
-                    }
-                }
-
-                is ChatMessage.ContentItem.System -> content.content
-                is ChatMessage.ContentItem.Thinking -> content.thinking
-                else -> ""
-            }
-        }
-    }
-
-    /**
-     * Find session file
-     */
-    private fun findSessionFile(sessionId: String, projectPath: String): File? {
-        return try {
-            val projectsDir = settingsService.getClaudeProjectsDir()
-            val encodedProjectPath = projectPath.replace("/", "-").replace("\\", "-")
-            val projectDir = File(projectsDir, encodedProjectPath)
-            val sessionFile = File(projectDir, "$sessionId.jsonl")
-
-            if (sessionFile.exists()) sessionFile else null
-        } catch (e: Exception) {
-            println("[SessionSearchService] Error finding session file for $sessionId: ${e.message}")
-            null
-        }
-    }
-
-    // ==================== FUZZY SEARCH ALGORITHMS ====================
-
-    /**
-     * Partial ratio - finds best matching substring
-     */
+    // TODO: Disabled - JSONL parsing deprecated
+    /*
     private fun partialRatio(query: String, text: String): Double {
         if (query.isEmpty() || text.isEmpty()) return 0.0
 
@@ -420,4 +208,5 @@ class SessionSearchService(
 
         return dp[len1][len2]
     }
+    */
 }

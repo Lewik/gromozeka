@@ -120,7 +120,7 @@ class SettingsService {
 
     private fun createDefaultSettings(): Settings {
         val detectedScale = detectOptimalUIScale()
-        val detectedClaudePath = ClaudeCodeStreamingWrapper.detectClaudePath()
+        val detectedClaudePath = detectClaudePath()
 
         val defaults = Settings(
             enableTts = true,

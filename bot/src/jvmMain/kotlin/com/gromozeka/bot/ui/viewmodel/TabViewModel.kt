@@ -4,7 +4,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.gromozeka.bot.model.ClaudeHookPayload
-import com.gromozeka.bot.model.Session
+import com.gromozeka.bot.model.SessionSpringAI
 import com.gromozeka.bot.platform.ScreenCaptureController
 import com.gromozeka.bot.services.HookPermissionService
 import com.gromozeka.bot.settings.Settings
@@ -22,7 +22,7 @@ class TabViewModel(
     // TabViewModel is the "head" for headless Session - UI layer should only interact
     // with TabViewModel, not with Session directly. Session lives without any UI knowledge.
     // This ensures isolation of business logic from the presentation layer.
-    private val session: Session,
+    private val session: SessionSpringAI,
     private val settingsFlow: StateFlow<Settings>,
     private val scope: CoroutineScope,
     initialTabUiState: UIState.Tab,

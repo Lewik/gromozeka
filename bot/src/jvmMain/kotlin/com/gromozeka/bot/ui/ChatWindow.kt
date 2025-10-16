@@ -57,7 +57,6 @@ fun ApplicationScope.ChatWindow(
     themeService: ThemeService,
     aiThemeGenerator: AIThemeGenerator,
     logEncryptor: LogEncryptor,
-    mcpHttpServer: McpHttpServer,
     hookPermissionService: HookPermissionService,
     contextExtractionService: ContextExtractionService,
     contextFileService: ContextFileService,
@@ -194,9 +193,9 @@ fun ApplicationScope.ChatWindow(
 
     // Create modifier with PTT event router
     val modifierWithPushToTalk = Modifier.advancedPttGestures(pttEventRouter, coroutineScope)
-    
+
     // Local keyboard PTT gesture detector
-    val keyboardPttGestureDetector = remember { 
+    val keyboardPttGestureDetector = remember {
         UnifiedGestureDetector(pttEventRouter, coroutineScope)
     }
 
@@ -250,7 +249,6 @@ fun ApplicationScope.ChatWindow(
 
             globalHotkeyController.cleanup()
             ttsQueueService.shutdown()
-            mcpHttpServer.stop()
             log.info("Global MCP HTTP server stopped")
             exitApplication()
         },
@@ -280,12 +278,12 @@ fun ApplicationScope.ChatWindow(
                     .focusTarget()
                     .advancedEscape(pttEventRouter)
                     .onPreviewKeyEvent { event ->
-                        
+
                         when {
                             // Cmd+T - новая сессия
                             event.key == Key.T &&
-                            event.isMetaPressed &&
-                            event.type == KeyEventType.KeyDown -> {
+                                    event.isMetaPressed &&
+                                    event.type == KeyEventType.KeyDown -> {
                                 // Cmd+T работает только на экране сессии (не на экране проектов)
                                 val selectedTabIndex = currentTabIndex?.plus(1) ?: 0
                                 if (selectedTabIndex > 0 && currentSession != null) {
@@ -293,7 +291,7 @@ fun ApplicationScope.ChatWindow(
                                 }
                                 true
                             }
-                            
+
                             // Символ § используется как PTT хоткей  
                             event.utf16CodePoint == 167 -> { // § параграф
                                 when (event.type) {
@@ -302,6 +300,7 @@ fun ApplicationScope.ChatWindow(
                                             keyboardPttGestureDetector.onGestureDown()
                                         }
                                     }
+
                                     KeyEventType.KeyUp -> {
                                         coroutineScope.launch {
                                             keyboardPttGestureDetector.onGestureUp()
@@ -310,7 +309,7 @@ fun ApplicationScope.ChatWindow(
                                 }
                                 true
                             }
-                            
+
                             else -> false
                         }
                     }
