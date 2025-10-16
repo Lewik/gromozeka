@@ -1,0 +1,275 @@
+/*
+ * Copyright 2023-2025 the original author or authors.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package org.springframework.ai.claudecode.api;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.ai.claudecode.exception.ClaudeCodeProcessException;
+import reactor.core.publisher.Flux;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
+
+/**
+ * Low-level API for interacting with Claude Code CLI process.
+ * This class handles process lifecycle, stdin/stdout communication, and JSONL parsing.
+ */
+public class ClaudeCodeApi {
+
+    private static final Logger logger = LoggerFactory.getLogger(ClaudeCodeApi.class);
+
+    private static final String DEFAULT_CLAUDE_PATH = "claude";
+    private static final Duration DEFAULT_TIMEOUT = Duration.ofMinutes(10);
+    private static final String CLAUDE_CODE_MAX_OUTPUT_TOKENS = "32000";
+
+    private final String claudeCodePath;
+    private final Duration timeout;
+    private final ObjectMapper objectMapper;
+
+    public ClaudeCodeApi() {
+        this(DEFAULT_CLAUDE_PATH, DEFAULT_TIMEOUT);
+    }
+
+    public ClaudeCodeApi(String claudeCodePath, Duration timeout) {
+        this.claudeCodePath = claudeCodePath != null ? claudeCodePath : DEFAULT_CLAUDE_PATH;
+        this.timeout = timeout != null ? timeout : DEFAULT_TIMEOUT;
+        this.objectMapper = new ObjectMapper();
+    }
+
+    /**
+     * Execute Claude Code CLI and return streaming responses.
+     * This is a fire-and-forget operation: start process, write messages to stdin, close stdin, read stdout stream.
+     *
+     * @param request The request containing model, messages, and options
+     * @return Flux of stream responses
+     */
+    public Flux<ClaudeCodeStreamResponse> chatCompletionStream(ClaudeCodeRequest request) {
+        return Flux.create(sink -> {
+            Process process = null;
+            Thread stderrReader = null;
+
+            try {
+                process = startClaudeProcess(request);
+                final Process finalProcess = process;
+
+                // Start stderr monitoring in background
+                StringBuilder stderrBuffer = new StringBuilder();
+                stderrReader = new Thread(() -> {
+                    try (BufferedReader reader = new BufferedReader(
+                            new InputStreamReader(finalProcess.getErrorStream(), StandardCharsets.UTF_8))) {
+                        String line;
+                        while ((line = reader.readLine()) != null) {
+                            stderrBuffer.append(line).append("\n");
+                            logger.debug("Claude CLI stderr: {}", line);
+                        }
+                    } catch (IOException e) {
+                        logger.warn("Error reading stderr", e);
+                    }
+                }, "claude-stderr-reader");
+                stderrReader.setDaemon(true);
+                stderrReader.start();
+
+                // Write messages to stdin and close it (fire-and-forget)
+                writeMessagesToStdin(process, request.messages());
+
+                // Read stdout stream line by line
+                try (BufferedReader reader = new BufferedReader(
+                        new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
+
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        if (line.trim().isEmpty()) {
+                            continue;
+                        }
+
+                        try {
+                            ClaudeCodeStreamResponse response = parseStreamLine(line);
+                            sink.next(response);
+
+                            // Check for error responses
+                            if (response instanceof ClaudeCodeStreamResponse.Error error) {
+                                sink.error(new ClaudeCodeProcessException(
+                                    "Claude CLI returned error: " + error.message()));
+                                return;
+                            }
+                        } catch (Exception e) {
+                            logger.warn("Failed to parse stream line: {}", line, e);
+                            // Continue reading - partial data is acceptable
+                        }
+                    }
+                }
+
+                // Wait for process to complete
+                boolean finished = process.waitFor(timeout.toMillis(), TimeUnit.MILLISECONDS);
+
+                if (!finished) {
+                    process.destroyForcibly();
+                    sink.error(new ClaudeCodeProcessException(
+                        "Claude CLI process timeout after " + timeout.toSeconds() + " seconds"));
+                    return;
+                }
+
+                int exitCode = process.exitValue();
+                if (exitCode != 0) {
+                    String errorOutput = stderrBuffer.toString().trim();
+                    sink.error(new ClaudeCodeProcessException(
+                        "Claude CLI process exited with code " + exitCode +
+                        (errorOutput.isEmpty() ? "" : ": " + errorOutput)));
+                    return;
+                }
+
+                sink.complete();
+
+            } catch (Exception e) {
+                logger.error("Error executing Claude CLI", e);
+                if (process != null && process.isAlive()) {
+                    process.destroyForcibly();
+                }
+                sink.error(new ClaudeCodeProcessException("Failed to execute Claude CLI", e));
+            }
+        });
+    }
+
+    private Process startClaudeProcess(ClaudeCodeRequest request) throws IOException {
+        List<String> command = buildClaudeCommand(request);
+
+        ProcessBuilder processBuilder = new ProcessBuilder(command);
+        processBuilder.environment().put("CLAUDE_CODE_MAX_OUTPUT_TOKENS",
+            System.getenv().getOrDefault("CLAUDE_CODE_MAX_OUTPUT_TOKENS", CLAUDE_CODE_MAX_OUTPUT_TOKENS));
+        processBuilder.environment().put("CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC", "1");
+        processBuilder.environment().put("DISABLE_NON_ESSENTIAL_MODEL_CALLS", "1");
+
+        if (request.thinkingBudgetTokens() != null && request.thinkingBudgetTokens() > 0) {
+            processBuilder.environment().put("MAX_THINKING_TOKENS",
+                request.thinkingBudgetTokens().toString());
+        }
+
+        // Remove ANTHROPIC_API_KEY to let Claude Code resolve auth itself
+        processBuilder.environment().remove("ANTHROPIC_API_KEY");
+
+        logger.debug("Starting Claude CLI: {}", String.join(" ", command));
+
+        return processBuilder.start();
+    }
+
+    // Claude Code built-in tools that we want to disable in user-controlled mode
+    // Spring AI will handle tool execution through its own beans
+    private static final String DISABLED_CLAUDE_CODE_TOOLS = String.join(",",
+        "Task",
+        "Bash",
+        "Glob",
+        "Grep",
+        "LS",
+        "ExitPlanMode",
+        "Read",
+        "Edit",
+        "MultiEdit",
+        "Write",
+        "NotebookRead",
+        "NotebookEdit",
+        "WebFetch",
+        "TodoRead",
+        "TodoWrite",
+        "WebSearch",
+        "BashOutput",
+        "KillShell",
+        "SlashCommand"
+    );
+
+    private List<String> buildClaudeCommand(ClaudeCodeRequest request) {
+        List<String> command = new ArrayList<>();
+        command.add(claudeCodePath);
+
+        // Print mode - read from stdin, output stream-json
+        command.add("-p");
+
+        // Stream JSON output format only (no input-format needed with -p)
+        command.add("--output-format");
+        command.add("stream-json");
+
+        // Verbose output
+        command.add("--verbose");
+
+        // Permission mode
+        command.add("--permission-mode");
+        command.add("acceptEdits");
+
+        // System prompt (using append-system-prompt as in original implementation)
+        if (request.systemPrompt() != null && !request.systemPrompt().isBlank()) {
+            command.add("--append-system-prompt");
+            command.add(request.systemPrompt());
+        }
+
+        // User-controlled mode: disable Claude Code built-in tools
+        // Spring AI will manage tool execution through ToolCallingManager and registered beans
+        // Use custom list if provided, otherwise use default disabled tools
+        List<String> toolsToDisable = request.disallowedTools() != null && !request.disallowedTools().isEmpty()
+                ? request.disallowedTools()
+                : List.of(DISABLED_CLAUDE_CODE_TOOLS.split(","));
+
+        if (!toolsToDisable.isEmpty()) {
+            command.add("--disallowedTools");
+            command.add(String.join(",", toolsToDisable));
+        }
+
+        // Single turn per request (Spring AI manages recursive tool execution loop)
+        command.add("--max-turns");
+        command.add("1");
+
+        // Model
+        command.add("--model");
+        command.add(request.model());
+
+        return command;
+    }
+
+    private void writeMessagesToStdin(Process process, List<ClaudeMessage> messages) throws IOException {
+        try (OutputStreamWriter writer = new OutputStreamWriter(
+                process.getOutputStream(), StandardCharsets.UTF_8)) {
+
+            // With -p flag, send messages as JSON array (not JSONL)
+            // Format: [{"role": "user", "content": [...]}, {"role": "assistant", "content": [...]}, ...]
+            String messagesJson = objectMapper.writeValueAsString(messages);
+            logger.debug("Writing messages array to stdin ({} messages, {} chars)",
+                messages.size(), messagesJson.length());
+
+            writer.write(messagesJson);
+            writer.flush();
+        }
+        // Closing writer closes stdin - tells Claude CLI we're done sending input
+    }
+
+    private ClaudeCodeStreamResponse parseStreamLine(String line) throws IOException {
+        return objectMapper.readValue(line, ClaudeCodeStreamResponse.class);
+    }
+
+    public String getClaudeCodePath() {
+        return claudeCodePath;
+    }
+
+    public Duration getTimeout() {
+        return timeout;
+    }
+}
