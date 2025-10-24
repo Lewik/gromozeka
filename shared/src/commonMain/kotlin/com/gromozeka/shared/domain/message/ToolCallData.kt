@@ -9,6 +9,7 @@ import kotlinx.serialization.json.JsonElement
  */
 @Serializable
 @JsonClassDiscriminator("tool")
+@Deprecated("")
 sealed class ToolCallData {
 
 
@@ -16,6 +17,7 @@ sealed class ToolCallData {
      * Generic tool call for unknown/MCP tools
      */
     @Serializable
+    @Deprecated("")
     data class Generic(
         val name: String,
         val input: JsonElement,

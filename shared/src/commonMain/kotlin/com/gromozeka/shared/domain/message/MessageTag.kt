@@ -1,5 +1,6 @@
 package com.gromozeka.shared.domain.message
 
+import com.gromozeka.shared.domain.conversation.ConversationTree
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -9,7 +10,7 @@ data class MessageTagDefinition(
 ) {
     @Serializable
     data class Control(
-        val data: ChatMessage.Instruction,
+        val data: ConversationTree.Message.Instruction,
         val includeInMessage: Boolean = true,
     )
 }

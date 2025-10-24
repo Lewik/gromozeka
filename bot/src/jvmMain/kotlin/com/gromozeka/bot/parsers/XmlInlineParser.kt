@@ -1,6 +1,6 @@
 package com.gromozeka.bot.parsers
 
-import com.gromozeka.shared.domain.message.ChatMessage
+import com.gromozeka.shared.domain.conversation.ConversationTree
 
 
 /**
@@ -11,7 +11,7 @@ class XmlInlineParser : ResponseParser {
 
     private val ttsPattern = Regex("""<tts(?:\s+tone="([^"]*)")?\s*>(.*?)</tts>""", RegexOption.DOT_MATCHES_ALL)
 
-    override fun parse(text: String): ChatMessage.StructuredText {
+    override fun parse(text: String): ConversationTree.Message.StructuredText {
         val trimmedText = text.trim()
 
         val matches = ttsPattern.findAll(trimmedText).toList()
@@ -38,7 +38,7 @@ class XmlInlineParser : ResponseParser {
             trimmedText
         }
 
-        return ChatMessage.StructuredText(
+        return ConversationTree.Message.StructuredText(
             fullText = fullText,
             ttsText = ttsTexts.joinToString(" ").takeIf { it.isNotEmpty() },
             voiceTone = lastTone

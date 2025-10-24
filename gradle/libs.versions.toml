@@ -22,8 +22,13 @@ mcp-kotlin-sdk = "0.6.0"
 klog = "v2.1.1"
 kotlinx-coroutines = "1.10.2"
 kotlinx-io = "0.6.0"
+reactor-kotlin = "1.2.3"
 xmlutil = "0.91.2"
 jagged = "1.0.0"
+exposed = "1.0.0-rc-2"
+sqlite = "3.47.1.0"
+flyway = "11.1.0"
+uuid-creator = "5.3.7"
 
 [libraries]
 # Ktor
@@ -54,13 +59,29 @@ spring-boot-starter-test = { module = "org.springframework.boot:spring-boot-star
 kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "kotlinx-datetime" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }
+kotlinx-coroutines-reactor = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-reactor", version.ref = "kotlinx-coroutines" }
 kotlinx-io-core = { module = "org.jetbrains.kotlinx:kotlinx-io-core", version.ref = "kotlinx-io" }
 kotlin-reflect = { module = "org.jetbrains.kotlin:kotlin-reflect" }
+
+# Reactor
+reactor-kotlin-extensions = { module = "io.projectreactor.kotlin:reactor-kotlin-extensions", version.ref = "reactor-kotlin" }
 
 # Jackson
 jackson-module-kotlin = { module = "com.fasterxml.jackson.module:jackson-module-kotlin" }
 
+# SQLite
+sqlite-jdbc = { module = "org.xerial:sqlite-jdbc", version.ref = "sqlite" }
 
+# Exposed ORM
+exposed-core = { module = "org.jetbrains.exposed:exposed-core", version.ref = "exposed" }
+exposed-dao = { module = "org.jetbrains.exposed:exposed-dao", version.ref = "exposed" }
+exposed-jdbc = { module = "org.jetbrains.exposed:exposed-jdbc", version.ref = "exposed" }
+exposed-kotlin-datetime = { module = "org.jetbrains.exposed:exposed-kotlin-datetime", version.ref = "exposed" }
+exposed-migration-core = { module = "org.jetbrains.exposed:exposed-migration-core", version.ref = "exposed" }
+exposed-migration-jdbc = { module = "org.jetbrains.exposed:exposed-migration-jdbc", version.ref = "exposed" }
+
+# Flyway migrations
+flyway-core = { module = "org.flywaydb:flyway-core", version.ref = "flyway" }
 
 # Batik (for SVG to PNG conversion)
 batik-transcoder = { module = "org.apache.xmlgraphics:batik-transcoder", version.ref = "batik" }
@@ -82,6 +103,9 @@ mcp-kotlin-sdk = { module = "io.modelcontextprotocol:kotlin-sdk", version.ref = 
 
 # Logging
 klog = { module = "com.github.lewik.klog:klog-jvm", version.ref = "klog" }
+
+# UUID v7
+uuid-creator = { module = "com.github.f4b6a3:uuid-creator", version.ref = "uuid-creator" }
 
 # XML Utilities
 xmlutil-serialization = { module = "io.github.pdvrieze.xmlutil:serialization", version.ref = "xmlutil" }

@@ -50,13 +50,13 @@ class SwitchTabTool(
             isError = true
         )
 
-        val sessionId = selectedTab.sessionId
+        val threadId = selectedTab.conversationId
         val projectPath = selectedTab.projectPath
         val currentTabs = appViewModel.tabs.first()
         val tabIndex = currentTabs.indexOf(selectedTab)
 
         return CallToolResult(
-            content = listOf(TextContent("Successfully switched to tab $tabIndex (${input.tab_id}): $projectPath (Session ID: ${sessionId.value})")),
+            content = listOf(TextContent("Successfully switched to tab $tabIndex (${input.tab_id}): $projectPath (Thread ID: ${threadId.value})")),
             isError = false
         )
 

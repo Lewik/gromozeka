@@ -78,10 +78,6 @@ fun main() {
     }
     log.info("Claude Code installation verified")
 
-    // Clean up old stream logs on startup
-    log.info("Cleaning up old stream logs...")
-    StreamLogger.cleanupOldLogs()
-
     log.info("Initializing Spring context...")
 
     // Determine app mode to set Spring profile
@@ -112,9 +108,6 @@ fun main() {
 
     val ttsQueueService = context.getBean<TTSQueueService>()
     val ttsAutoplayService = context.getBean<TTSAutoplayService>()
-    val sessionJsonlService = context.getBean<SessionJsonlService>()
-    val sessionSearchService = context.getBean<SessionSearchService>()
-    val sessionManager = context.getBean<SessionManager>()
     val globalHotkeyController = context.getBean<GlobalHotkeyController>()
     val pttEventRouter = context.getBean<PTTEventRouter>()
     val pttService = context.getBean<PTTService>()
@@ -126,13 +119,11 @@ fun main() {
     val screenCaptureController = context.getBean<com.gromozeka.bot.platform.ScreenCaptureController>()
     val contextExtractionService = context.getBean<ContextExtractionService>()
     val contextFileService = context.getBean<ContextFileService>()
-    val hookPermissionService = context.getBean<HookPermissionService>()
     val logEncryptor = context.getBean<LogEncryptor>()
 
     // Create AI theme generator
     val aiThemeGenerator = AIThemeGenerator(
         screenCaptureController = screenCaptureController,
-        sessionManager = sessionManager,
         settingsService = settingsService
     )
 
@@ -150,12 +141,8 @@ fun main() {
     globalHotkeyController.initializeService()
     pttEventRouter.initialize()
 
-    // Initialize HookPermissionService actor
-    val coroutineScope = context.getBean("coroutineScope") as CoroutineScope
-    hookPermissionService.initializeActor(coroutineScope)
-    log.info("HookPermissionService actor initialized")
-
     // Initialize UIStateService (loads state, restores sessions, starts subscription)
+    val coroutineScope = context.getBean("coroutineScope") as CoroutineScope
     runBlocking {
         uiStateService.initialize(appViewModel)
     }
@@ -172,9 +159,6 @@ fun main() {
                     appViewModel,
                     ttsQueueService,
                     settingsService,
-                    sessionJsonlService,
-                    sessionSearchService,
-                    sessionManager,
                     globalHotkeyController,
                     pttEventRouter,
                     pttService,
@@ -184,9 +168,11 @@ fun main() {
                     themeService,
                     aiThemeGenerator,
                     logEncryptor,
-                    context.getBean("hookPermissionService") as HookPermissionService,
                     contextExtractionService,
-                    contextFileService
+                    contextFileService,
+                    context.getBean<com.gromozeka.shared.services.ProjectService>(),
+                    context.getBean<com.gromozeka.shared.services.ConversationTreeService>(),
+                    context.getBean<com.gromozeka.bot.ui.viewmodel.ConversationSearchViewModel>()
                 )
             }  // TranslationProvider
         }  // GromozekaTheme

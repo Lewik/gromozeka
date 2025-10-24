@@ -19,7 +19,6 @@ import com.gromozeka.bot.settings.Settings
 import com.gromozeka.bot.ui.CompactButton
 import com.gromozeka.bot.ui.LocalTranslation
 import com.gromozeka.bot.ui.viewmodel.TabViewModel
-import com.gromozeka.bot.utils.TokenUsageCalculator
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
@@ -61,18 +60,9 @@ fun SessionScreen(
     val toolResultsMap by viewModel.toolResultsMap.collectAsState()
     val isWaitingForResponse by viewModel.isWaitingForResponse.collectAsState()
     val pendingMessagesCount by viewModel.pendingMessagesCount.collectAsState()
-    val tokenUsage by viewModel.tokenUsage.collectAsState()
     val uiState by viewModel.uiState.collectAsState()
     val userInput = uiState.userInput
     val jsonToShow = viewModel.jsonToShow
-
-    // Format UI strings here in UI layer
-    val formattedTokenUsage = remember(tokenUsage) {
-        formatTokenUsageForDisplay(tokenUsage)
-    }
-    val tokenUsageTooltip = remember(tokenUsage) {
-        createTokenUsageTooltip(tokenUsage)
-    }
 
     // Message sending function using ViewModel
     val onSendMessage: (String) -> Unit = { message ->
@@ -136,23 +126,6 @@ fun SessionScreen(
                                 )
                                 Spacer(modifier = Modifier.width(4.dp))
                                 Text("${filteredHistory.size}")
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.width(8.dp))
-
-                        // Token usage count  
-                        CompactButton(
-                            onClick = { },
-                            tooltip = tokenUsageTooltip
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(
-                                    Icons.Default.MonetizationOn,
-                                    contentDescription = "Tokens"
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(formattedTokenUsage)
                             }
                         }
 
@@ -298,47 +271,5 @@ fun SessionScreen(
             json = json,
             onDismiss = { viewModel.jsonToShow = null }
         )
-    }
-}
-
-
-// === Token Usage UI Formatting ===
-
-/**
- * Format token usage for display in UI
- */
-private fun formatTokenUsageForDisplay(usage: TokenUsageCalculator.SessionTokenUsage): String {
-    val total = usage.grandTotal
-    val percent = (usage.contextUsagePercent * 100).toInt()
-
-    return when {
-        total < 1000 -> "${total}t"
-        total < 10000 -> "${total / 1000}k"
-        else -> "${total / 1000}k"
-    } + if (percent > 10) " (${percent}%)" else ""
-}
-
-/**
- * Create detailed breakdown tooltip for token usage
- */
-private fun createTokenUsageTooltip(usage: TokenUsageCalculator.SessionTokenUsage): String {
-    return buildString {
-        appendLine("📊 Токены сессии (как в Claude Code):")
-        appendLine("• Ввод: ${usage.totalInputTokens}")
-        appendLine("• Вывод: ${usage.totalOutputTokens}")
-        appendLine("• Кэш чтение: ${usage.currentCacheReadTokens}")
-        appendLine()
-        appendLine("Total: ${usage.grandTotal}")
-        appendLine()
-        appendLine("Cache creation: ${usage.totalCacheCreationTokens} (separate)")
-        appendLine("Total with cache: ${usage.totalCacheTokens}")
-        appendLine()
-        val percent = (usage.contextUsagePercent * 100).toInt()
-        appendLine("Context: ${percent}% of ~200k")
-
-        if (percent > 80) {
-            appendLine()
-            appendLine("WARNING: Approaching context limit!")
-        }
     }
 }

@@ -3,6 +3,8 @@
  * Modified for Kotlin MPP project.
  */
 
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask
+
 plugins {
     alias(libs.plugins.kotlin.multiplatform) apply false
     alias(libs.plugins.kotlin.spring) apply false
@@ -15,11 +17,11 @@ plugins {
 
 // Centralized experimental API opt-ins for all Kotlin modules
 val experimentalOptIns = listOf(
-    "-opt-in=kotlin.time.ExperimentalTime",
-    "-opt-in=kotlinx.serialization.ExperimentalSerializationApi",
-    "-opt-in=androidx.compose.material3.ExperimentalMaterial3Api",
-    "-opt-in=androidx.compose.ui.ExperimentalComposeUiApi",
-    "-opt-in=androidx.compose.foundation.ExperimentalFoundationApi"
+    "kotlin.time.ExperimentalTime",
+    "kotlinx.serialization.ExperimentalSerializationApi",
+    "androidx.compose.material3.ExperimentalMaterial3Api",
+    "androidx.compose.ui.ExperimentalComposeUiApi",
+    "androidx.compose.foundation.ExperimentalFoundationApi"
 )
 
 // Centralized version for the entire project
@@ -28,7 +30,11 @@ val projectVersion = "1.1.33"
 allprojects {
     group = "com.example"
     version = projectVersion
-    
-    // Make experimentalOptIns available in all modules
-    extra["experimentalOptIns"] = experimentalOptIns
+
+    // Apply experimental opt-ins to all Kotlin compilation tasks
+    tasks.withType<KotlinCompilationTask<*>>().configureEach {
+        compilerOptions {
+            experimentalOptIns.forEach { optIn.add(it) }
+        }
+    }
 }

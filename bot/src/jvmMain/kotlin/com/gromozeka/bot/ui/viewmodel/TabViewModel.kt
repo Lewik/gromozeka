@@ -3,73 +3,50 @@ package com.gromozeka.bot.ui.viewmodel
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import com.gromozeka.bot.model.ClaudeHookPayload
-import com.gromozeka.bot.model.SessionSpringAI
 import com.gromozeka.bot.platform.ScreenCaptureController
-import com.gromozeka.bot.services.HookPermissionService
+import com.gromozeka.bot.services.ConversationEngineService
+import com.gromozeka.bot.services.SoundNotificationService
 import com.gromozeka.bot.settings.Settings
 import com.gromozeka.bot.ui.state.UIState
-import com.gromozeka.bot.utils.TokenUsageCalculator
-import com.gromozeka.shared.domain.message.ChatMessage
+import com.gromozeka.bot.utils.ChatMessageSoundDetector
+import com.gromozeka.shared.domain.conversation.ConversationTree
 import com.gromozeka.shared.domain.message.MessageTagDefinition
+import com.gromozeka.shared.services.ConversationTreeService
+import klog.KLoggers
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.launch
 import kotlin.time.Clock
 import java.util.UUID
 
 class TabViewModel(
-    // Session is intentionally private to maintain clean MVVM architecture.
-    // TabViewModel is the "head" for headless Session - UI layer should only interact
-    // with TabViewModel, not with Session directly. Session lives without any UI knowledge.
-    // This ensures isolation of business logic from the presentation layer.
-    private val session: SessionSpringAI,
+    val conversationId: ConversationTree.Id,
+    val projectPath: String,
+    private val conversationEngineService: ConversationEngineService,
+    private val conversationTreeService: ConversationTreeService,
+    private val soundNotificationService: SoundNotificationService,
     private val settingsFlow: StateFlow<Settings>,
     private val scope: CoroutineScope,
     initialTabUiState: UIState.Tab,
     private val screenCaptureController: ScreenCaptureController,
-    private val hookPermissionService: HookPermissionService,
 ) {
+    private val log = KLoggers.logger(this)
 
-    // === Public accessors for AppViewModel ===
-    val sessionId get() = session.id  // Get from Session directly
-    val projectPath get() = session.projectPath
-    val claudeSessionId get() = session.claudeSessionId
-
-    // === Immutable UI State (Official Android Pattern) ===
     private val _uiState = MutableStateFlow(initialTabUiState)
     val uiState: StateFlow<UIState.Tab> = _uiState.asStateFlow()
 
-    // === Reactive updates from Session ===
-    init {
-        // Update claudeSessionId when it changes in Session
-        session.claudeSessionId.onEach { newSessionId ->
-            _uiState.update { currentState ->
-                currentState.copy(claudeSessionId = newSessionId)
-            }
-        }.launchIn(scope)
-
-        // Update isWaitingForResponse when it changes in Session  
-        session.isWaitingForResponse.onEach { isWaiting ->
-            _uiState.update { currentState ->
-                currentState.copy(isWaitingForResponse = isWaiting)
-            }
-        }.launchIn(scope)
-    }
-
-    // === Non-persistent UI State ===
     var jsonToShow by mutableStateOf<String?>(null)
 
-    // === Message Tags ===
     companion object {
         private val ALL_MESSAGE_TAG_DEFINITIONS = listOf(
             MessageTagDefinition(
                 controls = listOf(
                     MessageTagDefinition.Control(
-                        data = ChatMessage.Instruction.UserInstruction("thinking_off", "Off", "Обычный режим работы"),
+                        data = ConversationTree.Message.Instruction.UserInstruction("thinking_off", "Off", "Обычный режим работы"),
                         includeInMessage = false
                     ),
                     MessageTagDefinition.Control(
-                        data = ChatMessage.Instruction.UserInstruction(
+                        data = ConversationTree.Message.Instruction.UserInstruction(
                             "thinking_ultrathink",
                             "Ultrathink",
                             "Режим глубокого анализа с пошаговыми рассуждениями и детальной проработкой"
@@ -77,12 +54,12 @@ class TabViewModel(
                         includeInMessage = true
                     )
                 ),
-                selectedByDefault = 1  // Ultrathink по умолчанию
+                selectedByDefault = 1
             ),
             MessageTagDefinition(
                 controls = listOf(
                     MessageTagDefinition.Control(
-                        data = ChatMessage.Instruction.UserInstruction(
+                        data = ConversationTree.Message.Instruction.UserInstruction(
                             "mode_readonly",
                             "Readonly",
                             "Режим readonly - никаких изменений кода или команд применяющих изменения"
@@ -90,63 +67,74 @@ class TabViewModel(
                         includeInMessage = true
                     ),
                     MessageTagDefinition.Control(
-                        data = ChatMessage.Instruction.UserInstruction("mode_writable", "Writable", "Разрешено исправление файлов"),
+                        data = ConversationTree.Message.Instruction.UserInstruction("mode_writable", "Writable", "Разрешено исправление файлов"),
                         includeInMessage = true
                     )
                 ),
-                selectedByDefault = 0  // Readonly по умолчанию
+                selectedByDefault = 0
             )
         )
 
         fun getDefaultEnabledTags(): Set<String> {
             return ALL_MESSAGE_TAG_DEFINITIONS.map { tagDefinition ->
-                (tagDefinition.controls[tagDefinition.selectedByDefault].data as ChatMessage.Instruction.UserInstruction).id
+                (tagDefinition.controls[tagDefinition.selectedByDefault].data as ConversationTree.Message.Instruction.UserInstruction).id
             }.toSet()
         }
     }
 
     val availableMessageTags = ALL_MESSAGE_TAG_DEFINITIONS
 
-    // === Convenience accessors for backward compatibility ===
     val activeMessageTags: Set<String> get() = _uiState.value.activeMessageTags
     val userInput: String get() = _uiState.value.userInput
     val activeMessageTagsFlow: StateFlow<Set<String>> = _uiState.map { it.activeMessageTags }.stateIn(
         scope, SharingStarted.Lazily, initialTabUiState.activeMessageTags
     )
 
-    // === Messages from messageOutputStream (no duplication) ===
-    private val allMessages: StateFlow<List<ChatMessage>> = session.messageOutputStream
-        .scan(emptyList<ChatMessage>()) { acc, message ->
-            val newAcc = acc + message
-            newAcc
-        }
-        .stateIn(
-            scope = scope,
-            started = SharingStarted.Eagerly,
-            initialValue = emptyList()
-        )
+    private val _allMessages = MutableStateFlow<List<ConversationTree.Message>>(emptyList())
+    val allMessages: StateFlow<List<ConversationTree.Message>> = _allMessages.asStateFlow()
 
-    // === Derived UI State ===
-    val filteredMessages: StateFlow<List<ChatMessage>> = combine(
+    private val _isWaitingForResponse = MutableStateFlow(false)
+    val isWaitingForResponse: StateFlow<Boolean> = _isWaitingForResponse.asStateFlow()
+
+    val pendingMessagesCount: StateFlow<Int> = flowOf(0).stateIn(scope, SharingStarted.Eagerly, 0)
+
+    init {
+        _uiState.update { it.copy(isWaitingForResponse = false) }
+
+        scope.launch {
+            loadMessages()
+        }
+    }
+
+    private suspend fun loadMessages() {
+        try {
+            val conversation = conversationTreeService.findById(conversationId)
+            if (conversation != null) {
+                _allMessages.value = conversation.messages
+                log.debug { "Loaded ${conversation.messages.size} messages for conversation $conversationId" }
+            }
+        } catch (e: Exception) {
+            log.error(e) { "Failed to load messages for conversation $conversationId" }
+        }
+    }
+
+    val filteredMessages: StateFlow<List<ConversationTree.Message>> = combine(
         allMessages,
         settingsFlow
     ) { messages, settings ->
         messages.filter { message ->
-            // Filter out messages that contain only ToolResult elements
-            // These are already displayed integrated into their corresponding ToolCall
             val containsOnlyToolResults = message.content.isNotEmpty() &&
-                    message.content.all { it is ChatMessage.ContentItem.ToolResult }
+                    message.content.all { it is ConversationTree.Message.ContentItem.ToolResult }
 
             if (containsOnlyToolResults) {
-                false // Hide messages with only ToolResult content
+                false
             } else if (settings.showSystemMessages) {
-                true // Show all other messages when system messages are enabled
+                true
             } else {
-                // Existing system message filtering logic
-                message.role != ChatMessage.Role.SYSTEM ||
+                message.role != ConversationTree.Message.Role.SYSTEM ||
                         message.content.any { content ->
-                            content is ChatMessage.ContentItem.System &&
-                                    content.level == ChatMessage.ContentItem.System.SystemLevel.ERROR
+                            content is ConversationTree.Message.ContentItem.System &&
+                                    content.level == ConversationTree.Message.ContentItem.System.SystemLevel.ERROR
                         }
             }
         }
@@ -156,26 +144,14 @@ class TabViewModel(
         initialValue = emptyList()
     )
 
-    // === Token Usage Calculation ===
-    val tokenUsage: StateFlow<TokenUsageCalculator.SessionTokenUsage> = allMessages
-        .map { messages -> TokenUsageCalculator.calculateSessionUsage(messages) }
-        .stateIn(
-            scope = scope,
-            started = SharingStarted.WhileSubscribed(5000),
-            initialValue = TokenUsageCalculator.SessionTokenUsage(0, 0, 0, 0)
-        )
-
-    // === Raw token usage data (UI will format it) ===
-
-    // === Инкрементально аккумулируем в Map ===
-    val toolResultsMap: StateFlow<Map<String, ChatMessage.ContentItem.ToolResult>> =
-        session.messageOutputStream
-            .scan(emptyMap<String, ChatMessage.ContentItem.ToolResult>()) { acc, message ->
-                val results = message
-                    .content
-                    .filterIsInstance<ChatMessage.ContentItem.ToolResult>()
-                    .associateBy { it.toolUseId }
-                acc + results
+    val toolResultsMap: StateFlow<Map<String, ConversationTree.Message.ContentItem.ToolResult>> =
+        allMessages
+            .map { messages ->
+                messages
+                    .flatMap { message ->
+                        message.content.filterIsInstance<ConversationTree.Message.ContentItem.ToolResult>()
+                    }
+                    .associateBy { it.toolUseId.value }
             }
             .stateIn(
                 scope = scope,
@@ -183,38 +159,18 @@ class TabViewModel(
                 initialValue = emptyMap()
             )
 
-    // === Session State Forwarding ===
-    val isWaitingForResponse: StateFlow<Boolean> = session.isWaitingForResponse
-    val pendingMessagesCount: StateFlow<Int> = session.pendingMessagesCount
-
-    // === Hook Permission (Session-aware) ===
-    val claudeHookPayload: StateFlow<ClaudeHookPayload?> = combine(
-        hookPermissionService.pendingRequests,
-        session.claudeSessionId
-    ) { pendingRequests, currentClaudeSessionId ->
-        // Filter requests that belong to this session and get the first one
-        pendingRequests.values.firstOrNull { hookPayload ->
-            hookPayload.session_id == currentClaudeSessionId.value
-        }
-    }.stateIn(scope, SharingStarted.Eagerly, null)
-
-    // === Commands (Immutable State Updates) ===
     fun toggleMessageTag(messageTag: MessageTagDefinition, controlIndex: Int) {
         _uiState.update { currentState ->
             if (controlIndex >= 0 && controlIndex < messageTag.controls.size) {
-                val selectedId = (messageTag.controls[controlIndex].data as ChatMessage.Instruction.UserInstruction).id
+                val selectedId = (messageTag.controls[controlIndex].data as ConversationTree.Message.Instruction.UserInstruction).id
 
-                // Get all IDs from this MessageTag group
-                val allIdsInGroup = messageTag.controls.map { (it.data as ChatMessage.Instruction.UserInstruction).id }.toSet()
+                val allIdsInGroup = messageTag.controls.map { (it.data as ConversationTree.Message.Instruction.UserInstruction).id }.toSet()
 
-                // Check if clicked ID is already active in this group
                 val isAlreadyActive = selectedId in currentState.activeMessageTags
 
                 if (isAlreadyActive) {
-                    // If already active, do nothing (ignore repeat clicks)
                     currentState
                 } else {
-                    // Remove all IDs from this group, then add the new one
                     val cleanedTags = currentState.activeMessageTags - allIdsInGroup
                     val newTags = cleanedTags + selectedId
                     currentState.copy(activeMessageTags = newTags)
@@ -237,50 +193,81 @@ class TabViewModel(
         }
     }
 
-    suspend fun sendMessageToSession(message: String) {
-        sendMessageToSession(message, emptyList())
-    }
-
     suspend fun sendMessageToSession(
         message: String,
-        additionalInstructions: List<ChatMessage.Instruction>
+        additionalInstructions: List<ConversationTree.Message.Instruction> = emptyList(),
     ) {
         val currentState = _uiState.value
 
-        // Collect all active tag data that should be included in message
         val activeTagsData = availableMessageTags.mapNotNull { messageTag ->
-            // Find which control should be active based on currentState.activeMessageTags
             val activeControlIndex = messageTag.controls.indexOfFirst { control ->
-                (control.data as ChatMessage.Instruction.UserInstruction).id in currentState.activeMessageTags
+                (control.data as ConversationTree.Message.Instruction.UserInstruction).id in currentState.activeMessageTags
             }
 
             val selectedControlIndex = if (activeControlIndex >= 0) activeControlIndex else messageTag.selectedByDefault
             val selectedControl = messageTag.controls[selectedControlIndex]
 
-            // Include only if this control should be sent to chat
             if (selectedControl.includeInMessage) {
                 selectedControl.data
             } else null
         }
 
-        // Combine UI instructions with additional ones
         val instructions = activeTagsData + additionalInstructions
-        
-        // Create ChatMessage in UI layer for better control and consistency
-        val chatMessage = ChatMessage(
-            role = ChatMessage.Role.USER,
-            content = listOf(ChatMessage.ContentItem.UserMessage(message)),
-            instructions = instructions,
-            uuid = UUID.randomUUID().toString(),
-            timestamp = Clock.System.now(),
-            llmSpecificMetadata = null
-        )
-        
-        // Send the complete ChatMessage
-        session.sendMessage(chatMessage)
 
-        // Clear input after sending
-        _uiState.update { it.copy(userInput = "") }
+        val userMessage = ConversationTree.Message(
+            id = ConversationTree.Message.Id(UUID.randomUUID().toString()),
+            role = ConversationTree.Message.Role.USER,
+            content = listOf(ConversationTree.Message.ContentItem.UserMessage(message)),
+            timestamp = Clock.System.now(),
+            instructions = instructions
+        )
+
+        _allMessages.value += userMessage
+        _isWaitingForResponse.value = true
+        _uiState.update { it.copy(userInput = "", isWaitingForResponse = true) }
+
+        scope.launch {
+            try {
+                log.debug { "Sending message to conversation $conversationId" }
+
+                var lastMessage: ConversationTree.Message? = null
+
+                conversationEngineService.streamMessage(conversationId, userMessage)
+                    .collect { update ->
+                        when (update) {
+                            is ConversationEngineService.StreamUpdate.Chunk -> {
+                                // Add new message to the list
+                                val messages = _allMessages.value.toMutableList()
+                                messages.add(update.message)
+                                _allMessages.value = messages
+
+                                lastMessage = update.message
+                            }
+                            is ConversationEngineService.StreamUpdate.Error -> {
+                                log.error(update.exception) { "Stream error" }
+                                soundNotificationService.playErrorSound()
+                            }
+                        }
+                    }
+
+                // Play completion sounds
+                if (lastMessage != null) {
+                    if (ChatMessageSoundDetector.shouldPlayErrorSound(lastMessage)) {
+                        soundNotificationService.playErrorSound()
+                    } else if (ChatMessageSoundDetector.shouldPlayMessageSound(lastMessage)) {
+                        soundNotificationService.playMessageSound()
+                    }
+                }
+
+                soundNotificationService.playReadySound()
+                log.debug { "Message sent successfully" }
+            } catch (e: Exception) {
+                log.error(e) { "Failed to send message" }
+            } finally {
+                _isWaitingForResponse.value = false
+                _uiState.update { it.copy(isWaitingForResponse = false) }
+            }
+        }
     }
 
     suspend fun captureAndAddToInput() {

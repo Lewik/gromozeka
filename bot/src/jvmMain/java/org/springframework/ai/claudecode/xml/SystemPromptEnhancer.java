@@ -48,6 +48,7 @@ public class SystemPromptEnhancer {
         enhanced.append("- Use proper XML formatting with correct opening/closing tags\n");
         enhanced.append("- Parameter names must match exactly as specified\n");
         enhanced.append("- Do not nest tool calls\n");
+        enhanced.append("- Output XML directly in your text - do NOT wrap in markdown code blocks (no ```xml)\n");
         enhanced.append("- After using a tool, wait for the result message before responding\n");
 
         return enhanced.toString();
@@ -64,7 +65,7 @@ public class SystemPromptEnhancer {
         }
         xml.append("\n");
 
-        xml.append("Usage:\n```xml\n");
+        xml.append("Usage:\n");
         xml.append("<").append(name).append(">\n");
 
         try {
@@ -117,8 +118,7 @@ public class SystemPromptEnhancer {
             xml.append("  <!-- parameters not available -->\n");
         }
 
-        xml.append("</").append(name).append(">\n");
-        xml.append("```\n\n");
+        xml.append("</").append(name).append(">\n\n");
 
         return xml.toString();
     }

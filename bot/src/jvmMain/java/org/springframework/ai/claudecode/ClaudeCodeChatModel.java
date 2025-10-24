@@ -126,7 +126,16 @@ public class ClaudeCodeChatModel implements ChatModel {
     @Override
     public ChatResponse call(Prompt prompt) {
         Prompt requestPrompt = buildRequestPrompt(prompt);
-        return stream(requestPrompt).blockLast();
+
+        // Use MessageAggregator callback to get aggregated response with tool calls
+        // instead of blockLast() which only returns the last element
+        AtomicReference<ChatResponse> aggregatedResponse = new AtomicReference<>();
+
+        stream(requestPrompt)
+            .transform(flux -> new MessageAggregator().aggregate(flux, aggregatedResponse::set))
+            .blockLast();
+
+        return aggregatedResponse.get();
     }
 
     @Override
@@ -188,10 +197,14 @@ public class ClaudeCodeChatModel implements ChatModel {
                                         .generations(ToolExecutionResult.buildGenerations(toolExecutionResult))
                                         .build());
                                 } else {
-                                    // Recursive call with tool results
-                                    return internalStream(
-                                        new Prompt(toolExecutionResult.conversationHistory(), prompt.getOptions()),
-                                        chatResponse
+                                    // Emit intermediate message with tool calls, then recurse
+                                    // This allows MessageAggregator to see tool execution
+                                    return Flux.concat(
+                                        Flux.just(chatResponse),  // Emit tool_use message
+                                        internalStream(
+                                            new Prompt(toolExecutionResult.conversationHistory(), prompt.getOptions()),
+                                            chatResponse
+                                        )
                                     );
                                 }
                             }

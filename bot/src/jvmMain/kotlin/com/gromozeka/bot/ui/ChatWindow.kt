@@ -17,8 +17,6 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.*
-import com.gromozeka.bot.model.AgentDefinition
-import com.gromozeka.bot.model.HookDecision
 import com.gromozeka.bot.platform.GlobalHotkeyController
 import com.gromozeka.bot.services.*
 import com.gromozeka.bot.services.theming.AIThemeGenerator
@@ -30,8 +28,8 @@ import com.gromozeka.bot.ui.session.SessionScreen
 import com.gromozeka.bot.ui.state.ConversationInitiator
 import com.gromozeka.bot.ui.viewmodel.AppViewModel
 import com.gromozeka.bot.ui.viewmodel.ContextsPanelViewModel
-import com.gromozeka.bot.ui.viewmodel.SessionSearchViewModel
-import com.gromozeka.shared.domain.message.ChatMessage
+import com.gromozeka.shared.domain.conversation.ConversationTree
+import com.gromozeka.shared.services.ProjectService
 import klog.KLoggers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
@@ -45,9 +43,6 @@ fun ApplicationScope.ChatWindow(
     appViewModel: AppViewModel,
     ttsQueueService: TTSQueueService,
     settingsService: SettingsService,
-    sessionJsonlService: SessionJsonlService,
-    sessionSearchService: SessionSearchService,
-    sessionManager: SessionManager,
     globalHotkeyController: GlobalHotkeyController,
     pttEventRouter: PTTEventRouter,
     pttService: PTTService,
@@ -57,15 +52,14 @@ fun ApplicationScope.ChatWindow(
     themeService: ThemeService,
     aiThemeGenerator: AIThemeGenerator,
     logEncryptor: LogEncryptor,
-    hookPermissionService: HookPermissionService,
     contextExtractionService: ContextExtractionService,
     contextFileService: ContextFileService,
+    projectService: ProjectService,
+    conversationTreeService: com.gromozeka.shared.services.ConversationTreeService,
+    conversationSearchViewModel: com.gromozeka.bot.ui.viewmodel.ConversationSearchViewModel,
 ) {
     val log = KLoggers.logger("ChatWindow")
     val coroutineScope = rememberCoroutineScope()
-    val sessionSearchViewModel = remember {
-        SessionSearchViewModel(sessionSearchService, coroutineScope)
-    }
 
     val contextsPanelViewModel = remember {
         ContextsPanelViewModel(
@@ -89,10 +83,9 @@ fun ApplicationScope.ChatWindow(
     val tabs by appViewModel.tabs.collectAsState()
     val currentTabIndex by appViewModel.currentTabIndex.collectAsState()
     val currentTab by appViewModel.currentTab.collectAsState()
-    val currentSession by appViewModel.currentSession.collectAsState()
     var showSettingsPanel by remember { mutableStateOf(false) }
     var showContextsPanel by remember { mutableStateOf(false) }
-    var sessionListRefreshTrigger by remember { mutableStateOf(0) }
+    var refreshTrigger by remember { mutableStateOf(0) }
 
     // State for rename dialog
     var renameDialogOpen by remember { mutableStateOf(false) }
@@ -132,22 +125,21 @@ fun ApplicationScope.ChatWindow(
         }
     }
 
-    val createNewSessionWithMessage: (String, String, AgentDefinition) -> Unit =
-        { projectPath, initialMessage, agentDefinition ->
+    val createNewSessionWithMessage: (String, String) -> Unit =
+        { projectPath, initialMessage ->
             coroutineScope.launch {
                 try {
                     // Create ChatMessage from user input
-                    val chatMessage = ChatMessage(
-                        role = ChatMessage.Role.USER,
-                        content = listOf(ChatMessage.ContentItem.UserMessage(initialMessage)),
-                        instructions = listOf(ChatMessage.Instruction.Source.User),
-                        uuid = UUID.randomUUID().toString(),
-                        timestamp = Clock.System.now(),
-                        llmSpecificMetadata = null
+                    val chatMessage = ConversationTree.Message(
+                        role = ConversationTree.Message.Role.USER,
+                        content = listOf(ConversationTree.Message.ContentItem.UserMessage(initialMessage)),
+                        instructions = listOf(ConversationTree.Message.Instruction.Source.User),
+                        id = ConversationTree.Message.Id(UUID.randomUUID().toString()),
+                        timestamp = Clock.System.now()
                     )
                     val tabIndex = appViewModel.createTab(
                         projectPath = projectPath,
-                        agentDefinition = agentDefinition,
+                        agent = null, // Use default agent
                         initialMessage = chatMessage,
                         initiator = ConversationInitiator.User
                     )
@@ -157,25 +149,6 @@ fun ApplicationScope.ChatWindow(
                 }
             }
         }
-
-    val createForkSession: () -> Unit = {
-        coroutineScope.launch {
-            try {
-                val currentClaudeSessionId = currentSession?.claudeSessionId?.first()?.value
-                if (currentClaudeSessionId != null) {
-                    val tabIndex = appViewModel.createTab(
-                        projectPath = currentSession!!.projectPath,
-                        resumeSessionId = currentClaudeSessionId,
-                        initialMessage = null, // No initial message for fork
-                        initiator = ConversationInitiator.User
-                    )
-                    appViewModel.selectTab(tabIndex)
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-        }
-    }
 
     // Get recording state from service
     val isRecording by pttService.recordingState.collectAsState()
@@ -284,10 +257,9 @@ fun ApplicationScope.ChatWindow(
                             event.key == Key.T &&
                                     event.isMetaPressed &&
                                     event.type == KeyEventType.KeyDown -> {
-                                // Cmd+T работает только на экране сессии (не на экране проектов)
-                                val selectedTabIndex = currentTabIndex?.plus(1) ?: 0
-                                if (selectedTabIndex > 0 && currentSession != null) {
-                                    createNewSession(currentSession!!.projectPath)
+                                // Cmd+T создает новую сессию для текущего проекта
+                                if (currentTab != null) {
+                                    createNewSession(currentTab!!.projectPath)
                                 }
                                 true
                             }
@@ -320,7 +292,10 @@ fun ApplicationScope.ChatWindow(
                         // Main area with tabs and content
                         Column(modifier = Modifier.weight(1f)) {
                             // Tab Row - position based on showTabsAtBottom setting
-                            val selectedTabIndex = currentTabIndex?.plus(1) ?: 0
+                            // currentTabIndex is null when showing Projects tab (visual index 0)
+                            // Otherwise it's the index in tabs array, so add 1 for visual offset
+                            val currentIndex = currentTabIndex
+                            val selectedTabIndex = if (currentIndex == null) 0 else (currentIndex + 1)
                             val tabRowComponent = @Composable {
                                 CustomTabRow(
                                     selectedTabIndex = selectedTabIndex,
@@ -328,16 +303,8 @@ fun ApplicationScope.ChatWindow(
                                     tabs = tabs,
                                     hoveredTabIndex = hoveredTabIndex,
                                     onTabSelect = { tabIndex ->
-                                        if (tabIndex == null) {
-                                            coroutineScope.launch {
-                                                appViewModel.selectTab(null)
-                                                // Trigger refresh when switching to projects tab
-                                                sessionListRefreshTrigger++
-                                            }
-                                        } else {
-                                            coroutineScope.launch {
-                                                appViewModel.selectTab(tabIndex)
-                                            }
+                                        coroutineScope.launch {
+                                            appViewModel.selectTab(tabIndex)
                                         }
                                     },
                                     onTabHover = { index -> hoveredTabIndex = index },
@@ -359,44 +326,21 @@ fun ApplicationScope.ChatWindow(
 
                             // Content area with global 16dp padding according to design system
                             Column(modifier = Modifier.weight(1f).padding(16.dp)) {
-                                // Tab Content - All tabs exist in parallel, only selected is visible
+                                // Tab Content - render SessionScreen for current tab or SessionListScreen
                                 Box(modifier = Modifier.weight(1f)) {
-                                    // SessionListScreen tab - always exists
-                                    val isSessionListVisible = selectedTabIndex == 0
-                                    Box(
-                                        modifier = Modifier.fillMaxSize()
-                                            .alpha(if (isSessionListVisible) 1f else 0f)
-                                    ) {
-                                        SessionListScreen(
-                                            onSessionMetadataSelected = { session ->
-                                                // Session and ViewModel already created in SessionListScreen
-                                                // Tab UI will automatically switch to the new session
-                                            },
-                                            coroutineScope = coroutineScope,
-                                            onNewSession = createNewSession,
-                                            sessionJsonlService = sessionJsonlService,
-                                            sessionManager = sessionManager,
-                                            appViewModel = appViewModel,
-                                            searchViewModel = sessionSearchViewModel,
-                                            showSettingsPanel = showSettingsPanel,
-                                            onShowSettingsPanelChange = { showSettingsPanel = it },
-                                            refreshTrigger = sessionListRefreshTrigger
-                                        )
-                                    }
-
-                                    // Only render SessionScreen for current tab
-                                    if (currentTab != null && currentSession != null) {
+                                    if (currentTab != null) {
                                         currentTab?.let { tabViewModel ->
                                             SessionScreen(
                                                 viewModel = tabViewModel,
 
                                                 // Navigation callbacks - modified to not stop sessions
                                                 onNewSession = {
-                                                    createNewSession(currentSession!!.projectPath)
+                                                    createNewSession(currentTab!!.projectPath)
                                                 },
-                                                onForkSession = createForkSession,
-                                                // Reuse the same function for opening tabs
-                                                // For AI theme generation with initial message
+                                                onForkSession = {
+                                                    // Fork creates new tab with same project
+                                                    createNewSession(currentTab!!.projectPath)
+                                                },
 
                                                 // Close session callback - removes session and stops it
                                                 onCloseTab = {
@@ -437,6 +381,21 @@ fun ApplicationScope.ChatWindow(
                                                 isDev = settingsService.mode == AppMode.DEV,
                                             )
                                         }
+                                    } else {
+                                        SessionListScreen(
+                                            onConversationSelected = { _, _ ->
+                                                refreshTrigger++
+                                            },
+                                            coroutineScope = coroutineScope,
+                                            onNewSession = createNewSession,
+                                            projectService = projectService,
+                                            conversationTreeService = conversationTreeService,
+                                            appViewModel = appViewModel,
+                                            searchViewModel = conversationSearchViewModel,
+                                            showSettingsPanel = showSettingsPanel,
+                                            onShowSettingsPanelChange = { showSettingsPanel = it },
+                                            refreshTrigger = refreshTrigger
+                                        )
                                     }
                                 }
                             }
@@ -479,34 +438,5 @@ fun ApplicationScope.ChatWindow(
             }
         }
 
-        // Hook permission dialog - session-aware через TabViewModel
-        val currentTabHookPayload by (currentTab?.claudeHookPayload ?: flowOf(null)).collectAsState(initial = null)
-        ClaudeHookPermissionDialog(
-            hookPayload = currentTabHookPayload,
-            onDecision = { decision ->
-                currentTabHookPayload?.let { payload ->
-                    coroutineScope.launch {
-                        hookPermissionService.sendCommand(
-                            HookPermissionService.Command.ResolveRequest(payload.session_id, decision)
-                        )
-                    }
-                }
-            },
-            onDismiss = {
-                currentTabHookPayload?.let { payload ->
-                    coroutineScope.launch {
-                        hookPermissionService.sendCommand(
-                            HookPermissionService.Command.ResolveRequest(
-                                sessionId = payload.session_id,
-                                decision = HookDecision(
-                                    allow = false,
-                                    reason = "User dismissed the dialog"
-                                )
-                            )
-                        )
-                    }
-                }
-            }
-        )
     }
 }

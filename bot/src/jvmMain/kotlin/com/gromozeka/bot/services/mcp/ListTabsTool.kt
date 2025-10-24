@@ -40,7 +40,7 @@ class ListTabsTool(
                         val parentInfo = uiState.parentTabId?.let { " parent:$it" } ?: ""
 
                         "[$index] ${tabViewModel.projectPath} $status\n" +
-                                "    Tab ID: ${uiState.tabId} | Session: ${tabViewModel.sessionId.value}$parentInfo"
+                                "    Tab ID: ${uiState.tabId} | Thread: ${tabViewModel.conversationId.value}$parentInfo"
                     }.joinToString("\n")
         }
 

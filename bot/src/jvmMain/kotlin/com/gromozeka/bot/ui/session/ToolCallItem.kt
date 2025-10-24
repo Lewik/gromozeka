@@ -18,14 +18,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.gromozeka.bot.ui.CompactButton
-import com.gromozeka.shared.domain.message.ChatMessage
-import com.gromozeka.shared.domain.message.ClaudeCodeToolCallData
-import com.gromozeka.shared.domain.message.ToolCallData
+import com.gromozeka.shared.domain.conversation.ConversationTree
 
 @Composable
 fun ToolCallItem(
-    toolCall: ToolCallData,
-    toolResult: ChatMessage.ContentItem.ToolResult?,
+    toolCall: ConversationTree.Message.ContentItem.ToolCall.Data,
+    toolResult: ConversationTree.Message.ContentItem.ToolResult?,
 ) {
     var isExpanded by remember { mutableStateOf(false) }
 
@@ -36,44 +34,10 @@ fun ToolCallItem(
         else -> Icons.Default.CheckCircle // Success
     }
 
-    // Get tool name for display
-    val toolName = when (toolCall) {
-        is ClaudeCodeToolCallData.Read -> "Read"
-        is ClaudeCodeToolCallData.Edit -> "Edit"
-        is ClaudeCodeToolCallData.Bash -> "Bash"
-        is ClaudeCodeToolCallData.Grep -> "Grep"
-        is ClaudeCodeToolCallData.TodoWrite -> "TodoWrite"
-        is ClaudeCodeToolCallData.WebSearch -> "WebSearch"
-        is ClaudeCodeToolCallData.WebFetch -> "WebFetch"
-        is ClaudeCodeToolCallData.Task -> "Task"
-        is ToolCallData.Generic -> toolCall.name
-    }
-
-    // Get tool description for display (short version for button)
-    val toolDescription = when (toolCall) {
-        is ClaudeCodeToolCallData.Read -> toolCall.filePath
-        is ClaudeCodeToolCallData.Edit -> toolCall.filePath
-        is ClaudeCodeToolCallData.Bash -> toolCall.command.take(30) + if (toolCall.command.length > 30) "..." else ""
-        is ClaudeCodeToolCallData.Grep -> toolCall.pattern.take(25) + if (toolCall.pattern.length > 25) "..." else ""
-        is ClaudeCodeToolCallData.TodoWrite -> "todo list"
-        is ClaudeCodeToolCallData.WebSearch -> toolCall.query.take(30) + if (toolCall.query.length > 30) "..." else ""
-        is ClaudeCodeToolCallData.WebFetch -> toolCall.url.take(40) + if (toolCall.url.length > 40) "..." else ""
-        is ClaudeCodeToolCallData.Task -> toolCall.description.take(35) + if (toolCall.description.length > 35) "..." else ""
-        is ToolCallData.Generic -> toolCall.name
-    }
-
-    // Get full description for expanded view
-    val fullToolDescription = when (toolCall) {
-        is ClaudeCodeToolCallData.Read -> "Read file ${toolCall.filePath}"
-        is ClaudeCodeToolCallData.Edit -> "Edit file ${toolCall.filePath}"
-        is ClaudeCodeToolCallData.Bash -> "Execute: ${toolCall.command}"
-        is ClaudeCodeToolCallData.Grep -> "Search: ${toolCall.pattern}"
-        is ClaudeCodeToolCallData.TodoWrite -> "Update todo list"
-        is ClaudeCodeToolCallData.WebSearch -> "Search: ${toolCall.query}"
-        is ClaudeCodeToolCallData.WebFetch -> "Fetch: ${toolCall.url}"
-        is ClaudeCodeToolCallData.Task -> "Task: ${toolCall.description}"
-        is ToolCallData.Generic -> "Tool: ${toolCall.name}"
-    }
+    // Get tool name and descriptions for display
+    val toolName = toolCall.name
+    val toolDescription = toolName
+    val fullToolDescription = "Tool: $toolName"
 
     Column {
         // Enhanced tool call button with status + name + description
@@ -134,7 +98,7 @@ fun ToolCallItem(
                             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                 result.result.forEach { dataItem ->
                                     when (dataItem) {
-                                        is ChatMessage.ContentItem.ToolResult.Data.Text -> {
+                                        is ConversationTree.Message.ContentItem.ToolResult.Data.Text -> {
                                             Text(
                                                 text = dataItem.content,
                                                 modifier = Modifier.fillMaxWidth(),
@@ -142,7 +106,7 @@ fun ToolCallItem(
                                             )
                                         }
 
-                                        is ChatMessage.ContentItem.ToolResult.Data.Base64Data -> {
+                                        is ConversationTree.Message.ContentItem.ToolResult.Data.Base64Data -> {
                                             when {
                                                 dataItem.mediaType.type == "image" -> {
                                                     // Base64 image - show placeholder with truncation
@@ -192,7 +156,7 @@ fun ToolCallItem(
                                             }
                                         }
 
-                                        is ChatMessage.ContentItem.ToolResult.Data.UrlData -> {
+                                        is ConversationTree.Message.ContentItem.ToolResult.Data.UrlData -> {
                                             Row(
                                                 verticalAlignment = Alignment.CenterVertically,
                                                 modifier = Modifier.fillMaxWidth()
@@ -210,7 +174,7 @@ fun ToolCallItem(
                                             }
                                         }
 
-                                        is ChatMessage.ContentItem.ToolResult.Data.FileData -> {
+                                        is ConversationTree.Message.ContentItem.ToolResult.Data.FileData -> {
                                             Row(
                                                 verticalAlignment = Alignment.CenterVertically,
                                                 modifier = Modifier.fillMaxWidth()

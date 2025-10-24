@@ -1,6 +1,6 @@
 package com.gromozeka.bot.parsers
 
-import com.gromozeka.shared.domain.message.ChatMessage
+import com.gromozeka.shared.domain.conversation.ConversationTree
 
 /**
  * Base interface for parsing AI responses in different formats
@@ -12,5 +12,5 @@ interface ResponseParser {
      * @return Structured text with TTS information
      * @throws Exception if parsing fails
      */
-    fun parse(text: String): ChatMessage.StructuredText
+    fun parse(text: String): ConversationTree.Message.StructuredText
 }

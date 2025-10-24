@@ -152,24 +152,26 @@ This significantly reduces the need for extensive unit testing compared to dynam
 
 ## Current Architecture
 
-### Core Integration: Claude Code CLI Streaming
+### Core Integration: Spring AI Architecture
 
 **Key components**:
-1. **ClaudeCodeStreamingWrapper** - Process management and stream communication
-2. **Session** - Session lifecycle, message handling, and state management  
-3. **ClaudeStreamToChatConverter** - Maps Claude stream format to internal ChatMessage format
-4. **SessionJsonlService** - Historical session loading from .jsonl files for resume functionality
+1. **SessionSpringAI** - Session lifecycle and message handling
+2. **ClaudeCodeChatModel** - Spring AI ChatModel implementation for Claude Code CLI
+3. **ClaudeCodeApi** - Low-level CLI process management and streaming
+4. **ToolCallingManager** - Unified tool execution with permission checks
 
-**Claude Code CLI invocation**:
+**Claude Code CLI invocation** (via ClaudeCodeApi):
 ```bash
-claude --output-format stream-json --input-format stream-json --verbose --permission-mode acceptEdits --append-system-prompt <SYSTEM_PROMPT>
+claude --output-format stream-json --input-format stream-json \
+  --disable-tools Task,Bash,Read,Edit,Write,WebFetch,... \
+  --append-system-prompt <SYSTEM_PROMPT>
 ```
 
-**Streaming Protocol**:
-- **Input**: JSON messages sent to Claude CLI stdin
-- **Output**: Stream of JSONL messages from Claude CLI stdout  
-- **Control**: Interrupt requests via control messages
-- **Session Management**: Session ID extracted from `init` messages
+**Spring AI Integration**:
+- **ChatClient**: Unified API for all AI models (Claude, Gemini, OpenAI)
+- **Tool Execution**: Spring AI ToolCallingManager intercepts tool_use blocks
+- **Fire-and-forget**: Write messages to stdin, read stdout stream, wait for completion
+- **Automatic recursion**: Tool results sent back until final text response
 
 ### PTT (Push-to-Talk) System
 
@@ -195,55 +197,69 @@ Global hotkeys temporarily disabled. Previous implementation used § key remappe
 
 ### Session Management & Resume
 
-**Resume Behavior**: 
-- Claude Code CLI creates NEW session ID on resume (not reusing old ID)
-- Historical messages loaded from old session .jsonl file
-- Current session uses new session ID for operations
-- Session state handles this dual-ID transition gracefully
+**Resume Behavior**:
+- Historical messages loaded from database (Thread repository)
+- Converted to Spring AI Message format (UserMessage/AssistantMessage)
+- Added to messageHistory before first request
+- SessionSpringAI receives initialMessages in constructor
 
 **Session Lifecycle**:
-1. Start Claude CLI process with streaming
-2. Extract session ID from init messages
-3. Load historical messages if resuming
-4. Handle real-time streaming messages
-5. Manage buffered messages until session initialized
+1. Create SessionSpringAI with thread ID and optional initialMessages
+2. Start session - emit initial messages to UI
+3. On user input - add to messageHistory and call ChatClient
+4. On assistant response - emit to UI and persist via ThreadService
+5. Stop session - cleanup and emit Stopped event
 
-**File Locations**: Claude stores session files in `~/.claude/projects/<escaped-path>/` as individual `.jsonl` files.
+**Persistence**: All messages stored in database via ExposedThreadRepository → ConversationTree schema.
 
-### Real-time Streaming Architecture
+### Spring AI Request Flow
 
-**Current Approach**: Direct stdout/stdin streaming with Claude Code CLI process.
+**Current Approach**: Spring AI ChatClient with reactive streaming.
 
-**Stream Processing Flow**:
+**Request Processing Flow**:
 ```
-User Input → Session.sendMessage() → ClaudeWrapper.sendMessage() → Claude CLI stdin
-Claude CLI stdout → parseStreamJsonLine() → ClaudeStreamToChatConverter → UI Updates
+User Input → SessionSpringAI.sendMessage() → ChatClient.call()
+    ↓
+ClaudeCodeChatModel.stream()
+    ↓
+ClaudeCodeApi.chatCompletionStream() → Start CLI process
+    ↓
+Write messages to stdin → Read stdout JSONL stream
+    ↓
+MessageAggregator detects tool_use → ToolCallingManager.executeToolCalls()
+    ↓
+Execute @Bean tools → Send tool_result back to Claude
+    ↓
+Recursive call until stop_reason != "tool_use"
+    ↓
+Final AssistantMessage → SessionSpringAI → UI Updates
 ```
 
 **Key Patterns**:
 - **SharedFlow** for message streaming with replay for late subscribers
-- **StateFlow** for session state and metadata
-- **Mutex protection** for all mutable session operations
-- **Error recovery** with graceful degradation and reconnection attempts
+- **StateFlow** for session state (isWaitingForResponse)
+- **Reactive Streams** via Project Reactor (Flux/Mono)
+- **Fire-and-forget** CLI process lifecycle
 
 ### Data Models
 
-**Streaming Models** (`StreamJsonLine` sealed class):
-- `StreamJsonLine.System` - Init, control, metadata messages
-- `StreamJsonLine.User` - User input messages  
-- `StreamJsonLine.Assistant` - Claude response messages
-- `StreamJsonLine.Result` - Final response with usage metrics
-- `StreamJsonLine.ControlRequest/Response` - Interrupt handling
+**Spring AI Models**:
+- `UserMessage` - User input to AI model
+- `AssistantMessage` - AI response with optional tool calls
+- `ToolCall` - Tool invocation request from AI
+- `ToolResponseMessage` - Tool execution result
 
-**Unified Output** (`ChatMessage`):
+**Internal Models** (`ChatMessage`):
 - Engine-agnostic representation in shared module
-- ContentItem hierarchy for different message types (text, tool calls, etc.)
-- Support for historical messages, TTS text, and original JSON
+- ContentItem hierarchy for different message types
+- Support for session resume with initial messages
+- Persistence via ThreadService
 
 **Tool Integration**:
-- Full Claude Code tool support (Read, Edit, Bash, Grep, WebSearch, etc.)
-- Type-safe mapping via `ClaudeCodeToolCallData`/`ClaudeCodeToolResultData`
-- Internal MCP HTTP server (`McpHttpServer`) for custom tool extensibility
+- Spring AI @Bean functions for tool definitions
+- ToolCallingManager for unified execution and permission checks
+- XML tool format for better Claude compatibility
+- MCP integration via Spring AI MCP client
 
 ## Spring AI Integration Strategy
 
@@ -276,21 +292,13 @@ Multiple ChatModel implementations:
 
 ### Session Architecture
 
-**SessionSpringAI** - Target implementation (~160 lines):
+**SessionSpringAI** - Production implementation (~220 lines):
 - Simple linear request-response flow
 - Spring AI `ChatClient` integration
 - Model-agnostic design
 - Straightforward message history management
-
-**Session** (legacy) - Current production (~500+ lines):
-- Actor model with channels (priority, user, stream)
-- Direct `ClaudeWrapper` integration
-- Complex state machine and buffering
-- Production-ready but model-specific
-
-**Duck Typing**: Both implement identical interface (start/stop, sendMessage, messageOutputStream, events) allowing seamless switching without shared base class.
-
-**Migration Path**: Session remains as fallback until Spring AI tool execution complete. SessionSpringAI becomes primary after user-controlled mode implemented.
+- Full Spring AI tool execution via ToolCallingManager
+- Support for session resume with initial messages
 
 ### Claude Code CLI Integration (Custom Implementation)
 
@@ -401,10 +409,10 @@ Issues serve as our **shared project notebook** and **reference base**:
 ## Development Guidelines
 
 ### When Working with Sessions:
-1. Always use `sessionMutex.withLock` for mutable operations
-2. Test session behavior with real Claude Code processes, not mocks  
-3. Handle session ID changes via init message monitoring
-4. Expect nullable fields everywhere (Claude format can vary)
+1. SessionSpringAI uses simple linear flow - no mutex needed
+2. Test with real Spring AI ChatClient integration, not mocks
+3. Message history managed automatically by Spring AI
+4. Handle tool execution through Spring AI ToolCallingManager
 
 ### When Adding New Features:
 1. Follow reactive programming patterns (StateFlow/SharedFlow)
@@ -413,10 +421,10 @@ Issues serve as our **shared project notebook** and **reference base**:
 4. Document engine-specific behaviors in code
 
 ### Testing Strategy:
-- **Unit tests**: Pure functions (parsers, mappers, utilities)
-- **Integration tests**: Use real Claude Code session data from test files
-- **Manual validation**: Stream behavior and PTT system require real testing
-- **No mocks**: External process timing cannot be reliably mocked
+- **Unit tests**: Pure functions (utilities, converters)
+- **Integration tests**: Test Spring AI ChatModel with real CLI processes
+- **Manual validation**: Tool execution and UI interactions require real testing
+- **Spring AI patterns**: Follow Spring AI testing best practices
 
 ## Log Encryption for Bug Reports
 

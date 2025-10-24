@@ -1,9 +1,10 @@
 package com.gromozeka.bot.services.mcp
 
-import com.gromozeka.bot.model.AgentDefinition
+import com.gromozeka.bot.services.DefaultAgentProvider
 import com.gromozeka.bot.ui.viewmodel.AppViewModel
 import com.gromozeka.bot.ui.state.ConversationInitiator
-import com.gromozeka.shared.domain.message.ChatMessage
+import com.gromozeka.shared.domain.conversation.ConversationTree
+import com.gromozeka.shared.services.AgentService
 import io.modelcontextprotocol.kotlin.sdk.CallToolRequest
 import io.modelcontextprotocol.kotlin.sdk.CallToolResult
 import io.modelcontextprotocol.kotlin.sdk.TextContent
@@ -22,6 +23,8 @@ import kotlin.time.Clock
 @Service
 class CreateAgentTool(
     private val applicationContext: ApplicationContext,
+    private val agentService: AgentService,
+    private val defaultAgentProvider: DefaultAgentProvider,
 ) : GromozekaMcpTool {
 
     @Serializable
@@ -85,42 +88,42 @@ class CreateAgentTool(
         val appViewModel = applicationContext.getBean(AppViewModel::class.java)
         val input = Json.decodeFromJsonElement<Input>(request.arguments)
 
-        // Create AgentDefinition from input parameters
-        val agentDefinition = if (input.agent_prompt != null) {
-            AgentDefinition.fromInline(
+        val agent = if (input.agent_prompt != null) {
+            agentService.createAgent(
                 name = input.agent_name,
-                prompt = input.agent_prompt
+                systemPrompt = input.agent_prompt,
+                description = "Created via MCP from parent tab: ${input.parent_tab_id}",
+                isBuiltin = false
             )
         } else {
-            AgentDefinition.DEFAULT
+            defaultAgentProvider.getDefault()
         }
 
         val baseMessageText = input.initial_message ?: "Ready to work on this project"
-        
+
         // Create instructions for the new agent
-        val allInstructions = mutableListOf<ChatMessage.Instruction>()
-        
+        val allInstructions = mutableListOf<ConversationTree.Message.Instruction>()
+
         // Add source instruction (replaces sender)
-        allInstructions.add(ChatMessage.Instruction.Source.Agent(input.parent_tab_id))
-        
+        allInstructions.add(ConversationTree.Message.Instruction.Source.Agent(input.parent_tab_id))
+
         // Add response expected instruction if needed
         if (input.expects_response) {
-            allInstructions.add(ChatMessage.Instruction.ResponseExpected(targetTabId = input.parent_tab_id))
+            allInstructions.add(ConversationTree.Message.Instruction.ResponseExpected(targetTabId = input.parent_tab_id))
         }
-        
-        val chatMessage = ChatMessage(
-            role = ChatMessage.Role.USER,
-            content = listOf(ChatMessage.ContentItem.UserMessage(baseMessageText)),
+
+        val chatMessage = ConversationTree.Message(
+            role = ConversationTree.Message.Role.USER,
+            content = listOf(ConversationTree.Message.ContentItem.UserMessage(baseMessageText)),
             instructions = allInstructions,
-            uuid = UUID.randomUUID().toString(),
-            timestamp = Clock.System.now(),
-            llmSpecificMetadata = null
+            id = ConversationTree.Message.Id(UUID.randomUUID().toString()),
+            timestamp = Clock.System.now()
         )
 
         val newTabIndex = appViewModel.createTab(
             projectPath = input.project_path,
-            agentDefinition = agentDefinition,
-            resumeSessionId = null,
+            agent = agent,
+            conversationId = null,
             initialMessage = chatMessage,
             setAsCurrent = input.set_as_current,
             initiator = ConversationInitiator.Agent(input.parent_tab_id)

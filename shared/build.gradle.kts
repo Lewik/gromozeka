@@ -7,20 +7,8 @@ val javaVersion = libs.versions.java.get().toInt()
 
 kotlin {
     jvmToolchain(javaVersion)
-    
-    jvm {
-        compilations.all {
-            compileTaskProvider.configure {
-                compilerOptions {
-                    // Use only relevant opt-ins for shared module (no Compose APIs)
-                    freeCompilerArgs.addAll(
-                        "-opt-in=kotlin.time.ExperimentalTime",
-                        "-opt-in=kotlinx.serialization.ExperimentalSerializationApi"
-                    )
-                }
-            }
-        }
-    }
+
+    jvm {}
     
     sourceSets {
         val commonMain by getting {
@@ -39,6 +27,9 @@ kotlin {
         val jvmMain by getting {
             dependencies {
                 implementation(libs.ktor.client.core)
+                implementation(libs.klog)
+                implementation(libs.kotlin.reflect)
+                implementation(libs.uuid.creator)
             }
         }
         

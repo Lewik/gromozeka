@@ -1,7 +1,7 @@
 package com.gromozeka.bot.ui.state
 
-import com.gromozeka.bot.model.AgentDefinition
-import com.gromozeka.shared.domain.session.ClaudeSessionUuid
+import com.gromozeka.shared.domain.agent.Agent
+import com.gromozeka.shared.domain.conversation.ConversationTree
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -29,27 +29,22 @@ data class UIState(
      * UI state for a single tab
      * Follows Android's official UiState pattern with ViewModel
      *
-     * Tabs represent UI concept - what user sees as tabs in interface.
-     * Each tab can contain a Claude session, but tabs can exist without sessions
-     * (e.g., settings tab, logs tab) and sessions can exist without tabs
-     * (e.g., background processing sessions).
-     *
-     * This state is:
-     * - Immutable (thread-safe)
-     * - Serializable (direct persistence)
-     * - Single source of truth for tab UI
+     * Tab represents UI session state - what user sees in a single tab.
+     * - conversationId links to ConversationTree (persistent data)
+     * - tabId used for MCP inter-agent communication (tell_agent)
+     * - parentTabId tracks agent creation hierarchy
      */
     @Serializable
     data class Tab(
         val projectPath: String,
-        val claudeSessionId: ClaudeSessionUuid = ClaudeSessionUuid.DEFAULT,
+        val conversationId: ConversationTree.Id,
         val activeMessageTags: Set<String> = emptySet(),
         val userInput: String = "",
         val isWaitingForResponse: Boolean = false,
         val customName: String? = null,
         val tabId: String,
         val parentTabId: String? = null,
-        val agentDefinition: AgentDefinition,
-        val initiator: ConversationInitiator = ConversationInitiator.User,
+        val agent: Agent,
+        val initiator: ConversationInitiator = ConversationInitiator.User
     )
 }

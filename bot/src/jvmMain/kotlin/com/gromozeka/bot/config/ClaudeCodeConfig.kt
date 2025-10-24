@@ -27,15 +27,24 @@ class ClaudeCodeConfig {
     @Bean
     fun claudeCodeChatModel(
         claudeCodeApi: ClaudeCodeApi,
-        toolCallingManager: org.springframework.ai.model.tool.ToolCallingManager
+        toolCallingManager: org.springframework.ai.model.tool.ToolCallingManager,
+        mcpToolProvider: ObjectProvider<SyncMcpToolCallbackProvider>
     ): ClaudeCodeChatModel {
+        // Build complete tool names set including built-in and MCP tools
+        val toolNames = mutableSetOf("execute_command", "jina_read_url")
+
+        mcpToolProvider.ifAvailable { provider ->
+            val mcpToolNames = provider.getToolCallbacks().map { it.toolDefinition.name() }
+            toolNames.addAll(mcpToolNames)
+        }
+
         val options = ClaudeCodeChatOptions.builder()
             .model("sonnet")
             .maxTokens(8192)
             .temperature(0.7)
             .thinkingBudgetTokens(0)
             .useXmlToolFormat(true)
-            // Tool names will be resolved dynamically from ChatClient configuration
+            .toolNames(toolNames)
             .build()
 
         val retryTemplate = RetryTemplate.builder().maxAttempts(3).build()

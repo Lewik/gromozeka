@@ -70,7 +70,7 @@ class UIStateService(
             requestSave()
 
             // Clean up old subscriptions for removed tabs
-            val currentTabIds = tabs.map { it.sessionId.value }.toSet()
+            val currentTabIds = tabs.map { it.conversationId.value }.toSet()
             tabSubscriptions.keys.toList().forEach { tabId ->
                 if (tabId !in currentTabIds) {
                     tabSubscriptions[tabId]?.cancel()
@@ -80,7 +80,7 @@ class UIStateService(
 
             // Subscribe to uiState changes in each tab
             tabs.forEach { tab ->
-                val tabId = tab.sessionId.value
+                val tabId = tab.conversationId.value
                 if (tabId !in tabSubscriptions) {
                     val job = tab.uiState.onEach { _ ->
                         requestSave()

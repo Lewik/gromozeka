@@ -1,7 +1,6 @@
 package com.gromozeka.bot.services.theming
 
 import com.gromozeka.bot.platform.ScreenCaptureController
-import com.gromozeka.bot.services.SessionManager
 import klog.KLoggers
 import com.gromozeka.bot.services.SettingsService
 import kotlinx.coroutines.CoroutineScope
@@ -18,7 +17,6 @@ private val log = KLoggers.logger("AIThemeGenerator")
  */
 class AIThemeGenerator(
     private val screenCaptureController: ScreenCaptureController,
-    private val sessionManager: SessionManager,
     private val settingsService: SettingsService,
 ) {
 

@@ -1,7 +1,7 @@
 package com.gromozeka.bot.services.mcp
 
 import com.gromozeka.bot.ui.viewmodel.AppViewModel
-import com.gromozeka.shared.domain.message.ChatMessage
+import com.gromozeka.shared.domain.conversation.ConversationTree
 import klog.KLoggers
 
 import io.modelcontextprotocol.kotlin.sdk.CallToolRequest
@@ -95,19 +95,19 @@ class TellAgentTool(
         val targetTab = tabs[targetTabIndex]
 
         // Create instructions for the message
-        val allInstructions = mutableListOf<ChatMessage.Instruction>()
+        val allInstructions = mutableListOf<ConversationTree.Message.Instruction>()
         
         // Add source instruction (replaces sender)
-        allInstructions.add(ChatMessage.Instruction.Source.Agent(senderTabId))
+        allInstructions.add(ConversationTree.Message.Instruction.Source.Agent(senderTabId))
         
         // Add response expected instruction if needed
         if (input.expects_response) {
-            allInstructions.add(ChatMessage.Instruction.ResponseExpected(targetTabId = senderTabId))
+            allInstructions.add(ConversationTree.Message.Instruction.ResponseExpected(targetTabId = senderTabId))
         }
 
         // Send message to target session via TabViewModel with structured instructions
         targetTab.sendMessageToSession(input.message, allInstructions)
-        log.info("Sent message from senderTabId=$senderTabId to targetTab=${targetTab.uiState.value.tabId} (sessionId=${targetTab.sessionId})")
+        log.info("Sent message from senderTabId=$senderTabId to targetTab=${targetTab.uiState.value.tabId} (threadId=${targetTab.conversationId.value})")
 
         // Switch to target tab if requested
         if (input.set_as_current) {
@@ -115,7 +115,7 @@ class TellAgentTool(
         }
 
         val targetProjectPath = targetTab.projectPath
-        val targetSessionUuid = targetTab.sessionId.value
+        val targetThreadId = targetTab.conversationId.value
         val tabIdInfo = input.target_tab_id
         val switchInfo = if (input.set_as_current) " (set as current)" else ""
 

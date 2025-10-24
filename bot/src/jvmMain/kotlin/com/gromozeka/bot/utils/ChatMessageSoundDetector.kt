@@ -1,22 +1,21 @@
 package com.gromozeka.bot.utils
 
-import com.gromozeka.shared.domain.message.ChatMessage
+import com.gromozeka.shared.domain.conversation.ConversationTree
 
 object ChatMessageSoundDetector {
 
-    fun shouldPlayErrorSound(message: ChatMessage): Boolean {
-        // Skip historical messages
-        if (message.isHistorical) return false
+    fun shouldPlayErrorSound(message: ConversationTree.Message?): Boolean {
+        if (message == null) return false
 
         return message.content.any { contentItem ->
             when (contentItem) {
                 // System errors
-                is ChatMessage.ContentItem.System -> {
-                    contentItem.level == ChatMessage.ContentItem.System.SystemLevel.ERROR
+                is ConversationTree.Message.ContentItem.System -> {
+                    contentItem.level == ConversationTree.Message.ContentItem.System.SystemLevel.ERROR
                 }
 
                 // Tool results with errors
-                is ChatMessage.ContentItem.ToolResult -> {
+                is ConversationTree.Message.ContentItem.ToolResult -> {
                     contentItem.isError
                 }
 
@@ -25,24 +24,23 @@ object ChatMessageSoundDetector {
         }
     }
 
-    fun shouldPlayMessageSound(message: ChatMessage): Boolean {
-        // Skip historical messages
-        if (message.isHistorical) return false
+    fun shouldPlayMessageSound(message: ConversationTree.Message?): Boolean {
+        if (message == null) return false
 
         // Skip if this is an error (error sound takes precedence)
         if (shouldPlayErrorSound(message)) return false
 
         return when (message.role) {
             // Assistant messages
-            ChatMessage.Role.ASSISTANT -> true
+            ConversationTree.Message.Role.ASSISTANT -> true
 
             // System messages (non-error)
-            ChatMessage.Role.SYSTEM -> true
+            ConversationTree.Message.Role.SYSTEM -> true
 
             // Tool results (non-error) - these are typically user type but not actual user input
-            ChatMessage.Role.USER -> {
+            ConversationTree.Message.Role.USER -> {
                 // Only if it contains tool results (not actual user input)
-                message.content.any { it is ChatMessage.ContentItem.ToolResult }
+                message.content.any { it is ConversationTree.Message.ContentItem.ToolResult }
             }
         }
     }

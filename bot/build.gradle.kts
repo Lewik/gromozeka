@@ -20,17 +20,8 @@ val javaVersion = libs.versions.java.get().toInt()
 
 kotlin {
     jvmToolchain(javaVersion)
-    
-    jvm {
-        compilations.all {
-            compileTaskProvider.configure {
-                compilerOptions {
-                    @Suppress("UNCHECKED_CAST")
-                    freeCompilerArgs.addAll(project.extra["experimentalOptIns"] as List<String>)
-                }
-            }
-        }
-    }
+
+    jvm {}
     
     sourceSets {
         val jvmMain by getting {
@@ -40,6 +31,9 @@ kotlin {
                 implementation(libs.spring.ai.vertex.ai.gemini)
                 implementation(libs.spring.ai.starter.model.openai)
                 implementation(libs.spring.ai.starter.mcp.client)
+
+                // Reactor Kotlin extensions for Flux/Flow conversion
+                implementation(libs.reactor.kotlin.extensions)
 
                 implementation(compose.desktop.currentOs)
                 implementation(compose.material3)
@@ -62,6 +56,7 @@ kotlin {
                 
                 implementation(libs.kotlin.reflect)
                 implementation(libs.kotlinx.datetime)
+                implementation(libs.kotlinx.coroutines.reactor)
                 
                 // Ktor Client
                 implementation(libs.ktor.client.core)
@@ -78,9 +73,19 @@ kotlin {
                 implementation(libs.kotlinx.serialization.json)
                 implementation(libs.xmlutil.serialization)
                 implementation(libs.jackson.module.kotlin)
-                
-                
-                
+
+                // SQLite + Exposed ORM
+                implementation(libs.sqlite.jdbc)
+                implementation(libs.exposed.core)
+                implementation(libs.exposed.dao)
+                implementation(libs.exposed.jdbc)
+                implementation(libs.exposed.kotlin.datetime)
+                implementation(libs.exposed.migration.core)
+                implementation(libs.exposed.migration.jdbc)
+
+                // Flyway migrations
+                implementation(libs.flyway.core)
+
                 // MCP SDK for official protocol structures
                 implementation(libs.mcp.kotlin.sdk)
                 
@@ -310,5 +315,16 @@ tasks.register("removeJarSignatures") {
             }
         }
     }
+}
+
+tasks.register<JavaExec>("generateMigration") {
+    description = "Generate Flyway migration from Exposed schema changes"
+    group = "database"
+
+    mainClass.set("com.gromozeka.bot.repository.exposed.GenerateMigrationKt")
+    classpath = kotlin.jvm().compilations.getByName("main").runtimeDependencyFiles +
+                kotlin.jvm().compilations.getByName("main").output.allOutputs
+
+    dependsOn("jvmMainClasses")
 }
 

@@ -1,6 +1,6 @@
 package com.gromozeka.bot.parsers
 
-import com.gromozeka.shared.domain.message.ChatMessage
+import com.gromozeka.shared.domain.conversation.ConversationTree
 import org.xml.sax.InputSource
 import java.io.StringReader
 import javax.xml.parsers.DocumentBuilderFactory
@@ -14,7 +14,7 @@ class XmlStructuredParser : ResponseParser {
 
     private val documentBuilder = DocumentBuilderFactory.newInstance().newDocumentBuilder()
 
-    override fun parse(text: String): ChatMessage.StructuredText {
+    override fun parse(text: String): ConversationTree.Message.StructuredText {
         val trimmedText = text.trim()
 
         if (!trimmedText.startsWith("<response>") || !trimmedText.endsWith("</response>")) {
@@ -46,7 +46,7 @@ class XmlStructuredParser : ResponseParser {
             voiceTone = voiceNode.attributes?.getNamedItem("tone")?.nodeValue
         }
 
-        return ChatMessage.StructuredText(
+        return ConversationTree.Message.StructuredText(
             fullText = fullText,
             ttsText = ttsText,
             voiceTone = voiceTone

@@ -8,7 +8,6 @@ import java.nio.ByteBuffer
 import java.nio.channels.ReadableByteChannel
 import java.nio.channels.WritableByteChannel
 import java.nio.file.StandardOpenOption
-import com.gromozeka.bot.model.ClaudeCodeStreamJsonLine
 import com.gromozeka.bot.settings.AppMode
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext

@@ -16,68 +16,52 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.gromozeka.bot.model.ChatSessionMetadata
-import com.gromozeka.bot.services.SessionJsonlService
-import com.gromozeka.bot.services.SessionManager
+import com.gromozeka.shared.services.ProjectService
 import com.gromozeka.bot.ui.viewmodel.AppViewModel
 import com.gromozeka.bot.ui.state.ConversationInitiator
-import com.gromozeka.bot.ui.viewmodel.SessionSearchViewModel
+import com.gromozeka.bot.ui.viewmodel.ConversationSearchViewModel
+import com.gromozeka.shared.domain.project.Project
+import com.gromozeka.shared.domain.conversation.ConversationTree
+import com.gromozeka.shared.services.ConversationTreeService
 import klog.KLoggers
 import io.github.vinceglb.filekit.compose.rememberDirectoryPickerLauncher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
-import kotlin.time.Clock
-import kotlin.time.Instant
 
 private val log = KLoggers.logger("SessionListScreen")
 
 private data class ProjectGroup(
-    val projectPath: String,
-    val projectName: String,
-    val sessionsMetadata: List<ChatSessionMetadata>,
-    val latestSessionMetadata: ChatSessionMetadata?,
+    val project: Project,
+    val conversations: List<ConversationTree>,
+    val latestConversation: ConversationTree?,
     val formattedTime: String,
-)
-
-private fun formatRelativeTime(timestamp: Instant): String {
-    val now = Clock.System.now()
-    val duration = now - timestamp
-    return when {
-        duration.inWholeMinutes < 1 -> "now"
-        duration.inWholeMinutes < 60 -> "${duration.inWholeMinutes}m ago"
-        duration.inWholeHours < 24 -> "${duration.inWholeHours}h ago"
-        duration.inWholeDays < 7 -> "${duration.inWholeDays}d ago"
-        else -> timestamp.toString().substring(0, 16).replace('T', ' ')
-    }
+) {
+    val projectPath get() = project.path
+    val projectName get() = project.displayName()
 }
 
 @Composable
 fun SessionListScreen(
-    onSessionMetadataSelected: (ChatSessionMetadata) -> Unit,
+    onConversationSelected: (ConversationTree, Project) -> Unit,
     coroutineScope: CoroutineScope,
     onNewSession: (String) -> Unit,
-    sessionJsonlService: SessionJsonlService,
-    sessionManager: SessionManager,
+    projectService: ProjectService,
+    conversationTreeService: ConversationTreeService,
     appViewModel: AppViewModel,
-    // Search support
-    searchViewModel: SessionSearchViewModel,
-    // Settings support - moved to ChatApplication level
+    searchViewModel: ConversationSearchViewModel,
     showSettingsPanel: Boolean,
     onShowSettingsPanelChange: (Boolean) -> Unit,
-    // Trigger for refreshing sessions list
     refreshTrigger: Int = 0,
 ) {
     var projectGroups by remember { mutableStateOf<List<ProjectGroup>>(emptyList()) }
     var expandedProjects by remember { mutableStateOf<Set<String>>(emptySet()) }
     var isLoading by remember { mutableStateOf(true) }
 
-    // Search state
     val searchQuery by searchViewModel.searchQuery.collectAsState()
     val isSearching by searchViewModel.isSearching.collectAsState()
     val searchResults by searchViewModel.searchResults.collectAsState()
     val showSearchResults by searchViewModel.showSearchResults.collectAsState()
 
-    // Directory picker for new sessions
     val directoryPicker = rememberDirectoryPickerLauncher { directory ->
         directory?.let { dir ->
             dir.path?.let { path ->
@@ -86,58 +70,50 @@ fun SessionListScreen(
         }
     }
 
-    // Function to load sessions data
-    suspend fun loadSessions() {
+    suspend fun loadProjects() {
         isLoading = true
         try {
-            val loadedSessions = sessionJsonlService.loadAllSessionsMetadata()
+            val projects = projectService.findRecent(limit = 100)
 
-            // Group sessions by project
-            val groupedProjects = loadedSessions
-                .groupBy { it.projectPath }
-                .map { (projectPath, sessions) ->
-                    val projectName = projectPath.substringAfterLast("/")
-                    val latestSession = sessions.maxByOrNull { it.lastTimestamp }
-                    val formattedTime = latestSession?.let { formatRelativeTime(it.lastTimestamp) } ?: ""
-                    ProjectGroup(
-                        projectPath = projectPath,
-                        projectName = projectName,
-                        sessionsMetadata = sessions,
-                        latestSessionMetadata = latestSession,
-                        formattedTime = formattedTime
-                    )
-                }
+            val groupedProjects = projects.map { project ->
+                val conversations = conversationTreeService.findByProject(project.path)
+                val latestConversation = conversations.maxByOrNull { it.updatedAt }
+                val formattedTime = latestConversation?.let { formatRelativeTime(it.updatedAt) } ?: ""
 
-            projectGroups = groupedProjects.sortedByDescending { it.latestSessionMetadata?.lastTimestamp }
+                ProjectGroup(
+                    project = project,
+                    conversations = conversations,
+                    latestConversation = latestConversation,
+                    formattedTime = formattedTime
+                )
+            }
 
-            log.info("Loaded ${loadedSessions.size} sessions in ${projectGroups.size} projects")
+            projectGroups = groupedProjects.sortedByDescending { it.latestConversation?.updatedAt }
+
+            log.info("Loaded ${projectGroups.sumOf { it.conversations.size }} conversations in ${projectGroups.size} projects")
         } catch (e: Exception) {
-            log.warn(e, "Error loading sessions: ${e.message}")
+            log.warn(e) { "Error loading projects: ${e.message}" }
         } finally {
             isLoading = false
         }
     }
 
-    // Load sessions on first composition and when refreshTrigger changes
     LaunchedEffect(refreshTrigger) {
-        loadSessions()
+        loadProjects()
     }
 
     Row(modifier = Modifier.fillMaxSize()) {
-        // Main content
         Column(modifier = Modifier.weight(1f)) {
-            // Header with buttons
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Spacer(modifier = Modifier.weight(1f))
 
-                // Refresh button
                 CompactButton(
                     onClick = {
                         coroutineScope.launch {
-                            loadSessions()
+                            loadProjects()
                         }
                     },
                     tooltip = LocalTranslation.current.refreshSessionsTooltip
@@ -155,7 +131,6 @@ fun SessionListScreen(
 
                 Spacer(modifier = Modifier.width(8.dp))
 
-                // Settings button
                 CompactButton(
                     onClick = { onShowSettingsPanelChange(!showSettingsPanel) },
                     tooltip = LocalTranslation.current.settingsTooltip
@@ -166,7 +141,6 @@ fun SessionListScreen(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Search panel
             SearchPanel(
                 query = searchQuery,
                 onQueryChange = searchViewModel::updateSearchQuery,
@@ -190,9 +164,7 @@ fun SessionListScreen(
                         .fillMaxSize()
                         .verticalScroll(rememberScrollState())
                 ) {
-                    // Show search results or regular session groups
                     if (showSearchResults) {
-                        // Search mode - show search results
                         if (searchResults.isEmpty()) {
                             Box(
                                 modifier = Modifier.fillMaxSize(),
@@ -218,18 +190,19 @@ fun SessionListScreen(
                                 }
                             }
                         } else {
-                            // Show search results as individual sessions
                             Text(
                                 text = LocalTranslation.current.foundSessionsText.format(searchResults.size),
                                 modifier = Modifier.padding(vertical = 8.dp)
                             )
-                            searchResults.forEach { session ->
-                                SessionItem(
-                                    sessionMetadata = session,
-                                    onSessionMetadataClick = { clickedSession ->
-                                        coroutineScope.handleSessionClick(
-                                            clickedSession,
-                                            onSessionMetadataSelected,
+                            searchResults.forEach { (conversation, project) ->
+                                ConversationItem(
+                                    conversation = conversation,
+                                    project = project,
+                                    onConversationClick = { clickedConversation, clickedProject ->
+                                        coroutineScope.handleConversationClick(
+                                            clickedConversation,
+                                            clickedProject,
+                                            onConversationSelected,
                                             appViewModel
                                         )
                                     },
@@ -239,9 +212,7 @@ fun SessionListScreen(
                             }
                         }
                     } else {
-                        // Normal mode - show project groups
                         if (projectGroups.isEmpty()) {
-                            // No sessions found - show message
                             Box(
                                 modifier = Modifier.fillMaxSize(),
                                 contentAlignment = Alignment.Center
@@ -252,7 +223,6 @@ fun SessionListScreen(
                                 )
                             }
                         } else {
-                            // Show grouped sessions sorted by last activity
                             projectGroups.forEach { group ->
                                 ProjectGroupHeader(
                                     group = group,
@@ -265,10 +235,11 @@ fun SessionListScreen(
                                         }
                                     },
                                     onNewSessionClick = onNewSession,
-                                    onSessionMetadataClick = { clickedSession ->
-                                        coroutineScope.handleSessionClick(
-                                            clickedSession,
-                                            onSessionMetadataSelected,
+                                    onConversationClick = { clickedConversation ->
+                                        coroutineScope.handleConversationClick(
+                                            clickedConversation,
+                                            group.project,
+                                            onConversationSelected,
                                             appViewModel
                                         )
                                     }
@@ -279,8 +250,6 @@ fun SessionListScreen(
                 }
             }
         }
-
-        // SettingsPanel moved to ChatApplication level for consistency
     }
 }
 
@@ -290,18 +259,16 @@ private fun ProjectGroupHeader(
     isExpanded: Boolean,
     onToggleExpanded: () -> Unit,
     onNewSessionClick: (String) -> Unit,
-    onSessionMetadataClick: (ChatSessionMetadata) -> Unit,
+    onConversationClick: (ConversationTree) -> Unit,
 ) {
     CompactCard(
         modifier = Modifier.padding(vertical = 4.dp)
     ) {
         Column {
-            // Header row
             Row(
                 modifier = Modifier.padding(12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // 1. Expand button
                 Icon(
                     imageVector = if (isExpanded) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowRight,
                     contentDescription = LocalTranslation.current.expandCollapseText,
@@ -310,42 +277,37 @@ private fun ProjectGroupHeader(
 
                 Spacer(modifier = Modifier.width(8.dp))
 
-                // 2. Column 1 - project information
                 Column(
                     modifier = Modifier.weight(1f)
                 ) {
                     Text(text = group.projectName)
                     Text(text = group.projectPath)
-                    Text(text = LocalTranslation.current.sessionsCountText.format(group.sessionsMetadata.size))
+                    Text(text = "${group.conversations.size} conversations")
                 }
 
                 Spacer(modifier = Modifier.width(8.dp))
 
-                // 3. "New" button
                 CompactButton(onClick = { onNewSessionClick(group.projectPath) }) {
                     Text(LocalTranslation.current.newButton)
                 }
 
                 Spacer(modifier = Modifier.width(12.dp))
 
-                // 4. Column 2 - last session information
-                group.latestSessionMetadata?.let { latestSession ->
+                group.latestConversation?.let { latestConversation ->
                     Column(
                         modifier = Modifier.weight(1f)
                     ) {
-                        Text(text = latestSession.displayPreview())
-                        Text(text = LocalTranslation.current.messagesCountText.format(latestSession.messageCount))
+                        Text(text = latestConversation.displayPreview())
+                        Text(text = LocalTranslation.current.messagesCountText.format(latestConversation.messages.size))
                         Text(text = group.formattedTime)
                     }
 
                     Spacer(modifier = Modifier.width(8.dp))
 
-                    // 5. "Continue" button
-                    CompactButton(onClick = { onSessionMetadataClick(latestSession) }) {
+                    CompactButton(onClick = { onConversationClick(latestConversation) }) {
                         Text(LocalTranslation.current.continueButton)
                     }
                 } ?: run {
-                    // If no sessions - empty Column
                     Column(modifier = Modifier.weight(1f)) {
                         Text(text = LocalTranslation.current.noSessionsText)
                         Text(text = "")
@@ -354,15 +316,17 @@ private fun ProjectGroupHeader(
                 }
             }
 
-            // Expanded content
             if (isExpanded) {
                 Column(
                     modifier = Modifier.padding(start = 32.dp, end = 12.dp, bottom = 8.dp)
                 ) {
-                    group.sessionsMetadata.forEach { session ->
-                        SessionItem(
-                            sessionMetadata = session,
-                            onSessionMetadataClick = onSessionMetadataClick,
+                    group.conversations.forEach { conversation ->
+                        ConversationItem(
+                            conversation = conversation,
+                            project = group.project,
+                            onConversationClick = { clickedConversation, _ ->
+                                onConversationClick(clickedConversation)
+                            },
                             isGrouped = true,
                             modifier = Modifier.padding(vertical = 4.dp)
                         )
@@ -374,9 +338,10 @@ private fun ProjectGroupHeader(
 }
 
 @Composable
-private fun SessionItem(
-    sessionMetadata: ChatSessionMetadata,
-    onSessionMetadataClick: (ChatSessionMetadata) -> Unit,
+private fun ConversationItem(
+    conversation: ConversationTree,
+    project: Project,
+    onConversationClick: (ConversationTree, Project) -> Unit,
     isGrouped: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
@@ -387,48 +352,44 @@ private fun SessionItem(
             modifier = Modifier.padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Left block with rows
             Column(
                 modifier = Modifier.weight(1f)
             ) {
-                // First row: title on the left, time on the right
                 Row(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = sessionMetadata.displayPreview(),
+                        text = conversation.displayPreview(),
                         modifier = Modifier.weight(1f)
                     )
                     Text(
-                        text = sessionMetadata.displayTime()
+                        text = conversation.displayTime()
                     )
                 }
 
                 Spacer(modifier = Modifier.height(4.dp))
 
-                // Second row: full path on the left (only if not in group), message count on the right
                 Row(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     if (!isGrouped) {
                         Text(
-                            text = sessionMetadata.displayProject(),
+                            text = project.path,
                             modifier = Modifier.weight(1f)
                         )
                     } else {
                         Spacer(modifier = Modifier.weight(1f))
                     }
                     Text(
-                        text = LocalTranslation.current.messagesCountText.format(sessionMetadata.messageCount)
+                        text = LocalTranslation.current.messagesCountText.format(conversation.messages.size)
                     )
                 }
             }
 
             Spacer(modifier = Modifier.width(12.dp))
 
-            // Right block with button
             CompactButton(
-                onClick = { onSessionMetadataClick(sessionMetadata) }
+                onClick = { onConversationClick(conversation, project) }
             ) {
                 Text(LocalTranslation.current.continueButton)
             }
@@ -436,31 +397,27 @@ private fun SessionItem(
     }
 }
 
-
-// Resume existing session - create new tab with historical data loading
-private fun CoroutineScope.handleSessionClick(
-    clickedSessionMetadata: ChatSessionMetadata,
-    onSessionMetadataSelected: (ChatSessionMetadata) -> Unit,
+private fun CoroutineScope.handleConversationClick(
+    clickedConversation: ConversationTree,
+    project: Project,
+    onConversationSelected: (ConversationTree, Project) -> Unit,
     appViewModel: AppViewModel,
 ) {
     launch {
         try {
-            // Create tab with resume session ID
             val tabIndex = appViewModel.createTab(
-                projectPath = clickedSessionMetadata.projectPath,
-                resumeSessionId = clickedSessionMetadata.claudeSessionId.value,
+                projectPath = project.path,
+                conversationId = clickedConversation.id,
                 initiator = ConversationInitiator.System
             )
             appViewModel.selectTab(tabIndex)
 
-            log.info("Created tab at index $tabIndex, resume from: ${clickedSessionMetadata.claudeSessionId}")
+            log.info("Created tab at index $tabIndex, resume conversation: ${clickedConversation.id}")
 
-            // Notify parent that session was selected and created
-            onSessionMetadataSelected(clickedSessionMetadata)
+            onConversationSelected(clickedConversation, project)
 
         } catch (e: Exception) {
-            log.warn(e, "Failed to create tab: ${e.message}")
+            log.warn(e) { "Failed to create tab: ${e.message}" }
         }
     }
 }
-

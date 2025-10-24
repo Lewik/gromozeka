@@ -7,7 +7,9 @@ import com.gromozeka.bot.services.*
 import com.gromozeka.bot.services.theming.ThemeService
 import com.gromozeka.bot.services.translation.TranslationService
 import com.gromozeka.bot.ui.viewmodel.AppViewModel
+import com.gromozeka.bot.ui.viewmodel.ConversationSearchViewModel
 import com.gromozeka.shared.audio.AudioRecorder
+import com.gromozeka.shared.services.ConversationTreeService
 import io.ktor.client.*
 import io.ktor.client.engine.cio.*
 import io.ktor.client.plugins.contentnegotiation.*
@@ -61,12 +63,28 @@ class Config {
 
     @Bean
     fun appViewModel(
-        sessionManager: SessionManager,
+        conversationEngineService: ConversationEngineService,
+        conversationTreeService: ConversationTreeService,
+        soundNotificationService: SoundNotificationService,
         settingsService: SettingsService,
         @Qualifier("coroutineScope") scope: CoroutineScope,
         screenCaptureController: ScreenCaptureController,
-        hookPermissionService: HookPermissionService,
-    ) = AppViewModel(sessionManager, settingsService, scope, screenCaptureController, hookPermissionService)
+        defaultAgentProvider: DefaultAgentProvider,
+    ) = AppViewModel(
+        conversationEngineService,
+        conversationTreeService,
+        soundNotificationService,
+        settingsService,
+        scope,
+        screenCaptureController,
+        defaultAgentProvider,
+    )
+
+    @Bean
+    fun conversationSearchViewModel(
+        conversationSearchService: ConversationSearchService,
+        @Qualifier("coroutineScope") scope: CoroutineScope,
+    ) = ConversationSearchViewModel(conversationSearchService, scope)
 
     @Bean
     fun pttEventRouter(

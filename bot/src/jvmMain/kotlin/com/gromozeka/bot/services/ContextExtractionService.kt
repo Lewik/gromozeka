@@ -3,7 +3,7 @@ package com.gromozeka.bot.services
 import com.gromozeka.bot.ui.viewmodel.AppViewModel
 import com.gromozeka.bot.ui.state.ConversationInitiator
 import klog.KLoggers
-import com.gromozeka.shared.domain.message.ChatMessage
+import com.gromozeka.shared.domain.conversation.ConversationTree
 import kotlinx.coroutines.flow.first
 import org.springframework.context.ApplicationContext
 import org.springframework.stereotype.Service
@@ -20,35 +20,34 @@ class ContextExtractionService(
 
         val sourceTab = findTabById(appViewModel, tabId) ?: throw IllegalStateException("Tab not found: $tabId")
 
-        val claudeSessionId = sourceTab.claudeSessionId.first()
+        val conversationId = sourceTab.uiState.first().conversationId
         val projectPath = sourceTab.projectPath
 
         log.info("Extracting contexts from tab: $tabId")
-        log.info("Source session: ${claudeSessionId.value}")
+        log.info("Source conversation: ${conversationId.value}")
         log.info("Project path: $projectPath")
 
         val instructions = loadContextExtractionInstructions()
 
-        // Create ChatMessage with instructions for context extraction
-        val chatMessage = ChatMessage(
-            role = ChatMessage.Role.USER,
-            content = listOf(ChatMessage.ContentItem.UserMessage(instructions)),
+        // Create ConversationTree.Message with instructions for context extraction
+        val chatMessage = ConversationTree.Message(
+            id = ConversationTree.Message.Id(java.util.UUID.randomUUID().toString()),
+            role = ConversationTree.Message.Role.USER,
+            content = listOf(ConversationTree.Message.ContentItem.UserMessage(instructions)),
+            timestamp = Clock.System.now(),
             instructions = listOf(
-                ChatMessage.Instruction.UserInstruction(
+                ConversationTree.Message.Instruction.UserInstruction(
                     "thinking_ultrathink",
                     "Ultrathink",
                     "Use ultrathink mode"
                 ),
-                ChatMessage.Instruction.Source.User
-            ),
-            uuid = java.util.UUID.randomUUID().toString(),
-            timestamp = Clock.System.now(),
-            llmSpecificMetadata = null
+                ConversationTree.Message.Instruction.Source.User
+            )
         )
 
         val backgroundTabIndex = appViewModel.createTab(
             projectPath = projectPath,
-            resumeSessionId = claudeSessionId.value,
+            conversationId = conversationId,
             initialMessage = chatMessage,
             setAsCurrent = false,  // Работаем в фоне
             initiator = ConversationInitiator.System
