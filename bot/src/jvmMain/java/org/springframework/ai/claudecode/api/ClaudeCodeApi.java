@@ -74,6 +74,15 @@ public class ClaudeCodeApi {
                 process = startClaudeProcess(request);
                 final Process finalProcess = process;
 
+                // Handle cancellation - destroy process when flux is cancelled
+                sink.onCancel(() -> {
+                    logger.debug("Flux cancelled, destroying Claude CLI process");
+                    if (finalProcess != null && finalProcess.isAlive()) {
+                        finalProcess.destroyForcibly();
+                        logger.debug("Claude CLI process destroyed forcibly");
+                    }
+                });
+
                 // Start stderr monitoring in background
                 StringBuilder stderrBuffer = new StringBuilder();
                 stderrReader = new Thread(() -> {

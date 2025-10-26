@@ -116,7 +116,9 @@ open class AppViewModel(
         return newTabIndex
     }
 
-    suspend fun sendInterruptToCurrentSession() = false
+    suspend fun sendInterruptToCurrentSession() {
+        currentTab.value?.interrupt()
+    }
 
     suspend fun closeTab(index: Int) = mutex.withLock {
         val tabList = _tabs.value

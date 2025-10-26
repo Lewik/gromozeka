@@ -37,6 +37,8 @@ class TabViewModel(
 
     var jsonToShow by mutableStateOf<String?>(null)
 
+    private var currentRequestJob: kotlinx.coroutines.Job? = null
+
     companion object {
         private val ALL_MESSAGE_TAG_DEFINITIONS = listOf(
             MessageTagDefinition(
@@ -226,7 +228,7 @@ class TabViewModel(
         _isWaitingForResponse.value = true
         _uiState.update { it.copy(userInput = "", isWaitingForResponse = true) }
 
-        scope.launch {
+        currentRequestJob = scope.launch {
             try {
                 log.debug { "Sending message to conversation $conversationId" }
 
@@ -266,8 +268,17 @@ class TabViewModel(
             } finally {
                 _isWaitingForResponse.value = false
                 _uiState.update { it.copy(isWaitingForResponse = false) }
+                currentRequestJob = null
             }
         }
+    }
+
+    fun interrupt() {
+        log.debug { "Interrupting current request for conversation $conversationId" }
+        currentRequestJob?.cancel()
+        currentRequestJob = null
+        _isWaitingForResponse.value = false
+        _uiState.update { it.copy(isWaitingForResponse = false) }
     }
 
     suspend fun captureAndAddToInput() {
