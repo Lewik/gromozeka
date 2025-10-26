@@ -97,6 +97,9 @@ kotlin {
                 // Batik for logo generation task
                 implementation(libs.batik.transcoder)
                 implementation(libs.batik.codec)
+
+                // Apache PDFBox for PDF parsing
+                implementation(libs.pdfbox)
             }
         }
         

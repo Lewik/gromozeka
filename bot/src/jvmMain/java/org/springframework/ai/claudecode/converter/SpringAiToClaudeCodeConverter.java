@@ -26,10 +26,13 @@ import org.springframework.ai.chat.messages.ToolResponseMessage;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.claudecode.api.ClaudeMessage;
 import org.springframework.ai.claudecode.api.ContentBlock;
+import org.springframework.ai.content.Media;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -78,15 +81,25 @@ public class SpringAiToClaudeCodeConverter {
     private static ClaudeMessage convertUserMessage(UserMessage message) {
         List<ContentBlock> content = new ArrayList<>();
 
+        // Add media FIRST (per Anthropic best practices)
+        if (!CollectionUtils.isEmpty(message.getMedia())) {
+            for (Media media : message.getMedia()) {
+                try {
+                    content.add(convertMedia(media));
+                } catch (IOException e) {
+                    logger.error("Failed to convert media: {}", e.getMessage(), e);
+                    throw new IllegalArgumentException("Failed to convert media", e);
+                }
+            }
+        }
+
+        // Then add text content
         if (StringUtils.hasText(message.getText())) {
             content.add(new ContentBlock.Text("text", message.getText()));
         }
 
-        // Claude Code CLI doesn't support images, so we skip media
-        // In future, we could add text description of images
-
         if (content.isEmpty()) {
-            throw new IllegalArgumentException("User message must have text content");
+            throw new IllegalArgumentException("User message must have text or media content");
         }
 
         return new ClaudeMessage("user", content);
@@ -134,15 +147,58 @@ public class SpringAiToClaudeCodeConverter {
 
     private static ClaudeMessage convertToolResponseMessage(ToolResponseMessage message) {
         List<ContentBlock> content = message.getResponses().stream()
-            .map(response -> new ContentBlock.ToolResult(
-                "tool_result",
-                response.id(),
-                response.responseData(),
-                null
-            ))
+            .map(response -> {
+                Object responseData = response.responseData();
+                Object toolResultContent = convertToolResponseData(responseData);
+
+                return new ContentBlock.ToolResult(
+                    "tool_result",
+                    response.id(),
+                    toolResultContent,
+                    null
+                );
+            })
             .collect(Collectors.toList());
 
         return new ClaudeMessage("user", content);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Object convertToolResponseData(Object responseData) {
+        if (!(responseData instanceof Map)) {
+            return responseData;
+        }
+
+        Map<String, Object> dataMap = (Map<String, Object>) responseData;
+        String type = (String) dataMap.get("type");
+
+        if ("image".equals(type)) {
+            Map<String, Object> source = (Map<String, Object>) dataMap.get("source");
+            if (source != null) {
+                ContentBlock.ImageSource imageSource = new ContentBlock.ImageSource(
+                    (String) source.get("type"),
+                    (String) source.get("media_type"),
+                    (String) source.get("data")
+                );
+                return List.of(new ContentBlock.Image("image", imageSource));
+            }
+        } else if ("document".equals(type)) {
+            Map<String, Object> source = (Map<String, Object>) dataMap.get("source");
+            if (source != null) {
+                ContentBlock.DocumentSource documentSource = new ContentBlock.DocumentSource(
+                    (String) source.get("type"),
+                    (String) source.get("media_type"),
+                    (String) source.get("data")
+                );
+                return List.of(new ContentBlock.Document("document", documentSource));
+            }
+        } else if (dataMap.containsKey("content")) {
+            return dataMap.get("content");
+        } else if (dataMap.containsKey("error")) {
+            return "Error: " + dataMap.get("error");
+        }
+
+        return responseData;
     }
 
     private static Map<String, Object> parseJsonToMap(String json) {
@@ -156,5 +212,27 @@ public class SpringAiToClaudeCodeConverter {
         } catch (Exception e) {
             throw new IllegalArgumentException("Failed to parse tool arguments JSON", e);
         }
+    }
+
+    private static ContentBlock convertMedia(Media media) throws IOException {
+        byte[] data = media.getDataAsByteArray();
+        String base64 = Base64.getEncoder().encodeToString(data);
+        String mimeType = media.getMimeType().toString();
+
+        logger.debug("Converting media: type={}, size={} bytes", mimeType, data.length);
+
+        if (media.getMimeType().getType().equals("image")) {
+            return new ContentBlock.Image(
+                "image",
+                new ContentBlock.ImageSource("base64", mimeType, base64)
+            );
+        } else if (mimeType.equals("application/pdf")) {
+            return new ContentBlock.Document(
+                "document",
+                new ContentBlock.DocumentSource("base64", mimeType, base64)
+            );
+        }
+
+        throw new UnsupportedOperationException("Unsupported media type: " + mimeType);
     }
 }

@@ -33,7 +33,9 @@ import java.util.Map;
     @JsonSubTypes.Type(value = ContentBlock.ThinkingDelta.class, name = "thinking_delta"),
     @JsonSubTypes.Type(value = ContentBlock.RedactedThinking.class, name = "redacted_thinking"),
     @JsonSubTypes.Type(value = ContentBlock.ToolUse.class, name = "tool_use"),
-    @JsonSubTypes.Type(value = ContentBlock.ToolResult.class, name = "tool_result")
+    @JsonSubTypes.Type(value = ContentBlock.ToolResult.class, name = "tool_result"),
+    @JsonSubTypes.Type(value = ContentBlock.Image.class, name = "image"),
+    @JsonSubTypes.Type(value = ContentBlock.Document.class, name = "document")
 })
 public sealed interface ContentBlock permits
     ContentBlock.Text,
@@ -42,7 +44,9 @@ public sealed interface ContentBlock permits
     ContentBlock.ThinkingDelta,
     ContentBlock.RedactedThinking,
     ContentBlock.ToolUse,
-    ContentBlock.ToolResult {
+    ContentBlock.ToolResult,
+    ContentBlock.Image,
+    ContentBlock.Document {
 
     String type();
 
@@ -85,4 +89,26 @@ public sealed interface ContentBlock permits
         Object content,
         @JsonProperty("is_error") Boolean isError
     ) implements ContentBlock {}
+
+    record Image(
+        String type,
+        ImageSource source
+    ) implements ContentBlock {}
+
+    record ImageSource(
+        String type,
+        @JsonProperty("media_type") String mediaType,
+        String data
+    ) {}
+
+    record Document(
+        String type,
+        DocumentSource source
+    ) implements ContentBlock {}
+
+    record DocumentSource(
+        String type,
+        @JsonProperty("media_type") String mediaType,
+        String data
+    ) {}
 }

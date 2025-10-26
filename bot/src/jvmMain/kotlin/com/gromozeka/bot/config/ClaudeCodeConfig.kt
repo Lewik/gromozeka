@@ -31,7 +31,7 @@ class ClaudeCodeConfig {
         mcpToolProvider: ObjectProvider<SyncMcpToolCallbackProvider>
     ): ClaudeCodeChatModel {
         // Build complete tool names set including built-in and MCP tools
-        val toolNames = mutableSetOf("execute_command", "jina_read_url")
+        val toolNames = mutableSetOf("execute_command", "jina_read_url", "read_file")
 
         mcpToolProvider.ifAvailable { provider ->
             val mcpToolNames = provider.getToolCallbacks().map { it.toolDefinition.name() }
@@ -146,7 +146,7 @@ class ClaudeCodeConfig {
         mcpToolProvider: ObjectProvider<SyncMcpToolCallbackProvider>
     ): ChatClient {
         val builder = ChatClient.builder(chatModel)
-            .defaultToolNames("execute_command", "jina_read_url")
+            .defaultToolNames("execute_command", "jina_read_url", "read_file")
 
         // Add MCP tools if available
         mcpToolProvider.ifAvailable { provider ->

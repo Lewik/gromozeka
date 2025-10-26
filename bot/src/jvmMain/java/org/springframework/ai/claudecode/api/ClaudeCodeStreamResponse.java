@@ -96,6 +96,7 @@ public sealed interface ClaudeCodeStreamResponse permits
 
         public record Message(
             String id,
+            String container,
             String type,
             String role,
             List<ContentBlock> content,
