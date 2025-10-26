@@ -42,7 +42,7 @@ class ClaudeCodeConfig {
             .model("sonnet")
             .maxTokens(8192)
             .temperature(0.7)
-            .thinkingBudgetTokens(0)
+            .thinkingBudgetTokens(8000)
             .useXmlToolFormat(true)
             .toolNames(toolNames)
             .build()

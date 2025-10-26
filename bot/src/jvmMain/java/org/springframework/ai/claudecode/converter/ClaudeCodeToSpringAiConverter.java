@@ -17,6 +17,8 @@
 package org.springframework.ai.claudecode.converter;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.metadata.ChatGenerationMetadata;
 import org.springframework.ai.chat.metadata.ChatResponseMetadata;
@@ -37,6 +39,7 @@ import java.util.Map;
  */
 public class ClaudeCodeToSpringAiConverter {
 
+    private static final Logger logger = LoggerFactory.getLogger(ClaudeCodeToSpringAiConverter.class);
     private static final ObjectMapper objectMapper = new ObjectMapper();
 
     /**
@@ -52,6 +55,7 @@ public class ClaudeCodeToSpringAiConverter {
         for (ContentBlock content : assistantMessage.message().content()) {
             switch (content) {
                 case ContentBlock.Text text -> {
+                    logger.debug("ContentBlock: Text (length: {})", text.text().length());
                     generations.add(new Generation(
                         new AssistantMessage(text.text(), Map.of()),
                         ChatGenerationMetadata.builder()
@@ -60,6 +64,7 @@ public class ClaudeCodeToSpringAiConverter {
                     ));
                 }
                 case ContentBlock.TextDelta textDelta -> {
+                    logger.debug("ContentBlock: TextDelta (length: {})", textDelta.text().length());
                     generations.add(new Generation(
                         new AssistantMessage(textDelta.text(), Map.of()),
                         ChatGenerationMetadata.builder()
@@ -68,6 +73,8 @@ public class ClaudeCodeToSpringAiConverter {
                     ));
                 }
                 case ContentBlock.Thinking thinking -> {
+                    logger.debug("ContentBlock: Thinking (length: {}, signature: {})",
+                        thinking.thinking().length(), thinking.signature());
                     Map<String, Object> metadata = new HashMap<>();
                     metadata.put("thinking", true);
                     metadata.put("signature", thinking.signature());
@@ -79,6 +86,7 @@ public class ClaudeCodeToSpringAiConverter {
                     ));
                 }
                 case ContentBlock.ThinkingDelta thinkingDelta -> {
+                    logger.debug("ContentBlock: ThinkingDelta (length: {})", thinkingDelta.thinking().length());
                     Map<String, Object> metadata = new HashMap<>();
                     metadata.put("thinking", true);
                     generations.add(new Generation(
@@ -89,6 +97,7 @@ public class ClaudeCodeToSpringAiConverter {
                     ));
                 }
                 case ContentBlock.RedactedThinking redacted -> {
+                    logger.debug("ContentBlock: RedactedThinking");
                     Map<String, Object> metadata = new HashMap<>();
                     metadata.put("redacted_thinking", true);
                     metadata.put("data", redacted.data());
@@ -100,6 +109,7 @@ public class ClaudeCodeToSpringAiConverter {
                     ));
                 }
                 case ContentBlock.ToolUse toolUse -> {
+                    logger.debug("ContentBlock: ToolUse (name: {})", toolUse.name());
                     String argumentsJson = toJson(toolUse.input());
                     toolCalls.add(new AssistantMessage.ToolCall(
                         toolUse.id(),
@@ -109,6 +119,7 @@ public class ClaudeCodeToSpringAiConverter {
                     ));
                 }
                 default -> {
+                    logger.warn("ContentBlock: Unknown type - {}", content.getClass().getSimpleName());
                     // Skip unknown content types
                 }
             }

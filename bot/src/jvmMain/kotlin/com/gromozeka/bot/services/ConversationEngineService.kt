@@ -5,6 +5,7 @@ import com.gromozeka.shared.services.ConversationTreeService
 import klog.KLoggers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.reactive.asFlow
 import org.springframework.ai.chat.messages.AssistantMessage
 import org.springframework.ai.chat.messages.ToolResponseMessage
 import org.springframework.ai.chat.model.ChatModel
@@ -94,32 +95,74 @@ class ConversationEngineService(
             iterationCount++
             log.debug { "Tool execution iteration $iterationCount" }
 
-            // 5a. Call the model (blocking call)
-            val chatResponse = chatModel.call(currentPrompt)
+            // 5a. Stream the model response with real-time emission
+            val allChunks = mutableListOf<org.springframework.ai.chat.model.ChatResponse>()
 
-            log.debug {
-                "Received response with ${chatResponse.results.size} results, " +
-                    "finish reason: ${chatResponse.result.metadata?.finishReason}"
+            chatModel.stream(currentPrompt).asFlow().collect { chatResponse ->
+                // Accumulate for later tool calls check
+                allChunks.add(chatResponse)
+
+                // 5b. Emit each chunk immediately for real-time UI updates
+                chatResponse.results.forEach { generation ->
+                    val assistantMessage = generation.output as? AssistantMessage
+
+                    // Debug logging
+                    log.debug { "Processing chunk: assistantMessage=${assistantMessage != null}, " +
+                        "text=${assistantMessage?.text?.take(50)}, " +
+                        "textBlank=${assistantMessage?.text.isNullOrBlank()}, " +
+                        "metadata=${assistantMessage?.metadata?.keys}, " +
+                        "hasToolCalls=${assistantMessage?.toolCalls?.isNotEmpty()}" }
+
+                    if (assistantMessage != null) {
+                        // Emit thinking blocks even if text is blank
+                        val isThinking = assistantMessage.metadata["thinking"] as? Boolean ?: false
+                        val hasText = !assistantMessage.text.isNullOrBlank()
+                        val hasToolCalls = !assistantMessage.toolCalls.isNullOrEmpty()
+
+                        if (isThinking || hasText || hasToolCalls) {
+                            val conversationMessage = messageConversionService.fromSpringAI(assistantMessage)
+                            if (conversationMessage.content.isNotEmpty()) {
+                                emit(StreamUpdate.Chunk(conversationMessage))
+                                conversationTreeService.addMessage(conversationId, conversationMessage)
+                                log.debug { "Emitted chunk: ${conversationMessage.content.size} content items, " +
+                                    "thinking=$isThinking, hasText=$hasText, hasToolCalls=$hasToolCalls" }
+                            } else {
+                                log.warn { "Conversion resulted in empty content, skipping chunk" }
+                            }
+                        } else {
+                            log.debug { "Skipping empty chunk (no thinking, text, or tool calls)" }
+                        }
+                    }
+                }
             }
 
-            // 5b. Check if response contains tool calls
-            if (chatResponse.hasToolCalls()) {
+            log.debug { "Received ${allChunks.size} streaming chunks" }
+
+            // 5c. Aggregate final response for tool calls check (last non-empty chunk)
+            val finalChunk = allChunks.lastOrNull { it.results.isNotEmpty() }
+                ?: throw IllegalStateException("No non-empty chunks received")
+
+            val finishReason = finalChunk.result.metadata?.finishReason
+            log.debug {
+                "Final chunk: ${finalChunk.results.size} results, " +
+                    "finish reason: $finishReason, " +
+                    "hasToolCalls: ${finalChunk.hasToolCalls()}"
+            }
+
+            // 5d. Check if response contains tool calls
+            if (finalChunk.hasToolCalls()) {
                 log.debug { "Response contains tool calls, processing..." }
 
                 // Extract assistant message with tool calls
-                val assistantMessage = chatResponse.result.output as? AssistantMessage
+                val assistantMessage = finalChunk.result.output as? AssistantMessage
                     ?: throw IllegalStateException("Expected AssistantMessage with tool calls")
 
                 val toolCalls = assistantMessage.toolCalls ?: emptyList()
                 log.debug { "Found ${toolCalls.size} tool calls: ${toolCalls.map { it.name() }}" }
 
-                // 5c. Convert and emit assistant message with tool_use
-                val conversationMessage = messageConversionService.fromSpringAI(assistantMessage)
-                emit(StreamUpdate.Chunk(conversationMessage))
-                conversationTreeService.addMessage(conversationId, conversationMessage)
-                log.debug { "Emitted and persisted assistant message with tool calls" }
+                // Tool call message already emitted in step 5b
 
-                // 5d. Approve tool calls
+                // 5e. Approve tool calls
                 val approvalResult = toolApprovalService.approve(toolCalls)
                 log.debug { "Tool approval result: $approvalResult" }
 
@@ -133,10 +176,10 @@ class ConversationEngineService(
                     break
                 }
 
-                // 5e. Execute tool calls via ToolCallingManager
+                // 5f. Execute tool calls via ToolCallingManager
                 log.debug { "Executing tool calls..." }
                 val toolExecutionResult = try {
-                    toolCallingManager.executeToolCalls(currentPrompt, chatResponse)
+                    toolCallingManager.executeToolCalls(currentPrompt, finalChunk)
                 } catch (e: Exception) {
                     log.error(e) { "Tool execution failed" }
                     emit(StreamUpdate.Error(e))
@@ -148,7 +191,7 @@ class ConversationEngineService(
                         "conversation history size: ${toolExecutionResult.conversationHistory().size}"
                 }
 
-                // 5f. Extract and emit tool result messages
+                // 5g. Extract and emit tool result messages
                 val toolResultMessages = toolExecutionResult.conversationHistory()
                     .filterIsInstance<ToolResponseMessage>()
 
@@ -161,30 +204,29 @@ class ConversationEngineService(
                     log.debug { "Emitted and persisted tool result message" }
                 }
 
-                // 5g. Check if tool execution returned direct result
+                // 5h. Check if tool execution returned direct result
                 if (toolExecutionResult.returnDirect()) {
                     log.debug { "Tool execution returned direct result, stopping loop" }
                     break
                 }
 
-                // 5h. Update prompt with new conversation history and continue loop
+                // 5i. Update prompt with new conversation history and continue loop
                 currentPrompt = Prompt(toolExecutionResult.conversationHistory(), options)
                 log.debug { "Updated prompt with tool execution results, continuing loop" }
 
             } else {
-                // 6. Final response - no tool calls
-                log.debug { "No tool calls in response, this is the final message" }
+                // 6. Final response - no tool calls (chunks already emitted in step 5b)
+                log.debug { "No tool calls in response, finishReason: $finishReason" }
 
-                val assistantMessage = chatResponse.result.output as? AssistantMessage
-                    ?: throw IllegalStateException("Expected AssistantMessage in final response")
+                // Extended thinking: all chunks (thinking + text) already collected and emitted
+                // The stream from Claude CLI includes all assistant messages until Result event
+                // So if we're here, the complete response (including thinking) has been processed
 
-                // Convert and emit final message
-                val conversationMessage = messageConversionService.fromSpringAI(assistantMessage)
-                emit(StreamUpdate.Chunk(conversationMessage))
-                conversationTreeService.addMessage(conversationId, conversationMessage)
-                log.debug { "Emitted and persisted final assistant message" }
+                if (finishReason == null) {
+                    log.warn { "Final chunk has null finishReason - unexpected, but continuing" }
+                }
 
-                // Exit loop
+                // Exit loop - conversation turn is complete
                 break
             }
         }

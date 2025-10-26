@@ -299,6 +299,25 @@ public class ClaudeCodeChatModel implements ChatModel {
         String systemPrompt = SpringAiToClaudeCodeConverter.extractSystemPrompt(prompt.getInstructions());
         List<ClaudeMessage> messages = SpringAiToClaudeCodeConverter.convertMessages(prompt.getInstructions());
 
+        // Auto-enable extended thinking based on instruction level
+        // Token budgets based on Claude Code CLI standards:
+        // - think: 4,000 tokens
+        // - think_hard/megathink: 10,000 tokens
+        // - ultrathink: 31,999 tokens
+        Integer thinkingBudget = options.getThinkingBudgetTokens();
+        if ((thinkingBudget == null || thinkingBudget == 0) && systemPrompt != null) {
+            if (systemPrompt.contains("thinking_ultrathink")) {
+                logger.debug("Detected thinking_ultrathink instruction, auto-enabling extended thinking with 31999 tokens");
+                thinkingBudget = 31999;  // UltraThink level
+            } else if (systemPrompt.contains("thinking_think_harder") || systemPrompt.contains("thinking_megathink")) {
+                logger.debug("Detected think_harder/megathink instruction, auto-enabling extended thinking with 10000 tokens");
+                thinkingBudget = 10000;  // Think Hard level
+            } else if (systemPrompt.contains("thinking_think")) {
+                logger.debug("Detected thinking_think instruction, auto-enabling extended thinking with 4000 tokens");
+                thinkingBudget = 4000;   // Think level
+            }
+        }
+
         // Enhance system prompt with XML tool descriptions if XML mode enabled
         if (Boolean.TRUE.equals(options.getUseXmlToolFormat())) {
             // Resolve tool names to tool definitions via toolCallingManager
@@ -320,7 +339,7 @@ public class ClaudeCodeChatModel implements ChatModel {
             .systemPrompt(systemPrompt)
             .maxTokens(options.getMaxTokens())
             .temperature(options.getTemperature())
-            .thinkingBudgetTokens(options.getThinkingBudgetTokens())
+            .thinkingBudgetTokens(thinkingBudget)
             .disallowedTools(options.getDisallowedTools())
             .build();
     }

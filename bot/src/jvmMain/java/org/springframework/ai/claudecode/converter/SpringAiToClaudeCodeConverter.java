@@ -16,6 +16,8 @@
 
 package org.springframework.ai.claudecode.converter;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.MessageType;
@@ -37,6 +39,8 @@ import java.util.stream.Collectors;
  * Converts Spring AI messages to Claude Code CLI format.
  */
 public class SpringAiToClaudeCodeConverter {
+
+    private static final Logger logger = LoggerFactory.getLogger(SpringAiToClaudeCodeConverter.class);
 
     /**
      * Extract system prompt from messages.
@@ -91,7 +95,20 @@ public class SpringAiToClaudeCodeConverter {
     private static ClaudeMessage convertAssistantMessage(AssistantMessage message) {
         List<ContentBlock> content = new ArrayList<>();
 
-        if (StringUtils.hasText(message.getText())) {
+        // Convert thinking blocks (must come FIRST in content array per Anthropic docs)
+        Boolean hasThinking = (Boolean) message.getMetadata().get("thinking");
+        if (hasThinking != null && hasThinking) {
+            String signature = (String) message.getMetadata().get("signature");
+            String thinkingText = message.getText();
+            if (StringUtils.hasText(thinkingText) && StringUtils.hasText(signature)) {
+                logger.debug("Converting thinking block: text length={}, signature={}",
+                    thinkingText.length(), signature);
+                content.add(new ContentBlock.Thinking("thinking", thinkingText, signature));
+            }
+        }
+
+        // Add text content (after thinking if present)
+        if (StringUtils.hasText(message.getText()) && !Boolean.TRUE.equals(hasThinking)) {
             content.add(new ContentBlock.Text("text", message.getText()));
         }
 

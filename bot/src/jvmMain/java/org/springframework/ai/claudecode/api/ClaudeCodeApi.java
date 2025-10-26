@@ -98,17 +98,51 @@ public class ClaudeCodeApi {
                 try (BufferedReader reader = new BufferedReader(
                         new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
 
+                    logger.debug("Starting to read Claude CLI stdout stream");
                     String line;
+                    int lineCount = 0;
                     while ((line = reader.readLine()) != null) {
+                        lineCount++;
+                        logger.debug("Read line #{} from stdout", lineCount);
+
                         if (line.trim().isEmpty()) {
+                            logger.debug("Skipping empty line");
                             continue;
                         }
 
                         try {
+                            // Log raw JSONL line for debugging
+                            logger.debug("Claude CLI stream line: {}", line.length() > 500 ?
+                                line.substring(0, 500) + "... (truncated)" : line);
+
                             ClaudeCodeStreamResponse response = parseStreamLine(line);
+
+                            // Log response type for debugging
+                            if (response instanceof ClaudeCodeStreamResponse.AssistantMessage assistantMsg) {
+                                logger.debug("AssistantMessage: {} content blocks, stop_reason: {}",
+                                    assistantMsg.message().content().size(),
+                                    assistantMsg.message().stopReason());
+
+                                // Log but DON'T close stream - maybe more messages are coming
+                                if (assistantMsg.message().stopReason() == null) {
+                                    logger.debug("AssistantMessage with null stop_reason - continuing to read stream");
+                                }
+                            } else {
+                                logger.debug("Stream response type: {}", response.type());
+                            }
+
                             sink.next(response);
 
-                            // Check for error responses
+                            // Check for completion or error responses
+                            if (response instanceof ClaudeCodeStreamResponse.Result result) {
+                                // Result signals completion - close stream
+                                logger.debug("Received result, completing stream: num_turns={}, is_error={}",
+                                    result.numTurns(), result.isError());
+                                sink.complete();
+                                logger.debug("Stream completed, returning from reader thread");
+                                return;
+                            }
+
                             if (response instanceof ClaudeCodeStreamResponse.Error error) {
                                 sink.error(new ClaudeCodeProcessException(
                                     "Claude CLI returned error: " + error.message()));
@@ -119,7 +153,11 @@ public class ClaudeCodeApi {
                             // Continue reading - partial data is acceptable
                         }
                     }
+
+                    logger.debug("Finished reading stdout stream, read {} lines total", lineCount);
                 }
+
+                logger.debug("Stdout reader closed, waiting for process to complete");
 
                 // Wait for process to complete
                 boolean finished = process.waitFor(timeout.toMillis(), TimeUnit.MILLISECONDS);
@@ -162,6 +200,7 @@ public class ClaudeCodeApi {
         processBuilder.environment().put("DISABLE_NON_ESSENTIAL_MODEL_CALLS", "1");
 
         if (request.thinkingBudgetTokens() != null && request.thinkingBudgetTokens() > 0) {
+            logger.debug("Setting MAX_THINKING_TOKENS={} for extended thinking", request.thinkingBudgetTokens());
             processBuilder.environment().put("MAX_THINKING_TOKENS",
                 request.thinkingBudgetTokens().toString());
         }
@@ -234,9 +273,9 @@ public class ClaudeCodeApi {
             command.add(String.join(",", toolsToDisable));
         }
 
-        // Single turn per request (Spring AI manages recursive tool execution loop)
-        command.add("--max-turns");
-        command.add("1");
+        // Allow multiple turns for extended thinking
+        // Spring AI still manages tool execution through ToolCallingManager
+        // (all Claude Code built-in tools are disabled via --disallowedTools)
 
         // Model
         command.add("--model");

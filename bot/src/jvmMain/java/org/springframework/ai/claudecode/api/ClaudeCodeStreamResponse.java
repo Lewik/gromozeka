@@ -16,6 +16,7 @@
 
 package org.springframework.ai.claudecode.api;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
@@ -45,6 +46,7 @@ public sealed interface ClaudeCodeStreamResponse permits
     /**
      * System initialization message.
      */
+    @JsonIgnoreProperties(ignoreUnknown = true)
     record SystemInit(
         String type,
         String subtype,
@@ -58,6 +60,9 @@ public sealed interface ClaudeCodeStreamResponse permits
         @JsonProperty("slash_commands") List<String> slashCommands,
         @JsonProperty("output_style") String outputStyle,
         List<String> agents,
+        @JsonProperty("claude_code_version") String claudeCodeVersion,
+        List<String> skills,
+        List<String> plugins,
         String uuid
     ) implements ClaudeCodeStreamResponse {}
 
