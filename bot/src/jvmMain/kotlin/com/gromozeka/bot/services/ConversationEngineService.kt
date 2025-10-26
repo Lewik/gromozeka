@@ -181,9 +181,32 @@ class ConversationEngineService(
                 val toolExecutionResult = try {
                     toolCallingManager.executeToolCalls(currentPrompt, finalChunk)
                 } catch (e: Exception) {
-                    log.error(e) { "Tool execution failed" }
-                    emit(StreamUpdate.Error(e))
-                    break
+                    log.error(e) { "Tool execution failed: ${e.message}" }
+
+                    // Create error tool responses to send back to Claude
+                    val errorResponses = toolCalls.map { toolCall ->
+                        ToolResponseMessage.ToolResponse(
+                            toolCall.id(),
+                            toolCall.name(),
+                            "<tool_use_error>Error: ${e.message ?: e::class.simpleName}</tool_use_error>"
+                        )
+                    }
+
+                    val errorToolResponseMessage = ToolResponseMessage(errorResponses, emptyMap())
+
+                    // Convert to conversation format and emit
+                    val errorConversationMessage = messageConversionService.fromSpringAI(errorToolResponseMessage)
+                    emit(StreamUpdate.Chunk(errorConversationMessage))
+                    conversationTreeService.addMessage(conversationId, errorConversationMessage)
+                    log.debug { "Emitted and persisted error tool result, continuing conversation" }
+
+                    // Update prompt with error response and continue loop
+                    val updatedHistory = currentPrompt.instructions + assistantMessage + errorToolResponseMessage
+                    currentPrompt = Prompt(updatedHistory, options)
+                    log.debug { "Updated prompt with error tool results, continuing loop" }
+
+                    // Continue loop - Claude will see the error and can self-correct
+                    continue
                 }
 
                 log.debug {

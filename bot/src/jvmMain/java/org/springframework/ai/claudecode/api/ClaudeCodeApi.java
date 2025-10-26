@@ -282,9 +282,10 @@ public class ClaudeCodeApi {
             command.add(String.join(",", toolsToDisable));
         }
 
-        // Allow multiple turns for extended thinking
-        // Spring AI still manages tool execution through ToolCallingManager
-        // (all Claude Code built-in tools are disabled via --disallowedTools)
+        // Single turn per request (Spring AI manages recursive tool execution loop)
+        // Extended thinking works WITHIN each turn, context preserved via conversation history
+        command.add("--max-turns");
+        command.add("1");
 
         // Model
         command.add("--model");

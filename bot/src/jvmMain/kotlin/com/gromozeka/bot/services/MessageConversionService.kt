@@ -30,6 +30,7 @@ class MessageConversionService {
      *
      * Handles:
      * - USER role → UserMessage
+     * - ASSISTANT role with thinking blocks → AssistantMessage(thinking, metadata)
      * - ASSISTANT role with tool calls → AssistantMessage(text, toolCalls)
      * - ASSISTANT role with tool results → ToolResponseMessage
      * - ASSISTANT role with text only → AssistantMessage(text)
@@ -62,6 +63,7 @@ class MessageConversionService {
             }
 
             ConversationTree.Message.Role.ASSISTANT -> {
+                val thinkingBlocks = message.content.filterIsInstance<ConversationTree.Message.ContentItem.Thinking>()
                 val toolCalls = message.content.filterIsInstance<ConversationTree.Message.ContentItem.ToolCall>()
                 val toolResults = message.content.filterIsInstance<ConversationTree.Message.ContentItem.ToolResult>()
                 val text = message.content
@@ -69,6 +71,19 @@ class MessageConversionService {
                     .joinToString(" ") { it.structured.fullText }
 
                 when {
+                    // Thinking blocks (must be separate messages per Anthropic requirements)
+                    thinkingBlocks.isNotEmpty() -> {
+                        val thinking = thinkingBlocks.first()
+                        log.debug { "Converting thinking block: signature=${thinking.signature.take(20)}..., text length=${thinking.thinking.length}" }
+                        AssistantMessage(
+                            thinking.thinking,
+                            mapOf(
+                                "thinking" to true,
+                                "signature" to thinking.signature
+                            )
+                        )
+                    }
+
                     // Tool results message
                     toolResults.isNotEmpty() -> {
                         log.debug { "Converting ${toolResults.size} tool results to ToolResponseMessage" }
