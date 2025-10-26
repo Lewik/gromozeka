@@ -341,6 +341,21 @@ fun ApplicationScope.ChatWindow(
                                                     // Fork creates new tab with same project
                                                     createNewSession(currentTab!!.projectPath)
                                                 },
+                                                onRestartSession = {
+                                                    coroutineScope.launch {
+                                                        val projectPath = currentTab!!.projectPath
+                                                        val oldIndex = currentTabIndex!!
+
+                                                        // Create new tab (automatically becomes current)
+                                                        appViewModel.createTab(
+                                                            projectPath = projectPath,
+                                                            initiator = ConversationInitiator.User
+                                                        )
+
+                                                        // Close old tab (indices automatically corrected)
+                                                        appViewModel.closeTab(oldIndex)
+                                                    }
+                                                },
 
                                                 // Close session callback - removes session and stops it
                                                 onCloseTab = {

@@ -17,6 +17,7 @@ data class RussianTranslation(
     override val newSessionButton: String = "Новая сессия",
     override val newButton: String = "Новая",
     override val forkButton: String = "Форк",
+    override val restartButton: String = "Заново",
     override val continueButton: String = "Продолжить",
     override val newSessionShort: String = "Новая",
     override val cancelButton: String = "Отмена",

@@ -29,6 +29,7 @@ fun SessionScreen(
     // Navigation callbacks
     onNewSession: () -> Unit,
     onForkSession: () -> Unit,
+    onRestartSession: () -> Unit,
     onCloseTab: (() -> Unit)? = null,
 
     // Services
@@ -110,6 +111,12 @@ fun SessionScreen(
 
                         CompactButton(onClick = onForkSession) {
                             Text(LocalTranslation.current.forkButton)
+                        }
+
+                        Spacer(modifier = Modifier.width(8.dp))
+
+                        CompactButton(onClick = onRestartSession) {
+                            Text(LocalTranslation.current.restartButton)
                         }
 
                         Spacer(modifier = Modifier.weight(1f))

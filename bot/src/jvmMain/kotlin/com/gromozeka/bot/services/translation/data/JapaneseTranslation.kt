@@ -17,6 +17,7 @@ data class JapaneseTranslation(
     override val newSessionButton: String = "新しいセッション",
     override val newButton: String = "新規",
     override val forkButton: String = "フォーク",
+    override val restartButton: String = "やり直す",
     override val continueButton: String = "続行",
     override val newSessionShort: String = "新規",
     override val cancelButton: String = "キャンセル",

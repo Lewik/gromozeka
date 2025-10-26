@@ -17,6 +17,7 @@ data class ThaiTranslation(
     override val newSessionButton: String = "เซสชันใหม่",
     override val newButton: String = "ใหม่",
     override val forkButton: String = "แยกกิ่ง",
+    override val restartButton: String = "เริ่มใหม่",
     override val continueButton: String = "ดำเนินต่อ",
     override val newSessionShort: String = "ใหม่",
     override val cancelButton: String = "ยกเลิก",

@@ -17,6 +17,7 @@ data class EnglishTranslation(
     override val newSessionButton: String = "New Session",
     override val newButton: String = "New",
     override val forkButton: String = "Fork",
+    override val restartButton: String = "Restart",
     override val continueButton: String = "Continue",
     override val newSessionShort: String = "New",
     override val cancelButton: String = "Cancel",
