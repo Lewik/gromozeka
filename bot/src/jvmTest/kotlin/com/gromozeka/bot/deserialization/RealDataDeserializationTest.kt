@@ -68,6 +68,10 @@ class RealDataDeserializationTest {
                                 is ClaudeLogEntry.SummaryEntry -> {
                                     println("  Line $index: SummaryEntry - summary=${entry.summary.take(50)}...")
                                 }
+
+                                is ClaudeLogEntry.FileHistorySnapshotEntry -> {
+                                    println("  Line $index: FileHistorySnapshotEntry - messageId=${entry.messageId}, files=${entry.snapshot.trackedFileBackups.size}")
+                                }
                             }
 
                         } catch (e: Exception) {

@@ -24,6 +24,30 @@ sealed class ClaudeLogEntry {
         override val type: String = "summary",
     ) : ClaudeLogEntry()
 
+    @Serializable
+    @SerialName("file-history-snapshot")
+    data class FileHistorySnapshotEntry(
+        val messageId: String,
+        val snapshot: Snapshot,
+        val isSnapshotUpdate: Boolean,
+        override val type: String = "file-history-snapshot",
+    ) : ClaudeLogEntry() {
+
+        @Serializable
+        data class Snapshot(
+            val messageId: String,
+            val trackedFileBackups: Map<String, FileBackup>,
+            val timestamp: String,
+        )
+
+        @Serializable
+        data class FileBackup(
+            val backupFileName: String?,
+            val version: Int,
+            val backupTime: String,
+        )
+    }
+
     sealed class BaseEntry : ClaudeLogEntry() {
         abstract val cwd: String?
         abstract val gitBranch: String?

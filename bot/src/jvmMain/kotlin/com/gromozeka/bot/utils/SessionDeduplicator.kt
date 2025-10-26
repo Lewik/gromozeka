@@ -146,6 +146,7 @@ object SessionDeduplicator {
     private fun extractTimestamp(entry: ClaudeLogEntry): String {
         return when (entry) {
             is ClaudeLogEntry.SummaryEntry -> "0000-00-00T00:00:00.000Z" // Sort summaries first
+            is ClaudeLogEntry.FileHistorySnapshotEntry -> entry.snapshot.timestamp
             is ClaudeLogEntry.UserEntry -> entry.timestamp
             is ClaudeLogEntry.AssistantEntry -> entry.timestamp
             is ClaudeLogEntry.SystemEntry -> entry.timestamp

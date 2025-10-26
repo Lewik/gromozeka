@@ -19,6 +19,7 @@ object ClaudeLogEntryMapper {
             is ClaudeLogEntry.AssistantEntry -> mapAssistantEntry(entry)
             is ClaudeLogEntry.SystemEntry -> mapSystemEntry(entry)
             is ClaudeLogEntry.SummaryEntry -> null // Skip summaries for now
+            is ClaudeLogEntry.FileHistorySnapshotEntry -> null // Skip file-history snapshots (used for /rewind only)
         }
     }
 
