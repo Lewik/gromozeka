@@ -50,6 +50,9 @@ data class Conversation(
         val id: Id,
         val conversationId: Conversation.Id,
 
+        // TODO: Remove @Deprecated and field after SquashOperation integration
+        //       Currently used for edit/squash provenance tracking
+        //       Will be replaced by squashOperationId when AI-powered squash is implemented
         @Deprecated("Use squashOperationId instead for structured squash provenance")
         val originalIds: List<Id> = emptyList(),
         val squashOperationId: SquashOperation.Id? = null,

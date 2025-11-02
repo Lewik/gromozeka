@@ -384,6 +384,10 @@ class TabViewModel(
         try {
             val selectedMessages = _allMessages.value.filter { it.id in selectedIds }
 
+            // TODO: Replace with AI-powered squash using ConversationEngineService
+            //       Current: simple text concatenation with "\n\n" separator
+            //       Future: call Claude API with squash prompt for semantic compression
+            //       See: ConversationService.squashMessages for backend integration
             val combinedText = selectedMessages.joinToString("\n\n") { message ->
                 message.content
                     .filterIsInstance<Conversation.Message.ContentItem.UserMessage>()

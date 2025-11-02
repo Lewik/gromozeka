@@ -252,10 +252,14 @@ class ConversationService(
 
         val firstMessageId = links.first { it.messageId in messageIds }.messageId
 
+        // TODO: Implement AI-powered squash with SquashOperation tracking
+        //       Current: simple concatenation via originalIds (deprecated)
+        //       Future: AI summarization with prompt + model stored in SquashOperation
+        //       Then: set squashOperationId instead of originalIds
         val squashedMessage = Conversation.Message(
             id = Conversation.Message.Id(uuid7()),
             conversationId = conversationId,
-            originalIds = messageIds,
+            originalIds = messageIds, // TODO: migrate to squashOperationId after AI squash implementation
             role = Conversation.Message.Role.USER,
             content = squashedContent,
             instructions = emptyList(),
