@@ -1,7 +1,7 @@
 package com.gromozeka.bot.ui.state
 
-import com.gromozeka.shared.domain.agent.Agent
-import com.gromozeka.shared.domain.conversation.ConversationTree
+import com.gromozeka.shared.domain.Agent
+import com.gromozeka.shared.domain.Conversation
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -30,14 +30,14 @@ data class UIState(
      * Follows Android's official UiState pattern with ViewModel
      *
      * Tab represents UI session state - what user sees in a single tab.
-     * - conversationId links to ConversationTree (persistent data)
+     * - conversationId links to Conversation (persistent data)
      * - tabId used for MCP inter-agent communication (tell_agent)
      * - parentTabId tracks agent creation hierarchy
      */
     @Serializable
     data class Tab(
         val projectPath: String,
-        val conversationId: ConversationTree.Id,
+        val conversationId: Conversation.Id,
         val activeMessageTags: Set<String> = emptySet(),
         val userInput: String = "",
         val isWaitingForResponse: Boolean = false,
@@ -45,6 +45,11 @@ data class UIState(
         val tabId: String,
         val parentTabId: String? = null,
         val agent: Agent,
-        val initiator: ConversationInitiator = ConversationInitiator.User
+        val initiator: ConversationInitiator = ConversationInitiator.User,
+
+        // Message editing state
+        val selectedMessageIds: Set<Conversation.Message.Id> = emptySet(),
+        val editingMessageId: Conversation.Message.Id? = null,
+        val editingMessageText: String = "",
     )
 }

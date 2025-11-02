@@ -1,8 +1,8 @@
 package com.gromozeka.bot.services
 
-import com.gromozeka.shared.domain.conversation.ConversationTree
-import com.gromozeka.shared.domain.project.Project
-import com.gromozeka.shared.repository.ConversationTreeRepository
+import com.gromozeka.shared.domain.Conversation
+import com.gromozeka.shared.domain.Project
+import com.gromozeka.shared.repository.ConversationRepository
 import com.gromozeka.shared.repository.ProjectRepository
 import klog.KLoggers
 import kotlinx.coroutines.Dispatchers
@@ -11,12 +11,12 @@ import org.springframework.stereotype.Service
 
 @Service
 class ConversationSearchService(
-    private val conversationTreeRepository: ConversationTreeRepository,
+    private val conversationTreeRepository: ConversationRepository,
     private val projectRepository: ProjectRepository,
 ) {
     private val log = KLoggers.logger(this)
 
-    suspend fun searchConversations(query: String): List<Pair<ConversationTree, Project>> = withContext(Dispatchers.IO) {
+    suspend fun searchConversations(query: String): List<Pair<Conversation, Project>> = withContext(Dispatchers.IO) {
         if (query.isBlank()) return@withContext emptyList()
 
         val lowerQuery = query.lowercase().trim()
@@ -24,7 +24,7 @@ class ConversationSearchService(
         val projects = projectRepository.findAll()
         val projectsMap = projects.associateBy { it.id }
 
-        val results = mutableListOf<Pair<ConversationTree, Project>>()
+        val results = mutableListOf<Pair<Conversation, Project>>()
 
         projects.forEach { project ->
             val projectMatches = project.name.lowercase().contains(lowerQuery) ||
@@ -33,7 +33,7 @@ class ConversationSearchService(
             val conversations = conversationTreeRepository.findByProject(project.id)
 
             conversations.forEach { conversation ->
-                val displayName = conversation.displayName ?: ""
+                val displayName = conversation.displayName
                 val effectiveName = if (displayName.isBlank()) "New Conversation" else displayName
 
                 val conversationMatches =
@@ -47,8 +47,8 @@ class ConversationSearchService(
         }
 
         results.sortedWith(
-            compareByDescending<Pair<ConversationTree, Project>> { (conversation, _) ->
-                val effectiveName = conversation.displayName?.takeIf { it.isNotBlank() } ?: "New Conversation"
+            compareByDescending<Pair<Conversation, Project>> { (conversation, _) ->
+                val effectiveName = conversation.displayName.takeIf { it.isNotBlank() } ?: "New Conversation"
                 effectiveName.lowercase() == lowerQuery
             }.thenByDescending { (conversation, _) ->
                 conversation.updatedAt

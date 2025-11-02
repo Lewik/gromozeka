@@ -1,40 +1,20 @@
-package com.gromozeka.shared.domain.conversation
+package com.gromozeka.shared.domain
 
-import com.gromozeka.shared.domain.project.Project
+import com.gromozeka.shared.domain.Project
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonClassDiscriminator
 import kotlinx.serialization.json.JsonElement
 import kotlin.time.Instant
 
-/**
- * ConversationTree - DAG всех сообщений в разговоре с AI
- *
- * Архитектурные решения:
- * - Убран agentId (разговор не привязан к агенту, можно продолжить с другим)
- * - Добавлен displayName (имя разговора, раньше было в Thread)
- * - Добавлена поддержка fork через parentConversation + branchFromMessage
- * - Добавлена навигация через head + branchSelections (раньше было в Thread)
- * - Thread как сущность удален (избыточная обертка)
- */
 @Serializable
-data class ConversationTree(
+data class Conversation(
     val id: Id,
     val projectId: Project.Id,
-    val displayName: String? = null,
+    val displayName: String = "",
 
-    // Fork support - параллельные разговоры в разных ветках
-    val parentConversation: Id? = null,
-    val branchFromMessage: Message.Id? = null,
+    val currentThread: Thread.Id,
 
-    // DAG структура
-    val messages: List<Message> = emptyList(),
-
-    // Navigation - определяет текущий путь через DAG
-    val head: Message.Id? = null,
-    val branchSelections: Set<Message.Id> = emptySet(),
-
-    val tags: Set<String> = emptySet(),
     val createdAt: Instant,
     val updatedAt: Instant,
 ) {
@@ -43,22 +23,43 @@ data class ConversationTree(
     value class Id(val value: String)
 
     /**
-     * Message - узел в DAG разговора
+     * Append-only by default. Explicit operations (delete/edit/squash) create new Thread.
+     */
+    @Serializable
+    data class Thread(
+        val id: Id,
+        val conversationId: Conversation.Id,
+
+        // null: initial or append-only, not-null: derived via explicit operation
+        val originalThread: Id? = null,
+
+        val createdAt: Instant,
+        val updatedAt: Instant,
+    ) {
+        @Serializable
+        @JvmInline
+        value class Id(val value: String)
+    }
+
+    /**
+     * Squash is AI operation (summarization/restructuring), not concatenation.
+     * originalIds can reference non-contiguous messages.
      */
     @Serializable
     data class Message(
         val id: Id,
+        val conversationId: Conversation.Id,
 
-        // DAG structure - может быть несколько родителей (для merge)
-        val parentIds: Set<Id> = emptySet(),
+        @Deprecated("Use squashOperationId instead for structured squash provenance")
+        val originalIds: List<Id> = emptyList(),
+        val squashOperationId: SquashOperation.Id? = null,
+        val replyTo: Id? = null,
 
-        // Content
         val role: Role,
         val content: List<ContentItem>,
-        val timestamp: Instant,
-
-        // Context
         val instructions: List<Instruction> = emptyList(),
+
+        val createdAt: Instant,
     ) {
         @Serializable
         @JvmInline
@@ -69,9 +70,6 @@ data class ConversationTree(
             USER, ASSISTANT, SYSTEM
         }
 
-        /**
-         * ContentItem hierarchy
-         */
         @Serializable
         @JsonClassDiscriminator("type")
         sealed class ContentItem {
@@ -127,6 +125,13 @@ data class ConversationTree(
                 }
             }
 
+            /**
+             * Extended thinking block from LLM.
+             *
+             * @property signature Cryptographic signature from LLM (e.g., Claude signs thinking blocks).
+             *                     Some LLMs sign certain blocks to make them non-editable and verifiable.
+             * @property thinking The actual thinking content.
+             */
             @Serializable
             data class Thinking(
                 val signature: String,
@@ -273,5 +278,24 @@ data class ConversationTree(
             }
         }
     }
-}
 
+    /**
+     * Immutable record of a squash operation.
+     * Tracks AI/manual squash provenance for reproducibility and audit trail.
+     */
+    @Serializable
+    data class SquashOperation(
+        val id: Id,
+        val conversationId: Conversation.Id,
+        val sourceMessageIds: List<Message.Id>,
+        val resultMessageId: Message.Id,
+        val prompt: String? = null,
+        val model: String? = null,
+        val performedByAgent: Boolean,
+        val createdAt: Instant,
+    ) {
+        @Serializable
+        @JvmInline
+        value class Id(val value: String)
+    }
+}

@@ -1,7 +1,7 @@
 package com.gromozeka.bot.repository.exposed
 
 import com.gromozeka.bot.repository.exposed.tables.Projects
-import com.gromozeka.shared.domain.project.Project
+import com.gromozeka.shared.domain.Project
 import com.gromozeka.shared.repository.ProjectRepository
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -15,7 +15,6 @@ import org.jetbrains.exposed.v1.jdbc.*
 import kotlin.time.Instant
 
 class ExposedProjectRepository(
-    private val database: Database,
     private val json: Json
 ) : ProjectRepository {
 
@@ -29,11 +28,7 @@ class ExposedProjectRepository(
                 it[description] = project.description
                 it[favorite] = project.favorite
                 it[archived] = project.archived
-                it[tags] = json.encodeToString(project.tags)
-                it[metadataJson] = project.metadata?.let { meta -> json.encodeToString(meta) }
-                it[settingsJson] = project.settings?.let { settings -> json.encodeToString(settings) }
-                it[statisticsJson] = project.statistics?.let { stats -> json.encodeToString(stats) }
-                it[lastUsedAt] = project.lastUsedAt.toEpochMilliseconds()
+                it[lastUsedAt] = project.lastUsedAt
             }
         } else {
             Projects.insert {
@@ -43,12 +38,8 @@ class ExposedProjectRepository(
                 it[description] = project.description
                 it[favorite] = project.favorite
                 it[archived] = project.archived
-                it[tags] = json.encodeToString(project.tags)
-                it[metadataJson] = project.metadata?.let { meta -> json.encodeToString(meta) }
-                it[settingsJson] = project.settings?.let { settings -> json.encodeToString(settings) }
-                it[statisticsJson] = project.statistics?.let { stats -> json.encodeToString(stats) }
-                it[createdAt] = project.createdAt.toEpochMilliseconds()
-                it[lastUsedAt] = project.lastUsedAt.toEpochMilliseconds()
+                it[createdAt] = project.createdAt
+                it[lastUsedAt] = project.lastUsedAt
             }
         }
         project
@@ -111,11 +102,7 @@ class ExposedProjectRepository(
         description = this[Projects.description],
         favorite = this[Projects.favorite],
         archived = this[Projects.archived],
-        tags = json.decodeFromString(this[Projects.tags]),
-        metadata = this[Projects.metadataJson]?.let { json.decodeFromString<Map<String, String>>(it) },
-        settings = this[Projects.settingsJson]?.let { json.decodeFromString<Map<String, String>>(it) },
-        statistics = this[Projects.statisticsJson]?.let { json.decodeFromString<Map<String, String>>(it) },
-        createdAt = Instant.fromEpochMilliseconds(this[Projects.createdAt]),
-        lastUsedAt = Instant.fromEpochMilliseconds(this[Projects.lastUsedAt])
+        createdAt = this[Projects.createdAt],
+        lastUsedAt = this[Projects.lastUsedAt]
     )
 }

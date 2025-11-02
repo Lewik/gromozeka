@@ -3,10 +3,11 @@ package com.gromozeka.bot.services
 import com.gromozeka.bot.ui.viewmodel.AppViewModel
 import com.gromozeka.bot.ui.state.ConversationInitiator
 import klog.KLoggers
-import com.gromozeka.shared.domain.conversation.ConversationTree
+import com.gromozeka.shared.domain.Conversation
 import kotlinx.coroutines.flow.first
 import org.springframework.context.ApplicationContext
 import org.springframework.stereotype.Service
+import java.util.UUID
 import kotlin.time.Clock
 
 @Service
@@ -29,19 +30,20 @@ class ContextExtractionService(
 
         val instructions = loadContextExtractionInstructions()
 
-        // Create ConversationTree.Message with instructions for context extraction
-        val chatMessage = ConversationTree.Message(
-            id = ConversationTree.Message.Id(java.util.UUID.randomUUID().toString()),
-            role = ConversationTree.Message.Role.USER,
-            content = listOf(ConversationTree.Message.ContentItem.UserMessage(instructions)),
-            timestamp = Clock.System.now(),
+        // Create Conversation.Message with instructions for context extraction
+        val chatMessage = Conversation.Message(
+            id = Conversation.Message.Id(UUID.randomUUID().toString()),
+            conversationId = conversationId,
+            role = Conversation.Message.Role.USER,
+            content = listOf(Conversation.Message.ContentItem.UserMessage(instructions)),
+            createdAt = Clock.System.now(),
             instructions = listOf(
-                ConversationTree.Message.Instruction.UserInstruction(
+                Conversation.Message.Instruction.UserInstruction(
                     "thinking_ultrathink",
                     "Ultrathink",
                     "Use ultrathink mode"
                 ),
-                ConversationTree.Message.Instruction.Source.User
+                Conversation.Message.Instruction.Source.User
             )
         )
 

@@ -171,7 +171,7 @@ fun main() {
                     contextExtractionService,
                     contextFileService,
                     context.getBean<com.gromozeka.shared.services.ProjectService>(),
-                    context.getBean<com.gromozeka.shared.services.ConversationTreeService>(),
+                    context.getBean<com.gromozeka.shared.services.ConversationService>(),
                     context.getBean<com.gromozeka.bot.ui.viewmodel.ConversationSearchViewModel>()
                 )
             }  // TranslationProvider

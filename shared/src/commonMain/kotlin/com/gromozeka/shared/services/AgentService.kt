@@ -1,15 +1,15 @@
 package com.gromozeka.shared.services
 
-import com.gromozeka.shared.domain.agent.Agent
-import com.gromozeka.shared.logging.logger
+import com.gromozeka.shared.domain.Agent
 import com.gromozeka.shared.repository.AgentRepository
+import klog.KLoggers
 import com.gromozeka.shared.uuid.uuid7
 import kotlin.time.Instant
 
 class AgentService(
     private val agentRepository: AgentRepository,
 ) {
-    private val log = logger(this)
+    private val log = KLoggers.logger(this)
 
     suspend fun createAgent(
         name: String,

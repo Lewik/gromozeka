@@ -20,9 +20,9 @@ import com.gromozeka.shared.services.ProjectService
 import com.gromozeka.bot.ui.viewmodel.AppViewModel
 import com.gromozeka.bot.ui.state.ConversationInitiator
 import com.gromozeka.bot.ui.viewmodel.ConversationSearchViewModel
-import com.gromozeka.shared.domain.project.Project
-import com.gromozeka.shared.domain.conversation.ConversationTree
-import com.gromozeka.shared.services.ConversationTreeService
+import com.gromozeka.shared.domain.Project
+import com.gromozeka.shared.domain.Conversation
+import com.gromozeka.shared.services.ConversationService
 import klog.KLoggers
 import io.github.vinceglb.filekit.compose.rememberDirectoryPickerLauncher
 import kotlinx.coroutines.CoroutineScope
@@ -32,8 +32,8 @@ private val log = KLoggers.logger("SessionListScreen")
 
 private data class ProjectGroup(
     val project: Project,
-    val conversations: List<ConversationTree>,
-    val latestConversation: ConversationTree?,
+    val conversations: List<Conversation>,
+    val latestConversation: Conversation?,
     val formattedTime: String,
 ) {
     val projectPath get() = project.path
@@ -42,11 +42,11 @@ private data class ProjectGroup(
 
 @Composable
 fun SessionListScreen(
-    onConversationSelected: (ConversationTree, Project) -> Unit,
+    onConversationSelected: (Conversation, Project) -> Unit,
     coroutineScope: CoroutineScope,
     onNewSession: (String) -> Unit,
     projectService: ProjectService,
-    conversationTreeService: ConversationTreeService,
+    conversationTreeService: ConversationService,
     appViewModel: AppViewModel,
     searchViewModel: ConversationSearchViewModel,
     showSettingsPanel: Boolean,
@@ -259,7 +259,7 @@ private fun ProjectGroupHeader(
     isExpanded: Boolean,
     onToggleExpanded: () -> Unit,
     onNewSessionClick: (String) -> Unit,
-    onConversationClick: (ConversationTree) -> Unit,
+    onConversationClick: (Conversation) -> Unit,
 ) {
     CompactCard(
         modifier = Modifier.padding(vertical = 4.dp)
@@ -298,7 +298,7 @@ private fun ProjectGroupHeader(
                         modifier = Modifier.weight(1f)
                     ) {
                         Text(text = latestConversation.displayPreview())
-                        Text(text = LocalTranslation.current.messagesCountText.format(latestConversation.messages.size))
+                        // Message count removed - messages are loaded separately via ConversationService
                         Text(text = group.formattedTime)
                     }
 
@@ -339,9 +339,9 @@ private fun ProjectGroupHeader(
 
 @Composable
 private fun ConversationItem(
-    conversation: ConversationTree,
+    conversation: Conversation,
     project: Project,
-    onConversationClick: (ConversationTree, Project) -> Unit,
+    onConversationClick: (Conversation, Project) -> Unit,
     isGrouped: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
@@ -380,9 +380,7 @@ private fun ConversationItem(
                     } else {
                         Spacer(modifier = Modifier.weight(1f))
                     }
-                    Text(
-                        text = LocalTranslation.current.messagesCountText.format(conversation.messages.size)
-                    )
+                    // Message count removed - messages are loaded separately via ConversationService
                 }
             }
 
@@ -398,9 +396,9 @@ private fun ConversationItem(
 }
 
 private fun CoroutineScope.handleConversationClick(
-    clickedConversation: ConversationTree,
+    clickedConversation: Conversation,
     project: Project,
-    onConversationSelected: (ConversationTree, Project) -> Unit,
+    onConversationSelected: (Conversation, Project) -> Unit,
     appViewModel: AppViewModel,
 ) {
     launch {

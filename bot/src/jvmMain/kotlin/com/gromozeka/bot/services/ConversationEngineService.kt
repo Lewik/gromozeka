@@ -1,7 +1,7 @@
 package com.gromozeka.bot.services
 
-import com.gromozeka.shared.domain.conversation.ConversationTree
-import com.gromozeka.shared.services.ConversationTreeService
+import com.gromozeka.shared.domain.Conversation
+import com.gromozeka.shared.services.ConversationService
 import klog.KLoggers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -37,7 +37,7 @@ class ConversationEngineService(
     private val chatModel: ChatModel,
     private val toolCallingManager: ToolCallingManager,
     private val toolApprovalService: ToolApprovalService,
-    private val conversationTreeService: ConversationTreeService,
+    private val conversationService: ConversationService,
     private val messageConversionService: MessageConversionService,
 ) {
     private val log = KLoggers.logger(this)
@@ -53,23 +53,22 @@ class ConversationEngineService(
      * @return Flow of StreamUpdate events representing the conversation progress
      */
     suspend fun streamMessage(
-        conversationId: ConversationTree.Id,
-        userMessage: ConversationTree.Message
+        conversationId: Conversation.Id,
+        userMessage: Conversation.Message
     ): Flow<StreamUpdate> = flow {
         log.debug { "Starting user-controlled tool execution for conversation: $conversationId" }
 
         // 1. Load conversation history
-        val conversation = conversationTreeService.findById(conversationId)
-            ?: throw IllegalStateException("Conversation not found: $conversationId")
+        val messages = conversationService.loadCurrentMessages(conversationId)
 
-        log.debug { "Loaded conversation with ${conversation.messages.size} messages" }
+        log.debug { "Loaded conversation with ${messages.size} messages" }
 
         // 2. Persist user message immediately
-        conversationTreeService.addMessage(conversationId, userMessage)
+        conversationService.addMessage(conversationId, userMessage)
 
         // 3. Convert history to Spring AI format
         val springHistory = messageConversionService.convertHistoryToSpringAI(
-            conversation.messages + userMessage
+            messages + userMessage
         )
 
         log.debug { "Converted ${springHistory.size} messages to Spring AI format" }
@@ -121,9 +120,10 @@ class ConversationEngineService(
 
                         if (isThinking || hasText || hasToolCalls) {
                             val conversationMessage = messageConversionService.fromSpringAI(assistantMessage)
+                                .copy(conversationId = conversationId)
                             if (conversationMessage.content.isNotEmpty()) {
                                 emit(StreamUpdate.Chunk(conversationMessage))
-                                conversationTreeService.addMessage(conversationId, conversationMessage)
+                                conversationService.addMessage(conversationId, conversationMessage)
                                 log.debug { "Emitted chunk: ${conversationMessage.content.size} content items, " +
                                     "thinking=$isThinking, hasText=$hasText, hasToolCalls=$hasToolCalls" }
                             } else {
@@ -196,8 +196,9 @@ class ConversationEngineService(
 
                     // Convert to conversation format and emit
                     val errorConversationMessage = messageConversionService.fromSpringAI(errorToolResponseMessage)
+                        .copy(conversationId = conversationId)
                     emit(StreamUpdate.Chunk(errorConversationMessage))
-                    conversationTreeService.addMessage(conversationId, errorConversationMessage)
+                    conversationService.addMessage(conversationId, errorConversationMessage)
                     log.debug { "Emitted and persisted error tool result, continuing conversation" }
 
                     // Update prompt with error response and continue loop
@@ -222,8 +223,9 @@ class ConversationEngineService(
 
                 toolResultMessages.forEach { toolResponseMessage ->
                     val toolResultConversationMessage = messageConversionService.fromSpringAI(toolResponseMessage)
+                        .copy(conversationId = conversationId)
                     emit(StreamUpdate.Chunk(toolResultConversationMessage))
-                    conversationTreeService.addMessage(conversationId, toolResultConversationMessage)
+                    conversationService.addMessage(conversationId, toolResultConversationMessage)
                     log.debug { "Emitted and persisted tool result message" }
                 }
 
@@ -273,7 +275,7 @@ class ConversationEngineService(
         /**
          * A chunk of the conversation (a complete message).
          */
-        data class Chunk(val message: ConversationTree.Message) : StreamUpdate()
+        data class Chunk(val message: Conversation.Message) : StreamUpdate()
 
         /**
          * An error occurred during conversation processing.

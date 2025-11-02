@@ -1,7 +1,7 @@
 package com.gromozeka.bot.services.mcp
 
 import com.gromozeka.bot.ui.viewmodel.AppViewModel
-import com.gromozeka.shared.domain.conversation.ConversationTree
+import com.gromozeka.shared.domain.Conversation
 import klog.KLoggers
 
 import io.modelcontextprotocol.kotlin.sdk.CallToolRequest
@@ -95,14 +95,14 @@ class TellAgentTool(
         val targetTab = tabs[targetTabIndex]
 
         // Create instructions for the message
-        val allInstructions = mutableListOf<ConversationTree.Message.Instruction>()
+        val allInstructions = mutableListOf<Conversation.Message.Instruction>()
         
         // Add source instruction (replaces sender)
-        allInstructions.add(ConversationTree.Message.Instruction.Source.Agent(senderTabId))
+        allInstructions.add(Conversation.Message.Instruction.Source.Agent(senderTabId))
         
         // Add response expected instruction if needed
         if (input.expects_response) {
-            allInstructions.add(ConversationTree.Message.Instruction.ResponseExpected(targetTabId = senderTabId))
+            allInstructions.add(Conversation.Message.Instruction.ResponseExpected(targetTabId = senderTabId))
         }
 
         // Send message to target session via TabViewModel with structured instructions

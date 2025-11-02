@@ -1,7 +1,7 @@
 package com.gromozeka.shared.repository
 
-import com.gromozeka.shared.domain.context.Context
-import com.gromozeka.shared.domain.project.Project
+import com.gromozeka.shared.domain.Context
+import com.gromozeka.shared.domain.Project
 
 interface ContextRepository {
     suspend fun save(context: Context): Context

@@ -21,8 +21,10 @@ fun main() {
 
     val allTables = arrayOf(
         Projects,
-        ConversationTrees,
-        ConversationMessages,
+        Conversations,
+        Threads,
+        Messages,
+        ThreadMessages,
         ToolExecutions,
         Contexts,
         Agents

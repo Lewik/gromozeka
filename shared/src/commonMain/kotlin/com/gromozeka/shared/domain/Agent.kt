@@ -1,4 +1,4 @@
-package com.gromozeka.shared.domain.agent
+package com.gromozeka.shared.domain
 
 import kotlinx.serialization.Serializable
 import kotlin.time.Instant

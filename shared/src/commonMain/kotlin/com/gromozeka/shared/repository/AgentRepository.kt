@@ -1,6 +1,6 @@
 package com.gromozeka.shared.repository
 
-import com.gromozeka.shared.domain.agent.Agent
+import com.gromozeka.shared.domain.Agent
 
 interface AgentRepository {
     suspend fun save(agent: Agent): Agent

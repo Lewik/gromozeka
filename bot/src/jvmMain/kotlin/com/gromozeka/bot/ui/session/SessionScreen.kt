@@ -196,14 +196,65 @@ fun SessionScreen(
                             message = message,
                             settings = settings,
                             toolResultsMap = toolResultsMap,
+                            isSelected = message.id in uiState.selectedMessageIds,
+                            onToggleSelection = { messageId ->
+                                viewModel.toggleMessageSelection(messageId)
+                            },
                             onShowJson = { json -> viewModel.jsonToShow = json },
                             onSpeakRequest = { text, tone ->
                                 coroutineScope.launch {
                                     ttsQueueService.enqueue(TTSQueueService.Task(text, tone))
                                 }
+                            },
+                            onEditRequest = { messageId ->
+                                viewModel.startEditMessage(messageId)
+                            },
+                            onDeleteRequest = { messageId ->
+                                coroutineScope.launch {
+                                    viewModel.deleteMessage(messageId)
+                                }
                             }
                         )
                     }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Squash button (shown when 2+ messages selected)
+                if (uiState.selectedMessageIds.size >= 2) {
+                    DisableSelection {
+                        CompactButton(
+                            onClick = {
+                                coroutineScope.launch {
+                                    viewModel.squashSelectedMessages()
+                                }
+                            },
+                            tooltip = "Squash ${uiState.selectedMessageIds.size} selected messages"
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.MergeType, contentDescription = "Squash")
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Squash (${uiState.selectedMessageIds.size})")
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+                }
+
+                // Edit message dialog
+                if (uiState.editingMessageId != null) {
+                    EditMessageDialog(
+                        messageText = uiState.editingMessageText,
+                        onTextChange = { viewModel.updateEditingMessageText(it) },
+                        onConfirm = {
+                            coroutineScope.launch {
+                                viewModel.confirmEditMessage()
+                            }
+                        },
+                        onDismiss = {
+                            viewModel.cancelEditMessage()
+                        }
+                    )
                 }
 
                 Spacer(modifier = Modifier.height(8.dp))

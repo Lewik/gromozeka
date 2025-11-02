@@ -1,4 +1,4 @@
-package com.gromozeka.shared.domain.project
+package com.gromozeka.shared.domain
 
 import kotlinx.serialization.Serializable
 import kotlin.time.Instant
@@ -11,10 +11,6 @@ data class Project(
     val description: String? = null,
     val favorite: Boolean = false,
     val archived: Boolean = false,
-    val tags: Set<String> = emptySet(),
-    val metadata: Map<String, String>? = null,
-    val settings: Map<String, String>? = null,
-    val statistics: Map<String, String>? = null,
     val createdAt: Instant,
     val lastUsedAt: Instant,
 ) {

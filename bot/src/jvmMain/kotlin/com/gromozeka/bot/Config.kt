@@ -9,7 +9,7 @@ import com.gromozeka.bot.services.translation.TranslationService
 import com.gromozeka.bot.ui.viewmodel.AppViewModel
 import com.gromozeka.bot.ui.viewmodel.ConversationSearchViewModel
 import com.gromozeka.shared.audio.AudioRecorder
-import com.gromozeka.shared.services.ConversationTreeService
+import com.gromozeka.shared.services.ConversationService
 import io.ktor.client.*
 import io.ktor.client.engine.cio.*
 import io.ktor.client.plugins.contentnegotiation.*
@@ -64,7 +64,7 @@ class Config {
     @Bean
     fun appViewModel(
         conversationEngineService: ConversationEngineService,
-        conversationTreeService: ConversationTreeService,
+        conversationService: ConversationService,
         soundNotificationService: SoundNotificationService,
         settingsService: SettingsService,
         @Qualifier("coroutineScope") scope: CoroutineScope,
@@ -72,7 +72,7 @@ class Config {
         defaultAgentProvider: DefaultAgentProvider,
     ) = AppViewModel(
         conversationEngineService,
-        conversationTreeService,
+        conversationService,
         soundNotificationService,
         settingsService,
         scope,

@@ -1,14 +1,8 @@
 package com.gromozeka.bot.config
 
 import com.gromozeka.bot.services.GitService
-import com.gromozeka.shared.repository.AgentRepository
-import com.gromozeka.shared.repository.ContextRepository
-import com.gromozeka.shared.repository.ConversationTreeRepository
-import com.gromozeka.shared.repository.ProjectRepository
-import com.gromozeka.shared.services.AgentService
-import com.gromozeka.shared.services.ContextService
-import com.gromozeka.shared.services.ConversationTreeService
-import com.gromozeka.shared.services.ProjectService
+import com.gromozeka.shared.repository.*
+import com.gromozeka.shared.services.*
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 
@@ -29,10 +23,13 @@ class ServiceConfig {
     ) = AgentService(agentRepository)
 
     @Bean
-    fun conversationTreeService(
-        conversationTreeRepository: ConversationTreeRepository,
+    fun conversationService(
+        conversationRepo: ConversationRepository,
+        threadRepo: ThreadRepository,
+        messageRepo: MessageRepository,
+        threadMessageRepo: ThreadMessageRepository,
         projectService: ProjectService
-    ) = ConversationTreeService(conversationTreeRepository, projectService)
+    ) = ConversationService(conversationRepo, threadRepo, messageRepo, threadMessageRepo, projectService)
 
     @Bean
     fun contextService(

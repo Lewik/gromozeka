@@ -1,6 +1,6 @@
 package com.gromozeka.bot.services
 
-import com.gromozeka.shared.domain.conversation.ConversationTree
+import com.gromozeka.shared.domain.Conversation
 import klog.KLoggers
 import kotlinx.serialization.json.Json
 import org.springframework.ai.chat.messages.AssistantMessage
@@ -12,7 +12,7 @@ import java.util.UUID
 import kotlin.time.Clock
 
 /**
- * Service for converting messages between ConversationTree domain model
+ * Service for converting messages between Conversation domain model
  * and Spring AI message format.
  *
  * Supports:
@@ -26,7 +26,7 @@ class MessageConversionService {
     private val json = Json { ignoreUnknownKeys = true }
 
     /**
-     * Convert ConversationTree.Message to Spring AI Message format.
+     * Convert Conversation.Message to Spring AI Message format.
      *
      * Handles:
      * - USER role → UserMessage
@@ -35,11 +35,11 @@ class MessageConversionService {
      * - ASSISTANT role with tool results → ToolResponseMessage
      * - ASSISTANT role with text only → AssistantMessage(text)
      */
-    fun toSpringAI(message: ConversationTree.Message): Message? {
+    fun toSpringAI(message: Conversation.Message): Message? {
         return when (message.role) {
-            ConversationTree.Message.Role.USER -> {
+            Conversation.Message.Role.USER -> {
                 val text = message.content
-                    .filterIsInstance<ConversationTree.Message.ContentItem.UserMessage>()
+                    .filterIsInstance<Conversation.Message.ContentItem.UserMessage>()
                     .joinToString(" ") { it.text }
 
                 if (text.isBlank()) {
@@ -62,12 +62,12 @@ class MessageConversionService {
                 }
             }
 
-            ConversationTree.Message.Role.ASSISTANT -> {
-                val thinkingBlocks = message.content.filterIsInstance<ConversationTree.Message.ContentItem.Thinking>()
-                val toolCalls = message.content.filterIsInstance<ConversationTree.Message.ContentItem.ToolCall>()
-                val toolResults = message.content.filterIsInstance<ConversationTree.Message.ContentItem.ToolResult>()
+            Conversation.Message.Role.ASSISTANT -> {
+                val thinkingBlocks = message.content.filterIsInstance<Conversation.Message.ContentItem.Thinking>()
+                val toolCalls = message.content.filterIsInstance<Conversation.Message.ContentItem.ToolCall>()
+                val toolResults = message.content.filterIsInstance<Conversation.Message.ContentItem.ToolResult>()
                 val text = message.content
-                    .filterIsInstance<ConversationTree.Message.ContentItem.AssistantMessage>()
+                    .filterIsInstance<Conversation.Message.ContentItem.AssistantMessage>()
                     .joinToString(" ") { it.structured.fullText }
 
                 when {
@@ -90,7 +90,7 @@ class MessageConversionService {
                         ToolResponseMessage(
                             toolResults.map { tr ->
                                 val resultText = tr.result
-                                    .filterIsInstance<ConversationTree.Message.ContentItem.ToolResult.Data.Text>()
+                                    .filterIsInstance<Conversation.Message.ContentItem.ToolResult.Data.Text>()
                                     .joinToString(" ") { it.content }
 
                                 ToolResponseMessage.ToolResponse(
@@ -132,7 +132,7 @@ class MessageConversionService {
                 }
             }
 
-            ConversationTree.Message.Role.SYSTEM -> {
+            Conversation.Message.Role.SYSTEM -> {
                 log.debug { "Skipping SYSTEM message (UI/logging only)" }
                 null
             }
@@ -140,12 +140,12 @@ class MessageConversionService {
     }
 
     /**
-     * Convert Spring AI AssistantMessage to ConversationTree.Message.
+     * Convert Spring AI AssistantMessage to Conversation.Message.
      *
      * Handles both text content, tool calls, and thinking blocks.
      */
-    fun fromSpringAI(message: AssistantMessage): ConversationTree.Message {
-        val content = mutableListOf<ConversationTree.Message.ContentItem>()
+    fun fromSpringAI(message: AssistantMessage): Conversation.Message {
+        val content = mutableListOf<Conversation.Message.ContentItem>()
 
         // Check if this is a thinking block (thinking blocks come as separate AssistantMessage with metadata)
         val isThinking = message.metadata["thinking"] as? Boolean ?: false
@@ -158,7 +158,7 @@ class MessageConversionService {
             log.debug { "Converting thinking block: signature='$signature', text length=${thinkingText.length}" }
 
             content.add(
-                ConversationTree.Message.ContentItem.Thinking(
+                Conversation.Message.ContentItem.Thinking(
                     signature = signature,
                     thinking = thinkingText
                 )
@@ -173,8 +173,8 @@ class MessageConversionService {
             if (!text.isNullOrBlank()) {
                 log.debug { "Assistant message text: '${text.take(100)}' (${text.length} chars, hasToolCalls=$hasToolCalls)" }
                 content.add(
-                    ConversationTree.Message.ContentItem.AssistantMessage(
-                        structured = ConversationTree.Message.StructuredText(
+                    Conversation.Message.ContentItem.AssistantMessage(
+                        structured = Conversation.Message.StructuredText(
                             fullText = text
                         )
                     )
@@ -185,9 +185,9 @@ class MessageConversionService {
             message.toolCalls?.forEach { toolCall ->
                 log.debug { "Converting tool call: ${toolCall.name()} (${toolCall.id()})" }
                 content.add(
-                    ConversationTree.Message.ContentItem.ToolCall(
-                        id = ConversationTree.Message.ContentItem.ToolCall.Id(toolCall.id()),
-                        call = ConversationTree.Message.ContentItem.ToolCall.Data(
+                    Conversation.Message.ContentItem.ToolCall(
+                        id = Conversation.Message.ContentItem.ToolCall.Id(toolCall.id()),
+                        call = Conversation.Message.ContentItem.ToolCall.Data(
                             name = toolCall.name(),
                             input = json.parseToJsonElement(toolCall.arguments())
                         )
@@ -196,28 +196,29 @@ class MessageConversionService {
             }
         }
 
-        return ConversationTree.Message(
-            id = ConversationTree.Message.Id(UUID.randomUUID().toString()),
-            timestamp = Clock.System.now(),
-            role = ConversationTree.Message.Role.ASSISTANT,
+        return Conversation.Message(
+            id = Conversation.Message.Id(UUID.randomUUID().toString()),
+            conversationId = Conversation.Id(""), // Will be set by caller
+            createdAt = Clock.System.now(),
+            role = Conversation.Message.Role.ASSISTANT,
             content = content
         )
     }
 
     /**
-     * Convert Spring AI ToolResponseMessage to ConversationTree.Message.
+     * Convert Spring AI ToolResponseMessage to Conversation.Message.
      *
      * Tool results are stored as ASSISTANT role messages with ToolResult content items.
      */
-    fun fromSpringAI(message: ToolResponseMessage): ConversationTree.Message {
+    fun fromSpringAI(message: ToolResponseMessage): Conversation.Message {
         log.debug { "Converting ${message.responses.size} tool responses" }
 
         val content = message.responses.map { response ->
-            ConversationTree.Message.ContentItem.ToolResult(
-                toolUseId = ConversationTree.Message.ContentItem.ToolCall.Id(response.id()),
+            Conversation.Message.ContentItem.ToolResult(
+                toolUseId = Conversation.Message.ContentItem.ToolCall.Id(response.id()),
                 toolName = response.name(),
                 result = listOf(
-                    ConversationTree.Message.ContentItem.ToolResult.Data.Text(
+                    Conversation.Message.ContentItem.ToolResult.Data.Text(
                         content = response.responseData()
                     )
                 ),
@@ -225,20 +226,21 @@ class MessageConversionService {
             )
         }
 
-        return ConversationTree.Message(
-            id = ConversationTree.Message.Id(UUID.randomUUID().toString()),
-            timestamp = Clock.System.now(),
-            role = ConversationTree.Message.Role.ASSISTANT,
+        return Conversation.Message(
+            id = Conversation.Message.Id(UUID.randomUUID().toString()),
+            conversationId = Conversation.Id(""), // Will be set by caller
+            createdAt = Clock.System.now(),
+            role = Conversation.Message.Role.ASSISTANT,
             content = content
         )
     }
 
     /**
-     * Convert a list of ConversationTree messages to Spring AI format.
+     * Convert a list of Conversation messages to Spring AI format.
      *
      * Filters out null results (e.g., empty messages, SYSTEM messages).
      */
-    fun convertHistoryToSpringAI(messages: List<ConversationTree.Message>): List<Message> {
+    fun convertHistoryToSpringAI(messages: List<Conversation.Message>): List<Message> {
         return messages.mapNotNull { toSpringAI(it) }
     }
 }

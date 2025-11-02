@@ -53,9 +53,8 @@ kotlin {
                 implementation(libs.multiplatform.markdown.renderer.code)
                 
                 implementation(project(":shared"))
-                
+
                 implementation(libs.kotlin.reflect)
-                implementation(libs.kotlinx.datetime)
                 implementation(libs.kotlinx.coroutines.reactor)
                 
                 // Ktor Client

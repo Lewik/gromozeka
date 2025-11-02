@@ -4,7 +4,7 @@ import com.gromozeka.bot.services.ContextExtractionService
 import com.gromozeka.bot.ui.state.ConversationInitiator
 import com.gromozeka.bot.services.ContextFileService
 import com.gromozeka.bot.services.ContextItem
-import com.gromozeka.shared.domain.conversation.ConversationTree
+import com.gromozeka.shared.domain.Conversation
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -122,17 +122,18 @@ class ContextsPanelViewModel(
 
             // Create ChatMessage with context content and proper source
             val sourceInstruction = if (parentTabId != null) {
-                ConversationTree.Message.Instruction.Source.Agent(parentTabId)
+                Conversation.Message.Instruction.Source.Agent(parentTabId)
             } else {
-                ConversationTree.Message.Instruction.Source.User
+                Conversation.Message.Instruction.Source.User
             }
             
-            val chatMessage = ConversationTree.Message(
-                role = ConversationTree.Message.Role.USER,
-                content = listOf(ConversationTree.Message.ContentItem.UserMessage(contextContent)),
-                instructions = listOf(sourceInstruction),
-                id = ConversationTree.Message.Id(UUID.randomUUID().toString()),
-                timestamp = Clock.System.now()
+            val chatMessage = Conversation.Message(
+                id = Conversation.Message.Id(UUID.randomUUID().toString()),
+                conversationId = Conversation.Id(""), // Will be set when conversation is created
+                role = Conversation.Message.Role.USER,
+                content = listOf(Conversation.Message.ContentItem.UserMessage(contextContent)),
+                createdAt = Clock.System.now(),
+                instructions = listOf(sourceInstruction)
             )
             
             appViewModel.createTab(

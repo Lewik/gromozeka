@@ -1,6 +1,6 @@
 package com.gromozeka.shared.repository
 
-import com.gromozeka.shared.domain.project.Project
+import com.gromozeka.shared.domain.Project
 
 interface ProjectRepository {
     suspend fun save(project: Project): Project

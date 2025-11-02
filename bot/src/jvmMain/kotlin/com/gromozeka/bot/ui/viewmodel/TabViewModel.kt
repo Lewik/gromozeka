@@ -9,9 +9,9 @@ import com.gromozeka.bot.services.SoundNotificationService
 import com.gromozeka.bot.settings.Settings
 import com.gromozeka.bot.ui.state.UIState
 import com.gromozeka.bot.utils.ChatMessageSoundDetector
-import com.gromozeka.shared.domain.conversation.ConversationTree
-import com.gromozeka.shared.domain.message.MessageTagDefinition
-import com.gromozeka.shared.services.ConversationTreeService
+import com.gromozeka.shared.domain.Conversation
+import com.gromozeka.shared.domain.MessageTagDefinition
+import com.gromozeka.shared.services.ConversationService
 import klog.KLoggers
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.*
@@ -20,10 +20,10 @@ import kotlin.time.Clock
 import java.util.UUID
 
 class TabViewModel(
-    val conversationId: ConversationTree.Id,
+    val conversationId: Conversation.Id,
     val projectPath: String,
     private val conversationEngineService: ConversationEngineService,
-    private val conversationTreeService: ConversationTreeService,
+    private val conversationService: ConversationService,
     private val soundNotificationService: SoundNotificationService,
     private val settingsFlow: StateFlow<Settings>,
     private val scope: CoroutineScope,
@@ -44,11 +44,11 @@ class TabViewModel(
             MessageTagDefinition(
                 controls = listOf(
                     MessageTagDefinition.Control(
-                        data = ConversationTree.Message.Instruction.UserInstruction("thinking_off", "Off", "Обычный режим работы"),
+                        data = Conversation.Message.Instruction.UserInstruction("thinking_off", "Off", "Обычный режим работы"),
                         includeInMessage = false
                     ),
                     MessageTagDefinition.Control(
-                        data = ConversationTree.Message.Instruction.UserInstruction(
+                        data = Conversation.Message.Instruction.UserInstruction(
                             "thinking_ultrathink",
                             "Ultrathink",
                             "Режим глубокого анализа с пошаговыми рассуждениями и детальной проработкой"
@@ -61,7 +61,7 @@ class TabViewModel(
             MessageTagDefinition(
                 controls = listOf(
                     MessageTagDefinition.Control(
-                        data = ConversationTree.Message.Instruction.UserInstruction(
+                        data = Conversation.Message.Instruction.UserInstruction(
                             "mode_readonly",
                             "Readonly",
                             "Режим readonly - никаких изменений кода или команд применяющих изменения"
@@ -69,7 +69,7 @@ class TabViewModel(
                         includeInMessage = true
                     ),
                     MessageTagDefinition.Control(
-                        data = ConversationTree.Message.Instruction.UserInstruction("mode_writable", "Writable", "Разрешено исправление файлов"),
+                        data = Conversation.Message.Instruction.UserInstruction("mode_writable", "Writable", "Разрешено исправление файлов"),
                         includeInMessage = true
                     )
                 ),
@@ -79,7 +79,7 @@ class TabViewModel(
 
         fun getDefaultEnabledTags(): Set<String> {
             return ALL_MESSAGE_TAG_DEFINITIONS.map { tagDefinition ->
-                (tagDefinition.controls[tagDefinition.selectedByDefault].data as ConversationTree.Message.Instruction.UserInstruction).id
+                (tagDefinition.controls[tagDefinition.selectedByDefault].data as Conversation.Message.Instruction.UserInstruction).id
             }.toSet()
         }
     }
@@ -92,8 +92,8 @@ class TabViewModel(
         scope, SharingStarted.Lazily, initialTabUiState.activeMessageTags
     )
 
-    private val _allMessages = MutableStateFlow<List<ConversationTree.Message>>(emptyList())
-    val allMessages: StateFlow<List<ConversationTree.Message>> = _allMessages.asStateFlow()
+    private val _allMessages = MutableStateFlow<List<Conversation.Message>>(emptyList())
+    val allMessages: StateFlow<List<Conversation.Message>> = _allMessages.asStateFlow()
 
     private val _isWaitingForResponse = MutableStateFlow(false)
     val isWaitingForResponse: StateFlow<Boolean> = _isWaitingForResponse.asStateFlow()
@@ -110,33 +110,31 @@ class TabViewModel(
 
     private suspend fun loadMessages() {
         try {
-            val conversation = conversationTreeService.findById(conversationId)
-            if (conversation != null) {
-                _allMessages.value = conversation.messages
-                log.debug { "Loaded ${conversation.messages.size} messages for conversation $conversationId" }
-            }
+            val messages = conversationService.loadCurrentMessages(conversationId)
+            _allMessages.value = messages
+            log.debug { "Loaded ${messages.size} messages for conversation $conversationId" }
         } catch (e: Exception) {
             log.error(e) { "Failed to load messages for conversation $conversationId" }
         }
     }
 
-    val filteredMessages: StateFlow<List<ConversationTree.Message>> = combine(
+    val filteredMessages: StateFlow<List<Conversation.Message>> = combine(
         allMessages,
         settingsFlow
     ) { messages, settings ->
         messages.filter { message ->
             val containsOnlyToolResults = message.content.isNotEmpty() &&
-                    message.content.all { it is ConversationTree.Message.ContentItem.ToolResult }
+                    message.content.all { it is Conversation.Message.ContentItem.ToolResult }
 
             if (containsOnlyToolResults) {
                 false
             } else if (settings.showSystemMessages) {
                 true
             } else {
-                message.role != ConversationTree.Message.Role.SYSTEM ||
+                message.role != Conversation.Message.Role.SYSTEM ||
                         message.content.any { content ->
-                            content is ConversationTree.Message.ContentItem.System &&
-                                    content.level == ConversationTree.Message.ContentItem.System.SystemLevel.ERROR
+                            content is Conversation.Message.ContentItem.System &&
+                                    content.level == Conversation.Message.ContentItem.System.SystemLevel.ERROR
                         }
             }
         }
@@ -146,12 +144,12 @@ class TabViewModel(
         initialValue = emptyList()
     )
 
-    val toolResultsMap: StateFlow<Map<String, ConversationTree.Message.ContentItem.ToolResult>> =
+    val toolResultsMap: StateFlow<Map<String, Conversation.Message.ContentItem.ToolResult>> =
         allMessages
             .map { messages ->
                 messages
                     .flatMap { message ->
-                        message.content.filterIsInstance<ConversationTree.Message.ContentItem.ToolResult>()
+                        message.content.filterIsInstance<Conversation.Message.ContentItem.ToolResult>()
                     }
                     .associateBy { it.toolUseId.value }
             }
@@ -164,9 +162,9 @@ class TabViewModel(
     fun toggleMessageTag(messageTag: MessageTagDefinition, controlIndex: Int) {
         _uiState.update { currentState ->
             if (controlIndex >= 0 && controlIndex < messageTag.controls.size) {
-                val selectedId = (messageTag.controls[controlIndex].data as ConversationTree.Message.Instruction.UserInstruction).id
+                val selectedId = (messageTag.controls[controlIndex].data as Conversation.Message.Instruction.UserInstruction).id
 
-                val allIdsInGroup = messageTag.controls.map { (it.data as ConversationTree.Message.Instruction.UserInstruction).id }.toSet()
+                val allIdsInGroup = messageTag.controls.map { (it.data as Conversation.Message.Instruction.UserInstruction).id }.toSet()
 
                 val isAlreadyActive = selectedId in currentState.activeMessageTags
 
@@ -197,13 +195,13 @@ class TabViewModel(
 
     suspend fun sendMessageToSession(
         message: String,
-        additionalInstructions: List<ConversationTree.Message.Instruction> = emptyList(),
+        additionalInstructions: List<Conversation.Message.Instruction> = emptyList(),
     ) {
         val currentState = _uiState.value
 
         val activeTagsData = availableMessageTags.mapNotNull { messageTag ->
             val activeControlIndex = messageTag.controls.indexOfFirst { control ->
-                (control.data as ConversationTree.Message.Instruction.UserInstruction).id in currentState.activeMessageTags
+                (control.data as Conversation.Message.Instruction.UserInstruction).id in currentState.activeMessageTags
             }
 
             val selectedControlIndex = if (activeControlIndex >= 0) activeControlIndex else messageTag.selectedByDefault
@@ -216,11 +214,12 @@ class TabViewModel(
 
         val instructions = activeTagsData + additionalInstructions
 
-        val userMessage = ConversationTree.Message(
-            id = ConversationTree.Message.Id(UUID.randomUUID().toString()),
-            role = ConversationTree.Message.Role.USER,
-            content = listOf(ConversationTree.Message.ContentItem.UserMessage(message)),
-            timestamp = Clock.System.now(),
+        val userMessage = Conversation.Message(
+            id = Conversation.Message.Id(UUID.randomUUID().toString()),
+            conversationId = conversationId,
+            role = Conversation.Message.Role.USER,
+            content = listOf(Conversation.Message.ContentItem.UserMessage(message)),
+            createdAt = Clock.System.now(),
             instructions = instructions
         )
 
@@ -232,7 +231,7 @@ class TabViewModel(
             try {
                 log.debug { "Sending message to conversation $conversationId" }
 
-                var lastMessage: ConversationTree.Message? = null
+                var lastMessage: Conversation.Message? = null
 
                 conversationEngineService.streamMessage(conversationId, userMessage)
                     .collect { update ->
@@ -291,6 +290,126 @@ class TabViewModel(
                 "$currentInput $filePath"
             }
             _uiState.update { it.copy(userInput = newInput) }
+        }
+    }
+
+    // Message selection management
+    fun toggleMessageSelection(messageId: Conversation.Message.Id) {
+        _uiState.update { currentState ->
+            val selectedIds = currentState.selectedMessageIds
+            val newSelectedIds = if (messageId in selectedIds) {
+                selectedIds - messageId
+            } else {
+                selectedIds + messageId
+            }
+            currentState.copy(selectedMessageIds = newSelectedIds)
+        }
+    }
+
+    fun clearMessageSelection() {
+        _uiState.update { it.copy(selectedMessageIds = emptySet()) }
+    }
+
+    // Edit message dialog
+    fun startEditMessage(messageId: Conversation.Message.Id) {
+        val message = _allMessages.value.find { it.id == messageId }
+        val text = message?.content
+            ?.filterIsInstance<Conversation.Message.ContentItem.UserMessage>()
+            ?.firstOrNull()?.text
+            ?: message?.content
+                ?.filterIsInstance<Conversation.Message.ContentItem.AssistantMessage>()
+                ?.firstOrNull()?.structured?.fullText
+            ?: ""
+
+        _uiState.update {
+            it.copy(
+                editingMessageId = messageId,
+                editingMessageText = text
+            )
+        }
+    }
+
+    fun updateEditingMessageText(text: String) {
+        _uiState.update { it.copy(editingMessageText = text) }
+    }
+
+    fun cancelEditMessage() {
+        _uiState.update {
+            it.copy(
+                editingMessageId = null,
+                editingMessageText = ""
+            )
+        }
+    }
+
+    suspend fun confirmEditMessage() {
+        val editingId = _uiState.value.editingMessageId ?: return
+        val newText = _uiState.value.editingMessageText
+
+        try {
+            val newContent = listOf(
+                Conversation.Message.ContentItem.UserMessage(newText)
+            )
+
+            conversationService.editMessage(conversationId, editingId, newContent)
+
+            cancelEditMessage()
+            loadMessages()
+
+            log.debug { "Message $editingId edited successfully" }
+        } catch (e: Exception) {
+            log.error(e) { "Failed to edit message $editingId" }
+        }
+    }
+
+    // Delete message
+    suspend fun deleteMessage(messageId: Conversation.Message.Id) {
+        try {
+            conversationService.deleteMessage(conversationId, messageId)
+            loadMessages()
+            log.debug { "Message $messageId deleted successfully" }
+        } catch (e: Exception) {
+            log.error(e) { "Failed to delete message $messageId" }
+        }
+    }
+
+    // Squash messages
+    suspend fun squashSelectedMessages() {
+        val selectedIds = _uiState.value.selectedMessageIds
+        if (selectedIds.size < 2) {
+            log.warn { "Need at least 2 messages to squash, got ${selectedIds.size}" }
+            return
+        }
+
+        try {
+            val selectedMessages = _allMessages.value.filter { it.id in selectedIds }
+
+            val combinedText = selectedMessages.joinToString("\n\n") { message ->
+                message.content
+                    .filterIsInstance<Conversation.Message.ContentItem.UserMessage>()
+                    .firstOrNull()?.text
+                    ?: message.content
+                        .filterIsInstance<Conversation.Message.ContentItem.AssistantMessage>()
+                        .firstOrNull()?.structured?.fullText
+                    ?: ""
+            }
+
+            val squashedContent = listOf(
+                Conversation.Message.ContentItem.UserMessage(combinedText)
+            )
+
+            conversationService.squashMessages(
+                conversationId,
+                selectedIds.toList(),
+                squashedContent
+            )
+
+            clearMessageSelection()
+            loadMessages()
+
+            log.debug { "Squashed ${selectedIds.size} messages successfully" }
+        } catch (e: Exception) {
+            log.error(e) { "Failed to squash messages" }
         }
     }
 }

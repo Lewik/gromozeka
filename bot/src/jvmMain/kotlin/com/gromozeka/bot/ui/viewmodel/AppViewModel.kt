@@ -7,9 +7,9 @@ import com.gromozeka.bot.services.SettingsService
 import com.gromozeka.bot.services.SoundNotificationService
 import com.gromozeka.bot.ui.state.UIState
 import com.gromozeka.bot.ui.state.ConversationInitiator
-import com.gromozeka.shared.domain.agent.Agent
-import com.gromozeka.shared.domain.conversation.ConversationTree
-import com.gromozeka.shared.services.ConversationTreeService
+import com.gromozeka.shared.domain.Agent
+import com.gromozeka.shared.domain.Conversation
+import com.gromozeka.shared.services.ConversationService
 import klog.KLoggers
 
 import kotlinx.coroutines.CoroutineScope
@@ -20,7 +20,7 @@ import java.util.UUID
 
 open class AppViewModel(
     private val conversationEngineService: ConversationEngineService,
-    private val conversationTreeService: ConversationTreeService,
+    private val conversationService: ConversationService,
     private val soundNotificationService: SoundNotificationService,
     private val settingsService: SettingsService,
     private val scope: CoroutineScope,
@@ -43,8 +43,8 @@ open class AppViewModel(
     suspend fun createTab(
         projectPath: String,
         agent: Agent? = null,
-        conversationId: ConversationTree.Id? = null,
-        initialMessage: ConversationTree.Message? = null,
+        conversationId: Conversation.Id? = null,
+        initialMessage: Conversation.Message? = null,
         setAsCurrent: Boolean = true,
         initiator: ConversationInitiator = ConversationInitiator.User,
     ): Int = mutex.withLock {
@@ -57,15 +57,15 @@ open class AppViewModel(
         // Create or load conversation
         val conversation = if (conversationId != null) {
             // Resume existing conversation
-            conversationTreeService.findById(conversationId) ?: error("Conversation not found: $conversationId")
+            conversationService.findById(conversationId) ?: error("Conversation not found: $conversationId")
         } else {
             // Create new conversation
-            conversationTreeService.createTree(
+            conversationService.create(
                 projectPath = projectPath
             )
         }
 
-        val parentTabId = initialMessage?.instructions?.filterIsInstance<ConversationTree.Message.Instruction.Source.Agent>()
+        val parentTabId = initialMessage?.instructions?.filterIsInstance<Conversation.Message.Instruction.Source.Agent>()
             ?.firstOrNull()?.tabId
 
         val initialTabUiState = UIState.Tab(
@@ -82,7 +82,7 @@ open class AppViewModel(
             conversationId = conversation.id,
             projectPath = projectPath,
             conversationEngineService = conversationEngineService,
-            conversationTreeService = conversationTreeService,
+            conversationService = conversationService,
             soundNotificationService = soundNotificationService,
             settingsFlow = settingsService.settingsFlow,
             scope = scope,
@@ -102,7 +102,7 @@ open class AppViewModel(
         }
 
         if (initialMessage != null) {
-            val messageContent = initialMessage.content.filterIsInstance<ConversationTree.Message.ContentItem.UserMessage>()
+            val messageContent = initialMessage.content.filterIsInstance<Conversation.Message.ContentItem.UserMessage>()
                 .firstOrNull()?.text ?: "Ready to work on this project"
             log.debug("Initial message preview: ${messageContent.take(100)}...")
             try {
@@ -182,10 +182,10 @@ open class AppViewModel(
         uiState.tabs.forEach { tabUiState ->
             try {
                 // Load conversation from saved state or create new (backward compatibility)
-                val conversation = conversationTreeService.findById(tabUiState.conversationId)
+                val conversation = conversationService.findById(tabUiState.conversationId)
                     ?: run {
                         log.warn("Conversation not found for tab, creating new conversation")
-                        conversationTreeService.createTree(
+                        conversationService.create(
                             projectPath = tabUiState.projectPath
                         )
                     }
@@ -194,7 +194,7 @@ open class AppViewModel(
                     conversationId = conversation.id,
                     projectPath = tabUiState.projectPath,
                     conversationEngineService = conversationEngineService,
-                    conversationTreeService = conversationTreeService,
+                    conversationService = conversationService,
                     soundNotificationService = soundNotificationService,
                     settingsFlow = settingsService.settingsFlow,
                     scope = scope,

@@ -3,7 +3,7 @@ package com.gromozeka.bot.services.mcp
 import com.gromozeka.bot.services.DefaultAgentProvider
 import com.gromozeka.bot.ui.viewmodel.AppViewModel
 import com.gromozeka.bot.ui.state.ConversationInitiator
-import com.gromozeka.shared.domain.conversation.ConversationTree
+import com.gromozeka.shared.domain.Conversation
 import com.gromozeka.shared.services.AgentService
 import io.modelcontextprotocol.kotlin.sdk.CallToolRequest
 import io.modelcontextprotocol.kotlin.sdk.CallToolResult
@@ -102,22 +102,23 @@ class CreateAgentTool(
         val baseMessageText = input.initial_message ?: "Ready to work on this project"
 
         // Create instructions for the new agent
-        val allInstructions = mutableListOf<ConversationTree.Message.Instruction>()
+        val allInstructions = mutableListOf<Conversation.Message.Instruction>()
 
         // Add source instruction (replaces sender)
-        allInstructions.add(ConversationTree.Message.Instruction.Source.Agent(input.parent_tab_id))
+        allInstructions.add(Conversation.Message.Instruction.Source.Agent(input.parent_tab_id))
 
         // Add response expected instruction if needed
         if (input.expects_response) {
-            allInstructions.add(ConversationTree.Message.Instruction.ResponseExpected(targetTabId = input.parent_tab_id))
+            allInstructions.add(Conversation.Message.Instruction.ResponseExpected(targetTabId = input.parent_tab_id))
         }
 
-        val chatMessage = ConversationTree.Message(
-            role = ConversationTree.Message.Role.USER,
-            content = listOf(ConversationTree.Message.ContentItem.UserMessage(baseMessageText)),
-            instructions = allInstructions,
-            id = ConversationTree.Message.Id(UUID.randomUUID().toString()),
-            timestamp = Clock.System.now()
+        val chatMessage = Conversation.Message(
+            id = Conversation.Message.Id(UUID.randomUUID().toString()),
+            conversationId = Conversation.Id(""), // Will be set when conversation is created
+            role = Conversation.Message.Role.USER,
+            content = listOf(Conversation.Message.ContentItem.UserMessage(baseMessageText)),
+            createdAt = Clock.System.now(),
+            instructions = allInstructions
         )
 
         val newTabIndex = appViewModel.createTab(

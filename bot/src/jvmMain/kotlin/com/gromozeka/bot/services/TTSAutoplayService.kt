@@ -1,7 +1,7 @@
 package com.gromozeka.bot.services
 
 import com.gromozeka.bot.ui.viewmodel.AppViewModel
-import com.gromozeka.shared.domain.conversation.ConversationTree
+import com.gromozeka.shared.domain.Conversation
 import klog.KLoggers
 
 import kotlinx.coroutines.CoroutineScope
@@ -50,7 +50,7 @@ class TTSAutoplayService(
 
                 newMessages.forEach { message ->
                     if (shouldPlayAutoTTS(message)) {
-                        val messageTime = message.timestamp
+                        val messageTime = message.createdAt
                         val subscribeTime = subscriptionTimestamp
                         if (subscribeTime == null || messageTime >= subscribeTime) {
                             playAutoTTS(message)
@@ -65,25 +65,25 @@ class TTSAutoplayService(
             .launchIn(scope)
     }
 
-    private fun shouldPlayAutoTTS(message: ConversationTree.Message): Boolean {
+    private fun shouldPlayAutoTTS(message: Conversation.Message): Boolean {
         val settings = settingsService.settings
 
         // Check if TTS is enabled at all
         if (!settings.enableTts) return false
 
         // Only Assistant messages can have TTS
-        if (message.role != ConversationTree.Message.Role.ASSISTANT) return false
+        if (message.role != Conversation.Message.Role.ASSISTANT) return false
 
         // Check if message has TTS content
         return message.content
-            .filterIsInstance<ConversationTree.Message.ContentItem.AssistantMessage>()
+            .filterIsInstance<Conversation.Message.ContentItem.AssistantMessage>()
             .any { it.structured.ttsText != null }
     }
 
-    private suspend fun playAutoTTS(message: ConversationTree.Message) {
+    private suspend fun playAutoTTS(message: Conversation.Message) {
         try {
             val assistantContent = message.content
-                .filterIsInstance<ConversationTree.Message.ContentItem.AssistantMessage>()
+                .filterIsInstance<Conversation.Message.ContentItem.AssistantMessage>()
                 .firstOrNull() ?: return
 
             val ttsText = assistantContent.structured.ttsText ?: return

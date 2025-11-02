@@ -21,35 +21,39 @@ import com.gromozeka.bot.ui.CompactButton
 import com.gromozeka.bot.ui.GromozekaMarkdown
 import com.gromozeka.bot.ui.LocalTranslation
 import com.gromozeka.bot.utils.jsonPrettyPrint
-import com.gromozeka.shared.domain.conversation.ConversationTree
+import com.gromozeka.shared.domain.Conversation
 
 @Composable
 fun MessageItem(
-    message: ConversationTree.Message,
+    message: Conversation.Message,
     settings: Settings,
-    toolResultsMap: Map<String, ConversationTree.Message.ContentItem.ToolResult>,
+    toolResultsMap: Map<String, Conversation.Message.ContentItem.ToolResult>,
+    isSelected: Boolean = false,
+    onToggleSelection: (Conversation.Message.Id) -> Unit = {},
     onShowJson: (String) -> Unit = {},
     onSpeakRequest: (String, String) -> Unit = { _, _ -> },
+    onEditRequest: (Conversation.Message.Id) -> Unit = {},
+    onDeleteRequest: (Conversation.Message.Id) -> Unit = {},
 ) {
     val translation = LocalTranslation.current
 
     // Combined metadata button data
     val roleIcon = when (message.role) {
-        ConversationTree.Message.Role.USER -> Icons.Default.Person
-        ConversationTree.Message.Role.ASSISTANT -> Icons.Default.DeveloperBoard
-        ConversationTree.Message.Role.SYSTEM -> Icons.Default.Settings
+        Conversation.Message.Role.USER -> Icons.Default.Person
+        Conversation.Message.Role.ASSISTANT -> Icons.Default.DeveloperBoard
+        Conversation.Message.Role.SYSTEM -> Icons.Default.Settings
     }
 
     val contentIcons = message.content.mapNotNull { content ->
         when (content) {
-            is ConversationTree.Message.ContentItem.UserMessage -> null
-            is ConversationTree.Message.ContentItem.ToolCall -> Icons.Default.Build
-            is ConversationTree.Message.ContentItem.ToolResult -> null // Don't show ToolResult icon - they're integrated into ToolCall
-            is ConversationTree.Message.ContentItem.Thinking -> Icons.Default.Psychology
-            is ConversationTree.Message.ContentItem.System -> Icons.Default.Settings
-            is ConversationTree.Message.ContentItem.AssistantMessage -> null
-            is ConversationTree.Message.ContentItem.ImageItem -> Icons.Default.Image
-            is ConversationTree.Message.ContentItem.UnknownJson -> Icons.Default.Warning
+            is Conversation.Message.ContentItem.UserMessage -> null
+            is Conversation.Message.ContentItem.ToolCall -> Icons.Default.Build
+            is Conversation.Message.ContentItem.ToolResult -> null // Don't show ToolResult icon - they're integrated into ToolCall
+            is Conversation.Message.ContentItem.Thinking -> Icons.Default.Psychology
+            is Conversation.Message.ContentItem.System -> Icons.Default.Settings
+            is Conversation.Message.ContentItem.AssistantMessage -> null
+            is Conversation.Message.ContentItem.ImageItem -> Icons.Default.Image
+            is Conversation.Message.ContentItem.UnknownJson -> Icons.Default.Warning
         }
     }.distinct()
 
@@ -62,14 +66,14 @@ fun MessageItem(
             append(" / ")
             val contentTypes = message.content.mapNotNull { content ->
                 when (content) {
-                    is ConversationTree.Message.ContentItem.UserMessage -> "Message"
-                    is ConversationTree.Message.ContentItem.ToolCall -> "ToolCall"
-                    is ConversationTree.Message.ContentItem.ToolResult -> null // Don't show in tooltip - integrated into ToolCall
-                    is ConversationTree.Message.ContentItem.Thinking -> "Thinking"
-                    is ConversationTree.Message.ContentItem.System -> "System"
-                    is ConversationTree.Message.ContentItem.AssistantMessage -> "Assistant"
-                    is ConversationTree.Message.ContentItem.ImageItem -> "Image"
-                    is ConversationTree.Message.ContentItem.UnknownJson -> "Unknown"
+                    is Conversation.Message.ContentItem.UserMessage -> "Message"
+                    is Conversation.Message.ContentItem.ToolCall -> "ToolCall"
+                    is Conversation.Message.ContentItem.ToolResult -> null // Don't show in tooltip - integrated into ToolCall
+                    is Conversation.Message.ContentItem.Thinking -> "Thinking"
+                    is Conversation.Message.ContentItem.System -> "System"
+                    is Conversation.Message.ContentItem.AssistantMessage -> "Assistant"
+                    is Conversation.Message.ContentItem.ImageItem -> "Image"
+                    is Conversation.Message.ContentItem.UnknownJson -> "Unknown"
                 }
             }.distinct()
             append(contentTypes.joinToString(", "))
@@ -77,7 +81,7 @@ fun MessageItem(
 
         // Add TTS info if available
         val assistantContent =
-            message.content.filterIsInstance<ConversationTree.Message.ContentItem.AssistantMessage>().firstOrNull()
+            message.content.filterIsInstance<Conversation.Message.ContentItem.AssistantMessage>().firstOrNull()
         assistantContent?.structured?.let { structured ->
             if (structured.ttsText != null || structured.voiceTone != null) {
                 append("\n\n")
@@ -95,6 +99,15 @@ fun MessageItem(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
+        // Selection checkbox (leftmost)
+        DisableSelection {
+            Checkbox(
+                checked = isSelected,
+                onCheckedChange = { onToggleSelection(message.id) },
+                modifier = Modifier.align(Alignment.CenterVertically)
+            )
+        }
+
         // Metadata button (left, fixed width) with context menu
         DisableSelection {
             val clipboardManager = LocalClipboardManager.current
@@ -102,17 +115,17 @@ fun MessageItem(
             ContextMenuArea(
                 items = {
                     val assistantContent = message.content
-                        .filterIsInstance<ConversationTree.Message.ContentItem.AssistantMessage>()
+                        .filterIsInstance<Conversation.Message.ContentItem.AssistantMessage>()
                         .firstOrNull()
                     val hasTtsText = !assistantContent?.structured?.ttsText.isNullOrBlank()
 
                     buildList {
                         add(ContextMenuItem(translation.copyMarkdownMenuItem) {
                             val markdownContent = message.content
-                                .filterIsInstance<ConversationTree.Message.ContentItem.AssistantMessage>()
+                                .filterIsInstance<Conversation.Message.ContentItem.AssistantMessage>()
                                 .firstOrNull()?.structured?.fullText
                                 ?: message.content
-                                    .filterIsInstance<ConversationTree.Message.ContentItem.UserMessage>()
+                                    .filterIsInstance<Conversation.Message.ContentItem.UserMessage>()
                                     .firstOrNull()?.text
                                 ?: translation.contentUnavailable
                             clipboardManager.setText(AnnotatedString(markdownContent))
@@ -125,6 +138,17 @@ fun MessageItem(
                                 onSpeakRequest(ttsText, voiceTone)
                             })
                         }
+
+                        val hasThinking = message.content.any { it is Conversation.Message.ContentItem.Thinking }
+                        if (!hasThinking) {
+                            add(ContextMenuItem("Edit") {
+                                onEditRequest(message.id)
+                            })
+                        }
+
+                        add(ContextMenuItem("Delete") {
+                            onDeleteRequest(message.id)
+                        })
                     }
                 }
             ) {
@@ -162,15 +186,15 @@ fun MessageItem(
         }
 
         // Message content (right, expandable) - LazyColumn should provide proper constraints
-        val hasToolCalls = message.content.any { it is ConversationTree.Message.ContentItem.ToolCall }
+        val hasToolCalls = message.content.any { it is Conversation.Message.ContentItem.ToolCall }
 
         Column(
             modifier = Modifier
                 .weight(1f)
                 .heightIn(min = 48.dp) // Should work now with LazyColumn constraints
                 .background(
-                    color = if (message.role == ConversationTree.Message.Role.USER &&
-                        message.content.any { it is ConversationTree.Message.ContentItem.UserMessage }
+                    color = if (message.role == Conversation.Message.Role.USER &&
+                        message.content.any { it is Conversation.Message.ContentItem.UserMessage }
                     ) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
                     else Color.Transparent
                 )
@@ -179,7 +203,7 @@ fun MessageItem(
         ) {
             message.content.forEach { content ->
                 when (content) {
-                    is ConversationTree.Message.ContentItem.UserMessage -> {
+                    is Conversation.Message.ContentItem.UserMessage -> {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
@@ -227,7 +251,7 @@ fun MessageItem(
                         }
                     }
 
-                    is ConversationTree.Message.ContentItem.ToolCall -> {
+                    is Conversation.Message.ContentItem.ToolCall -> {
                         // Find corresponding result from entire chat history
                         val correspondingResult = toolResultsMap[content.id.value]
                         ToolCallItem(
@@ -236,13 +260,13 @@ fun MessageItem(
                         )
                     }
 
-                    is ConversationTree.Message.ContentItem.ToolResult -> {
+                    is Conversation.Message.ContentItem.ToolResult -> {
                         // Don't render ToolResult separately - it's shown in ToolCallItem
                     }
 
-                    is ConversationTree.Message.ContentItem.ImageItem -> {
+                    is Conversation.Message.ContentItem.ImageItem -> {
                         when (val source = content.source) {
-                            is ConversationTree.Message.ImageSource.Base64ImageSource -> {
+                            is Conversation.Message.ImageSource.Base64ImageSource -> {
                                 // Base64 too long - show placeholder
                                 Text(
                                     LocalTranslation.current.imageDisplayText.format(
@@ -252,7 +276,7 @@ fun MessageItem(
                                 )
                             }
 
-                            is ConversationTree.Message.ImageSource.UrlImageSource -> {
+                            is Conversation.Message.ImageSource.UrlImageSource -> {
                                 // URL can be shown in full
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Icon(Icons.Default.Image, contentDescription = "Image")
@@ -261,7 +285,7 @@ fun MessageItem(
                                 }
                             }
 
-                            is ConversationTree.Message.ImageSource.FileImageSource -> {
+                            is Conversation.Message.ImageSource.FileImageSource -> {
                                 // File ID can be shown in full
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Icon(Icons.Default.Image, contentDescription = "Image")
@@ -272,15 +296,15 @@ fun MessageItem(
                         }
                     }
 
-                    is ConversationTree.Message.ContentItem.Thinking -> GromozekaMarkdown(content = content.thinking)
-                    is ConversationTree.Message.ContentItem.System -> Text(text = content.content)
-                    is ConversationTree.Message.ContentItem.AssistantMessage -> {
+                    is Conversation.Message.ContentItem.Thinking -> GromozekaMarkdown(content = content.thinking)
+                    is Conversation.Message.ContentItem.System -> Text(text = content.content)
+                    is Conversation.Message.ContentItem.AssistantMessage -> {
                         val text = content.structured.fullText.trim()
                         if (text.isNotEmpty()) {
                             GromozekaMarkdown(content = text)
                         }
                     }
-                    is ConversationTree.Message.ContentItem.UnknownJson -> Column {
+                    is Conversation.Message.ContentItem.UnknownJson -> Column {
                         Text(text = jsonPrettyPrint(content.json))
                         Text(text = LocalTranslation.current.parseErrorText)
                     }

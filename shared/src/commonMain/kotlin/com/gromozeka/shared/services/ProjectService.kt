@@ -1,15 +1,15 @@
 package com.gromozeka.shared.services
 
-import com.gromozeka.shared.domain.project.Project
-import com.gromozeka.shared.logging.logger
+import com.gromozeka.shared.domain.Project
 import com.gromozeka.shared.repository.ProjectRepository
+import klog.KLoggers
 import com.gromozeka.shared.uuid.uuid7
 import kotlin.time.Instant
 
 class ProjectService(
     private val projectRepository: ProjectRepository,
 ) {
-    private val log = logger(this)
+    private val log = KLoggers.logger(this)
 
     suspend fun getOrCreate(path: String): Project {
         val existing = projectRepository.findByPath(path)

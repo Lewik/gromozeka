@@ -1,6 +1,6 @@
-package com.gromozeka.shared.domain.context
+package com.gromozeka.shared.domain
 
-import com.gromozeka.shared.domain.project.Project
+import com.gromozeka.shared.domain.Project
 import kotlin.time.Instant
 import kotlinx.serialization.Serializable
 

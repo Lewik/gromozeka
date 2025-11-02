@@ -1,8 +1,8 @@
 package com.gromozeka.bot.ui.viewmodel
 
 import com.gromozeka.bot.services.ConversationSearchService
-import com.gromozeka.shared.domain.conversation.ConversationTree
-import com.gromozeka.shared.domain.project.Project
+import com.gromozeka.shared.domain.Conversation
+import com.gromozeka.shared.domain.Project
 import klog.KLoggers
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -24,8 +24,8 @@ class ConversationSearchViewModel(
     private val _isSearching = MutableStateFlow(false)
     val isSearching: StateFlow<Boolean> = _isSearching.asStateFlow()
 
-    private val _searchResults = MutableStateFlow<List<Pair<ConversationTree, Project>>>(emptyList())
-    val searchResults: StateFlow<List<Pair<ConversationTree, Project>>> = _searchResults.asStateFlow()
+    private val _searchResults = MutableStateFlow<List<Pair<Conversation, Project>>>(emptyList())
+    val searchResults: StateFlow<List<Pair<Conversation, Project>>> = _searchResults.asStateFlow()
 
     private val _showSearchResults = MutableStateFlow(false)
     val showSearchResults: StateFlow<Boolean> = _showSearchResults.asStateFlow()

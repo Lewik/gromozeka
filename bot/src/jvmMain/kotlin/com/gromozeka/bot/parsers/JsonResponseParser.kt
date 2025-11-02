@@ -1,6 +1,6 @@
 package com.gromozeka.bot.parsers
 
-import com.gromozeka.shared.domain.conversation.ConversationTree
+import com.gromozeka.shared.domain.Conversation
 import kotlinx.serialization.json.Json
 
 /**
@@ -13,5 +13,5 @@ class JsonResponseParser : ResponseParser {
         isLenient = true
     }
 
-    override fun parse(text: String) = json.decodeFromString<ConversationTree.Message.StructuredText>(text)
+    override fun parse(text: String) = json.decodeFromString<Conversation.Message.StructuredText>(text)
 }

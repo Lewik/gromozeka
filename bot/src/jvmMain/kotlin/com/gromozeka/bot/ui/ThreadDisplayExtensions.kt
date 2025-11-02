@@ -1,28 +1,16 @@
 package com.gromozeka.bot.ui
 
-import com.gromozeka.shared.domain.conversation.ConversationTree
+import com.gromozeka.shared.domain.Conversation
 import kotlin.time.Clock
 import kotlin.time.Instant
 
-fun ConversationTree.displayPreview(): String {
-    if (displayName != null && displayName!!.isNotBlank()) {
-        return displayName!!
-    }
-
-    val firstUserMessage = messages
-        .firstOrNull { it.role == ConversationTree.Message.Role.USER }
-    val text = firstUserMessage?.content
-        ?.filterIsInstance<ConversationTree.Message.ContentItem.UserMessage>()
-        ?.firstOrNull()?.text ?: effectiveDisplayName()
-
-    return if (text.length > 50) {
-        "${text.take(47)}..."
-    } else {
-        text
-    }
+fun Conversation.displayPreview(): String {
+    // Messages are loaded separately via ConversationService.loadCurrentMessages()
+    // so we can only show displayName here
+    return effectiveDisplayName()
 }
 
-fun ConversationTree.displayTime(): String {
+fun Conversation.displayTime(): String {
     val now = Clock.System.now()
     val duration = now - updatedAt
     val exactTime = updatedAt.toString().substring(0, 16).replace('T', ' ')
@@ -42,8 +30,8 @@ fun ConversationTree.displayTime(): String {
     }
 }
 
-fun ConversationTree.effectiveDisplayName(): String {
-    return displayName?.takeIf { it.isNotBlank() } ?: "New Conversation"
+fun Conversation.effectiveDisplayName(): String {
+    return displayName.takeIf { it.isNotBlank() } ?: "New Conversation"
 }
 
 fun formatRelativeTime(timestamp: Instant): String {

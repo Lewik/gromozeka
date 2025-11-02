@@ -28,7 +28,7 @@ import com.gromozeka.bot.ui.session.SessionScreen
 import com.gromozeka.bot.ui.state.ConversationInitiator
 import com.gromozeka.bot.ui.viewmodel.AppViewModel
 import com.gromozeka.bot.ui.viewmodel.ContextsPanelViewModel
-import com.gromozeka.shared.domain.conversation.ConversationTree
+import com.gromozeka.shared.domain.Conversation
 import com.gromozeka.shared.services.ProjectService
 import klog.KLoggers
 import kotlinx.coroutines.flow.first
@@ -55,7 +55,7 @@ fun ApplicationScope.ChatWindow(
     contextExtractionService: ContextExtractionService,
     contextFileService: ContextFileService,
     projectService: ProjectService,
-    conversationTreeService: com.gromozeka.shared.services.ConversationTreeService,
+    conversationTreeService: com.gromozeka.shared.services.ConversationService,
     conversationSearchViewModel: com.gromozeka.bot.ui.viewmodel.ConversationSearchViewModel,
 ) {
     val log = KLoggers.logger("ChatWindow")
@@ -130,12 +130,13 @@ fun ApplicationScope.ChatWindow(
             coroutineScope.launch {
                 try {
                     // Create ChatMessage from user input
-                    val chatMessage = ConversationTree.Message(
-                        role = ConversationTree.Message.Role.USER,
-                        content = listOf(ConversationTree.Message.ContentItem.UserMessage(initialMessage)),
-                        instructions = listOf(ConversationTree.Message.Instruction.Source.User),
-                        id = ConversationTree.Message.Id(UUID.randomUUID().toString()),
-                        timestamp = Clock.System.now()
+                    val chatMessage = Conversation.Message(
+                        id = Conversation.Message.Id(UUID.randomUUID().toString()),
+                        conversationId = Conversation.Id(""), // Will be set when conversation is created
+                        role = Conversation.Message.Role.USER,
+                        content = listOf(Conversation.Message.ContentItem.UserMessage(initialMessage)),
+                        createdAt = Clock.System.now(),
+                        instructions = listOf(Conversation.Message.Instruction.Source.User)
                     )
                     val tabIndex = appViewModel.createTab(
                         projectPath = projectPath,

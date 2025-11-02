@@ -1,5 +1,5 @@
 -- Initial database schema for Gromozeka
--- Unified schema (previously V1-V6 migrations)
+-- Unified schema combining all previous migrations
 
 -- Projects table
 CREATE TABLE projects (
@@ -9,10 +9,6 @@ CREATE TABLE projects (
     description TEXT NULL,
     favorite BOOLEAN NOT NULL,
     archived BOOLEAN NOT NULL,
-    tags TEXT NOT NULL,
-    metadata_json TEXT NULL,
-    settings_json TEXT NULL,
-    statistics_json TEXT NULL,
     created_at BIGINT NOT NULL,
     last_used_at BIGINT NOT NULL
 );
@@ -44,51 +40,111 @@ CREATE TABLE contexts (
     FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
 );
 
--- Conversation Trees table (DAG-based conversation storage)
-CREATE TABLE conversation_trees (
+-- Conversations - основная таблица
+CREATE TABLE conversations (
     id VARCHAR(255) PRIMARY KEY,
     project_id VARCHAR(255) NOT NULL,
-    display_name VARCHAR(255) NULL,
+    display_name VARCHAR(255) NOT NULL DEFAULT '',
 
-    -- Fork support (self-reference)
-    parent_conversation_id VARCHAR(255) NULL,
-    branch_from_message_id VARCHAR(255) NULL,
+    -- Ссылка на текущий Thread (всегда существует)
+    current_thread_id VARCHAR(255) NOT NULL,
 
-    -- Navigation
-    head_message_id VARCHAR(255) NULL,
-    branch_selections_json TEXT DEFAULT '[]',
-
-    tags TEXT DEFAULT '[]',
     created_at BIGINT NOT NULL,
     updated_at BIGINT NOT NULL,
 
-    FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
-    FOREIGN KEY (parent_conversation_id) REFERENCES conversation_trees(id) ON DELETE SET NULL
+    FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
 );
 
-CREATE INDEX idx_conversation_trees_project ON conversation_trees(project_id);
-CREATE INDEX idx_conversation_trees_updated ON conversation_trees(updated_at);
-CREATE INDEX idx_conversation_parent ON conversation_trees(parent_conversation_id);
-CREATE INDEX idx_conversation_head ON conversation_trees(head_message_id);
+CREATE INDEX idx_conversations_project ON conversations(project_id);
+CREATE INDEX idx_conversations_updated ON conversations(updated_at);
+CREATE INDEX idx_conversations_current_thread ON conversations(current_thread_id);
 
--- Conversation Messages table (DAG nodes)
-CREATE TABLE conversation_messages (
+-- Threads - метаданные списка сообщений
+CREATE TABLE threads (
     id VARCHAR(255) PRIMARY KEY,
-    tree_id VARCHAR(255) NOT NULL,
+    conversation_id VARCHAR(255) NOT NULL,
 
-    -- DAG structure
-    parent_ids_json TEXT DEFAULT '[]',
+    -- Ссылка на Thread, из которого был создан этот Thread
+    original_thread_id VARCHAR(255) NULL,
 
-    -- Content
+    created_at BIGINT NOT NULL,
+    updated_at BIGINT NOT NULL,
+
+    FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_threads_conversation ON threads(conversation_id);
+CREATE INDEX idx_threads_created ON threads(conversation_id, created_at DESC);
+CREATE INDEX idx_threads_original ON threads(original_thread_id);
+
+-- Thread Messages - связь Thread с Message + порядок
+CREATE TABLE thread_messages (
+    thread_id VARCHAR(255) NOT NULL,
+    message_id VARCHAR(255) NOT NULL,
+    position INT NOT NULL,
+
+    PRIMARY KEY (thread_id, message_id),
+    FOREIGN KEY (thread_id) REFERENCES threads(id) ON DELETE CASCADE,
+    FOREIGN KEY (message_id) REFERENCES messages(id)
+);
+
+CREATE INDEX idx_thread_messages_thread_position ON thread_messages(thread_id, position);
+CREATE INDEX idx_thread_messages_message ON thread_messages(message_id);
+
+-- Messages - сообщения принадлежат conversation
+CREATE TABLE messages (
+    id VARCHAR(255) PRIMARY KEY,
+    conversation_id VARCHAR(255) NOT NULL,
+
+    -- История происхождения (edit/squash) - DEPRECATED, use squash_operation_id
+    original_ids_json TEXT NOT NULL DEFAULT '[]',
+
+    -- Reply threading (future feature)
+    reply_to_id VARCHAR(255) NULL,
+
+    -- Squash operation reference
+    squash_operation_id VARCHAR(255) NULL,
+
     role VARCHAR(50) NOT NULL,
-    timestamp_ms BIGINT NOT NULL,
+    created_at BIGINT NOT NULL,
+
+    -- Полная сериализация Message (content + instructions)
     message_json TEXT NOT NULL,
 
-    FOREIGN KEY (tree_id) REFERENCES conversation_trees(id) ON DELETE CASCADE
+    FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
 );
 
-CREATE INDEX idx_conversation_messages_tree ON conversation_messages(tree_id);
-CREATE INDEX idx_conversation_messages_timestamp ON conversation_messages(tree_id, timestamp_ms);
+CREATE INDEX idx_messages_conversation ON messages(conversation_id);
+CREATE INDEX idx_messages_created ON messages(conversation_id, created_at);
+
+-- Squash Operations - immutable record of squash provenance
+CREATE TABLE squash_operations (
+    id VARCHAR(255) PRIMARY KEY,
+    conversation_id VARCHAR(255) NOT NULL,
+
+    -- Source messages that were squashed
+    source_message_ids TEXT NOT NULL,
+
+    -- Result message ID
+    result_message_id VARCHAR(255) NOT NULL,
+
+    -- AI squash prompt (nullable for manual edits)
+    prompt TEXT NULL,
+
+    -- Model used for squash
+    model VARCHAR(255) NULL,
+
+    -- true = AI squash, false = manual edit
+    performed_by_agent BOOLEAN NOT NULL,
+
+    created_at BIGINT NOT NULL,
+
+    FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE,
+    FOREIGN KEY (result_message_id) REFERENCES messages(id)
+);
+
+CREATE INDEX idx_squash_operations_conversation ON squash_operations(conversation_id);
+CREATE INDEX idx_squash_operations_result_message ON squash_operations(result_message_id);
 
 -- Tool Executions table
 CREATE TABLE tool_executions (
@@ -103,7 +159,7 @@ CREATE TABLE tool_executions (
     duration_ms BIGINT NULL,
     status VARCHAR(50) NOT NULL,
     error TEXT NULL,
-    FOREIGN KEY (conversation_id) REFERENCES conversation_trees(id) ON DELETE CASCADE
+    FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
 );
 
 -- Default builtin agent

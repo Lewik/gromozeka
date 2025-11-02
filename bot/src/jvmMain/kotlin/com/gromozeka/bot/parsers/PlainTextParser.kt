@@ -1,6 +1,6 @@
 package com.gromozeka.bot.parsers
 
-import com.gromozeka.shared.domain.conversation.ConversationTree
+import com.gromozeka.shared.domain.Conversation
 
 
 /**
@@ -9,7 +9,7 @@ import com.gromozeka.shared.domain.conversation.ConversationTree
  */
 class PlainTextParser : ResponseParser {
 
-    override fun parse(text: String) = ConversationTree.Message.StructuredText(
+    override fun parse(text: String) = Conversation.Message.StructuredText(
         fullText = text,
         ttsText = null,
         voiceTone = null,

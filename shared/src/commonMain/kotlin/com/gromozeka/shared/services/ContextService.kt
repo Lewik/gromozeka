@@ -1,9 +1,9 @@
 package com.gromozeka.shared.services
 
-import com.gromozeka.shared.domain.context.Context
-import com.gromozeka.shared.domain.context.toContextId
-import com.gromozeka.shared.logging.logger
+import com.gromozeka.shared.domain.Context
+import com.gromozeka.shared.domain.toContextId
 import com.gromozeka.shared.repository.ContextRepository
+import klog.KLoggers
 import com.gromozeka.shared.uuid.uuid7
 import kotlin.time.Instant
 
@@ -11,7 +11,7 @@ class ContextService(
     private val contextRepository: ContextRepository,
     private val projectService: ProjectService,
 ) {
-    private val log = logger(this)
+    private val log = KLoggers.logger(this)
 
     suspend fun createContext(
         projectPath: String,

@@ -18,12 +18,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.gromozeka.bot.ui.CompactButton
-import com.gromozeka.shared.domain.conversation.ConversationTree
+import com.gromozeka.shared.domain.Conversation
 
 @Composable
 fun ToolCallItem(
-    toolCall: ConversationTree.Message.ContentItem.ToolCall.Data,
-    toolResult: ConversationTree.Message.ContentItem.ToolResult?,
+    toolCall: Conversation.Message.ContentItem.ToolCall.Data,
+    toolResult: Conversation.Message.ContentItem.ToolResult?,
 ) {
     var isExpanded by remember { mutableStateOf(false) }
 
@@ -98,7 +98,7 @@ fun ToolCallItem(
                             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                 result.result.forEach { dataItem ->
                                     when (dataItem) {
-                                        is ConversationTree.Message.ContentItem.ToolResult.Data.Text -> {
+                                        is Conversation.Message.ContentItem.ToolResult.Data.Text -> {
                                             Text(
                                                 text = dataItem.content,
                                                 modifier = Modifier.fillMaxWidth(),
@@ -106,7 +106,7 @@ fun ToolCallItem(
                                             )
                                         }
 
-                                        is ConversationTree.Message.ContentItem.ToolResult.Data.Base64Data -> {
+                                        is Conversation.Message.ContentItem.ToolResult.Data.Base64Data -> {
                                             when {
                                                 dataItem.mediaType.type == "image" -> {
                                                     // Base64 image - show placeholder with truncation
@@ -156,7 +156,7 @@ fun ToolCallItem(
                                             }
                                         }
 
-                                        is ConversationTree.Message.ContentItem.ToolResult.Data.UrlData -> {
+                                        is Conversation.Message.ContentItem.ToolResult.Data.UrlData -> {
                                             Row(
                                                 verticalAlignment = Alignment.CenterVertically,
                                                 modifier = Modifier.fillMaxWidth()
@@ -174,7 +174,7 @@ fun ToolCallItem(
                                             }
                                         }
 
-                                        is ConversationTree.Message.ContentItem.ToolResult.Data.FileData -> {
+                                        is Conversation.Message.ContentItem.ToolResult.Data.FileData -> {
                                             Row(
                                                 verticalAlignment = Alignment.CenterVertically,
                                                 modifier = Modifier.fillMaxWidth()

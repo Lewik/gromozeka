@@ -1,7 +1,7 @@
 package com.gromozeka.bot.repository.exposed
 
 import com.gromozeka.bot.repository.exposed.tables.Agents
-import com.gromozeka.shared.domain.agent.Agent
+import com.gromozeka.shared.domain.Agent
 import com.gromozeka.shared.repository.AgentRepository
 
 import org.jetbrains.exposed.v1.core.ResultRow
@@ -10,9 +10,7 @@ import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.*
 import kotlin.time.Instant
 
-class ExposedAgentRepository(
-    private val database: Database
-) : AgentRepository {
+class ExposedAgentRepository : AgentRepository {
 
     override suspend fun save(agent: Agent): Agent = dbQuery {
         val exists = Agents.selectAll().where { Agents.id eq agent.id.value }.count() > 0
@@ -24,7 +22,7 @@ class ExposedAgentRepository(
                 it[description] = agent.description
                 it[isBuiltin] = agent.isBuiltin
                 it[usageCount] = agent.usageCount
-                it[updatedAt] = agent.updatedAt.toEpochMilliseconds()
+                it[updatedAt] = agent.updatedAt
             }
         } else {
             Agents.insert {
@@ -34,8 +32,8 @@ class ExposedAgentRepository(
                 it[description] = agent.description
                 it[isBuiltin] = agent.isBuiltin
                 it[usageCount] = agent.usageCount
-                it[createdAt] = agent.createdAt.toEpochMilliseconds()
-                it[updatedAt] = agent.updatedAt.toEpochMilliseconds()
+                it[createdAt] = agent.createdAt
+                it[updatedAt] = agent.updatedAt
             }
         }
         agent
@@ -68,7 +66,7 @@ class ExposedAgentRepository(
         description = this[Agents.description],
         isBuiltin = this[Agents.isBuiltin],
         usageCount = this[Agents.usageCount],
-        createdAt = Instant.fromEpochMilliseconds(this[Agents.createdAt]),
-        updatedAt = Instant.fromEpochMilliseconds(this[Agents.updatedAt])
+        createdAt = this[Agents.createdAt],
+        updatedAt = this[Agents.updatedAt]
     )
 }
