@@ -203,6 +203,19 @@ public class ClaudeCodeApi {
         List<String> command = buildClaudeCommand(request);
 
         ProcessBuilder processBuilder = new ProcessBuilder(command);
+
+        // Set working directory if projectPath provided
+        if (request.projectPath() != null && !request.projectPath().isBlank()) {
+            java.io.File projectDir = new java.io.File(request.projectPath());
+            if (projectDir.exists() && projectDir.isDirectory()) {
+                processBuilder.directory(projectDir);
+                logger.debug("Set working directory to: {}", projectDir.getAbsolutePath());
+            } else {
+                logger.warn("Project path does not exist or is not directory: {}, using default working directory",
+                           request.projectPath());
+            }
+        }
+
         processBuilder.environment().put("CLAUDE_CODE_MAX_OUTPUT_TOKENS",
             System.getenv().getOrDefault("CLAUDE_CODE_MAX_OUTPUT_TOKENS", CLAUDE_CODE_MAX_OUTPUT_TOKENS));
         processBuilder.environment().put("CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC", "1");

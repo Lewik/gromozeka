@@ -341,6 +341,7 @@ public class ClaudeCodeChatModel implements ChatModel {
             .temperature(options.getTemperature())
             .thinkingBudgetTokens(thinkingBudget)
             .disallowedTools(options.getDisallowedTools())
+            .projectPath(options.getProjectPath())
             .build();
     }
 

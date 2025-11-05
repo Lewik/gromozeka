@@ -28,6 +28,7 @@ import java.util.List;
  * @param temperature Temperature for randomness (0.0-1.0)
  * @param thinkingBudgetTokens Budget for thinking tokens
  * @param disallowedTools List of tools to disable in Claude Code CLI
+ * @param projectPath Working directory for Claude CLI process (nullable)
  */
 public record ClaudeCodeRequest(
     String model,
@@ -36,7 +37,8 @@ public record ClaudeCodeRequest(
     Integer maxTokens,
     Double temperature,
     Integer thinkingBudgetTokens,
-    List<String> disallowedTools
+    List<String> disallowedTools,
+    String projectPath
 ) {
     public ClaudeCodeRequest {
         if (model == null || model.isBlank()) {
@@ -59,6 +61,7 @@ public record ClaudeCodeRequest(
         private Double temperature = 0.7;
         private Integer thinkingBudgetTokens = 0;
         private List<String> disallowedTools = List.of();
+        private String projectPath;
 
         public Builder model(String model) {
             this.model = model;
@@ -95,6 +98,11 @@ public record ClaudeCodeRequest(
             return this;
         }
 
+        public Builder projectPath(String projectPath) {
+            this.projectPath = projectPath;
+            return this;
+        }
+
         public ClaudeCodeRequest build() {
             return new ClaudeCodeRequest(
                 model,
@@ -103,7 +111,8 @@ public record ClaudeCodeRequest(
                 maxTokens,
                 temperature,
                 thinkingBudgetTokens,
-                disallowedTools
+                disallowedTools,
+                projectPath
             );
         }
     }

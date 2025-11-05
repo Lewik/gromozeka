@@ -65,6 +65,9 @@ public class ClaudeCodeChatOptions implements ToolCallingChatOptions {
     @JsonIgnore
     private List<String> disallowedTools;
 
+    @JsonIgnore
+    private String projectPath;
+
     public ClaudeCodeChatOptions() {
         this.model = DEFAULT_MODEL;
         this.maxTokens = DEFAULT_MAX_TOKENS;
@@ -94,6 +97,7 @@ public class ClaudeCodeChatOptions implements ToolCallingChatOptions {
         options.setToolContext(fromOptions.getToolContext());
         options.setUseXmlToolFormat(fromOptions.getUseXmlToolFormat());
         options.setDisallowedTools(fromOptions.getDisallowedTools());
+        options.setProjectPath(fromOptions.getProjectPath());
         return options;
     }
 
@@ -219,6 +223,15 @@ public class ClaudeCodeChatOptions implements ToolCallingChatOptions {
         this.disallowedTools = disallowedTools != null ? disallowedTools : new ArrayList<>();
     }
 
+    @Nullable
+    public String getProjectPath() {
+        return projectPath;
+    }
+
+    public void setProjectPath(String projectPath) {
+        this.projectPath = projectPath;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -229,13 +242,15 @@ public class ClaudeCodeChatOptions implements ToolCallingChatOptions {
                 Objects.equals(thinkingBudgetTokens, that.thinkingBudgetTokens) &&
                 Objects.equals(internalToolExecutionEnabled, that.internalToolExecutionEnabled) &&
                 Objects.equals(useXmlToolFormat, that.useXmlToolFormat) &&
-                Objects.equals(disallowedTools, that.disallowedTools);
+                Objects.equals(disallowedTools, that.disallowedTools) &&
+                Objects.equals(projectPath, that.projectPath);
     }
 
     @Override
     public int hashCode() {
         return Objects.hash(model, maxTokens, temperature, thinkingBudgetTokens,
-                           internalToolExecutionEnabled, useXmlToolFormat, disallowedTools);
+                           internalToolExecutionEnabled, useXmlToolFormat, disallowedTools,
+                           projectPath);
     }
 
     @Override
@@ -248,6 +263,7 @@ public class ClaudeCodeChatOptions implements ToolCallingChatOptions {
                 ", internalToolExecutionEnabled=" + internalToolExecutionEnabled +
                 ", useXmlToolFormat=" + useXmlToolFormat +
                 ", disallowedTools=" + disallowedTools +
+                ", projectPath='" + projectPath + '\'' +
                 '}';
     }
 
@@ -301,6 +317,11 @@ public class ClaudeCodeChatOptions implements ToolCallingChatOptions {
 
         public Builder disallowedTools(List<String> disallowedTools) {
             options.setDisallowedTools(disallowedTools);
+            return this;
+        }
+
+        public Builder projectPath(String projectPath) {
+            options.setProjectPath(projectPath);
             return this;
         }
 

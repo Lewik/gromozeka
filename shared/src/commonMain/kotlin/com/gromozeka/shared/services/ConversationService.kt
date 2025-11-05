@@ -52,6 +52,12 @@ class ConversationService(
     suspend fun findById(id: Conversation.Id): Conversation? =
         conversationRepo.findById(id)
 
+    suspend fun getProjectPath(conversationId: Conversation.Id): String? {
+        val conversation = findById(conversationId) ?: return null
+        val project = projectService.findById(conversation.projectId) ?: return null
+        return project.path
+    }
+
     suspend fun findByProject(projectPath: String): List<Conversation> {
         val project = projectService.findByPath(projectPath) ?: return emptyList()
         return conversationRepo.findByProject(project.id)

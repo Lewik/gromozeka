@@ -63,17 +63,21 @@ class ConversationEngineService(
 
         log.debug { "Loaded conversation with ${messages.size} messages" }
 
-        // 2. Persist user message immediately
+        // 2. Get project path for Claude CLI working directory
+        val projectPath = conversationService.getProjectPath(conversationId)
+        log.debug { "Using project path for Claude CLI: $projectPath" }
+
+        // 3. Persist user message immediately
         conversationService.addMessage(conversationId, userMessage)
 
-        // 3. Convert history to Spring AI format
+        // 4. Convert history to Spring AI format
         val springHistory = messageConversionService.convertHistoryToSpringAI(
             messages + userMessage
         )
 
         log.debug { "Converted ${springHistory.size} messages to Spring AI format" }
 
-        // 4. Create options based on ChatModel defaults with internalToolExecutionEnabled=false for user control
+        // 5. Create options based on ChatModel defaults with internalToolExecutionEnabled=false for user control
         val defaultOptions = chatModel.defaultOptions as ClaudeCodeChatOptions
         val options = ClaudeCodeChatOptions.builder()
             .model(defaultOptions.model)
@@ -83,6 +87,7 @@ class ConversationEngineService(
             .useXmlToolFormat(defaultOptions.useXmlToolFormat)
             .toolNames(defaultOptions.toolNames) // Use default tool names from config
             .internalToolExecutionEnabled(false) // KEY: We control tool execution
+            .projectPath(projectPath) // Set working directory for Claude CLI
             .build()
 
         var currentPrompt = Prompt(springHistory, options)
