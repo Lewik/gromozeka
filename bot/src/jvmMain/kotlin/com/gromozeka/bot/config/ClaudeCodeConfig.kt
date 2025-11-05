@@ -20,8 +20,9 @@ import java.util.function.Function
 class ClaudeCodeConfig {
 
     @Bean
-    fun claudeCodeApi(): ClaudeCodeApi {
-        return ClaudeCodeApi()
+    fun claudeCodeApi(settingsService: com.gromozeka.bot.services.SettingsService): ClaudeCodeApi {
+        val strictMode = settingsService.mode == com.gromozeka.bot.settings.AppMode.DEV
+        return ClaudeCodeApi(null, null, strictMode)
     }
 
     @Bean

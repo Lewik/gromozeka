@@ -16,6 +16,7 @@
 
 package org.springframework.ai.claudecode.api;
 
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,15 +48,37 @@ public class ClaudeCodeApi {
     private final String claudeCodePath;
     private final Duration timeout;
     private final ObjectMapper objectMapper;
+    private final boolean strictMode;
 
     public ClaudeCodeApi() {
-        this(DEFAULT_CLAUDE_PATH, DEFAULT_TIMEOUT);
+        this(DEFAULT_CLAUDE_PATH, DEFAULT_TIMEOUT, false);
     }
 
     public ClaudeCodeApi(String claudeCodePath, Duration timeout) {
+        this(claudeCodePath, timeout, false);
+    }
+
+    public ClaudeCodeApi(String claudeCodePath, Duration timeout, boolean strictMode) {
         this.claudeCodePath = claudeCodePath != null ? claudeCodePath : DEFAULT_CLAUDE_PATH;
         this.timeout = timeout != null ? timeout : DEFAULT_TIMEOUT;
-        this.objectMapper = new ObjectMapper();
+        this.strictMode = strictMode;
+        this.objectMapper = createObjectMapper();
+    }
+
+    private ObjectMapper createObjectMapper() {
+        ObjectMapper mapper = new ObjectMapper();
+
+        if (strictMode) {
+            // DEV/STRICT: Fail on unknown properties - forces us to update models when API changes
+            mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, true);
+            logger.debug("ClaudeCodeApi running in STRICT mode - will fail on unknown JSON properties");
+        } else {
+            // PROD/LENIENT: Ignore unknown properties - graceful degradation for forward compatibility
+            mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+            logger.debug("ClaudeCodeApi running in LENIENT mode - will ignore unknown JSON properties");
+        }
+
+        return mapper;
     }
 
     /**

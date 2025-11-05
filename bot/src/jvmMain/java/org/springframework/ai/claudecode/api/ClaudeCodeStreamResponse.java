@@ -123,6 +123,7 @@ public sealed interface ClaudeCodeStreamResponse permits
         Usage usage,
         Object modelUsage,
         @JsonProperty("permission_denials") List<Object> permissionDenials,
+        List<Object> errors,
         String uuid
     ) implements ClaudeCodeStreamResponse {}
 
