@@ -1,12 +1,14 @@
 package com.gromozeka.bot
 
 import androidx.compose.ui.window.application
+import kotlin.system.exitProcess
 import com.gromozeka.bot.platform.GlobalHotkeyController
 import com.gromozeka.bot.services.*
 import com.gromozeka.bot.services.theming.AIThemeGenerator
 import com.gromozeka.bot.services.theming.ThemeService
 import com.gromozeka.bot.services.translation.TranslationService
 import com.gromozeka.bot.ui.ChatWindow
+import com.gromozeka.bot.ui.ErrorDialog
 import com.gromozeka.bot.ui.GromozekaTheme
 import com.gromozeka.bot.ui.TranslationProvider
 import com.gromozeka.bot.ui.state.UIState
@@ -71,113 +73,169 @@ fun main() {
     val log = KLoggers.logger("ChatApplication")
     System.setProperty("java.awt.headless", "false")
 
-    // Check Claude Code is installed before starting
-    val claudeProjectsDir = File(System.getProperty("user.home"), ".claude/projects")
-    if (!claudeProjectsDir.exists()) {
-        throw IllegalStateException("Claude Code not installed - directory does not exist: ${claudeProjectsDir.absolutePath}")
+    var initializationError: Throwable? = null
+    var appComponents: AppComponents? = null
+
+    try {
+        // Check Claude Code is installed before starting
+        val claudeProjectsDir = File(System.getProperty("user.home"), ".claude/projects")
+        if (!claudeProjectsDir.exists()) {
+            throw IllegalStateException("Claude Code not installed - directory does not exist: ${claudeProjectsDir.absolutePath}")
+        }
+        log.info("Claude Code installation verified")
+
+        log.info("Initializing Spring context...")
+
+        // Determine app mode to set Spring profile
+        val modeEnv = System.getenv("GROMOZEKA_MODE")
+        val springProfile = when (modeEnv?.lowercase()) {
+            "dev", "development" -> "dev"
+            "prod", "production" -> "prod"
+            null -> "prod"
+            else -> throw IllegalArgumentException("GROMOZEKA_MODE value '$modeEnv' not supported")
+        }
+        log.info("Setting Spring profile: $springProfile")
+
+        // Set logging path BEFORE Spring initialization
+        val logPath = determineLogPath(modeEnv)
+        System.setProperty("logging.file.path", logPath)
+
+        val context = SpringApplicationBuilder(ChatApplication::class.java)
+            .web(WebApplicationType.NONE)
+            .profiles(springProfile)
+            .run()
+        log.info("Spring context initialized successfully")
+
+        // Initialize JAR resources
+        val settingsService = context.getBean<SettingsService>()
+        log.info("Initializing JAR resources...")
+        log.info("JAR resources initialized successfully")
+        log.info("Starting application in ${settingsService.mode.name} mode...")
+
+        val ttsQueueService = context.getBean<TTSQueueService>()
+        val ttsAutoplayService = context.getBean<TTSAutoplayService>()
+        val globalHotkeyController = context.getBean<GlobalHotkeyController>()
+        val pttEventRouter = context.getBean<PTTEventRouter>()
+        val pttService = context.getBean<PTTService>()
+        val windowStateService = context.getBean<WindowStateService>()
+        val uiStateService = context.getBean<UIStateService>()
+        val appViewModel = context.getBean<AppViewModel>()
+        val translationService = context.getBean<TranslationService>()
+        val themeService = context.getBean<ThemeService>()
+        val screenCaptureController = context.getBean<com.gromozeka.bot.platform.ScreenCaptureController>()
+        val contextExtractionService = context.getBean<ContextExtractionService>()
+        val contextFileService = context.getBean<ContextFileService>()
+        val logEncryptor = context.getBean<LogEncryptor>()
+
+        // Create AI theme generator
+        val aiThemeGenerator = AIThemeGenerator(
+            screenCaptureController = screenCaptureController,
+            settingsService = settingsService
+        )
+
+        // Explicit startup of TTS services
+        ttsQueueService.start()
+        log.info("TTS queue service started")
+
+        ttsAutoplayService.start()
+        log.info("TTS autoplay service started")
+
+        log.info("MCP proxy JAR initialized")
+
+        // Initialize services
+        globalHotkeyController.initializeService()
+        pttEventRouter.initialize()
+
+        // Initialize UIStateService
+        val coroutineScope = context.getBean("coroutineScope") as CoroutineScope
+        runBlocking {
+            uiStateService.initialize(appViewModel)
+        }
+
+        log.info("Application initialized successfully")
+
+        appComponents = AppComponents(
+            appViewModel = appViewModel,
+            ttsQueueService = ttsQueueService,
+            settingsService = settingsService,
+            globalHotkeyController = globalHotkeyController,
+            pttEventRouter = pttEventRouter,
+            pttService = pttService,
+            windowStateService = windowStateService,
+            uiStateService = uiStateService,
+            translationService = translationService,
+            themeService = themeService,
+            aiThemeGenerator = aiThemeGenerator,
+            logEncryptor = logEncryptor,
+            contextExtractionService = contextExtractionService,
+            contextFileService = contextFileService,
+            projectService = context.getBean(),
+            conversationService = context.getBean(),
+            conversationSearchViewModel = context.getBean()
+        )
+
+    } catch (e: Throwable) {
+        log.error("Failed to initialize application: ${e.message}")
+        e.printStackTrace()
+        initializationError = e
     }
-    log.info("Claude Code installation verified")
-
-    log.info("Initializing Spring context...")
-
-    // Determine app mode to set Spring profile
-    val modeEnv = System.getenv("GROMOZEKA_MODE")
-    val springProfile = when (modeEnv?.lowercase()) {
-        "dev", "development" -> "dev"
-        "prod", "production" -> "prod"
-        null -> "prod" // Default to prod when not specified
-        else -> throw IllegalArgumentException("GROMOZEKA_MODE value '$modeEnv' not supported")
-    }
-    log.info("Setting Spring profile: $springProfile")
-
-    // Set logging path BEFORE Spring initialization
-    val logPath = determineLogPath(modeEnv)
-    System.setProperty("logging.file.path", logPath)
-
-    val context = SpringApplicationBuilder(ChatApplication::class.java)
-        .web(WebApplicationType.NONE)
-        .profiles(springProfile)
-        .run()
-    log.info("Spring context initialized successfully")
-
-    // Initialize JAR resources (extract MCP proxy JAR to Gromozeka home)
-    val settingsService = context.getBean<SettingsService>()
-    log.info("Initializing JAR resources...")
-    log.info("JAR resources initialized successfully")
-    log.info("Starting application in ${settingsService.mode.name} mode...")
-
-    val ttsQueueService = context.getBean<TTSQueueService>()
-    val ttsAutoplayService = context.getBean<TTSAutoplayService>()
-    val globalHotkeyController = context.getBean<GlobalHotkeyController>()
-    val pttEventRouter = context.getBean<PTTEventRouter>()
-    val pttService = context.getBean<PTTService>()
-    val windowStateService = context.getBean<WindowStateService>()
-    val uiStateService = context.getBean<UIStateService>()
-    val appViewModel = context.getBean<AppViewModel>()
-    val translationService = context.getBean<TranslationService>()
-    val themeService = context.getBean<ThemeService>()
-    val screenCaptureController = context.getBean<com.gromozeka.bot.platform.ScreenCaptureController>()
-    val contextExtractionService = context.getBean<ContextExtractionService>()
-    val contextFileService = context.getBean<ContextFileService>()
-    val logEncryptor = context.getBean<LogEncryptor>()
-
-    // Create AI theme generator
-    val aiThemeGenerator = AIThemeGenerator(
-        screenCaptureController = screenCaptureController,
-        settingsService = settingsService
-    )
-
-    // Explicit startup of TTS services
-    ttsQueueService.start()
-    log.info("TTS queue service started")
-
-    ttsAutoplayService.start()
-    log.info("TTS autoplay service started")
-
-    // Initialize JAR resources (copy from resources to Gromozeka home)
-    log.info("MCP proxy JAR initialized")
-
-    // Initialize services
-    globalHotkeyController.initializeService()
-    pttEventRouter.initialize()
-
-    // Initialize UIStateService (loads state, restores sessions, starts subscription)
-    val coroutineScope = context.getBean("coroutineScope") as CoroutineScope
-    runBlocking {
-        uiStateService.initialize(appViewModel)
-    }
-
-    // TranslationService automatically initializes via @Bean creation and subscribes to settings
 
     log.info("Starting Compose Desktop UI...")
     application {
-        GromozekaTheme(
-            themeService = themeService
-        ) {
-            TranslationProvider(translationService) {
-                ChatWindow(
-                    appViewModel,
-                    ttsQueueService,
-                    settingsService,
-                    globalHotkeyController,
-                    pttEventRouter,
-                    pttService,
-                    windowStateService,
-                    uiStateService,
-                    translationService,
-                    themeService,
-                    aiThemeGenerator,
-                    logEncryptor,
-                    contextExtractionService,
-                    contextFileService,
-                    context.getBean<com.gromozeka.shared.services.ProjectService>(),
-                    context.getBean<com.gromozeka.shared.services.ConversationService>(),
-                    context.getBean<com.gromozeka.bot.ui.viewmodel.ConversationSearchViewModel>()
-                )
-            }  // TranslationProvider
-        }  // GromozekaTheme
+        if (initializationError != null) {
+            ErrorDialog(
+                error = initializationError,
+                onClose = { exitProcess(1) }
+            )
+        } else if (appComponents != null) {
+            GromozekaTheme(
+                themeService = appComponents.themeService
+            ) {
+                TranslationProvider(appComponents.translationService) {
+                    ChatWindow(
+                        appComponents.appViewModel,
+                        appComponents.ttsQueueService,
+                        appComponents.settingsService,
+                        appComponents.globalHotkeyController,
+                        appComponents.pttEventRouter,
+                        appComponents.pttService,
+                        appComponents.windowStateService,
+                        appComponents.uiStateService,
+                        appComponents.translationService,
+                        appComponents.themeService,
+                        appComponents.aiThemeGenerator,
+                        appComponents.logEncryptor,
+                        appComponents.contextExtractionService,
+                        appComponents.contextFileService,
+                        appComponents.projectService,
+                        appComponents.conversationService,
+                        appComponents.conversationSearchViewModel
+                    )
+                }
+            }
+        }
     }
 }
+
+data class AppComponents(
+    val appViewModel: AppViewModel,
+    val ttsQueueService: TTSQueueService,
+    val settingsService: SettingsService,
+    val globalHotkeyController: GlobalHotkeyController,
+    val pttEventRouter: PTTEventRouter,
+    val pttService: PTTService,
+    val windowStateService: WindowStateService,
+    val uiStateService: UIStateService,
+    val translationService: TranslationService,
+    val themeService: ThemeService,
+    val aiThemeGenerator: AIThemeGenerator,
+    val logEncryptor: LogEncryptor,
+    val contextExtractionService: ContextExtractionService,
+    val contextFileService: ContextFileService,
+    val projectService: com.gromozeka.shared.services.ProjectService,
+    val conversationService: com.gromozeka.shared.services.ConversationService,
+    val conversationSearchViewModel: com.gromozeka.bot.ui.viewmodel.ConversationSearchViewModel
+)
 
 /**
  * Determines the appropriate log directory based on application mode and platform.
