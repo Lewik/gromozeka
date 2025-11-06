@@ -26,6 +26,7 @@ class ClaudeCodeConfig {
     }
 
     @Bean
+    @org.springframework.beans.factory.annotation.Qualifier("claudeCodeChatModel")
     fun claudeCodeChatModel(
         claudeCodeApi: ClaudeCodeApi,
         toolCallingManager: org.springframework.ai.model.tool.ToolCallingManager,

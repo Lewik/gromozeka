@@ -29,6 +29,7 @@ kotlin {
                 implementation(libs.spring.ai.openai)
                 implementation(libs.spring.ai.anthropic)
                 implementation(libs.spring.ai.vertex.ai.gemini)
+                implementation(libs.spring.ai.ollama)
                 implementation(libs.spring.ai.starter.model.openai)
                 implementation(libs.spring.ai.starter.mcp.client)
 

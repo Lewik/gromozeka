@@ -18,6 +18,8 @@ class ExposedConversationRepository : ConversationRepository {
             it[id] = conversation.id.value
             it[projectId] = conversation.projectId.value
             it[displayName] = conversation.displayName
+            it[aiProvider] = conversation.aiProvider
+            it[modelName] = conversation.modelName
             it[currentThreadId] = conversation.currentThread.value
             it[createdAt] = conversation.createdAt
             it[updatedAt] = conversation.updatedAt
@@ -61,6 +63,8 @@ class ExposedConversationRepository : ConversationRepository {
         id = Conversation.Id(this[Conversations.id]),
         projectId = Project.Id(this[Conversations.projectId]),
         displayName = this[Conversations.displayName],
+        aiProvider = this[Conversations.aiProvider],
+        modelName = this[Conversations.modelName],
         currentThread = Conversation.Thread.Id(this[Conversations.currentThreadId]),
         createdAt = this[Conversations.createdAt],
         updatedAt = this[Conversations.updatedAt]

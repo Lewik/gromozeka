@@ -59,9 +59,19 @@ open class AppViewModel(
             // Resume existing conversation
             conversationService.findById(conversationId) ?: error("Conversation not found: $conversationId")
         } else {
-            // Create new conversation
+            // Create new conversation with default AI provider from settings
+            val settings = settingsService.settings
+            val aiProvider = settings.defaultAiProvider.name
+            val modelName = when (settings.defaultAiProvider) {
+                com.gromozeka.bot.settings.AIProvider.CLAUDE_CODE -> settings.claudeModel
+                com.gromozeka.bot.settings.AIProvider.OLLAMA -> settings.ollamaModel
+                com.gromozeka.bot.settings.AIProvider.GEMINI -> settings.geminiModel
+            }
+
             conversationService.create(
-                projectPath = projectPath
+                projectPath = projectPath,
+                aiProvider = aiProvider,
+                modelName = modelName
             )
         }
 
@@ -185,8 +195,18 @@ open class AppViewModel(
                 val conversation = conversationService.findById(tabUiState.conversationId)
                     ?: run {
                         log.warn("Conversation not found for tab, creating new conversation")
+                        val settings = settingsService.settings
+                        val aiProvider = settings.defaultAiProvider.name
+                        val modelName = when (settings.defaultAiProvider) {
+                            com.gromozeka.bot.settings.AIProvider.CLAUDE_CODE -> settings.claudeModel
+                            com.gromozeka.bot.settings.AIProvider.OLLAMA -> settings.ollamaModel
+                            com.gromozeka.bot.settings.AIProvider.GEMINI -> settings.geminiModel
+                        }
+
                         conversationService.create(
-                            projectPath = tabUiState.projectPath
+                            projectPath = tabUiState.projectPath,
+                            aiProvider = aiProvider,
+                            modelName = modelName
                         )
                     }
 

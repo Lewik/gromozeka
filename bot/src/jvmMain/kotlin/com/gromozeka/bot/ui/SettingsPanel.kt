@@ -201,53 +201,137 @@ fun SettingsPanel(
 
                     // AI Settings
                     SettingsGroup(title = translation.settings.aiSettingsTitle) {
+                        // AI Provider Selection
                         DropdownSettingItem(
-                            label = translation.settings.claudeModelLabel,
-                            description = translation.settings.claudeModelDescription,
-                            value = settings.claudeModel,
-                            options = listOf("sonnet", "haiku", "opus"),
-                            onValueChange = { onSettingsChange(settings.copy(claudeModel = it)) }
+                            label = "Default AI Provider",
+                            description = "Choose the AI provider for new conversations",
+                            value = settings.defaultAiProvider.name,
+                            options = com.gromozeka.bot.settings.AIProvider.entries.map { it.name },
+                            onValueChange = {
+                                val provider = com.gromozeka.bot.settings.AIProvider.valueOf(it)
+                                onSettingsChange(settings.copy(defaultAiProvider = provider))
+                            }
                         )
-                        
-                        // Claude CLI Path with auto-detect button
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.Bottom,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Column(modifier = Modifier.weight(1f)) {
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        // Provider-specific settings
+                        when (settings.defaultAiProvider) {
+                            com.gromozeka.bot.settings.AIProvider.CLAUDE_CODE -> {
+                                Text(
+                                    text = "Claude Code Settings",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.SemiBold,
+                                    modifier = Modifier.padding(vertical = 8.dp)
+                                )
+
+                                DropdownSettingItem(
+                                    label = translation.settings.claudeModelLabel,
+                                    description = translation.settings.claudeModelDescription,
+                                    value = settings.claudeModel,
+                                    options = listOf("sonnet", "haiku", "opus"),
+                                    onValueChange = { onSettingsChange(settings.copy(claudeModel = it)) }
+                                )
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.Bottom,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        TextFieldSettingItem(
+                                            label = "Claude CLI Path",
+                                            description = "Path to Claude CLI executable",
+                                            value = settings.claudeCliPath ?: "",
+                                            placeholder = "/path/to/claude",
+                                            onValueChange = {
+                                                onSettingsChange(settings.copy(claudeCliPath = it.ifBlank { null }))
+                                            }
+                                        )
+                                    }
+
+                                    Button(
+                                        onClick = {
+                                            val detectedPath = detectClaudePath()
+                                            if (detectedPath != null) {
+                                                onSettingsChange(settings.copy(claudeCliPath = detectedPath))
+                                                log.info { "Auto-detected Claude CLI path: $detectedPath" }
+                                            } else {
+                                                log.warn { "Could not auto-detect Claude CLI path" }
+                                            }
+                                        },
+                                        modifier = Modifier.padding(top = 24.dp)
+                                    ) {
+                                        Text("Auto-detect")
+                                    }
+                                }
+                            }
+
+                            com.gromozeka.bot.settings.AIProvider.OLLAMA -> {
+                                Text(
+                                    text = "Ollama Settings",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.SemiBold,
+                                    modifier = Modifier.padding(vertical = 8.dp)
+                                )
+
                                 TextFieldSettingItem(
-                                    label = "Claude CLI Path",
-                                    description = "Path to Claude CLI executable",
-                                    value = settings.claudeCliPath ?: "",
-                                    placeholder = "/path/to/claude",
-                                    onValueChange = { 
-                                        onSettingsChange(settings.copy(claudeCliPath = it.ifBlank { null })) 
+                                    label = "Ollama Model",
+                                    description = "Model name (e.g., llama3.2, mistral, qwen)",
+                                    value = settings.ollamaModel,
+                                    placeholder = "llama3.2",
+                                    onValueChange = {
+                                        onSettingsChange(settings.copy(ollamaModel = it))
+                                    }
+                                )
+
+                                TextFieldSettingItem(
+                                    label = "Ollama Base URL",
+                                    description = "URL of Ollama server",
+                                    value = settings.ollamaBaseUrl,
+                                    placeholder = "http://localhost:11434",
+                                    onValueChange = {
+                                        onSettingsChange(settings.copy(ollamaBaseUrl = it))
                                     }
                                 )
                             }
-                            
-                            Button(
-                                onClick = {
-                                    val detectedPath = detectClaudePath()
-                                    if (detectedPath != null) {
-                                        onSettingsChange(settings.copy(claudeCliPath = detectedPath))
-                                        log.info { "Auto-detected Claude CLI path: $detectedPath" }
-                                    } else {
-                                        log.warn { "Could not auto-detect Claude CLI path" }
+
+                            com.gromozeka.bot.settings.AIProvider.GEMINI -> {
+                                Text(
+                                    text = "Gemini Settings",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.SemiBold,
+                                    modifier = Modifier.padding(vertical = 8.dp)
+                                )
+
+                                TextFieldSettingItem(
+                                    label = "Gemini Model",
+                                    description = "Model name (e.g., gemini-2.0-flash-exp)",
+                                    value = settings.geminiModel,
+                                    placeholder = "gemini-2.0-flash-exp",
+                                    onValueChange = {
+                                        onSettingsChange(settings.copy(geminiModel = it))
                                     }
-                                },
-                                modifier = Modifier.padding(top = 24.dp)
-                            ) {
-                                Text("Auto-detect")
+                                )
+
+                                Text(
+                                    text = "Note: Gemini credentials configured in application.yaml",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.secondary,
+                                    modifier = Modifier.padding(top = 4.dp)
+                                )
                             }
                         }
 
+                        Spacer(modifier = Modifier.height(8.dp))
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+
+                        // Common AI settings
                         DropdownSettingItem(
                             label = translation.settings.responseFormatLabel,
                             description = translation.settings.responseFormatDescription,
                             value = settings.responseFormat.name,
-                            options = ResponseFormat.values().map { it.name },
+                            options = ResponseFormat.entries.map { it.name },
                             onValueChange = {
                                 val format = ResponseFormat.valueOf(it)
                                 onSettingsChange(settings.copy(responseFormat = format))
@@ -263,7 +347,7 @@ fun SettingsPanel(
 
                         SwitchSettingItem(
                             label = "Auto-approve all tool requests",
-                            description = "Automatically allow all Claude Code tool executions without showing permission dialogs (affects new sessions only)",
+                            description = "Automatically allow all tool executions without showing permission dialogs (affects new sessions only)",
                             value = settings.autoApproveAllTools,
                             onValueChange = { onSettingsChange(settings.copy(autoApproveAllTools = it)) }
                         )

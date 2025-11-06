@@ -16,8 +16,8 @@ import org.springframework.retry.support.RetryTemplate
 import java.io.FileInputStream
 
 
-//@Configuration
-class GeminiConfigDisabled {
+@Configuration
+class GeminiConfig {
 
     @Bean
     fun vertexAI(
@@ -41,6 +41,7 @@ class GeminiConfigDisabled {
     }
 
     @Bean
+    @org.springframework.beans.factory.annotation.Qualifier("vertexAiGeminiChatModel")
     fun vertexAiGeminiChatModel(
         vertexAI: VertexAI,
         toolCallingManager: ToolCallingManager,

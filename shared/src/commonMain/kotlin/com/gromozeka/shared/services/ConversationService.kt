@@ -20,7 +20,12 @@ class ConversationService(
 ) {
     private val log = KLoggers.logger(this)
 
-    suspend fun create(projectPath: String, displayName: String = ""): Conversation {
+    suspend fun create(
+        projectPath: String,
+        displayName: String = "",
+        aiProvider: String = "CLAUDE_CODE",
+        modelName: String = "sonnet"
+    ): Conversation {
         val project = projectService.getOrCreate(projectPath)
         val now = Clock.System.now()
 
@@ -41,6 +46,8 @@ class ConversationService(
             id = conversationId,
             projectId = project.id,
             displayName = displayName,
+            aiProvider = aiProvider,
+            modelName = modelName,
             currentThread = initialThread.id,
             createdAt = now,
             updatedAt = now,

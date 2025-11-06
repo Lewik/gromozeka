@@ -13,6 +13,9 @@ data class Conversation(
     val projectId: Project.Id,
     val displayName: String = "",
 
+    val aiProvider: String,
+    val modelName: String,
+
     val currentThread: Thread.Id,
 
     val createdAt: Instant,
