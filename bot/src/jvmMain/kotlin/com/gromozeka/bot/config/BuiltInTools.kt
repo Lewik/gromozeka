@@ -1,6 +1,7 @@
 package com.gromozeka.bot.config
 
 import org.slf4j.LoggerFactory
+import org.springframework.ai.chat.model.ToolContext
 import org.springframework.ai.tool.ToolCallback
 import org.springframework.ai.tool.function.FunctionToolCallback
 import org.springframework.context.annotation.Bean
@@ -9,6 +10,7 @@ import org.springframework.core.ParameterizedTypeReference
 import java.io.File
 import java.util.Base64
 import java.util.concurrent.TimeUnit
+import java.util.function.BiFunction
 
 @Configuration
 class BuiltInTools {
@@ -17,29 +19,33 @@ class BuiltInTools {
 
     @Bean
     fun readFileTool(): ToolCallback {
-        return FunctionToolCallback.builder("read_file") { request: ReadFileParams ->
-            try {
-                val file = File(request.file_path)
+        val function = object : BiFunction<ReadFileParams, ToolContext?, Map<String, Any>> {
+            override fun apply(request: ReadFileParams, context: ToolContext?): Map<String, Any> {
+                return try {
+                    val file = File(request.file_path)
 
-                when {
-                    !file.exists() -> mapOf("error" to "File not found: ${request.file_path}")
-                    !file.isFile -> mapOf("error" to "Path is not a file: ${request.file_path}")
-                    else -> {
-                        val mimeType = detectMimeType(file)
-                        logger.debug("Reading file: ${file.name}, type: $mimeType")
+                    when {
+                        !file.exists() -> mapOf("error" to "File not found: ${request.file_path}")
+                        !file.isFile -> mapOf("error" to "Path is not a file: ${request.file_path}")
+                        else -> {
+                            val mimeType = detectMimeType(file)
+                            logger.debug("Reading file: ${file.name}, type: $mimeType")
 
-                        when {
-                            mimeType.startsWith("image/") -> readImageFile(file, mimeType)
-                            mimeType == "application/pdf" -> readPdfFile(file)
-                            else -> readTextFile(file, request.limit, request.offset)
+                            when {
+                                mimeType.startsWith("image/") -> readImageFile(file, mimeType)
+                                mimeType == "application/pdf" -> readPdfFile(file)
+                                else -> readTextFile(file, request.limit, request.offset)
+                            }
                         }
                     }
+                } catch (e: Exception) {
+                    logger.error("Error reading file: ${request.file_path}", e)
+                    mapOf("error" to "Error reading file: ${e.message}")
                 }
-            } catch (e: Exception) {
-                logger.error("Error reading file: ${request.file_path}", e)
-                mapOf("error" to "Error reading file: ${e.message}")
             }
         }
+
+        return FunctionToolCallback.builder("read_file", function)
             .description("Read file contents. Supports text files, images (PNG, JPEG, GIF, WebP), and PDF documents.")
             .inputType(object : ParameterizedTypeReference<ReadFileParams>() {})
             .build()
@@ -47,18 +53,22 @@ class BuiltInTools {
 
     @Bean
     fun writeFileTool(): ToolCallback {
-        return FunctionToolCallback.builder("write_file") { request: WriteFileParams ->
-            try {
-                val file = File(request.file_path)
-                file.parentFile?.mkdirs()
-                file.writeText(request.content)
-                logger.debug("Written ${request.content.length} chars to ${file.absolutePath}")
-                mapOf("success" to true, "path" to file.absolutePath, "bytes" to request.content.toByteArray().size)
-            } catch (e: Exception) {
-                logger.error("Error writing file: ${request.file_path}", e)
-                mapOf("error" to "Error writing file: ${e.message}")
+        val function = object : BiFunction<WriteFileParams, ToolContext?, Map<String, Any>> {
+            override fun apply(request: WriteFileParams, context: ToolContext?): Map<String, Any> {
+                return try {
+                    val file = File(request.file_path)
+                    file.parentFile?.mkdirs()
+                    file.writeText(request.content)
+                    logger.debug("Written ${request.content.length} chars to ${file.absolutePath}")
+                    mapOf("success" to true, "path" to file.absolutePath, "bytes" to request.content.toByteArray().size)
+                } catch (e: Exception) {
+                    logger.error("Error writing file: ${request.file_path}", e)
+                    mapOf("error" to "Error writing file: ${e.message}")
+                }
             }
         }
+
+        return FunctionToolCallback.builder("write_file", function)
             .description("Write content to a file. Creates parent directories if needed. Overwrites existing files.")
             .inputType(object : ParameterizedTypeReference<WriteFileParams>() {})
             .build()
@@ -66,42 +76,50 @@ class BuiltInTools {
 
     @Bean
     fun executeCommandTool(): ToolCallback {
-        return FunctionToolCallback.builder("execute_command") { request: ExecuteCommandParams ->
-            try {
-                val workingDir = request.working_directory?.let { File(it) } ?: File(System.getProperty("user.dir"))
+        val function = object : BiFunction<ExecuteCommandParams, ToolContext?, Map<String, Any>> {
+            override fun apply(request: ExecuteCommandParams, context: ToolContext?): Map<String, Any> {
+                return try {
+                    val workingDir = request.working_directory?.let { File(it) } ?: File(System.getProperty("user.dir"))
 
-                logger.debug("Executing: ${request.command} in ${workingDir.absolutePath}")
+                    logger.debug("Executing: ${request.command} in ${workingDir.absolutePath}")
 
-                val process = ProcessBuilder()
-                    .command("sh", "-c", request.command)
-                    .directory(workingDir)
-                    .redirectErrorStream(true)
-                    .start()
+                    val process = ProcessBuilder()
+                        .command("sh", "-c", request.command)
+                        .directory(workingDir)
+                        .redirectErrorStream(true)
+                        .start()
 
-                val timeout = request.timeout_seconds ?: 30L
-                val completed = process.waitFor(timeout, TimeUnit.SECONDS)
+                    val timeout = request.timeout_seconds ?: 30L
+                    val completed = process.waitFor(timeout, TimeUnit.SECONDS)
 
-                if (!completed) {
-                    process.destroyForcibly()
-                    mapOf(
-                        "error" to "Command timed out after $timeout seconds",
-                        "command" to request.command
-                    )
-                } else {
-                    val output = process.inputStream.bufferedReader().readText()
-                    val exitCode = process.exitValue()
+                    if (!completed) {
+                        process.destroyForcibly()
+                        mapOf(
+                            "error" to "Command timed out after $timeout seconds",
+                            "command" to request.command
+                        )
+                    } else {
+                        val output = process.inputStream.bufferedReader().readText()
+                        val exitCode = process.exitValue()
 
-                    mapOf(
-                        "exit_code" to exitCode,
-                        "output" to output,
-                        "success" to (exitCode == 0)
-                    )
+                        val result = mapOf(
+                            "exit_code" to exitCode,
+                            "output" to output,
+                            "success" to (exitCode == 0)
+                        )
+
+                        logger.debug("Command result: exitCode=$exitCode, outputLength=${output.length}, output preview: ${output.take(200)}")
+
+                        result
+                    }
+                } catch (e: Exception) {
+                    logger.error("Error executing command: ${request.command}", e)
+                    mapOf("error" to "Error executing command: ${e.message}")
                 }
-            } catch (e: Exception) {
-                logger.error("Error executing command: ${request.command}", e)
-                mapOf("error" to "Error executing command: ${e.message}")
             }
         }
+
+        return FunctionToolCallback.builder("execute_command", function)
             .description("Execute shell command and return output. Use with caution - has full system access.")
             .inputType(object : ParameterizedTypeReference<ExecuteCommandParams>() {})
             .build()
@@ -109,37 +127,41 @@ class BuiltInTools {
 
     @Bean
     fun listDirectoryTool(): ToolCallback {
-        return FunctionToolCallback.builder("list_directory") { request: ListDirectoryParams ->
-            try {
-                val dir = File(request.path)
+        val function = object : BiFunction<ListDirectoryParams, ToolContext?, Map<String, Any>> {
+            override fun apply(request: ListDirectoryParams, context: ToolContext?): Map<String, Any> {
+                return try {
+                    val dir = File(request.path)
 
-                when {
-                    !dir.exists() -> mapOf("error" to "Directory not found: ${request.path}")
-                    !dir.isDirectory -> mapOf("error" to "Path is not a directory: ${request.path}")
-                    else -> {
-                        val files = dir.listFiles()?.map { file ->
+                    when {
+                        !dir.exists() -> mapOf("error" to "Directory not found: ${request.path}")
+                        !dir.isDirectory -> mapOf("error" to "Path is not a directory: ${request.path}")
+                        else -> {
+                            val files = dir.listFiles()?.map { file ->
+                                mapOf(
+                                    "name" to file.name,
+                                    "type" to if (file.isDirectory) "directory" else "file",
+                                    "size" to if (file.isFile) file.length() else null,
+                                    "modified" to file.lastModified()
+                                )
+                            }?.sortedWith(compareBy({ it["type"] != "directory" }, { it["name"] as String }))
+                                ?: emptyList()
+
+                            logger.debug("Listed ${files.size} items in ${dir.absolutePath}")
+
                             mapOf(
-                                "name" to file.name,
-                                "type" to if (file.isDirectory) "directory" else "file",
-                                "size" to if (file.isFile) file.length() else null,
-                                "modified" to file.lastModified()
+                                "path" to dir.absolutePath,
+                                "files" to files
                             )
-                        }?.sortedWith(compareBy({ it["type"] != "directory" }, { it["name"] as String }))
-                            ?: emptyList()
-
-                        logger.debug("Listed ${files.size} items in ${dir.absolutePath}")
-
-                        mapOf(
-                            "path" to dir.absolutePath,
-                            "files" to files
-                        )
+                        }
                     }
+                } catch (e: Exception) {
+                    logger.error("Error listing directory: ${request.path}", e)
+                    mapOf("error" to "Error listing directory: ${e.message}")
                 }
-            } catch (e: Exception) {
-                logger.error("Error listing directory: ${request.path}", e)
-                mapOf("error" to "Error listing directory: ${e.message}")
             }
         }
+
+        return FunctionToolCallback.builder("list_directory", function)
             .description("List files and directories in a given path. Returns file metadata including size and modification time.")
             .inputType(object : ParameterizedTypeReference<ListDirectoryParams>() {})
             .build()

@@ -86,9 +86,9 @@ kotlin {
                 // Flyway migrations
                 implementation(libs.flyway.core)
 
-                // MCP SDK for official protocol structures
+                // MCP SDK for Gromozeka MCP tools (coexists with Java MCP SDK from Spring AI)
                 implementation(libs.mcp.kotlin.sdk)
-                
+
                 // Age encryption for secure log packaging
                 implementation(libs.jagged.api)
                 implementation(libs.jagged.x25519)

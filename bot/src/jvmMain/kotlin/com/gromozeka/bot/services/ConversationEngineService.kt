@@ -160,6 +160,12 @@ class ConversationEngineService(
             val thinkingMessages = mutableListOf<Conversation.Message>()
             var lastChatResponse: org.springframework.ai.chat.model.ChatResponse? = null
 
+            // Log request details before calling model
+            log.debug {
+                "Calling chatModel.stream(): messages=${currentPrompt.instructions.size}, " +
+                "systemPrompt=${systemPromptText.length} chars, " +
+                "model=${chatModel::class.simpleName}"
+            }
             chatModel.stream(currentPrompt).asFlow().collect { chatResponse ->
                 lastChatResponse = chatResponse
 
@@ -345,19 +351,20 @@ class ConversationEngineService(
                         "conversation history size: ${toolExecutionResult.conversationHistory().size}"
                 }
 
-                // 5h. Extract and emit tool result messages
-                val toolResultMessages = toolExecutionResult.conversationHistory()
-                    .filterIsInstance<ToolResponseMessage>()
+                // 5h. Extract ONLY NEW tool result message (last in history)
+                // Spring AI returns: [old messages] + [new AssistantMessage] + [new ToolResponseMessage]
+                // We only need the ToolResponseMessage (AssistantMessage was already persisted above)
+                val newHistory = toolExecutionResult.conversationHistory()
+                val toolResponseMessage = newHistory.lastOrNull() as? ToolResponseMessage
+                    ?: throw IllegalStateException("Expected ToolResponseMessage as last message in history")
 
-                log.debug { "Found ${toolResultMessages.size} tool result messages" }
+                log.debug { "Persisting single ToolResponseMessage with ${toolResponseMessage.responses.size} tool responses" }
 
-                toolResultMessages.forEach { toolResponseMessage ->
-                    val toolResultConversationMessage = messageConversionService.fromSpringAI(toolResponseMessage)
-                        .copy(conversationId = conversationId)
-                    emit(StreamUpdate.Chunk(toolResultConversationMessage))
-                    conversationService.addMessage(conversationId, toolResultConversationMessage)
-                    log.debug { "Emitted and persisted tool result message" }
-                }
+                val toolResultConversationMessage = messageConversionService.fromSpringAI(toolResponseMessage)
+                    .copy(conversationId = conversationId)
+                emit(StreamUpdate.Chunk(toolResultConversationMessage))
+                conversationService.addMessage(conversationId, toolResultConversationMessage)
+                log.debug { "Emitted and persisted tool result message" }
 
                 // 5i. Check if tool execution returned direct result
                 if (toolExecutionResult.returnDirect()) {

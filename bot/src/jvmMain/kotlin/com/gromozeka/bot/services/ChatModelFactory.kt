@@ -11,11 +11,10 @@ import org.springframework.ai.claudecode.api.ClaudeCodeApi
 import org.springframework.ai.model.tool.ToolCallingManager
 import org.springframework.ai.ollama.OllamaChatModel
 import org.springframework.ai.ollama.api.OllamaApi
-import org.springframework.ai.ollama.api.OllamaOptions
+import org.springframework.ai.ollama.api.OllamaChatOptions
 import org.springframework.ai.ollama.management.ModelManagementOptions
 import org.springframework.ai.vertexai.gemini.VertexAiGeminiChatModel
 import org.springframework.ai.vertexai.gemini.VertexAiGeminiChatOptions
-import org.springframework.ai.vertexai.gemini.schema.VertexToolCallingManager
 import org.springframework.retry.support.RetryTemplate
 import org.springframework.stereotype.Service
 import java.util.concurrent.ConcurrentHashMap
@@ -74,7 +73,7 @@ class ChatModelFactory(
             }
 
             AIProvider.OLLAMA -> {
-                val options = OllamaOptions.builder()
+                val options = OllamaChatOptions.builder()
                     .model(modelName)
                     .numCtx(131072)
                     .numPredict(8192)
@@ -101,10 +100,10 @@ class ChatModelFactory(
                     .internalToolExecutionEnabled(false)
                     .build()
 
-                VertexAiGeminiChatModel(
+                VertexAiGeminiChatModelWithIdFix(
                     vertexAI,
                     options,
-                    VertexToolCallingManager(toolCallingManager),
+                    toolCallingManager,
                     retryTemplate,
                     observationRegistry
                 )

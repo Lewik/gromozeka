@@ -397,11 +397,20 @@ fun SettingsPanel(
                                     modifier = Modifier.padding(vertical = 8.dp)
                                 )
 
-                                TextFieldSettingItem(
+                                // Get available models from Spring AI
+                                val geminiModels = remember {
+                                    org.springframework.ai.vertexai.gemini.VertexAiGeminiChatModel.ChatModel
+                                        .values()
+                                        .map { it.value }
+                                        .sortedByDescending { it } // Latest versions first
+                                }
+
+                                EditableDropdownSettingItem(
                                     label = "Gemini Model",
-                                    description = "Model name (e.g., gemini-2.0-flash-exp)",
+                                    description = "Select predefined or enter custom model name",
                                     value = settings.geminiModel,
-                                    placeholder = "gemini-2.0-flash-exp",
+                                    predefinedOptions = geminiModels,
+                                    placeholder = "gemini-2.0-flash",
                                     onValueChange = {
                                         onSettingsChange(settings.copy(geminiModel = it))
                                     }
@@ -1306,6 +1315,85 @@ private fun InfoSettingItem(
             color = if (isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
             modifier = Modifier.padding(top = 4.dp)
         )
+    }
+}
+
+@Composable
+private fun EditableDropdownSettingItem(
+    label: String,
+    description: String,
+    value: String,
+    predefinedOptions: List<String>,
+    placeholder: String = "",
+    onValueChange: (String) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+
+    // Two-level sort: matches first, then by descending order within each group
+    val filteredOptions = remember(value, predefinedOptions) {
+        if (value.isEmpty()) {
+            predefinedOptions
+        } else {
+            predefinedOptions.sortedWith(
+                compareBy<String> { !it.contains(value, ignoreCase = true) } // matches first (false < true)
+                    .thenByDescending { it } // preserve descending order within groups
+            )
+        }
+    }
+
+    Column {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium
+        )
+
+        if (description.isNotEmpty()) {
+            Text(
+                text = description,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                modifier = Modifier.padding(top = 4.dp)
+            )
+        }
+
+        ExposedDropdownMenuBox(
+            expanded = expanded,
+            onExpandedChange = { expanded = it },
+            modifier = Modifier.padding(top = 8.dp)
+        ) {
+            OutlinedTextField(
+                value = value,
+                onValueChange = onValueChange,
+                readOnly = false, // Editable!
+                placeholder = if (placeholder.isNotEmpty()) {
+                    { Text(placeholder, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)) }
+                } else null,
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .menuAnchor(),
+                singleLine = true
+            )
+
+            ExposedDropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false }
+            ) {
+                filteredOptions.forEach { option ->
+                    // Use key() for better recomposition performance
+                    key(option) {
+                        DropdownMenuItem(
+                            text = { Text(option) },
+                            onClick = {
+                                onValueChange(option)
+                                expanded = false
+                            }
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 

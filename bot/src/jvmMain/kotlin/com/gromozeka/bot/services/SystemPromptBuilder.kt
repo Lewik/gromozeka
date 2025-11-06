@@ -1,6 +1,5 @@
 package com.gromozeka.bot.services
 
-import com.gromozeka.bot.settings.Settings
 import klog.KLoggers
 import org.springframework.stereotype.Service
 import java.io.File
@@ -14,9 +13,7 @@ import java.time.LocalDate
  * 2. Environment info (working directory, platform, git status)
  */
 @Service
-class SystemPromptBuilder(
-    private val settings: Settings
-) {
+class SystemPromptBuilder {
     private val log = KLoggers.logger(this)
 
     /**
