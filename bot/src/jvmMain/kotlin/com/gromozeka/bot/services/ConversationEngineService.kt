@@ -37,6 +37,7 @@ import org.springframework.stereotype.Service
 @Service
 class ConversationEngineService(
     private val chatModelFactory: ChatModelFactory,
+    private val systemPromptBuilder: SystemPromptBuilder,
     private val toolCallingManager: ToolCallingManager,
     private val toolApprovalService: ToolApprovalService,
     private val conversationService: ConversationService,
@@ -117,20 +118,29 @@ class ConversationEngineService(
         // 5. Persist user message immediately
         conversationService.addMessage(conversationId, userMessage)
 
-        // 6. Convert history to Spring AI format
+        // 6. Build system prompt with CLAUDE.md context and environment info
+        val systemPromptText = systemPromptBuilder.build(projectPath)
+        val systemMessage = org.springframework.ai.chat.messages.SystemMessage(systemPromptText)
+        log.debug { "Built system prompt: ${systemPromptText.length} chars" }
+
+        // 7. Convert history to Spring AI format
         val springHistory = messageConversionService.convertHistoryToSpringAI(
             messages + userMessage
         )
         log.debug { "Converted ${springHistory.size} messages to Spring AI format" }
 
-        // 7. Collect tools for user-controlled execution (passed in runtime options)
+        // 8. Prepend system message to conversation history
+        val fullHistory = listOf(systemMessage) + springHistory
+        log.debug { "Full history with system prompt: ${fullHistory.size} messages" }
+
+        // 9. Collect tools for user-controlled execution (passed in runtime options)
         val toolOptions = collectToolOptions()
 
-        var currentPrompt = Prompt(springHistory, toolOptions)
+        var currentPrompt = Prompt(fullHistory, toolOptions)
         var iterationCount = 0
         val maxIterations = 10 // Safety limit to prevent infinite loops
 
-        // 8. Tool execution loop - manually handle tool calls
+        // 10. Tool execution loop - manually handle tool calls
         while (iterationCount < maxIterations) {
             iterationCount++
             log.debug { "Tool execution iteration $iterationCount" }
