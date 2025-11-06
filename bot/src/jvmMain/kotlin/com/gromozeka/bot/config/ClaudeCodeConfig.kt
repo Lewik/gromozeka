@@ -1,18 +1,9 @@
 package com.gromozeka.bot.config
 
-import io.micrometer.observation.ObservationRegistry
-import org.springframework.ai.chat.client.ChatClient
-import org.springframework.ai.claudecode.ClaudeCodeChatModel
-import org.springframework.ai.claudecode.ClaudeCodeChatOptions
 import org.springframework.ai.claudecode.api.ClaudeCodeApi
-import org.springframework.ai.mcp.SyncMcpToolCallbackProvider
-import org.springframework.ai.mcp.client.autoconfigure.properties.McpStdioClientProperties
-import org.springframework.beans.factory.ObjectProvider
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Description
-import org.springframework.retry.support.RetryTemplate
-import java.io.File
 import java.util.concurrent.TimeUnit
 import java.util.function.Function
 
@@ -23,42 +14,6 @@ class ClaudeCodeConfig {
     fun claudeCodeApi(settingsService: com.gromozeka.bot.services.SettingsService): ClaudeCodeApi {
         val strictMode = settingsService.mode == com.gromozeka.bot.settings.AppMode.DEV
         return ClaudeCodeApi(null, null, strictMode)
-    }
-
-    @Bean
-    @org.springframework.beans.factory.annotation.Qualifier("claudeCodeChatModel")
-    fun claudeCodeChatModel(
-        claudeCodeApi: ClaudeCodeApi,
-        toolCallingManager: org.springframework.ai.model.tool.ToolCallingManager,
-        mcpToolProvider: ObjectProvider<SyncMcpToolCallbackProvider>
-    ): ClaudeCodeChatModel {
-        // Build complete tool names set including built-in and MCP tools
-        val toolNames = mutableSetOf("execute_command", "jina_read_url", "read_file")
-
-        mcpToolProvider.ifAvailable { provider ->
-            val mcpToolNames = provider.getToolCallbacks().map { it.toolDefinition.name() }
-            toolNames.addAll(mcpToolNames)
-        }
-
-        val options = ClaudeCodeChatOptions.builder()
-            .model("sonnet")
-            .maxTokens(8192)
-            .temperature(0.7)
-            .thinkingBudgetTokens(8000)
-            .useXmlToolFormat(true)
-            .toolNames(toolNames)
-            .build()
-
-        val retryTemplate = RetryTemplate.builder().maxAttempts(3).build()
-        val observationRegistry = ObservationRegistry.create()
-
-        return ClaudeCodeChatModel.builder()
-            .claudeCodeApi(claudeCodeApi)
-            .defaultOptions(options)
-            .toolCallingManager(toolCallingManager)
-            .retryTemplate(retryTemplate)
-            .observationRegistry(observationRegistry)
-            .build()
     }
 
     // TODO: Temporary workaround for Jina MCP - mcp-remote has bug with Node.js 24.9.0 (Symbol(headers list) ByteString error)
@@ -142,21 +97,6 @@ class ClaudeCodeConfig {
         }
     }
 
-    @Bean
-    fun chatClient(
-        chatModel: ClaudeCodeChatModel,
-        mcpToolProvider: ObjectProvider<SyncMcpToolCallbackProvider>
-    ): ChatClient {
-        val builder = ChatClient.builder(chatModel)
-            .defaultToolNames("execute_command", "jina_read_url", "read_file")
-
-        // Add MCP tools if available
-        mcpToolProvider.ifAvailable { provider ->
-            builder.defaultToolCallbacks(*provider.getToolCallbacks())
-        }
-
-        return builder.build()
-    }
 }
 
 // Tool request/response data classes

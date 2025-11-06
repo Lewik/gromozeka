@@ -120,5 +120,8 @@ class Config {
         return service
     }
 
+    @Bean
+    fun ollamaModelService() = OllamaModelService()
+
 
 }

@@ -237,11 +237,22 @@ class TabViewModel(
                     .collect { update ->
                         when (update) {
                             is ConversationEngineService.StreamUpdate.Chunk -> {
-                                // Add new message to the list
                                 val messages = _allMessages.value.toMutableList()
-                                messages.add(update.message)
-                                _allMessages.value = messages
 
+                                // Find existing message with same ID (for streaming chunks)
+                                val existingIndex = messages.indexOfFirst { it.id == update.message.id }
+
+                                if (existingIndex != -1) {
+                                    // Replace existing message (streaming chunk accumulation)
+                                    messages[existingIndex] = update.message
+                                    log.debug { "Updated existing message ${update.message.id}" }
+                                } else {
+                                    // Add new message
+                                    messages.add(update.message)
+                                    log.debug { "Added new message ${update.message.id}" }
+                                }
+
+                                _allMessages.value = messages
                                 lastMessage = update.message
                             }
                             is ConversationEngineService.StreamUpdate.Error -> {

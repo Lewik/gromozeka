@@ -52,6 +52,7 @@ fun ApplicationScope.ChatWindow(
     themeService: ThemeService,
     aiThemeGenerator: AIThemeGenerator,
     logEncryptor: LogEncryptor,
+    ollamaModelService: OllamaModelService,
     contextExtractionService: ContextExtractionService,
     contextFileService: ContextFileService,
     projectService: ProjectService,
@@ -434,6 +435,7 @@ fun ApplicationScope.ChatWindow(
                             aiThemeGenerator = aiThemeGenerator,
                             logEncryptor = logEncryptor,
                             settingsService = settingsService,
+                            ollamaModelService = ollamaModelService,
                             coroutineScope = coroutineScope,
                             onOpenTab = createNewSession,
                             onOpenTabWithMessage = createNewSessionWithMessage

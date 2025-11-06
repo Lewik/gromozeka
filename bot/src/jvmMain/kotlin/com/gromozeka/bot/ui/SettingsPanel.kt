@@ -43,12 +43,31 @@ fun SettingsPanel(
     aiThemeGenerator: AIThemeGenerator,
     logEncryptor: LogEncryptor,
     settingsService: SettingsService,
+    ollamaModelService: com.gromozeka.bot.services.OllamaModelService,
     coroutineScope: CoroutineScope,
     onOpenTab: (String) -> Unit, // Callback to open new tab with project path
     onOpenTabWithMessage: ((String, String) -> Unit)? = null, // Callback to open new tab with initial message (uses default agent)
     modifier: Modifier = Modifier,
 ) {
     val translation = LocalTranslation.current
+
+    // Ollama models state
+    var ollamaModels by remember { mutableStateOf<List<String>>(emptyList()) }
+    var ollamaModelsError by remember { mutableStateOf<String?>(null) }
+    var ollamaModelsLoading by remember { mutableStateOf(false) }
+
+    // Load Ollama models when panel opens and Ollama is selected
+    LaunchedEffect(isVisible, settings.defaultAiProvider) {
+        if (isVisible && settings.defaultAiProvider == com.gromozeka.bot.settings.AIProvider.OLLAMA) {
+            ollamaModelsLoading = true
+            coroutineScope.launch {
+                val result = ollamaModelService.listModels()
+                ollamaModels = result.models
+                ollamaModelsError = result.error
+                ollamaModelsLoading = false
+            }
+        }
+    }
 
     // Refresh themes when panel opens
     LaunchedEffect(isVisible) {
@@ -275,15 +294,89 @@ fun SettingsPanel(
                                     modifier = Modifier.padding(vertical = 8.dp)
                                 )
 
-                                TextFieldSettingItem(
-                                    label = "Ollama Model",
-                                    description = "Model name (e.g., llama3.2, mistral, qwen)",
-                                    value = settings.ollamaModel,
-                                    placeholder = "llama3.2",
-                                    onValueChange = {
-                                        onSettingsChange(settings.copy(ollamaModel = it))
+                                // Ollama Model dropdown with refresh button
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.Bottom,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        when {
+                                            ollamaModelsError != null -> {
+                                                Text(
+                                                    text = "Ollama Model",
+                                                    style = MaterialTheme.typography.bodyMedium,
+                                                    fontWeight = FontWeight.Medium
+                                                )
+                                                Text(
+                                                    text = "Error: $ollamaModelsError",
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.error,
+                                                    modifier = Modifier.padding(top = 4.dp)
+                                                )
+                                                TextFieldSettingItem(
+                                                    label = "",
+                                                    description = "",
+                                                    value = settings.ollamaModel,
+                                                    placeholder = "llama3.2",
+                                                    onValueChange = {
+                                                        onSettingsChange(settings.copy(ollamaModel = it))
+                                                    }
+                                                )
+                                            }
+                                            ollamaModelsLoading -> {
+                                                Text(
+                                                    text = "Ollama Model",
+                                                    style = MaterialTheme.typography.bodyMedium,
+                                                    fontWeight = FontWeight.Medium
+                                                )
+                                                Text(
+                                                    text = "Loading models...",
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                    modifier = Modifier.padding(top = 4.dp)
+                                                )
+                                            }
+                                            ollamaModels.isNotEmpty() -> {
+                                                DropdownSettingItem(
+                                                    label = "Ollama Model",
+                                                    description = "Available models from 'ollama list'",
+                                                    value = settings.ollamaModel,
+                                                    options = ollamaModels,
+                                                    onValueChange = {
+                                                        onSettingsChange(settings.copy(ollamaModel = it))
+                                                    }
+                                                )
+                                            }
+                                            else -> {
+                                                TextFieldSettingItem(
+                                                    label = "Ollama Model",
+                                                    description = "Model name (e.g., llama3.2, mistral, qwen)",
+                                                    value = settings.ollamaModel,
+                                                    placeholder = "llama3.2",
+                                                    onValueChange = {
+                                                        onSettingsChange(settings.copy(ollamaModel = it))
+                                                    }
+                                                )
+                                            }
+                                        }
                                     }
-                                )
+
+                                    Button(
+                                        onClick = {
+                                            coroutineScope.launch {
+                                                ollamaModelsLoading = true
+                                                val result = ollamaModelService.listModels()
+                                                ollamaModels = result.models
+                                                ollamaModelsError = result.error
+                                                ollamaModelsLoading = false
+                                            }
+                                        },
+                                        modifier = Modifier.padding(top = 24.dp)
+                                    ) {
+                                        Icon(Icons.Default.Refresh, contentDescription = "Refresh models")
+                                    }
+                                }
 
                                 TextFieldSettingItem(
                                     label = "Ollama Base URL",
