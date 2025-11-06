@@ -76,6 +76,8 @@ class ChatModelFactory(
             AIProvider.OLLAMA -> {
                 val options = OllamaOptions.builder()
                     .model(modelName)
+                    .numCtx(131072)
+                    .numPredict(8192)
                     .temperature(0.7)
                     .internalToolExecutionEnabled(false)
                     .build()
