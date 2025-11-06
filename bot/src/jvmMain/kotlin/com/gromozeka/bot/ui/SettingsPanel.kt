@@ -399,7 +399,7 @@ fun SettingsPanel(
 
                                 // Get available models from Spring AI
                                 val geminiModels = remember {
-                                    org.springframework.ai.vertexai.gemini.VertexAiGeminiChatModel.ChatModel
+                                    org.springframework.ai.google.genai.GoogleGenAiChatModel.ChatModel
                                         .values()
                                         .map { it.value }
                                         .sortedByDescending { it } // Latest versions first

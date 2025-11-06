@@ -1,7 +1,7 @@
 package com.gromozeka.bot.config
 
 import com.google.auth.oauth2.GoogleCredentials
-import com.google.cloud.vertexai.VertexAI
+import com.google.genai.Client
 import org.springframework.ai.model.tool.ToolCallingManager
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Bean
@@ -13,18 +13,19 @@ import java.io.FileInputStream
 class GeminiConfig {
 
     @Bean
-    fun vertexAI(
-        @Value("\${spring.ai.vertex.ai.gemini.project-id}") projectId: String,
-        @Value("\${spring.ai.vertex.ai.gemini.location}") location: String,
-        @Value("\${spring.ai.vertex.ai.gemini.credentials-uri}") credentialsUri: String,
-    ): VertexAI {
+    fun geminiClient(
+        @Value("\${spring.ai.google-genai.project-id}") projectId: String,
+        @Value("\${spring.ai.google-genai.location}") location: String,
+        @Value("\${spring.ai.google-genai.credentials-uri}") credentialsUri: String,
+    ): Client {
         val credentials = GoogleCredentials.fromStream(
             FileInputStream(credentialsUri.removePrefix("file:"))
         ).createScoped("https://www.googleapis.com/auth/cloud-platform")
-        return VertexAI.Builder()
-            .setProjectId(projectId)
-            .setLocation(location)
-            .setCredentials(credentials)
+        return Client.builder()
+            .project(projectId)
+            .location(location)
+            .vertexAI(true)
+            .credentials(credentials)
             .build()
     }
 

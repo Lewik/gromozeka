@@ -10,6 +10,7 @@ import org.springframework.ai.chat.messages.AssistantMessage
 import org.springframework.ai.chat.messages.ToolResponseMessage
 import org.springframework.ai.chat.prompt.ChatOptions
 import org.springframework.ai.chat.prompt.Prompt
+import org.springframework.ai.google.genai.metadata.GoogleGenAiUsage
 import org.springframework.ai.mcp.SyncMcpToolCallbackProvider
 import org.springframework.ai.model.tool.ToolCallingChatOptions
 import org.springframework.ai.model.tool.ToolCallingManager
@@ -267,6 +268,24 @@ class ConversationEngineService(
             }
 
             log.debug { "Aggregated response: text length=${aggregatedText.length}, tool calls=${aggregatedToolCalls.size}" }
+
+            // Log usage metadata (including thinking tokens for Gemini)
+            finalChunk.metadata?.usage?.let { usage ->
+                when (usage) {
+                    is GoogleGenAiUsage -> {
+                        log.info {
+                            "Usage: prompt=${usage.promptTokens}, completion=${usage.completionTokens}, " +
+                                "total=${usage.totalTokens}, thoughts=${usage.thoughtsTokenCount}"
+                        }
+                    }
+                    else -> {
+                        log.info {
+                            "Usage: prompt=${usage.promptTokens}, completion=${usage.completionTokens}, " +
+                                "total=${usage.totalTokens}"
+                        }
+                    }
+                }
+            }
 
             val finishReason = finalChunk.result.metadata?.finishReason
             log.debug {

@@ -4,13 +4,11 @@ spring:
   banner:
     location: classpath:banner.txt
   ai:
-    vertex:
-      ai:
-        gemini:
-          project-id: totemic-stack-367712
-          location: us-central1
-          transport: REST
-          credentials-uri: file:../google-credentials.json
+    google-genai:
+      project-id: totemic-stack-367712
+      location: us-central1
+      use-vertex-ai: true
+      credentials-uri: file:../google-credentials.json
 
     ollama:
       base-url: http://localhost:11434

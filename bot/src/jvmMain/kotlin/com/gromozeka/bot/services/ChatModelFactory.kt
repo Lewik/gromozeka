@@ -1,6 +1,6 @@
 package com.gromozeka.bot.services
 
-import com.google.cloud.vertexai.VertexAI
+import com.google.genai.Client
 import com.gromozeka.bot.settings.AIProvider
 import io.micrometer.observation.ObservationRegistry
 import klog.KLoggers
@@ -8,13 +8,13 @@ import org.springframework.ai.chat.model.ChatModel
 import org.springframework.ai.claudecode.ClaudeCodeChatModel
 import org.springframework.ai.claudecode.ClaudeCodeChatOptions
 import org.springframework.ai.claudecode.api.ClaudeCodeApi
+import org.springframework.ai.google.genai.GoogleGenAiChatOptions
+import org.springframework.ai.google.genai.GoogleGenAiGeminiChatModelWithWorkarounds
 import org.springframework.ai.model.tool.ToolCallingManager
 import org.springframework.ai.ollama.OllamaChatModel
 import org.springframework.ai.ollama.api.OllamaApi
 import org.springframework.ai.ollama.api.OllamaChatOptions
 import org.springframework.ai.ollama.management.ModelManagementOptions
-import org.springframework.ai.vertexai.gemini.VertexAiGeminiChatModel
-import org.springframework.ai.vertexai.gemini.VertexAiGeminiChatOptions
 import org.springframework.retry.support.RetryTemplate
 import org.springframework.stereotype.Service
 import java.util.concurrent.ConcurrentHashMap
@@ -23,7 +23,7 @@ import java.util.concurrent.ConcurrentHashMap
 class ChatModelFactory(
     private val claudeCodeApi: ClaudeCodeApi,
     private val ollamaApi: OllamaApi,
-    private val vertexAI: VertexAI,
+    private val geminiClient: Client,
     private val toolCallingManager: ToolCallingManager,
 ) {
     private val log = KLoggers.logger(this)
@@ -93,15 +93,16 @@ class ChatModelFactory(
             }
 
             AIProvider.GEMINI -> {
-                val options = VertexAiGeminiChatOptions
-                    .builder()
+                val options = GoogleGenAiChatOptions.builder()
                     .model(modelName)
                     .temperature(0.7)
-                    .internalToolExecutionEnabled(false)
+                    .maxOutputTokens(8192)
+                    .thinkingBudget(8192)
+                    .includeExtendedUsageMetadata(true)
                     .build()
 
-                VertexAiGeminiChatModelWithIdFix(
-                    vertexAI,
+                GoogleGenAiGeminiChatModelWithWorkarounds(
+                    geminiClient,
                     options,
                     toolCallingManager,
                     retryTemplate,
