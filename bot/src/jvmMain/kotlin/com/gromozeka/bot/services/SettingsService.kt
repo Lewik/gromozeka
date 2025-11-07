@@ -30,9 +30,6 @@ class SettingsService {
 
     val gromozekaHome: File = determineGromozekaHome()
 
-    val claudeHome: File = System.getProperty("claude.home")?.let { File(it) }
-        ?: File(System.getProperty("user.home"), ".claude")
-
     val mcpConfigFile = File(gromozekaHome, "mcp-sse-config.json")
     val mcpPort = findRandomAvailablePort()
 
@@ -120,7 +117,6 @@ class SettingsService {
 
     private fun createDefaultSettings(): Settings {
         val detectedScale = detectOptimalUIScale()
-        val detectedClaudePath = detectClaudePath()
 
         val defaults = Settings(
             enableTts = true,
@@ -130,15 +126,8 @@ class SettingsService {
             enableMessageSounds = false,
             enableReadySounds = false,
             soundVolume = 1.0f,
-            uiScale = detectedScale, // Auto-detect once on first launch, then user controls manually
-            claudeCliPath = detectedClaudePath // Auto-detect Claude CLI path
+            uiScale = detectedScale // Auto-detect once on first launch, then user controls manually
         )
-
-        if (detectedClaudePath != null) {
-            log.info("Auto-detected Claude CLI path: $detectedClaudePath")
-        } else {
-            log.warn("Could not auto-detect Claude CLI path, will use fallback")
-        }
 
         settingsFile.writeText(json.encodeToString(defaults))
         log.info("Created default settings file: ${settingsFile.absolutePath}")
@@ -179,15 +168,6 @@ class SettingsService {
 
     fun getSessionsDir(): File {
         return File(gromozekaHome, "sessions").apply { mkdirs() }
-    }
-
-    // Claude specific paths
-    fun getClaudeProjectsDir(): File {
-        return File(claudeHome, "projects")
-    }
-
-    fun getClaudeConfigDir(): File {
-        return File(claudeHome, "config")
     }
 
     // Log directory paths (single source of truth)

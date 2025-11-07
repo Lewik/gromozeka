@@ -5,18 +5,18 @@ import com.gromozeka.bot.services.ConversationEngineService
 import com.gromozeka.bot.services.DefaultAgentProvider
 import com.gromozeka.bot.services.SettingsService
 import com.gromozeka.bot.services.SoundNotificationService
-import com.gromozeka.bot.ui.state.UIState
+import com.gromozeka.bot.settings.AIProvider
 import com.gromozeka.bot.ui.state.ConversationInitiator
+import com.gromozeka.bot.ui.state.UIState
 import com.gromozeka.shared.domain.Agent
 import com.gromozeka.shared.domain.Conversation
 import com.gromozeka.shared.services.ConversationService
 import klog.KLoggers
-
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import java.util.UUID
+import java.util.*
 
 open class AppViewModel(
     private val conversationEngineService: ConversationEngineService,
@@ -63,9 +63,8 @@ open class AppViewModel(
             val settings = settingsService.settings
             val aiProvider = settings.defaultAiProvider.name
             val modelName = when (settings.defaultAiProvider) {
-                com.gromozeka.bot.settings.AIProvider.CLAUDE_CODE -> settings.claudeModel
-                com.gromozeka.bot.settings.AIProvider.OLLAMA -> settings.ollamaModel
-                com.gromozeka.bot.settings.AIProvider.GEMINI -> settings.geminiModel
+                AIProvider.OLLAMA -> settings.ollamaModel
+                AIProvider.GEMINI -> settings.geminiModel
             }
 
             conversationService.create(
@@ -75,8 +74,9 @@ open class AppViewModel(
             )
         }
 
-        val parentTabId = initialMessage?.instructions?.filterIsInstance<Conversation.Message.Instruction.Source.Agent>()
-            ?.firstOrNull()?.tabId
+        val parentTabId =
+            initialMessage?.instructions?.filterIsInstance<Conversation.Message.Instruction.Source.Agent>()
+                ?.firstOrNull()?.tabId
 
         val initialTabUiState = UIState.Tab(
             projectPath = projectPath,
@@ -198,9 +198,8 @@ open class AppViewModel(
                         val settings = settingsService.settings
                         val aiProvider = settings.defaultAiProvider.name
                         val modelName = when (settings.defaultAiProvider) {
-                            com.gromozeka.bot.settings.AIProvider.CLAUDE_CODE -> settings.claudeModel
-                            com.gromozeka.bot.settings.AIProvider.OLLAMA -> settings.ollamaModel
-                            com.gromozeka.bot.settings.AIProvider.GEMINI -> settings.geminiModel
+                            AIProvider.OLLAMA -> settings.ollamaModel
+                            AIProvider.GEMINI -> settings.geminiModel
                         }
 
                         conversationService.create(

@@ -17,12 +17,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.gromozeka.bot.services.LogEncryptor
 import com.gromozeka.bot.services.SettingsService
-import com.gromozeka.bot.services.detectClaudePath
 import com.gromozeka.bot.services.theming.AIThemeGenerator
 import com.gromozeka.bot.services.theming.ThemeService
 import com.gromozeka.bot.services.theming.data.Theme
 import com.gromozeka.bot.services.translation.TranslationService
 import com.gromozeka.bot.services.translation.data.Translation
+import com.gromozeka.bot.settings.AIProvider
 import com.gromozeka.bot.settings.ResponseFormat
 import com.gromozeka.bot.settings.Settings
 import klog.KLoggers
@@ -58,7 +58,7 @@ fun SettingsPanel(
 
     // Load Ollama models when panel opens and Ollama is selected
     LaunchedEffect(isVisible, settings.defaultAiProvider) {
-        if (isVisible && settings.defaultAiProvider == com.gromozeka.bot.settings.AIProvider.OLLAMA) {
+        if (isVisible && settings.defaultAiProvider == AIProvider.OLLAMA) {
             ollamaModelsLoading = true
             coroutineScope.launch {
                 val result = ollamaModelService.listModels()
@@ -197,7 +197,7 @@ fun SettingsPanel(
                                 value = settings.globalPttHotkeyEnabled,
                                 onValueChange = { onSettingsChange(settings.copy(globalPttHotkeyEnabled = it)) }
                             )
-                            
+
                             // Warning about disabled global hotkeys
                             Text(
                                 text = "⚠️ Global hotkeys temporarily disabled - UI PTT button available",
@@ -225,9 +225,9 @@ fun SettingsPanel(
                             label = "Default AI Provider",
                             description = "Choose the AI provider for new conversations",
                             value = settings.defaultAiProvider.name,
-                            options = com.gromozeka.bot.settings.AIProvider.entries.map { it.name },
+                            options = AIProvider.entries.map { it.name },
                             onValueChange = {
-                                val provider = com.gromozeka.bot.settings.AIProvider.valueOf(it)
+                                val provider = AIProvider.valueOf(it)
                                 onSettingsChange(settings.copy(defaultAiProvider = provider))
                             }
                         )
@@ -236,57 +236,7 @@ fun SettingsPanel(
 
                         // Provider-specific settings
                         when (settings.defaultAiProvider) {
-                            com.gromozeka.bot.settings.AIProvider.CLAUDE_CODE -> {
-                                Text(
-                                    text = "Claude Code Settings",
-                                    style = MaterialTheme.typography.titleSmall,
-                                    fontWeight = FontWeight.SemiBold,
-                                    modifier = Modifier.padding(vertical = 8.dp)
-                                )
-
-                                DropdownSettingItem(
-                                    label = translation.settings.claudeModelLabel,
-                                    description = translation.settings.claudeModelDescription,
-                                    value = settings.claudeModel,
-                                    options = listOf("sonnet", "haiku", "opus"),
-                                    onValueChange = { onSettingsChange(settings.copy(claudeModel = it)) }
-                                )
-
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    verticalAlignment = Alignment.Bottom,
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        TextFieldSettingItem(
-                                            label = "Claude CLI Path",
-                                            description = "Path to Claude CLI executable",
-                                            value = settings.claudeCliPath ?: "",
-                                            placeholder = "/path/to/claude",
-                                            onValueChange = {
-                                                onSettingsChange(settings.copy(claudeCliPath = it.ifBlank { null }))
-                                            }
-                                        )
-                                    }
-
-                                    Button(
-                                        onClick = {
-                                            val detectedPath = detectClaudePath()
-                                            if (detectedPath != null) {
-                                                onSettingsChange(settings.copy(claudeCliPath = detectedPath))
-                                                log.info { "Auto-detected Claude CLI path: $detectedPath" }
-                                            } else {
-                                                log.warn { "Could not auto-detect Claude CLI path" }
-                                            }
-                                        },
-                                        modifier = Modifier.padding(top = 24.dp)
-                                    ) {
-                                        Text("Auto-detect")
-                                    }
-                                }
-                            }
-
-                            com.gromozeka.bot.settings.AIProvider.OLLAMA -> {
+                            AIProvider.OLLAMA -> {
                                 Text(
                                     text = "Ollama Settings",
                                     style = MaterialTheme.typography.titleSmall,
@@ -324,6 +274,7 @@ fun SettingsPanel(
                                                     }
                                                 )
                                             }
+
                                             ollamaModelsLoading -> {
                                                 Text(
                                                     text = "Ollama Model",
@@ -337,6 +288,7 @@ fun SettingsPanel(
                                                     modifier = Modifier.padding(top = 4.dp)
                                                 )
                                             }
+
                                             ollamaModels.isNotEmpty() -> {
                                                 DropdownSettingItem(
                                                     label = "Ollama Model",
@@ -348,6 +300,7 @@ fun SettingsPanel(
                                                     }
                                                 )
                                             }
+
                                             else -> {
                                                 TextFieldSettingItem(
                                                     label = "Ollama Model",
@@ -389,7 +342,7 @@ fun SettingsPanel(
                                 )
                             }
 
-                            com.gromozeka.bot.settings.AIProvider.GEMINI -> {
+                            AIProvider.GEMINI -> {
                                 Text(
                                     text = "Gemini Settings",
                                     style = MaterialTheme.typography.titleSmall,
@@ -779,9 +732,11 @@ fun SettingsPanel(
                                                 osName.contains("mac") -> {
                                                     ProcessBuilder("open", logsPath.toString()).start()
                                                 }
+
                                                 osName.contains("windows") -> {
                                                     ProcessBuilder("explorer", logsPath.toString()).start()
                                                 }
+
                                                 else -> {
                                                     ProcessBuilder("xdg-open", logsPath.toString()).start()
                                                 }
@@ -796,7 +751,7 @@ fun SettingsPanel(
                                 }
                             }
                         )
-                        
+
                         ButtonSettingItem(
                             label = "Encrypt Logs",
                             description = "Encrypt logs for secure transmission to developer. Personal information is not logged.",
@@ -806,10 +761,10 @@ fun SettingsPanel(
                                     try {
                                         log.info("Starting log encryption...")
                                         val result = logEncryptor.encryptLogs()
-                                        
+
                                         if (result.success && result.encryptedFile != null) {
                                             log.info("Log encryption successful: ${result.encryptedFile}")
-                                            
+
                                             // Open folder with encrypted file
                                             try {
                                                 val encryptedFolder = result.encryptedFile.parent
@@ -818,9 +773,11 @@ fun SettingsPanel(
                                                     osName.contains("mac") -> {
                                                         ProcessBuilder("open", encryptedFolder.toString()).start()
                                                     }
+
                                                     osName.contains("windows") -> {
                                                         ProcessBuilder("explorer", encryptedFolder.toString()).start()
                                                     }
+
                                                     else -> {
                                                         ProcessBuilder("xdg-open", encryptedFolder.toString()).start()
                                                     }
@@ -840,7 +797,7 @@ fun SettingsPanel(
                                 }
                             }
                         )
-                        
+
                         ButtonSettingItem(
                             label = "Clear Application Logs",
                             description = "Delete all log files to immediately free up disk space and start fresh logging.",

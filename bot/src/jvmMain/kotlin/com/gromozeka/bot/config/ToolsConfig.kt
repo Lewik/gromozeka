@@ -1,6 +1,5 @@
 package com.gromozeka.bot.config
 
-import org.springframework.ai.claudecode.api.ClaudeCodeApi
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Description
@@ -8,13 +7,8 @@ import java.util.concurrent.TimeUnit
 import java.util.function.Function
 
 @Configuration
-class ClaudeCodeConfig {
+class ToolsConfig {
 
-    @Bean
-    fun claudeCodeApi(settingsService: com.gromozeka.bot.services.SettingsService): ClaudeCodeApi {
-        val strictMode = settingsService.mode == com.gromozeka.bot.settings.AppMode.DEV
-        return ClaudeCodeApi(null, null, strictMode)
-    }
 
     // TODO: Temporary workaround for Jina MCP - mcp-remote has bug with Node.js 24.9.0 (Symbol(headers list) ByteString error)
     // TODO: Replace with proper MCP integration when mcp-remote is fixed or we implement direct SSE transport

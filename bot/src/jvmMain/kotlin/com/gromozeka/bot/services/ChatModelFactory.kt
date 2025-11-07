@@ -5,9 +5,6 @@ import com.gromozeka.bot.settings.AIProvider
 import io.micrometer.observation.ObservationRegistry
 import klog.KLoggers
 import org.springframework.ai.chat.model.ChatModel
-import org.springframework.ai.claudecode.ClaudeCodeChatModel
-import org.springframework.ai.claudecode.ClaudeCodeChatOptions
-import org.springframework.ai.claudecode.api.ClaudeCodeApi
 import org.springframework.ai.google.genai.GoogleGenAiChatOptions
 import org.springframework.ai.google.genai.GoogleGenAiGeminiChatModelWithWorkarounds
 import org.springframework.ai.model.tool.ToolCallingManager
@@ -21,7 +18,6 @@ import java.util.concurrent.ConcurrentHashMap
 
 @Service
 class ChatModelFactory(
-    private val claudeCodeApi: ClaudeCodeApi,
     private val ollamaApi: OllamaApi,
     private val geminiClient: Client,
     private val toolCallingManager: ToolCallingManager,
@@ -46,32 +42,12 @@ class ChatModelFactory(
     private fun createChatModel(
         provider: AIProvider,
         modelName: String,
-        projectPath: String?
+        projectPath: String?,
     ): ChatModel {
         val retryTemplate = RetryTemplate.builder().maxAttempts(3).build()
         val observationRegistry = ObservationRegistry.create()
 
         return when (provider) {
-            AIProvider.CLAUDE_CODE -> {
-                val options = ClaudeCodeChatOptions.builder()
-                    .model(modelName)
-                    .maxTokens(8192)
-                    .temperature(0.7)
-                    .thinkingBudgetTokens(8000)
-                    .useXmlToolFormat(true)
-                    .internalToolExecutionEnabled(false)
-                    .projectPath(projectPath)
-                    .build()
-
-                ClaudeCodeChatModel.builder()
-                    .claudeCodeApi(claudeCodeApi)
-                    .defaultOptions(options)
-                    .toolCallingManager(toolCallingManager)
-                    .retryTemplate(retryTemplate)
-                    .observationRegistry(observationRegistry)
-                    .build()
-            }
-
             AIProvider.OLLAMA -> {
                 val options = OllamaChatOptions.builder()
                     .model(modelName)

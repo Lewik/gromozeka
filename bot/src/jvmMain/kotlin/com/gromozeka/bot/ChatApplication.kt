@@ -77,13 +77,6 @@ fun main() {
     var appComponents: AppComponents? = null
 
     try {
-        // Check Claude Code is installed before starting
-        val claudeProjectsDir = File(System.getProperty("user.home"), ".claude/projects")
-        if (!claudeProjectsDir.exists()) {
-            throw IllegalStateException("Claude Code not installed - directory does not exist: ${claudeProjectsDir.absolutePath}")
-        }
-        log.info("Claude Code installation verified")
-
         log.info("Initializing Spring context...")
 
         // Determine app mode to set Spring profile

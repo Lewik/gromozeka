@@ -9,7 +9,6 @@
     "autoSend": true,
     "globalPttHotkeyEnabled": false,
     "muteSystemAudioDuringPTT": true,
-    "claudeModel": "sonnet",
     "includeCurrentTime": true,
     "responseFormat": "XML_INLINE",
     "openAiApiKey": null,

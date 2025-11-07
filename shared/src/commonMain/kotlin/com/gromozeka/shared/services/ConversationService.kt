@@ -23,8 +23,8 @@ class ConversationService(
     suspend fun create(
         projectPath: String,
         displayName: String = "",
-        aiProvider: String = "CLAUDE_CODE",
-        modelName: String = "sonnet"
+        aiProvider: String = "OLLAMA",
+        modelName: String = "llama3.2"
     ): Conversation {
         val project = projectService.getOrCreate(projectPath)
         val now = Clock.System.now()
