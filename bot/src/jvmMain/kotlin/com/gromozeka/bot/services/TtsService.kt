@@ -8,7 +8,7 @@ import kotlinx.coroutines.withContext
 import org.springframework.ai.openai.OpenAiAudioSpeechModel
 import org.springframework.ai.openai.OpenAiAudioSpeechOptions
 import org.springframework.ai.openai.api.OpenAiAudioApi
-import org.springframework.ai.openai.audio.speech.SpeechPrompt
+import org.springframework.ai.audio.tts.TextToSpeechPrompt
 import java.io.File
 
 class TtsService(
@@ -28,9 +28,8 @@ class TtsService(
             val outputFile = File.createTempFile("tts_output", ".mp3")
 
             val response = openAiAudioSpeechModel.call(
-                SpeechPrompt(
-                    voiceTone, OpenAiAudioSpeechOptions.builder()
-                        .input(text)
+                TextToSpeechPrompt(
+                    text, OpenAiAudioSpeechOptions.builder()
                         .model(settingsService.settings.ttsModel)
                         .voice(
                             OpenAiAudioApi.SpeechRequest.Voice.valueOf(
@@ -38,7 +37,7 @@ class TtsService(
                             )
                         )
                         .responseFormat(OpenAiAudioApi.SpeechRequest.AudioResponseFormat.MP3)
-                        .speed(settingsService.settings.ttsSpeed)
+                        .speed(settingsService.settings.ttsSpeed.toDouble())
                         .build()
                 )
             ).result.output

@@ -162,9 +162,12 @@ This significantly reduces the need for extensive unit testing compared to dynam
 
 **Claude Code CLI invocation** (via ClaudeCodeApi):
 ```bash
-claude --output-format stream-json --input-format stream-json \
-  --disable-tools Task,Bash,Read,Edit,Write,WebFetch,... \
-  --append-system-prompt <SYSTEM_PROMPT>
+claude --output-format stream-json \
+  --disallowedTools Task,Bash,Read,Edit,Write,WebFetch,... \
+  --max-turns 1 \
+  --model <MODEL_ID> \
+  -p
+# System prompt and messages sent via stdin as JSONL
 ```
 
 **Spring AI Integration**:
@@ -306,19 +309,39 @@ Multiple ChatModel implementations:
 
 Official Spring AI does not include Claude Code CLI support. Custom implementation mimics Spring AI native ChatModel patterns for seamless compatibility.
 
+**Key Components**:
+- `ClaudeCodeChatModel` - Spring AI ChatModel implementation
+- `ClaudeCodeApi` - CLI process management and JSONL streaming
+- `ClaudeCodeChatOptions` - Configuration (model, thinking tokens, working dir)
+- `TextToolCallParser` - Regex-based parser for text-embedded tool calls
+- `ClaudeCodeStreamEvent` - Event types for streaming responses
+
+**Text-Based Tool Calling**:
+- Claude Code CLI doesn't support custom tools via system prompt
+- We disable built-in tools via `--disallowedTools` flag
+- Tools described in system prompt as XML format
+- Claude embeds tool calls in text as `<tool_use><name>...</name><parameters>...</parameters></tool_use>`
+- `TextToolCallParser` extracts tool calls from text via regex
+- Converts to Spring AI `AssistantMessage.ToolCall` objects
+- Spring AI ToolCallingManager executes tools, sends results back
+
 **Tool Execution**: User-controlled mode (`internalToolExecutionEnabled=false`)
-- Claude returns `tool_use` blocks in assistant messages
-- Spring AI intercepts and executes via ToolCallingManager
+- Claude returns text with embedded `<tool_use>` blocks
+- TextToolCallParser extracts and normalizes tool calls
+- Spring AI intercepts structured ToolCall objects via ToolCallingManager
 - Same execution path as Gemini, OpenAI, other providers
 - No model-specific built-in tools used
 
 **Protocol Flow**:
-1. Send message history to Claude CLI
-2. Receive streaming response with `tool_use` blocks
-3. Spring AI ToolCallingManager detects tool calls, checks permissions
-4. Execute approved calls via ToolCallback beans
-5. Send `tool_result` back to Claude
-6. Continue until `stop_reason != "tool_use"`
+1. Send message history to Claude CLI via stdin (JSONL)
+2. Receive streaming response with text content
+3. TextToolCallParser detects `<tool_use>` blocks in text
+4. Convert to AssistantMessage with structured ToolCall objects
+5. Spring AI ToolCallingManager detects tool calls, checks permissions
+6. Execute approved calls via ToolCallback beans
+7. Convert tool results back to text format for Claude
+8. Send `tool_result` back to Claude via stdin
+9. Continue until `stop_reason != "tool_use"`
 
 ## MCP SDK Architecture & Package Management
 
@@ -447,6 +470,32 @@ age --decrypt --identity developer_private.age --output logs/logs.zip path/to/en
 - **Production mode**: `~/.gromozeka/encrypted-logs/`
 - **Development mode**: `bot/dev-data/.gromozeka/encrypted-logs/`
 **Security**: Personal data should not be logged, only technical diagnostics preserved
+
+## Spring AI API Migration (November 2024)
+
+**Context**: Spring AI 1.1.0-SNAPSHOT auto-updates daily. Nov 7 snapshot introduced breaking changes.
+
+**API Changes**:
+1. **Message Builders**: Constructors deprecated in favor of builder pattern
+   - `AssistantMessage(content, props, toolCalls)` → `AssistantMessage.builder().content().properties().toolCalls().build()`
+   - `ToolResponseMessage(responses, metadata)` → `ToolResponseMessage.builder().responses().metadata().build()`
+
+2. **TTS API Migration**: Deprecated audio classes removed
+   - `org.springframework.ai.openai.audio.speech.SpeechPrompt` → `org.springframework.ai.audio.tts.TextToSpeechPrompt`
+   - Constructor changed: `SpeechPrompt(voiceTone, options)` → `TextToSpeechPrompt(text, options)`
+   - Speed parameter: `Float` → `Double` (requires `.toDouble()` conversion)
+   - Response access: `.result.output` unchanged (Speech.getOutput())
+
+**Migration Strategy**:
+- Keep using SNAPSHOT for latest features (Gemini thinking mode, etc.)
+- Update code when breaking changes occur (typically 1-2 times per month)
+- Gradle caches snapshots for 24 hours, then checks for updates
+- Old snapshots deleted from repository after ~5-10 builds
+
+**Affected Files** (Nov 7 migration):
+- `ConversationEngineService.kt` - AssistantMessage/ToolResponseMessage builders
+- `MessageConversionService.kt` - Message conversion with builders
+- `TtsService.kt` - TextToSpeechPrompt + speed.toDouble()
 
 ## Known Issues and Future Work
 

@@ -376,6 +376,32 @@ fun SettingsPanel(
                                     modifier = Modifier.padding(top = 4.dp)
                                 )
                             }
+
+                            AIProvider.CLAUDE_CODE -> {
+                                Text(
+                                    text = "Claude Code Settings",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.SemiBold,
+                                    modifier = Modifier.padding(vertical = 8.dp)
+                                )
+
+                                TextFieldSettingItem(
+                                    label = "Claude Model",
+                                    description = "Model name (e.g., claude-sonnet-4-5, claude-opus-4)",
+                                    value = settings.claudeModel ?: "claude-sonnet-4-5",
+                                    placeholder = "claude-sonnet-4-5",
+                                    onValueChange = {
+                                        onSettingsChange(settings.copy(claudeModel = it))
+                                    }
+                                )
+
+                                Text(
+                                    text = "Note: Uses Claude Code CLI with your subscription",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.secondary,
+                                    modifier = Modifier.padding(top = 4.dp)
+                                )
+                            }
                         }
 
                         Spacer(modifier = Modifier.height(8.dp))

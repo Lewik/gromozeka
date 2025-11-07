@@ -5,6 +5,9 @@ import com.gromozeka.bot.settings.AIProvider
 import io.micrometer.observation.ObservationRegistry
 import klog.KLoggers
 import org.springframework.ai.chat.model.ChatModel
+import org.springframework.ai.claudecode.ClaudeCodeChatModel
+import org.springframework.ai.claudecode.ClaudeCodeChatOptions
+import org.springframework.ai.claudecode.api.ClaudeCodeApi
 import org.springframework.ai.google.genai.GoogleGenAiChatOptions
 import org.springframework.ai.google.genai.GoogleGenAiGeminiChatModelWithWorkarounds
 import org.springframework.ai.model.tool.ToolCallingManager
@@ -84,6 +87,33 @@ class ChatModelFactory(
                     retryTemplate,
                     observationRegistry
                 )
+            }
+
+            AIProvider.CLAUDE_CODE -> {
+                val workingDir = projectPath ?: System.getProperty("user.dir")
+
+                val api = ClaudeCodeApi.builder()
+                    .cliPath("claude")
+                    .workingDirectory(workingDir)
+                    .build()
+
+                val options = ClaudeCodeChatOptions.builder()
+                    .model(modelName)
+                    .temperature(0.7)
+                    .maxTokens(8192)
+                    .thinkingBudgetTokens(8192)
+                    .cliPath("claude")
+                    .workingDirectory(workingDir)
+                    .internalToolExecutionEnabled(false)
+                    .build()
+
+                ClaudeCodeChatModel.builder()
+                    .claudeCodeApi(api)
+                    .defaultOptions(options)
+                    .toolCallingManager(toolCallingManager)
+                    .retryTemplate(retryTemplate)
+                    .observationRegistry(observationRegistry)
+                    .build()
             }
         }
     }

@@ -242,14 +242,17 @@ class ConversationEngineService(
             val finalChunk = if (aggregatedToolCalls.isNotEmpty() || aggregatedText.isNotBlank()) {
                 // Create aggregated AssistantMessage
                 val aggregatedAssistantMessage = if (aggregatedToolCalls.isNotEmpty()) {
-                    AssistantMessage(
-                        aggregatedText.ifBlank { null },
-                        aggregatedMetadata,
-                        aggregatedToolCalls
-                    )
+                    AssistantMessage.builder()
+                        .content(aggregatedText.ifBlank { "" })
+                        .properties(aggregatedMetadata)
+                        .toolCalls(aggregatedToolCalls)
+                        .build()
                 } else {
                     // Text-only message with empty tool calls list
-                    AssistantMessage(aggregatedText, aggregatedMetadata, emptyList())
+                    AssistantMessage.builder()
+                        .content(aggregatedText)
+                        .properties(aggregatedMetadata)
+                        .build()
                 }
 
                 // Wrap in ChatResponse for compatibility
@@ -347,7 +350,10 @@ class ConversationEngineService(
                         )
                     }
 
-                    val errorToolResponseMessage = ToolResponseMessage(errorResponses, emptyMap())
+                    val errorToolResponseMessage = ToolResponseMessage.builder()
+                        .responses(errorResponses)
+                        .metadata(emptyMap())
+                        .build()
 
                     // Convert to conversation format and emit
                     val errorConversationMessage = messageConversionService.fromSpringAI(errorToolResponseMessage)

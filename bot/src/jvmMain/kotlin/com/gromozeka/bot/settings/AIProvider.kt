@@ -5,5 +5,6 @@ import kotlinx.serialization.Serializable
 @Serializable
 enum class AIProvider {
     OLLAMA,
-    GEMINI
+    GEMINI,
+    CLAUDE_CODE
 }

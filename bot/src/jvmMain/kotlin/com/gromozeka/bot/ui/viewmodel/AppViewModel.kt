@@ -65,6 +65,7 @@ open class AppViewModel(
             val modelName = when (settings.defaultAiProvider) {
                 AIProvider.OLLAMA -> settings.ollamaModel
                 AIProvider.GEMINI -> settings.geminiModel
+                AIProvider.CLAUDE_CODE -> settings.claudeModel ?: "claude-sonnet-4-5"
             }
 
             conversationService.create(
@@ -200,6 +201,7 @@ open class AppViewModel(
                         val modelName = when (settings.defaultAiProvider) {
                             AIProvider.OLLAMA -> settings.ollamaModel
                             AIProvider.GEMINI -> settings.geminiModel
+                            AIProvider.CLAUDE_CODE -> settings.claudeModel ?: "claude-sonnet-4-5"
                         }
 
                         conversationService.create(

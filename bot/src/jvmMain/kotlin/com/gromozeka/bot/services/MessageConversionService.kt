@@ -75,20 +75,20 @@ class MessageConversionService {
                     thinkingBlocks.isNotEmpty() -> {
                         val thinking = thinkingBlocks.first()
                         log.debug { "Converting thinking block: signature=${thinking.signature.take(20)}..., text length=${thinking.thinking.length}" }
-                        AssistantMessage(
-                            thinking.thinking,
-                            mapOf(
+                        AssistantMessage.builder()
+                            .content(thinking.thinking)
+                            .properties(mapOf(
                                 "thinking" to true,
                                 "signature" to thinking.signature
-                            )
-                        )
+                            ))
+                            .build()
                     }
 
                     // Tool results message
                     toolResults.isNotEmpty() -> {
                         log.debug { "Converting ${toolResults.size} tool results to ToolResponseMessage" }
-                        ToolResponseMessage(
-                            toolResults.map { tr ->
+                        ToolResponseMessage.builder()
+                            .responses(toolResults.map { tr ->
                                 val resultText = tr.result
                                     .filterIsInstance<Conversation.Message.ContentItem.ToolResult.Data.Text>()
                                     .joinToString(" ") { it.content }
@@ -98,26 +98,26 @@ class MessageConversionService {
                                     tr.toolName,
                                     resultText
                                 )
-                            },
-                            emptyMap()
-                        )
+                            })
+                            .metadata(emptyMap())
+                            .build()
                     }
 
                     // Assistant message with tool calls
                     toolCalls.isNotEmpty() -> {
                         log.debug { "Converting ${toolCalls.size} tool calls to AssistantMessage" }
-                        AssistantMessage(
-                            text.ifBlank { null },
-                            emptyMap(),
-                            toolCalls.map { tc ->
+                        AssistantMessage.builder()
+                            .content(text.ifBlank { "" })
+                            .properties(emptyMap())
+                            .toolCalls(toolCalls.map { tc ->
                                 AssistantMessage.ToolCall(
                                     tc.id.value,
                                     "function",
                                     tc.call.name,
                                     tc.call.input.toString()
                                 )
-                            }
-                        )
+                            })
+                            .build()
                     }
 
                     // Regular assistant message

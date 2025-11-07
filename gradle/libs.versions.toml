@@ -5,6 +5,8 @@
 java = "21"
 kotlin = "2.2.0"
 ktor = "3.2.3"
+# Spring AI SNAPSHOT - auto-updates every 24h, may introduce breaking changes
+# See CLAUDE.md "Spring AI API Migration" section for migration guide
 spring-ai = "1.1.0-20251106.200546-785"
 spring-boot = "3.5.4"
 spring-dependency-management = "1.1.7"
