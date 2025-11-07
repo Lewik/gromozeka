@@ -321,11 +321,9 @@ Official Spring AI does not include Claude Code CLI support. Custom implementati
 - We disable built-in tools via `--disallowedTools` flag
 - Tools described in system prompt as XML format
 - Claude embeds tool calls in text as `<tool_use><name>...</name><parameters>...</parameters></tool_use>`
-- `TextToolCallParser` extracts tool calls from text via regex (independent implementation)
+- `TextToolCallParser` extracts tool calls from text via regex
 - Converts to Spring AI `AssistantMessage.ToolCall` objects
 - Spring AI ToolCallingManager executes tools, sends results back
-
-**Note**: Our implementation is independent and uses different algorithm (regex vs state machine) and XML format compared to Cline. Cline is licensed under Apache 2.0.
 
 **Tool Execution**: User-controlled mode (`internalToolExecutionEnabled=false`)
 - Claude returns text with embedded `<tool_use>` blocks
