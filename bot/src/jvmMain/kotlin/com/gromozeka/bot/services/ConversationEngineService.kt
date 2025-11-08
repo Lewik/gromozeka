@@ -146,6 +146,19 @@ class ConversationEngineService(
             iterationCount++
             log.debug { "Tool execution iteration $iterationCount" }
 
+            // Reload conversation history from DB on iterations 2+ (single source of truth)
+            // This ensures thinking blocks and tool results from previous iterations are included
+            if (iterationCount > 1) {
+                val currentMessages = conversationService.loadCurrentMessages(conversationId)
+                val currentSpringHistory = messageConversionService.convertHistoryToSpringAI(currentMessages)
+                val fullHistory = listOf(systemMessage) + currentSpringHistory
+                currentPrompt = Prompt(fullHistory, toolOptions)
+                log.debug {
+                    "Reloaded ${currentMessages.size} messages from DB for iteration $iterationCount " +
+                    "(prompt history: ${fullHistory.size} messages)"
+                }
+            }
+
             // 5a. Manual aggregation of streaming chunks (simpler than MessageAggregator with Flow)
             // Accumulate text, metadata, and tool calls from all chunks
             val aggregatedTextBuilder = StringBuilder()
@@ -157,8 +170,6 @@ class ConversationEngineService(
             // TODO: Re-enable streaming UI - accumulate content for incremental updates
             // val accumulatedContent = mutableListOf<Conversation.Message.ContentItem>()
 
-            // Separate: thinking blocks (persist immediately) vs text chunks (aggregate first)
-            val thinkingMessages = mutableListOf<Conversation.Message>()
             var lastChatResponse: org.springframework.ai.chat.model.ChatResponse? = null
 
             // Log request details before calling model
@@ -180,13 +191,14 @@ class ConversationEngineService(
                         val hasToolCalls = !assistantMessage.toolCalls.isNullOrEmpty()
 
                         // Thinking blocks are persisted immediately (separate messages, not aggregated)
+                        // DB reload on next iteration will include them in conversation history
                         if (isThinking) {
                             val thinkingMessage = messageConversionService.fromSpringAI(assistantMessage)
                                 .copy(conversationId = conversationId)
                             if (thinkingMessage.content.isNotEmpty()) {
+                                conversationService.addMessage(conversationId, thinkingMessage)
                                 emit(StreamUpdate.Chunk(thinkingMessage))
-                                thinkingMessages.add(thinkingMessage)
-                                log.debug { "Emitted thinking block: ${thinkingMessage.content.size} content items" }
+                                log.debug { "Persisted and emitted thinking block: ${thinkingMessage.content.size} content items" }
                             }
                         }
                         // Text and tool calls are emitted for UI but NOT persisted yet (will be aggregated)
@@ -231,13 +243,7 @@ class ConversationEngineService(
                 }
             }
 
-            // 5c. Persist thinking blocks collected during streaming
-            thinkingMessages.forEach { thinkingMessage ->
-                conversationService.addMessage(conversationId, thinkingMessage)
-                log.debug { "Persisted thinking block" }
-            }
-
-            // 5d. Create aggregated final response from accumulated data
+            // 5c. Create aggregated final response from accumulated data
             val aggregatedText = aggregatedTextBuilder.toString()
             val finalChunk = if (aggregatedToolCalls.isNotEmpty() || aggregatedText.isNotBlank()) {
                 // Create aggregated AssistantMessage

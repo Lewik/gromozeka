@@ -10,6 +10,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Purpose**: Primary development location for all new code and experiments
 - **Usage**: Code changes are written here first, run only for manual testing
 - **Branch**: `main`
+- **Home Directory**: `bot/dev-data/.gromozeka` (DEV mode)
+- **Launch**: `GROMOZEKA_MODE=dev ./gradlew :bot:run` (sets DEV mode via environment variable)
 
 ### 2. `~/code/gromozeka/release/` - Production (Stable)
 - **Purpose**: Stable working version used for daily work and development of other projects
@@ -26,6 +28,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Status**: Unstable, but this is the future main version
 - **Dogfooding**: Used to develop Gromozeka itself (testing through real usage)
 - **Branch**: `main` (synced with dev)
+- **Home Directory**: `bot/dev-data/.gromozeka` (DEV mode)
+- **Launch**: `GROMOZEKA_MODE=dev ./gradlew :bot:run` (sets DEV mode via environment variable)
 
 ### Development Workflow
 - **New features**: Write in `dev/` → sync to `beta/` for testing

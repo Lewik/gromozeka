@@ -286,6 +286,13 @@ public class ClaudeCodeApi {
         if (StringUtils.hasText(block.name())) {
             map.put("name", block.name());
         }
+        // Serialize thinking and signature for Anthropic extended thinking
+        if (StringUtils.hasText(block.thinking())) {
+            map.put("thinking", block.thinking());
+        }
+        if (StringUtils.hasText(block.signature())) {
+            map.put("signature", block.signature());
+        }
 
         return map;
     }

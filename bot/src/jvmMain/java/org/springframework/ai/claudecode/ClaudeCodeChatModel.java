@@ -265,29 +265,63 @@ public class ClaudeCodeChatModel implements ChatModel {
                 AssistantMessage assistantMessage = (AssistantMessage) message;
                 List<AnthropicApi.ContentBlock> contentBlocks = new ArrayList<>();
 
-                StringBuilder fullContent = new StringBuilder();
+                // Check if this is a thinking block from previous turn
+                // Must preserve thinking blocks with signature for Anthropic API
+                Boolean isThinking = (Boolean) assistantMessage.getMetadata().get("thinking");
+                if (Boolean.TRUE.equals(isThinking)) {
+                    // Create thinking content block with signature (required by Anthropic)
+                    String thinking = message.getText();
+                    String signature = (String) assistantMessage.getMetadata().get("signature");
 
-                if (StringUtils.hasText(message.getText())) {
-                    fullContent.append(message.getText());
-                }
+                    // Use full ContentBlock constructor for thinking type
+                    AnthropicApi.ContentBlock thinkingBlock = new AnthropicApi.ContentBlock(
+                        AnthropicApi.ContentBlock.Type.THINKING,  // type
+                        null,      // source
+                        null,      // text
+                        null,      // index
+                        null,      // id
+                        null,      // name
+                        null,      // input
+                        null,      // toolUseId
+                        null,      // content
+                        signature, // signature (required for roundtrip)
+                        thinking,  // thinking
+                        null,      // data
+                        null,      // cacheControl
+                        null,      // title
+                        null,      // context
+                        null       // citations
+                    );
 
-                // Convert tool calls to text format (Claude Code CLI compatibility)
-                if (!CollectionUtils.isEmpty(assistantMessage.getToolCalls())) {
-                    for (AssistantMessage.ToolCall toolCall : assistantMessage.getToolCalls()) {
-                        if (fullContent.length() > 0) {
-                            fullContent.append("\n\n");
-                        }
-                        fullContent.append("<tool_use>\n");
-                        fullContent.append("<name>").append(toolCall.name()).append("</name>\n");
-                        fullContent.append("<parameters>\n");
-                        fullContent.append(toolCall.arguments());
-                        fullContent.append("\n</parameters>\n");
-                        fullContent.append("</tool_use>");
+                    contentBlocks.add(thinkingBlock);
+                    logger.debug("Added thinking block to conversation history (signature: {})",
+                        signature != null ? "present" : "missing");
+                } else {
+                    // Regular assistant message with text and/or tool calls
+                    StringBuilder fullContent = new StringBuilder();
+
+                    if (StringUtils.hasText(message.getText())) {
+                        fullContent.append(message.getText());
                     }
-                }
 
-                if (fullContent.length() > 0) {
-                    contentBlocks.add(new AnthropicApi.ContentBlock(fullContent.toString()));
+                    // Convert tool calls to text format (Claude Code CLI compatibility)
+                    if (!CollectionUtils.isEmpty(assistantMessage.getToolCalls())) {
+                        for (AssistantMessage.ToolCall toolCall : assistantMessage.getToolCalls()) {
+                            if (fullContent.length() > 0) {
+                                fullContent.append("\n\n");
+                            }
+                            fullContent.append("<tool_use>\n");
+                            fullContent.append("<name>").append(toolCall.name()).append("</name>\n");
+                            fullContent.append("<parameters>\n");
+                            fullContent.append(toolCall.arguments());
+                            fullContent.append("\n</parameters>\n");
+                            fullContent.append("</tool_use>");
+                        }
+                    }
+
+                    if (fullContent.length() > 0) {
+                        contentBlocks.add(new AnthropicApi.ContentBlock(fullContent.toString()));
+                    }
                 }
 
                 result.add(new AnthropicApi.AnthropicMessage(contentBlocks, AnthropicApi.Role.ASSISTANT));
@@ -342,6 +376,10 @@ public class ClaudeCodeChatModel implements ChatModel {
                 case THINKING, THINKING_DELTA:
                     Map<String, Object> thinkingProperties = new HashMap<>();
                     thinkingProperties.put("thinking", true);
+                    // Store signature for later roundtrip - required by Anthropic API
+                    if (content.signature() != null) {
+                        thinkingProperties.put("signature", content.signature());
+                    }
                     generations.add(new Generation(
                         AssistantMessage.builder()
                             .content(content.thinking())
