@@ -37,6 +37,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Release updates**: Only when absolutely necessary, to maintain stable working environment
 - **Architecture**: CLAUDE.md describes Spring AI architecture (applies to dev/beta), release uses older custom wrapper
 
+**CRITICAL: Beta Update Policy**
+- **NEVER modify code directly in `beta/`** - all changes must be made in `dev/` first
+- **Beta updates ONLY via git**: `cd beta && git pull` when user explicitly requests
+- **Workflow**: Edit in `dev/` → commit → push → user approves → update `beta/` via git pull
+- **Rationale**: Beta is for testing stable commits, not for development. Direct edits would create divergence between dev and beta.
+
 ## Version Management
 
 **To update application version:**
