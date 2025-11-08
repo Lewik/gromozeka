@@ -322,10 +322,13 @@ tasks.register("removeJarSignatures") {
 }
 
 // Configure run task to pass GROMOZEKA_MODE environment variable
-tasks.named<JavaExec>("run") {
-    // Only pass GROMOZEKA_MODE if it's set in the environment
-    System.getenv("GROMOZEKA_MODE")?.let {
-        environment("GROMOZEKA_MODE", it)
+// Use whenTaskAdded since Compose Desktop creates the task dynamically
+tasks.whenTaskAdded {
+    if (name == "run" && this is JavaExec) {
+        // Only pass GROMOZEKA_MODE if it's set in the environment
+        System.getenv("GROMOZEKA_MODE")?.let {
+            environment("GROMOZEKA_MODE", it)
+        }
     }
 }
 
