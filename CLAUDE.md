@@ -12,6 +12,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Branch**: `main`
 - **Home Directory**: `bot/dev-data/.gromozeka` (DEV mode)
 - **Launch**: `GROMOZEKA_MODE=dev ./gradlew :bot:run` (sets DEV mode via environment variable)
+- **Logs Location**: `bot/logs/dev.log` (working directory is bot module, not project root)
 
 ### 2. `~/code/gromozeka/release/` - Production (Stable)
 - **Purpose**: Stable working version used for daily work and development of other projects
@@ -30,6 +31,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Branch**: `main` (synced with dev)
 - **Home Directory**: `bot/dev-data/.gromozeka` (DEV mode)
 - **Launch**: `GROMOZEKA_MODE=dev ./gradlew :bot:run` (sets DEV mode via environment variable)
+- **Logs Location**: `bot/logs/dev.log` (working directory is bot module, not project root)
 
 ### Development Workflow
 - **New features**: Write in `dev/` → sync to `beta/` for testing
