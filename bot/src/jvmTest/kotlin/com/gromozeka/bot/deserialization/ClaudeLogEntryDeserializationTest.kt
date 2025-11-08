@@ -61,6 +61,7 @@ class ClaudeLogEntryDeserializationTest {
                             is ClaudeLogEntry.SystemEntry -> "system"
                             is ClaudeLogEntry.SummaryEntry -> "summary"
                             is ClaudeLogEntry.FileHistorySnapshotEntry -> "file-history-snapshot"
+                            is ClaudeLogEntry.QueueOperationEntry -> "queue-operation"
                         }
                         typeStats[typeName] = typeStats.getOrDefault(typeName, 0) + 1
                     } catch (e: Exception) {
@@ -123,6 +124,11 @@ class ClaudeLogEntryDeserializationTest {
                             is ClaudeLogEntry.FileHistorySnapshotEntry -> {
                                 assertTrue(entry.messageId.isNotEmpty())
                                 assertTrue(entry.snapshot.timestamp.isNotEmpty())
+                            }
+
+                            is ClaudeLogEntry.QueueOperationEntry -> {
+                                assertTrue(entry.operation.isNotEmpty())
+                                assertTrue(entry.timestamp.isNotEmpty())
                             }
                         }
 

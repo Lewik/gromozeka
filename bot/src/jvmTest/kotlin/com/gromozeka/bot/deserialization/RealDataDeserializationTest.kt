@@ -72,6 +72,10 @@ class RealDataDeserializationTest {
                                 is ClaudeLogEntry.FileHistorySnapshotEntry -> {
                                     println("  Line $index: FileHistorySnapshotEntry - messageId=${entry.messageId}, files=${entry.snapshot.trackedFileBackups.size}")
                                 }
+
+                                is ClaudeLogEntry.QueueOperationEntry -> {
+                                    println("  Line $index: QueueOperationEntry - operation=${entry.operation}")
+                                }
                             }
 
                         } catch (e: Exception) {

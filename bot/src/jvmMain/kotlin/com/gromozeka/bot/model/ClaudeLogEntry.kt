@@ -48,6 +48,15 @@ sealed class ClaudeLogEntry {
         )
     }
 
+    @Serializable
+    @SerialName("queue-operation")
+    data class QueueOperationEntry(
+        val operation: String,
+        val timestamp: String,
+        val sessionId: String,
+        override val type: String = "queue-operation",
+    ) : ClaudeLogEntry()
+
     sealed class BaseEntry : ClaudeLogEntry() {
         abstract val cwd: String?
         abstract val gitBranch: String?
