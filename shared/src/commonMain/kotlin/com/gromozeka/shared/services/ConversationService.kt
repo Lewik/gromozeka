@@ -31,7 +31,6 @@ class ConversationService(
 
         val conversationId = Conversation.Id(uuid7())
 
-        // Create initial empty Thread
         val initialThread = Conversation.Thread(
             id = Conversation.Thread.Id(uuid7()),
             conversationId = conversationId,
@@ -82,9 +81,68 @@ class ConversationService(
         return conversationRepo.findById(conversationId)
     }
 
-    /**
-     * Добавить сообщение к разговору (mutable append)
-     */
+    suspend fun fork(conversationId: Conversation.Id): Conversation {
+        val sourceConversation = conversationRepo.findById(conversationId)
+            ?: throw IllegalStateException("Conversation not found: $conversationId")
+        
+        val now = Clock.System.now()
+        
+        val newConversationId = Conversation.Id(uuid7())
+        
+        val newThread = Conversation.Thread(
+            id = Conversation.Thread.Id(uuid7()),
+            conversationId = newConversationId,
+            originalThread = null,
+            createdAt = now,
+            updatedAt = now,
+        )
+        
+        threadRepo.save(newThread)
+        
+        val newConversation = Conversation(
+            id = newConversationId,
+            projectId = sourceConversation.projectId,
+            displayName = sourceConversation.displayName + " (fork)",
+            aiProvider = sourceConversation.aiProvider,
+            modelName = sourceConversation.modelName,
+            currentThread = newThread.id,
+            createdAt = now,
+            updatedAt = now,
+        )
+        
+        conversationRepo.create(newConversation)
+        
+        val sourceMessages = threadMessageRepo.getMessagesByThread(sourceConversation.currentThread)
+        val sourceLinks = threadMessageRepo.getByThread(sourceConversation.currentThread)
+        
+        val messageIdMap = mutableMapOf<Conversation.Message.Id, Conversation.Message.Id>()
+        
+        for (message in sourceMessages) {
+            val newMessageId = Conversation.Message.Id(uuid7())
+            messageIdMap[message.id] = newMessageId
+            
+            val newMessage = message.copy(
+                id = newMessageId,
+                conversationId = newConversationId,
+                createdAt = now
+            )
+            messageRepo.save(newMessage)
+        }
+        
+        val newLinks = sourceLinks.map { link ->
+            link.copy(
+                threadId = newThread.id,
+                messageId = messageIdMap[link.messageId]!!
+            )
+        }
+        
+        threadMessageRepo.addBatch(newLinks)
+        
+        log.debug("Forked conversation $conversationId to ${newConversation.id}")
+        
+        return newConversation
+    }
+
     suspend fun addMessage(
         conversationId: Conversation.Id,
         message: Conversation.Message
@@ -93,23 +151,17 @@ class ConversationService(
             "Message conversationId mismatch"
         }
 
-        // 1. Сохранить Message
         messageRepo.save(message)
 
-        // 2. Загрузить conversation
         val conversation = conversationRepo.findById(conversationId)
             ?: throw IllegalStateException("Conversation not found: $conversationId")
 
-        // 3. Thread всегда существует
         val currentThread = threadRepo.findById(conversation.currentThread)!!
 
-        // Получить последнюю позицию
         val lastPosition = threadMessageRepo.getMaxPosition(currentThread.id) ?: -1
 
-        // INSERT новую связь
         threadMessageRepo.add(currentThread.id, message.id, position = lastPosition + 1)
 
-        // UPDATE thread.updated_at
         threadRepo.updateTimestamp(currentThread.id, Clock.System.now())
 
         log.debug("Appended message ${message.id} to thread ${currentThread.id} at position ${lastPosition + 1}")
@@ -117,9 +169,6 @@ class ConversationService(
         return conversationRepo.findById(conversationId)
     }
 
-    /**
-     * Загрузить все сообщения текущего треда
-     */
     suspend fun loadCurrentMessages(conversationId: Conversation.Id): List<Conversation.Message> {
         val conversation = conversationRepo.findById(conversationId)
             ?: throw IllegalStateException("Conversation not found: $conversationId")
@@ -127,13 +176,6 @@ class ConversationService(
         return threadMessageRepo.getMessagesByThread(conversation.currentThread)
     }
 
-    /**
-     * Редактировать сообщение (Copy-on-Write)
-     *
-     * - Создает новый Thread с копией всех сообщений
-     * - Заменяет content целевого сообщения
-     * - Устанавливает originalIds = [messageId]
-     */
     suspend fun editMessage(
         conversationId: Conversation.Id,
         messageId: Conversation.Message.Id,
@@ -189,11 +231,6 @@ class ConversationService(
         return conversationRepo.findById(conversationId)
     }
 
-    /**
-     * Удалить сообщение (Copy-on-Write)
-     *
-     * - Создает новый Thread без удаленного сообщения
-     */
     suspend fun deleteMessage(
         conversationId: Conversation.Id,
         messageId: Conversation.Message.Id
@@ -234,13 +271,6 @@ class ConversationService(
         return conversationRepo.findById(conversationId)
     }
 
-    /**
-     * Объединить несколько сообщений в одно (Copy-on-Write)
-     *
-     * - Создает новое сообщение с объединенным content
-     * - Устанавливает originalIds = messageIds
-     * - Role = USER по умолчанию
-     */
     suspend fun squashMessages(
         conversationId: Conversation.Id,
         messageIds: List<Conversation.Message.Id>,
@@ -265,14 +295,10 @@ class ConversationService(
 
         val firstMessageId = links.first { it.messageId in messageIds }.messageId
 
-        // TODO: Implement AI-powered squash with SquashOperation tracking
-        //       Current: simple concatenation via originalIds (deprecated)
-        //       Future: AI summarization with prompt + model stored in SquashOperation
-        //       Then: set squashOperationId instead of originalIds
         val squashedMessage = Conversation.Message(
             id = Conversation.Message.Id(uuid7()),
             conversationId = conversationId,
-            originalIds = messageIds, // TODO: migrate to squashOperationId after AI squash implementation
+            originalIds = messageIds,
             role = Conversation.Message.Role.USER,
             content = squashedContent,
             instructions = emptyList(),

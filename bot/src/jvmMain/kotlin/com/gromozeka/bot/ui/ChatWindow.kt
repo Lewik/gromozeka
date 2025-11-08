@@ -74,10 +74,8 @@ fun ApplicationScope.ChatWindow(
     var initialized by remember { mutableStateOf(false) }
 
 
-    // Reactive settings state - single source of truth
     val currentSettings by settingsService.settingsFlow.collectAsState()
 
-    // Get current translation for UI strings
     val translation = LocalTranslation.current
 
 
@@ -88,22 +86,18 @@ fun ApplicationScope.ChatWindow(
     var showContextsPanel by remember { mutableStateOf(false) }
     var refreshTrigger by remember { mutableStateOf(0) }
 
-    // State for rename dialog
     var renameDialogOpen by remember { mutableStateOf(false) }
     var renameTabIndex by remember { mutableStateOf(-1) }
     var renameCurrentName by remember { mutableStateOf("") }
 
-    // State for tab hover
     var hoveredTabIndex by remember { mutableStateOf(-1) }
 
 
-    // Initialization
     LaunchedEffect(Unit) {
         initialized = true
     }
 
 
-    // Cleanup when composable is disposed
     DisposableEffect(Unit) {
         onDispose {
             coroutineScope.launch {
@@ -130,10 +124,9 @@ fun ApplicationScope.ChatWindow(
         { projectPath, initialMessage ->
             coroutineScope.launch {
                 try {
-                    // Create ChatMessage from user input
                     val chatMessage = Conversation.Message(
                         id = Conversation.Message.Id(UUID.randomUUID().toString()),
-                        conversationId = Conversation.Id(""), // Will be set when conversation is created
+                        conversationId = Conversation.Id(""),
                         role = Conversation.Message.Role.USER,
                         content = listOf(Conversation.Message.ContentItem.UserMessage(initialMessage)),
                         createdAt = Clock.System.now(),
@@ -141,7 +134,7 @@ fun ApplicationScope.ChatWindow(
                     )
                     val tabIndex = appViewModel.createTab(
                         projectPath = projectPath,
-                        agent = null, // Use default agent
+                        agent = null,
                         initialMessage = chatMessage,
                         initiator = ConversationInitiator.User
                     )
@@ -152,32 +145,20 @@ fun ApplicationScope.ChatWindow(
             }
         }
 
-    // Get recording state from service
     val isRecording by pttService.recordingState.collectAsState()
 
-    // Settings update handler
     val onSettingsChange: (Settings) -> Unit = { newSettings ->
-        // Save to service (this will update the reactive state flow)
-        // All dependent services will react automatically via their subscriptions
         settingsService.saveSettings(newSettings)
-
-        // Note: Use "Check Override" button in settings to update translations
-
-        // Response format is now automatically updated in StreamToChatMessageMapper via settings subscription
     }
 
-    // Create modifier with PTT event router
     val modifierWithPushToTalk = Modifier.advancedPttGestures(pttEventRouter, coroutineScope)
 
-    // Local keyboard PTT gesture detector
     val keyboardPttGestureDetector = remember {
         UnifiedGestureDetector(pttEventRouter, coroutineScope)
     }
 
-    // Load window state
     val savedWindowState = remember { windowStateService.loadWindowState() }
 
-    // Window state for position tracking
     val windowState = rememberWindowState(
         position = if (savedWindowState.x != -1 && savedWindowState.y != -1) {
             WindowPosition(
@@ -198,10 +179,8 @@ fun ApplicationScope.ChatWindow(
         onCloseRequest = {
             log.info("Application window closing - stopping all sessions...")
 
-            // Force save current state before cleanup
             uiStateService.forceSave()
 
-            // Disable auto-save during cleanup to prevent saving empty state
             uiStateService.disableAutoSave()
 
             coroutineScope.launch {
@@ -255,19 +234,16 @@ fun ApplicationScope.ChatWindow(
                     .onPreviewKeyEvent { event ->
 
                         when {
-                            // Cmd+T - новая сессия
                             event.key == Key.T &&
                                     event.isMetaPressed &&
                                     event.type == KeyEventType.KeyDown -> {
-                                // Cmd+T создает новую сессию для текущего проекта
                                 if (currentTab != null) {
                                     createNewSession(currentTab!!.projectPath)
                                 }
                                 true
                             }
 
-                            // Символ § используется как PTT хоткей  
-                            event.utf16CodePoint == 167 -> { // § параграф
+                            event.utf16CodePoint == 167 -> {
                                 when (event.type) {
                                     KeyEventType.KeyDown -> {
                                         coroutineScope.launch {
@@ -289,13 +265,8 @@ fun ApplicationScope.ChatWindow(
                     }
             ) {
                 if (initialized) {
-                    // Root layout: Row with main area and settings panel
                     Row(modifier = Modifier.fillMaxSize()) {
-                        // Main area with tabs and content
                         Column(modifier = Modifier.weight(1f)) {
-                            // Tab Row - position based on showTabsAtBottom setting
-                            // currentTabIndex is null when showing Projects tab (visual index 0)
-                            // Otherwise it's the index in tabs array, so add 1 for visual offset
                             val currentIndex = currentTabIndex
                             val selectedTabIndex = if (currentIndex == null) 0 else (currentIndex + 1)
                             val tabRowComponent = @Composable {
@@ -320,46 +291,52 @@ fun ApplicationScope.ChatWindow(
                                 )
                             }
 
-                            // Conditional layout based on tab position setting
                             if (!currentSettings.showTabsAtBottom) {
-                                // Tabs at top: show TabRow then content
                                 tabRowComponent()
                             }
 
-                            // Content area with global 16dp padding according to design system
                             Column(modifier = Modifier.weight(1f).padding(16.dp)) {
-                                // Tab Content - render SessionScreen for current tab or SessionListScreen
                                 Box(modifier = Modifier.weight(1f)) {
                                     if (currentTab != null) {
                                         currentTab?.let { tabViewModel ->
                                             SessionScreen(
                                                 viewModel = tabViewModel,
 
-                                                // Navigation callbacks - modified to not stop sessions
                                                 onNewSession = {
                                                     createNewSession(currentTab!!.projectPath)
                                                 },
                                                 onForkSession = {
-                                                    // Fork creates new tab with same project
-                                                    createNewSession(currentTab!!.projectPath)
+                                                    coroutineScope.launch {
+                                                        try {
+                                                            val currentConversationId = currentTab!!.uiState.first().conversationId
+                                                            val forkedConversation = conversationTreeService.fork(currentConversationId)
+                                                            
+                                                            val tabIndex = appViewModel.createTab(
+                                                                projectPath = currentTab!!.projectPath,
+                                                                conversationId = forkedConversation.id,
+                                                                initiator = ConversationInitiator.User
+                                                            )
+                                                            appViewModel.selectTab(tabIndex)
+                                                        } catch (e: Exception) {
+                                                            log.warn(e) { "Failed to fork conversation: ${e.message}" }
+                                                            e.printStackTrace()
+                                                        }
+                                                    }
                                                 },
                                                 onRestartSession = {
                                                     coroutineScope.launch {
                                                         val projectPath = currentTab!!.projectPath
                                                         val oldIndex = currentTabIndex!!
 
-                                                        // Create new tab (automatically becomes current)
                                                         appViewModel.createTab(
                                                             projectPath = projectPath,
                                                             initiator = ConversationInitiator.User
                                                         )
 
-                                                        // Close old tab (indices automatically corrected)
                                                         appViewModel.closeTab(oldIndex)
                                                     }
                                                 },
 
-                                                // Close session callback - removes session and stops it
                                                 onCloseTab = {
                                                     coroutineScope.launch {
                                                         currentTabIndex?.let { index ->
@@ -368,18 +345,15 @@ fun ApplicationScope.ChatWindow(
                                                     }
                                                 },
 
-                                                // Services
                                                 ttsQueueService = ttsQueueService,
                                                 coroutineScope = coroutineScope,
                                                 modifierWithPushToTalk = modifierWithPushToTalk,
                                                 isRecording = isRecording,
 
-                                                // Settings
                                                 settings = currentSettings,
                                                 showSettingsPanel = showSettingsPanel,
                                                 onShowSettingsPanelChange = { showSettingsPanel = it },
 
-                                                // Context extraction
                                                 onExtractContexts = {
                                                     coroutineScope.launch {
                                                         try {
@@ -391,10 +365,8 @@ fun ApplicationScope.ChatWindow(
                                                     }
                                                 },
 
-                                                // Context panel
                                                 onShowContextsPanel = { showContextsPanel = true },
 
-                                                // Dev mode
                                                 isDev = settingsService.mode == AppMode.DEV,
                                             )
                                         }
@@ -417,14 +389,11 @@ fun ApplicationScope.ChatWindow(
                                 }
                             }
 
-                            // Conditional layout based on tab position setting
                             if (currentSettings.showTabsAtBottom) {
-                                // Tabs at bottom: show TabRow after content
                                 tabRowComponent()
                             }
                         }
 
-                        // Settings Panel - now at the root level, outside of the tab area
                         SettingsPanel(
                             isVisible = showSettingsPanel,
                             settings = currentSettings,
@@ -441,7 +410,6 @@ fun ApplicationScope.ChatWindow(
                             onOpenTabWithMessage = createNewSessionWithMessage
                         )
 
-                        // Contexts Panel - positioned at the root level for full height overlay
                         ContextsPanel(
                             isVisible = showContextsPanel,
                             onClose = { showContextsPanel = false },
