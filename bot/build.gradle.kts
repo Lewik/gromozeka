@@ -321,6 +321,14 @@ tasks.register("removeJarSignatures") {
     }
 }
 
+// Configure run task to pass GROMOZEKA_MODE environment variable
+tasks.named<JavaExec>("run") {
+    // Only pass GROMOZEKA_MODE if it's set in the environment
+    System.getenv("GROMOZEKA_MODE")?.let {
+        environment("GROMOZEKA_MODE", it)
+    }
+}
+
 tasks.register<JavaExec>("generateMigration") {
     description = "Generate Flyway migration from Exposed schema changes"
     group = "database"
