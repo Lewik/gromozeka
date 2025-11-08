@@ -2,6 +2,37 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Repository Instances (Dev/Release/Beta)
+
+**Three separate instances of Gromozeka repository exist:**
+
+### 1. `~/code/gromozeka/dev/` - Development Sandbox
+- **Purpose**: Primary development location for all new code and experiments
+- **Usage**: Code changes are written here first, run only for manual testing
+- **Branch**: `main`
+
+### 2. `~/code/gromozeka/release/` - Production (Stable)
+- **Purpose**: Stable working version used for daily work and development of other projects
+- **Architecture**: Custom wrapper over Claude Code CLI (NOT Spring AI-based)
+- **Home Directory**: `~/.gromozeka/` (production settings)
+- **Launch**: Via gradle (`./gradlew :bot:run`), not from DMG
+- **Branch**: `release`
+- **Critical Note**: Rarely touched to avoid losing a working development tool. Without this, user would be forced to work through standard Claude Code.
+
+### 3. `~/code/gromozeka/beta/` - Spring AI Migration
+- **Purpose**: Intentional migration to Spring AI as central LLM integration layer
+- **Architecture**: Spring AI-based (future production architecture)
+- **Synchronization**: Changes from `dev/` are git-synced to `beta/`
+- **Status**: Unstable, but this is the future main version
+- **Dogfooding**: Used to develop Gromozeka itself (testing through real usage)
+- **Branch**: `main` (synced with dev)
+
+### Development Workflow
+- **New features**: Write in `dev/` → sync to `beta/` for testing
+- **Bug fixes**: Fix in `dev/` → sync to `beta/`
+- **Release updates**: Only when absolutely necessary, to maintain stable working environment
+- **Architecture**: CLAUDE.md describes Spring AI architecture (applies to dev/beta), release uses older custom wrapper
+
 ## Version Management
 
 **To update application version:**
