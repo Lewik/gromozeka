@@ -13,6 +13,7 @@ import java.util.Map;
 @JsonSubTypes({
     @JsonSubTypes.Type(value = ClaudeCodeStreamEvent.InitEvent.class, name = "system"),
     @JsonSubTypes.Type(value = ClaudeCodeStreamEvent.AssistantEvent.class, name = "assistant"),
+    @JsonSubTypes.Type(value = ClaudeCodeStreamEvent.UserEvent.class, name = "user"),
     @JsonSubTypes.Type(value = ClaudeCodeStreamEvent.ErrorEvent.class, name = "error"),
     @JsonSubTypes.Type(value = ClaudeCodeStreamEvent.ResultEvent.class, name = "result")
 })
@@ -145,6 +146,58 @@ public abstract class ClaudeCodeStreamEvent {
                 public Integer outputTokens() { return outputTokens; }
                 public Integer cacheCreationInputTokens() { return cacheCreationInputTokens; }
                 public Integer cacheReadInputTokens() { return cacheReadInputTokens; }
+            }
+        }
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class UserEvent extends ClaudeCodeStreamEvent {
+        @JsonProperty("message")
+        private UserMessage message;
+
+        @JsonProperty("session_id")
+        private String sessionId;
+
+        public UserMessage message() { return message; }
+        public String sessionId() { return sessionId; }
+
+        @JsonIgnoreProperties(ignoreUnknown = true)
+        public static class UserMessage {
+            @JsonProperty("id")
+            private String id;
+
+            @JsonProperty("type")
+            private String type;
+
+            @JsonProperty("role")
+            private String role;
+
+            @JsonProperty("content")
+            private List<ContentBlock> content;
+
+            public String id() { return id; }
+            public String type() { return type; }
+            public String role() { return role; }
+            public List<ContentBlock> content() { return content; }
+
+            @JsonIgnoreProperties(ignoreUnknown = true)
+            public static class ContentBlock {
+                @JsonProperty("type")
+                private String type;
+
+                @JsonProperty("tool_use_id")
+                private String toolUseId;
+
+                @JsonProperty("content")
+                private Object content;
+
+                @JsonProperty("is_error")
+                private Boolean isError;
+
+                public String type() { return type; }
+                public String toolUseId() { return toolUseId; }
+                public Object content() { return content; }
+                public Boolean isError() { return isError; }
             }
         }
     }

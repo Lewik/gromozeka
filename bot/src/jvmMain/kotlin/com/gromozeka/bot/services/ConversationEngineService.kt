@@ -465,23 +465,47 @@ class ConversationEngineService(
 
         val cleanedResponses = message.responses.map { response ->
             try {
-                // Parse responseData to extract only text part
-                val data = org.springframework.ai.model.ModelOptionsUtils.jsonToMap(response.responseData())
-                val textOnly = data["text"]?.toString() ?: response.responseData()
+                val responseData = response.responseData()
 
-                // Create minimal JSON structure (always valid JSON, no additionalContent)
-                val cleanedJson = mapOf("text" to textOnly)
-                val cleanedResponseData = objectMapper.writeValueAsString(cleanedJson)
+                // responseData can be:
+                // 1. Plain string: "Successfully read file..."
+                // 2. JSON object: {"text": "..."}
+                // 3. JSON array: [{"type": "text", "text": "..."}, {"type": "image", ...}]
 
-                // Create new ToolResponse with JSON structure (deterministic parsing)
+                val textOnly = when {
+                    // Case 1: Plain string (no JSON)
+                    !responseData.trim().startsWith("{") && !responseData.trim().startsWith("[") -> {
+                        responseData
+                    }
+
+                    // Case 2: JSON array (content blocks with possibly images)
+                    responseData.trim().startsWith("[") -> {
+                        val jsonNode = objectMapper.readTree(responseData)
+                        if (jsonNode.isArray) {
+                            // Extract text from first text block
+                            jsonNode.firstOrNull { it.has("type") && it.get("type").asText() == "text" }
+                                ?.get("text")?.asText() ?: responseData
+                        } else {
+                            responseData
+                        }
+                    }
+
+                    // Case 3: JSON object
+                    else -> {
+                        val data = org.springframework.ai.model.ModelOptionsUtils.jsonToMap(responseData)
+                        data["text"]?.toString() ?: responseData
+                    }
+                }
+
+                // Create new ToolResponse with clean text only
                 ToolResponseMessage.ToolResponse(
                     response.id(),
                     response.name(),
-                    cleanedResponseData  // {"text": "Successfully read image..."}
+                    textOnly
                 )
             } catch (e: Exception) {
                 // If parsing fails, use original response as-is
-                log.warn { "Failed to parse tool response data for cleaning: ${e.message}" }
+                log.warn(e) { "Failed to parse tool response data for cleaning" }
                 response
             }
         }

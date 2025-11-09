@@ -1,5 +1,7 @@
 package org.springframework.ai.claudecode;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.micrometer.observation.Observation;
 import io.micrometer.observation.ObservationRegistry;
 import io.micrometer.observation.contextpropagation.ObservationThreadLocalAccessor;
@@ -332,11 +334,53 @@ public class ClaudeCodeChatModel implements ChatModel {
                 List<AnthropicApi.ContentBlock> userContentBlocks = new ArrayList<>();
 
                 for (ToolResponseMessage.ToolResponse toolResponse : toolMessage.getResponses()) {
-                    // Parse responseData JSON to extract text and additional content (images)
-                    Map<String, Object> data = ModelOptionsUtils.jsonToMap(toolResponse.responseData());
+                    String responseData = toolResponse.responseData();
+                    String mainText;
+                    Map<String, Object> data = null;
 
-                    // Extract main text
-                    String mainText = data.get("text") != null ? data.get("text").toString() : toolResponse.responseData();
+                    // responseData can be:
+                    // 1. Plain string: "Successfully read file..."
+                    // 2. JSON object: {"text": "..."}
+                    // 3. JSON array: [{"type": "text", "text": "..."}, {"type": "image", ...}]
+
+                    String trimmed = responseData.trim();
+                    if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) {
+                        // Case 1: Plain string (no JSON)
+                        mainText = responseData;
+                    } else if (trimmed.startsWith("[")) {
+                        // Case 2: JSON array (content blocks with possibly images)
+                        try {
+                            ObjectMapper objectMapper = new ObjectMapper();
+                            JsonNode jsonNode = objectMapper.readTree(responseData);
+                            if (jsonNode.isArray()) {
+                                // Extract text from first text block
+                                mainText = null;
+                                for (JsonNode node : jsonNode) {
+                                    if (node.has("type") && "text".equals(node.get("type").asText())) {
+                                        mainText = node.get("text").asText();
+                                        break;
+                                    }
+                                }
+                                if (mainText == null) {
+                                    mainText = responseData;
+                                }
+                            } else {
+                                mainText = responseData;
+                            }
+                        } catch (Exception e) {
+                            logger.warn("Failed to parse JSON array response data: {}", e.getMessage());
+                            mainText = responseData;
+                        }
+                    } else {
+                        // Case 3: JSON object
+                        try {
+                            data = ModelOptionsUtils.jsonToMap(responseData);
+                            mainText = data.get("text") != null ? data.get("text").toString() : responseData;
+                        } catch (Exception e) {
+                            logger.warn("Failed to parse JSON object response data: {}", e.getMessage());
+                            mainText = responseData;
+                        }
+                    }
 
                     // Format as TEXT block (not tool_result) - Claude Code CLI non-native tool mode
                     // This mimics Cline's approach when nativeToolCallEnabled=false
@@ -347,7 +391,7 @@ public class ClaudeCodeChatModel implements ChatModel {
                     userContentBlocks.add(textResultBlock);
 
                     // Add additional content blocks (images) as separate blocks in user message
-                    if (data.containsKey("additionalContent")) {
+                    if (data != null && data.containsKey("additionalContent")) {
                         @SuppressWarnings("unchecked")
                         List<Map<String, Object>> additionalBlocks = (List<Map<String, Object>>) data.get("additionalContent");
 
@@ -424,31 +468,6 @@ public class ClaudeCodeChatModel implements ChatModel {
             }
         }
 
-        // Parse tool calls from text content (for Claude Code CLI compatibility)
-        if (fullText.length() > 0) {
-            List<TextToolCallParser.ParsedToolCall> parsedToolCalls =
-                TextToolCallParser.parseToolCalls(fullText.toString());
-
-            if (!parsedToolCalls.isEmpty()) {
-                logger.debug("Parsed {} tool calls from text", parsedToolCalls.size());
-
-                for (TextToolCallParser.ParsedToolCall parsed : parsedToolCalls) {
-                    toolCalls.add(new AssistantMessage.ToolCall(
-                        parsed.getId(), "function", parsed.getName(), parsed.getArguments()
-                    ));
-                }
-
-                // Remove tool call XML from text generations
-                String cleanText = TextToolCallParser.removeToolCallsFromText(fullText.toString());
-                if (!cleanText.isEmpty()) {
-                    generations.clear();
-                    generations.add(new Generation(
-                        new AssistantMessage(cleanText),
-                        ChatGenerationMetadata.builder().finishReason("tool_use").build()
-                    ));
-                }
-            }
-        }
 
         if (!CollectionUtils.isEmpty(toolCalls)) {
             AssistantMessage assistantMessage = AssistantMessage.builder()

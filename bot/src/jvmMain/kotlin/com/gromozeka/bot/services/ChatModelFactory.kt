@@ -2,6 +2,7 @@ package com.gromozeka.bot.services
 
 import com.google.genai.Client
 import com.gromozeka.bot.settings.AIProvider
+import com.gromozeka.bot.settings.AppMode
 import io.micrometer.observation.ObservationRegistry
 import klog.KLoggers
 import org.springframework.ai.chat.model.ChatModel
@@ -24,6 +25,7 @@ class ChatModelFactory(
     private val ollamaApi: OllamaApi,
     private val geminiClient: Client,
     private val toolCallingManager: ToolCallingManager,
+    private val settingsService: SettingsService,
 ) {
     private val log = KLoggers.logger(this)
 
@@ -95,6 +97,7 @@ class ChatModelFactory(
                 val api = ClaudeCodeApi.builder()
                     .cliPath("claude")
                     .workingDirectory(workingDir)
+                    .devMode(settingsService.mode == AppMode.DEV)
                     .build()
 
                 val options = ClaudeCodeChatOptions.builder()

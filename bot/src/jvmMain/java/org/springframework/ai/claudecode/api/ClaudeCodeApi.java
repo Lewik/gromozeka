@@ -43,11 +43,13 @@ public class ClaudeCodeApi {
 
     private final String cliPath;
     private final String workingDirectory;
+    private final boolean devMode;
     private final ObjectMapper objectMapper;
 
-    private ClaudeCodeApi(String cliPath, String workingDirectory) {
+    private ClaudeCodeApi(String cliPath, String workingDirectory, boolean devMode) {
         this.cliPath = cliPath;
         this.workingDirectory = workingDirectory;
+        this.devMode = devMode;
         this.objectMapper = new ObjectMapper();
     }
 
@@ -125,14 +127,6 @@ public class ClaudeCodeApi {
                 StringBuilder stderrBuilder = new StringBuilder();
                 Thread stderrThread = startStderrReader(finalProcess, stderrBuilder);
 
-                // Accumulate all content blocks instead of emitting each chunk
-                List<AnthropicApi.ContentBlock> accumulatedContent = new ArrayList<>();
-                String messageId = null;
-                String responseModel = null;
-                String stopReason = null;
-                String stopSequence = null;
-                AnthropicApi.Usage usage = null;
-
                 String line;
                 Double totalCost = null;
                 while ((line = reader.readLine()) != null) {
@@ -141,6 +135,11 @@ public class ClaudeCodeApi {
                     }
 
                     try {
+                        // Log raw JSONL event for debugging streaming structure (dev mode only)
+                        if (devMode) {
+                            logger.debug("CLAUDE_RAW_EVENT: {}", line);
+                        }
+
                         ClaudeCodeStreamEvent event = objectMapper.readValue(line, ClaudeCodeStreamEvent.class);
                         logger.debug("Received event type: {}", event.type());
 
@@ -150,36 +149,10 @@ public class ClaudeCodeApi {
                         }
 
                         if (event instanceof ClaudeCodeStreamEvent.AssistantEvent assistantEvent) {
-                            // Accumulate content blocks instead of immediate emit
-                            ClaudeCodeStreamEvent.AssistantEvent.AnthropicMessage msg = assistantEvent.message();
-
-                            // Capture metadata from first chunk
-                            if (messageId == null) messageId = msg.id();
-                            if (responseModel == null) responseModel = msg.model();
-
-                            // Update metadata as we get it
-                            if (msg.stopReason() != null) stopReason = msg.stopReason();
-                            if (msg.stopSequence() != null) stopSequence = msg.stopSequence();
-
-                            // Accumulate usage info
-                            if (msg.usage() != null) {
-                                ClaudeCodeStreamEvent.AssistantEvent.AnthropicMessage.Usage u = msg.usage();
-                                usage = new AnthropicApi.Usage(
-                                    u.inputTokens(),
-                                    u.outputTokens(),
-                                    u.cacheCreationInputTokens(),
-                                    u.cacheReadInputTokens()
-                                );
-                            }
-
-                            // Convert and accumulate content blocks
-                            List<AnthropicApi.ContentBlock> contentBlocks = msg.content().stream()
-                                .map(this::convertContentBlock)
-                                .collect(Collectors.toList());
-                            accumulatedContent.addAll(contentBlocks);
-
-                            logger.debug("Accumulated {} content blocks (total: {})",
-                                contentBlocks.size(), accumulatedContent.size());
+                            // Emit each complete block immediately (thinking, text, tool_use)
+                            // toChatResponse() will parse tool calls and clean XML automatically
+                            AnthropicApi.ChatCompletionResponse response = convertAssistantEvent(assistantEvent);
+                            sink.next(response);
                         }
 
                         if (event instanceof ClaudeCodeStreamEvent.ErrorEvent errorEvent) {
@@ -191,29 +164,11 @@ public class ClaudeCodeApi {
                             totalCost = resultEvent.totalCostUsd();
                             logger.debug("Result event - cost: ${}, duration: {}ms",
                                 totalCost, resultEvent.durationMs());
-                            // ResultEvent signals completion - break to emit final response
-                            break;
                         }
 
                     } catch (Exception e) {
                         logger.error("Failed to parse JSONL line: {}", line, e);
                     }
-                }
-
-                // Emit single final response with all accumulated content blocks
-                if (!accumulatedContent.isEmpty() && messageId != null) {
-                    AnthropicApi.ChatCompletionResponse finalResponse = new AnthropicApi.ChatCompletionResponse(
-                        messageId,
-                        "message",
-                        AnthropicApi.Role.ASSISTANT,
-                        accumulatedContent,
-                        responseModel,
-                        stopReason,
-                        stopSequence,
-                        usage
-                    );
-                    logger.debug("Emitting final response with {} content blocks", accumulatedContent.size());
-                    sink.next(finalResponse);
                 }
 
                 boolean finished = finalProcess.waitFor(PROCESS_TIMEOUT_SECONDS, TimeUnit.SECONDS);
@@ -510,6 +465,7 @@ public class ClaudeCodeApi {
     public static class Builder {
         private String cliPath = "claude";
         private String workingDirectory = System.getProperty("user.dir");
+        private boolean devMode = false;
 
         public Builder cliPath(String cliPath) {
             this.cliPath = cliPath;
@@ -521,10 +477,15 @@ public class ClaudeCodeApi {
             return this;
         }
 
+        public Builder devMode(boolean devMode) {
+            this.devMode = devMode;
+            return this;
+        }
+
         public ClaudeCodeApi build() {
             Assert.hasText(cliPath, "CLI path must not be empty");
             Assert.hasText(workingDirectory, "Working directory must not be empty");
-            return new ClaudeCodeApi(cliPath, workingDirectory);
+            return new ClaudeCodeApi(cliPath, workingDirectory, devMode);
         }
     }
 }
