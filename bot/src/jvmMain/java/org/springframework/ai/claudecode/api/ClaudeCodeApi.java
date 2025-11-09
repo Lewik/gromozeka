@@ -17,6 +17,8 @@ import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -123,6 +125,14 @@ public class ClaudeCodeApi {
                 StringBuilder stderrBuilder = new StringBuilder();
                 Thread stderrThread = startStderrReader(finalProcess, stderrBuilder);
 
+                // Accumulate all content blocks instead of emitting each chunk
+                List<AnthropicApi.ContentBlock> accumulatedContent = new ArrayList<>();
+                String messageId = null;
+                String responseModel = null;
+                String stopReason = null;
+                String stopSequence = null;
+                AnthropicApi.Usage usage = null;
+
                 String line;
                 Double totalCost = null;
                 while ((line = reader.readLine()) != null) {
@@ -140,8 +150,36 @@ public class ClaudeCodeApi {
                         }
 
                         if (event instanceof ClaudeCodeStreamEvent.AssistantEvent assistantEvent) {
-                            AnthropicApi.ChatCompletionResponse response = convertAssistantEvent(assistantEvent);
-                            sink.next(response);
+                            // Accumulate content blocks instead of immediate emit
+                            ClaudeCodeStreamEvent.AssistantEvent.AnthropicMessage msg = assistantEvent.message();
+
+                            // Capture metadata from first chunk
+                            if (messageId == null) messageId = msg.id();
+                            if (responseModel == null) responseModel = msg.model();
+
+                            // Update metadata as we get it
+                            if (msg.stopReason() != null) stopReason = msg.stopReason();
+                            if (msg.stopSequence() != null) stopSequence = msg.stopSequence();
+
+                            // Accumulate usage info
+                            if (msg.usage() != null) {
+                                ClaudeCodeStreamEvent.AssistantEvent.AnthropicMessage.Usage u = msg.usage();
+                                usage = new AnthropicApi.Usage(
+                                    u.inputTokens(),
+                                    u.outputTokens(),
+                                    u.cacheCreationInputTokens(),
+                                    u.cacheReadInputTokens()
+                                );
+                            }
+
+                            // Convert and accumulate content blocks
+                            List<AnthropicApi.ContentBlock> contentBlocks = msg.content().stream()
+                                .map(this::convertContentBlock)
+                                .collect(Collectors.toList());
+                            accumulatedContent.addAll(contentBlocks);
+
+                            logger.debug("Accumulated {} content blocks (total: {})",
+                                contentBlocks.size(), accumulatedContent.size());
                         }
 
                         if (event instanceof ClaudeCodeStreamEvent.ErrorEvent errorEvent) {
@@ -153,11 +191,29 @@ public class ClaudeCodeApi {
                             totalCost = resultEvent.totalCostUsd();
                             logger.debug("Result event - cost: ${}, duration: {}ms",
                                 totalCost, resultEvent.durationMs());
+                            // ResultEvent signals completion - break to emit final response
+                            break;
                         }
 
                     } catch (Exception e) {
                         logger.error("Failed to parse JSONL line: {}", line, e);
                     }
+                }
+
+                // Emit single final response with all accumulated content blocks
+                if (!accumulatedContent.isEmpty() && messageId != null) {
+                    AnthropicApi.ChatCompletionResponse finalResponse = new AnthropicApi.ChatCompletionResponse(
+                        messageId,
+                        "message",
+                        AnthropicApi.Role.ASSISTANT,
+                        accumulatedContent,
+                        responseModel,
+                        stopReason,
+                        stopSequence,
+                        usage
+                    );
+                    logger.debug("Emitting final response with {} content blocks", accumulatedContent.size());
+                    sink.next(finalResponse);
                 }
 
                 boolean finished = finalProcess.waitFor(PROCESS_TIMEOUT_SECONDS, TimeUnit.SECONDS);
@@ -251,6 +307,46 @@ public class ClaudeCodeApi {
         String json = objectMapper.writeValueAsString(messageList);
         logger.debug("Writing messages to stdin: {} characters", json.length());
 
+        // Debug logging: save JSON to file for inspection
+        try {
+            Path debugFile = Paths.get("logs/last-stdin.json");
+            Files.createDirectories(debugFile.getParent());
+            Files.writeString(debugFile, json);
+            logger.debug("Saved stdin JSON to: {}", debugFile.toAbsolutePath());
+        } catch (Exception e) {
+            logger.warn("Failed to save debug JSON: {}", e.getMessage());
+        }
+
+        // Log message structure
+        String structure = messageList.stream()
+            .map(m -> {
+                String role = (String) m.get("role");
+                @SuppressWarnings("unchecked")
+                List<Map<String, Object>> content = (List<Map<String, Object>>) m.get("content");
+                String contentTypes = content.stream()
+                    .map(c -> (String) c.get("type"))
+                    .collect(Collectors.joining(","));
+                return role + "[" + contentTypes + "]";
+            })
+            .collect(Collectors.joining(" -> "));
+        logger.debug("Message structure: {}", structure);
+
+        // Validate JSON
+        try {
+            objectMapper.readTree(json);
+            logger.debug("JSON validation: OK");
+        } catch (Exception e) {
+            logger.error("JSON validation FAILED: {}", e.getMessage());
+        }
+
+        // Log preview
+        if (json.length() > 1000) {
+            logger.debug("JSON preview (first 500 chars): {}", json.substring(0, 500));
+            logger.debug("JSON preview (last 500 chars): {}", json.substring(json.length() - 500));
+        } else {
+            logger.debug("Full JSON: {}", json);
+        }
+
         try (BufferedWriter writer = new BufferedWriter(
                 new OutputStreamWriter(process.getOutputStream(), StandardCharsets.UTF_8))) {
             writer.write(json);
@@ -273,6 +369,42 @@ public class ClaudeCodeApi {
     private Map<String, Object> convertContentBlockToMap(AnthropicApi.ContentBlock block) {
         Map<String, Object> map = new HashMap<>();
         map.put("type", block.type().name().toLowerCase());
+
+        // Handle TOOL_RESULT with structured content (images, etc)
+        if (block.type() == AnthropicApi.ContentBlock.Type.TOOL_RESULT) {
+            map.put("tool_use_id", block.toolUseId());
+
+            if (StringUtils.hasText(block.content())) {
+                try {
+                    // Parse JSON string into structured content array
+                    Object parsedContent = objectMapper.readValue(block.content(), Object.class);
+                    map.put("content", parsedContent);
+                } catch (Exception e) {
+                    // Fallback - if not JSON, use as plain text
+                    logger.warn("Failed to parse tool_result content as JSON, using as text: {}", e.getMessage());
+                    map.put("content", block.content());
+                }
+            }
+            return map;
+        }
+
+        // Handle IMAGE blocks with source
+        if (block.source() != null) {
+            Map<String, Object> source = new HashMap<>();
+            if (StringUtils.hasText(block.source().type())) {
+                source.put("type", block.source().type());
+            }
+            if (StringUtils.hasText(block.source().mediaType())) {
+                source.put("media_type", block.source().mediaType());
+            }
+            if (StringUtils.hasText(block.source().data())) {
+                source.put("data", block.source().data());
+            }
+            if (StringUtils.hasText(block.source().url())) {
+                source.put("url", block.source().url());
+            }
+            map.put("source", source);
+        }
 
         if (StringUtils.hasText(block.text())) {
             map.put("text", block.text());

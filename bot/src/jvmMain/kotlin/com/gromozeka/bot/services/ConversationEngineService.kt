@@ -391,11 +391,15 @@ class ConversationEngineService(
 
                 log.debug { "Persisting single ToolResponseMessage with ${toolResponseMessage.responses.size} tool responses" }
 
-                val toolResultConversationMessage = messageConversionService.fromSpringAI(toolResponseMessage)
+                // Clean additionalContent (images) from tool responses before saving to DB
+                // Images are used for current API request only (Cline approach)
+                val cleanedToolResponseMessage = removeAdditionalContentFromToolResponse(toolResponseMessage)
+
+                val toolResultConversationMessage = messageConversionService.fromSpringAI(cleanedToolResponseMessage)
                     .copy(conversationId = conversationId)
                 emit(StreamUpdate.Chunk(toolResultConversationMessage))
                 conversationService.addMessage(conversationId, toolResultConversationMessage)
-                log.debug { "Emitted and persisted tool result message" }
+                log.debug { "Emitted and persisted tool result message (without additionalContent)" }
 
                 // 5i. Check if tool execution returned direct result
                 if (toolExecutionResult.returnDirect()) {
@@ -450,6 +454,42 @@ class ConversationEngineService(
         }
 
         log.debug { "Completed conversation turn in $iterationCount iterations" }
+    }
+
+    /**
+     * Remove additionalContent (images) from ToolResponseMessage before saving to DB.
+     * Images are used for current API request only (Cline approach) - not persisted.
+     */
+    private fun removeAdditionalContentFromToolResponse(message: ToolResponseMessage): ToolResponseMessage {
+        val objectMapper = com.fasterxml.jackson.databind.ObjectMapper()
+
+        val cleanedResponses = message.responses.map { response ->
+            try {
+                // Parse responseData to extract only text part
+                val data = org.springframework.ai.model.ModelOptionsUtils.jsonToMap(response.responseData())
+                val textOnly = data["text"]?.toString() ?: response.responseData()
+
+                // Create minimal JSON structure (always valid JSON, no additionalContent)
+                val cleanedJson = mapOf("text" to textOnly)
+                val cleanedResponseData = objectMapper.writeValueAsString(cleanedJson)
+
+                // Create new ToolResponse with JSON structure (deterministic parsing)
+                ToolResponseMessage.ToolResponse(
+                    response.id(),
+                    response.name(),
+                    cleanedResponseData  // {"text": "Successfully read image..."}
+                )
+            } catch (e: Exception) {
+                // If parsing fails, use original response as-is
+                log.warn { "Failed to parse tool response data for cleaning: ${e.message}" }
+                response
+            }
+        }
+
+        return ToolResponseMessage.builder()
+            .responses(cleanedResponses)
+            .metadata(message.metadata)
+            .build()
     }
 
     /**

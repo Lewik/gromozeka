@@ -327,24 +327,48 @@ public class ClaudeCodeChatModel implements ChatModel {
                 result.add(new AnthropicApi.AnthropicMessage(contentBlocks, AnthropicApi.Role.ASSISTANT));
 
             } else if (messageType == MessageType.TOOL) {
-                // Convert tool results to plain text format (Claude Code CLI compatibility)
+                // Convert tool results to native Anthropic API format
                 ToolResponseMessage toolMessage = (ToolResponseMessage) message;
-                StringBuilder toolResultText = new StringBuilder();
+                List<AnthropicApi.ContentBlock> userContentBlocks = new ArrayList<>();
 
                 for (ToolResponseMessage.ToolResponse toolResponse : toolMessage.getResponses()) {
-                    toolResultText.append("<tool_result>\n");
-                    toolResultText.append("<tool_call_id>").append(toolResponse.id()).append("</tool_call_id>\n");
-                    toolResultText.append("<result>\n");
-                    toolResultText.append(toolResponse.responseData());
-                    toolResultText.append("\n</result>\n");
-                    toolResultText.append("</tool_result>\n\n");
+                    // Parse responseData JSON to extract text and additional content (images)
+                    Map<String, Object> data = ModelOptionsUtils.jsonToMap(toolResponse.responseData());
+
+                    // Extract main text
+                    String mainText = data.get("text") != null ? data.get("text").toString() : toolResponse.responseData();
+
+                    // Format as TEXT block (not tool_result) - Claude Code CLI non-native tool mode
+                    // This mimics Cline's approach when nativeToolCallEnabled=false
+                    String textResult = String.format("[%s] Result:\n%s", toolResponse.name(), mainText);
+
+                    // Create TEXT block instead of TOOL_RESULT (Claude Code CLI compatibility)
+                    AnthropicApi.ContentBlock textResultBlock = new AnthropicApi.ContentBlock(textResult);
+                    userContentBlocks.add(textResultBlock);
+
+                    // Add additional content blocks (images) as separate blocks in user message
+                    if (data.containsKey("additionalContent")) {
+                        @SuppressWarnings("unchecked")
+                        List<Map<String, Object>> additionalBlocks = (List<Map<String, Object>>) data.get("additionalContent");
+
+                        for (Map<String, Object> block : additionalBlocks) {
+                            if ("image".equals(block.get("type"))) {
+                                @SuppressWarnings("unchecked")
+                                Map<String, Object> source = (Map<String, Object>) block.get("source");
+
+                                AnthropicApi.ContentBlock imageBlock = new AnthropicApi.ContentBlock(
+                                    new AnthropicApi.ContentBlock.Source(
+                                        source.get("media_type").toString(),
+                                        source.get("data").toString()
+                                    )
+                                );
+                                userContentBlocks.add(imageBlock);
+                            }
+                        }
+                    }
                 }
 
-                List<AnthropicApi.ContentBlock> textContent = List.of(
-                    new AnthropicApi.ContentBlock(toolResultText.toString())
-                );
-
-                result.add(new AnthropicApi.AnthropicMessage(textContent, AnthropicApi.Role.USER));
+                result.add(new AnthropicApi.AnthropicMessage(userContentBlocks, AnthropicApi.Role.USER));
             } else {
                 throw new IllegalArgumentException("Unsupported message type: " + messageType);
             }

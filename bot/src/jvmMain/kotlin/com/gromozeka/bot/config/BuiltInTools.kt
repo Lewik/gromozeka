@@ -55,7 +55,7 @@ class BuiltInTools {
     fun writeFileTool(): ToolCallback {
         val function = object : BiFunction<WriteFileParams, ToolContext?, Map<String, Any>> {
             override fun apply(request: WriteFileParams, context: ToolContext?): Map<String, Any> {
-                return try {
+                val result = try {
                     val file = File(request.file_path)
                     file.parentFile?.mkdirs()
                     file.writeText(request.content)
@@ -65,6 +65,12 @@ class BuiltInTools {
                     logger.error("Error writing file: ${request.file_path}", e)
                     mapOf("error" to "Error writing file: ${e.message}")
                 }
+
+                // Wrap in text content block format
+                return mapOf(
+                    "type" to "text",
+                    "text" to result.entries.joinToString("\n") { "${it.key}: ${it.value}" }
+                )
             }
         }
 
@@ -78,7 +84,7 @@ class BuiltInTools {
     fun executeCommandTool(): ToolCallback {
         val function = object : BiFunction<ExecuteCommandParams, ToolContext?, Map<String, Any>> {
             override fun apply(request: ExecuteCommandParams, context: ToolContext?): Map<String, Any> {
-                return try {
+                val result = try {
                     val workingDir = request.working_directory?.let { File(it) } ?: File(System.getProperty("user.dir"))
 
                     logger.debug("Executing: ${request.command} in ${workingDir.absolutePath}")
@@ -116,6 +122,12 @@ class BuiltInTools {
                     logger.error("Error executing command: ${request.command}", e)
                     mapOf("error" to "Error executing command: ${e.message}")
                 }
+
+                // Wrap in text content block format
+                return mapOf(
+                    "type" to "text",
+                    "text" to result.entries.joinToString("\n") { "${it.key}: ${it.value}" }
+                )
             }
         }
 
@@ -129,7 +141,7 @@ class BuiltInTools {
     fun listDirectoryTool(): ToolCallback {
         val function = object : BiFunction<ListDirectoryParams, ToolContext?, Map<String, Any>> {
             override fun apply(request: ListDirectoryParams, context: ToolContext?): Map<String, Any> {
-                return try {
+                val result = try {
                     val dir = File(request.path)
 
                     when {
@@ -158,6 +170,29 @@ class BuiltInTools {
                     logger.error("Error listing directory: ${request.path}", e)
                     mapOf("error" to "Error listing directory: ${e.message}")
                 }
+
+                // Format as text
+                val text = when {
+                    result.containsKey("error") -> result["error"].toString()
+                    else -> {
+                        val path = result["path"]
+                        @Suppress("UNCHECKED_CAST")
+                        val files = result["files"] as List<Map<String, Any>>
+                        buildString {
+                            appendLine("path: $path")
+                            appendLine("files:")
+                            files.forEach { file ->
+                                appendLine("  - ${file["name"]} (${file["type"]}, size: ${file["size"]}, modified: ${file["modified"]})")
+                            }
+                        }
+                    }
+                }
+
+                // Wrap in text content block format
+                return mapOf(
+                    "type" to "text",
+                    "text" to text
+                )
             }
         }
 
@@ -184,11 +219,17 @@ class BuiltInTools {
         val base64 = Base64.getEncoder().encodeToString(bytes)
 
         return mapOf(
-            "type" to "image",
-            "source" to mapOf(
-                "type" to "base64",
-                "media_type" to mimeType,
-                "data" to base64
+            "type" to "text",
+            "text" to "Successfully read image: ${file.name} (${bytes.size} bytes, $mimeType)",
+            "additionalContent" to listOf(
+                mapOf(
+                    "type" to "image",
+                    "source" to mapOf(
+                        "type" to "base64",
+                        "media_type" to mimeType,
+                        "data" to base64
+                    )
+                )
             )
         )
     }
@@ -207,7 +248,7 @@ class BuiltInTools {
         )
     }
 
-    private fun readTextFile(file: File, limit: Int?, offset: Int?): Map<String, String> {
+    private fun readTextFile(file: File, limit: Int?, offset: Int?): Map<String, Any> {
         val lines = file.readLines()
         val startLine = offset ?: 0
         val maxLines = limit ?: 2000
@@ -219,7 +260,10 @@ class BuiltInTools {
             "$lineNumber\t$truncated"
         }.joinToString("\n")
 
-        return mapOf("content" to content)
+        return mapOf(
+            "type" to "text",
+            "text" to content
+        )
     }
 }
 
