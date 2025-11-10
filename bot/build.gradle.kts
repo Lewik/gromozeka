@@ -213,6 +213,14 @@ compose.desktop {
     }
 }
 
+// Enable zip64 for large JARs (>65535 entries)
+// Must use afterEvaluate because packageUberJarForCurrentOS is created by Compose Desktop plugin
+afterEvaluate {
+    tasks.withType<Zip> {
+        isZip64 = true
+    }
+}
+
 tasks.register<Test>("convertLogo") {
     description = "Run only the logo generation test"
     group = "build"
