@@ -9,6 +9,7 @@ import com.gromozeka.bot.services.translation.TranslationService
 import com.gromozeka.bot.ui.viewmodel.AppViewModel
 import com.gromozeka.bot.ui.viewmodel.ConversationSearchViewModel
 import com.gromozeka.shared.audio.AudioRecorder
+import com.gromozeka.shared.repository.TokenUsageStatisticsRepository
 import com.gromozeka.shared.services.ConversationService
 import io.ktor.client.*
 import io.ktor.client.engine.cio.*
@@ -70,6 +71,7 @@ class Config {
         @Qualifier("coroutineScope") scope: CoroutineScope,
         screenCaptureController: ScreenCaptureController,
         defaultAgentProvider: DefaultAgentProvider,
+        tokenUsageStatisticsRepository: TokenUsageStatisticsRepository,
     ) = AppViewModel(
         conversationEngineService,
         conversationService,
@@ -78,6 +80,7 @@ class Config {
         scope,
         screenCaptureController,
         defaultAgentProvider,
+        tokenUsageStatisticsRepository,
     )
 
     @Bean
@@ -97,7 +100,7 @@ class Config {
     @Bean
     fun settingsService(): SettingsService {
         val service = SettingsService()
-        service.initialize()  // Инициализируем сразу при создании бина
+        service.initialize()
         return service
     }
 

@@ -10,6 +10,7 @@ import com.gromozeka.bot.ui.state.ConversationInitiator
 import com.gromozeka.bot.ui.state.UIState
 import com.gromozeka.shared.domain.Agent
 import com.gromozeka.shared.domain.Conversation
+import com.gromozeka.shared.repository.TokenUsageStatisticsRepository
 import com.gromozeka.shared.services.ConversationService
 import klog.KLoggers
 import kotlinx.coroutines.CoroutineScope
@@ -26,6 +27,7 @@ open class AppViewModel(
     private val scope: CoroutineScope,
     private val screenCaptureController: ScreenCaptureController,
     private val defaultAgentProvider: DefaultAgentProvider,
+    private val tokenUsageStatisticsRepository: TokenUsageStatisticsRepository,
 ) {
     private val log = KLoggers.logger(this)
     private val mutex = Mutex()
@@ -51,15 +53,11 @@ open class AppViewModel(
 
         val tabId = UUID.randomUUID().toString()
 
-        // Get agent (use provided or default)
         val tabAgent = agent ?: defaultAgentProvider.getDefault()
 
-        // Create or load conversation
         val conversation = if (conversationId != null) {
-            // Resume existing conversation
             conversationService.findById(conversationId) ?: error("Conversation not found: $conversationId")
         } else {
-            // Create new conversation with default AI provider from settings
             val settings = settingsService.settings
             val aiProvider = settings.defaultAiProvider.name
             val modelName = when (settings.defaultAiProvider) {
@@ -99,6 +97,7 @@ open class AppViewModel(
             scope = scope,
             initialTabUiState = initialTabUiState,
             screenCaptureController = screenCaptureController,
+            tokenUsageStatisticsRepository = tokenUsageStatisticsRepository,
         )
 
         val updatedTabs = _tabs.value + tabViewModel
@@ -192,7 +191,6 @@ open class AppViewModel(
 
         uiState.tabs.forEach { tabUiState ->
             try {
-                // Load conversation from saved state or create new (backward compatibility)
                 val conversation = conversationService.findById(tabUiState.conversationId)
                     ?: run {
                         log.warn("Conversation not found for tab, creating new conversation")
@@ -221,6 +219,7 @@ open class AppViewModel(
                     scope = scope,
                     initialTabUiState = tabUiState,
                     screenCaptureController = screenCaptureController,
+                    tokenUsageStatisticsRepository = tokenUsageStatisticsRepository,
                 )
 
                 restoredTabs.add(tabViewModel)

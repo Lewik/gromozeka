@@ -36,6 +36,8 @@ data class Conversation(
         // null: initial or append-only, not-null: derived via explicit operation
         val originalThread: Id? = null,
 
+        val lastTurnNumber: Int = 0,
+
         val createdAt: Instant,
         val updatedAt: Instant,
     ) {

@@ -64,6 +64,7 @@ fun SessionScreen(
     val uiState by viewModel.uiState.collectAsState()
     val userInput = uiState.userInput
     val jsonToShow = viewModel.jsonToShow
+    val tokenStats by viewModel.tokenStats.collectAsState()
 
     // Message sending function using ViewModel
     val onSendMessage: (String) -> Unit = { message ->
@@ -137,6 +138,114 @@ fun SessionScreen(
                         }
 
                         Spacer(modifier = Modifier.width(8.dp))
+
+                        // Token usage statistics
+                        tokenStats?.let { stats ->
+                            CompactButton(
+                                onClick = { },
+                                tooltipMonospace = true,
+                                tooltipNoWrap = true,
+                                tooltip = buildString {
+                                    fun Int.formatWithCommas(): String =
+                                        this.toString().reversed().chunked(3).joinToString(",").reversed()
+
+                                    val lines = mutableListOf<String>()
+
+                                    lines.add("Token Usage Statistics")
+
+                                    val totalTokens = stats.totalPromptTokens + stats.totalCompletionTokens + stats.totalThinkingTokens
+                                    lines.add("Total: ${totalTokens.formatWithCommas()} tokens")
+                                    lines.add("  Prompt:     ${stats.totalPromptTokens.formatWithCommas()}")
+                                    lines.add("  Completion: ${stats.totalCompletionTokens.formatWithCommas()}")
+                                    if (stats.totalThinkingTokens > 0) {
+                                        lines.add("  Thinking:   ${stats.totalThinkingTokens.formatWithCommas()}")
+                                    }
+                                    if (stats.totalCacheReadTokens > 0) {
+                                        lines.add("  Cache Read: ${stats.totalCacheReadTokens.formatWithCommas()}")
+                                    }
+
+                                    val contextWindow = stats.modelId?.let {
+                                        com.gromozeka.shared.domain.ModelContextWindows.getContextWindow(it)
+                                    }
+                                    val currentContext = stats.currentContextSize
+
+                                    if (currentContext != null) {
+                                        if (contextWindow != null) {
+                                            val percentage = (currentContext.toFloat() / contextWindow * 100).toInt()
+                                            lines.add("Context: ${currentContext.formatWithCommas()} / ${contextWindow.formatWithCommas()} ($percentage%)")
+                                        } else {
+                                            lines.add("Context: ${currentContext.formatWithCommas()} / unknown (n/a)")
+                                        }
+                                    }
+
+                                    if (stats.recentCalls.isNotEmpty()) {
+                                        lines.add("Recent ${stats.recentCalls.size} Turns:")
+
+                                        val hasThinking = stats.recentCalls.any { it.thinkingTokens > 0 }
+
+                                        if (hasThinking) {
+                                            lines.add("Turn  Prompt  Compl  Think  Total")
+                                        } else {
+                                            lines.add("Turn  Prompt  Compl  Total")
+                                        }
+
+                                        stats.recentCalls.forEach { call ->
+                                            val turn = call.turnNumber.toString().padStart(4)
+                                            val prompt = call.promptTokens.formatWithCommas().padStart(7)
+                                            val completion = call.completionTokens.formatWithCommas().padStart(6)
+                                            val total = call.totalTokens.formatWithCommas().padStart(6)
+
+                                            if (hasThinking) {
+                                                val thinking = call.thinkingTokens.formatWithCommas().padStart(6)
+                                                lines.add("$turn  $prompt  $completion  $thinking  $total")
+                                            } else {
+                                                lines.add("$turn  $prompt  $completion  $total")
+                                            }
+                                        }
+                                    }
+
+                                    val maxLength = lines.maxOfOrNull { it.length } ?: 0
+                                    val separator = "-".repeat(maxLength)
+
+                                    append(lines[0] + "\n")
+                                    append(separator + "\n")
+                                    for (i in 1 until lines.size) {
+                                        if (lines[i].startsWith("Recent")) {
+                                            append("\n" + lines[i] + "\n")
+                                            append(separator + "\n")
+                                        } else {
+                                            append(lines[i] + "\n")
+                                        }
+                                    }
+                                }
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        Icons.Default.Assessment,
+                                        contentDescription = "Tokens"
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+
+                                    val contextPercentage = stats.currentContextSize?.let { currentContext ->
+                                        stats.modelId?.let { modelId ->
+                                            com.gromozeka.shared.domain.ModelContextWindows.getContextWindow(modelId)
+                                                ?.let { contextWindow ->
+                                                    (currentContext.toFloat() / contextWindow * 100).toInt()
+                                                }
+                                        }
+                                    }
+
+                                    if (contextPercentage != null) {
+                                        Text("$contextPercentage%")
+                                    } else {
+                                        val totalTokens = stats.totalPromptTokens + stats.totalCompletionTokens + stats.totalThinkingTokens
+                                        Text("$totalTokens")
+                                    }
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.width(8.dp))
+                        }
 
                         // Context extraction button
                         onExtractContexts?.let { extractCallback ->

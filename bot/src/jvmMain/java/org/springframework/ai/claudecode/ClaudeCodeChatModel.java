@@ -300,29 +300,40 @@ public class ClaudeCodeChatModel implements ChatModel {
                         signature != null ? "present" : "missing");
                 } else {
                     // Regular assistant message with text and/or tool calls
-                    StringBuilder fullContent = new StringBuilder();
 
+                    // Add text content if present
                     if (StringUtils.hasText(message.getText())) {
-                        fullContent.append(message.getText());
+                        contentBlocks.add(new AnthropicApi.ContentBlock(message.getText()));
                     }
 
-                    // Convert tool calls to text format (Claude Code CLI compatibility)
+                    // Add tool calls as native tool_use blocks (not XML in text!)
+                    // This ensures Claude sees proper Anthropic API format in conversation history
                     if (!CollectionUtils.isEmpty(assistantMessage.getToolCalls())) {
                         for (AssistantMessage.ToolCall toolCall : assistantMessage.getToolCalls()) {
-                            if (fullContent.length() > 0) {
-                                fullContent.append("\n\n");
-                            }
-                            fullContent.append("<tool_use>\n");
-                            fullContent.append("<name>").append(toolCall.name()).append("</name>\n");
-                            fullContent.append("<parameters>\n");
-                            fullContent.append(toolCall.arguments());
-                            fullContent.append("\n</parameters>\n");
-                            fullContent.append("</tool_use>");
-                        }
-                    }
+                            // Parse arguments JSON to Map for native format
+                            Map<String, Object> input = ModelOptionsUtils.jsonToMap(toolCall.arguments());
 
-                    if (fullContent.length() > 0) {
-                        contentBlocks.add(new AnthropicApi.ContentBlock(fullContent.toString()));
+                            // Create native tool_use ContentBlock (same as Spring AI Anthropic provider)
+                            AnthropicApi.ContentBlock toolUseBlock = new AnthropicApi.ContentBlock(
+                                AnthropicApi.ContentBlock.Type.TOOL_USE,  // type
+                                null,      // source
+                                null,      // text
+                                null,      // index
+                                toolCall.id(),     // id
+                                toolCall.name(),   // name
+                                input,             // input (parameters as Map)
+                                null,      // toolUseId
+                                null,      // content
+                                null,      // signature
+                                null,      // thinking
+                                null,      // data
+                                null,      // cacheControl
+                                null,      // title
+                                null,      // context
+                                null       // citations
+                            );
+                            contentBlocks.add(toolUseBlock);
+                        }
                     }
                 }
 
@@ -492,7 +503,9 @@ public class ClaudeCodeChatModel implements ChatModel {
     }
 
     private Usage convertUsage(AnthropicApi.Usage apiUsage) {
-        int inputTokens = apiUsage.inputTokens() != null ? apiUsage.inputTokens() : 0;
+        int inputTokens = (apiUsage.inputTokens() != null ? apiUsage.inputTokens() : 0)
+            + (apiUsage.cacheCreationInputTokens() != null ? apiUsage.cacheCreationInputTokens() : 0)
+            + (apiUsage.cacheReadInputTokens() != null ? apiUsage.cacheReadInputTokens() : 0);
         int outputTokens = apiUsage.outputTokens() != null ? apiUsage.outputTokens() : 0;
         return new DefaultUsage(inputTokens, outputTokens, inputTokens + outputTokens, apiUsage);
     }

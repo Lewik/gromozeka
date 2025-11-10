@@ -31,7 +31,7 @@ class DatabaseConfig {
         val dbPath = appDataPath.resolve("gromozeka.db")
 
         return Database.connect(
-            url = "jdbc:sqlite:$dbPath",
+            url = "jdbc:sqlite:$dbPath?journal_mode=WAL&busy_timeout=5000&synchronous=NORMAL",
             driver = "org.sqlite.JDBC"
         )
     }

@@ -45,7 +45,7 @@ class BuiltInTools {
             }
         }
 
-        return FunctionToolCallback.builder("read_file", function)
+        return FunctionToolCallback.builder("grz_read_file", function)
             .description("Read file contents. Supports text files, images (PNG, JPEG, GIF, WebP), and PDF documents.")
             .inputType(object : ParameterizedTypeReference<ReadFileParams>() {})
             .build()
@@ -74,7 +74,7 @@ class BuiltInTools {
             }
         }
 
-        return FunctionToolCallback.builder("write_file", function)
+        return FunctionToolCallback.builder("grz_write_file", function)
             .description("Write content to a file. Creates parent directories if needed. Overwrites existing files.")
             .inputType(object : ParameterizedTypeReference<WriteFileParams>() {})
             .build()
@@ -131,7 +131,7 @@ class BuiltInTools {
             }
         }
 
-        return FunctionToolCallback.builder("execute_command", function)
+        return FunctionToolCallback.builder("grz_execute_command", function)
             .description("Execute shell command and return output. Use with caution - has full system access.")
             .inputType(object : ParameterizedTypeReference<ExecuteCommandParams>() {})
             .build()
@@ -196,7 +196,7 @@ class BuiltInTools {
             }
         }
 
-        return FunctionToolCallback.builder("list_directory", function)
+        return FunctionToolCallback.builder("grz_list_directory", function)
             .description("List files and directories in a given path. Returns file metadata including size and modification time.")
             .inputType(object : ParameterizedTypeReference<ListDirectoryParams>() {})
             .build()

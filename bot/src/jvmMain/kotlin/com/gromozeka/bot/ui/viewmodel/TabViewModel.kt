@@ -11,6 +11,8 @@ import com.gromozeka.bot.ui.state.UIState
 import com.gromozeka.bot.utils.ChatMessageSoundDetector
 import com.gromozeka.shared.domain.Conversation
 import com.gromozeka.shared.domain.MessageTagDefinition
+import com.gromozeka.shared.domain.TokenUsageStatistics
+import com.gromozeka.shared.repository.TokenUsageStatisticsRepository
 import com.gromozeka.shared.services.ConversationService
 import klog.KLoggers
 import kotlinx.coroutines.CoroutineScope
@@ -29,6 +31,7 @@ class TabViewModel(
     private val scope: CoroutineScope,
     initialTabUiState: UIState.Tab,
     private val screenCaptureController: ScreenCaptureController,
+    private val tokenUsageStatisticsRepository: TokenUsageStatisticsRepository,
 ) {
     private val log = KLoggers.logger(this)
 
@@ -100,11 +103,15 @@ class TabViewModel(
 
     val pendingMessagesCount: StateFlow<Int> = flowOf(0).stateIn(scope, SharingStarted.Eagerly, 0)
 
+    private val _tokenStats = MutableStateFlow<TokenUsageStatistics.ThreadTotals?>(null)
+    val tokenStats: StateFlow<TokenUsageStatistics.ThreadTotals?> = _tokenStats.asStateFlow()
+
     init {
         _uiState.update { it.copy(isWaitingForResponse = false) }
 
         scope.launch {
             loadMessages()
+            loadTokenStats()
         }
     }
 
@@ -115,6 +122,21 @@ class TabViewModel(
             log.debug { "Loaded ${messages.size} messages for conversation $conversationId" }
         } catch (e: Exception) {
             log.error(e) { "Failed to load messages for conversation $conversationId" }
+        }
+    }
+
+    private suspend fun loadTokenStats() {
+        try {
+            val conversation = conversationService.findById(conversationId)
+            if (conversation != null) {
+                val stats = tokenUsageStatisticsRepository.getThreadTotals(conversation.currentThread)
+                _tokenStats.value = stats
+                log.debug { "Loaded token stats for conversation $conversationId: $stats" }
+            } else {
+                log.warn { "Conversation not found: $conversationId" }
+            }
+        } catch (e: Exception) {
+            log.error(e) { "Failed to load token stats for conversation $conversationId" }
         }
     }
 
@@ -239,15 +261,12 @@ class TabViewModel(
                             is ConversationEngineService.StreamUpdate.Chunk -> {
                                 val messages = _allMessages.value.toMutableList()
 
-                                // Find existing message with same ID (for streaming chunks)
                                 val existingIndex = messages.indexOfFirst { it.id == update.message.id }
 
                                 if (existingIndex != -1) {
-                                    // Replace existing message (streaming chunk accumulation)
                                     messages[existingIndex] = update.message
                                     log.debug { "Updated existing message ${update.message.id}" }
                                 } else {
-                                    // Add new message
                                     messages.add(update.message)
                                     log.debug { "Added new message ${update.message.id}" }
                                 }
@@ -262,7 +281,6 @@ class TabViewModel(
                         }
                     }
 
-                // Play completion sounds
                 if (lastMessage != null) {
                     if (ChatMessageSoundDetector.shouldPlayErrorSound(lastMessage)) {
                         soundNotificationService.playErrorSound()
@@ -272,6 +290,7 @@ class TabViewModel(
                 }
 
                 soundNotificationService.playReadySound()
+                loadTokenStats()
                 log.debug { "Message sent successfully" }
             } catch (e: Exception) {
                 log.error(e) { "Failed to send message" }
@@ -304,7 +323,6 @@ class TabViewModel(
         }
     }
 
-    // Message selection management
     fun toggleMessageSelection(messageId: Conversation.Message.Id) {
         _uiState.update { currentState ->
             val selectedIds = currentState.selectedMessageIds
@@ -321,7 +339,6 @@ class TabViewModel(
         _uiState.update { it.copy(selectedMessageIds = emptySet()) }
     }
 
-    // Edit message dialog
     fun startEditMessage(messageId: Conversation.Message.Id) {
         val message = _allMessages.value.find { it.id == messageId }
         val text = message?.content
@@ -373,7 +390,6 @@ class TabViewModel(
         }
     }
 
-    // Delete message
     suspend fun deleteMessage(messageId: Conversation.Message.Id) {
         try {
             conversationService.deleteMessage(conversationId, messageId)
@@ -384,7 +400,6 @@ class TabViewModel(
         }
     }
 
-    // Squash messages
     suspend fun squashSelectedMessages() {
         val selectedIds = _uiState.value.selectedMessageIds
         if (selectedIds.size < 2) {
@@ -395,10 +410,6 @@ class TabViewModel(
         try {
             val selectedMessages = _allMessages.value.filter { it.id in selectedIds }
 
-            // TODO: Replace with AI-powered squash using ConversationEngineService
-            //       Current: simple text concatenation with "\n\n" separator
-            //       Future: call Claude API with squash prompt for semantic compression
-            //       See: ConversationService.squashMessages for backend integration
             val combinedText = selectedMessages.joinToString("\n\n") { message ->
                 message.content
                     .filterIsInstance<Conversation.Message.ContentItem.UserMessage>()

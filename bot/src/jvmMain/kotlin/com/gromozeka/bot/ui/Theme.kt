@@ -105,12 +105,33 @@ object CompactButtonDefaults {
 @Composable
 fun OptionalTooltip(
     tooltip: String?,
+    monospace: Boolean = false,
+    noWrap: Boolean = false,
     content: @Composable () -> Unit,
 ) {
     TooltipBox(
         positionProvider = TooltipDefaults.rememberPlainTooltipPositionProvider(),
         tooltip = if (tooltip != null) {
-            { PlainTooltip { Text(tooltip) } }
+            {
+                Surface(
+                    modifier = Modifier.wrapContentSize(),
+                    shape = MaterialTheme.shapes.extraSmall,
+                    color = MaterialTheme.colorScheme.inverseSurface,
+                    tonalElevation = 4.dp
+                ) {
+                    Box(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                    ) {
+                        Text(
+                            text = tooltip,
+                            fontFamily = if (monospace) androidx.compose.ui.text.font.FontFamily.Monospace else androidx.compose.ui.text.font.FontFamily.Default,
+                            softWrap = !noWrap,
+                            color = MaterialTheme.colorScheme.inverseOnSurface,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
+            }
         } else {
             { }  // Empty composable
         },
@@ -131,9 +152,11 @@ fun CompactButton(
     contentPadding: PaddingValues = CompactButtonDefaults.ContentPadding,
     interactionSource: MutableInteractionSource? = null,
     tooltip: String? = null, // Additional parameter for tooltip support
+    tooltipMonospace: Boolean = false, // Use monospace font for tooltip
+    tooltipNoWrap: Boolean = false, // Disable line wrapping in tooltip
     content: @Composable RowScope.() -> Unit,
 ) {
-    OptionalTooltip(tooltip) {
+    OptionalTooltip(tooltip, monospace = tooltipMonospace, noWrap = tooltipNoWrap) {
         Button(
             onClick = onClick,
             modifier = modifier, // Removed fixed height for global UI scaling compatibility

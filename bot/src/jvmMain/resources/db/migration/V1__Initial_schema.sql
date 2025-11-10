@@ -40,36 +40,32 @@ CREATE TABLE contexts (
     FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
 );
 
--- Conversations - основная таблица
+-- Conversations table
 CREATE TABLE conversations (
     id VARCHAR(255) PRIMARY KEY,
     project_id VARCHAR(255) NOT NULL,
     display_name VARCHAR(255) NOT NULL DEFAULT '',
-
-    -- Ссылка на текущий Thread (всегда существует)
     current_thread_id VARCHAR(255) NOT NULL,
-
+    ai_provider VARCHAR(50) NOT NULL DEFAULT 'CLAUDE_CODE',
+    model_name VARCHAR(100) NOT NULL DEFAULT 'sonnet',
     created_at BIGINT NOT NULL,
     updated_at BIGINT NOT NULL,
-
     FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
 );
 
 CREATE INDEX idx_conversations_project ON conversations(project_id);
 CREATE INDEX idx_conversations_updated ON conversations(updated_at);
 CREATE INDEX idx_conversations_current_thread ON conversations(current_thread_id);
+CREATE INDEX idx_conversations_ai_provider ON conversations(ai_provider);
 
--- Threads - метаданные списка сообщений
+-- Threads table
 CREATE TABLE threads (
     id VARCHAR(255) PRIMARY KEY,
     conversation_id VARCHAR(255) NOT NULL,
-
-    -- Ссылка на Thread, из которого был создан этот Thread
     original_thread_id VARCHAR(255) NULL,
-
+    last_turn_number INTEGER NOT NULL DEFAULT 0,
     created_at BIGINT NOT NULL,
     updated_at BIGINT NOT NULL,
-
     FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
 );
 
@@ -77,12 +73,11 @@ CREATE INDEX idx_threads_conversation ON threads(conversation_id);
 CREATE INDEX idx_threads_created ON threads(conversation_id, created_at DESC);
 CREATE INDEX idx_threads_original ON threads(original_thread_id);
 
--- Thread Messages - связь Thread с Message + порядок
+-- Thread Messages table
 CREATE TABLE thread_messages (
     thread_id VARCHAR(255) NOT NULL,
     message_id VARCHAR(255) NOT NULL,
     position INT NOT NULL,
-
     PRIMARY KEY (thread_id, message_id),
     FOREIGN KEY (thread_id) REFERENCES threads(id) ON DELETE CASCADE,
     FOREIGN KEY (message_id) REFERENCES messages(id)
@@ -91,54 +86,32 @@ CREATE TABLE thread_messages (
 CREATE INDEX idx_thread_messages_thread_position ON thread_messages(thread_id, position);
 CREATE INDEX idx_thread_messages_message ON thread_messages(message_id);
 
--- Messages - сообщения принадлежат conversation
+-- Messages table
 CREATE TABLE messages (
     id VARCHAR(255) PRIMARY KEY,
     conversation_id VARCHAR(255) NOT NULL,
-
-    -- История происхождения (edit/squash) - DEPRECATED, use squash_operation_id
     original_ids_json TEXT NOT NULL DEFAULT '[]',
-
-    -- Reply threading (future feature)
     reply_to_id VARCHAR(255) NULL,
-
-    -- Squash operation reference
     squash_operation_id VARCHAR(255) NULL,
-
     role VARCHAR(50) NOT NULL,
     created_at BIGINT NOT NULL,
-
-    -- Полная сериализация Message (content + instructions)
     message_json TEXT NOT NULL,
-
     FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
 );
 
 CREATE INDEX idx_messages_conversation ON messages(conversation_id);
 CREATE INDEX idx_messages_created ON messages(conversation_id, created_at);
 
--- Squash Operations - immutable record of squash provenance
+-- Squash Operations table
 CREATE TABLE squash_operations (
     id VARCHAR(255) PRIMARY KEY,
     conversation_id VARCHAR(255) NOT NULL,
-
-    -- Source messages that were squashed
     source_message_ids TEXT NOT NULL,
-
-    -- Result message ID
     result_message_id VARCHAR(255) NOT NULL,
-
-    -- AI squash prompt (nullable for manual edits)
     prompt TEXT NULL,
-
-    -- Model used for squash
     model VARCHAR(255) NULL,
-
-    -- true = AI squash, false = manual edit
     performed_by_agent BOOLEAN NOT NULL,
-
     created_at BIGINT NOT NULL,
-
     FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE,
     FOREIGN KEY (result_message_id) REFERENCES messages(id)
 );
@@ -161,6 +134,24 @@ CREATE TABLE tool_executions (
     error TEXT NULL,
     FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
 );
+
+-- Token Usage Statistics table
+CREATE TABLE token_usage_statistics (
+    id VARCHAR(255) PRIMARY KEY,
+    thread_id VARCHAR(255) NOT NULL,
+    turn_number INTEGER NOT NULL,
+    timestamp BIGINT NOT NULL,
+    prompt_tokens INTEGER NOT NULL,
+    completion_tokens INTEGER NOT NULL,
+    cache_creation_tokens INTEGER DEFAULT 0,
+    cache_read_tokens INTEGER DEFAULT 0,
+    thinking_tokens INTEGER DEFAULT 0,
+    model_id VARCHAR(100) NOT NULL,
+    FOREIGN KEY (thread_id) REFERENCES threads(id) ON DELETE CASCADE,
+    CONSTRAINT uk_thread_turn UNIQUE (thread_id, turn_number)
+);
+
+CREATE INDEX idx_token_usage_thread ON token_usage_statistics(thread_id, turn_number DESC);
 
 -- Default builtin agent
 INSERT INTO agents (id, name, system_prompt, description, is_builtin, usage_count, created_at, updated_at)

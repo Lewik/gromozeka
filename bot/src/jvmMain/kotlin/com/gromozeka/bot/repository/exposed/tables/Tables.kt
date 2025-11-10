@@ -64,6 +64,7 @@ object Threads : Table("threads") {
     val id = varchar("id", 255)
     val conversationId = varchar("conversation_id", 255).references(Conversations.id, onDelete = ReferenceOption.CASCADE)
     val originalThreadId = varchar("original_thread_id", 255).nullable()
+    val lastTurnNumber = integer("last_turn_number").default(0)
     val createdAt = timestamp("created_at")
     val updatedAt = timestamp("updated_at")
 
@@ -116,6 +117,22 @@ object ToolExecutions : Table("tool_executions") {
     val durationMs = long("duration_ms").nullable()
     val status = varchar("status", 50)
     val error = text("error").nullable()
+
+    override val primaryKey = PrimaryKey(id)
+}
+
+object TokenUsageStatisticsTable : Table("token_usage_statistics") {
+    val id = varchar("id", 255)
+    val threadId = varchar("thread_id", 255).references(Threads.id, onDelete = ReferenceOption.CASCADE)
+    val turnNumber = integer("turn_number")
+    val timestamp = timestamp("timestamp")
+    val promptTokens = integer("prompt_tokens")
+    val completionTokens = integer("completion_tokens")
+    val cacheCreationTokens = integer("cache_creation_tokens").default(0)
+    val cacheReadTokens = integer("cache_read_tokens").default(0)
+    val thinkingTokens = integer("thinking_tokens").default(0)
+
+    val modelId = varchar("model_id", 100)
 
     override val primaryKey = PrimaryKey(id)
 }

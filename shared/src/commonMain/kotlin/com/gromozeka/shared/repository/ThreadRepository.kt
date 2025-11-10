@@ -9,4 +9,5 @@ interface ThreadRepository {
     suspend fun findByConversation(conversationId: Conversation.Id): List<Conversation.Thread>
     suspend fun delete(id: Conversation.Thread.Id)
     suspend fun updateTimestamp(id: Conversation.Thread.Id, updatedAt: Instant)
+    suspend fun incrementTurnNumber(id: Conversation.Thread.Id): Int
 }

@@ -46,4 +46,8 @@ class RepositoryConfig {
     @Bean
     fun squashOperationRepository(repositoryJson: Json): SquashOperationRepository =
         ExposedSquashOperationRepository(repositoryJson)
+
+    @Bean
+    fun tokenUsageStatisticsRepository(): TokenUsageStatisticsRepository =
+        ExposedTokenUsageStatisticsRepository()
 }

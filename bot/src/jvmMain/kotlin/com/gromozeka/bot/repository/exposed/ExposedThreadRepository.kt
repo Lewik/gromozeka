@@ -16,6 +16,7 @@ class ExposedThreadRepository : ThreadRepository {
             it[id] = thread.id.value
             it[conversationId] = thread.conversationId.value
             it[originalThreadId] = thread.originalThread?.value
+            it[lastTurnNumber] = thread.lastTurnNumber
             it[createdAt] = thread.createdAt
             it[updatedAt] = thread.updatedAt
         }
@@ -46,10 +47,25 @@ class ExposedThreadRepository : ThreadRepository {
         }
     }
 
+    override suspend fun incrementTurnNumber(id: Conversation.Thread.Id): Int = dbQuery {
+        val currentTurn = Threads.selectAll()
+            .where { Threads.id eq id.value }
+            .single()[Threads.lastTurnNumber]
+
+        val newTurn = currentTurn + 1
+
+        Threads.update({ Threads.id eq id.value }) {
+            it[lastTurnNumber] = newTurn
+        }
+
+        newTurn
+    }
+
     private fun ResultRow.toThread() = Conversation.Thread(
         id = Conversation.Thread.Id(this[Threads.id]),
         conversationId = Conversation.Id(this[Threads.conversationId]),
         originalThread = this[Threads.originalThreadId]?.let { Conversation.Thread.Id(it) },
+        lastTurnNumber = this[Threads.lastTurnNumber],
         createdAt = this[Threads.createdAt],
         updatedAt = this[Threads.updatedAt]
     )

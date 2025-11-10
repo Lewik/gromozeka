@@ -5,9 +5,9 @@
 java = "21"
 kotlin = "2.2.0"
 ktor = "3.2.3"
-# Spring AI SNAPSHOT - auto-updates every 24h, may introduce breaking changes
+# Spring AI SNAPSHOT - auto-updates to latest build
 # See CLAUDE.md "Spring AI API Migration" section for migration guide
-spring-ai = "1.1.0-20251106.200546-785"
+spring-ai = "1.1.0-SNAPSHOT"
 spring-boot = "3.5.4"
 spring-dependency-management = "1.1.7"
 jetbrains-compose = "1.8.2"
@@ -49,15 +49,16 @@ ktor-server-content-negotiation = { module = "io.ktor:ktor-server-content-negoti
 
 # Spring
 spring-ai-bom = { module = "org.springframework.ai:spring-ai-bom", version.ref = "spring-ai" }
-spring-ai-openai = { module = "org.springframework.ai:spring-ai-openai" }
-spring-ai-anthropic = { module = "org.springframework.ai:spring-ai-anthropic" }
-spring-ai-vertex-ai-gemini = { module = "org.springframework.ai:spring-ai-vertex-ai-gemini" }
-spring-ai-google-genai = { module = "org.springframework.ai:spring-ai-google-genai" }
-spring-ai-ollama = { module = "org.springframework.ai:spring-ai-ollama" }
-spring-ai-starter-model-openai = { module = "org.springframework.ai:spring-ai-starter-model-openai" }
-spring-ai-starter-mcp-client = { module = "org.springframework.ai:spring-ai-starter-mcp-client" }
-spring-boot-starter = { module = "org.springframework.boot:spring-boot-starter" }
-spring-boot-starter-test = { module = "org.springframework.boot:spring-boot-starter-test" }
+spring-boot-dependencies = { module = "org.springframework.boot:spring-boot-dependencies", version.ref = "spring-boot" }
+spring-ai-openai = { module = "org.springframework.ai:spring-ai-openai", version.ref = "spring-ai" }
+spring-ai-anthropic = { module = "org.springframework.ai:spring-ai-anthropic", version.ref = "spring-ai" }
+spring-ai-vertex-ai-gemini = { module = "org.springframework.ai:spring-ai-vertex-ai-gemini", version.ref = "spring-ai" }
+spring-ai-google-genai = { module = "org.springframework.ai:spring-ai-google-genai", version.ref = "spring-ai" }
+spring-ai-ollama = { module = "org.springframework.ai:spring-ai-ollama", version.ref = "spring-ai" }
+spring-ai-starter-model-openai = { module = "org.springframework.ai:spring-ai-starter-model-openai", version.ref = "spring-ai" }
+spring-ai-starter-mcp-client = { module = "org.springframework.ai:spring-ai-starter-mcp-client", version.ref = "spring-ai" }
+spring-boot-starter = { module = "org.springframework.boot:spring-boot-starter", version.ref = "spring-boot" }
+spring-boot-starter-test = { module = "org.springframework.boot:spring-boot-starter-test", version.ref = "spring-boot" }
 
 # Kotlinx
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
