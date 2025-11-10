@@ -25,7 +25,7 @@ val experimentalOptIns = listOf(
 )
 
 // Centralized version for the entire project
-val projectVersion = "1.1.33"
+val projectVersion = "1.1.34"
 
 allprojects {
     group = "com.example"
