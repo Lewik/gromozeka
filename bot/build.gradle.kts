@@ -32,7 +32,6 @@ kotlin {
                 implementation(libs.spring.ai.google.genai)
                 implementation(libs.spring.ai.ollama)
                 implementation(libs.spring.ai.starter.model.openai)
-                implementation(libs.spring.ai.starter.mcp.client)
 
                 // Reactor Kotlin extensions for Flux/Flow conversion
                 implementation(libs.reactor.kotlin.extensions)
@@ -89,6 +88,7 @@ kotlin {
 
                 // MCP SDK for Gromozeka MCP tools (coexists with Java MCP SDK from Spring AI)
                 implementation(libs.mcp.kotlin.sdk)
+                implementation(libs.mcp.java.sdk.core)
 
                 // Age encryption for secure log packaging
                 implementation(libs.jagged.api)

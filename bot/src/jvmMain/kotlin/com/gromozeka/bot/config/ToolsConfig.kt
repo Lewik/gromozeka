@@ -10,11 +10,11 @@ import java.util.function.Function
 class ToolsConfig {
 
 
-    // TODO: Temporary workaround for Jina MCP - mcp-remote has bug with Node.js 24.9.0 (Symbol(headers list) ByteString error)
-    // TODO: Replace with proper MCP integration when mcp-remote is fixed or we implement direct SSE transport
-    @Bean
-    @Description("Extract clean, structured content from web pages as markdown via Jina Reader API. Free tier: 20 requests/minute (no API key). Use this to read and convert any URL to markdown format.")
-    fun jina_read_url(): Function<JinaReadUrlRequest, JinaReadUrlResponse> {
+    // TODO: Disabled - replaced by MCP Jina SSE server (read_url tool)
+    // TODO: Add settings UI to enable/disable built-in tools vs MCP tools
+    // @Bean
+    // @Description("Extract clean, structured content from web pages as markdown via Jina Reader API. Free tier: 20 requests/minute (no API key). Use this to read and convert any URL to markdown format.")
+    fun jina_read_url_DISABLED(): Function<JinaReadUrlRequest, JinaReadUrlResponse> {
         return Function { request ->
             try {
                 val process = ProcessBuilder(

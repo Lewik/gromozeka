@@ -12,13 +12,3 @@ spring:
 
     ollama:
       base-url: http://localhost:11434
-
-    mcp:
-      client:
-        enabled: true
-        type: SYNC
-        name: "mcp"
-        request-timeout: 30s
-
-        toolcallback:
-          enabled: true

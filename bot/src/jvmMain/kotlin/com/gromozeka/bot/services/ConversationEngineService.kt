@@ -16,11 +16,10 @@ import org.springframework.ai.chat.messages.ToolResponseMessage
 import org.springframework.ai.chat.prompt.ChatOptions
 import org.springframework.ai.chat.prompt.Prompt
 import org.springframework.ai.google.genai.metadata.GoogleGenAiUsage
-import org.springframework.ai.mcp.SyncMcpToolCallbackProvider
 import org.springframework.ai.model.tool.ToolCallingChatOptions
 import org.springframework.ai.model.tool.ToolCallingManager
-import org.springframework.beans.factory.ObjectProvider
 import org.springframework.stereotype.Service
+import com.gromozeka.bot.config.mcp.McpConfigurationService
 import java.util.UUID
 import kotlin.time.Clock
 
@@ -52,7 +51,7 @@ class ConversationEngineService(
     private val threadRepository: ThreadRepository,
     private val messageConversionService: MessageConversionService,
     private val toolCallbacks: List<org.springframework.ai.tool.ToolCallback>,
-    private val mcpToolProvider: ObjectProvider<SyncMcpToolCallbackProvider>,
+    private val mcpConfigurationService: McpConfigurationService,
     private val tokenUsageStatisticsRepository: TokenUsageStatisticsRepository,
     private val coroutineScope: CoroutineScope,
 ) {
@@ -72,12 +71,10 @@ class ConversationEngineService(
         log.debug { "Built-in @Bean tools: ${toolCallbacks.size}" }
 
         // MCP tools
-        mcpToolProvider.ifAvailable { provider ->
-            val mcpCallbacks = provider.getToolCallbacks()
-            allCallbacks.addAll(mcpCallbacks)
-            allNames.addAll(mcpCallbacks.map { it.toolDefinition.name() })
-            log.debug { "MCP tools: ${mcpCallbacks.size}" }
-        }
+        val mcpCallbacks = mcpConfigurationService.getToolCallbacks()
+        allCallbacks.addAll(mcpCallbacks)
+        allNames.addAll(mcpCallbacks.map { it.toolDefinition.name() })
+        log.debug { "MCP tools: ${mcpCallbacks.size}" }
 
         log.debug { "Total tools for runtime options: ${allCallbacks.size}" }
 
