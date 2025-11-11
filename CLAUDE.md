@@ -57,7 +57,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 4. Create and push a git tag with matching version (e.g., v1.1.3)
 5. GitHub Actions will build and release automatically
 
-**For beta versions:**
+**When user asks for beta release:**
 - **Use numeric-only format** (e.g., `1.1.7`, `1.1.8`) due to macOS CFBundleVersion/jpackage limitations
 - **macOS packaging requires** pure `X.Y.Z` format - no alpha/beta suffixes supported by Apple
 - **Beta strategy:** Increment Z (patch) for beta → increment Y (minor) for stable
