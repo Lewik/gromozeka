@@ -16,14 +16,15 @@ import org.springframework.ai.ollama.OllamaChatModel
 import org.springframework.ai.ollama.api.OllamaApi
 import org.springframework.ai.ollama.api.OllamaChatOptions
 import org.springframework.ai.ollama.management.ModelManagementOptions
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.retry.support.RetryTemplate
 import org.springframework.stereotype.Service
 import java.util.concurrent.ConcurrentHashMap
 
 @Service
 class ChatModelFactory(
-    private val ollamaApi: OllamaApi,
-    private val geminiClient: Client,
+    @Autowired(required = false) private val ollamaApi: OllamaApi?,
+    @Autowired(required = false) private val geminiClient: Client?,
     private val toolCallingManager: ToolCallingManager,
     private val settingsService: SettingsService,
 ) {
@@ -54,6 +55,10 @@ class ChatModelFactory(
 
         return when (provider) {
             AIProvider.OLLAMA -> {
+                requireNotNull(ollamaApi) {
+                    "Ollama not configured - ensure Ollama is installed and running at http://localhost:11434"
+                }
+
                 val options = OllamaChatOptions.builder()
                     .model(modelName)
                     .numCtx(131072)
@@ -74,6 +79,10 @@ class ChatModelFactory(
             }
 
             AIProvider.GEMINI -> {
+                requireNotNull(geminiClient) {
+                    "Gemini not configured - missing google-credentials.json file"
+                }
+
                 val options = GoogleGenAiChatOptions.builder()
                     .model(modelName)
                     .temperature(0.7)
