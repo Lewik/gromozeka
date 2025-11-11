@@ -1,14 +1,14 @@
 package com.gromozeka.bot.config
 
+import com.gromozeka.bot.services.SettingsService
+import io.qdrant.client.QdrantClient
+import io.qdrant.client.QdrantGrpcClient
 import klog.KLoggers
 import org.springframework.ai.embedding.EmbeddingModel
 import org.springframework.ai.vectorstore.VectorStore
-import org.springframework.ai.vectorstore.pgvector.PgVectorStore
-import org.springframework.beans.factory.annotation.Qualifier
+import org.springframework.ai.vectorstore.qdrant.QdrantVectorStore
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
-import org.springframework.jdbc.core.JdbcTemplate
-import javax.sql.DataSource
 
 @Configuration
 class VectorMemoryConfig {
@@ -16,46 +16,44 @@ class VectorMemoryConfig {
     private val log = KLoggers.logger(this)
 
     @Bean
-    @Qualifier("postgresJdbcTemplate")
-    fun postgresJdbcTemplate(
-        @Qualifier("postgresDataSource") dataSource: DataSource?
-    ): JdbcTemplate? {
-        if (dataSource == null) {
-            log.debug("PostgreSQL DataSource not available, JdbcTemplate will not be created")
+    fun qdrantClient(settingsService: SettingsService): QdrantClient? {
+        if (!settingsService.settings.vectorStorageEnabled) {
+            log.info("Vector storage disabled, skipping Qdrant client creation")
             return null
         }
 
         return try {
-            JdbcTemplate(dataSource).also {
-                log.debug("PostgreSQL JdbcTemplate created successfully")
+            QdrantClient(
+                QdrantGrpcClient.newBuilder("localhost", 6334, false).build()
+            ).also {
+                log.info("Qdrant client connected to localhost:6334")
             }
         } catch (e: Exception) {
-            log.warn("Failed to create PostgreSQL JdbcTemplate: ${e.message}")
+            log.warn("Failed to create Qdrant client: ${e.message}. Vector storage will be unavailable.")
             null
         }
     }
 
     @Bean
-    fun pgVectorStore(
-        @Qualifier("postgresJdbcTemplate") jdbcTemplate: JdbcTemplate?,
-        embeddingModel: EmbeddingModel
+    fun qdrantVectorStore(
+        qdrantClient: QdrantClient?,
+        embeddingModel: EmbeddingModel,
+        settingsService: SettingsService
     ): VectorStore? {
-        if (jdbcTemplate == null) {
-            log.info("PostgreSQL JdbcTemplate not available, vector storage will be disabled")
+        if (qdrantClient == null || !settingsService.settings.vectorStorageEnabled) {
+            log.info("Qdrant client not available or vector storage disabled, VectorStore will not be created")
             return null
         }
 
         return try {
-            PgVectorStore.builder(jdbcTemplate, embeddingModel)
-                .schemaName("public")
-                .vectorTableName("vector_store")
-                .dimensions(1536)
+            QdrantVectorStore.builder(qdrantClient, embeddingModel)
+                .collectionName("vector_store")
                 .initializeSchema(true)
                 .build().also {
-                    log.info("PgVectorStore initialized successfully for vector storage")
+                    log.info("QdrantVectorStore initialized: collection='vector_store', dimensions=${embeddingModel.dimensions()}")
                 }
         } catch (e: Exception) {
-            log.warn("Failed to create PgVectorStore: ${e.message}. Vector storage will be unavailable.")
+            log.warn("Failed to create QdrantVectorStore: ${e.message}. Vector storage will be unavailable.")
             null
         }
     }

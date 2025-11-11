@@ -1,19 +1,18 @@
 version: '3.8'
 
-# PostgreSQL with pgvector for Gromozeka vector memory (development)
+# Qdrant vector database for Gromozeka vector memory (development)
 services:
-  postgres:
-    image: pgvector/pgvector:pg16
-    container_name: gromozeka-dev-postgres
+  qdrant:
+    image: qdrant/qdrant:v1.12.5
+    container_name: gromozeka-dev-qdrant
     ports:
-      - "45432:5432"
-    environment:
-      POSTGRES_DB: gromozeka
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      - "6333:6333"  # REST API + Web UI
+      - "6334:6334"  # gRPC (used by application)
     volumes:
-      - gromozeka_dev_pgvector_data:/var/lib/postgresql/data
+      - gromozeka_dev_qdrant_data:/qdrant/storage
+    environment:
+      QDRANT__SERVICE__GRPC_PORT: 6334
 
 volumes:
-  gromozeka_dev_pgvector_data:
-    name: gromozeka_dev_pgvector_data
+  gromozeka_dev_qdrant_data:
+    name: gromozeka_dev_qdrant_data

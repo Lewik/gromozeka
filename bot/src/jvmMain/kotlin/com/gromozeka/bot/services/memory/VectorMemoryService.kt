@@ -9,13 +9,11 @@ import kotlinx.coroutines.withContext
 import org.springframework.ai.document.Document
 import org.springframework.ai.vectorstore.SearchRequest
 import org.springframework.ai.vectorstore.VectorStore
-import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.stereotype.Service
 
 @Service
 class VectorMemoryService(
     private val vectorStore: VectorStore?,
-    @Qualifier("postgresJdbcTemplate") private val jdbcTemplate: org.springframework.jdbc.core.JdbcTemplate?,
     private val settingsService: SettingsService,
     private val threadMessageRepository: ThreadMessageRepository
 ) {
@@ -36,30 +34,17 @@ class VectorMemoryService(
                 !hasThinking(message)
             }
 
-            val rememberedIds = getRememberedMessageIds(threadId)
-            val newMessages = threadMessages.filterNot { it.id.value in rememberedIds }
-            
-            if (newMessages.isNotEmpty()) {
-                val documents = newMessages.map { message ->
-                    Document(
-                        message.id.value,
-                        extractTextContent(message),
-                        mapOf("threadId" to threadId)
-                    )
-                }
-                
-                vectorStore?.add(documents)
-                log.info { "Remembered ${newMessages.size} new messages for thread $threadId" }
+            val documents = threadMessages.map { message ->
+                Document(
+                    message.id.value,
+                    extractTextContent(message),
+                    mapOf("threadId" to threadId)
+                )
             }
-
-            val currentIds = threadMessages.map { it.id.value }.toSet()
-            val deletedIds = rememberedIds - currentIds
             
-            if (deletedIds.isNotEmpty()) {
-                deletedIds.forEach { messageId ->
-                    forgetMessage(messageId)
-                }
-                log.info { "Forgot ${deletedIds.size} deleted messages from thread $threadId" }
+            if (documents.isNotEmpty()) {
+                vectorStore?.add(documents)
+                log.info { "Remembered ${documents.size} messages for thread $threadId" }
             }
         } catch (e: Exception) {
             log.error(e) { "Failed to remember thread $threadId: ${e.message}" }
@@ -113,21 +98,6 @@ class VectorMemoryService(
             log.debug { "Forgot message $messageId" }
         } catch (e: Exception) {
             log.error(e) { "Failed to forget message $messageId: ${e.message}" }
-        }
-    }
-
-    private suspend fun getRememberedMessageIds(threadId: String): Set<String> = withContext(Dispatchers.IO) {
-        if (!isMemoryAvailable() || jdbcTemplate == null) return@withContext emptySet()
-
-        try {
-            jdbcTemplate.query(
-                "SELECT id FROM public.vector_store WHERE metadata->>'threadId' = ?",
-                { rs, _ -> rs.getString("id") },
-                threadId
-            ).toSet()
-        } catch (e: Exception) {
-            log.error(e) { "Failed to get remembered message IDs for thread $threadId: ${e.message}" }
-            emptySet()
         }
     }
 

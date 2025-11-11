@@ -32,7 +32,7 @@ kotlin {
                 implementation(libs.spring.ai.google.genai)
                 implementation(libs.spring.ai.ollama)
                 implementation(libs.spring.ai.starter.model.openai)
-                implementation(libs.spring.ai.pgvector.store)
+                implementation(libs.spring.ai.qdrant.store)
 
                 // Reactor Kotlin extensions for Flux/Flow conversion
                 implementation(libs.reactor.kotlin.extensions)
@@ -84,11 +84,7 @@ kotlin {
                 implementation(libs.exposed.migration.core)
                 implementation(libs.exposed.migration.jdbc)
 
-                // PostgreSQL (for vector memory)
-                implementation(libs.postgresql.jdbc)
-                implementation(libs.hikaricp)
-
-                // Flyway migrations
+                // Flyway migrations (for SQLite)
                 implementation(libs.flyway.core)
 
                 // MCP SDK for Gromozeka MCP tools (coexists with Java MCP SDK from Spring AI)

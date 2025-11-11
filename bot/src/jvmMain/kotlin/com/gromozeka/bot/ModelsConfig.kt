@@ -35,7 +35,7 @@ class ModelsConfig {
             OpenAiApi.builder().apiKey(apiKey).build(),
             org.springframework.ai.document.MetadataMode.EMBED,
             OpenAiEmbeddingOptions.builder()
-                .model("text-embedding-3-small")
+                .model("text-embedding-3-large")
                 .build()
         )
     }
