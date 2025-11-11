@@ -374,6 +374,17 @@ fun ApplicationScope.ChatWindow(
 
                                                 onShowContextsPanel = { showContextsPanel = true },
 
+                                                onRememberThread = {
+                                                    coroutineScope.launch {
+                                                        try {
+                                                            appViewModel.rememberCurrentThread()
+                                                            log.info("Remember thread triggered")
+                                                        } catch (e: Exception) {
+                                                            log.warn(e) { "Remember thread failed: ${e.message}" }
+                                                        }
+                                                    }
+                                                },
+
                                                 isDev = settingsService.mode == AppMode.DEV,
                                             )
                                         }

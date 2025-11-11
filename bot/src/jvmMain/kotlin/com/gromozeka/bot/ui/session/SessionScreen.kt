@@ -49,6 +49,9 @@ fun SessionScreen(
     // Context panel
     onShowContextsPanel: (() -> Unit)? = null,
 
+    // Memory
+    onRememberThread: (() -> Unit)? = null,
+
     // Dev mode
     isDev: Boolean = false,
 ) {
@@ -395,6 +398,23 @@ fun SessionScreen(
                                 Icons.Default.CameraAlt,
                                 contentDescription = LocalTranslation.current.screenshotTooltip
                             )
+                        }
+
+                        // Remember button (if memory is enabled and callback provided)
+                        onRememberThread?.let { rememberCallback ->
+                            CompactButton(
+                                onClick = {
+                                    coroutineScope.launch {
+                                        rememberCallback()
+                                    }
+                                },
+                                tooltip = "Remember this conversation to vector memory"
+                            ) {
+                                Icon(
+                                    Icons.Default.Psychology,
+                                    contentDescription = "Remember"
+                                )
+                            }
                         }
                     }
 

@@ -253,6 +253,17 @@ open class AppViewModel(
         log.info("Reset tab name at index $tabIndex to default")
     }
 
+    suspend fun rememberCurrentThread() {
+        val current = currentTab.value ?: return
+        
+        try {
+            conversationEngineService.rememberCurrentThread(current.conversationId)
+            log.info { "Remembered current thread for conversation: ${current.conversationId}" }
+        } catch (e: Exception) {
+            log.error(e) { "Failed to remember current thread: ${e.message}" }
+        }
+    }
+
     suspend fun cleanup() {
         mutex.withLock {
             _tabs.value = emptyList()

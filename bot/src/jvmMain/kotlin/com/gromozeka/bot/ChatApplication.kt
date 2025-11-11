@@ -264,7 +264,9 @@ private fun determineLogPath(modeEnv: String?): String {
         OpenAiChatAutoConfiguration::class,
         OpenAiAudioTranscriptionAutoConfiguration::class,
         OpenAiAudioSpeechAutoConfiguration::class,
-        OpenAiModerationAutoConfiguration::class
+        OpenAiModerationAutoConfiguration::class,
+        org.springframework.boot.autoconfigure.jdbc.JdbcTemplateAutoConfiguration::class,
+        org.springframework.boot.autoconfigure.jdbc.DataSourceTransactionManagerAutoConfiguration::class,
     ]
 )
 class ChatApplication(

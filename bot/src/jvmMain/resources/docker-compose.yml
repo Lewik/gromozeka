@@ -1,0 +1,19 @@
+version: '3.8'
+
+# PostgreSQL with pgvector for Gromozeka vector memory (development)
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: gromozeka-dev-postgres
+    ports:
+      - "45432:5432"
+    environment:
+      POSTGRES_DB: gromozeka
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - gromozeka_dev_pgvector_data:/var/lib/postgresql/data
+
+volumes:
+  gromozeka_dev_pgvector_data:
+    name: gromozeka_dev_pgvector_data

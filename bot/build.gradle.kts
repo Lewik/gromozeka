@@ -32,6 +32,7 @@ kotlin {
                 implementation(libs.spring.ai.google.genai)
                 implementation(libs.spring.ai.ollama)
                 implementation(libs.spring.ai.starter.model.openai)
+                implementation(libs.spring.ai.pgvector.store)
 
                 // Reactor Kotlin extensions for Flux/Flow conversion
                 implementation(libs.reactor.kotlin.extensions)
@@ -82,6 +83,10 @@ kotlin {
                 implementation(libs.exposed.kotlin.datetime)
                 implementation(libs.exposed.migration.core)
                 implementation(libs.exposed.migration.jdbc)
+
+                // PostgreSQL (for vector memory)
+                implementation(libs.postgresql.jdbc)
+                implementation(libs.hikaricp)
 
                 // Flyway migrations
                 implementation(libs.flyway.core)

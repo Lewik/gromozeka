@@ -54,6 +54,7 @@ class ConversationEngineService(
     private val mcpConfigurationService: McpConfigurationService,
     private val tokenUsageStatisticsRepository: TokenUsageStatisticsRepository,
     private val coroutineScope: CoroutineScope,
+    private val vectorMemoryService: com.gromozeka.bot.services.memory.VectorMemoryService,
 ) {
     private val log = KLoggers.logger(this)
 
@@ -502,6 +503,23 @@ class ConversationEngineService(
             .responses(cleanedResponses)
             .metadata(message.metadata)
             .build()
+    }
+
+    /**
+     * Remember current thread messages to vector memory.
+     * This method triggers incremental embedding of thread messages for semantic recall.
+     */
+    suspend fun rememberCurrentThread(conversationId: Conversation.Id) {
+        try {
+            val conversation = conversationService.findById(conversationId)
+                ?: throw IllegalStateException("Conversation not found: $conversationId")
+            
+            vectorMemoryService.rememberThread(conversation.currentThread.value)
+            log.info { "Remembered thread ${conversation.currentThread} for conversation $conversationId" }
+        } catch (e: Exception) {
+            log.error(e) { "Failed to remember thread for conversation $conversationId: ${e.message}" }
+            throw e
+        }
     }
 
     /**

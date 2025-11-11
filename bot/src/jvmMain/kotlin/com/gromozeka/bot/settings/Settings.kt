@@ -29,6 +29,7 @@ data class Settings(
     val includeCurrentTime: Boolean = true,
     val responseFormat: ResponseFormat = ResponseFormat.XML_INLINE,
     val autoApproveAllTools: Boolean = true, // Auto-approve all tool requests without showing dialogs (affects new sessions only)
+    val vectorStorageEnabled: Boolean = false,
 
     // API Keys
     val openAiApiKey: String? = null,

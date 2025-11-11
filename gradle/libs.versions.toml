@@ -30,6 +30,8 @@ xmlutil = "0.91.2"
 jagged = "1.0.0"
 exposed = "1.0.0-rc-2"
 sqlite = "3.47.1.0"
+postgresql = "42.7.4"
+hikaricp = "6.2.1"
 flyway = "11.1.0"
 uuid-creator = "5.3.7"
 
@@ -58,6 +60,7 @@ spring-ai-google-genai = { module = "org.springframework.ai:spring-ai-google-gen
 spring-ai-ollama = { module = "org.springframework.ai:spring-ai-ollama", version.ref = "spring-ai" }
 spring-ai-starter-model-openai = { module = "org.springframework.ai:spring-ai-starter-model-openai", version.ref = "spring-ai" }
 spring-ai-starter-mcp-client = { module = "org.springframework.ai:spring-ai-starter-mcp-client", version.ref = "spring-ai" }
+spring-ai-pgvector-store = { module = "org.springframework.ai:spring-ai-pgvector-store", version.ref = "spring-ai" }
 spring-boot-starter = { module = "org.springframework.boot:spring-boot-starter", version.ref = "spring-boot" }
 spring-boot-starter-test = { module = "org.springframework.boot:spring-boot-starter-test", version.ref = "spring-boot" }
 
@@ -76,6 +79,10 @@ jackson-module-kotlin = { module = "com.fasterxml.jackson.module:jackson-module-
 
 # SQLite
 sqlite-jdbc = { module = "org.xerial:sqlite-jdbc", version.ref = "sqlite" }
+
+# PostgreSQL
+postgresql-jdbc = { module = "org.postgresql:postgresql", version.ref = "postgresql" }
+hikaricp = { module = "com.zaxxer:HikariCP", version.ref = "hikaricp" }
 
 # Exposed ORM
 exposed-core = { module = "org.jetbrains.exposed:exposed-core", version.ref = "exposed" }
