@@ -230,7 +230,7 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ github.event_name == 'workflow_dispatch' && format('v{0}', env.VERSION) || github.ref_name }}
-          name: Gromozeka v${{ env.VERSION }}
+          name: Gromozeka v${{ env.VERSION }}${{ env.IS_PRERELEASE == 'true' && ' (Beta)' || '' }}
           body_path: release-notes.md
           files: release-assets/*
           draft: false
