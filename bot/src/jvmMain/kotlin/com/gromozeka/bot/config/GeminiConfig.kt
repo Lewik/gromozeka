@@ -12,6 +12,9 @@ import java.io.FileInputStream
 @Configuration
 class GeminiConfig {
 
+    // DISABLED: Gemini requires google-credentials.json which is not available in production
+    // Uncomment when credentials are available for development
+    /*
     @Bean
     fun geminiClient(
         @Value("\${spring.ai.google-genai.project-id}") projectId: String,
@@ -28,6 +31,7 @@ class GeminiConfig {
             .credentials(credentials)
             .build()
     }
+    */
 
     @Bean
     fun toolCallingManager(): ToolCallingManager {

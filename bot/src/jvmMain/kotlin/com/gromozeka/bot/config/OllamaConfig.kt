@@ -8,6 +8,9 @@ import org.springframework.context.annotation.Configuration
 @Configuration
 class OllamaConfig {
 
+    // DISABLED: Ollama requires local installation which may not be available
+    // Uncomment when Ollama is installed and running locally
+    /*
     @Bean
     fun ollamaApi(
         @Value("\${spring.ai.ollama.base-url}") baseUrl: String
@@ -16,4 +19,5 @@ class OllamaConfig {
             .baseUrl(baseUrl)
             .build()
     }
+    */
 }
