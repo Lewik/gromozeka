@@ -58,6 +58,7 @@ fun ApplicationScope.ChatWindow(
     projectService: ProjectService,
     conversationTreeService: com.gromozeka.shared.services.ConversationService,
     conversationSearchViewModel: com.gromozeka.bot.ui.viewmodel.ConversationSearchViewModel,
+    loadingViewModel: com.gromozeka.bot.ui.viewmodel.LoadingViewModel,
 ) {
     val log = KLoggers.logger("ChatWindow")
     val coroutineScope = rememberCoroutineScope()
@@ -72,7 +73,7 @@ fun ApplicationScope.ChatWindow(
     }
 
     var initialized by remember { mutableStateOf(false) }
-
+    var isLoadingComplete by remember { mutableStateOf(false) }
 
     val currentSettings by settingsService.settingsFlow.collectAsState()
 
@@ -265,7 +266,13 @@ fun ApplicationScope.ChatWindow(
                     }
             ) {
                 if (initialized) {
-                    Row(modifier = Modifier.fillMaxSize()) {
+                    if (!isLoadingComplete) {
+                        LoadingScreen(
+                            loadingViewModel = loadingViewModel,
+                            onComplete = { isLoadingComplete = true }
+                        )
+                    } else {
+                        Row(modifier = Modifier.fillMaxSize()) {
                         Column(modifier = Modifier.weight(1f)) {
                             val currentIndex = currentTabIndex
                             val selectedTabIndex = if (currentIndex == null) 0 else (currentIndex + 1)
@@ -415,6 +422,7 @@ fun ApplicationScope.ChatWindow(
                             onClose = { showContextsPanel = false },
                             viewModel = contextsPanelViewModel
                         )
+                    }
                     }
                 } else {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {

@@ -1,5 +1,6 @@
 package com.gromozeka.bot
 
+import androidx.compose.runtime.*
 import androidx.compose.ui.window.application
 import kotlin.system.exitProcess
 import com.gromozeka.bot.platform.GlobalHotkeyController
@@ -165,7 +166,8 @@ fun main() {
             contextFileService = contextFileService,
             projectService = context.getBean(),
             conversationService = context.getBean(),
-            conversationSearchViewModel = context.getBean()
+            conversationSearchViewModel = context.getBean(),
+            loadingViewModel = context.getBean()
         )
 
     } catch (e: Throwable) {
@@ -204,7 +206,8 @@ fun main() {
                         appComponents.contextFileService,
                         appComponents.projectService,
                         appComponents.conversationService,
-                        appComponents.conversationSearchViewModel
+                        appComponents.conversationSearchViewModel,
+                        appComponents.loadingViewModel
                     )
                 }
             }
@@ -230,7 +233,8 @@ data class AppComponents(
     val contextFileService: ContextFileService,
     val projectService: com.gromozeka.shared.services.ProjectService,
     val conversationService: com.gromozeka.shared.services.ConversationService,
-    val conversationSearchViewModel: com.gromozeka.bot.ui.viewmodel.ConversationSearchViewModel
+    val conversationSearchViewModel: com.gromozeka.bot.ui.viewmodel.ConversationSearchViewModel,
+    val loadingViewModel: com.gromozeka.bot.ui.viewmodel.LoadingViewModel
 )
 
 /**

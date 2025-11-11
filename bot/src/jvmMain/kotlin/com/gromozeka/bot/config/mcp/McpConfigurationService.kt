@@ -35,14 +35,9 @@ class McpConfigurationService(
     @PostConstruct
     fun initialize() {
         loadConfiguration()
-
-        coroutineScope.launch {
-            try {
-                startMcpClients()
-            } catch (e: Exception) {
-                log.error(e) { "Failed to initialize MCP clients" }
-            }
-        }
+        // MCP clients are NOT started automatically
+        // They must be started explicitly via startMcpClientsWithProgress()
+        // to ensure proper loading screen UX
     }
 
     private fun loadConfiguration() {
@@ -79,21 +74,29 @@ class McpConfigurationService(
         }
     }
 
-    private suspend fun startMcpClients() {
+    suspend fun startMcpClientsWithProgress(
+        onProgress: (serverName: String, current: Int, total: Int) -> Unit = { _, _, _ -> }
+    ) {
         val stdioServers = getStdioServers()
         val sseServers = getSseServers()
 
-        if (stdioServers.isEmpty() && sseServers.isEmpty()) {
+        val totalServers = stdioServers.size + sseServers.size
+
+        if (totalServers == 0) {
             log.info { "No MCP servers configured" }
             return
         }
 
         val clients = mutableListOf<McpWrapperInterface>()
+        var current = 0
 
         // Start stdio servers
         for ((name, config) in stdioServers) {
             try {
-                log.info { "Starting MCP client: $name" }
+                current++
+                onProgress(name, current, totalServers)
+
+                log.info { "Starting MCP client: $name ($current/$totalServers)" }
                 log.debug { "  Command: ${config.command}" }
                 log.debug { "  Args: ${config.args?.joinToString(" ")}" }
 
@@ -136,7 +139,10 @@ class McpConfigurationService(
         // Start SSE servers
         for ((name, config) in sseServers) {
             try {
-                log.info { "Starting MCP SSE client: $name" }
+                current++
+                onProgress(name, current, totalServers)
+
+                log.info { "Starting MCP SSE client: $name ($current/$totalServers)" }
                 log.debug { "  URL: ${config.url}" }
                 log.debug { "  SSE Endpoint: ${config.sseEndpoint ?: "/sse"}" }
 
@@ -196,7 +202,28 @@ class McpConfigurationService(
             for (wrapper in mcpClients) {
                 try {
                     val tools = wrapper.listTools()
+                    log.info { "=".repeat(80) }
+                    log.info { "MCP Server: ${wrapper.name} - ${tools.size} tools" }
+                    log.info { "=".repeat(80) }
+
                     tools.forEach { tool ->
+                        log.info { "" }
+                        log.info { "## ${tool.name}" }
+                        log.info { "" }
+                        log.info { tool.description ?: "No description" }
+                        log.info { "" }
+
+                        if (tool.inputSchema != null) {
+                            log.info { "**Parameters (JSON Schema):**" }
+                            log.info { "```json" }
+                            log.info { io.modelcontextprotocol.kotlin.sdk.shared.McpJson.encodeToString(
+                                io.modelcontextprotocol.kotlin.sdk.Tool.Input.serializer(),
+                                tool.inputSchema!!
+                            ) }
+                            log.info { "```" }
+                            log.info { "" }
+                        }
+
                         callbacks.add(McpToolCallbackAdapter(wrapper, tool, coroutineScope))
                     }
                     log.debug { "Registered ${tools.size} tools from ${wrapper.name}" }
@@ -217,29 +244,34 @@ class McpConfigurationService(
         log.info { "Reloading MCP clients..." }
         shutdown()
         loadConfiguration()
-        startMcpClients()
+        startMcpClientsWithProgress()
     }
 
     @PreDestroy
     fun shutdown() {
-        runBlocking {
-            if (mcpClients.isEmpty()) {
-                return@runBlocking
-            }
+        log.info { "Shutting down MCP configuration service..." }
 
-            log.info { "Stopping ${mcpClients.size} MCP client(s)..." }
+        // Cancel coroutine scope first to stop all running operations
+        coroutineScope.cancel("MCP service shutdown")
 
-            mcpClients.forEach { wrapper ->
-                try {
-                    wrapper.close()
-                } catch (e: Exception) {
-                    log.error(e) { "Error closing MCP client: ${wrapper.name}" }
-                }
-            }
-
-            mcpClients = emptyList()
-            log.info { "All MCP clients stopped" }
+        if (mcpClients.isEmpty()) {
+            log.info { "No MCP clients to stop" }
+            return
         }
+
+        log.info { "Force-stopping ${mcpClients.size} MCP client(s)..." }
+
+        // Forcefully stop all clients without blocking
+        mcpClients.forEach { wrapper ->
+            try {
+                wrapper.forceClose()
+            } catch (e: Exception) {
+                log.error(e) { "Error force-closing MCP client: ${wrapper.name}" }
+            }
+        }
+
+        mcpClients = emptyList()
+        log.info { "All MCP clients stopped" }
     }
 }
 
@@ -282,15 +314,57 @@ data class McpClientWrapper(
     }
 
     override fun close() {
-        runBlocking {
-            try {
-                client.close()
-                transport.close()
-                process.destroy()
-                process.waitFor()
-            } catch (e: Exception) {
-                log.error(e) { "Error closing client: $name" }
+        try {
+            log.info { "Closing MCP client: $name" }
+
+            // Get process handle and descendants BEFORE closing
+            val handle = process.toHandle()
+            val descendants = handle.descendants().toList()
+
+            // Close client - this may kill parent process
+            runBlocking { client.close() }
+
+            // Kill all descendant processes (prevents orphaned subprocesses)
+            descendants.forEach { it.destroyForcibly() }
+
+            // Kill parent process if still alive
+            if (handle.isAlive()) {
+                handle.destroyForcibly()
             }
+
+            // Wait for termination with timeout
+            val terminated = handle.onExit()
+                .orTimeout(3, java.util.concurrent.TimeUnit.SECONDS)
+                .handle { _, ex -> ex == null }
+                .get()
+
+            if (terminated) {
+                log.info { "MCP client $name closed successfully" }
+            } else {
+                log.warn { "MCP client $name process did not terminate cleanly" }
+            }
+        } catch (e: Exception) {
+            log.error(e) { "Error closing MCP client: $name" }
+        }
+    }
+
+    override fun forceClose() {
+        try {
+            log.info { "Force-closing MCP client: $name" }
+
+            // Get process handle and descendants
+            val handle = process.toHandle()
+            val descendants = handle.descendants().toList()
+
+            // Kill all descendant processes first
+            descendants.forEach { it.destroyForcibly() }
+
+            // Kill parent process
+            handle.destroyForcibly()
+
+            log.info { "Force-closed MCP client: $name" }
+        } catch (e: Exception) {
+            log.error(e) { "Error force-closing MCP client: $name" }
         }
     }
 }

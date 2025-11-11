@@ -15,4 +15,10 @@ sealed interface McpWrapperInterface {
     suspend fun callTool(toolName: String, arguments: Map<String, Any>): String
 
     fun close()
+
+    /**
+     * Force close without waiting for graceful shutdown.
+     * Kills all processes and threads immediately.
+     */
+    fun forceClose()
 }

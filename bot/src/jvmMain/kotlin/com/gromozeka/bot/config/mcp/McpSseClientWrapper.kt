@@ -82,9 +82,24 @@ data class McpSseClientWrapper(
 
     override fun close() {
         try {
-            transport.closeGracefully().block(Duration.ofSeconds(5))
+            log.info { "Closing SSE MCP client: $name" }
+            transport.closeGracefully()
+                .timeout(Duration.ofSeconds(3))
+                .block()
+            log.info { "SSE MCP client $name closed successfully" }
         } catch (e: Exception) {
             log.error(e) { "Error closing SSE client: $name" }
+        }
+    }
+
+    override fun forceClose() {
+        try {
+            log.info { "Force-closing SSE MCP client: $name" }
+            // Just interrupt connections without waiting
+            transport.close()
+            log.info { "Force-closed SSE MCP client: $name" }
+        } catch (e: Exception) {
+            log.error(e) { "Error force-closing SSE client: $name" }
         }
     }
 }
