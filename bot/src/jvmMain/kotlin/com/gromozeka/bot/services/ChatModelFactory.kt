@@ -102,9 +102,10 @@ class ChatModelFactory(
 
             AIProvider.CLAUDE_CODE -> {
                 val workingDir = projectPath ?: System.getProperty("user.dir")
+                val claudePath = ClaudePathDetector.detectClaudePath()
 
                 val api = ClaudeCodeApi.builder()
-                    .cliPath("claude")
+                    .cliPath(claudePath)
                     .workingDirectory(workingDir)
                     .devMode(settingsService.mode == AppMode.DEV)
                     .build()
@@ -114,7 +115,7 @@ class ChatModelFactory(
                     .temperature(0.7)
                     .maxTokens(8192)
                     .thinkingBudgetTokens(8192)
-                    .cliPath("claude")
+                    .cliPath(claudePath)
                     .workingDirectory(workingDir)
                     .internalToolExecutionEnabled(false)
                     .build()
