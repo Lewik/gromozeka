@@ -213,38 +213,40 @@ fun MessageItem(
                             ) {
                                 GromozekaMarkdown(content = content.text)
                             }
-                            FlowRow(
-                                maxItemsInEachRow = 4,
-                                verticalArrangement = Arrangement.Top,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                            ) {
-                                message.instructions.forEach { instruction ->
-                                    TooltipArea(
-                                        tooltip = {
-                                            Surface(
-                                                modifier = Modifier.shadow(4.dp),
-                                                color = MaterialTheme.colorScheme.inverseOnSurface,
-                                                shape = MaterialTheme.shapes.small
-                                            ) {
-                                                Text(
-                                                    modifier = Modifier.padding(12.dp),
-                                                    text = instruction.description,
-                                                    style = MaterialTheme.typography.bodySmall,
-                                                    color = MaterialTheme.colorScheme.inverseSurface
-                                                )
+                            DisableSelection {
+                                FlowRow(
+                                    maxItemsInEachRow = 4,
+                                    verticalArrangement = Arrangement.Top,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                ) {
+                                    message.instructions.forEach { instruction ->
+                                        TooltipArea(
+                                            tooltip = {
+                                                Surface(
+                                                    modifier = Modifier.shadow(4.dp),
+                                                    color = MaterialTheme.colorScheme.inverseOnSurface,
+                                                    shape = MaterialTheme.shapes.small
+                                                ) {
+                                                    Text(
+                                                        modifier = Modifier.padding(12.dp),
+                                                        text = instruction.description,
+                                                        style = MaterialTheme.typography.bodySmall,
+                                                        color = MaterialTheme.colorScheme.inverseSurface
+                                                    )
+                                                }
                                             }
+                                        ) {
+                                            AssistChip(
+                                                onClick = {},
+                                                label = {
+                                                    Text(
+                                                        text = instruction.title,
+                                                        style = MaterialTheme.typography.labelSmall
+                                                    )
+                                                },
+                                                colors = AssistChipDefaults.assistChipColors(),
+                                            )
                                         }
-                                    ) {
-                                        AssistChip(
-                                            onClick = {},
-                                            label = {
-                                                Text(
-                                                    text = instruction.title,
-                                                    style = MaterialTheme.typography.labelSmall
-                                                )
-                                            },
-                                            colors = AssistChipDefaults.assistChipColors(),
-                                        )
                                     }
                                 }
                             }

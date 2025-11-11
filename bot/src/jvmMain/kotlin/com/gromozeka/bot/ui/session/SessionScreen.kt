@@ -350,22 +350,6 @@ fun SessionScreen(
                     }
                 }
 
-                // Edit message dialog
-                if (uiState.editingMessageId != null) {
-                    EditMessageDialog(
-                        messageText = uiState.editingMessageText,
-                        onTextChange = { viewModel.updateEditingMessageText(it) },
-                        onConfirm = {
-                            coroutineScope.launch {
-                                viewModel.confirmEditMessage()
-                            }
-                        },
-                        onDismiss = {
-                            viewModel.cancelEditMessage()
-                        }
-                    )
-                }
-
                 Spacer(modifier = Modifier.height(8.dp))
 
                 DisableSelection {
@@ -437,6 +421,22 @@ fun SessionScreen(
         JsonDialog(
             json = json,
             onDismiss = { viewModel.jsonToShow = null }
+        )
+    }
+
+    // Edit message dialog at top level to avoid hierarchy issues
+    if (uiState.editingMessageId != null) {
+        EditMessageDialog(
+            messageText = uiState.editingMessageText,
+            onTextChange = { viewModel.updateEditingMessageText(it) },
+            onConfirm = {
+                coroutineScope.launch {
+                    viewModel.confirmEditMessage()
+                }
+            },
+            onDismiss = {
+                viewModel.cancelEditMessage()
+            }
         )
     }
 }

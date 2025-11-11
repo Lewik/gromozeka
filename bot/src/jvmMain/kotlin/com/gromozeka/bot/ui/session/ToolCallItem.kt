@@ -94,9 +94,8 @@ fun ToolCallItem(
                         Spacer(modifier = Modifier.height(8.dp))
 
                         // Show result content - now it's a list of Data items
-                        SelectionContainer {
-                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                result.result.forEach { dataItem ->
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            result.result.forEach { dataItem ->
                                     when (dataItem) {
                                         is Conversation.Message.ContentItem.ToolResult.Data.Text -> {
                                             Text(
@@ -194,7 +193,6 @@ fun ToolCallItem(
                                     }
                                 }
                             }
-                        }
                     }
                 }
             }
