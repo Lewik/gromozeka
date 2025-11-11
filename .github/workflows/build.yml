@@ -211,6 +211,21 @@ jobs:
           🤖 Generated with [Claude Code](https://claude.ai/code)
           EOF
 
+      - name: Determine release type
+        run: |
+          # Extract patch version (last number in X.Y.Z)
+          PATCH_VERSION=$(echo "${{ env.VERSION }}" | cut -d'.' -f3)
+          echo "Patch version: $PATCH_VERSION"
+
+          # If patch != 0, it's a pre-release
+          if [ "$PATCH_VERSION" != "0" ]; then
+            echo "IS_PRERELEASE=true" >> $GITHUB_ENV
+            echo "This is a pre-release version (patch != 0)"
+          else
+            echo "IS_PRERELEASE=false" >> $GITHUB_ENV
+            echo "This is a stable release version (patch == 0)"
+          fi
+
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
@@ -219,6 +234,6 @@ jobs:
           body_path: release-notes.md
           files: release-assets/*
           draft: false
-          prerelease: false
+          prerelease: ${{ env.IS_PRERELEASE == 'true' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

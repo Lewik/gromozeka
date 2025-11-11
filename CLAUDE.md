@@ -57,13 +57,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 4. Create and push a git tag with matching version (e.g., v1.1.3)
 5. GitHub Actions will build and release automatically
 
-**When user asks for beta release:**
-- **Use numeric-only format** (e.g., `1.1.7`, `1.1.8`) due to macOS CFBundleVersion/jpackage limitations
-- **macOS packaging requires** pure `X.Y.Z` format - no alpha/beta suffixes supported by Apple
-- **Beta strategy:** Increment Z (patch) for beta → increment Y (minor) for stable
-- **Git tags contain beta info:** Use `v1.1.7beta1` for tagging (informative only)
-- **Version progression example:** `1.1.6` (stable) → `1.1.7` (beta) → `1.2.0` (next stable)
-- **Multiple betas:** `1.1.7`, `1.1.8`, `1.1.9` (all beta) → `1.2.0` (stable release)
+**Version numbering strategy:**
+- **Use numeric-only format** `X.Y.Z` due to macOS CFBundleVersion/jpackage limitations
+- **macOS packaging requires** pure numbers - no text suffixes supported by Apple
+- **Pre-releases:** Increment Z (patch) for testing versions (e.g., `1.2.4`, `1.2.5`, `1.2.6`)
+- **Stable releases:** Increment Y (minor) with Z=0 (e.g., `1.3.0`)
+- **Git tags:** Simple version tags (e.g., `v1.2.4`, `v1.3.0`)
+- **Version progression example:** `1.2.3` (stable) → `1.2.4`, `1.2.5` (pre-releases) → `1.3.0` (next stable)
 
 ## Project Structure
 
