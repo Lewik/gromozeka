@@ -24,6 +24,18 @@ class McpConfigurationService(
     private val gromozemkaHome: String,
     @Qualifier("mcpCoroutineScope") private val coroutineScope: CoroutineScope
 ) {
+    companion object {
+        private val DEFAULT_INHERITED_ENV_VARS = if (System.getProperty("os.name").lowercase().contains("win")) {
+            listOf(
+                "APPDATA", "HOMEDRIVE", "HOMEPATH", "LOCALAPPDATA", "PATH",
+                "PROCESSOR_ARCHITECTURE", "SYSTEMDRIVE", "SYSTEMROOT", "TEMP",
+                "USERNAME", "USERPROFILE"
+            )
+        } else {
+            listOf("HOME", "LOGNAME", "PATH", "SHELL", "TERM", "USER")
+        }
+    }
+
     private val log = KLoggers.logger {}
     private val objectMapper = ObjectMapper()
 
@@ -74,6 +86,12 @@ class McpConfigurationService(
         }
     }
 
+    private fun getDefaultEnvironment(): Map<String, String> {
+        return System.getenv()
+            .filterKeys { it in DEFAULT_INHERITED_ENV_VARS }
+            .filterValues { value -> !value.startsWith("()") }
+    }
+
     suspend fun startMcpClientsWithProgress(
         onProgress: (serverName: String, current: Int, total: Int) -> Unit = { _, _, _ -> }
     ) {
@@ -104,7 +122,15 @@ class McpConfigurationService(
                     listOf(config.command!!) + (config.args ?: emptyList())
                 )
 
+                // Initialize with default environment (PATH, HOME, SHELL, etc.)
+                val defaultEnv = getDefaultEnvironment()
+                log.debug { "  Default environment keys: ${defaultEnv.keys.joinToString()}" }
+                log.debug { "  PATH: ${defaultEnv["PATH"]}" }
+                processBuilder.environment().putAll(defaultEnv)
+
+                // Apply user-provided environment variables (overrides defaults)
                 config.env?.let { envMap ->
+                    log.debug { "  User environment keys: ${envMap.keys.joinToString()}" }
                     processBuilder.environment().putAll(envMap)
                 }
 
