@@ -21,7 +21,7 @@ data class Settings(
     val muteSystemAudioDuringPTT: Boolean = false,
 
     // AI Settings
-    val defaultAiProvider: AIProvider = AIProvider.OLLAMA,
+    val defaultAiProvider: AIProvider = AIProvider.CLAUDE_CODE,
     val ollamaModel: String = "llama3.2",
     val ollamaBaseUrl: String = "http://localhost:11434",
     val geminiModel: String = "gemini-2.0-flash-exp",
