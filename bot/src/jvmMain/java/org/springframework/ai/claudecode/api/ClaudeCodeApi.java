@@ -79,28 +79,38 @@ public class ClaudeCodeApi {
                 boolean useFile = enhancedSystemPrompt.length() > MAX_SYSTEM_PROMPT_LENGTH ||
                                  System.getProperty("os.name").toLowerCase().contains("win");
 
-                List<String> command = new ArrayList<>();
-                command.add(cliPath);
+                // Build Claude command arguments
+                List<String> claudeArgs = new ArrayList<>();
+                claudeArgs.add(cliPath);
 
                 if (useFile) {
                     tempFile = createTempSystemPromptFile(enhancedSystemPrompt);
-                    command.add("--system-prompt-file");
-                    command.add(tempFile.getAbsolutePath());
+                    claudeArgs.add("--system-prompt-file");
+                    claudeArgs.add(quoteShellArg(tempFile.getAbsolutePath()));
                 } else {
-                    command.add("--system-prompt");
-                    command.add(enhancedSystemPrompt);
+                    claudeArgs.add("--system-prompt");
+                    claudeArgs.add(quoteShellArg(enhancedSystemPrompt));
                 }
 
-                command.add("--verbose");
-                command.add("--output-format");
-                command.add("stream-json");
-                command.add("--disallowedTools");
-                command.add(String.join(",", DISABLED_TOOLS));
-                command.add("--max-turns");
-                command.add("1");
-                command.add("--model");
-                command.add(model);
-                command.add("-p");
+                claudeArgs.add("--verbose");
+                claudeArgs.add("--output-format");
+                claudeArgs.add("stream-json");
+                claudeArgs.add("--disallowedTools");
+                claudeArgs.add(String.join(",", DISABLED_TOOLS));
+                claudeArgs.add("--max-turns");
+                claudeArgs.add("1");
+                claudeArgs.add("--model");
+                claudeArgs.add(model);
+                claudeArgs.add("-p");
+
+                // Join arguments into single command string
+                String claudeCommand = String.join(" ", claudeArgs);
+
+                // Detect shell and wrap command for proper environment initialization
+                String shell = detectShell();
+                logger.debug("Using shell: {}", shell);
+
+                List<String> command = List.of(shell, "-l", "-c", claudeCommand);
 
                 ProcessBuilder processBuilder = new ProcessBuilder(command);
                 processBuilder.directory(new File(workingDirectory));
@@ -446,6 +456,52 @@ public class ClaudeCodeApi {
             );
             default -> new AnthropicApi.ContentBlock(block.text() != null ? block.text() : "");
         };
+    }
+
+    /**
+     * Detects the user's shell with fallback chain for proper environment initialization.
+     * Prioritizes SHELL env variable, then checks for common shells.
+     */
+    private static String detectShell() {
+        // Strategy 1: Use SHELL environment variable
+        String shell = System.getenv("SHELL");
+        if (shell != null && !shell.isEmpty() && new File(shell).exists()) {
+            logger.debug("Detected shell from SHELL env: {}", shell);
+            return shell;
+        }
+
+        // Strategy 2: Check common shell paths
+        String[] commonShells = {
+            "/bin/zsh",
+            "/bin/bash",
+            "/bin/fish",
+            "/bin/sh"
+        };
+
+        for (String shellPath : commonShells) {
+            if (new File(shellPath).exists()) {
+                logger.debug("Using shell: {}", shellPath);
+                return shellPath;
+            }
+        }
+
+        // Fallback to sh (POSIX required)
+        logger.warn("No shell detected, falling back to /bin/sh");
+        return "/bin/sh";
+    }
+
+    /**
+     * Quotes shell argument for safe execution in shell command.
+     * Escapes single quotes and wraps in single quotes for POSIX shells.
+     */
+    private static String quoteShellArg(String arg) {
+        if (arg == null || arg.isEmpty()) {
+            return "''";
+        }
+
+        // Escape single quotes by replacing ' with '\''
+        String escaped = arg.replace("'", "'\\''");
+        return "'" + escaped + "'";
     }
 
     public static Builder builder() {
