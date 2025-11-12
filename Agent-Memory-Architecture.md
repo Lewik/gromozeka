@@ -10,58 +10,172 @@ Hybrid memory system combining:
 
 ## Architecture Phases (Modular Implementation)
 
-### Phase 1: Vector Memory (MVP)
+### Phase 1: Vector Memory (MVP) ✅ COMPLETED
 
-**Goal:** Basic semantic memory
+**Goal:** Basic semantic memory with manual thread embedding
 
 **Components:**
-- PostgreSQL + pgvector (already in project)
-- Embedding model (choose: OpenAI API or local sentence-transformers)
-- Automatic embedding of all messages
-- Semantic recall on queries
+- Qdrant vector database (v1.12.5, Docker)
+- OpenAI text-embedding-3-large (3072 dimensions)
+- Spring AI QdrantVectorStore integration
+- Manual embedding via UI "Remember" button
+- recall_memory MCP tool for semantic search
+- Cross-thread and per-thread filtering
+- Runtime activation via Settings.vectorStorageEnabled
 
 **Implementation:**
 
 ```kotlin
 @Service
 class VectorMemoryService(
-    private val vectorStore: PgVectorStore,
-    private val embeddingModel: EmbeddingModel
+    private val vectorStore: VectorStore?,
+    private val settingsService: SettingsService,
+    private val threadMessageRepository: ThreadMessageRepository
 ) {
-    suspend fun remember(message: String, threadId: UUID) {
-        val embedding = embeddingModel.embed(message)
-        vectorStore.add(Document(message, mapOf("threadId" to threadId)))
+    suspend fun rememberThread(threadId: String) {
+        if (!isMemoryAvailable()) return
+        
+        val threadMessages = threadMessageRepository
+            .getMessagesByThread(Conversation.Thread.Id(threadId))
+            .filter { message ->
+                message.role in listOf(USER, ASSISTANT) &&
+                !hasToolCalls(message) &&
+                !hasThinking(message)
+            }
+        
+        val documents = threadMessages.map { message ->
+            Document(
+                message.id.value,
+                extractTextContent(message),
+                mapOf("threadId" to threadId)
+            )
+        }
+        
+        if (documents.isNotEmpty()) {
+            vectorStore?.add(documents)
+        }
     }
     
-    suspend fun recall(query: String, limit: Int = 5): List<Memory> {
-        return vectorStore.similaritySearch(query, limit)
-            .map { Memory(it.content, it.metadata) }
+    suspend fun recall(
+        query: String,
+        threadId: String? = null,
+        limit: Int = 5
+    ): List<Memory> {
+        if (!isMemoryAvailable()) return emptyList()
+        
+        val searchRequest = SearchRequest.builder()
+            .query(query)
+            .topK(limit)
+            .apply {
+                threadId?.let {
+                    filterExpression("threadId == '$it'")
+                }
+            }
+            .build()
+        
+        return vectorStore?.similaritySearch(searchRequest)
+            ?.map { doc ->
+                Memory(
+                    content = doc.formattedContent,
+                    messageId = doc.id,
+                    threadId = doc.metadata["threadId"] as String
+                )
+            } ?: emptyList()
+    }
+    
+    suspend fun forgetMessage(messageId: String) {
+        if (!isMemoryAvailable()) return
+        vectorStore?.delete(listOf(messageId))
+    }
+    
+    private fun isMemoryAvailable(): Boolean {
+        return settingsService.settings.vectorStorageEnabled && 
+               vectorStore != null
     }
 }
+
+data class Memory(
+    val content: String,
+    val messageId: String,
+    val threadId: String
+)
 ```
 
-**Database Schema:**
+**Vector Storage:**
 
-```sql
-CREATE TABLE memories (
-    id UUID PRIMARY KEY,
-    content TEXT NOT NULL,
-    embedding vector(1536),
-    type VARCHAR(50),
-    created_at TIMESTAMP,
-    thread_id UUID,
-    metadata JSONB
-);
+Qdrant manages schema internally:
+- Collection name: `vector_store`
+- Dimensions: 3072 (auto-detected from text-embedding-3-large)
+- Distance metric: Cosine similarity
+- Index: HNSW (Hierarchical Navigable Small World)
+- Metadata: `threadId` for per-thread filtering
+- Document ID: message ID (prevents duplicates)
 
-CREATE INDEX ON memories USING ivfflat (embedding vector_cosine_ops);
+No manual schema creation needed - Spring AI initializes automatically.
+
+**MCP Tool (recall_memory):**
+
+```kotlin
+@Bean
+fun recallMemoryTool(vectorMemoryService: VectorMemoryService): ToolCallback {
+    return FunctionToolCallback.builder("recall_memory", function)
+        .description("""
+            Recall relevant information from past conversations using semantic search.
+            
+            **Search Scope:**
+            - Without thread_id: searches across all conversation threads
+            - With thread_id: searches only in that specific thread (must be valid UUID)
+            
+            **Search mechanism:** Uses AI embeddings to find semantically similar content.
+        """)
+        .inputType<RecallMemoryParams>()
+        .build()
+}
+
+data class RecallMemoryParams(
+    val query: String,
+    val thread_id: String? = null,
+    val limit: Int? = 5
+)
 ```
+
+**UI Integration:**
+
+- "Remember" button in SessionScreen (Psychology icon)
+- Calls `ConversationEngineService.rememberCurrentThread()`
+- Async operation (doesn't block UI)
+- Embeds entire thread on button click
+
+**Docker Deployment:**
+
+```yaml
+services:
+  qdrant:
+    image: qdrant/qdrant:v1.12.5
+    ports:
+      - "6333:6333"  # REST API + Web UI
+      - "6334:6334"  # gRPC
+    volumes:
+      - gromozeka_dev_qdrant_data:/qdrant/storage
+```
+
+**Message Filtering:**
+
+Only USER and ASSISTANT messages are embedded:
+- Excludes tool calls
+- Excludes thinking blocks
+- Extracts text content from structured messages
 
 **Success Criteria:**
-- Agent recalls relevant facts from past conversations
-- Automatic embedding of new messages works
-- Semantic search returns relevant results
+- ✅ Agent recalls relevant facts from past conversations
+- ✅ Manual embedding via UI button works
+- ✅ Semantic search returns relevant results (3072-dim embeddings)
+- ✅ recall_memory MCP tool functional
+- ✅ Per-thread and cross-thread search supported
+- ✅ Graceful degradation when Qdrant unavailable
+- ✅ Runtime activation via settings
 
-**Can stop here:** Basic memory functionality achieved
+**Can stop here:** Basic memory functionality achieved with high-quality embeddings
 
 ---
 
@@ -536,20 +650,21 @@ volumes:
 
 ## Next Steps
 
-1. **Start with Phase 1 MVP** (Vector Memory)
-   - PostgreSQL + pgvector already exists
-   - Choose embedding model
-   - Implement VectorMemoryService
-   - Integrate with SessionSpringAI
-   - Test semantic recall
+1. ~~**Phase 1 MVP** (Vector Memory)~~ ✅ **COMPLETED**
+   - ✅ Qdrant vector database deployed
+   - ✅ OpenAI text-embedding-3-large integrated
+   - ✅ VectorMemoryService implemented
+   - ✅ recall_memory MCP tool functional
+   - ✅ UI "Remember" button working
 
-2. **Then Phase 2** (Knowledge Graph)
+2. **Phase 2** (Knowledge Graph) - NEXT
    - Deploy Neo4j
    - Create Note/Link models
    - Implement KnowledgeGraphService
-   - Add MCP tools
+   - Add MCP tools (create_note, create_link, get_linked_notes)
+   - Optional: UI visualization
 
-3. **Then Phase 3** (Hybrid Search)
+3. **Phase 3** (Hybrid Search)
    - Combine vector + graph
    - Implement ranking
    - Test recall quality
