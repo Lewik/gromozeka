@@ -1,0 +1,370 @@
+# Multi-Agent Development System
+
+This directory contains system prompts for specialized development agents that collaborate through code-as-contract to build Gromozeka.
+
+## Core Concept
+
+**Communication via Code, Not Chat**
+
+Agents communicate through typed Kotlin interfaces and comprehensive KDoc, not through chat messages. This eliminates coordination overhead and leverages the compiler for contract validation.
+
+## Agent Roles
+
+### 1. Architect Agent (`architect-agent.md`)
+**Responsibility:** Design interfaces and domain models
+
+**Output:**
+- `domain/model/` - Data classes and entities
+- `domain/repository/` - Repository interfaces
+- `domain/service/` - Service interfaces
+
+**Key Trait:** Creates comprehensive KDoc explaining WHAT and WHY
+
+### 2. Data Layer Agent (`data-layer-agent.md`)
+**Responsibility:** Implement repository interfaces
+
+**Input:** Reads `domain/repository/` interfaces
+**Output:** `infrastructure/persistence/exposed/` implementations
+
+**Key Trait:** Pure persistence logic, no business rules
+
+### 3. Business Logic Agent (`business-logic-agent.md`)
+**Responsibility:** Implement service interfaces
+
+**Input:** Reads `domain/service/` and `domain/repository/` interfaces
+**Output:** `application/service/` implementations
+
+**Key Trait:** Orchestrates repositories, enforces business rules
+
+### 4. Infrastructure Agent (`infrastructure-agent.md`)
+**Responsibility:** Integrate external systems
+
+**Output:**
+- `infrastructure/ai/` - AI provider integrations
+- `infrastructure/vector/` - Qdrant operations
+- `infrastructure/graph/` - Neo4j operations
+- `infrastructure/mcp/` - MCP servers/tools
+
+**Key Trait:** Handles external system complexity, provides clean internal APIs
+
+### 5. UI Agent (`ui-agent.md`)
+**Responsibility:** Build Compose Desktop UI
+
+**Input:** Reads `domain/model/` and `domain/service/` interfaces
+**Output:**
+- `presentation/ui/` - Compose components
+- `presentation/viewmodel/` - ViewModels
+
+**Key Trait:** Focuses on UX, delegates all logic to ViewModels
+
+### 6. Migration Agent (`migration-agent.md`)
+**Responsibility:** Refactor existing code to new architecture
+
+**Authority:** Can read/write ALL layers (special permission during migration)
+
+**Key Trait:** Incremental migration, keeps app working
+
+## Communication Protocol
+
+### Code-as-Contract
+
+```kotlin
+// Architect creates this:
+package com.gromozeka.bot.domain.repository
+
+/**
+ * Repository for conversation threads.
+ *
+ * Implementation should:
+ * - Use database transactions for create/update/delete
+ * - Handle constraint violations by throwing DuplicateThreadException
+ * - Return null from findById if thread doesn't exist
+ */
+interface ThreadRepository {
+    suspend fun findById(id: String): Thread?
+    suspend fun create(thread: Thread): Thread
+}
+
+// Data Layer Agent reads this and implements:
+package com.gromozeka.bot.infrastructure.persistence.exposed
+
+class ExposedThreadRepository : ThreadRepository {
+    override suspend fun findById(id: String): Thread? = transaction {
+        // Implementation follows contract exactly
+    }
+}
+```
+
+### Knowledge Graph Integration
+
+All agents save key decisions to knowledge graph after completing work:
+
+```kotlin
+build_memory_from_text(
+  content = """
+  Implemented ThreadRepository using Exposed ORM.
+  Decision: Used UUID for primary keys (distributed system ready).
+  Added index on createdAt for recent threads query performance.
+  """
+)
+```
+
+Next agent retrieves this context:
+```kotlin
+search_memory("repository implementation patterns")
+```
+
+## Architecture Enforcement
+
+### Layer Boundaries
+
+```
+presentation/  →  domain/  ←  application/  ←  infrastructure/
+    (UI)         (contracts)   (business)      (external systems)
+```
+
+**Dependency Rules:**
+- Presentation depends on Domain
+- Application depends on Domain
+- Infrastructure depends on Domain
+- Domain depends on NOTHING (pure interfaces)
+
+### Physical Enforcement
+
+Agents have restricted file access:
+- **Architect:** Can only write to `domain/`
+- **Data Layer:** Can only write to `infrastructure/persistence/`
+- **Business Logic:** Can only write to `application/`
+- **UI:** Can only write to `presentation/`
+
+This physically prevents layer violations.
+
+## Workflow Example
+
+**Task:** "Add note storage feature"
+
+### Step 1: Architect Agent
+
+```kotlin
+// domain/model/Note.kt
+data class Note(
+    val id: String,
+    val content: String,
+    val createdAt: Instant
+)
+
+// domain/repository/NoteRepository.kt
+interface NoteRepository {
+    suspend fun findById(id: String): Note?
+    suspend fun create(note: Note): Note
+    suspend fun findAll(): List<Note>
+}
+
+// domain/service/NoteService.kt
+interface NoteService {
+    suspend fun createNote(content: String): Note
+    suspend fun getAllNotes(): List<Note>
+}
+```
+
+Saves to graph: "Designed note storage with simple CRUD operations"
+
+### Step 2: Data Layer Agent
+
+Reads `domain/repository/NoteRepository.kt`, implements:
+
+```kotlin
+// infrastructure/persistence/exposed/ExposedNoteRepository.kt
+class ExposedNoteRepository : NoteRepository {
+    override suspend fun findById(id: String): Note? = transaction {
+        Notes.selectAll().where { Notes.id eq UUID.fromString(id) }
+            .singleOrNull()?.let { rowToNote(it) }
+    }
+    // ... other methods
+}
+```
+
+Saves to graph: "Implemented NoteRepository with Exposed, added table definition"
+
+### Step 3: Business Logic Agent
+
+Reads interfaces, implements:
+
+```kotlin
+// application/service/NoteServiceImpl.kt
+@Service
+class NoteServiceImpl(
+    private val noteRepository: NoteRepository
+) : NoteService {
+    override suspend fun createNote(content: String): Note {
+        require(content.isNotBlank()) { "Content cannot be blank" }
+
+        val note = Note(
+            id = UUID.randomUUID().toString(),
+            content = content,
+            createdAt = Clock.System.now()
+        )
+        return noteRepository.create(note)
+    }
+}
+```
+
+Saves to graph: "Implemented NoteService with validation, generates UUID for new notes"
+
+### Step 4: UI Agent
+
+Reads interfaces, implements:
+
+```kotlin
+// presentation/viewmodel/NoteListViewModel.kt
+class NoteListViewModel(
+    private val noteService: NoteService
+) : ViewModel() {
+    private val _notes = MutableStateFlow<List<Note>>(emptyList())
+    val notes = _notes.asStateFlow()
+
+    fun loadNotes() {
+        viewModelScope.launch {
+            _notes.value = noteService.getAllNotes()
+        }
+    }
+}
+
+// presentation/ui/NoteListScreen.kt
+@Composable
+fun NoteListScreen(viewModel: NoteListViewModel) {
+    val notes by viewModel.notes.collectAsState()
+
+    LazyColumn {
+        items(notes) { note ->
+            NoteItem(note)
+        }
+    }
+}
+```
+
+Saves to graph: "Implemented note list UI with ViewModel pattern, auto-loads on init"
+
+### Result
+
+- ✅ Zero coordination overhead (no chat between agents)
+- ✅ Compiler validates all contracts
+- ✅ Clean layer separation
+- ✅ Knowledge graph captures decisions
+- ✅ Build succeeds
+
+## Benefits vs Traditional Multi-Agent
+
+### Traditional (Chat-Based) Multi-Agent Problems:
+- 15x cost overhead (coordination rounds)
+- 60-80% failure rate in production
+- Error cascading (ambiguous communication)
+- Context explosion
+
+### Code-as-Contract Approach Benefits:
+- **1x cost** (agents work independently on their layer)
+- **Compiler catches errors** before runtime
+- **Zero ambiguity** (typed interfaces)
+- **Scalable context** (only read relevant interfaces)
+
+## Common Patterns
+
+### Pattern 1: Interface First
+
+1. Architect designs interface with complete KDoc
+2. Implementation agent reads interface
+3. Implements exactly as specified
+4. Compiler validates contract adherence
+
+### Pattern 2: Handoff via Filesystem
+
+Agents don't pass messages. They write code to filesystem:
+
+```
+Architect writes: domain/repository/XRepository.kt
+Data Agent reads:  domain/repository/XRepository.kt
+Data Agent writes: infrastructure/persistence/exposed/ExposedXRepository.kt
+```
+
+### Pattern 3: Knowledge Graph Context
+
+Before implementing, agent queries graph:
+
+```
+"What repository patterns have we used?"
+"How did we handle pagination last time?"
+"What error handling approach for external APIs?"
+```
+
+## Meta-Awareness
+
+Each agent knows other agents exist but doesn't interact directly:
+
+**Data Layer Agent prompt includes:**
+> "Business Logic Agent handles validation and business rules. You implement pure persistence. Stay in your lane."
+
+This prevents scope creep and layer violations.
+
+## Getting Started
+
+### For New Features
+
+1. Start with Architect Agent (create interfaces)
+2. Then layer-specific agents (implement in parallel)
+3. UI Agent last (depends on all layers)
+
+### For Refactoring Existing Code
+
+1. Use Migration Agent
+2. Extract interfaces first
+3. Move implementations to correct layers
+4. Verify build after each step
+
+## Future: Orchestrator
+
+**Planned:** Orchestrator agent to coordinate workflow automatically
+
+```
+User: "Add note storage"
+  ↓
+Orchestrator:
+  1. Invokes Architect Agent
+  2. Waits for domain/ files
+  3. Invokes Data + Business Logic agents in parallel
+  4. Waits for implementations
+  5. Invokes UI Agent
+  6. Verifies build
+  7. Reports completion
+```
+
+## References
+
+- **SEMAP Protocol:** https://arxiv.org/html/2510.12120
+- **Multi-Agent Failures Study:** Research shows 60-80% failure rate for chat-based coordination
+- **Code-as-Contract:** Inspired by Design by Contract (DbC) principles
+
+## File Structure
+
+```
+docs/agents/
+├── README.md                    # This file
+├── shared-base.md              # Common rules for all agents
+├── architect-agent.md          # Interface and model design
+├── data-layer-agent.md         # Repository implementations
+├── business-logic-agent.md     # Service implementations
+├── infrastructure-agent.md     # External integrations
+├── ui-agent.md                 # Compose Desktop UI
+└── migration-agent.md          # Refactoring existing code
+```
+
+Each agent prompt is self-contained and includes:
+- Role and responsibilities
+- Scope (read/write access)
+- Implementation patterns
+- Examples (good vs bad)
+- Workflow steps
+- Knowledge graph integration
+
+## Key Principle
+
+> "Agents communicate through typed code and comprehensive documentation, not through chat messages. The compiler is the coordinator."
