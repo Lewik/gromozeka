@@ -49,12 +49,14 @@ class ConversationEngineService(
     private val toolApprovalService: ToolApprovalService,
     private val conversationService: ConversationService,
     private val threadRepository: ThreadRepository,
+    private val threadMessageRepository: com.gromozeka.shared.repository.ThreadMessageRepository,
     private val messageConversionService: MessageConversionService,
     private val toolCallbacks: List<org.springframework.ai.tool.ToolCallback>,
     private val mcpConfigurationService: McpConfigurationService,
     private val tokenUsageStatisticsRepository: TokenUsageStatisticsRepository,
     private val coroutineScope: CoroutineScope,
     private val vectorMemoryService: com.gromozeka.bot.services.memory.VectorMemoryService,
+    private val knowledgeGraphService: com.gromozeka.bot.services.memory.graph.KnowledgeGraphService?,
 ) {
     private val log = KLoggers.logger(this)
 
@@ -520,6 +522,48 @@ class ConversationEngineService(
             log.error(e) { "Failed to remember thread for conversation $conversationId: ${e.message}" }
             throw e
         }
+    }
+
+    /**
+     * Add current thread to knowledge graph (Phase 2).
+     * This method triggers entity and relationship extraction from conversation.
+     */
+    suspend fun addToGraphCurrentThread(conversationId: Conversation.Id) {
+        if (knowledgeGraphService == null) {
+            log.warn { "KnowledgeGraphService not available (knowledge-graph.enabled=false)" }
+            return
+        }
+
+        try {
+            val conversation = conversationService.findById(conversationId)
+                ?: throw IllegalStateException("Conversation not found: $conversationId")
+
+            val threadMessages = threadMessageRepository.getMessagesByThread(conversation.currentThread)
+                .filter { message ->
+                    message.role in listOf(Conversation.Message.Role.USER, Conversation.Message.Role.ASSISTANT)
+                }
+                .joinToString("\n\n") { message ->
+                    "${message.role}: ${extractGraphTextContent(message)}"
+                }
+
+            log.info { "Adding thread ${conversation.currentThread} to knowledge graph for conversation $conversationId" }
+
+            val result = knowledgeGraphService.extractAndSaveToGraph(threadMessages)
+            log.info { "Knowledge graph update result: $result" }
+        } catch (e: Exception) {
+            log.error(e) { "Failed to add thread to graph for conversation $conversationId: ${e.message}" }
+            throw e
+        }
+    }
+
+    private fun extractGraphTextContent(message: Conversation.Message): String {
+        return message.content.mapNotNull { contentItem ->
+            when (contentItem) {
+                is Conversation.Message.ContentItem.UserMessage -> contentItem.text
+                is Conversation.Message.ContentItem.AssistantMessage -> contentItem.structured.fullText
+                else -> null
+            }
+        }.joinToString("\\n")
     }
 
     /**

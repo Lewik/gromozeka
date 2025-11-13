@@ -73,12 +73,13 @@ class VectorMemoryService(
                 .build()
 
             val results = vectorStore?.similaritySearch(searchRequest) ?: emptyList()
-            
+
             results.map { doc ->
                 Memory(
                     content = doc.formattedContent,
                     messageId = doc.id,
-                    threadId = doc.metadata["threadId"] as? String ?: ""
+                    threadId = doc.metadata["threadId"] as? String ?: "",
+                    score = doc.metadata["distance"] as? Double ?: 1.0
                 )
             }
         } catch (e: Exception) {
@@ -127,5 +128,6 @@ class VectorMemoryService(
 data class Memory(
     val content: String,
     val messageId: String,
-    val threadId: String
+    val threadId: String,
+    val score: Double = 1.0
 )

@@ -1,6 +1,6 @@
 package com.gromozeka.bot.config
 
-import com.gromozeka.bot.services.memory.VectorMemoryService
+import com.gromozeka.bot.services.memory.UnifiedSearchService
 import kotlinx.coroutines.runBlocking
 import org.slf4j.LoggerFactory
 import org.springframework.ai.chat.model.ToolContext
@@ -18,9 +18,9 @@ class MemoryToolsConfig {
     private val logger = LoggerFactory.getLogger(MemoryToolsConfig::class.java)
 
     @Bean
-    fun recallMemoryTool(vectorMemoryService: VectorMemoryService): ToolCallback {
-        val function = object : BiFunction<RecallMemoryParams, ToolContext?, Map<String, Any>> {
-            override fun apply(request: RecallMemoryParams, context: ToolContext?): Map<String, Any> {
+    fun unifiedSearchTool(unifiedSearchService: UnifiedSearchService): ToolCallback {
+        val function = object : BiFunction<UnifiedSearchParams, ToolContext?, Map<String, Any>> {
+            override fun apply(request: UnifiedSearchParams, context: ToolContext?): Map<String, Any> {
                 return try {
                     if (!request.thread_id.isNullOrBlank()) {
                         try {
@@ -28,78 +28,142 @@ class MemoryToolsConfig {
                         } catch (e: IllegalArgumentException) {
                             return mapOf(
                                 "type" to "text",
-                                "text" to "Error: thread_id must be a valid UUID format (e.g., '123e4567-e89b-12d3-a456-426614174000') or omitted entirely for global search."
+                                "text" to "Error: thread_id must be a valid UUID format or omitted for global search."
                             )
                         }
                     }
-                    
-                    val memories = runBlocking {
-                        vectorMemoryService.recall(
+
+                    val asOf = request.as_of?.takeIf { it.isNotBlank() }?.let { asOfStr ->
+                        try {
+                            kotlinx.datetime.Instant.parse(asOfStr)
+                        } catch (e: Exception) {
+                            return mapOf(
+                                "type" to "text",
+                                "text" to "Error: as_of must be in ISO 8601 format (e.g., '2025-01-15T10:30:00Z')"
+                            )
+                        }
+                    }
+
+                    val results = runBlocking {
+                        unifiedSearchService.unifiedSearch(
                             query = request.query,
+                            searchVector = request.search_vector ?: true,
+                            searchGraph = request.search_graph ?: true,
+                            useReranking = request.use_reranking ?: true,
+                            useVectorIndex = request.use_vector_index ?: true,
                             threadId = request.thread_id?.takeIf { it.isNotBlank() },
-                            limit = request.limit ?: 5
+                            limit = request.limit ?: 5,
+                            asOf = asOf
                         )
                     }
 
-                    if (memories.isEmpty()) {
+                    if (results.isEmpty()) {
                         mapOf(
                             "type" to "text",
-                            "text" to "No relevant memories found for query: ${request.query}"
+                            "text" to "No relevant results found for query: ${request.query}"
                         )
                     } else {
-                        val memoriesText = buildString {
-                            appendLine("Found ${memories.size} relevant memories:")
-                            memories.forEachIndexed { index, memory ->
-                                appendLine("${index + 1}. ${memory.content}")
+                        val resultsText = buildString {
+                            appendLine("Found ${results.size} relevant results:")
+                            results.forEachIndexed { index, result ->
+                                val sourceLabel = when (result.source) {
+                                    com.gromozeka.bot.services.memory.SearchSource.VECTOR -> "[Conversation]"
+                                    com.gromozeka.bot.services.memory.SearchSource.GRAPH -> "[Knowledge]"
+                                }
+                                appendLine("${index + 1}. $sourceLabel ${result.content}")
                             }
                         }
-                        
-                        logger.debug("Recalled ${memories.size} memories for query: ${request.query}")
-                        
+
+                        logger.debug("Unified search returned ${results.size} results for query: ${request.query}")
+
                         mapOf(
                             "type" to "text",
-                            "text" to memoriesText
+                            "text" to resultsText
                         )
                     }
                 } catch (e: Exception) {
-                    logger.error("Error recalling memories for query: ${request.query}", e)
+                    logger.error("Error in unified search for query: ${request.query}", e)
                     mapOf(
                         "type" to "text",
-                        "text" to "Error recalling memories: ${e.message}"
+                        "text" to "Error searching: ${e.message}"
                     )
                 }
             }
         }
 
-        return FunctionToolCallback.builder("recall_memory", function)
+        return FunctionToolCallback.builder("unified_search", function)
             .description(
                 """
-                Recall relevant information from past conversations using semantic search.
-                
+                Unified search across conversation history and knowledge graph with flexible source selection.
+                This is the PRIMARY tool for all memory and knowledge searches.
+
+                **Search Sources (configurable):**
+                - search_vector: Search conversation history via semantic vector search (default: true)
+                - search_graph: Search knowledge graph entities and relationships (default: true)
+                - Both can be enabled simultaneously for comprehensive results
+
                 **Search Scope:**
-                - Without thread_id: searches across all conversation threads
-                - With thread_id: searches only in that specific thread (must be a valid UUID)
-                
+                - Without thread_id: searches across all conversations (vector) and all knowledge (graph)
+                - With thread_id: filters vector results to specific thread, searches all knowledge (graph)
+
+                **Graph Vector Similarity Search:**
+                - use_vector_index: Use HNSW vector index for graph search (default: true)
+                - When true (default): Approximate search with ~95-99% recall, fast on any graph size
+                - When false: Exhaustive search with 100% accuracy, O(n) complexity
+                - Only affects knowledge graph search (search_graph), not conversation search
+                - Vector index is created automatically at startup
+
+                **Reranking:**
+                - use_reranking: Apply cross-encoder reranking for better relevance (default: true)
+                - When enabled: fetches 3x candidates, reranks with mxbai-rerank-xsmall-v1
+                - Two-level reranking: internal (within each source) + final (cross-source)
+
+                **Temporal Queries:**
+                - as_of: Time-travel query - see knowledge as it existed at specific timestamp
+                - Format: ISO 8601 (e.g., "2025-01-15T10:30:00Z")
+                - Only affects knowledge graph (filters by valid_at/invalid_at timestamps)
+
                 **When to use:**
-                - Finding user preferences, decisions, or facts from past conversations
-                - Retrieving context about previously discussed topics
-                - Understanding what was decided or agreed upon before
-                
-                **Search mechanism:** Uses AI embeddings to find semantically similar content, not just keyword matching.
-                
+                - ANY memory/knowledge lookup - this is your primary search tool
+                - Finding user preferences, facts, entities, past decisions
+                - Specialized searches: disable sources you don't need
+                - Historical queries: use as_of for time-travel
+
+                **Parameters:**
+                - query: Search query (required)
+                - search_vector: Enable conversation search (default: true)
+                - search_graph: Enable knowledge graph search (default: true)
+                - use_reranking: Enable cross-encoder reranking (default: true)
+                - use_vector_index: Use vector index for graph search (default: true)
+                - thread_id: Filter to specific thread (optional, UUID format)
+                - limit: Number of results (default: 5)
+                - as_of: Time-travel timestamp (optional, ISO 8601)
+
                 **Examples:**
-                - "What programming language does the user prefer?" (no thread_id - searches all)
-                - "What decisions were made about the database?" (no thread_id - searches all)
-                - "What are user's favorite tools?" (no thread_id - searches all)
+                - "What is Gromozeka?" → Both sources, comprehensive answer
+                - "What did user say about Python?" → search_vector=true, search_graph=false
+                - "What technologies are stored?" → search_vector=false, search_graph=true
+                - "What did we know in October?" → as_of="2024-10-01T00:00:00Z"
+
+                **Features:**
+                - Single unified interface for all memory searches
+                - Proper two-level reranking with real similarity scores
+                - Flexible source selection (vector only, graph only, or both)
+                - Parallel source queries for better performance
                 """.trimIndent()
             )
-            .inputType(object : ParameterizedTypeReference<RecallMemoryParams>() {})
+            .inputType(object : ParameterizedTypeReference<UnifiedSearchParams>() {})
             .build()
     }
 }
 
-data class RecallMemoryParams(
+data class UnifiedSearchParams(
     val query: String,
+    val search_vector: Boolean? = true,
+    val search_graph: Boolean? = true,
+    val use_reranking: Boolean? = true,
+    val use_vector_index: Boolean? = true,
     val thread_id: String? = null,
-    val limit: Int? = 5
+    val limit: Int? = 5,
+    val as_of: String? = null
 )

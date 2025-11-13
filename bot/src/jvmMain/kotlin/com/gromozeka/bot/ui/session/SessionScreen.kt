@@ -51,6 +51,7 @@ fun SessionScreen(
 
     // Memory
     onRememberThread: (() -> Unit)? = null,
+    onAddToGraph: (() -> Unit)? = null,
 
     // Dev mode
     isDev: Boolean = false,
@@ -413,6 +414,23 @@ fun SessionScreen(
                                 Icon(
                                     Icons.Default.Psychology,
                                     contentDescription = "Remember"
+                                )
+                            }
+                        }
+
+                        // Add to Graph button (if graph storage is enabled and callback provided)
+                        onAddToGraph?.let { addToGraphCallback ->
+                            CompactButton(
+                                onClick = {
+                                    coroutineScope.launch {
+                                        addToGraphCallback()
+                                    }
+                                },
+                                tooltip = "Add this conversation to knowledge graph"
+                            ) {
+                                Icon(
+                                    Icons.Default.AccountTree,
+                                    contentDescription = "Add to Graph"
                                 )
                             }
                         }

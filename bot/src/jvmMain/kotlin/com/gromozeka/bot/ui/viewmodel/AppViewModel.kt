@@ -264,6 +264,17 @@ open class AppViewModel(
         }
     }
 
+    suspend fun addToGraphCurrentThread() {
+        val current = currentTab.value ?: return
+        
+        try {
+            conversationEngineService.addToGraphCurrentThread(current.conversationId)
+            log.info { "Added current thread to knowledge graph for conversation: ${current.conversationId}" }
+        } catch (e: Exception) {
+            log.error(e) { "Failed to add current thread to graph: ${e.message}" }
+        }
+    }
+
     suspend fun cleanup() {
         mutex.withLock {
             _tabs.value = emptyList()

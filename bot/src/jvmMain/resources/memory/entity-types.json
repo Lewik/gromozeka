@@ -1,0 +1,44 @@
+{
+  "entity_types": [
+    {
+      "id": 1,
+      "name": "Person",
+      "description": "A person, including the user, assistant, or any mentioned individual"
+    },
+    {
+      "id": 2,
+      "name": "Technology",
+      "description": "Programming languages, frameworks, tools, libraries, platforms, or technical concepts"
+    },
+    {
+      "id": 3,
+      "name": "Concept",
+      "description": "Abstract ideas, methodologies, principles, or theoretical concepts"
+    },
+    {
+      "id": 4,
+      "name": "Project",
+      "description": "Software projects, repositories, applications, or work initiatives"
+    },
+    {
+      "id": 5,
+      "name": "Organization",
+      "description": "Companies, institutions, teams, or groups"
+    },
+    {
+      "id": 6,
+      "name": "Event",
+      "description": "Meetings, conferences, deadlines, milestones, or significant occurrences"
+    },
+    {
+      "id": 7,
+      "name": "Place",
+      "description": "Physical or virtual locations, cities, countries, or platforms"
+    },
+    {
+      "id": 8,
+      "name": "Document",
+      "description": "Files, documentation, specifications, or written resources"
+    }
+  ]
+}

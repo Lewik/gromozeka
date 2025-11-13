@@ -374,16 +374,31 @@ fun ApplicationScope.ChatWindow(
 
                                                 onShowContextsPanel = { showContextsPanel = true },
 
-                                                onRememberThread = {
-                                                    coroutineScope.launch {
-                                                        try {
-                                                            appViewModel.rememberCurrentThread()
-                                                            log.info("Remember thread triggered")
-                                                        } catch (e: Exception) {
-                                                            log.warn(e) { "Remember thread failed: ${e.message}" }
+                                                onRememberThread = if (currentSettings.vectorStorageEnabled) {
+                                                    {
+                                                        coroutineScope.launch {
+                                                            try {
+                                                                appViewModel.rememberCurrentThread()
+                                                                log.info("Remember thread triggered")
+                                                            } catch (e: Exception) {
+                                                                log.warn(e) { "Remember thread failed: ${e.message}" }
+                                                            }
                                                         }
                                                     }
-                                                },
+                                                } else null,
+
+                                                onAddToGraph = if (currentSettings.graphStorageEnabled) {
+                                                    {
+                                                        coroutineScope.launch {
+                                                            try {
+                                                                appViewModel.addToGraphCurrentThread()
+                                                                log.info("Add to graph triggered")
+                                                            } catch (e: Exception) {
+                                                                log.warn(e) { "Add to graph failed: ${e.message}" }
+                                                            }
+                                                        }
+                                                    }
+                                                } else null,
 
                                                 isDev = settingsService.mode == AppMode.DEV,
                                             )

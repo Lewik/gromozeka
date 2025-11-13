@@ -1,6 +1,3 @@
-version: '3.8'
-
-# Qdrant vector database for Gromozeka vector memory (development)
 services:
   qdrant:
     image: qdrant/qdrant:v1.12.5
@@ -13,6 +10,40 @@ services:
     environment:
       QDRANT__SERVICE__GRPC_PORT: 6334
 
+  neo4j:
+    image: neo4j:5.26.0-community
+    container_name: gromozeka-dev-neo4j
+    ports:
+      - "7474:7474"  # HTTP UI
+      - "7687:7687"  # Bolt protocol
+    volumes:
+      - gromozeka_dev_neo4j_data:/data
+      - gromozeka_dev_neo4j_logs:/logs
+    environment:
+      NEO4J_AUTH: neo4j/password
+      NEO4J_PLUGINS: '["apoc"]'
+      NEO4J_dbms_security_procedures_unrestricted: apoc.*
+      NEO4J_dbms_security_procedures_allowlist: apoc.*
+
+  reranker:
+    image: michaelf34/infinity:latest-cpu
+    container_name: gromozeka-dev-reranker
+    platform: linux/amd64
+    ports:
+      - "7997:7997"  # Reranking API
+    volumes:
+      - gromozeka_dev_reranker_cache:/app/.cache
+    command: >
+      v2 --model-id mixedbread-ai/mxbai-rerank-xsmall-v1
+         --port 7997
+         --engine torch
+
 volumes:
   gromozeka_dev_qdrant_data:
     name: gromozeka_dev_qdrant_data
+  gromozeka_dev_neo4j_data:
+    name: gromozeka_dev_neo4j_data
+  gromozeka_dev_neo4j_logs:
+    name: gromozeka_dev_neo4j_logs
+  gromozeka_dev_reranker_cache:
+    name: gromozeka_dev_reranker_cache

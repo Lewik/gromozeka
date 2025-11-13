@@ -102,6 +102,9 @@ kotlin {
 
                 // Apache PDFBox for PDF parsing
                 implementation(libs.pdfbox)
+
+                // Neo4j Driver for Knowledge Graph (Phase 2)
+                implementation(libs.neo4j.driver)
             }
         }
         

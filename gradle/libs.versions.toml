@@ -34,6 +34,7 @@ postgresql = "42.7.4"
 hikaricp = "6.2.1"
 flyway = "11.1.0"
 uuid-creator = "5.3.7"
+neo4j-driver = "5.26.0"
 
 [libraries]
 # Ktor
@@ -130,6 +131,9 @@ xmlutil-serialization = { module = "io.github.pdvrieze.xmlutil:serialization", v
 jagged-api = { module = "com.exceptionfactory.jagged:jagged-api", version.ref = "jagged" }
 jagged-x25519 = { module = "com.exceptionfactory.jagged:jagged-x25519", version.ref = "jagged" }
 jagged-framework = { module = "com.exceptionfactory.jagged:jagged-framework", version.ref = "jagged" }
+
+# Neo4j Driver (Knowledge Graph - Phase 2)
+neo4j-driver = { module = "org.neo4j.driver:neo4j-java-driver", version.ref = "neo4j-driver" }
 
 # Testing
 junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit" }
