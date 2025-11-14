@@ -438,4 +438,26 @@ class TabViewModel(
             log.error(e) { "Failed to squash messages" }
         }
     }
+
+    suspend fun deleteSelectedMessages() {
+        val selectedIds = _uiState.value.selectedMessageIds
+        if (selectedIds.isEmpty()) {
+            log.warn { "No messages selected for deletion" }
+            return
+        }
+
+        try {
+            conversationService.deleteMessages(
+                conversationId,
+                selectedIds.toList()
+            )
+
+            clearMessageSelection()
+            loadMessages()
+
+            log.debug { "Deleted ${selectedIds.size} message(s) successfully" }
+        } catch (e: Exception) {
+            log.error(e) { "Failed to delete messages" }
+        }
+    }
 }

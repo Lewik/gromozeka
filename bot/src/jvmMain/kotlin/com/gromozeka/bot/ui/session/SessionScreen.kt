@@ -354,6 +354,27 @@ fun SessionScreen(
                     }
                 }
 
+                // Delete button (shown when 1+ messages selected)
+                if (uiState.selectedMessageIds.size >= 1) {
+                    DisableSelection {
+                        CompactButton(
+                            onClick = {
+                                coroutineScope.launch {
+                                    viewModel.deleteSelectedMessages()
+                                }
+                            },
+                            tooltip = "Delete ${uiState.selectedMessageIds.size} selected message(s)"
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.Delete, contentDescription = "Delete")
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Delete (${uiState.selectedMessageIds.size})")
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+                }
+
                 Spacer(modifier = Modifier.height(8.dp))
 
                 DisableSelection {

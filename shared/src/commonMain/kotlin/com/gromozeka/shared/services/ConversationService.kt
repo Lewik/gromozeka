@@ -271,6 +271,52 @@ class ConversationService(
         return conversationRepo.findById(conversationId)
     }
 
+    suspend fun deleteMessages(
+        conversationId: Conversation.Id,
+        messageIds: List<Conversation.Message.Id>
+    ): Conversation? {
+        require(messageIds.isNotEmpty()) {
+            "Need at least 1 message to delete"
+        }
+
+        val conversation = conversationRepo.findById(conversationId)
+            ?: throw IllegalStateException("Conversation not found: $conversationId")
+
+        val currentThreadId = conversation.currentThread
+        val currentThread = threadRepo.findById(currentThreadId)!!
+        val messages = threadMessageRepo.getMessagesByThread(currentThreadId)
+        val links = threadMessageRepo.getByThread(currentThreadId)
+
+        val targetMessages = messages.filter { it.id in messageIds }
+        if (targetMessages.size != messageIds.size) {
+            throw IllegalArgumentException("Some messages not found in thread $currentThreadId")
+        }
+
+        val newThread = Conversation.Thread(
+            id = Conversation.Thread.Id(uuid7()),
+            conversationId = conversationId,
+            originalThread = currentThreadId,
+            createdAt = Clock.System.now(),
+            updatedAt = Clock.System.now()
+        )
+
+        threadRepo.save(newThread)
+
+        val newLinks = links
+            .filter { it.messageId !in messageIds }
+            .mapIndexed { index, link ->
+                link.copy(threadId = newThread.id, position = index)
+            }
+
+        threadMessageRepo.addBatch(newLinks)
+
+        conversationRepo.updateCurrentThread(conversationId, newThread.id)
+
+        log.debug("Deleted ${messageIds.size} message(s), created new thread ${newThread.id}")
+
+        return conversationRepo.findById(conversationId)
+    }
+
     suspend fun squashMessages(
         conversationId: Conversation.Id,
         messageIds: List<Conversation.Message.Id>,
