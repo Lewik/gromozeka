@@ -6,7 +6,14 @@ import org.springframework.stereotype.Service
 @Service
 class TabPromptService {
     private val log = KLoggers.logger {}
-    
+
+    companion object {
+        private val DEFAULT_PROMPTS = listOf(
+            "domain-model.md",
+            "default-agent.md"
+        )
+    }
+
     fun listAvailablePrompts(): List<String> {
         return try {
             val knownPrompts = listOf(
@@ -21,7 +28,7 @@ class TabPromptService {
                 "ui-agent.md",
                 "agent-builder.md"
             )
-            
+
             knownPrompts.filter { fileName ->
                 javaClass.getResourceAsStream("/agents/$fileName") != null
             }.sorted()
@@ -29,6 +36,21 @@ class TabPromptService {
             log.error(e) { "Failed to list prompts from resources" }
             emptyList()
         }
+    }
+
+    fun buildDefaultPrompts(): String {
+        log.debug { "Loading default prompts: $DEFAULT_PROMPTS" }
+        return DEFAULT_PROMPTS
+            .mapNotNull { fileName ->
+                val content = loadPromptContent(fileName)
+                if (content.isNotEmpty()) {
+                    content
+                } else {
+                    log.warn { "Default prompt not found or empty: $fileName" }
+                    null
+                }
+            }
+            .joinToString("\n\n---\n\n")
     }
     
     fun loadPromptContent(fileName: String): String {

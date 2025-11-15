@@ -45,6 +45,7 @@ import kotlin.time.Clock
 class ConversationEngineService(
     private val chatModelFactory: ChatModelFactory,
     private val systemPromptBuilder: SystemPromptBuilder,
+    private val tabPromptService: TabPromptService,
     private val toolCallingManager: ToolCallingManager,
     private val toolApprovalService: ToolApprovalService,
     private val conversationService: ConversationService,
@@ -130,10 +131,18 @@ class ConversationEngineService(
         // 5. Persist user message immediately
         conversationService.addMessage(conversationId, userMessage)
 
-        // 6. Build system prompt with CLAUDE.md context and environment info
-        val systemPromptText = systemPromptBuilder.build(projectPath)
+        // 6. Build system prompt with CLAUDE.md context, default agent prompts, and environment info
+        val claudeMdAndEnv = systemPromptBuilder.build(projectPath)
+        val defaultPrompts = tabPromptService.buildDefaultPrompts()
+        val systemPromptText = buildString {
+            append(claudeMdAndEnv)
+            if (defaultPrompts.isNotEmpty()) {
+                append("\n\n")
+                append(defaultPrompts)
+            }
+        }
         val systemMessage = org.springframework.ai.chat.messages.SystemMessage(systemPromptText)
-        log.debug { "Built system prompt: ${systemPromptText.length} chars" }
+        log.debug { "Built system prompt: ${systemPromptText.length} chars (CLAUDE.md+env: ${claudeMdAndEnv.length}, default prompts: ${defaultPrompts.length})" }
 
         // 7. Convert history to Spring AI format
         val springHistory = messageConversionService.convertHistoryToSpringAI(

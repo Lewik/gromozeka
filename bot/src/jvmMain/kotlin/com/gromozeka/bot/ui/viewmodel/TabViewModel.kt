@@ -231,6 +231,12 @@ class TabViewModel(
         }
     }
 
+    fun updateCustomPrompts(customPrompts: List<String>) {
+        _uiState.update { currentState ->
+            currentState.copy(customPrompts = customPrompts)
+        }
+    }
+
     suspend fun sendMessageToSession(
         message: String,
         additionalInstructions: List<Conversation.Message.Instruction> = emptyList(),
@@ -271,7 +277,7 @@ class TabViewModel(
 
                 var lastMessage: Conversation.Message? = null
 
-                conversationEngineService.streamMessage(conversationId, userMessage)
+                conversationEngineService.streamMessage(conversationId, userMessage, currentState.customPrompts)
                     .collect { update ->
                         when (update) {
                             is ConversationEngineService.StreamUpdate.Chunk -> {

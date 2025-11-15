@@ -87,7 +87,6 @@ fun ApplicationScope.ChatWindow(
     var showSettingsPanel by remember { mutableStateOf(false) }
     var showContextsPanel by remember { mutableStateOf(false) }
     var showPromptsPanel by remember { mutableStateOf(false) }
-    var customPrompts by remember { mutableStateOf(emptyList<String>()) }
     var refreshTrigger by remember { mutableStateOf(0) }
 
     var renameDialogOpen by remember { mutableStateOf(false) }
@@ -309,6 +308,8 @@ fun ApplicationScope.ChatWindow(
                                 Box(modifier = Modifier.weight(1f)) {
                                     if (currentTab != null) {
                                         currentTab?.let { tabViewModel ->
+                                            val tabUiState by tabViewModel.uiState.collectAsState()
+                                            
                                             SessionScreen(
                                                 viewModel = tabViewModel,
 
@@ -404,8 +405,8 @@ fun ApplicationScope.ChatWindow(
                                                 } else null,
 
                                                 tabPromptService = tabPromptService,
-                                                customPrompts = customPrompts,
-                                                onCustomPromptsChange = { customPrompts = it },
+                                                customPrompts = tabUiState.customPrompts,
+                                                onCustomPromptsChange = { tabViewModel.updateCustomPrompts(it) },
                                                 showPromptsPanel = showPromptsPanel,
                                                 onShowPromptsPanelChange = { showPromptsPanel = it },
 

@@ -46,6 +46,7 @@ data class UIState(
         val parentTabId: String? = null,
         val agent: Agent,
         val initiator: ConversationInitiator = ConversationInitiator.User,
+        val customPrompts: List<String> = emptyList(),
 
         // Message editing state
         val selectedMessageIds: Set<Conversation.Message.Id> = emptySet(),

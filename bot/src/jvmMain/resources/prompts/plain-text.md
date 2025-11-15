@@ -1,1 +1,0 @@
-Just respond naturally in plain text. No special formatting required.
