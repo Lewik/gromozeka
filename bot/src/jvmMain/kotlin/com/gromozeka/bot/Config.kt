@@ -66,6 +66,7 @@ class Config {
     fun appViewModel(
         conversationEngineService: ConversationEngineService,
         conversationService: ConversationService,
+        messageSquashService: MessageSquashService,
         soundNotificationService: SoundNotificationService,
         settingsService: SettingsService,
         @Qualifier("coroutineScope") scope: CoroutineScope,
@@ -75,6 +76,7 @@ class Config {
     ) = AppViewModel(
         conversationEngineService,
         conversationService,
+        messageSquashService,
         soundNotificationService,
         settingsService,
         scope,

@@ -333,21 +333,56 @@ fun SessionScreen(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // Squash button (shown when 2+ messages selected)
+                // Squash buttons (shown when 2+ messages selected)
                 if (uiState.selectedMessageIds.size >= 2) {
                     DisableSelection {
-                        CompactButton(
-                            onClick = {
-                                coroutineScope.launch {
-                                    viewModel.squashSelectedMessages()
-                                }
-                            },
-                            tooltip = "Squash ${uiState.selectedMessageIds.size} selected messages"
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.fillMaxWidth()
                         ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.MergeType, contentDescription = "Squash")
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text("Squash (${uiState.selectedMessageIds.size})")
+                            CompactButton(
+                                onClick = {
+                                    coroutineScope.launch {
+                                        viewModel.squashSelectedMessages()
+                                    }
+                                },
+                                tooltip = "Concatenate ${uiState.selectedMessageIds.size} messages (instant, no AI)"
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Default.MergeType, contentDescription = "Concat")
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("Concat (${uiState.selectedMessageIds.size})")
+                                }
+                            }
+
+                            CompactButton(
+                                onClick = {
+                                    coroutineScope.launch {
+                                        viewModel.distillSelectedMessages()
+                                    }
+                                },
+                                tooltip = "Distill ${uiState.selectedMessageIds.size} messages (AI context transfer)"
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Default.Compress, contentDescription = "Distill")
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("Distill (${uiState.selectedMessageIds.size})")
+                                }
+                            }
+
+                            CompactButton(
+                                onClick = {
+                                    coroutineScope.launch {
+                                        viewModel.summarizeSelectedMessages()
+                                    }
+                                },
+                                tooltip = "Summarize ${uiState.selectedMessageIds.size} messages (AI history compression)"
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Default.Subject, contentDescription = "Summarize")
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("Summarize (${uiState.selectedMessageIds.size})")
+                                }
                             }
                         }
                         Spacer(modifier = Modifier.height(8.dp))

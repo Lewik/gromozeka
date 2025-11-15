@@ -339,7 +339,7 @@ class ConversationService(
             throw IllegalArgumentException("Some messages not found in thread $currentThreadId")
         }
 
-        val firstMessageId = links.first { it.messageId in messageIds }.messageId
+        val lastMessageId = links.last { it.messageId in messageIds }.messageId
 
         val squashedMessage = Conversation.Message(
             id = Conversation.Message.Id(uuid7()),
@@ -366,7 +366,7 @@ class ConversationService(
         var positionCounter = 0
         val newLinks = links.mapNotNull { link ->
             when {
-                link.messageId == firstMessageId -> {
+                link.messageId == lastMessageId -> {
                     link.copy(threadId = newThread.id, messageId = squashedMessage.id, position = positionCounter++)
                 }
                 link.messageId in messageIds -> {

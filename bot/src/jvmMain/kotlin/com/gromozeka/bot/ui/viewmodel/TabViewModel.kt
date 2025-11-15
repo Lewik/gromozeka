@@ -5,12 +5,15 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.gromozeka.bot.platform.ScreenCaptureController
 import com.gromozeka.bot.services.ConversationEngineService
+import com.gromozeka.bot.services.MessageSquashService
 import com.gromozeka.bot.services.SoundNotificationService
+import com.gromozeka.bot.settings.AIProvider
 import com.gromozeka.bot.settings.Settings
 import com.gromozeka.bot.ui.state.UIState
 import com.gromozeka.bot.utils.ChatMessageSoundDetector
 import com.gromozeka.shared.domain.Conversation
 import com.gromozeka.shared.domain.MessageTagDefinition
+import com.gromozeka.shared.domain.SquashType
 import com.gromozeka.shared.domain.TokenUsageStatistics
 import com.gromozeka.shared.repository.TokenUsageStatisticsRepository
 import com.gromozeka.shared.services.ConversationService
@@ -26,6 +29,7 @@ class TabViewModel(
     val projectPath: String,
     private val conversationEngineService: ConversationEngineService,
     private val conversationService: ConversationService,
+    private val messageSquashService: MessageSquashService,
     private val soundNotificationService: SoundNotificationService,
     private val settingsFlow: StateFlow<Settings>,
     private val scope: CoroutineScope,
@@ -436,6 +440,58 @@ class TabViewModel(
             log.debug { "Squashed ${selectedIds.size} messages successfully" }
         } catch (e: Exception) {
             log.error(e) { "Failed to squash messages" }
+        }
+    }
+
+    suspend fun distillSelectedMessages() {
+        squashWithAI(SquashType.DISTILL)
+    }
+
+    suspend fun summarizeSelectedMessages() {
+        squashWithAI(SquashType.SUMMARIZE)
+    }
+
+    private suspend fun squashWithAI(squashType: SquashType) {
+        val selectedIds = _uiState.value.selectedMessageIds
+        if (selectedIds.size < 2) {
+            log.warn { "Need at least 2 messages to squash, got ${selectedIds.size}" }
+            return
+        }
+
+        try {
+            val conversation = conversationService.findById(conversationId)
+                ?: throw IllegalStateException("Conversation not found: $conversationId")
+
+            val aiProvider = AIProvider.valueOf(conversation.aiProvider)
+            val modelName = conversation.modelName
+
+            log.info { "Starting AI squash: type=$squashType, provider=$aiProvider, model=$modelName" }
+
+            val result = messageSquashService.squashWithAI(
+                conversationId = conversationId,
+                selectedIds = selectedIds.toList(),
+                squashType = squashType,
+                aiProvider = aiProvider,
+                modelName = modelName,
+                projectPath = projectPath
+            )
+
+            val squashedContent = listOf(
+                Conversation.Message.ContentItem.UserMessage(result)
+            )
+
+            conversationService.squashMessages(
+                conversationId,
+                selectedIds.toList(),
+                squashedContent
+            )
+
+            clearMessageSelection()
+            loadMessages()
+
+            log.debug { "AI squash completed: type=$squashType, result length=${result.length}" }
+        } catch (e: Exception) {
+            log.error(e) { "Failed to squash messages with AI: $squashType" }
         }
     }
 

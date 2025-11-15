@@ -3,6 +3,7 @@ package com.gromozeka.bot.ui.viewmodel
 import com.gromozeka.bot.platform.ScreenCaptureController
 import com.gromozeka.bot.services.ConversationEngineService
 import com.gromozeka.bot.services.DefaultAgentProvider
+import com.gromozeka.bot.services.MessageSquashService
 import com.gromozeka.bot.services.SettingsService
 import com.gromozeka.bot.services.SoundNotificationService
 import com.gromozeka.bot.settings.AIProvider
@@ -22,6 +23,7 @@ import java.util.*
 open class AppViewModel(
     private val conversationEngineService: ConversationEngineService,
     private val conversationService: ConversationService,
+    private val messageSquashService: MessageSquashService,
     private val soundNotificationService: SoundNotificationService,
     private val settingsService: SettingsService,
     private val scope: CoroutineScope,
@@ -92,6 +94,7 @@ open class AppViewModel(
             projectPath = projectPath,
             conversationEngineService = conversationEngineService,
             conversationService = conversationService,
+            messageSquashService = messageSquashService,
             soundNotificationService = soundNotificationService,
             settingsFlow = settingsService.settingsFlow,
             scope = scope,
@@ -214,6 +217,7 @@ open class AppViewModel(
                     projectPath = tabUiState.projectPath,
                     conversationEngineService = conversationEngineService,
                     conversationService = conversationService,
+                    messageSquashService = messageSquashService,
                     soundNotificationService = soundNotificationService,
                     settingsFlow = settingsService.settingsFlow,
                     scope = scope,
