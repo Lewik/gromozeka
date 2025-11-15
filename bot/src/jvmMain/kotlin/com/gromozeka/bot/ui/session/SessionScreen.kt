@@ -310,8 +310,12 @@ fun SessionScreen(
                             settings = settings,
                             toolResultsMap = toolResultsMap,
                             isSelected = message.id in uiState.selectedMessageIds,
+                            isCollapsed = message.id in uiState.collapsedMessageIds,
                             onToggleSelection = { messageId ->
                                 viewModel.toggleMessageSelection(messageId)
+                            },
+                            onToggleCollapse = { messageId ->
+                                viewModel.toggleMessageCollapse(messageId)
                             },
                             onShowJson = { json -> viewModel.jsonToShow = json },
                             onSpeakRequest = { text, tone ->

@@ -18,8 +18,10 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import com.gromozeka.bot.settings.Settings
 import com.gromozeka.bot.ui.CompactButton
+import com.gromozeka.bot.ui.CompactButtonDefaults
 import com.gromozeka.bot.ui.GromozekaMarkdown
 import com.gromozeka.bot.ui.LocalTranslation
+import com.gromozeka.bot.ui.OptionalTooltip
 import com.gromozeka.bot.utils.jsonPrettyPrint
 import com.gromozeka.shared.domain.Conversation
 
@@ -29,7 +31,9 @@ fun MessageItem(
     settings: Settings,
     toolResultsMap: Map<String, Conversation.Message.ContentItem.ToolResult>,
     isSelected: Boolean = false,
+    isCollapsed: Boolean = false,
     onToggleSelection: (Conversation.Message.Id) -> Unit = {},
+    onToggleCollapse: (Conversation.Message.Id) -> Unit = {},
     onShowJson: (String) -> Unit = {},
     onSpeakRequest: (String, String) -> Unit = { _, _ -> },
     onEditRequest: (Conversation.Message.Id) -> Unit = {},
@@ -99,16 +103,7 @@ fun MessageItem(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        // Selection checkbox (leftmost)
-        DisableSelection {
-            Checkbox(
-                checked = isSelected,
-                onCheckedChange = { onToggleSelection(message.id) },
-                modifier = Modifier.align(Alignment.CenterVertically)
-            )
-        }
-
-        // Metadata button (left, fixed width) with context menu
+        // Metadata button with checkbox (left, fixed width) with context menu
         DisableSelection {
             val clipboardManager = LocalClipboardManager.current
 
@@ -152,33 +147,61 @@ fun MessageItem(
                     }
                 }
             ) {
-                CompactButton(
-                    onClick = { },
-                    tooltip = tooltipText,
-                    modifier = Modifier.pointerHoverIcon(PointerIcon.Hand)
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            roleIcon,
-                            contentDescription = message.role.name
-                        )
-
-                        // Content type icons
-                        if (hasContentIcons) {
-                            contentIcons.forEach { contentIcon ->
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Icon(
-                                    contentIcon,
-                                    contentDescription = "Content type"
+                val hasThinking = message.content.any { it is Conversation.Message.ContentItem.Thinking }
+                
+                OptionalTooltip(tooltipText) {
+                    Surface(
+                        modifier = Modifier
+                            .combinedClickable(
+                                onClick = { onToggleCollapse(message.id) },
+                                onDoubleClick = {
+                                    if (!hasThinking) {
+                                        onEditRequest(message.id)
+                                    }
+                                }
+                            )
+                            .pointerHoverIcon(PointerIcon.Hand),
+                        shape = MaterialTheme.shapes.small,
+                        color = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(CompactButtonDefaults.ContentPadding),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Checkbox(
+                                checked = isSelected,
+                                onCheckedChange = { onToggleSelection(message.id) },
+                                modifier = Modifier.size(24.dp),
+                                colors = CheckboxDefaults.colors(
+                                    checkedColor = LocalContentColor.current,
+                                    uncheckedColor = LocalContentColor.current.copy(alpha = 0.6f),
+                                    checkmarkColor = MaterialTheme.colorScheme.surface
                                 )
-                            }
-                        } else {
-                            // Default chat bubble icon
+                            )
                             Spacer(modifier = Modifier.width(4.dp))
                             Icon(
-                                Icons.Default.ChatBubbleOutline,
-                                contentDescription = "Message"
+                                roleIcon,
+                                contentDescription = message.role.name
                             )
+
+                            // Content type icons
+                            if (hasContentIcons) {
+                                contentIcons.forEach { contentIcon ->
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Icon(
+                                        contentIcon,
+                                        contentDescription = "Content type"
+                                    )
+                                }
+                            } else {
+                                // Default chat bubble icon
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Icon(
+                                    Icons.Default.ChatBubbleOutline,
+                                    contentDescription = "Message"
+                                )
+                            }
                         }
                     }
                 }
@@ -201,8 +224,9 @@ fun MessageItem(
                 .padding(horizontal = if (hasToolCalls) 0.dp else 4.dp),
             verticalArrangement = Arrangement.Center
         ) {
-            message.content.forEach { content ->
-                when (content) {
+            if (!isCollapsed) {
+                message.content.forEach { content ->
+                    when (content) {
                     is Conversation.Message.ContentItem.UserMessage -> {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
@@ -311,6 +335,7 @@ fun MessageItem(
                         Text(text = LocalTranslation.current.parseErrorText)
                     }
                 }
+            }
             }
         }
     }

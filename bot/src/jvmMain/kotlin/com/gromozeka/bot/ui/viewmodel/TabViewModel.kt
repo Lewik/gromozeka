@@ -339,6 +339,18 @@ class TabViewModel(
         }
     }
 
+    fun toggleMessageCollapse(messageId: Conversation.Message.Id) {
+        _uiState.update { currentState ->
+            val collapsedIds = currentState.collapsedMessageIds
+            val newCollapsedIds = if (messageId in collapsedIds) {
+                collapsedIds - messageId
+            } else {
+                collapsedIds + messageId
+            }
+            currentState.copy(collapsedMessageIds = newCollapsedIds)
+        }
+    }
+
     fun clearMessageSelection() {
         _uiState.update { it.copy(selectedMessageIds = emptySet()) }
     }

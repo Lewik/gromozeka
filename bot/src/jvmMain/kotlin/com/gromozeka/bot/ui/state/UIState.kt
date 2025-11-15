@@ -49,6 +49,7 @@ data class UIState(
 
         // Message editing state
         val selectedMessageIds: Set<Conversation.Message.Id> = emptySet(),
+        val collapsedMessageIds: Set<Conversation.Message.Id> = emptySet(),
         val editingMessageId: Conversation.Message.Id? = null,
         val editingMessageText: String = "",
     )
