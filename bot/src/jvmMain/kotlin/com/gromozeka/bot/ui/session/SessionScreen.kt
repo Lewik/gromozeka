@@ -43,6 +43,13 @@ fun SessionScreen(
     showSettingsPanel: Boolean,
     onShowSettingsPanelChange: (Boolean) -> Unit,
 
+    // Tab Prompts Panel
+    tabPromptService: com.gromozeka.bot.services.TabPromptService,
+    customPrompts: List<String>,
+    onCustomPromptsChange: (List<String>) -> Unit,
+    showPromptsPanel: Boolean,
+    onShowPromptsPanelChange: (Boolean) -> Unit,
+
     // Context extraction
     onExtractContexts: (() -> Unit)? = null,
 
@@ -290,6 +297,16 @@ fun SessionScreen(
                             Spacer(modifier = Modifier.width(8.dp))
                         }
 
+                        // Tab Prompts button
+                        CompactButton(
+                            onClick = { onShowPromptsPanelChange(!showPromptsPanel) },
+                            tooltip = "Tab Prompts"
+                        ) {
+                            Icon(Icons.Default.Description, contentDescription = "Tab Prompts")
+                        }
+
+                        Spacer(modifier = Modifier.width(8.dp))
+
                         // Settings button
                         CompactButton(
                             onClick = { onShowSettingsPanelChange(!showSettingsPanel) },
@@ -525,6 +542,15 @@ fun SessionScreen(
                 }
             }
         }
+
+        // Tab Prompts Panel (tab-specific)
+        com.gromozeka.bot.ui.TabPromptsPanel(
+            isVisible = showPromptsPanel,
+            customPrompts = customPrompts,
+            onCustomPromptsChange = onCustomPromptsChange,
+            onClose = { onShowPromptsPanelChange(false) },
+            tabPromptService = tabPromptService
+        )
 
         // SettingsPanel moved to ChatApplication level for consistency
     }

@@ -59,6 +59,7 @@ fun ApplicationScope.ChatWindow(
     conversationTreeService: com.gromozeka.shared.services.ConversationService,
     conversationSearchViewModel: com.gromozeka.bot.ui.viewmodel.ConversationSearchViewModel,
     loadingViewModel: com.gromozeka.bot.ui.viewmodel.LoadingViewModel,
+    tabPromptService: TabPromptService,
 ) {
     val log = KLoggers.logger("ChatWindow")
     val coroutineScope = rememberCoroutineScope()
@@ -85,6 +86,8 @@ fun ApplicationScope.ChatWindow(
     val currentTab by appViewModel.currentTab.collectAsState()
     var showSettingsPanel by remember { mutableStateOf(false) }
     var showContextsPanel by remember { mutableStateOf(false) }
+    var showPromptsPanel by remember { mutableStateOf(false) }
+    var customPrompts by remember { mutableStateOf(emptyList<String>()) }
     var refreshTrigger by remember { mutableStateOf(0) }
 
     var renameDialogOpen by remember { mutableStateOf(false) }
@@ -399,6 +402,12 @@ fun ApplicationScope.ChatWindow(
                                                         }
                                                     }
                                                 } else null,
+
+                                                tabPromptService = tabPromptService,
+                                                customPrompts = customPrompts,
+                                                onCustomPromptsChange = { customPrompts = it },
+                                                showPromptsPanel = showPromptsPanel,
+                                                onShowPromptsPanelChange = { showPromptsPanel = it },
 
                                                 isDev = settingsService.mode == AppMode.DEV,
                                             )

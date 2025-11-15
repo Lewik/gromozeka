@@ -50,7 +50,7 @@ Domain defines interface:
 ```kotlin
 // domain/service/ThreadDataService.kt
 interface ThreadDataService {
-    suspend fun findById(id: String): Thread?
+    suspend fun findById(id: Thread.Id): Thread?
     suspend fun create(thread: Thread): Thread
 }
 ```
@@ -62,9 +62,9 @@ You implement it:
 class ExposedThreadDataService(
     private val jpaRepo: ThreadJpaRepository  // Private Spring Data repo
 ) : ThreadDataService {
-    
-    override suspend fun findById(id: String): Thread? = withContext(Dispatchers.IO) {
-        jpaRepo.findById(id).orElse(null)?.toDomain()
+
+    override suspend fun findById(id: Thread.Id): Thread? = withContext(Dispatchers.IO) {
+        jpaRepo.findById(id.value).orElse(null)?.toDomain()
     }
     
     override suspend fun create(thread: Thread): Thread = withContext(Dispatchers.IO) {

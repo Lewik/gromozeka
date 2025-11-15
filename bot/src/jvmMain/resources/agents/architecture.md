@@ -41,14 +41,17 @@ domain/
 ```kotlin
 // domain/model/Thread.kt
 data class Thread(
-    val id: String,
+    val id: Id,
     val title: String,
     val createdAt: Instant
-)
+) {
+    @JvmInline
+    value class Id(val value: String)
+}
 
 // domain/service/ThreadDataService.kt
 interface ThreadDataService {
-    suspend fun findById(id: String): Thread?
+    suspend fun findById(id: Thread.Id): Thread?
     suspend fun create(thread: Thread): Thread
     suspend fun findAll(): List<Thread>
 }
@@ -59,7 +62,7 @@ interface ThreadDataService {
 ---
 
 ### 2. Application Layer
-
+]
 **Module:** `:application`
 **Agent:** Business Logic Agent
 **Spring:** YES (`@Service`)
@@ -149,15 +152,15 @@ internal object ThreadsTable : Table("threads") {
 // Public DataService implementation
 @Service
 class ExposedThreadDataService : ThreadDataService {
-    override suspend fun findById(id: String): Thread? = dbQuery {
-        ThreadsTable.select { ThreadsTable.id eq id }
+    override suspend fun findById(id: Thread.Id): Thread? = dbQuery {
+        ThreadsTable.select { ThreadsTable.id eq id.value }
             .map { it.toThread() }
             .singleOrNull()
     }
 
     override suspend fun create(thread: Thread): Thread = dbQuery {
         ThreadsTable.insert {
-            it[id] = thread.id
+            it[id] = thread.id.value
             it[title] = thread.title
             it[createdAt] = thread.createdAt.toEpochMilliseconds()
         }
@@ -246,7 +249,7 @@ presentation/
 ```kotlin
 // Domain: Architect defines this
 interface ThreadDataService {
-    suspend fun findById(id: String): Thread?
+    suspend fun findById(id: Thread.Id): Thread?
 }
 
 // Infrastructure: DataServices Agent implements this
@@ -254,8 +257,8 @@ internal object ThreadsTable : Table("threads") { ... }  // Private Exposed Tabl
 
 @Service
 class ExposedThreadDataService : ThreadDataService {  // Public implementation
-    override suspend fun findById(id: String) = dbQuery {
-        ThreadsTable.select { ThreadsTable.id eq id }...
+    override suspend fun findById(id: Thread.Id) = dbQuery {
+        ThreadsTable.select { ThreadsTable.id eq id.value }...
     }
 }
 ```
@@ -275,7 +278,7 @@ Both refer to services in `:application` module that coordinate multiple DataSer
 ```kotlin
 // Pure Kotlin interfaces and data classes
 interface ThreadDataService {  // No @Service!
-    suspend fun findById(id: String): Thread?
+    suspend fun findById(id: Thread.Id): Thread?
 }
 ```
 
@@ -391,13 +394,3 @@ presentation/utils/           - UI-specific utilities
 6. **Each module is independent** - Can be compiled separately
 7. **DI wiring is automatic** - Spring finds implementations by interface
 
----
-
-## For Meta-Agent
-
-When creating agents for this project:
-- Reference this architecture document
-- Ensure agents understand their layer responsibilities
-- Include module scope in agent prompts
-- Specify which directories agent can read/write
-- Clarify Spring usage per layer

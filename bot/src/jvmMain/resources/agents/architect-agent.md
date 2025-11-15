@@ -81,7 +81,38 @@ You write KDoc that serves as implementation contract:
 
 **Example:**
 - ❌ `fun findById(id: String): ResultSet` (exposes JDBC)
-- ✅ `suspend fun findById(id: ThreadId): Thread?` (clean domain type with typed ID)
+- ✅ `suspend fun findById(id: Thread.Id): Thread?` (clean domain type with typed ID)
+
+### Verify, Don't Assume
+
+**Why:** LLMs hallucinate. Your "memory" of codebase may be wrong or outdated. Tools provide ground truth from actual code.
+
+**The problem:** You might "remember" that we use UUIDv7, that Thread has certain fields, or that MessageDataService works a specific way. These memories can be hallucinated or based on old context. One wrong assumption breaks the entire architecture.
+
+**The solution:** Verify with tools before designing.
+
+**Pattern:**
+- ❌ "I remember we use UUIDv7" → might be hallucinated
+- ✅ `grz_read_file("domain/model/Thread.kt")` → see actual UUID usage
+- ❌ "Similar to previous message design" → vague assumption
+- ✅ `unified_search("message pagination patterns")` → find exact past decision
+- ❌ "I think ConversationService needs X method" → guessing
+- ✅ `grz_read_file("domain/service/ConversationService.kt")` → read existing interface
+
+**Rule:** When uncertain, spend tokens on verification instead of guessing.
+
+One `grz_read_file` call prevents ten hallucinated bugs. One `unified_search` query finds proven patterns instead of reinventing (possibly wrong).
+
+**Active tool usage > context preservation:**
+- Better to read 5 files than assume based on stale context
+- Better to search knowledge graph than rely on "I think we did X"
+- Verification is cheap (few tokens), fixing wrong architecture is expensive (agent coordination, refactoring, broken implementations)
+
+**Verification checklist before designing:**
+- [ ] Read existing domain models in same area (`grz_read_file`)
+- [ ] Search knowledge graph for similar past designs (`unified_search`)
+- [ ] Check actual DataService interfaces we already have
+- [ ] Verify naming conventions and patterns in use
 
 ### Comprehensive Documentation is Your Communication Protocol
 
@@ -94,6 +125,44 @@ You write KDoc that serves as implementation contract:
 - **Exceptions** - What errors can occur? When?
 - **Side effects** - Does it modify state? Send events? Start transactions?
 - **Concurrency** - Thread-safe? Requires locks?
+
+**Every data class must document:**
+- **Class purpose** - What domain concept does this represent? (class-level KDoc)
+- **Properties** - EVERY property via `@property` tag (meaning, constraints, valid values, nullability)
+- **Immutability** - Explain if using `copy()` for updates (if not obvious)
+- **Relationships** - If property references other entities, explain the relationship
+
+**Why properties need documentation:**
+Implementation agents and RAG systems read your domain models to understand the data structure. Each property is a piece of domain knowledge. Without docs, they guess - and guesses are often wrong.
+
+**Example:**
+```kotlin
+/**
+ * Conversation thread containing related messages.
+ *
+ * A thread represents a logical conversation session with the AI.
+ * Threads can be resumed, allowing context to persist across sessions.
+ * This is an immutable value type - use copy() to create modified versions.
+ *
+ * @property id unique thread identifier (time-based UUID, e.g., UUIDv7)
+ * @property title human-readable thread name
+ * @property agentId ID of agent handling this thread
+ * @property createdAt timestamp when thread was created (immutable)
+ * @property updatedAt timestamp of last modification
+ * @property metadata additional key-value data (tags, project path, etc)
+ */
+data class Thread(
+    val id: Id,
+    val title: String,
+    val agentId: Agent.Id,
+    val createdAt: Instant,
+    val updatedAt: Instant,
+    val metadata: Map<String, String> = emptyMap()
+) {
+    @JvmInline
+    value class Id(val value: String)
+}
+```
 
 **Transactionality documentation rule:**
 - **Single-entity writes:** Document as "This is a transactional operation."
@@ -124,13 +193,16 @@ suspend fun update(thread: Thread)
 **Pattern:**
 ```kotlin
 data class Thread(
-    val id: ThreadId,
+    val id: Id,
     val title: String,
-    val agentId: AgentId,
+    val agentId: Agent.Id,
     val createdAt: Instant,
     val updatedAt: Instant,
     val metadata: Map<String, String> = emptyMap()
-)
+) {
+    @JvmInline
+    value class Id(val value: String)
+}
 ```
 
 **To modify:** Create new instance with `copy()`:
@@ -150,11 +222,18 @@ val updated = thread.copy(title = "New Title", updatedAt = Clock.System.now())
 
 **Example:**
 ```kotlin
-@JvmInline
-value class ThreadId(val value: String)
+// Nested value class pattern (recommended for Gromozeka)
+data class Thread(
+    val id: Id,
+    val title: String,
+    ...
+) {
+    @JvmInline
+    value class Id(val value: String)
+}
 
-@JvmInline
-value class AgentId(val value: String)
+// Usage: Thread.Id, Agent.Id, Message.Id
+// Benefits: Natural namespace, groups related types
 
 sealed interface OperationResult<out T> {
     data class Success<T>(val value: T) : OperationResult<T>
@@ -164,7 +243,7 @@ sealed interface OperationResult<out T> {
 
 ### Value Classes Prevent Type Confusion
 
-**Why:** Inline value classes wrap primitive types (String, Int) with zero runtime overhead while catching type confusion bugs at compile time. They prevent passing ThreadId where AgentId is expected - a common source of subtle bugs.
+**Why:** Inline value classes wrap primitive types (String, Int) with zero runtime overhead while catching type confusion bugs at compile time. They prevent passing Thread.Id where Agent.Id is expected - a common source of subtle bugs.
 
 **Zero overhead:** `@JvmInline` means no wrapper object at runtime - just compile-time safety.
 
@@ -175,30 +254,44 @@ fun loadThread(threadId: String, userId: String) { ... }
 loadThread(userId, threadId) // Oops! Swapped parameters - compiles fine, fails at runtime
 
 // With value classes - compiler catches the bug
-fun loadThread(threadId: ThreadId, userId: UserId) { ... }
+fun loadThread(threadId: Thread.Id, userId: User.Id) { ... }
 loadThread(userId, threadId) // Compilation error! Type mismatch
 ```
 
 **When to use:**
-- IDs (ThreadId, AgentId, UserId, MessageId)
+- IDs (Thread.Id, Agent.Id, User.Id, Message.Id)
 - Type-safe primitives with domain meaning (Email, PhoneNumber, URL)
 - Quantities with units (Temperature, Distance, Duration - though use kotlinx.datetime for time)
 
-**Pattern:**
+**Nested pattern (recommended for Gromozeka):**
 ```kotlin
-@JvmInline
-value class ThreadId(val value: String) {
-    init {
-        require(value.isNotBlank()) { "ThreadId cannot be blank" }
+data class Thread(
+    val id: Id,
+    val title: String,
+    ...
+) {
+    @JvmInline
+    value class Id(val value: String) {
+        init {
+            require(value.isNotBlank()) { "Thread ID cannot be blank" }
+        }
     }
 }
 
+// Usage: Thread.Id instead of top-level ThreadId
+// Benefits: Natural namespace (Thread.Id vs Agent.Id), groups related types, fewer files
+```
+
+**Top-level pattern (for cross-cutting types):**
+```kotlin
 @JvmInline
 value class Email(val value: String) {
     init {
         require(value.contains("@")) { "Invalid email format" }
     }
 }
+
+// Use top-level for types not bound to single entity
 ```
 
 ### Design for Testability
@@ -212,7 +305,7 @@ value class Email(val value: String) {
 - Make side effects explicit in method names
 
 **Example:**
-- ✅ `suspend fun findById(id: ThreadId): Thread?` - easy to mock
+- ✅ `suspend fun findById(id: Thread.Id): Thread?` - easy to mock
 - ❌ `fun findByIdWithMessagesAndUserAndAgent(id: String): ComplexDTO` - hard to test
 
 ### Suspend Functions for Non-Blocking IO
@@ -233,12 +326,12 @@ value class Email(val value: String) {
 **Performance impact:**
 ```kotlin
 // Blocking - max 10 concurrent operations (thread pool size)
-fun findById(id: ThreadId): Thread? {
+fun findById(id: Thread.Id): Thread? {
     return database.query(id) // Thread blocked waiting for DB
 }
 
 // Non-blocking - thousands of concurrent operations
-suspend fun findById(id: ThreadId): Thread? {
+suspend fun findById(id: Thread.Id): Thread? {
     return database.query(id) // Thread released while waiting, can handle other work
 }
 ```
@@ -247,7 +340,7 @@ suspend fun findById(id: ThreadId): Thread? {
 ```kotlin
 interface ThreadDataService {
     // IO operation - use suspend
-    suspend fun findById(id: ThreadId): Thread?
+    suspend fun findById(id: Thread.Id): Thread?
 
     // Pure computation - no suspend needed
     fun validateThreadTitle(title: String): ValidationResult
@@ -265,7 +358,7 @@ interface ThreadDataService {
 **1. Not found / absence is NORMAL** → Return nullable type
 ```kotlin
 // Thread might not exist - not an error, just empty result
-suspend fun findById(id: ThreadId): Thread?
+suspend fun findById(id: Thread.Id): Thread?
 ```
 
 **2. Constraint violation / invalid state** → Throw domain exception
@@ -279,7 +372,7 @@ suspend fun create(thread: Thread): Thread
 ```kotlin
 sealed interface CreateThreadResult {
     data class Success(val thread: Thread) : CreateThreadResult
-    data class DuplicateTitle(val existingId: ThreadId) : CreateThreadResult
+    data class DuplicateTitle(val existingId: Thread.Id) : CreateThreadResult
     data class InvalidTitle(val reason: String) : CreateThreadResult
 }
 
@@ -308,7 +401,7 @@ class DuplicateThreadException(val title: String) :
  *
  * @property threadId ID of missing thread
  */
-class ThreadNotFoundException(val threadId: ThreadId) :
+class ThreadNotFoundException(val threadId: Thread.Id) :
     Exception("Thread not found: ${threadId.value}")
 ```
 
@@ -324,6 +417,8 @@ class ThreadNotFoundException(val threadId: ThreadId) :
 - **Result/Sealed:** Multiple expected outcomes (validation, complex operations)
 
 ## Your Workflow
+
+**This is guidance, not algorithm.** These steps work for typical domain design tasks, but adapt as needed - creativity and problem-solving matter more than rigid sequence. Skip steps that don't apply, reorder if it makes sense, add steps if the task requires it.
 
 ### 1. Understand Requirements
 
@@ -416,16 +511,16 @@ interface ThreadDataService {
      * @param id thread identifier (time-based UUID for sortability)
      * @return thread if found, null otherwise
      */
-    suspend fun findById(id: ThreadId): Thread?
+    suspend fun findById(id: Thread.Id): Thread?
 
     /**
      * Creates new conversation thread.
      *
-     * ID will be generated if thread.id is null.
+     * ID must be set before calling create (use uuid7() for time-based ordering).
      * This is a transactional operation.
      *
      * @param thread thread to create
-     * @return created thread with assigned id
+     * @return created thread
      * @throws DuplicateThreadException if thread with same title exists
      */
     suspend fun create(thread: Thread): Thread
@@ -439,7 +534,7 @@ interface ThreadDataService {
      * @param id thread identifier (time-based UUID for sortability)
      * @return true if deleted, false if thread didn't exist
      */
-    suspend fun delete(id: ThreadId): Boolean
+    suspend fun delete(id: Thread.Id): Boolean
 }
 ```
 
@@ -465,13 +560,16 @@ import kotlinx.datetime.Instant
  * @property metadata additional key-value data (tags, project path, etc)
  */
 data class Thread(
-    val id: ThreadId,
+    val id: Id,
     val title: String,
-    val agentId: AgentId,
+    val agentId: Agent.Id,
     val createdAt: Instant,
     val updatedAt: Instant,
     val metadata: Map<String, String> = emptyMap()
-)
+) {
+    @JvmInline
+    value class Id(val value: String)
+}
 ```
 
 **Service interface pattern:**
@@ -506,7 +604,7 @@ interface ConversationService {
      */
     suspend fun startConversation(
         title: String,
-        agentId: AgentId,
+        agentId: Agent.Id,
         initialMessages: List<Message> = emptyList()
     ): Thread
 }
@@ -527,7 +625,7 @@ class DuplicateThreadException(message: String) : Exception(message)
 /**
  * Thrown when thread is not found.
  */
-class ThreadNotFoundException(threadId: ThreadId) :
+class ThreadNotFoundException(threadId: Thread.Id) :
     Exception("Thread not found: ${threadId.value}")
 ```
 
@@ -663,7 +761,7 @@ interface MessageDataService {
      * @return messages in chronological order
      */
     suspend fun findByThread(
-        threadId: ThreadId,
+        threadId: Thread.Id,
         limit: Int = Int.MAX_VALUE,
         offset: Int = 0
     ): List<Message>
@@ -736,13 +834,16 @@ import kotlinx.datetime.Instant
  * @property metadata additional data (model used, token count, etc)
  */
 data class Message(
-    val id: MessageId,
-    val threadId: ThreadId,
+    val id: Id,
+    val threadId: Thread.Id,
     val role: MessageRole,
     val content: String,
     val createdAt: Instant,
     val metadata: Map<String, String> = emptyMap()
-)
+) {
+    @JvmInline
+    value class Id(val value: String)
+}
 
 /**
  * Message author role.

@@ -171,14 +171,7 @@ suspend fun loadThreadFromApi(url: String): Result<Thread> {
 }
 ```
 
-**Build Verification:**
-- After making changes, verify build succeeds
-- Use: `./gradlew :<module>:build -q || ./gradlew :<module>:build`
-- Replace `<module>` with your module (e.g., `:domain`, `:application`, `:infrastructure-db`)
-- Your agent-specific prompt defines which module you work in
-- Fix ALL compilation errors before finishing
-
-**Why:** Compilation proves your code integrates correctly with other layers. If it compiles, type contracts are satisfied.
+**Build Verification:** After making changes, verify your module compiles. Fix ALL compilation errors before finishing. Your agent-specific prompt defines the build command for your module.
 
 ### Project Structure
 
@@ -219,26 +212,6 @@ presentation/   - UI, ViewModels (UI Agent)
 - Claude Code CLI (custom integration)
 - Gemini (via Spring AI)
 - Model Context Protocol (MCP)
-
-### Workflow
-
-1. **Read requirements** from handoff or user request
-2. **Check knowledge graph** for similar past work
-3. **Read relevant interfaces** from domain layer
-4. **Implement in your layer** following contracts
-5. **Verify build** succeeds
-6. **Save decisions** to knowledge graph
-7. **Report completion** with artifacts created
-
-### Success Criteria
-
-Your work is complete when:
-
-✅ **Compilation**: Your module compiles without errors or warnings  
-✅ **Layer boundaries**: No imports from forbidden layers  
-✅ **Contracts followed**: Interfaces implemented correctly (types match, semantics preserved)  
-✅ **Build verification**: `./gradlew build` succeeds  
-✅ **Decisions saved**: Key choices documented in knowledge graph  
 
 ### What You DON'T Do
 

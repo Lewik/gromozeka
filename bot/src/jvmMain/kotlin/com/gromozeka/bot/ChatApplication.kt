@@ -167,7 +167,8 @@ fun main() {
             projectService = context.getBean(),
             conversationService = context.getBean(),
             conversationSearchViewModel = context.getBean(),
-            loadingViewModel = context.getBean()
+            loadingViewModel = context.getBean(),
+            tabPromptService = context.getBean()
         )
 
     } catch (e: Throwable) {
@@ -207,7 +208,8 @@ fun main() {
                         appComponents.projectService,
                         appComponents.conversationService,
                         appComponents.conversationSearchViewModel,
-                        appComponents.loadingViewModel
+                        appComponents.loadingViewModel,
+                        appComponents.tabPromptService
                     )
                 }
             }
@@ -234,7 +236,8 @@ data class AppComponents(
     val projectService: com.gromozeka.shared.services.ProjectService,
     val conversationService: com.gromozeka.shared.services.ConversationService,
     val conversationSearchViewModel: com.gromozeka.bot.ui.viewmodel.ConversationSearchViewModel,
-    val loadingViewModel: com.gromozeka.bot.ui.viewmodel.LoadingViewModel
+    val loadingViewModel: com.gromozeka.bot.ui.viewmodel.LoadingViewModel,
+    val tabPromptService: TabPromptService
 )
 
 /**

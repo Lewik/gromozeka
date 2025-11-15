@@ -65,30 +65,28 @@ import java.util.UUID
 
 class ExposedThreadRepository : ThreadRepository {
 
-    override suspend fun findById(id: String): Thread? = transaction {
+    override suspend fun findById(id: Thread.Id): Thread? = transaction {
         Threads
             .selectAll()
-            .where { Threads.id eq UUID.fromString(id) }
+            .where { Threads.id eq UUID.fromString(id.value) }
             .singleOrNull()
             ?.let { rowToThread(it) }
     }
 
     override suspend fun create(thread: Thread): Thread = transaction {
-        val id = thread.id.ifEmpty { UUID.randomUUID().toString() }
-
         Threads.insert {
-            it[Threads.id] = UUID.fromString(id)
+            it[Threads.id] = UUID.fromString(thread.id.value)
             it[title] = thread.title
-            it[agentId] = thread.agentId
+            it[agentId] = thread.agentId.value
             it[createdAt] = thread.createdAt
             it[updatedAt] = thread.updatedAt
         }
 
-        thread.copy(id = id)
+        thread
     }
 
     override suspend fun update(thread: Thread) = transaction {
-        val updated = Threads.update({ Threads.id eq UUID.fromString(thread.id) }) {
+        val updated = Threads.update({ Threads.id eq UUID.fromString(thread.id.value) }) {
             it[title] = thread.title
             it[updatedAt] = thread.updatedAt
         }
@@ -98,12 +96,12 @@ class ExposedThreadRepository : ThreadRepository {
         }
     }
 
-    override suspend fun delete(id: String): Boolean = transaction {
-        Threads.deleteWhere { Threads.id eq UUID.fromString(id) } > 0
+    override suspend fun delete(id: Thread.Id): Boolean = transaction {
+        Threads.deleteWhere { Threads.id eq UUID.fromString(id.value) } > 0
     }
 
     private fun rowToThread(row: ResultRow): Thread = Thread(
-        id = row[Threads.id].toString(),
+        id = Thread.Id(row[Threads.id].toString()),
         title = row[Threads.title],
         agentId = row[Threads.agentId],
         createdAt = row[Threads.createdAt],
@@ -192,10 +190,10 @@ override suspend fun findAll(limit: Int, offset: Int): List<Thread> = transactio
 ### Filtering
 
 ```kotlin
-override suspend fun findByAgentId(agentId: String): List<Thread> = transaction {
+override suspend fun findByAgentId(agentId: Agent.Id): List<Thread> = transaction {
     Threads
         .selectAll()
-        .where { Threads.agentId eq agentId }
+        .where { Threads.agentId eq agentId.value }
         .map { rowToThread(it) }
 }
 ```
@@ -324,7 +322,7 @@ override suspend fun create(thread: Thread): Thread = transaction {
 ### ❌ Bad - Inefficient Query
 
 ```kotlin
-override suspend fun findByAgentId(agentId: String): List<Thread> = transaction {
+override suspend fun findByAgentId(agentId: Agent.Id): List<Thread> = transaction {
     // BAD: fetches all, filters in memory
     Threads.selectAll().map { rowToThread(it) }.filter { it.agentId == agentId }
 }
@@ -333,9 +331,9 @@ override suspend fun findByAgentId(agentId: String): List<Thread> = transaction 
 ### ✅ Good - Database Filtering
 
 ```kotlin
-override suspend fun findByAgentId(agentId: String): List<Thread> = transaction {
+override suspend fun findByAgentId(agentId: Agent.Id): List<Thread> = transaction {
     // GOOD: filters in database
-    Threads.selectAll().where { Threads.agentId eq agentId }.map { rowToThread(it) }
+    Threads.selectAll().where { Threads.agentId eq agentId.value }.map { rowToThread(it) }
 }
 ```
 

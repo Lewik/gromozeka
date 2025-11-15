@@ -57,13 +57,6 @@ Agents communicate through typed Kotlin interfaces and comprehensive KDoc, not t
 
 **Key Trait:** Focuses on UX, delegates all logic to ViewModels
 
-### 6. Migration Agent (`migration-agent.md`)
-**Responsibility:** Refactor existing code to new architecture
-
-**Authority:** Can read/write ALL layers (special permission during migration)
-
-**Key Trait:** Incremental migration, keeps app working
-
 ## Communication Protocol
 
 ### Code-as-Contract
@@ -81,7 +74,7 @@ package com.gromozeka.bot.domain.repository
  * - Return null from findById if thread doesn't exist
  */
 interface ThreadRepository {
-    suspend fun findById(id: String): Thread?
+    suspend fun findById(id: Thread.Id): Thread?
     suspend fun create(thread: Thread): Thread
 }
 
@@ -89,7 +82,7 @@ interface ThreadRepository {
 package com.gromozeka.bot.infrastructure.persistence.exposed
 
 class ExposedThreadRepository : ThreadRepository {
-    override suspend fun findById(id: String): Thread? = transaction {
+    override suspend fun findById(id: Thread.Id): Thread? = transaction {
         // Implementation follows contract exactly
     }
 }
@@ -148,14 +141,17 @@ This physically prevents layer violations.
 ```kotlin
 // domain/model/Note.kt
 data class Note(
-    val id: String,
+    val id: Id,
     val content: String,
     val createdAt: Instant
-)
+) {
+    @JvmInline
+    value class Id(val value: String)
+}
 
 // domain/repository/NoteRepository.kt
 interface NoteRepository {
-    suspend fun findById(id: String): Note?
+    suspend fun findById(id: Note.Id): Note?
     suspend fun create(note: Note): Note
     suspend fun findAll(): List<Note>
 }
@@ -176,8 +172,8 @@ Reads `domain/repository/NoteRepository.kt`, implements:
 ```kotlin
 // infrastructure/persistence/exposed/ExposedNoteRepository.kt
 class ExposedNoteRepository : NoteRepository {
-    override suspend fun findById(id: String): Note? = transaction {
-        Notes.selectAll().where { Notes.id eq UUID.fromString(id) }
+    override suspend fun findById(id: Note.Id): Note? = transaction {
+        Notes.selectAll().where { Notes.id eq UUID.fromString(id.value) }
             .singleOrNull()?.let { rowToNote(it) }
     }
     // ... other methods
@@ -313,13 +309,6 @@ This prevents scope creep and layer violations.
 2. Then layer-specific agents (implement in parallel)
 3. UI Agent last (depends on all layers)
 
-### For Refactoring Existing Code
-
-1. Use Migration Agent
-2. Extract interfaces first
-3. Move implementations to correct layers
-4. Verify build after each step
-
 ## Future: Orchestrator
 
 **Planned:** Orchestrator agent to coordinate workflow automatically
@@ -347,14 +336,18 @@ Orchestrator:
 
 ```
 docs/agents/
-├── README.md                    # This file
-├── shared-base.md              # Common rules for all agents
-├── architect-agent.md          # Interface and model design
-├── data-layer-agent.md         # Repository implementations
-├── business-logic-agent.md     # Service implementations
-├── infrastructure-agent.md     # External integrations
-├── ui-agent.md                 # Compose Desktop UI
-└── migration-agent.md          # Refactoring existing code
+├── agent-builder.md             # Universal - Meta-agent for creating agents
+└── gromozeka/
+    ├── README.md                    # This file
+    ├── architect-agent.md           # Domain interfaces and model design
+    ├── architecture.md              # Gromozeka Clean Architecture
+    ├── shared-base.md               # Common rules for all Gromozeka agents
+    ├── data-layer-agent.md          # Repository implementations
+    ├── data-services-agent.md       # DataService implementations
+    ├── business-logic-agent.md      # Service implementations
+    ├── infrastructure-agent.md      # External integrations
+    ├── spring-ai-agent.md           # Spring AI & MCP integrations
+    └── ui-agent.md                  # Compose Desktop UI
 ```
 
 Each agent prompt is self-contained and includes:
