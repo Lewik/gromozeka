@@ -85,7 +85,9 @@ class BuiltInTools {
         val function = object : BiFunction<ExecuteCommandParams, ToolContext?, Map<String, Any>> {
             override fun apply(request: ExecuteCommandParams, context: ToolContext?): Map<String, Any> {
                 val result = try {
-                    val workingDir = request.working_directory?.let { File(it) } ?: File(System.getProperty("user.dir"))
+                    val projectPath = context?.getContext()?.get("projectPath") as? String
+                        ?: error("Project path is required in tool context - this is a bug!")
+                    val workingDir = request.working_directory?.let { File(it) } ?: File(projectPath)
 
                     logger.debug("Executing: ${request.command} in ${workingDir.absolutePath}")
 

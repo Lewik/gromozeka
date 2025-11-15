@@ -64,7 +64,7 @@ class ConversationEngineService(
      * Collect all available tools for user-controlled tool execution.
      * Tools are passed in runtime options to ToolCallingManager.
      */
-    private fun collectToolOptions(): ChatOptions {
+    private fun collectToolOptions(projectPath: String?): ChatOptions {
         val allCallbacks = mutableListOf<org.springframework.ai.tool.ToolCallback>()
         val allNames = mutableSetOf<String>()
 
@@ -85,6 +85,7 @@ class ConversationEngineService(
             .toolCallbacks(allCallbacks)
             .toolNames(allNames)
             .internalToolExecutionEnabled(false)
+            .toolContext(mapOf("projectPath" to projectPath))
             .build()
     }
 
@@ -145,7 +146,7 @@ class ConversationEngineService(
         log.debug { "Full history with system prompt: ${fullHistory.size} messages" }
 
         // 9. Collect tools for user-controlled execution (passed in runtime options)
-        val toolOptions = collectToolOptions()
+        val toolOptions = collectToolOptions(projectPath)
 
         // 9a. Increment turn number for this user message
         val turnNumber = threadRepository.incrementTurnNumber(conversation.currentThread)

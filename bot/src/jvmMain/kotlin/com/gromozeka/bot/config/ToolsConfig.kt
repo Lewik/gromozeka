@@ -1,9 +1,11 @@
 package com.gromozeka.bot.config
 
+import org.springframework.ai.chat.model.ToolContext
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Description
 import java.util.concurrent.TimeUnit
+import java.util.function.BiFunction
 import java.util.function.Function
 
 @Configuration
@@ -60,10 +62,15 @@ class ToolsConfig {
 
     @Bean
     @Description("Execute bash command and return output. Use for running shell commands, listing files, checking system state.")
-    fun execute_command(): Function<ExecuteCommandRequest, ExecuteCommandResponse> {
-        return Function { request ->
+    fun execute_command(): BiFunction<ExecuteCommandRequest, ToolContext?, ExecuteCommandResponse> {
+        return BiFunction { request, context ->
             try {
+                val projectPath = context?.getContext()?.get("projectPath") as? String
+                    ?: error("Project path is required in tool context - this is a bug!")
+                val workingDir = java.io.File(projectPath)
+                
                 val process = ProcessBuilder("bash", "-c", request.command)
+                    .directory(workingDir)
                     .redirectErrorStream(true)
                     .start()
 
