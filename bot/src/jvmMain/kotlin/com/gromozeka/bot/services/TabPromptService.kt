@@ -9,8 +9,8 @@ class TabPromptService {
 
     companion object {
         private val DEFAULT_PROMPTS = listOf(
+            "default-agent.md",
             "domain-model.md",
-            "default-agent.md"
         )
     }
 
@@ -41,12 +41,9 @@ class TabPromptService {
     fun buildDefaultPrompts(): String {
         log.debug { "Loading default prompts: $DEFAULT_PROMPTS" }
         return DEFAULT_PROMPTS
-            .mapNotNull { fileName ->
-                val content = loadPromptContent(fileName)
-                if (content.isNotEmpty()) {
-                    content
-                } else {
-                    log.warn { "Default prompt not found or empty: $fileName" }
+            .mapNotNull {
+                loadPromptContent(it).ifEmpty {
+                    log.warn { "Default prompt not found or empty: $it" }
                     null
                 }
             }

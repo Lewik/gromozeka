@@ -102,7 +102,8 @@ class ConversationEngineService(
      */
     suspend fun streamMessage(
         conversationId: Conversation.Id,
-        userMessage: Conversation.Message
+        userMessage: Conversation.Message,
+        customPrompts: List<String> = emptyList()
     ): Flow<StreamUpdate> = flow {
         log.debug { "Starting user-controlled tool execution for conversation: $conversationId" }
 
@@ -131,18 +132,23 @@ class ConversationEngineService(
         // 5. Persist user message immediately
         conversationService.addMessage(conversationId, userMessage)
 
-        // 6. Build system prompt with CLAUDE.md context, default agent prompts, and environment info
+        // 6. Build system prompt with CLAUDE.md context, default agent prompts, custom prompts, and environment info
         val claudeMdAndEnv = systemPromptBuilder.build(projectPath)
         val defaultPrompts = tabPromptService.buildDefaultPrompts()
+        val additionalPrompts = tabPromptService.buildAdditionalPrompt(customPrompts)
         val systemPromptText = buildString {
             append(claudeMdAndEnv)
             if (defaultPrompts.isNotEmpty()) {
                 append("\n\n")
                 append(defaultPrompts)
             }
+            if (additionalPrompts.isNotEmpty()) {
+                append("\n\n---\n\n")
+                append(additionalPrompts)
+            }
         }
         val systemMessage = org.springframework.ai.chat.messages.SystemMessage(systemPromptText)
-        log.debug { "Built system prompt: ${systemPromptText.length} chars (CLAUDE.md+env: ${claudeMdAndEnv.length}, default prompts: ${defaultPrompts.length})" }
+        log.debug { "Built system prompt: ${systemPromptText.length} chars (CLAUDE.md+env: ${claudeMdAndEnv.length}, default: ${defaultPrompts.length}, custom: ${additionalPrompts.length})" }
 
         // 7. Convert history to Spring AI format
         val springHistory = messageConversionService.convertHistoryToSpringAI(
