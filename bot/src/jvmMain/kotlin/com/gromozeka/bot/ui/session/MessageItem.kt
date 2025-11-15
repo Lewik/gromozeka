@@ -1,5 +1,6 @@
 package com.gromozeka.bot.ui.session
 
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.selection.DisableSelection
@@ -9,10 +10,14 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerIcon
+import androidx.compose.ui.input.pointer.isShiftPressed
 import androidx.compose.ui.input.pointer.pointerHoverIcon
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
@@ -32,7 +37,7 @@ fun MessageItem(
     toolResultsMap: Map<String, Conversation.Message.ContentItem.ToolResult>,
     isSelected: Boolean = false,
     isCollapsed: Boolean = false,
-    onToggleSelection: (Conversation.Message.Id) -> Unit = {},
+    onToggleSelection: (Conversation.Message.Id, Boolean) -> Unit = { _, _ -> },
     onToggleCollapse: (Conversation.Message.Id) -> Unit = {},
     onShowJson: (String) -> Unit = {},
     onSpeakRequest: (String, String) -> Unit = { _, _ -> },
@@ -169,16 +174,33 @@ fun MessageItem(
                             modifier = Modifier.padding(CompactButtonDefaults.ContentPadding),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Checkbox(
-                                checked = isSelected,
-                                onCheckedChange = { onToggleSelection(message.id) },
-                                modifier = Modifier.size(24.dp),
-                                colors = CheckboxDefaults.colors(
-                                    checkedColor = LocalContentColor.current,
-                                    uncheckedColor = LocalContentColor.current.copy(alpha = 0.6f),
-                                    checkmarkColor = MaterialTheme.colorScheme.surface
+                            Box(
+                                modifier = Modifier
+                                    .size(24.dp)
+                                    .pointerInput(Unit) {
+                                        awaitPointerEventScope {
+                                            while (true) {
+                                                val event = awaitPointerEvent()
+                                                if (event.changes.any { it.pressed && !it.previousPressed }) {
+                                                    val isShiftPressed = event.keyboardModifiers.isShiftPressed
+                                                    event.changes.forEach { it.consume() }
+                                                    onToggleSelection(message.id, isShiftPressed)
+                                                }
+                                            }
+                                        }
+                                    }
+                            ) {
+                                Checkbox(
+                                    checked = isSelected,
+                                    onCheckedChange = null,
+                                    modifier = Modifier.size(24.dp),
+                                    colors = CheckboxDefaults.colors(
+                                        checkedColor = LocalContentColor.current,
+                                        uncheckedColor = LocalContentColor.current.copy(alpha = 0.6f),
+                                        checkmarkColor = MaterialTheme.colorScheme.surface
+                                    )
                                 )
-                            )
+                            }
                             Spacer(modifier = Modifier.width(4.dp))
                             Icon(
                                 roleIcon,
@@ -208,23 +230,34 @@ fun MessageItem(
             }
         }
 
-        // Message content (right, expandable) - LazyColumn should provide proper constraints
+        // Message content (right, expandable) - Box with animated collapse
         val hasToolCalls = message.content.any { it is Conversation.Message.ContentItem.ToolCall }
 
-        Column(
+        Box(
             modifier = Modifier
                 .weight(1f)
-                .heightIn(min = 48.dp) // Should work now with LazyColumn constraints
+                .animateContentSize()
+                .then(
+                    if (isCollapsed) {
+                        Modifier
+                            .height(48.dp)
+                            .clipToBounds()
+                    } else {
+                        Modifier.heightIn(min = 48.dp)
+                    }
+                )
                 .background(
                     color = if (message.role == Conversation.Message.Role.USER &&
                         message.content.any { it is Conversation.Message.ContentItem.UserMessage }
                     ) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
                     else Color.Transparent
                 )
-                .padding(horizontal = if (hasToolCalls) 0.dp else 4.dp),
-            verticalArrangement = Arrangement.Center
+                .alpha(if (isCollapsed) 0.5f else 1f)
         ) {
-            if (!isCollapsed) {
+            Column(
+                modifier = Modifier.padding(horizontal = if (hasToolCalls) 0.dp else 4.dp),
+                verticalArrangement = Arrangement.Center
+            ) {
                 message.content.forEach { content ->
                     when (content) {
                     is Conversation.Message.ContentItem.UserMessage -> {

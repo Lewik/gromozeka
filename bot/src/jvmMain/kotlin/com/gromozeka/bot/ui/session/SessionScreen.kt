@@ -108,6 +108,21 @@ fun SessionScreen(
             Column(modifier = Modifier.fillMaxSize()) {
                 DisableSelection {
                     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        val allSelected = uiState.selectedMessageIds.size == filteredHistory.size && filteredHistory.isNotEmpty()
+                        CompactButton(
+                            onClick = { 
+                                viewModel.toggleSelectAll(filteredHistory.map { it.id }.toSet())
+                            },
+                            tooltip = if (allSelected) "Deselect All" else "Select All"
+                        ) {
+                            Icon(
+                                if (allSelected) Icons.Default.Deselect else Icons.Default.SelectAll,
+                                contentDescription = if (allSelected) "Deselect All" else "Select All"
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.width(8.dp))
+
                         CompactButton(onClick = onNewSession) {
                             Text(LocalTranslation.current.newSessionShort)
                         }
@@ -311,8 +326,8 @@ fun SessionScreen(
                             toolResultsMap = toolResultsMap,
                             isSelected = message.id in uiState.selectedMessageIds,
                             isCollapsed = message.id in uiState.collapsedMessageIds,
-                            onToggleSelection = { messageId ->
-                                viewModel.toggleMessageSelection(messageId)
+                            onToggleSelection = { messageId, isShiftPressed ->
+                                viewModel.toggleMessageSelectionRange(messageId, isShiftPressed)
                             },
                             onToggleCollapse = { messageId ->
                                 viewModel.toggleMessageCollapse(messageId)

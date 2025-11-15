@@ -123,6 +123,18 @@ class TabViewModel(
         try {
             val messages = conversationService.loadCurrentMessages(conversationId)
             _allMessages.value = messages
+            
+            val thinkingMessageIds = messages
+                .filter { message -> message.content.any { it is Conversation.Message.ContentItem.Thinking } }
+                .map { it.id }
+                .toSet()
+            
+            if (thinkingMessageIds.isNotEmpty()) {
+                _uiState.update { currentState ->
+                    currentState.copy(collapsedMessageIds = currentState.collapsedMessageIds + thinkingMessageIds)
+                }
+            }
+            
             log.debug { "Loaded ${messages.size} messages for conversation $conversationId" }
         } catch (e: Exception) {
             log.error(e) { "Failed to load messages for conversation $conversationId" }
@@ -275,6 +287,17 @@ class TabViewModel(
                                     log.debug { "Added new message ${update.message.id}" }
                                 }
 
+                                val hasThinking = update.message.content.any { it is Conversation.Message.ContentItem.Thinking }
+                                if (hasThinking) {
+                                    _uiState.update { currentState ->
+                                        if (update.message.id !in currentState.collapsedMessageIds) {
+                                            currentState.copy(collapsedMessageIds = currentState.collapsedMessageIds + update.message.id)
+                                        } else {
+                                            currentState
+                                        }
+                                    }
+                                }
+
                                 _allMessages.value = messages
                                 lastMessage = update.message
                             }
@@ -330,12 +353,56 @@ class TabViewModel(
     fun toggleMessageSelection(messageId: Conversation.Message.Id) {
         _uiState.update { currentState ->
             val selectedIds = currentState.selectedMessageIds
-            val newSelectedIds = if (messageId in selectedIds) {
+            val wasSelected = messageId in selectedIds
+            val newSelectedIds = if (wasSelected) {
                 selectedIds - messageId
             } else {
                 selectedIds + messageId
             }
-            currentState.copy(selectedMessageIds = newSelectedIds)
+            val action = !wasSelected
+            currentState.copy(
+                selectedMessageIds = newSelectedIds,
+                lastToggledMessageId = messageId,
+                lastToggleAction = action
+            )
+        }
+    }
+
+    fun toggleMessageSelectionRange(messageId: Conversation.Message.Id, isShiftPressed: Boolean) {
+        if (!isShiftPressed || _uiState.value.lastToggledMessageId == null) {
+            toggleMessageSelection(messageId)
+            return
+        }
+
+        val lastId = _uiState.value.lastToggledMessageId ?: return
+        val allMessages = _allMessages.value
+        
+        val lastIndex = allMessages.indexOfFirst { it.id == lastId }
+        val currentIndex = allMessages.indexOfFirst { it.id == messageId }
+        
+        if (lastIndex == -1 || currentIndex == -1) {
+            toggleMessageSelection(messageId)
+            return
+        }
+
+        val startIndex = minOf(lastIndex, currentIndex)
+        val endIndex = maxOf(lastIndex, currentIndex)
+        val rangeIds = allMessages.subList(startIndex, endIndex + 1).map { it.id }.toSet()
+
+        _uiState.update { currentState ->
+            val action = currentState.lastToggleAction ?: true
+            
+            val newSelectedIds = if (action) {
+                currentState.selectedMessageIds + rangeIds
+            } else {
+                currentState.selectedMessageIds - rangeIds
+            }
+            
+            currentState.copy(
+                selectedMessageIds = newSelectedIds,
+                lastToggledMessageId = messageId,
+                lastToggleAction = action
+            )
         }
     }
 
@@ -353,6 +420,18 @@ class TabViewModel(
 
     fun clearMessageSelection() {
         _uiState.update { it.copy(selectedMessageIds = emptySet()) }
+    }
+
+    fun toggleSelectAll(allMessageIds: Set<Conversation.Message.Id>) {
+        _uiState.update { currentState ->
+            val allSelected = currentState.selectedMessageIds.size == allMessageIds.size && 
+                             allMessageIds.isNotEmpty()
+            if (allSelected) {
+                currentState.copy(selectedMessageIds = emptySet())
+            } else {
+                currentState.copy(selectedMessageIds = allMessageIds)
+            }
+        }
     }
 
     fun startEditMessage(messageId: Conversation.Message.Id) {

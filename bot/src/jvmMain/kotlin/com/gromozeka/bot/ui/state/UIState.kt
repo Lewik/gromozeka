@@ -50,6 +50,8 @@ data class UIState(
         // Message editing state
         val selectedMessageIds: Set<Conversation.Message.Id> = emptySet(),
         val collapsedMessageIds: Set<Conversation.Message.Id> = emptySet(),
+        val lastToggledMessageId: Conversation.Message.Id? = null,
+        val lastToggleAction: Boolean? = null,
         val editingMessageId: Conversation.Message.Id? = null,
         val editingMessageText: String = "",
     )
