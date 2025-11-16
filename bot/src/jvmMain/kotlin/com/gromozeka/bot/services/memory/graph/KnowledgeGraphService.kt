@@ -157,6 +157,10 @@ class KnowledgeGraphService(
                 previousMessages = previousMessages,
                 customPrompt = customPrompt
             )
+            
+            log.info { "=== ENTITY EXTRACTION PROMPT (iteration $reflexionIteration) ===" }
+            log.info { "Content length: ${content.length} chars" }
+            log.info { "Full prompt:\n$prompt" }
 
             val settings = settingsService.settings
             val chatModel = chatModelFactory.get(
@@ -172,6 +176,9 @@ class KnowledgeGraphService(
             val response = chatModel.stream(Prompt(UserMessage(prompt))).collectList().awaitSingle().lastOrNull()
                 ?.result?.output?.text
 
+            log.info { "=== ENTITY EXTRACTION RESPONSE (iteration $reflexionIteration) ===" }
+            log.info { "Response length: ${response?.length ?: 0} chars" }
+            log.info { "Full response:\n$response" }
             log.debug { "LLM response for entity extraction (iteration $reflexionIteration): ${response?.take(200)}..." }
 
             entities = parseEntitiesResponse(response ?: "")
@@ -300,6 +307,10 @@ class KnowledgeGraphService(
     }
 
     private fun parseEntitiesResponse(response: String): List<Pair<String, Int>> {
+        log.info { "=== PARSING ENTITIES RESPONSE ===" }
+        log.info { "Raw response length: ${response.length}" }
+        log.info { "Raw response: $response" }
+        
         return try {
             var cleanResponse = response.trim()
             if (cleanResponse.startsWith("```json")) {
@@ -356,6 +367,11 @@ class KnowledgeGraphService(
             entities = entitiesWithIds,
             referenceTime = referenceTime
         )
+        
+        log.info { "=== RELATIONSHIP EXTRACTION PROMPT ===" }
+        log.info { "Prompt length: ${prompt.length} chars" }
+        log.info { "Entities count: ${entityNodes.size}" }
+        log.info { "Content: ${content.take(500)}..." }
 
         val settings = settingsService.settings
         val chatModel = chatModelFactory.get(
@@ -371,6 +387,8 @@ class KnowledgeGraphService(
         val response = chatModel.stream(Prompt(UserMessage(prompt))).collectList().awaitSingle().lastOrNull()
             ?.result?.output?.text
 
+        log.info { "=== RELATIONSHIP EXTRACTION RESPONSE ===" }
+        log.info { "Response: ${response ?: "NULL"}" }
         log.debug { "LLM response for relationship extraction (full): $response" }
 
         val relationships = parseRelationshipsResponse(response ?: "", entityNodes, referenceTime, episodeId)
@@ -385,6 +403,11 @@ class KnowledgeGraphService(
         referenceTime: Instant,
         episodeId: String?
     ): List<MemoryLink> {
+        log.info { "=== PARSING RELATIONSHIPS RESPONSE ===" }
+        log.info { "Raw response length: ${response.length}" }
+        log.info { "Raw response: $response" }
+        log.info { "Entity nodes count: ${entityNodes.size}" }
+        
         return try {
             log.debug { "Raw response before parsing (${response.length} chars): ${response.take(500)}..." }
             
