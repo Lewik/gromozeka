@@ -2,6 +2,11 @@ package com.gromozeka.bot.services
 
 import klog.KLoggers
 import org.springframework.stereotype.Service
+import java.nio.file.FileSystems
+import java.nio.file.Files
+import java.nio.file.FileSystemNotFoundException
+import java.nio.file.Paths
+import kotlin.io.path.name
 
 @Service
 class TabPromptService {
@@ -16,22 +21,27 @@ class TabPromptService {
 
     fun listAvailablePrompts(): List<String> {
         return try {
-            val knownPrompts = listOf(
-                "architect-agent.md",
-                "architecture.md",
-                "business-logic-agent.md",
-                "data-layer-agent.md",
-                "data-services-agent.md",
-                "infrastructure-agent.md",
-                "shared-base.md",
-                "spring-ai-agent.md",
-                "ui-agent.md",
-                "agent-builder.md"
-            )
-
-            knownPrompts.filter { fileName ->
-                javaClass.getResourceAsStream("/agents/$fileName") != null
-            }.sorted()
+            val uri = javaClass.getResource("/agents/")?.toURI() 
+                ?: run {
+                    log.warn { "Resource directory /agents/ not found" }
+                    return emptyList()
+                }
+            
+            val dirPath = try {
+                Paths.get(uri)
+            } catch (e: FileSystemNotFoundException) {
+                FileSystems.newFileSystem(uri, emptyMap<String, String>()).getPath("/agents/")
+            }
+            
+            val excludedFiles = setOf("README.md") + DEFAULT_PROMPTS
+            
+            Files.list(dirPath)
+                .filter { Files.isRegularFile(it) }
+                .filter { it.name.endsWith(".md") }
+                .map { it.name }
+                .filter { it !in excludedFiles }
+                .sorted()
+                .toList()
         } catch (e: Exception) {
             log.error(e) { "Failed to list prompts from resources" }
             emptyList()
