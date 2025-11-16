@@ -195,10 +195,6 @@ fun GromozekaMarkdown(
         modifier = modifier,
         padding = markdownPadding(
             block = 0.dp
-        ),
-        components = markdownComponents(
-            codeBlock = highlightedCodeBlock,
-            codeFence = highlightedCodeFence,
         )
     )
 }

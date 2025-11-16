@@ -268,6 +268,12 @@ fun MessageItem(
                                 modifier = Modifier.weight(1f),
                                 verticalArrangement = Arrangement.Center,
                             ) {
+                                org.slf4j.LoggerFactory.getLogger("MessageItem").trace(
+                                    "Rendering UserMessage markdown | msg_id={} | content_length={} | preview={}",
+                                    message.id.value,
+                                    content.text.length,
+                                    content.text.take(100).replace("\n", "\\n")
+                                )
                                 GromozekaMarkdown(content = content.text)
                             }
                             DisableSelection {
@@ -355,11 +361,25 @@ fun MessageItem(
                         }
                     }
 
-                    is Conversation.Message.ContentItem.Thinking -> GromozekaMarkdown(content = content.thinking)
+                    is Conversation.Message.ContentItem.Thinking -> {
+                        org.slf4j.LoggerFactory.getLogger("MessageItem").trace(
+                            "Rendering Thinking markdown | msg_id={} | content_length={} | preview={}",
+                            message.id.value,
+                            content.thinking.length,
+                            content.thinking.take(100).replace("\n", "\\n")
+                        )
+                        GromozekaMarkdown(content = content.thinking)
+                    }
                     is Conversation.Message.ContentItem.System -> Text(text = content.content)
                     is Conversation.Message.ContentItem.AssistantMessage -> {
                         val text = content.structured.fullText.trim()
                         if (text.isNotEmpty()) {
+                            org.slf4j.LoggerFactory.getLogger("MessageItem").trace(
+                                "Rendering AssistantMessage markdown | msg_id={} | content_length={} | preview={}",
+                                message.id.value,
+                                text.length,
+                                text.take(100).replace("\n", "\\n")
+                            )
                             GromozekaMarkdown(content = text)
                         }
                     }
