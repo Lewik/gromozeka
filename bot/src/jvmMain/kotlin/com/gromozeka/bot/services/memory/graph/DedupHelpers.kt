@@ -103,7 +103,7 @@ object DedupHelpers {
 
                 val result = session.run(
                     """
-                    CALL db.index.fulltext.queryNodes('entity_name', ${'$'}query)
+                    CALL db.index.fulltext.queryNodes('memory_object_index', ${'$'}query)
                     YIELD node, score
                     WHERE node.group_id = ${'$'}groupId
                     RETURN node.uuid as uuid,
