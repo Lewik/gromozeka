@@ -711,8 +711,7 @@ class KnowledgeGraphService(
                         MATCH (source:MemoryObject {uuid: ${'$'}sourceUuid})
                         MATCH (target:MemoryObject {uuid: ${'$'}targetUuid})
                         MERGE (source)-[r:LINKS_TO {uuid: ${'$'}uuid}]->(target)
-                        SET r.name = ${'$'}name,
-                            r.description = ${'$'}fact,
+                        SET r.description = ${'$'}description,
                             r.description_embedding = ${'$'}embedding,
                             r.valid_at = datetime(${'$'}validAt),
                             r.invalid_at = datetime(${'$'}invalidAt),
@@ -727,7 +726,6 @@ class KnowledgeGraphService(
                             "uuid" to edge.uuid,
                             "sourceUuid" to edge.sourceNodeUuid,
                             "targetUuid" to edge.targetNodeUuid,
-                            "relationType" to edge.relationType,
                             "description" to edge.description,
                             "embedding" to edge.embedding,
                             "validAt" to edge.validAt?.toString(),
@@ -1163,7 +1161,7 @@ class KnowledgeGraphService(
                     group_id: ${'$'}groupId
                 }]->(target)
                 ON CREATE SET
-                    r.description = ${'$'}fact,
+                    r.description = ${'$'}description,
                     r.description_embedding = ${'$'}embedding,
                     r.episodes = [],
                     r.valid_at = datetime(${'$'}validAt),
@@ -1176,7 +1174,7 @@ class KnowledgeGraphService(
                     "toName", to,
                     "groupId", groupId,
                     "edgeUuid", edgeUuid,
-                    "fact", relation,
+                    "description", relation,
                     "embedding", relationEmbedding.toList(),
                     "validAt", referenceTime.toString(),
                     "createdAt", referenceTime.toString()
@@ -1296,7 +1294,7 @@ class KnowledgeGraphService(
             val result = session.run(
                 """
                 MATCH (source:MemoryObject {name: ${'$'}fromName, group_id: ${'$'}groupId})
-                      -[r:LINKS_TO {fact: ${'$'}fact}]->
+                      -[r:LINKS_TO {description: ${'$'}description}]->
                       (target:MemoryObject {name: ${'$'}toName, group_id: ${'$'}groupId})
                 WHERE r.invalid_at IS NULL
                 SET r.invalid_at = datetime(${'$'}invalidAt)
@@ -1305,7 +1303,7 @@ class KnowledgeGraphService(
                 Values.parameters(
                     "fromName", from,
                     "toName", to,
-                    "fact", relation,
+                    "description", relation,
                     "groupId", groupId,
                     "invalidAt", invalidAt.toString()
                 )
