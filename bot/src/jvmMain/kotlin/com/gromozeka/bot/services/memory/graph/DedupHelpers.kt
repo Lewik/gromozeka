@@ -43,6 +43,10 @@ object DedupHelpers {
             .replace(Regex("\\s+"), " ")
     }
 
+    fun escapeLucene(text: String): String {
+        return text.replace(Regex("[+\\-&|!(){}\\[\\]^\"~*?:\\\\]")) { "\\${it.value}" }
+    }
+
     fun shingles(normalizedName: String): Set<String> {
         val cleaned = normalizedName.replace(" ", "")
         if (cleaned.length < 2) {
@@ -113,7 +117,7 @@ object DedupHelpers {
                     LIMIT 20
                     """.trimIndent(),
                     Values.parameters(
-                        "query", "$normalized~",
+                        "query", "${escapeLucene(normalized)}~",
                         "groupId", groupId
                     )
                 )
