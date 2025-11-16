@@ -34,6 +34,12 @@ data class Settings(
 
     // API Keys
     val openAiApiKey: String? = null,
+    
+    // Built-in Tools API Keys
+    val enableBraveSearch: Boolean = false,
+    val braveApiKey: String? = null,
+    val enableJinaReader: Boolean = false,
+    val jinaApiKey: String? = null,
 
     // UI Settings  
     val showSystemMessages: Boolean = true,

@@ -444,6 +444,44 @@ fun SettingsPanel(
                                 onSettingsChange(settings.copy(openAiApiKey = it.ifBlank { null }))
                             }
                         )
+
+                        // Brave Search
+                        SwitchSettingItem(
+                            label = translation.settings.enableBraveSearchLabel,
+                            description = translation.settings.braveSearchDescription,
+                            value = settings.enableBraveSearch,
+                            onValueChange = { onSettingsChange(settings.copy(enableBraveSearch = it)) }
+                        )
+
+                        if (settings.enableBraveSearch) {
+                            PasswordSettingItem(
+                                label = translation.settings.braveApiKeyLabel,
+                                description = translation.settings.braveApiKeyDescription,
+                                value = settings.braveApiKey ?: "",
+                                onValueChange = {
+                                    onSettingsChange(settings.copy(braveApiKey = it.ifBlank { null }))
+                                }
+                            )
+                        }
+
+                        // Jina Reader
+                        SwitchSettingItem(
+                            label = translation.settings.enableJinaReaderLabel,
+                            description = translation.settings.jinaReaderDescription,
+                            value = settings.enableJinaReader,
+                            onValueChange = { onSettingsChange(settings.copy(enableJinaReader = it)) }
+                        )
+
+                        if (settings.enableJinaReader) {
+                            PasswordSettingItem(
+                                label = translation.settings.jinaApiKeyLabel,
+                                description = translation.settings.jinaApiKeyDescription,
+                                value = settings.jinaApiKey ?: "",
+                                onValueChange = {
+                                    onSettingsChange(settings.copy(jinaApiKey = it.ifBlank { null }))
+                                }
+                            )
+                        }
                     }
 
                     // UI Settings

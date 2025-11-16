@@ -66,7 +66,6 @@ class BuiltInTools {
                     mapOf("error" to "Error writing file: ${e.message}")
                 }
 
-                // Wrap in text content block format
                 return mapOf(
                     "type" to "text",
                     "text" to result.entries.joinToString("\n") { "${it.key}: ${it.value}" }
@@ -77,6 +76,74 @@ class BuiltInTools {
         return FunctionToolCallback.builder("grz_write_file", function)
             .description("Write content to a file. Creates parent directories if needed. Overwrites existing files.")
             .inputType(object : ParameterizedTypeReference<WriteFileParams>() {})
+            .build()
+    }
+
+    @Bean
+    fun editFileTool(): ToolCallback {
+        val function = object : BiFunction<EditFileParams, ToolContext?, Map<String, Any>> {
+            override fun apply(request: EditFileParams, context: ToolContext?): Map<String, Any> {
+                val result = try {
+                    val file = File(request.file_path)
+
+                    when {
+                        !file.exists() -> mapOf("error" to "File not found: ${request.file_path}")
+                        !file.isFile -> mapOf("error" to "Path is not a file: ${request.file_path}")
+                        request.old_string == request.new_string -> mapOf("error" to "old_string and new_string must be different")
+                        request.old_string.isEmpty() -> mapOf("error" to "old_string cannot be empty")
+                        else -> {
+                            val content = file.readText()
+                            val occurrences = content.split(request.old_string).size - 1
+
+                            when {
+                                occurrences == 0 -> mapOf("error" to "old_string not found in file")
+                                occurrences > 1 && !request.replace_all -> mapOf(
+                                    "error" to "old_string appears $occurrences times in file. Use replace_all=true to replace all occurrences, or provide more context to make old_string unique."
+                                )
+                                else -> {
+                                    val newContent = if (request.replace_all) {
+                                        content.replace(request.old_string, request.new_string)
+                                    } else {
+                                        content.replaceFirst(request.old_string, request.new_string)
+                                    }
+
+                                    file.writeText(newContent)
+                                    val replacements = if (request.replace_all) occurrences else 1
+                                    logger.debug("Replaced $replacements occurrence(s) in ${file.absolutePath}")
+
+                                    mapOf(
+                                        "success" to true,
+                                        "path" to file.absolutePath,
+                                        "replacements" to replacements,
+                                        "bytes" to newContent.toByteArray().size
+                                    )
+                                }
+                            }
+                        }
+                    }
+                } catch (e: Exception) {
+                    logger.error("Error editing file: ${request.file_path}", e)
+                    mapOf("error" to "Error editing file: ${e.message}")
+                }
+
+                return mapOf(
+                    "type" to "text",
+                    "text" to result.entries.joinToString("\n") { "${it.key}: ${it.value}" }
+                )
+            }
+        }
+
+        return FunctionToolCallback.builder("grz_edit_file", function)
+            .description("""
+                Performs exact string replacements in files. 
+                
+                Key features:
+                - Requires exact match of old_string (preserves indentation, whitespace)
+                - Fails if old_string is not unique (use replace_all or provide more context)
+                - Use replace_all for renaming variables/strings throughout file
+                - More efficient than rewriting entire file with grz_write_file
+            """.trimIndent())
+            .inputType(object : ParameterizedTypeReference<EditFileParams>() {})
             .build()
     }
 
@@ -125,7 +192,6 @@ class BuiltInTools {
                     mapOf("error" to "Error executing command: ${e.message}")
                 }
 
-                // Wrap in text content block format
                 return mapOf(
                     "type" to "text",
                     "text" to result.entries.joinToString("\n") { "${it.key}: ${it.value}" }
@@ -134,7 +200,16 @@ class BuiltInTools {
         }
 
         return FunctionToolCallback.builder("grz_execute_command", function)
-            .description("Execute shell command and return output. Use with caution - has full system access.")
+            .description("""
+                Execute shell command and return output. Use with caution - has full system access.
+                
+                Common use cases:
+                - Search file contents: rg "pattern" --type kt -C 3
+                - Find files by name: find . -name "*.kt" -type f
+                - List directory: ls -la /path/to/dir
+                - Background processes: command & (use jobs, fg, bg, kill for management)
+                - Git operations: git status, git diff, git log
+            """.trimIndent())
             .inputType(object : ParameterizedTypeReference<ExecuteCommandParams>() {})
             .build()
     }
@@ -173,7 +248,6 @@ class BuiltInTools {
                     mapOf("error" to "Error listing directory: ${e.message}")
                 }
 
-                // Format as text
                 val text = when {
                     result.containsKey("error") -> result["error"].toString()
                     else -> {
@@ -190,7 +264,6 @@ class BuiltInTools {
                     }
                 }
 
-                // Wrap in text content block format
                 return mapOf(
                     "type" to "text",
                     "text" to text
@@ -278,6 +351,13 @@ data class ReadFileParams(
 data class WriteFileParams(
     val file_path: String,
     val content: String
+)
+
+data class EditFileParams(
+    val file_path: String,
+    val old_string: String,
+    val new_string: String,
+    val replace_all: Boolean = false
 )
 
 data class ExecuteCommandParams(

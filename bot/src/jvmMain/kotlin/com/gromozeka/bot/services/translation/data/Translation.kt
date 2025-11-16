@@ -36,6 +36,10 @@ sealed class Translation {
         abstract val responseFormatLabel: String
         abstract val includeCurrentTimeLabel: String
         abstract val openaiApiKeyLabel: String
+        abstract val enableBraveSearchLabel: String
+        abstract val braveApiKeyLabel: String
+        abstract val enableJinaReaderLabel: String
+        abstract val jinaApiKeyLabel: String
         abstract val showSystemMessagesLabel: String
         abstract val alwaysOnTopLabel: String
         abstract val showTabsAtBottomLabel: String
@@ -64,6 +68,10 @@ sealed class Translation {
         abstract val responseFormatDescription: String
         abstract val includeTimeDescription: String
         abstract val openaiKeyDescription: String
+        abstract val braveSearchDescription: String
+        abstract val braveApiKeyDescription: String
+        abstract val jinaReaderDescription: String
+        abstract val jinaApiKeyDescription: String
         abstract val showSystemDescription: String
         abstract val alwaysOnTopDescription: String
         abstract val showTabsAtBottomDescription: String
