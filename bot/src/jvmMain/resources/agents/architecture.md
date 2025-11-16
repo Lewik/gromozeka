@@ -62,7 +62,7 @@ interface ThreadDataService {
 ---
 
 ### 2. Application Layer
-]
+
 **Module:** `:application`
 **Agent:** Business Logic Agent
 **Spring:** YES (`@Service`)
