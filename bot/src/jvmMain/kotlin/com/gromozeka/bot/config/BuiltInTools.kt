@@ -17,12 +17,19 @@ class BuiltInTools {
 
     private val logger = LoggerFactory.getLogger(BuiltInTools::class.java)
 
+    private fun resolveFile(path: String, projectPath: String): File {
+        val file = File(path)
+        return if (file.isAbsolute) file else File(projectPath, path)
+    }
+
     @Bean
     fun readFileTool(): ToolCallback {
         val function = object : BiFunction<ReadFileParams, ToolContext?, Map<String, Any>> {
             override fun apply(request: ReadFileParams, context: ToolContext?): Map<String, Any> {
                 return try {
-                    val file = File(request.file_path)
+                    val projectPath = context?.getContext()?.get("projectPath") as? String
+                        ?: error("Project path is required in tool context - this is a bug!")
+                    val file = resolveFile(request.file_path, projectPath)
 
                     when {
                         !file.exists() -> mapOf("error" to "File not found: ${request.file_path}")
@@ -56,7 +63,9 @@ class BuiltInTools {
         val function = object : BiFunction<WriteFileParams, ToolContext?, Map<String, Any>> {
             override fun apply(request: WriteFileParams, context: ToolContext?): Map<String, Any> {
                 val result = try {
-                    val file = File(request.file_path)
+                    val projectPath = context?.getContext()?.get("projectPath") as? String
+                        ?: error("Project path is required in tool context - this is a bug!")
+                    val file = resolveFile(request.file_path, projectPath)
                     file.parentFile?.mkdirs()
                     file.writeText(request.content)
                     logger.debug("Written ${request.content.length} chars to ${file.absolutePath}")
@@ -84,7 +93,9 @@ class BuiltInTools {
         val function = object : BiFunction<EditFileParams, ToolContext?, Map<String, Any>> {
             override fun apply(request: EditFileParams, context: ToolContext?): Map<String, Any> {
                 val result = try {
-                    val file = File(request.file_path)
+                    val projectPath = context?.getContext()?.get("projectPath") as? String
+                        ?: error("Project path is required in tool context - this is a bug!")
+                    val file = resolveFile(request.file_path, projectPath)
 
                     when {
                         !file.exists() -> mapOf("error" to "File not found: ${request.file_path}")
@@ -214,69 +225,6 @@ class BuiltInTools {
             .build()
     }
 
-    @Bean
-    fun listDirectoryTool(): ToolCallback {
-        val function = object : BiFunction<ListDirectoryParams, ToolContext?, Map<String, Any>> {
-            override fun apply(request: ListDirectoryParams, context: ToolContext?): Map<String, Any> {
-                val result = try {
-                    val dir = File(request.path)
-
-                    when {
-                        !dir.exists() -> mapOf("error" to "Directory not found: ${request.path}")
-                        !dir.isDirectory -> mapOf("error" to "Path is not a directory: ${request.path}")
-                        else -> {
-                            val files = dir.listFiles()?.map { file ->
-                                mapOf(
-                                    "name" to file.name,
-                                    "type" to if (file.isDirectory) "directory" else "file",
-                                    "size" to if (file.isFile) file.length() else null,
-                                    "modified" to file.lastModified()
-                                )
-                            }?.sortedWith(compareBy({ it["type"] != "directory" }, { it["name"] as String }))
-                                ?: emptyList()
-
-                            logger.debug("Listed ${files.size} items in ${dir.absolutePath}")
-
-                            mapOf(
-                                "path" to dir.absolutePath,
-                                "files" to files
-                            )
-                        }
-                    }
-                } catch (e: Exception) {
-                    logger.error("Error listing directory: ${request.path}", e)
-                    mapOf("error" to "Error listing directory: ${e.message}")
-                }
-
-                val text = when {
-                    result.containsKey("error") -> result["error"].toString()
-                    else -> {
-                        val path = result["path"]
-                        @Suppress("UNCHECKED_CAST")
-                        val files = result["files"] as List<Map<String, Any>>
-                        buildString {
-                            appendLine("path: $path")
-                            appendLine("files:")
-                            files.forEach { file ->
-                                appendLine("  - ${file["name"]} (${file["type"]}, size: ${file["size"]}, modified: ${file["modified"]})")
-                            }
-                        }
-                    }
-                }
-
-                return mapOf(
-                    "type" to "text",
-                    "text" to text
-                )
-            }
-        }
-
-        return FunctionToolCallback.builder("grz_list_directory", function)
-            .description("List files and directories in a given path. Returns file metadata including size and modification time.")
-            .inputType(object : ParameterizedTypeReference<ListDirectoryParams>() {})
-            .build()
-    }
-
     private fun detectMimeType(file: File): String {
         val extension = file.extension.lowercase()
         return when (extension) {
@@ -364,8 +312,4 @@ data class ExecuteCommandParams(
     val command: String,
     val working_directory: String? = null,
     val timeout_seconds: Long? = null
-)
-
-data class ListDirectoryParams(
-    val path: String
 )
