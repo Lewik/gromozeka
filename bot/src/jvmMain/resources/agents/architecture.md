@@ -224,17 +224,67 @@ presentation/
 
 ---
 
+### 5. Shared Module
+
+**Module:** `:shared`
+**Agent:** Shared Agent (will be created later)
+**Spring:** NO (pure Kotlin)
+
+**Responsibilities:**
+- Cross-cutting types used by multiple modules
+- Common value objects (IDs, timestamps, etc.)
+- Universal utilities (UUID generation, date/time helpers)
+- Shared domain primitives
+
+**What lives here:**
+```
+shared/
+  ├── model/           - Common value objects, primitives
+  └── uuid/            - UUID generation utilities (uuid7, etc.)
+```
+
+**Dependencies:** NONE (like Domain, completely independent)
+
+**Usage pattern:**
+```kotlin
+// shared/uuid/UUID7.kt
+fun uuid7(): String = ...
+
+// Used in Application layer
+import com.gromozeka.shared.uuid.uuid7
+
+val thread = Thread(
+    id = uuid7(),
+    ...
+)
+```
+
+**Important notes:**
+- `:shared` is for truly cross-cutting code only
+- Each module still creates its own module-specific utilities
+- Shared Agent will consolidate duplicated utilities later
+- During initial development, agents create utilities in their own modules
+- Future refactoring will move common utilities to `:shared`
+
+**Current status:** Each agent creates utilities locally. Shared Agent will be created later to consolidate common code.
+
+---
+
 ## Gradle Modules Structure
 
 ```
-:domain                    - NO Spring, pure Kotlin
-:application               → :domain
-:infrastructure-db         → :domain
-:infrastructure-ai         → :domain
-:presentation              → :domain, :application
+:shared                    - NO Spring, pure Kotlin, NO dependencies
+:domain                    - NO Spring, pure Kotlin, NO dependencies
+:application               → :domain, :shared
+:infrastructure-db         → :domain, :shared
+:infrastructure-ai         → :domain, :shared
+:presentation              → :domain, :application, :shared
 ```
 
-**Dependency rule:** All modules depend on `:domain`, but NOT on each other.
+**Dependency rules:**
+- `:shared` and `:domain` have NO dependencies (completely independent)
+- All other modules can depend on `:domain` and `:shared`
+- Modules do NOT depend on each other (except presentation → application)
 
 ---
 
@@ -375,12 +425,15 @@ presentation/utils/           - UI-specific utilities
 | Agent | Module | Layer | Spring | Responsibilities |
 |-------|--------|-------|--------|------------------|
 | Architect | `:domain` | Domain | NO | Entities, DataService interfaces |
+| Shared | `:shared` | Cross-cutting | NO | Common utilities, value objects (created later) |
 | Business Logic | `:application` | Application | YES | Use Cases, orchestration |
 | DataServices | `:infrastructure-db` | Infrastructure | YES | DB, Vector, Graph implementations |
 | Spring AI | `:infrastructure-ai` | Infrastructure | YES | AI, MCP integrations |
 | UI | `:presentation` | Presentation | YES* | Compose UI, ViewModels |
 
 *Spring in Presentation is transitive (for DI and app startup)
+
+**Note:** Shared Agent will be created later. Currently, each agent creates utilities in their own module.
 
 ---
 
@@ -393,4 +446,164 @@ presentation/utils/           - UI-specific utilities
 5. **Spring in outer layers only** - Application and Infrastructure (NOT Domain)
 6. **Each module is independent** - Can be compiled separately
 7. **DI wiring is automatic** - Spring finds implementations by interface
+
+---
+
+## Error Handling Patterns
+
+Gromozeka uses different error handling strategies depending on the scenario.
+
+### 1. Nullable Return - Absence is Normal
+
+Use `T?` when absence of result is a valid, expected outcome.
+
+**When to use:**
+- Query operations that may not find results
+- Optional data retrieval
+
+**Example:**
+```kotlin
+// Domain
+interface ThreadDataService {
+    suspend fun findById(id: Thread.Id): Thread?  // null = not found (normal)
+}
+
+// Usage
+val thread = threadDataService.findById(id)
+if (thread != null) {
+    // work with thread
+} else {
+    // handle absence
+}
+```
+
+### 2. Exceptions - Business Rule Violations
+
+Use exceptions when operation fails due to violated business rules or unexpected errors.
+
+**When to use:**
+- Constraint violations (duplicate, invalid state)
+- Precondition failures
+- Infrastructure errors
+
+**Domain exceptions location:**
+```kotlin
+// Domain exceptions live in domain/model/ package
+package com.gromozeka.domain.model
+
+class DuplicateThreadException(
+    val title: String
+) : Exception("Thread with title '$title' already exists")
+
+class ThreadNotFoundException(
+    val threadId: Thread.Id
+) : Exception("Thread not found: ${threadId.value}")
+```
+
+**Usage example:**
+```kotlin
+// Domain
+interface ThreadDataService {
+    suspend fun create(thread: Thread): Thread
+    // throws DuplicateThreadException if thread with title exists
+}
+
+// Infrastructure implementation
+@Service
+class ExposedThreadDataService : ThreadDataService {
+    override suspend fun create(thread: Thread): Thread = dbQuery {
+        // Check for duplicate
+        val existing = ThreadsTable.select { 
+            ThreadsTable.title eq thread.title 
+        }.singleOrNull()
+        
+        if (existing != null) {
+            throw DuplicateThreadException(thread.title)
+        }
+        
+        // Insert new thread
+        ThreadsTable.insert { ... }
+        thread
+    }
+}
+```
+
+### 3. Result<T> - Multiple Failure Modes
+
+Use sealed classes/Result when operation has multiple distinct failure cases that caller needs to handle.
+
+**When to use:**
+- Validation with multiple error types
+- Complex operations with different failure modes
+- When you want caller to handle each case explicitly
+
+**Example:**
+```kotlin
+// Domain
+sealed interface CreateThreadResult {
+    data class Success(val thread: Thread) : CreateThreadResult
+    data class DuplicateTitle(val existingId: Thread.Id) : CreateThreadResult
+    data class InvalidTitle(val reason: String) : CreateThreadResult
+}
+
+interface ThreadDataService {
+    suspend fun createThread(thread: Thread): CreateThreadResult
+}
+
+// Usage in Application
+when (val result = threadDataService.createThread(thread)) {
+    is Success -> result.thread
+    is DuplicateTitle -> // handle duplicate
+    is InvalidTitle -> // handle invalid
+}
+```
+
+### Decision Tree
+
+**Use this guide to choose error handling strategy:**
+
+1. **Not finding something?** → Nullable (`Thread?`)
+2. **Business rule violated?** → Exception (`DuplicateThreadException`)
+3. **Multiple failure types?** → Result/Sealed class
+4. **Unexpected infrastructure error?** → Exception (let it propagate)
+
+### Fail Fast Principle
+
+- **Internal components** - Use `require()`, `check()` - fail immediately on invalid input
+- **External interfaces** - Defensive error handling, return Result or null
+
+**Example:**
+```kotlin
+// Internal - fail fast
+internal fun processThread(thread: Thread) {
+    require(thread.id.value.isNotBlank()) { "Thread ID cannot be blank" }
+    // Caller should never pass invalid thread
+}
+
+// External - defensive
+@Service
+class ExposedThreadDataService : ThreadDataService {
+    override suspend fun findById(id: Thread.Id): Thread? = try {
+        dbQuery { ... }
+    } catch (e: Exception) {
+        logger.error("Database error finding thread", e)
+        null  // Don't expose infrastructure errors
+    }
+}
+```
+
+### Exception Guidelines
+
+**Naming:**
+- Use specific names: `DuplicateThreadException`, not `ThreadException`
+- Include entity name: `ThreadNotFoundException`, not `NotFoundException`
+
+**Location:**
+- Domain exceptions: `domain/model/`
+- Infrastructure exceptions: Can stay in infrastructure modules
+- Application exceptions: `application/exceptions/` if needed
+
+**Documentation:**
+- Always document thrown exceptions in KDoc with `@throws`
+- Explain WHEN exception is thrown, not just what it is
 
