@@ -440,6 +440,104 @@ class TabViewModel(
         }
     }
 
+    fun toggleSelectUserMessages() {
+        val filteredHistory = filteredMessages.value
+        val userMessageIds = filteredHistory
+            .filter { it.role == Conversation.Message.Role.USER }
+            .map { it.id }
+            .toSet()
+        
+        if (userMessageIds.isEmpty()) return
+        
+        _uiState.update { currentState ->
+            val allSelected = userMessageIds.all { it in currentState.selectedMessageIds }
+            if (allSelected) {
+                currentState.copy(selectedMessageIds = currentState.selectedMessageIds - userMessageIds)
+            } else {
+                currentState.copy(selectedMessageIds = currentState.selectedMessageIds + userMessageIds)
+            }
+        }
+    }
+
+    fun toggleSelectAssistantMessages() {
+        val filteredHistory = filteredMessages.value
+        val assistantMessageIds = filteredHistory
+            .filter { it.role == Conversation.Message.Role.ASSISTANT }
+            .map { it.id }
+            .toSet()
+        
+        if (assistantMessageIds.isEmpty()) return
+        
+        _uiState.update { currentState ->
+            val allSelected = assistantMessageIds.all { it in currentState.selectedMessageIds }
+            if (allSelected) {
+                currentState.copy(selectedMessageIds = currentState.selectedMessageIds - assistantMessageIds)
+            } else {
+                currentState.copy(selectedMessageIds = currentState.selectedMessageIds + assistantMessageIds)
+            }
+        }
+    }
+
+    fun toggleSelectThinkingMessages() {
+        val filteredHistory = filteredMessages.value
+        val thinkingMessageIds = filteredHistory
+            .filter { message -> message.content.any { it is Conversation.Message.ContentItem.Thinking } }
+            .map { it.id }
+            .toSet()
+        
+        if (thinkingMessageIds.isEmpty()) return
+        
+        _uiState.update { currentState ->
+            val allSelected = thinkingMessageIds.all { it in currentState.selectedMessageIds }
+            if (allSelected) {
+                currentState.copy(selectedMessageIds = currentState.selectedMessageIds - thinkingMessageIds)
+            } else {
+                currentState.copy(selectedMessageIds = currentState.selectedMessageIds + thinkingMessageIds)
+            }
+        }
+    }
+
+    fun toggleSelectToolMessages() {
+        val filteredHistory = filteredMessages.value
+        val toolMessageIds = filteredHistory
+            .filter { message -> message.content.any { it is Conversation.Message.ContentItem.ToolCall } }
+            .map { it.id }
+            .toSet()
+        
+        if (toolMessageIds.isEmpty()) return
+        
+        _uiState.update { currentState ->
+            val allSelected = toolMessageIds.all { it in currentState.selectedMessageIds }
+            if (allSelected) {
+                currentState.copy(selectedMessageIds = currentState.selectedMessageIds - toolMessageIds)
+            } else {
+                currentState.copy(selectedMessageIds = currentState.selectedMessageIds + toolMessageIds)
+            }
+        }
+    }
+
+    fun toggleSelectPlainMessages() {
+        val filteredHistory = filteredMessages.value
+        val plainMessageIds = filteredHistory
+            .filter { message -> 
+                message.content.none { it is Conversation.Message.ContentItem.Thinking } &&
+                message.content.none { it is Conversation.Message.ContentItem.ToolCall }
+            }
+            .map { it.id }
+            .toSet()
+        
+        if (plainMessageIds.isEmpty()) return
+        
+        _uiState.update { currentState ->
+            val allSelected = plainMessageIds.all { it in currentState.selectedMessageIds }
+            if (allSelected) {
+                currentState.copy(selectedMessageIds = currentState.selectedMessageIds - plainMessageIds)
+            } else {
+                currentState.copy(selectedMessageIds = currentState.selectedMessageIds + plainMessageIds)
+            }
+        }
+    }
+
     fun startEditMessage(messageId: Conversation.Message.Id) {
         val message = _allMessages.value.find { it.id == messageId }
         val text = message?.content

@@ -281,3 +281,76 @@ data class SegmentedButtonOption(
     val text: String,
     val tooltip: String? = null,
 )
+
+// === Toggle Button Group (for independent toggles, not radio buttons) ===
+
+data class ToggleButtonOption(
+    val icon: androidx.compose.ui.graphics.vector.ImageVector,
+    val tooltip: String? = null,
+)
+
+@Composable
+fun ToggleButtonGroup(
+    options: List<ToggleButtonOption>,
+    selectedIndices: Set<Int>,
+    onToggle: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val cornerRadius = CompactButtonDefaults.CornerRadius
+
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.Start
+    ) {
+        options.forEachIndexed { index, option ->
+            val isSelected = index in selectedIndices
+            val isFirst = index == 0
+            val isLast = index == options.size - 1
+            val isSingle = options.size == 1
+
+            val shape = when {
+                isSingle -> MaterialTheme.shapes.small
+                isFirst -> RoundedCornerShape(
+                    topStart = cornerRadius,
+                    bottomStart = cornerRadius,
+                    topEnd = 0.dp,
+                    bottomEnd = 0.dp
+                )
+
+                isLast -> RoundedCornerShape(
+                    topStart = 0.dp,
+                    bottomStart = 0.dp,
+                    topEnd = cornerRadius,
+                    bottomEnd = cornerRadius
+                )
+
+                else -> RoundedCornerShape(0.dp)
+            }
+
+            OptionalTooltip(option.tooltip) {
+                Button(
+                    onClick = { onToggle(index) },
+                    modifier = Modifier,
+                    contentPadding = CompactButtonDefaults.ContentPadding,
+                    shape = shape,
+                    colors = if (isSelected) {
+                        ButtonDefaults.buttonColors()
+                    } else {
+                        ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    },
+                    border = if (!isSelected) {
+                        BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
+                    } else null
+                ) {
+                    Icon(
+                        option.icon,
+                        contentDescription = option.tooltip
+                    )
+                }
+            }
+        }
+    }
+}
