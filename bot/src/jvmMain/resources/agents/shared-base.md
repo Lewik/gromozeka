@@ -67,7 +67,7 @@ class ThreadViewModel {
 **Correct approach:**
 ```kotlin
 // ✅ GOOD: UI depends on Domain interface
-import com.gromozeka.bot.domain.repository.ThreadRepository
+import com.gromozeka.domain.repository.ThreadRepository
 
 class ThreadViewModel(
     private val threadRepository: ThreadRepository // Interface from domain/
