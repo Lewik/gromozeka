@@ -18,6 +18,8 @@ import java.util.Set;
 @JsonInclude(Include.NON_NULL)
 public class ClaudeCodeChatOptions implements ToolCallingChatOptions {
 
+    public static final int MAX_SUPPORTED_OUTPUT_TOKENS = 128000;
+
     private @JsonProperty("model") String model;
     private @JsonProperty("temperature") Double temperature;
     private @JsonProperty("max_tokens") Integer maxTokens;
@@ -210,6 +212,9 @@ public class ClaudeCodeChatOptions implements ToolCallingChatOptions {
         }
 
         public ClaudeCodeChatOptions build() {
+            if (options.maxTokens == null) {
+                options.maxTokens = MAX_SUPPORTED_OUTPUT_TOKENS;
+            }
             return options;
         }
     }
