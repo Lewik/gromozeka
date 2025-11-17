@@ -1,5 +1,6 @@
 package com.gromozeka.bot.ui.session
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -8,7 +9,9 @@ import androidx.compose.foundation.text.selection.DisableSelection
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -114,7 +117,24 @@ fun SessionScreen(
         SelectionContainer(modifier = Modifier.weight(1f)) {
             Column(modifier = Modifier.fillMaxSize()) {
                 DisableSelection {
+                    var editMode by remember { mutableStateOf(false) }
+                    
                     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        // Edit mode toggle button
+                        CompactButton(
+                            onClick = { editMode = !editMode },
+                            colors = if (editMode) ButtonDefaults.buttonColors() else ButtonDefaults.outlinedButtonColors(),
+                            border = if (!editMode) BorderStroke(1.dp, MaterialTheme.colorScheme.outline) else null,
+                            tooltip = if (editMode) "Exit edit mode" else "Enter edit mode"
+                        ) {
+                            Icon(
+                                Icons.Default.Edit,
+                                contentDescription = "Edit mode"
+                            )
+                        }
+                        
+                        Spacer(modifier = Modifier.width(8.dp))
+                        
                         val selectionOptions = remember {
                             listOf(
                                 com.gromozeka.bot.ui.ToggleButtonOption(Icons.Default.SelectAll, "Select/Deselect All"),
@@ -166,37 +186,120 @@ fun SessionScreen(
                             }
                         }
 
-                        com.gromozeka.bot.ui.ToggleButtonGroup(
-                            options = selectionOptions,
-                            selectedIndices = selectedIndices,
-                            onToggle = { index ->
-                                when (index) {
-                                    0 -> viewModel.toggleSelectAll(filteredHistory.map { it.id }.toSet())
-                                    1 -> viewModel.toggleSelectUserMessages()
-                                    2 -> viewModel.toggleSelectAssistantMessages()
-                                    3 -> viewModel.toggleSelectThinkingMessages()
-                                    4 -> viewModel.toggleSelectToolMessages()
-                                    5 -> viewModel.toggleSelectPlainMessages()
+                        if (editMode) {
+                            com.gromozeka.bot.ui.ToggleButtonGroup(
+                                options = selectionOptions,
+                                selectedIndices = selectedIndices,
+                                onToggle = { index ->
+                                    when (index) {
+                                        0 -> viewModel.toggleSelectAll(filteredHistory.map { it.id }.toSet())
+                                        1 -> viewModel.toggleSelectUserMessages()
+                                        2 -> viewModel.toggleSelectAssistantMessages()
+                                        3 -> viewModel.toggleSelectThinkingMessages()
+                                        4 -> viewModel.toggleSelectToolMessages()
+                                        5 -> viewModel.toggleSelectPlainMessages()
+                                    }
                                 }
+                            )
+
+                            Spacer(modifier = Modifier.width(8.dp))
+                            
+                            // Action buttons (shown when messages selected)
+                            if (uiState.selectedMessageIds.size >= 1) {
+                                // Concat - disabled when only 1 message selected
+                                CompactButton(
+                                    onClick = {
+                                        coroutineScope.launch {
+                                            viewModel.squashSelectedMessages()
+                                        }
+                                    },
+                                    enabled = uiState.selectedMessageIds.size >= 2,
+                                    tooltip = "Concatenate messages (instant, no AI)"
+                                ) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(Icons.Default.MergeType, contentDescription = "Concat")
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text("Concat")
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.width(8.dp))
+
+                                // Distill - enabled even for single message
+                                CompactButton(
+                                    onClick = {
+                                        coroutineScope.launch {
+                                            viewModel.distillSelectedMessages()
+                                        }
+                                    },
+                                    tooltip = "Distill messages (AI context transfer)"
+                                ) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(Icons.Default.Compress, contentDescription = "Distill")
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text("Distill")
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.width(8.dp))
+
+                                // Summarize - enabled even for single message
+                                CompactButton(
+                                    onClick = {
+                                        coroutineScope.launch {
+                                            viewModel.summarizeSelectedMessages()
+                                        }
+                                    },
+                                    tooltip = "Summarize messages (AI history compression)"
+                                ) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(Icons.Default.Subject, contentDescription = "Summarize")
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text("Summarize")
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.width(8.dp))
+
+                                // Delete - always enabled
+                                CompactButton(
+                                    onClick = {
+                                        coroutineScope.launch {
+                                            viewModel.deleteSelectedMessages()
+                                        }
+                                    },
+                                    tooltip = "Delete selected message(s)"
+                                ) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(Icons.Default.Delete, contentDescription = "Delete")
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text("Delete")
+                                    }
+                                }
+                                
+                                Spacer(modifier = Modifier.width(8.dp))
+                                
+                                // Selected count
+                                Text("Selected: ${uiState.selectedMessageIds.size}")
                             }
-                        )
-
-                        Spacer(modifier = Modifier.width(8.dp))
-
-                        CompactButton(onClick = onNewSession) {
-                            Text(LocalTranslation.current.newSessionShort)
                         }
 
-                        Spacer(modifier = Modifier.width(8.dp))
+                        if (!editMode) {
+                            CompactButton(onClick = onNewSession) {
+                                Text(LocalTranslation.current.newSessionShort)
+                            }
 
-                        CompactButton(onClick = onForkSession) {
-                            Text(LocalTranslation.current.forkButton)
-                        }
+                            Spacer(modifier = Modifier.width(8.dp))
 
-                        Spacer(modifier = Modifier.width(8.dp))
+                            CompactButton(onClick = onForkSession) {
+                                Text(LocalTranslation.current.forkButton)
+                            }
 
-                        CompactButton(onClick = onRestartSession) {
-                            Text(LocalTranslation.current.restartButton)
+                            Spacer(modifier = Modifier.width(8.dp))
+
+                            CompactButton(onClick = onRestartSession) {
+                                Text(LocalTranslation.current.restartButton)
+                            }
                         }
 
                         Spacer(modifier = Modifier.weight(1f))
@@ -376,79 +479,6 @@ fun SessionScreen(
                                 tooltip = LocalTranslation.current.closeTabTooltip
                             ) {
                                 Icon(Icons.Default.Close, contentDescription = LocalTranslation.current.closeTabTooltip)
-                            }
-                        }
-                    }
-
-                    // Second row: Concat/Distill/Summarize/Delete buttons (shown when messages selected)
-                    if (uiState.selectedMessageIds.size >= 1) {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            // Concat/Distill/Summarize - only when 2+ messages selected
-                            if (uiState.selectedMessageIds.size >= 2) {
-                                CompactButton(
-                                    onClick = {
-                                        coroutineScope.launch {
-                                            viewModel.squashSelectedMessages()
-                                        }
-                                    },
-                                    tooltip = "Concatenate ${uiState.selectedMessageIds.size} messages (instant, no AI)"
-                                ) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Icon(Icons.Default.MergeType, contentDescription = "Concat")
-                                        Spacer(modifier = Modifier.width(4.dp))
-                                        Text("Concat (${uiState.selectedMessageIds.size})")
-                                    }
-                                }
-
-                                CompactButton(
-                                    onClick = {
-                                        coroutineScope.launch {
-                                            viewModel.distillSelectedMessages()
-                                        }
-                                    },
-                                    tooltip = "Distill ${uiState.selectedMessageIds.size} messages (AI context transfer)"
-                                ) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Icon(Icons.Default.Compress, contentDescription = "Distill")
-                                        Spacer(modifier = Modifier.width(4.dp))
-                                        Text("Distill (${uiState.selectedMessageIds.size})")
-                                    }
-                                }
-
-                                CompactButton(
-                                    onClick = {
-                                        coroutineScope.launch {
-                                            viewModel.summarizeSelectedMessages()
-                                        }
-                                    },
-                                    tooltip = "Summarize ${uiState.selectedMessageIds.size} messages (AI history compression)"
-                                ) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Icon(Icons.Default.Subject, contentDescription = "Summarize")
-                                        Spacer(modifier = Modifier.width(4.dp))
-                                        Text("Summarize (${uiState.selectedMessageIds.size})")
-                                    }
-                                }
-                            }
-
-                            // Delete - always shown when 1+ messages selected
-                            CompactButton(
-                                onClick = {
-                                    coroutineScope.launch {
-                                        viewModel.deleteSelectedMessages()
-                                    }
-                                },
-                                tooltip = "Delete ${uiState.selectedMessageIds.size} selected message(s)"
-                            ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(Icons.Default.Delete, contentDescription = "Delete")
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text("Delete (${uiState.selectedMessageIds.size})")
-                                }
                             }
                         }
                     }
