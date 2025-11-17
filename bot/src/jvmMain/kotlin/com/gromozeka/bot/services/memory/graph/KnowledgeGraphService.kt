@@ -110,8 +110,34 @@ class KnowledgeGraphService(
             for ((index, entity) in entities.withIndex()) {
                 val entityType = entityTypes.find { it.id == entity.second }?.name ?: "Unknown"
                 val embedding = embeddingModel.embed(entity.first)
-                val summary = generateEntitySummary(entity.first, entityType, content)
                 val uuid = uuidMapping[index] ?: UUID.randomUUID().toString()
+                
+                // Get existing summary if entity already exists in graph (for incremental updates)
+                val existingSummary = if (neo4jDriver != null && uuidMapping.containsKey(index)) {
+                    try {
+                        neo4jDriver.session().use { session ->
+                            val result = session.run(
+                                """
+                                MATCH (n:MemoryObject {uuid: ${'$'}uuid, group_id: ${'$'}groupId})
+                                RETURN n.summary as summary
+                                """.trimIndent(),
+                                mapOf("uuid" to uuid, "groupId" to groupId)
+                            )
+                            if (result.hasNext()) {
+                                result.next()["summary"]?.asString("")?.takeIf { it.isNotBlank() }
+                            } else {
+                                null
+                            }
+                        }
+                    } catch (e: Exception) {
+                        log.warn(e) { "Failed to fetch existing summary for $uuid: ${e.message}" }
+                        null
+                    }
+                } else {
+                    null
+                }
+                
+                val summary = generateEntitySummary(entity.first, entityType, content, existingSummary)
 
                 add(MemoryObject(
                     uuid = uuid,
@@ -276,14 +302,16 @@ class KnowledgeGraphService(
     private suspend fun generateEntitySummary(
         entityName: String,
         entityType: String,
-        content: String
+        content: String,
+        existingSummary: String? = null
     ): String {
-        log.debug { "Generating summary for entity: $entityName ($entityType)" }
+        log.debug { "${if (existingSummary != null) "Updating" else "Generating"} summary for entity: $entityName ($entityType)" }
 
         val prompt = MemoryExtractionPrompts.generateEntitySummaryPrompt(
             entityName = entityName,
             entityType = entityType,
-            content = content
+            content = content,
+            existingSummary = existingSummary
         )
 
         val settings = settingsService.settings

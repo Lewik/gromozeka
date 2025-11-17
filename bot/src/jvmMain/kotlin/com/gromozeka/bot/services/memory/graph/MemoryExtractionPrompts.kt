@@ -130,9 +130,10 @@ Return the result as JSON with this structure:
     fun generateEntitySummaryPrompt(
         entityName: String,
         entityType: String,
-        content: String
+        content: String,
+        existingSummary: String? = null
     ): String = """
-You are an AI assistant that generates concise summaries for knowledge graph entities.
+You are an AI assistant that ${if (existingSummary != null) "updates" else "generates"} concise summaries for knowledge graph entities.
 
 <ENTITY>
 Name: $entityName
@@ -143,20 +144,52 @@ Type: $entityType
 $content
 </CONTEXT>
 
-# TASK
-Generate a brief, informative summary (1-3 sentences, max 250 characters) for the entity "$entityName" based on the context provided.
+${if (existingSummary != null) """
+<EXISTING_SUMMARY>
+$existingSummary
+</EXISTING_SUMMARY>
+""".trimIndent() else ""}
 
-# RULES
-1. Focus on the most relevant information about this entity from the context
-2. Be concise and factual
-3. Do NOT include the entity name in the summary (it's redundant)
-4. If the entity is mentioned multiple times, synthesize the information
-5. If there's not enough information, provide a minimal description based on the entity type
+# TASK
+${if (existingSummary != null) {
+    "UPDATE the existing summary with new information from the context. This is an INCREMENTAL UPDATE - keep relevant old information, add new facts, refine descriptions."
+} else {
+    "Generate a brief summary (1-3 sentences, max 250 characters) describing HOW this entity is used in THIS PROJECT based on the context."
+}}
+
+# CRITICAL RULES
+1. Focus on PROJECT-SPECIFIC usage and context, NOT general definitions
+2. Extract information ONLY from the provided context
+3. If context shows how entity is used in project - describe that usage
+4. If context lacks details - return minimal summary or empty string
+5. Do NOT include entity name in summary (it's redundant)
+${if (existingSummary != null) {
+    "6. UPDATE mode: Keep relevant information from existing summary, add new facts from context, remove contradictions"
+} else {
+    "6. CREATE mode: Base summary strictly on what context says about this entity"
+}}
 
 # EXAMPLES
-- For "Spring AI" (Technology): "Framework for building AI applications with Java and Kotlin. Supports multiple LLM providers and vector stores."
-- For "Phase 1" (Concept): "Initial implementation phase focusing on vector memory with Qdrant. Includes entity storage and hybrid search."
-- For "Gromozeka" (Project): "Multi-armed AI agent with hybrid memory architecture. Features voice interface and Claude Code integration."
+
+✅ GOOD (project-specific):
+- For "Kotlin": "Primary language in Gromozeka for bot and shared modules."
+- For "PostgreSQL": "Main storage backend alongside Qdrant and Neo4j in hybrid architecture."
+- For "ThreadRepository": "DDD Repository interface abstracting thread persistence. Hides PostgreSQL, Qdrant, Neo4j storage."
+- For "Pragmatic DDD": "DDD approach used in Gromozeka without fanaticism. Balances standard patterns with practical needs."
+
+❌ BAD (general knowledge):
+- For "Kotlin": "Statically-typed programming language for JVM, Android, and multiplatform development." ← NO! This is general knowledge!
+- For "Spring AI": "Framework for building AI applications with Java and Kotlin." ← NO! Focus on how it's used in project!
+- For "PostgreSQL": "Relational database management system." ← NO! Say how it's used in Gromozeka!
+
+${if (existingSummary != null) """
+# UPDATE EXAMPLE
+Existing: "Primary language in Gromozeka."
+Context: "ThreadRepository implemented in Kotlin with type-safe value classes."
+Updated: "Primary language in Gromozeka for bot and shared modules. ThreadRepository uses Kotlin type-safe value classes."
+""".trimIndent() else ""}
+
+If context only mentions entity without details (e.g., "using Kotlin") - return minimal summary like "Programming language used in project" or empty string.
 
 Return ONLY the summary text, no JSON or additional formatting.
 """.trimIndent()

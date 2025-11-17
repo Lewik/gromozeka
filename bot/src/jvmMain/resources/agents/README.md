@@ -15,23 +15,24 @@ Agents communicate through typed Kotlin interfaces and comprehensive KDoc, not t
 
 **Output:**
 - `domain/model/` - Data classes and entities
-- `domain/repository/` - Repository interfaces
-- `domain/service/` - Service interfaces
+- `domain/repository/` - Repository interfaces (DDD pattern)
 
 **Key Trait:** Creates comprehensive KDoc explaining WHAT and WHY
 
-### 2. Data Layer Agent (`data-layer-agent.md`)
-**Responsibility:** Implement repository interfaces
+### 2. Repository Agent (`repository-agent.md`)
+**Responsibility:** Implement Repository interfaces
 
 **Input:** Reads `domain/repository/` interfaces
-**Output:** `infrastructure/persistence/exposed/` implementations
+**Output:** `infrastructure/db/persistence/` implementations
 
 **Key Trait:** Pure persistence logic, no business rules
+
+**CRITICAL:** Distinguishes between DDD Repository (public interface) and Spring Data Repository (private ORM tool)
 
 ### 3. Business Logic Agent (`business-logic-agent.md`)
 **Responsibility:** Implement service interfaces
 
-**Input:** Reads `domain/service/` and `domain/repository/` interfaces
+**Input:** Reads `domain/repository/` interfaces
 **Output:** `application/service/` implementations
 
 **Key Trait:** Orchestrates repositories, enforces business rules
@@ -50,7 +51,7 @@ Agents communicate through typed Kotlin interfaces and comprehensive KDoc, not t
 ### 5. UI Agent (`ui-agent.md`)
 **Responsibility:** Build Compose Desktop UI
 
-**Input:** Reads `domain/model/` and `domain/service/` interfaces
+**Input:** Reads `domain/model/` and `domain/repository/` interfaces
 **Output:**
 - `presentation/ui/` - Compose components
 - `presentation/viewmodel/` - ViewModels
@@ -75,12 +76,13 @@ package com.gromozeka.bot.domain.repository
  */
 interface ThreadRepository {
     suspend fun findById(id: Thread.Id): Thread?
-    suspend fun create(thread: Thread): Thread
+    suspend fun save(thread: Thread): Thread
 }
 
-// Data Layer Agent reads this and implements:
-package com.gromozeka.bot.infrastructure.persistence.exposed
+// Repository Agent reads this and implements:
+package com.gromozeka.bot.infrastructure.db.persistence
 
+@Service
 class ExposedThreadRepository : ThreadRepository {
     override suspend fun findById(id: Thread.Id): Thread? = transaction {
         // Implementation follows contract exactly
@@ -126,7 +128,7 @@ presentation/  →  domain/  ←  application/  ←  infrastructure/
 
 Agents have restricted file access:
 - **Architect:** Can only write to `domain/`
-- **Data Layer:** Can only write to `infrastructure/persistence/`
+- **Repository Agent:** Can only write to `infrastructure/db/`
 - **Business Logic:** Can only write to `application/`
 - **UI:** Can only write to `presentation/`
 
@@ -152,25 +154,20 @@ data class Note(
 // domain/repository/NoteRepository.kt
 interface NoteRepository {
     suspend fun findById(id: Note.Id): Note?
-    suspend fun create(note: Note): Note
+    suspend fun save(note: Note): Note
     suspend fun findAll(): List<Note>
-}
-
-// domain/service/NoteService.kt
-interface NoteService {
-    suspend fun createNote(content: String): Note
-    suspend fun getAllNotes(): List<Note>
 }
 ```
 
 Saves to graph: "Designed note storage with simple CRUD operations"
 
-### Step 2: Data Layer Agent
+### Step 2: Repository Agent
 
 Reads `domain/repository/NoteRepository.kt`, implements:
 
 ```kotlin
-// infrastructure/persistence/exposed/ExposedNoteRepository.kt
+// infrastructure/db/persistence/ExposedNoteRepository.kt
+@Service
 class ExposedNoteRepository : NoteRepository {
     override suspend fun findById(id: Note.Id): Note? = transaction {
         Notes.selectAll().where { Notes.id eq UUID.fromString(id.value) }
@@ -200,7 +197,7 @@ class NoteServiceImpl(
             content = content,
             createdAt = Clock.System.now()
         )
-        return noteRepository.create(note)
+        return noteRepository.save(note)
     }
 }
 ```
@@ -277,9 +274,9 @@ Saves to graph: "Implemented note list UI with ViewModel pattern, auto-loads on 
 Agents don't pass messages. They write code to filesystem:
 
 ```
-Architect writes: domain/repository/XRepository.kt
-Data Agent reads:  domain/repository/XRepository.kt
-Data Agent writes: infrastructure/persistence/exposed/ExposedXRepository.kt
+Architect writes:     domain/repository/XRepository.kt
+Repository Agent reads:  domain/repository/XRepository.kt
+Repository Agent writes: infrastructure/db/persistence/ExposedXRepository.kt
 ```
 
 ### Pattern 3: Knowledge Graph Context
@@ -296,7 +293,7 @@ Before implementing, agent queries graph:
 
 Each agent knows other agents exist but doesn't interact directly:
 
-**Data Layer Agent prompt includes:**
+**Repository Agent prompt includes:**
 > "Business Logic Agent handles validation and business rules. You implement pure persistence. Stay in your lane."
 
 This prevents scope creep and layer violations.
@@ -319,7 +316,7 @@ User: "Add note storage"
 Orchestrator:
   1. Invokes Architect Agent
   2. Waits for domain/ files
-  3. Invokes Data + Business Logic agents in parallel
+  3. Invokes Repository + Business Logic agents in parallel
   4. Waits for implementations
   5. Invokes UI Agent
   6. Verifies build
@@ -336,18 +333,17 @@ Orchestrator:
 
 ```
 docs/agents/
-├── agent-builder.md             # Universal - Meta-agent for creating agents
+├── agent-builder-v2.md          # Meta-agent for creating agents
 └── gromozeka/
-    ├── README.md                    # This file
-    ├── architect-agent.md           # Domain interfaces and model design
-    ├── architecture.md              # Gromozeka Clean Architecture
-    ├── shared-base.md               # Common rules for all Gromozeka agents
-    ├── data-layer-agent.md          # Repository implementations
-    ├── data-services-agent.md       # DataService implementations
-    ├── business-logic-agent.md      # Service implementations
-    ├── infrastructure-agent.md      # External integrations
-    ├── spring-ai-agent.md           # Spring AI & MCP integrations
-    └── ui-agent.md                  # Compose Desktop UI
+    ├── README.md                 # This file
+    ├── architect-agent.md        # Domain interfaces and model design
+    ├── architecture.md           # Gromozeka Clean Architecture
+    ├── shared-base.md            # Common rules for all Gromozeka agents
+    ├── repository-agent.md       # DDD Repository implementations
+    ├── business-logic-agent.md   # Service implementations
+    ├── infrastructure-agent.md   # External integrations
+    ├── spring-ai-agent.md        # Spring AI & MCP integrations
+    └── ui-agent.md               # Compose Desktop UI
 ```
 
 Each agent prompt is self-contained and includes:

@@ -24,7 +24,7 @@ Presentation   → Domain + Application
 
 **Responsibilities:**
 - Define Entities and Value Objects
-- Define DataService interfaces (for all data access)
+- Define Repository interfaces (for all data access)
 - Define Domain Service interfaces
 - Own complete application model
 
@@ -32,7 +32,7 @@ Presentation   → Domain + Application
 ```
 domain/
   ├── model/           - Entities, Value Objects
-  └── service/         - DataService interfaces, Domain Service interfaces
+  └── repository/      - Repository interfaces, Domain Service interfaces
 ```
 
 **Key principle:** Domain has NO dependencies. Pure business logic and contracts.
@@ -49,15 +49,17 @@ data class Thread(
     value class Id(val value: String)
 }
 
-// domain/service/ThreadDataService.kt
-interface ThreadDataService {
+// domain/repository/ThreadRepository.kt
+interface ThreadRepository {
     suspend fun findById(id: Thread.Id): Thread?
-    suspend fun create(thread: Thread): Thread
+    suspend fun save(thread: Thread): Thread
     suspend fun findAll(): List<Thread>
 }
 ```
 
-**Important:** Architect creates **DataService** interfaces, NOT Repository interfaces. Repository is a Spring Data implementation detail.
+**Important:** Architect creates **Repository** interfaces in `domain/repository/`, NOT in `domain/service/`. This follows DDD Repository Pattern.
+
+**Note on Spring Data Repository:** Spring Data Repository (JpaRepository, etc.) is a **Spring technology** that lives in Infrastructure layer as private implementation detail. It's NOT the same as DDD Repository Pattern!
 
 ---
 
@@ -69,7 +71,7 @@ interface ThreadDataService {
 
 **Responsibilities:**
 - Implement Use Cases (orchestration of domain logic)
-- Coordinate multiple DataServices
+- Coordinate multiple Repositories
 - Business logic that spans multiple entities
 - Application-specific workflows
 
@@ -88,19 +90,19 @@ import com.gromozeka.shared.uuid.uuid7
 
 @Service
 class ConversationService(
-    private val threadDataService: ThreadDataService,
-    private val messageDataService: MessageDataService,
+    private val threadRepository: ThreadRepository,
+    private val messageRepository: MessageRepository,
     private val vectorMemory: VectorMemoryService
 ) {
     suspend fun startConversation(title: String, agentId: String): Thread {
-        // Use Case: orchestrate multiple data services
+        // Use Case: orchestrate multiple repositories
         val thread = Thread(
             id = uuid7(),
             title = title,
             createdAt = Clock.System.now()
         )
 
-        threadDataService.create(thread)
+        threadRepository.save(thread)
         vectorMemory.indexThread(thread.id)
 
         return thread
@@ -117,14 +119,14 @@ Infrastructure implements Domain interfaces. Each subdomain has its own module.
 #### Infrastructure/DB Module
 
 **Module:** `:infrastructure-db`
-**Agent:** DataServices Agent
+**Agent:** Repository Agent
 **Spring:** YES (`@Service`, `@Repository`)
 
 **Responsibilities:**
 - Database access (Exposed, SQL)
 - Vector storage (Qdrant)
 - Knowledge graph (Neo4j)
-- Implement DataService interfaces from Domain
+- Implement Repository interfaces from Domain
 
 **What lives here:**
 ```
@@ -137,8 +139,8 @@ infrastructure/db/
 **Dependencies:** `:domain` only (NOT `:application`)
 
 **Key pattern:**
-- **Private:** Exposed Table definitions (internal implementation detail)
-- **Public:** DataService implementations (expose to other modules)
+- **Private:** Exposed Table definitions, Spring Data JPA repositories (internal implementation detail)
+- **Public:** DDD Repository implementations (expose to other modules)
 
 **Example:**
 ```kotlin
@@ -149,25 +151,30 @@ internal object ThreadsTable : Table("threads") {
     val createdAt = long("created_at")
 }
 
-// Public DataService implementation
+// Private Spring Data Repository (INTERNAL) - ORM tool only!
+@Repository
+internal interface ThreadJpaRepository : JpaRepository<ThreadEntity, String>
+
+// Public DDD Repository implementation
 @Service
-class ExposedThreadDataService : ThreadDataService {
+class ExposedThreadRepository(
+    private val jpaRepo: ThreadJpaRepository  // Uses Spring Data internally
+) : ThreadRepository {
     override suspend fun findById(id: Thread.Id): Thread? = dbQuery {
-        ThreadsTable.select { ThreadsTable.id eq id.value }
-            .map { it.toThread() }
-            .singleOrNull()
+        jpaRepo.findById(id.value).orElse(null)?.toDomain()
     }
 
-    override suspend fun create(thread: Thread): Thread = dbQuery {
-        ThreadsTable.insert {
-            it[id] = thread.id.value
-            it[title] = thread.title
-            it[createdAt] = thread.createdAt.toEpochMilliseconds()
-        }
-        thread
+    override suspend fun save(thread: Thread): Thread = dbQuery {
+        val entity = thread.toEntity()
+        jpaRepo.save(entity).toDomain()
     }
 }
 ```
+
+**CRITICAL: Three levels of abstraction:**
+1. **DDD Repository interface** (domain/repository/) - PUBLIC, what other layers see
+2. **DDD Repository implementation** (infrastructure/db/persistence/) - your code
+3. **Spring Data Repository** (infrastructure/db/persistence/, internal) - ORM tool you use privately
 
 #### Infrastructure/AI Module
 
@@ -290,35 +297,76 @@ val thread = Thread(
 
 ## Terminology
 
-### DataService vs Repository
+### DDD Repository vs Spring Data Repository
 
-- **DataService** - Interface defined in Domain layer by Architect
-- **Repository/Table** - Exposed ORM implementation detail, private to Infrastructure module
+**CRITICAL DISTINCTION - Read Carefully!**
+
+These are **two different things** with the same name "Repository":
+
+**1. DDD Repository Pattern (Domain-Driven Design)**
+- **What it is:** Architectural pattern, domain abstraction
+- **Where:** Interface in `domain/repository/` (PUBLIC)
+- **Purpose:** Technology-agnostic data access contract
+- **Created by:** Architect Agent
+- **Implemented by:** Repository Agent in Infrastructure layer
+- **Example:** `interface ThreadRepository { suspend fun findById(...) }`
+
+**2. Spring Data Repository (Spring Framework)**
+- **What it is:** ORM technology/library from Spring
+- **Where:** `infrastructure/db/persistence/` (PRIVATE/INTERNAL)
+- **Purpose:** Database mapping tool (JPA/MongoDB/Redis abstraction)
+- **Used by:** Repository Agent internally
+- **Example:** `internal interface ThreadJpaRepository : JpaRepository<ThreadEntity, String>`
+
+**How they relate:**
+
+```
+Domain Layer (PUBLIC):
+  interface ThreadRepository  ← DDD Repository Pattern (architectural abstraction)
+     ↓
+Infrastructure Layer:
+  @Service
+  class ExposedThreadRepository : ThreadRepository  ← Your implementation
+     ↓ uses internally (PRIVATE)
+  @Repository
+  internal interface ThreadJpaRepository : JpaRepository<...>  ← Spring Data (ORM tool)
+```
+
+**Key points:**
+- DDD Repository = architectural pattern, Spring Data Repository = technology/library
+- Spring Data Repository is PRIVATE implementation detail inside DDD Repository
+- Other modules see only DDD Repository interface, never Spring Data Repository
+- Don't confuse them - they're fundamentally different concepts!
 
 **Example:**
 ```kotlin
-// Domain: Architect defines this
-interface ThreadDataService {
+// Domain: Architect defines this (DDD Repository Pattern)
+interface ThreadRepository {
     suspend fun findById(id: Thread.Id): Thread?
 }
 
-// Infrastructure: DataServices Agent implements this
-internal object ThreadsTable : Table("threads") { ... }  // Private Exposed Table!
+// Infrastructure: Repository Agent implements this
+@Repository  // Spring annotation
+internal interface ThreadJpaRepository : JpaRepository<ThreadEntity, String>  // Private Spring Data!
 
 @Service
-class ExposedThreadDataService : ThreadDataService {  // Public implementation
+class ExposedThreadRepository(
+    private val jpaRepo: ThreadJpaRepository  // Uses Spring Data internally
+) : ThreadRepository {  // Implements DDD Repository
     override suspend fun findById(id: Thread.Id) = dbQuery {
-        ThreadsTable.select { ThreadsTable.id eq id.value }...
+        jpaRepo.findById(id.value)  // Spring Data does SQL
+            .map { it.toDomain() }  // Convert to domain object
+            .orElse(null)
     }
 }
 ```
 
 ### Use Case vs Application Service
 
-- **Use Case** - Orchestration of domain logic + data services (in Application layer)
+- **Use Case** - Orchestration of domain logic + repositories (in Application layer)
 - **Application Service** - Same thing, different name
 
-Both refer to services in `:application` module that coordinate multiple DataServices.
+Both refer to services in `:application` module that coordinate multiple Repositories.
 
 ---
 
@@ -327,7 +375,7 @@ Both refer to services in `:application` module that coordinate multiple DataSer
 ### Domain - NO Spring
 ```kotlin
 // Pure Kotlin interfaces and data classes
-interface ThreadDataService {  // No @Service!
+interface ThreadRepository {  // No @Service!
     suspend fun findById(id: Thread.Id): Thread?
 }
 ```
@@ -336,14 +384,14 @@ interface ThreadDataService {  // No @Service!
 ```kotlin
 @Service  // Spring annotation here
 class ConversationService(
-    private val threadDataService: ThreadDataService  // Constructor injection
+    private val threadRepository: ThreadRepository  // Constructor injection
 ) { ... }
 ```
 
 ### Infrastructure - YES Spring
 ```kotlin
 @Service  // Spring annotation here
-class ExposedThreadDataService : ThreadDataService { ... }
+class ExposedThreadRepository : ThreadRepository { ... }
 
 @Configuration  // Spring configuration
 class DbConfiguration { ... }
@@ -378,16 +426,16 @@ class TabViewModel(...) { ... }
 **Example:**
 ```kotlin
 // Domain
-interface ThreadDataService { ... }
+interface ThreadRepository { ... }
 
 // Infrastructure
 @Service
-class ExposedThreadDataService : ThreadDataService { ... }
+class ExposedThreadRepository : ThreadRepository { ... }
 
 // Application
 @Service
 class ConversationService(
-    private val threadDataService: ThreadDataService  // Spring injects ExposedThreadDataService
+    private val threadRepository: ThreadRepository  // Spring injects ExposedThreadRepository
 ) { ... }
 ```
 
@@ -424,10 +472,10 @@ presentation/utils/           - UI-specific utilities
 
 | Agent | Module | Layer | Spring | Responsibilities |
 |-------|--------|-------|--------|------------------|
-| Architect | `:domain` | Domain | NO | Entities, DataService interfaces |
+| Architect | `:domain` | Domain | NO | Entities, Repository interfaces |
 | Shared | `:shared` | Cross-cutting | NO | Common utilities, value objects (created later) |
 | Business Logic | `:application` | Application | YES | Use Cases, orchestration |
-| DataServices | `:infrastructure-db` | Infrastructure | YES | DB, Vector, Graph implementations |
+| Repository | `:infrastructure-db` | Infrastructure | YES | DB, Vector, Graph implementations |
 | Spring AI | `:infrastructure-ai` | Infrastructure | YES | AI, MCP integrations |
 | UI | `:presentation` | Presentation | YES* | Compose UI, ViewModels |
 
@@ -442,7 +490,7 @@ presentation/utils/           - UI-specific utilities
 1. **Domain is pure** - No dependencies, no framework code
 2. **Dependencies point inward** - Outer layers depend on inner, never reverse
 3. **Interfaces in Domain** - Implementations in Infrastructure
-4. **DataService not Repository** - Exposed Table/Repository is implementation detail
+4. **DDD Repository not Spring Data Repository** - Exposed Table/JpaRepository is implementation detail
 5. **Spring in outer layers only** - Application and Infrastructure (NOT Domain)
 6. **Each module is independent** - Can be compiled separately
 7. **DI wiring is automatic** - Spring finds implementations by interface
@@ -464,12 +512,12 @@ Use `T?` when absence of result is a valid, expected outcome.
 **Example:**
 ```kotlin
 // Domain
-interface ThreadDataService {
+interface ThreadRepository {
     suspend fun findById(id: Thread.Id): Thread?  // null = not found (normal)
 }
 
 // Usage
-val thread = threadDataService.findById(id)
+val thread = threadRepository.findById(id)
 if (thread != null) {
     // work with thread
 } else {
@@ -503,15 +551,15 @@ class ThreadNotFoundException(
 **Usage example:**
 ```kotlin
 // Domain
-interface ThreadDataService {
-    suspend fun create(thread: Thread): Thread
+interface ThreadRepository {
+    suspend fun save(thread: Thread): Thread
     // throws DuplicateThreadException if thread with title exists
 }
 
 // Infrastructure implementation
 @Service
-class ExposedThreadDataService : ThreadDataService {
-    override suspend fun create(thread: Thread): Thread = dbQuery {
+class ExposedThreadRepository : ThreadRepository {
+    override suspend fun save(thread: Thread): Thread = dbQuery {
         // Check for duplicate
         val existing = ThreadsTable.select { 
             ThreadsTable.title eq thread.title 
@@ -546,12 +594,12 @@ sealed interface CreateThreadResult {
     data class InvalidTitle(val reason: String) : CreateThreadResult
 }
 
-interface ThreadDataService {
+interface ThreadRepository {
     suspend fun createThread(thread: Thread): CreateThreadResult
 }
 
 // Usage in Application
-when (val result = threadDataService.createThread(thread)) {
+when (val result = threadRepository.createThread(thread)) {
     is Success -> result.thread
     is DuplicateTitle -> // handle duplicate
     is InvalidTitle -> // handle invalid
@@ -582,7 +630,7 @@ internal fun processThread(thread: Thread) {
 
 // External - defensive
 @Service
-class ExposedThreadDataService : ThreadDataService {
+class ExposedThreadRepository : ThreadRepository {
     override suspend fun findById(id: Thread.Id): Thread? = try {
         dbQuery { ... }
     } catch (e: Exception) {
@@ -606,4 +654,3 @@ class ExposedThreadDataService : ThreadDataService {
 **Documentation:**
 - Always document thrown exceptions in KDoc with `@throws`
 - Explain WHEN exception is thrown, not just what it is
-

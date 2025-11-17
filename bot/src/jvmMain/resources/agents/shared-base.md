@@ -13,7 +13,7 @@ This architecture defines:
 - Module structure and dependencies
 - Where interfaces vs implementations live
 - Spring usage per layer
-- DataService vs Repository terminology
+- DDD Repository vs Spring Data Repository terminology
 
 ### Code Quality Standards
 
@@ -57,20 +57,20 @@ This architecture defines:
 **Example violation:**
 ```kotlin
 // ❌ BAD: UI layer importing Infrastructure directly
-import com.gromozeka.bot.infrastructure.db.persistence.ExposedThreadDataService
+import com.gromozeka.bot.infrastructure.db.persistence.ExposedThreadRepository
 
 class ThreadViewModel {
-    private val dataService = ExposedThreadDataService() // WRONG!
+    private val repository = ExposedThreadRepository() // WRONG!
 }
 ```
 
 **Correct approach:**
 ```kotlin
 // ✅ GOOD: UI depends on Domain interface
-import com.gromozeka.bot.domain.service.ThreadDataService
+import com.gromozeka.bot.domain.repository.ThreadRepository
 
 class ThreadViewModel(
-    private val threadDataService: ThreadDataService // Interface from domain/
+    private val threadRepository: ThreadRepository // Interface from domain/
 ) {
     // Infrastructure layer provides implementation via DI
 }
@@ -83,16 +83,16 @@ class ThreadViewModel(
 - Interfaces are your contract - they must be complete and typed
 - KDoc comments explain WHAT and WHY, not HOW
 
-**Why:** Code is the specification. If Architect writes interface with full KDoc, Data Layer Agent can implement it **without asking questions**. This enables parallel work.
+**Why:** Code is the specification. If Architect writes interface with full KDoc, Repository Agent can implement it **without asking questions**. This enables parallel work.
 
 **Example:**
 
 **Instead of chat:**
-> "Data Layer, please implement a method that finds thread by ID and returns Thread or null if not found"
+> "Repository Agent, please implement a method that finds thread by ID and returns Thread or null if not found"
 
 **Use code:**
 ```kotlin
-interface ThreadDataService {
+interface ThreadRepository {
     /**
      * Finds thread by unique identifier.
      * @param id thread UUID
@@ -116,7 +116,7 @@ interface ThreadDataService {
 ```kotlin
 build_memory_from_text(
   content = """
-  Implemented ThreadDataService using Exposed ORM with Qdrant vector integration.
+  Implemented ThreadRepository using Exposed ORM with Qdrant vector integration.
 
   Key decisions:
   1. Separate Thread and Message tables
@@ -181,7 +181,7 @@ High-level overview:
 ```
 domain/         - Interfaces, entities (Architect)
 application/    - Use cases, orchestration (Business Logic Agent)
-infrastructure/ - Implementations (DataServices, Spring AI agents)
+infrastructure/ - Implementations (Repositories, Spring AI agents)
 presentation/   - UI, ViewModels (UI Agent)
 ```
 
@@ -224,9 +224,9 @@ presentation/   - UI, ViewModels (UI Agent)
 ### Meta-Awareness: Your Team
 
 You work alongside other specialized agents:
-- **Architect Agent** → `:domain` - designs DataService interfaces and entities
+- **Architect Agent** → `:domain` - designs Repository interfaces and entities
 - **Business Logic Agent** → `:application` - implements use cases and orchestration
-- **DataServices Agent** → `:infrastructure-db` - implements DB, vector, graph data access
+- **Repository Agent** → `:infrastructure-db` - implements DB, vector, graph data access
 - **Spring AI Agent** → `:infrastructure-ai` - implements AI integrations and MCP
 - **UI Agent** → `:presentation` - builds Compose Desktop interface
 
