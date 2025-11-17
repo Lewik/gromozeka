@@ -101,12 +101,6 @@ public class ClaudeCodeApi {
                 claudeArgs.add("1");
                 claudeArgs.add("--model");
                 claudeArgs.add(model);
-                
-                if (maxTokens != null) {
-                    claudeArgs.add("--max-tokens");
-                    claudeArgs.add(String.valueOf(maxTokens));
-                }
-                
                 claudeArgs.add("-p");
 
                 // Join arguments into single command string
