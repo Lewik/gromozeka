@@ -3,7 +3,7 @@ package com.gromozeka.bot.services.mcp
 import com.gromozeka.bot.services.DefaultAgentProvider
 import com.gromozeka.bot.ui.viewmodel.AppViewModel
 import com.gromozeka.bot.ui.state.ConversationInitiator
-import com.gromozeka.shared.domain.Conversation
+import com.gromozeka.domain.model.Conversation
 import com.gromozeka.shared.services.AgentService
 import io.modelcontextprotocol.kotlin.sdk.CallToolRequest
 import io.modelcontextprotocol.kotlin.sdk.CallToolResult
@@ -18,7 +18,7 @@ import kotlinx.serialization.json.put
 import org.springframework.context.ApplicationContext
 import org.springframework.stereotype.Service
 import java.util.*
-import kotlin.time.Clock
+import kotlinx.datetime.Clock
 
 @Service
 class CreateAgentTool(

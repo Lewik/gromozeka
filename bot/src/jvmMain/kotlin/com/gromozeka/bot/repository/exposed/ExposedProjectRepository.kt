@@ -1,8 +1,8 @@
 package com.gromozeka.bot.repository.exposed
 
 import com.gromozeka.bot.repository.exposed.tables.Projects
-import com.gromozeka.shared.domain.Project
-import com.gromozeka.shared.repository.ProjectRepository
+import com.gromozeka.domain.model.Project
+import com.gromozeka.domain.repository.ProjectRepository
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
@@ -12,7 +12,7 @@ import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.like
 import org.jetbrains.exposed.v1.core.or
 import org.jetbrains.exposed.v1.jdbc.*
-import kotlin.time.Instant
+import kotlinx.datetime.Instant
 
 class ExposedProjectRepository(
     private val json: Json
@@ -28,7 +28,7 @@ class ExposedProjectRepository(
                 it[description] = project.description
                 it[favorite] = project.favorite
                 it[archived] = project.archived
-                it[lastUsedAt] = project.lastUsedAt
+                it[lastUsedAt] = project.lastUsedAt.toKotlin()
             }
         } else {
             Projects.insert {
@@ -38,8 +38,8 @@ class ExposedProjectRepository(
                 it[description] = project.description
                 it[favorite] = project.favorite
                 it[archived] = project.archived
-                it[createdAt] = project.createdAt
-                it[lastUsedAt] = project.lastUsedAt
+                it[createdAt] = project.createdAt.toKotlin()
+                it[lastUsedAt] = project.lastUsedAt.toKotlin()
             }
         }
         project
@@ -102,7 +102,7 @@ class ExposedProjectRepository(
         description = this[Projects.description],
         favorite = this[Projects.favorite],
         archived = this[Projects.archived],
-        createdAt = this[Projects.createdAt],
-        lastUsedAt = this[Projects.lastUsedAt]
+        createdAt = this[Projects.createdAt].toKotlinx(),
+        lastUsedAt = this[Projects.lastUsedAt].toKotlinx()
     )
 }

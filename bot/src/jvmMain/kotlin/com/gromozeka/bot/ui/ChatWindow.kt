@@ -28,14 +28,14 @@ import com.gromozeka.bot.ui.session.SessionScreen
 import com.gromozeka.bot.ui.state.ConversationInitiator
 import com.gromozeka.bot.ui.viewmodel.AppViewModel
 import com.gromozeka.bot.ui.viewmodel.ContextsPanelViewModel
-import com.gromozeka.shared.domain.Conversation
+import com.gromozeka.domain.model.Conversation
 import com.gromozeka.shared.services.ProjectService
 import klog.KLoggers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import java.util.*
-import kotlin.time.Clock
+import kotlinx.datetime.Clock
 
 @Composable
 @Preview

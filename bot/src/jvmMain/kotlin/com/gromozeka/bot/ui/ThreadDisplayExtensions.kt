@@ -1,8 +1,8 @@
 package com.gromozeka.bot.ui
 
-import com.gromozeka.shared.domain.Conversation
-import kotlin.time.Clock
-import kotlin.time.Instant
+import com.gromozeka.domain.model.Conversation
+import kotlinx.datetime.Clock
+import kotlinx.datetime.Instant
 
 fun Conversation.displayPreview(): String {
     // Messages are loaded separately via ConversationService.loadCurrentMessages()

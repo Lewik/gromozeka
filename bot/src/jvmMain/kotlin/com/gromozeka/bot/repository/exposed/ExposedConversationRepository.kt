@@ -1,15 +1,15 @@
 package com.gromozeka.bot.repository.exposed
 
 import com.gromozeka.bot.repository.exposed.tables.Conversations
-import com.gromozeka.shared.domain.Conversation
-import com.gromozeka.shared.domain.Project
-import com.gromozeka.shared.repository.ConversationRepository
+import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.Project
+import com.gromozeka.domain.repository.ConversationRepository
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.*
-import kotlin.time.Clock
-import kotlin.time.Instant
+import kotlinx.datetime.Clock
+import kotlinx.datetime.Instant
 
 class ExposedConversationRepository : ConversationRepository {
 
@@ -21,8 +21,8 @@ class ExposedConversationRepository : ConversationRepository {
             it[aiProvider] = conversation.aiProvider
             it[modelName] = conversation.modelName
             it[currentThreadId] = conversation.currentThread.value
-            it[createdAt] = conversation.createdAt
-            it[updatedAt] = conversation.updatedAt
+            it[createdAt] = conversation.createdAt.toKotlin()
+            it[updatedAt] = conversation.updatedAt.toKotlin()
         }
         conversation
     }
@@ -48,14 +48,14 @@ class ExposedConversationRepository : ConversationRepository {
     override suspend fun updateCurrentThread(id: Conversation.Id, threadId: Conversation.Thread.Id): Unit = dbQuery {
         Conversations.update({ Conversations.id eq id.value }) {
             it[currentThreadId] = threadId.value
-            it[updatedAt] = Clock.System.now()
+            it[updatedAt] = Clock.System.now().toKotlin()
         }
     }
 
     override suspend fun updateDisplayName(id: Conversation.Id, displayName: String): Unit = dbQuery {
         Conversations.update({ Conversations.id eq id.value }) {
             it[Conversations.displayName] = displayName
-            it[updatedAt] = Clock.System.now()
+            it[updatedAt] = Clock.System.now().toKotlin()
         }
     }
 
@@ -66,7 +66,7 @@ class ExposedConversationRepository : ConversationRepository {
         aiProvider = this[Conversations.aiProvider],
         modelName = this[Conversations.modelName],
         currentThread = Conversation.Thread.Id(this[Conversations.currentThreadId]),
-        createdAt = this[Conversations.createdAt],
-        updatedAt = this[Conversations.updatedAt]
+        createdAt = this[Conversations.createdAt].toKotlinx(),
+        updatedAt = this[Conversations.updatedAt].toKotlinx()
     )
 }

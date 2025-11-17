@@ -1,7 +1,7 @@
 package com.gromozeka.bot.services
 
 import com.gromozeka.bot.ui.viewmodel.AppViewModel
-import com.gromozeka.shared.domain.Conversation
+import com.gromozeka.domain.model.Conversation
 import klog.KLoggers
 
 import kotlinx.coroutines.CoroutineScope
@@ -9,8 +9,8 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.*
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.stereotype.Service
-import kotlin.time.Clock
-import kotlin.time.Instant
+import kotlinx.datetime.Clock
+import kotlinx.datetime.Instant
 
 @Service
 class TTSAutoplayService(

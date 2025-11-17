@@ -4,7 +4,7 @@ import com.gromozeka.bot.services.ContextExtractionService
 import com.gromozeka.bot.ui.state.ConversationInitiator
 import com.gromozeka.bot.services.ContextFileService
 import com.gromozeka.bot.services.ContextItem
-import com.gromozeka.shared.domain.Conversation
+import com.gromozeka.domain.model.Conversation
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -15,7 +15,7 @@ import java.io.File
 import java.time.Duration
 import java.time.Instant
 import java.util.*
-import kotlin.time.Clock
+import kotlinx.datetime.Clock
 
 class ContextsPanelViewModel(
     private val contextFileService: ContextFileService,

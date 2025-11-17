@@ -35,7 +35,7 @@ import com.gromozeka.bot.ui.GromozekaMarkdown
 import com.gromozeka.bot.ui.LocalTranslation
 import com.gromozeka.bot.ui.OptionalTooltip
 import com.gromozeka.bot.utils.jsonPrettyPrint
-import com.gromozeka.shared.domain.Conversation
+import com.gromozeka.domain.model.Conversation
 
 @Composable
 fun MessageItem(

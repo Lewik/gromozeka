@@ -361,7 +361,7 @@ fun SessionScreen(
                                     }
 
                                     val contextWindow = stats.modelId?.let {
-                                        com.gromozeka.shared.domain.ModelContextWindows.getContextWindow(it)
+                                        com.gromozeka.domain.model.ModelContextWindows.getContextWindow(it)
                                     }
                                     val currentContext = stats.currentContextSize
 
@@ -424,7 +424,7 @@ fun SessionScreen(
 
                                     val contextPercentage = stats.currentContextSize?.let { currentContext ->
                                         stats.modelId?.let { modelId ->
-                                            com.gromozeka.shared.domain.ModelContextWindows.getContextWindow(modelId)
+                                            com.gromozeka.domain.model.ModelContextWindows.getContextWindow(modelId)
                                                 ?.let { contextWindow ->
                                                     (currentContext.toFloat() / contextWindow * 100).toInt()
                                                 }

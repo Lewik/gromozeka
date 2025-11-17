@@ -1,10 +1,10 @@
 package com.gromozeka.shared.services
 
-import com.gromozeka.shared.domain.Project
-import com.gromozeka.shared.repository.ProjectRepository
+import com.gromozeka.domain.model.Project
+import com.gromozeka.domain.repository.ProjectRepository
 import klog.KLoggers
 import com.gromozeka.shared.uuid.uuid7
-import kotlin.time.Instant
+import kotlinx.datetime.Instant
 
 /**
  * Application service for project management.

@@ -1,9 +1,9 @@
 package com.gromozeka.bot.services
 
-import com.gromozeka.shared.domain.Conversation
-import com.gromozeka.shared.domain.TokenUsageStatistics
-import com.gromozeka.shared.repository.ThreadRepository
-import com.gromozeka.shared.repository.TokenUsageStatisticsRepository
+import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.TokenUsageStatistics
+import com.gromozeka.domain.repository.ThreadRepository
+import com.gromozeka.domain.repository.TokenUsageStatisticsRepository
 import com.gromozeka.shared.services.ConversationService
 import klog.KLoggers
 import kotlinx.coroutines.CoroutineScope
@@ -21,7 +21,7 @@ import org.springframework.ai.model.tool.ToolCallingManager
 import org.springframework.stereotype.Service
 import com.gromozeka.bot.config.mcp.McpConfigurationService
 import java.util.UUID
-import kotlin.time.Clock
+import kotlinx.datetime.Clock
 
 /**
  * Service for managing conversation with AI using User-Controlled Tool Execution.
@@ -50,7 +50,7 @@ class ConversationEngineService(
     private val toolApprovalService: ToolApprovalService,
     private val conversationService: ConversationService,
     private val threadRepository: ThreadRepository,
-    private val threadMessageRepository: com.gromozeka.shared.repository.ThreadMessageRepository,
+    private val threadMessageRepository: com.gromozeka.domain.repository.ThreadMessageRepository,
     private val messageConversionService: MessageConversionService,
     private val toolCallbacks: List<org.springframework.ai.tool.ToolCallback>,
     private val mcpConfigurationService: McpConfigurationService,

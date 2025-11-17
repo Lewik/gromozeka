@@ -1,15 +1,15 @@
 package com.gromozeka.shared.services
 
-import com.gromozeka.shared.domain.Conversation
-import com.gromozeka.shared.domain.Project
-import com.gromozeka.shared.repository.ConversationRepository
+import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.Project
+import com.gromozeka.domain.repository.ConversationRepository
 import klog.KLoggers
-import com.gromozeka.shared.repository.MessageRepository
-import com.gromozeka.shared.repository.ThreadMessageRepository
-import com.gromozeka.shared.repository.ThreadRepository
+import com.gromozeka.domain.repository.MessageRepository
+import com.gromozeka.domain.repository.ThreadMessageRepository
+import com.gromozeka.domain.repository.ThreadRepository
 import com.gromozeka.shared.uuid.uuid7
-import kotlin.time.Clock
-import kotlin.time.Instant
+import kotlinx.datetime.Clock
+import kotlinx.datetime.Instant
 
 /**
  * Application service for conversation lifecycle and message management.

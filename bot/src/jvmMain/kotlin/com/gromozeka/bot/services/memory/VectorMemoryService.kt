@@ -1,8 +1,8 @@
 package com.gromozeka.bot.services.memory
 
 import com.gromozeka.bot.services.SettingsService
-import com.gromozeka.shared.domain.Conversation
-import com.gromozeka.shared.repository.ThreadMessageRepository
+import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.repository.ThreadMessageRepository
 import klog.KLoggers
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext

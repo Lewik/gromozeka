@@ -1,9 +1,9 @@
 package com.gromozeka.bot.services
 
-import com.gromozeka.shared.domain.Conversation
-import com.gromozeka.shared.domain.Project
-import com.gromozeka.shared.repository.ConversationRepository
-import com.gromozeka.shared.repository.ProjectRepository
+import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.Project
+import com.gromozeka.domain.repository.ConversationRepository
+import com.gromozeka.domain.repository.ProjectRepository
 import klog.KLoggers
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext

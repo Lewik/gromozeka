@@ -3,8 +3,8 @@ package com.gromozeka.bot.ui.session
 import androidx.compose.runtime.Composable
 import com.gromozeka.bot.ui.CustomSegmentedButtonGroup
 import com.gromozeka.bot.ui.SegmentedButtonOption
-import com.gromozeka.shared.domain.Conversation
-import com.gromozeka.shared.domain.MessageTagDefinition
+import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.MessageTagDefinition
 
 @Composable
 fun MultiStateMessageTagButton(

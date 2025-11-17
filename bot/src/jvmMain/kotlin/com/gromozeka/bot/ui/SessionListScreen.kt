@@ -20,8 +20,8 @@ import com.gromozeka.shared.services.ProjectService
 import com.gromozeka.bot.ui.viewmodel.AppViewModel
 import com.gromozeka.bot.ui.state.ConversationInitiator
 import com.gromozeka.bot.ui.viewmodel.ConversationSearchViewModel
-import com.gromozeka.shared.domain.Project
-import com.gromozeka.shared.domain.Conversation
+import com.gromozeka.domain.model.Project
+import com.gromozeka.domain.model.Conversation
 import com.gromozeka.shared.services.ConversationService
 import klog.KLoggers
 import io.github.vinceglb.filekit.compose.rememberDirectoryPickerLauncher

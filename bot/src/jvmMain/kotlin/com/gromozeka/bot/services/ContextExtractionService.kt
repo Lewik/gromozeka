@@ -3,12 +3,12 @@ package com.gromozeka.bot.services
 import com.gromozeka.bot.ui.viewmodel.AppViewModel
 import com.gromozeka.bot.ui.state.ConversationInitiator
 import klog.KLoggers
-import com.gromozeka.shared.domain.Conversation
+import com.gromozeka.domain.model.Conversation
 import kotlinx.coroutines.flow.first
 import org.springframework.context.ApplicationContext
 import org.springframework.stereotype.Service
 import java.util.UUID
-import kotlin.time.Clock
+import kotlinx.datetime.Clock
 
 @Service
 class ContextExtractionService(

@@ -1,13 +1,13 @@
 package com.gromozeka.bot.repository.exposed
 
 import com.gromozeka.bot.repository.exposed.tables.Threads
-import com.gromozeka.shared.domain.Conversation
-import com.gromozeka.shared.repository.ThreadRepository
+import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.repository.ThreadRepository
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.*
-import kotlin.time.Instant
+import kotlinx.datetime.Instant
 
 class ExposedThreadRepository : ThreadRepository {
 
@@ -17,8 +17,8 @@ class ExposedThreadRepository : ThreadRepository {
             it[conversationId] = thread.conversationId.value
             it[originalThreadId] = thread.originalThread?.value
             it[lastTurnNumber] = thread.lastTurnNumber
-            it[createdAt] = thread.createdAt
-            it[updatedAt] = thread.updatedAt
+            it[createdAt] = thread.createdAt.toKotlin()
+            it[updatedAt] = thread.updatedAt.toKotlin()
         }
         thread
     }
@@ -43,7 +43,7 @@ class ExposedThreadRepository : ThreadRepository {
 
     override suspend fun updateTimestamp(id: Conversation.Thread.Id, updatedAt: Instant): Unit = dbQuery {
         Threads.update({ Threads.id eq id.value }) {
-            it[Threads.updatedAt] = updatedAt
+            it[Threads.updatedAt] = updatedAt.toKotlin()
         }
     }
 
@@ -66,7 +66,7 @@ class ExposedThreadRepository : ThreadRepository {
         conversationId = Conversation.Id(this[Threads.conversationId]),
         originalThread = this[Threads.originalThreadId]?.let { Conversation.Thread.Id(it) },
         lastTurnNumber = this[Threads.lastTurnNumber],
-        createdAt = this[Threads.createdAt],
-        updatedAt = this[Threads.updatedAt]
+        createdAt = this[Threads.createdAt].toKotlinx(),
+        updatedAt = this[Threads.updatedAt].toKotlinx()
     )
 }

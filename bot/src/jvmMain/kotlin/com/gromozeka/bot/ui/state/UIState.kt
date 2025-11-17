@@ -1,7 +1,7 @@
 package com.gromozeka.bot.ui.state
 
-import com.gromozeka.shared.domain.Agent
-import com.gromozeka.shared.domain.Conversation
+import com.gromozeka.domain.model.Agent
+import com.gromozeka.domain.model.Conversation
 import kotlinx.serialization.Serializable
 
 @Serializable

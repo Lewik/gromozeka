@@ -1,7 +1,7 @@
 package com.gromozeka.bot.services.mcp
 
 import com.gromozeka.bot.ui.viewmodel.AppViewModel
-import com.gromozeka.shared.domain.Conversation
+import com.gromozeka.domain.model.Conversation
 import klog.KLoggers
 
 import io.modelcontextprotocol.kotlin.sdk.CallToolRequest

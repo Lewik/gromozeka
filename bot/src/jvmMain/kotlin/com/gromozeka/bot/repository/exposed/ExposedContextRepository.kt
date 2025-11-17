@@ -1,9 +1,9 @@
 package com.gromozeka.bot.repository.exposed
 
 import com.gromozeka.bot.repository.exposed.tables.Contexts
-import com.gromozeka.shared.domain.Context
-import com.gromozeka.shared.domain.Project
-import com.gromozeka.shared.repository.ContextRepository
+import com.gromozeka.domain.model.Context
+import com.gromozeka.domain.model.Project
+import com.gromozeka.domain.repository.ContextRepository
 import kotlinx.serialization.json.Json
 
 import org.jetbrains.exposed.v1.core.ResultRow
@@ -12,7 +12,7 @@ import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.like
 import org.jetbrains.exposed.v1.core.or
 import org.jetbrains.exposed.v1.jdbc.*
-import kotlin.time.Instant
+import kotlinx.datetime.Instant
 
 class ExposedContextRepository(
     private val json: Json
@@ -29,8 +29,8 @@ class ExposedContextRepository(
                 it[filesJson] = json.encodeToString(context.files)
                 it[linksJson] = json.encodeToString(context.links)
                 it[tags] = json.encodeToString(context.tags)
-                it[extractedAt] = context.extractedAt
-                it[updatedAt] = context.updatedAt
+                it[extractedAt] = context.extractedAt.toKotlin()
+                it[updatedAt] = context.updatedAt.toKotlin()
             }
         } else {
             Contexts.insert {
@@ -41,9 +41,9 @@ class ExposedContextRepository(
                 it[filesJson] = json.encodeToString(context.files)
                 it[linksJson] = json.encodeToString(context.links)
                 it[tags] = json.encodeToString(context.tags)
-                it[extractedAt] = context.extractedAt
-                it[createdAt] = context.createdAt
-                it[updatedAt] = context.updatedAt
+                it[extractedAt] = context.extractedAt.toKotlin()
+                it[createdAt] = context.createdAt.toKotlin()
+                it[updatedAt] = context.updatedAt.toKotlin()
             }
         }
         context
@@ -104,8 +104,8 @@ class ExposedContextRepository(
         files = json.decodeFromString(this[Contexts.filesJson]),
         links = json.decodeFromString(this[Contexts.linksJson]),
         tags = json.decodeFromString(this[Contexts.tags]),
-        extractedAt = this[Contexts.extractedAt],
-        createdAt = this[Contexts.createdAt],
-        updatedAt = this[Contexts.updatedAt]
+        extractedAt = this[Contexts.extractedAt].toKotlinx(),
+        createdAt = this[Contexts.createdAt].toKotlinx(),
+        updatedAt = this[Contexts.updatedAt].toKotlinx()
     )
 }

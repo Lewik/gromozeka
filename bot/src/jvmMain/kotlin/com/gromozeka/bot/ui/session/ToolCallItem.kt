@@ -21,7 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import com.gromozeka.bot.ui.CompactButton
-import com.gromozeka.shared.domain.Conversation
+import com.gromozeka.domain.model.Conversation
 import kotlinx.serialization.json.*
 import java.io.File
 

@@ -54,6 +54,7 @@ kotlin {
                 implementation(libs.multiplatform.markdown.renderer.m3)
                 implementation(libs.multiplatform.markdown.renderer.code)
                 
+                implementation(project(":domain"))
                 implementation(project(":shared"))
 
                 implementation(libs.kotlin.reflect)

@@ -11,17 +11,17 @@ import com.gromozeka.bot.settings.AIProvider
 import com.gromozeka.bot.settings.Settings
 import com.gromozeka.bot.ui.state.UIState
 import com.gromozeka.bot.utils.ChatMessageSoundDetector
-import com.gromozeka.shared.domain.Conversation
-import com.gromozeka.shared.domain.MessageTagDefinition
-import com.gromozeka.shared.domain.SquashType
-import com.gromozeka.shared.domain.TokenUsageStatistics
-import com.gromozeka.shared.repository.TokenUsageStatisticsRepository
+import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.MessageTagDefinition
+import com.gromozeka.domain.model.SquashType
+import com.gromozeka.domain.model.TokenUsageStatistics
+import com.gromozeka.domain.repository.TokenUsageStatisticsRepository
 import com.gromozeka.shared.services.ConversationService
 import klog.KLoggers
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
-import kotlin.time.Clock
+import kotlinx.datetime.Clock
 import java.util.UUID
 
 class TabViewModel(

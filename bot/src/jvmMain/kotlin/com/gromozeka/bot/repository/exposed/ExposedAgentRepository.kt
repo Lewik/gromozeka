@@ -1,14 +1,14 @@
 package com.gromozeka.bot.repository.exposed
 
 import com.gromozeka.bot.repository.exposed.tables.Agents
-import com.gromozeka.shared.domain.Agent
-import com.gromozeka.shared.repository.AgentRepository
+import com.gromozeka.domain.model.Agent
+import com.gromozeka.domain.repository.AgentRepository
 
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.*
-import kotlin.time.Instant
+import kotlinx.datetime.Instant
 
 class ExposedAgentRepository : AgentRepository {
 
@@ -22,7 +22,7 @@ class ExposedAgentRepository : AgentRepository {
                 it[description] = agent.description
                 it[isBuiltin] = agent.isBuiltin
                 it[usageCount] = agent.usageCount
-                it[updatedAt] = agent.updatedAt
+                it[updatedAt] = agent.updatedAt.toKotlin()
             }
         } else {
             Agents.insert {
@@ -32,8 +32,8 @@ class ExposedAgentRepository : AgentRepository {
                 it[description] = agent.description
                 it[isBuiltin] = agent.isBuiltin
                 it[usageCount] = agent.usageCount
-                it[createdAt] = agent.createdAt
-                it[updatedAt] = agent.updatedAt
+                it[createdAt] = agent.createdAt.toKotlin()
+                it[updatedAt] = agent.updatedAt.toKotlin()
             }
         }
         agent
@@ -66,7 +66,7 @@ class ExposedAgentRepository : AgentRepository {
         description = this[Agents.description],
         isBuiltin = this[Agents.isBuiltin],
         usageCount = this[Agents.usageCount],
-        createdAt = this[Agents.createdAt],
-        updatedAt = this[Agents.updatedAt]
+        createdAt = this[Agents.createdAt].toKotlinx(),
+        updatedAt = this[Agents.updatedAt].toKotlinx()
     )
 }

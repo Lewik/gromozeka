@@ -1,8 +1,8 @@
 package com.gromozeka.bot.repository.exposed
 
 import com.gromozeka.bot.repository.exposed.tables.Messages
-import com.gromozeka.shared.domain.Conversation
-import com.gromozeka.shared.repository.MessageRepository
+import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.repository.MessageRepository
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.jetbrains.exposed.v1.core.SortOrder
@@ -10,7 +10,7 @@ import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.core.like
 import org.jetbrains.exposed.v1.jdbc.*
-import kotlin.time.Instant
+import kotlinx.datetime.Instant
 
 class ExposedMessageRepository(
     private val json: Json
@@ -24,7 +24,7 @@ class ExposedMessageRepository(
             it[replyToId] = message.replyTo?.value
             it[squashOperationId] = message.squashOperationId?.value
             it[role] = message.role.name
-            it[createdAt] = message.createdAt
+            it[createdAt] = message.createdAt.toKotlin()
             it[messageJson] = json.encodeToString(message)
         }
         message

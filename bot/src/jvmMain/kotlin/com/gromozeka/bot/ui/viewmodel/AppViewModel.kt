@@ -9,9 +9,9 @@ import com.gromozeka.bot.services.SoundNotificationService
 import com.gromozeka.bot.settings.AIProvider
 import com.gromozeka.bot.ui.state.ConversationInitiator
 import com.gromozeka.bot.ui.state.UIState
-import com.gromozeka.shared.domain.Agent
-import com.gromozeka.shared.domain.Conversation
-import com.gromozeka.shared.repository.TokenUsageStatisticsRepository
+import com.gromozeka.domain.model.Agent
+import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.repository.TokenUsageStatisticsRepository
 import com.gromozeka.shared.services.ConversationService
 import klog.KLoggers
 import kotlinx.coroutines.CoroutineScope

@@ -1,6 +1,6 @@
 package com.gromozeka.bot.parsers
 
-import com.gromozeka.shared.domain.Conversation
+import com.gromozeka.domain.model.Conversation
 
 
 /**

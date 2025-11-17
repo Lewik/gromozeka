@@ -1,6 +1,6 @@
 package com.gromozeka.bot.services
 
-import com.gromozeka.shared.domain.Agent
+import com.gromozeka.domain.model.Agent
 import com.gromozeka.shared.services.AgentService
 import klog.KLoggers
 import org.springframework.stereotype.Service

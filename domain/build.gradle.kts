@@ -1,9 +1,21 @@
 plugins {
-    kotlin("jvm")
-    kotlin("plugin.serialization")
+    alias(libs.plugins.kotlin.multiplatform)
+    alias(libs.plugins.kotlin.serialization)
 }
 
-dependencies {
-    implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.5.0")
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
+val javaVersion = libs.versions.java.get().toInt()
+
+kotlin {
+    jvmToolchain(javaVersion)
+    
+    jvm {}
+    
+    sourceSets {
+        val commonMain by getting {
+            dependencies {
+                implementation(libs.kotlinx.datetime)
+                implementation(libs.kotlinx.serialization.json)
+            }
+        }
+    }
 }

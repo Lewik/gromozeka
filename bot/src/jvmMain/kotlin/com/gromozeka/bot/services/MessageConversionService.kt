@@ -1,6 +1,6 @@
 package com.gromozeka.bot.services
 
-import com.gromozeka.shared.domain.Conversation
+import com.gromozeka.domain.model.Conversation
 import klog.KLoggers
 import kotlinx.serialization.json.Json
 import org.springframework.ai.chat.messages.AssistantMessage
@@ -9,7 +9,7 @@ import org.springframework.ai.chat.messages.ToolResponseMessage
 import org.springframework.ai.chat.messages.UserMessage
 import org.springframework.stereotype.Service
 import java.util.UUID
-import kotlin.time.Clock
+import kotlinx.datetime.Clock
 
 /**
  * Service for converting messages between Conversation domain model

@@ -1,10 +1,10 @@
 package com.gromozeka.shared.services
 
-import com.gromozeka.shared.domain.Agent
-import com.gromozeka.shared.repository.AgentRepository
+import com.gromozeka.domain.model.Agent
+import com.gromozeka.domain.repository.AgentRepository
 import klog.KLoggers
 import com.gromozeka.shared.uuid.uuid7
-import kotlin.time.Instant
+import kotlinx.datetime.Instant
 
 /**
  * Application service for AI agent definition management.

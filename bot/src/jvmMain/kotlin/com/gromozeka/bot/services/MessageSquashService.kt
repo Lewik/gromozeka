@@ -1,8 +1,8 @@
 package com.gromozeka.bot.services
 
 import com.gromozeka.bot.settings.AIProvider
-import com.gromozeka.shared.domain.Conversation
-import com.gromozeka.shared.domain.SquashType
+import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.SquashType
 import com.gromozeka.shared.services.ConversationService
 import klog.KLoggers
 import kotlinx.coroutines.reactive.awaitSingle

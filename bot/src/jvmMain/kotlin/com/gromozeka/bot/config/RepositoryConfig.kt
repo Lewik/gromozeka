@@ -1,7 +1,7 @@
 package com.gromozeka.bot.config
 
 import com.gromozeka.bot.repository.exposed.*
-import com.gromozeka.shared.repository.*
+import com.gromozeka.domain.repository.*
 import kotlinx.serialization.json.Json
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration

@@ -1,14 +1,14 @@
 package com.gromozeka.bot.repository.exposed
 
 import com.gromozeka.bot.repository.exposed.tables.TokenUsageStatisticsTable
-import com.gromozeka.shared.domain.Conversation
-import com.gromozeka.shared.domain.TokenUsageStatistics
-import com.gromozeka.shared.repository.TokenUsageStatisticsRepository
+import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.TokenUsageStatistics
+import com.gromozeka.domain.repository.TokenUsageStatisticsRepository
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.*
-import kotlin.time.Instant
+import kotlinx.datetime.Instant
 
 class ExposedTokenUsageStatisticsRepository : TokenUsageStatisticsRepository {
 
@@ -17,7 +17,7 @@ class ExposedTokenUsageStatisticsRepository : TokenUsageStatisticsRepository {
             it[id] = stats.id.value
             it[threadId] = stats.threadId.value
             it[turnNumber] = stats.turnNumber
-            it[timestamp] = stats.timestamp
+            it[timestamp] = stats.timestamp.toKotlin()
             it[promptTokens] = stats.promptTokens
             it[completionTokens] = stats.completionTokens
             it[cacheCreationTokens] = stats.cacheCreationTokens
@@ -69,7 +69,7 @@ class ExposedTokenUsageStatisticsRepository : TokenUsageStatisticsRepository {
         id = TokenUsageStatistics.Id(this[TokenUsageStatisticsTable.id]),
         threadId = Conversation.Thread.Id(this[TokenUsageStatisticsTable.threadId]),
         turnNumber = this[TokenUsageStatisticsTable.turnNumber],
-        timestamp = this[TokenUsageStatisticsTable.timestamp],
+        timestamp = this[TokenUsageStatisticsTable.timestamp].toKotlinx(),
         promptTokens = this[TokenUsageStatisticsTable.promptTokens],
         completionTokens = this[TokenUsageStatisticsTable.completionTokens],
         cacheCreationTokens = this[TokenUsageStatisticsTable.cacheCreationTokens],

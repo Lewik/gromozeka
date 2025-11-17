@@ -2,9 +2,9 @@ package com.gromozeka.bot.repository.exposed
 
 import com.gromozeka.bot.repository.exposed.tables.Messages
 import com.gromozeka.bot.repository.exposed.tables.ThreadMessages
-import com.gromozeka.shared.domain.Conversation
-import com.gromozeka.shared.repository.ThreadMessageLink
-import com.gromozeka.shared.repository.ThreadMessageRepository
+import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.repository.ThreadMessageLink
+import com.gromozeka.domain.repository.ThreadMessageRepository
 import kotlinx.serialization.json.Json
 import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.eq

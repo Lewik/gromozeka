@@ -4,7 +4,7 @@ import org.jetbrains.exposed.v1.core.Column
 import org.jetbrains.exposed.v1.core.ReferenceOption
 import org.jetbrains.exposed.v1.core.Table
 import org.jetbrains.exposed.v1.datetime.timestamp
-import kotlin.time.Instant
+import kotlinx.datetime.Instant
 
 object Projects : Table("projects") {
     val id = varchar("id", 255)

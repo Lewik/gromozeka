@@ -1,7 +1,7 @@
 package com.gromozeka.bot.config
 
 import com.gromozeka.bot.services.GitService
-import com.gromozeka.shared.repository.*
+import com.gromozeka.domain.repository.*
 import com.gromozeka.shared.services.*
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration

@@ -1,6 +1,6 @@
 package com.gromozeka.bot.utils
 
-import com.gromozeka.shared.domain.Conversation
+import com.gromozeka.domain.model.Conversation
 
 object ChatMessageSoundDetector {
 

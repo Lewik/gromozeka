@@ -1,8 +1,8 @@
 package com.gromozeka.bot.repository.exposed
 
 import com.gromozeka.bot.repository.exposed.tables.SquashOperations
-import com.gromozeka.shared.domain.Conversation
-import com.gromozeka.shared.repository.SquashOperationRepository
+import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.repository.SquashOperationRepository
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.jetbrains.exposed.v1.core.SortOrder
@@ -22,7 +22,7 @@ class ExposedSquashOperationRepository(
             it[prompt] = operation.prompt
             it[model] = operation.model
             it[performedByAgent] = operation.performedByAgent
-            it[createdAt] = operation.createdAt
+            it[createdAt] = operation.createdAt.toKotlin()
         }
         operation
     }
@@ -58,7 +58,7 @@ class ExposedSquashOperationRepository(
             prompt = this[SquashOperations.prompt],
             model = this[SquashOperations.model],
             performedByAgent = this[SquashOperations.performedByAgent],
-            createdAt = this[SquashOperations.createdAt]
+            createdAt = this[SquashOperations.createdAt].toKotlinx()
         )
     }
 }
