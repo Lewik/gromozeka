@@ -1,17 +1,17 @@
-package com.gromozeka.bot.domain.service
+package com.gromozeka.bot.domain.repository
 
 import com.gromozeka.bot.domain.model.Context
 import com.gromozeka.bot.domain.model.Project
 
 /**
- * DataService for managing conversation contexts.
+ * Repository for managing conversation contexts.
  *
  * Context represents extracted knowledge from conversations - important facts,
  * file references, and links organized by topic.
  *
  * @see Context for domain model
  */
-interface ContextDataService {
+interface ContextRepository {
 
     /**
      * Saves context to persistent storage.

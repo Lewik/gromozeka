@@ -1,4 +1,4 @@
-package com.gromozeka.bot.domain.service
+package com.gromozeka.bot.domain.repository
 
 import com.gromozeka.bot.domain.model.Context
 
@@ -17,7 +17,7 @@ import com.gromozeka.bot.domain.model.Context
  * - Tracks extraction and update timestamps
  *
  * @see Context for domain model
- * @see ContextDataService for persistence operations
+ * @see ContextRepository for persistence operations
  * @see ProjectDomainService for project creation
  */
 interface ContextDomainService {

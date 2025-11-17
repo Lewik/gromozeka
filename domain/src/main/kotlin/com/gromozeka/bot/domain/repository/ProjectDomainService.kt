@@ -1,4 +1,4 @@
-package com.gromozeka.bot.domain.service
+package com.gromozeka.bot.domain.repository
 
 import com.gromozeka.bot.domain.model.Project
 
@@ -12,7 +12,7 @@ import com.gromozeka.bot.domain.model.Project
  * - Favorites and search for quick project navigation
  *
  * @see Project for domain model
- * @see ProjectDataService for persistence operations
+ * @see ProjectRepository for persistence operations
  */
 interface ProjectDomainService {
 

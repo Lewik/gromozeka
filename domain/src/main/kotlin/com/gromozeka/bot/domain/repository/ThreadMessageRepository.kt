@@ -1,4 +1,4 @@
-package com.gromozeka.bot.domain.service
+package com.gromozeka.bot.domain.repository
 
 import com.gromozeka.bot.domain.model.Conversation
 
@@ -19,13 +19,13 @@ data class ThreadMessageLink(
 )
 
 /**
- * DataService for managing thread-message relationships.
+ * Repository for managing thread-message relationships.
  *
- * Threads are ordered sequences of messages. This service manages the many-to-many
+ * Threads are ordered sequences of messages. This repository manages the many-to-many
  * relationship between threads and messages with positional ordering.
  *
  * Key concepts:
- * - Messages exist independently (managed by MessageDataService)
+ * - Messages exist independently (managed by MessageRepository)
  * - Threads reference messages via links with positions
  * - Same message can appear in multiple threads (different positions)
  * - Position determines display order (0 = first, 1 = second, etc)
@@ -33,7 +33,7 @@ data class ThreadMessageLink(
  * @see Conversation.Thread for thread model
  * @see Conversation.Message for message model
  */
-interface ThreadMessageDataService {
+interface ThreadMessageRepository {
 
     /**
      * Adds message to thread at specified position.

@@ -1,22 +1,22 @@
-package com.gromozeka.bot.domain.service
+package com.gromozeka.bot.domain.repository
 
 import com.gromozeka.bot.domain.model.Conversation
 
 /**
- * DataService for managing conversation messages.
+ * Repository for managing conversation messages.
  *
  * Messages are immutable content items (user input, assistant responses, tool calls/results).
- * Messages exist independently of threads - threads reference messages via ThreadMessageDataService.
+ * Messages exist independently of threads - threads reference messages via ThreadMessageRepository.
  *
  * Message lifecycle:
  * - Created once, never modified (immutability)
- * - Can be referenced by multiple threads (via ThreadMessageDataService)
- * - Can be source/result of squash operations (via SquashOperationDataService)
+ * - Can be referenced by multiple threads (via ThreadMessageRepository)
+ * - Can be source/result of squash operations (via SquashOperationRepository)
  * - Deleted only when no references exist (orphaned)
  *
  * @see Conversation.Message for domain model
  */
-interface MessageDataService {
+interface MessageRepository {
 
     /**
      * Saves message to persistent storage.
@@ -55,7 +55,7 @@ interface MessageDataService {
      * Finds all messages in conversation, ordered by creation time (oldest first).
      *
      * Returns messages from ALL threads in conversation.
-     * For messages in specific thread, use ThreadMessageDataService.getMessagesByThread().
+     * For messages in specific thread, use ThreadMessageRepository.getMessagesByThread().
      *
      * Returns empty list if conversation has no messages or conversation doesn't exist.
      *

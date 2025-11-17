@@ -1,17 +1,17 @@
-package com.gromozeka.bot.domain.service
+package com.gromozeka.bot.domain.repository
 
 import com.gromozeka.bot.domain.model.Conversation
 import com.gromozeka.bot.domain.model.TokenUsageStatistics
 
 /**
- * DataService for managing token usage statistics.
+ * Repository for managing token usage statistics.
  *
  * Tracks LLM token consumption per API call for cost monitoring and optimization.
  * Statistics are append-only (never updated or deleted).
  *
  * @see TokenUsageStatistics for domain model
  */
-interface TokenUsageStatisticsDataService {
+interface TokenUsageStatisticsRepository {
 
     /**
      * Saves token usage statistics for single API call.

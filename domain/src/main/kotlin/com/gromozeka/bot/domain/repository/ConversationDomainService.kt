@@ -1,4 +1,4 @@
-package com.gromozeka.bot.domain.service
+package com.gromozeka.bot.domain.repository
 
 import com.gromozeka.bot.domain.model.Conversation
 
@@ -17,10 +17,10 @@ import com.gromozeka.bot.domain.model.Conversation
  * - Atomic operations: conversation+thread creation, message appending
  *
  * @see Conversation for domain model hierarchy
- * @see ConversationDataService for conversation persistence
- * @see ThreadDataService for thread persistence
- * @see MessageDataService for message persistence
- * @see ThreadMessageDataService for message ordering
+ * @see ConversationRepository for conversation persistence
+ * @see ThreadRepository for thread persistence
+ * @see MessageRepository for message persistence
+ * @see ThreadMessageRepository for message ordering
  */
 interface ConversationDomainService {
 

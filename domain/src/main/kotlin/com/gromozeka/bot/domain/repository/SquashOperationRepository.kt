@@ -1,9 +1,9 @@
-package com.gromozeka.bot.domain.service
+package com.gromozeka.bot.domain.repository
 
 import com.gromozeka.bot.domain.model.Conversation
 
 /**
- * DataService for managing squash operation records.
+ * Repository for managing squash operation records.
  *
  * Squash operation represents AI-powered message consolidation - multiple messages
  * transformed into single summarized/restructured message. Immutable audit trail
@@ -11,7 +11,7 @@ import com.gromozeka.bot.domain.model.Conversation
  *
  * @see Conversation.SquashOperation for domain model
  */
-interface SquashOperationDataService {
+interface SquashOperationRepository {
 
     /**
      * Saves squash operation record.

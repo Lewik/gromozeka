@@ -1,16 +1,16 @@
-package com.gromozeka.bot.domain.service
+package com.gromozeka.bot.domain.repository
 
 import com.gromozeka.bot.domain.model.Project
 
 /**
- * DataService for managing project entities.
+ * Repository for managing project entities.
  *
  * Project represents a filesystem directory associated with conversations.
  * Projects track usage frequency (lastUsedAt) and user preferences (favorite, archived).
  *
  * @see Project for domain model
  */
-interface ProjectDataService {
+interface ProjectRepository {
 
     /**
      * Saves project to persistent storage.

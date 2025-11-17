@@ -11,6 +11,22 @@ import com.gromozeka.shared.uuid.uuid7
 import kotlin.time.Clock
 import kotlin.time.Instant
 
+/**
+ * Application service for conversation lifecycle and message management.
+ *
+ * Orchestrates operations across multiple repositories (conversations, threads,
+ * messages, thread-message links) to maintain data consistency during complex
+ * operations like editing, deleting, and squashing messages.
+ *
+ * Key responsibilities:
+ * - Creating and managing conversations with initial threads
+ * - Coordinating message append, edit, delete, and squash operations
+ * - Maintaining thread immutability (operations create new threads)
+ * - Forking conversations with message history duplication
+ *
+ * This service implements conversation branching model where threads are
+ * immutable by default - edits create new threads preserving original history.
+ */
 class ConversationService(
     private val conversationRepo: ConversationRepository,
     private val threadRepo: ThreadRepository,
@@ -20,6 +36,18 @@ class ConversationService(
 ) {
     private val log = KLoggers.logger(this)
 
+    /**
+     * Creates new conversation with initial empty thread.
+     *
+     * Ensures project exists (creates if needed), then creates conversation
+     * with empty initial thread ready for first message.
+     *
+     * @param projectPath absolute file system path to project directory
+     * @param displayName optional conversation title (empty uses auto-generated name)
+     * @param aiProvider AI provider identifier (default: "OLLAMA")
+     * @param modelName model identifier (default: "llama3.2")
+     * @return created conversation with new thread
+     */
     suspend fun create(
         projectPath: String,
         displayName: String = "",
@@ -55,24 +83,59 @@ class ConversationService(
         return conversationRepo.create(conversation)
     }
 
+    /**
+     * Finds conversation by unique identifier.
+     *
+     * @param id conversation identifier
+     * @return conversation if found, null otherwise
+     */
     suspend fun findById(id: Conversation.Id): Conversation? =
         conversationRepo.findById(id)
 
+    /**
+     * Retrieves project path for conversation.
+     *
+     * Looks up conversation, then resolves project path via ProjectService.
+     *
+     * @param conversationId conversation to query
+     * @return project path if conversation and project exist, null otherwise
+     */
     suspend fun getProjectPath(conversationId: Conversation.Id): String? {
         val conversation = findById(conversationId) ?: return null
         val project = projectService.findById(conversation.projectId) ?: return null
         return project.path
     }
 
+    /**
+     * Finds all conversations in project.
+     *
+     * @param projectPath absolute file system path to project
+     * @return list of conversations (empty if project doesn't exist or has no conversations)
+     */
     suspend fun findByProject(projectPath: String): List<Conversation> {
         val project = projectService.findByPath(projectPath) ?: return emptyList()
         return conversationRepo.findByProject(project.id)
     }
 
+    /**
+     * Deletes conversation and all associated data.
+     *
+     * Cascades to threads, thread-message links, and may remove orphaned messages
+     * (implementation-specific).
+     *
+     * @param id conversation identifier
+     */
     suspend fun delete(id: Conversation.Id) {
         conversationRepo.delete(id)
     }
 
+    /**
+     * Updates conversation display name.
+     *
+     * @param conversationId conversation identifier
+     * @param displayName new display name
+     * @return updated conversation if exists, null otherwise
+     */
     suspend fun updateDisplayName(
         conversationId: Conversation.Id,
         displayName: String
@@ -81,6 +144,20 @@ class ConversationService(
         return conversationRepo.findById(conversationId)
     }
 
+    /**
+     * Creates independent copy of conversation with duplicate message history.
+     *
+     * Forks create new conversation in same project with:
+     * - Copy of all messages in current thread (new message IDs)
+     * - New thread with copied messages
+     * - Display name suffixed with " (fork)"
+     *
+     * Original and forked conversations evolve independently after fork.
+     *
+     * @param conversationId conversation to fork
+     * @return new forked conversation
+     * @throws IllegalStateException if source conversation doesn't exist
+     */
     suspend fun fork(conversationId: Conversation.Id): Conversation {
         val sourceConversation = conversationRepo.findById(conversationId)
             ?: throw IllegalStateException("Conversation not found: $conversationId")
@@ -143,6 +220,18 @@ class ConversationService(
         return newConversation
     }
 
+    /**
+     * Appends message to current thread.
+     *
+     * Adds message to end of thread's message sequence, updates thread timestamp.
+     * This is the only operation that modifies existing thread (append-only).
+     *
+     * @param conversationId conversation to append to
+     * @param message message to append (must have matching conversationId)
+     * @return updated conversation
+     * @throws IllegalArgumentException if message conversationId doesn't match
+     * @throws IllegalStateException if conversation doesn't exist
+     */
     suspend fun addMessage(
         conversationId: Conversation.Id,
         message: Conversation.Message
@@ -169,6 +258,13 @@ class ConversationService(
         return conversationRepo.findById(conversationId)
     }
 
+    /**
+     * Loads messages from current thread in order.
+     *
+     * @param conversationId conversation to query
+     * @return ordered list of messages in current thread
+     * @throws IllegalStateException if conversation doesn't exist
+     */
     suspend fun loadCurrentMessages(conversationId: Conversation.Id): List<Conversation.Message> {
         val conversation = conversationRepo.findById(conversationId)
             ?: throw IllegalStateException("Conversation not found: $conversationId")
@@ -176,6 +272,20 @@ class ConversationService(
         return threadMessageRepo.getMessagesByThread(conversation.currentThread)
     }
 
+    /**
+     * Edits message by creating new thread with updated message.
+     *
+     * Creates new message with updated content, creates new thread with all
+     * messages from current thread but substitutes edited message.
+     * Original thread preserved for history/undo.
+     *
+     * @param conversationId conversation containing message
+     * @param messageId message to edit
+     * @param newContent updated content items
+     * @return updated conversation with new current thread
+     * @throws IllegalStateException if conversation doesn't exist
+     * @throws IllegalArgumentException if message not found in current thread
+     */
     suspend fun editMessage(
         conversationId: Conversation.Id,
         messageId: Conversation.Message.Id,
@@ -231,6 +341,18 @@ class ConversationService(
         return conversationRepo.findById(conversationId)
     }
 
+    /**
+     * Deletes single message by creating new thread without it.
+     *
+     * Creates new thread containing all messages except deleted one,
+     * reindexes positions sequentially. Original thread preserved for history/undo.
+     *
+     * @param conversationId conversation containing message
+     * @param messageId message to delete
+     * @return updated conversation with new current thread
+     * @throws IllegalStateException if conversation doesn't exist
+     * @throws IllegalArgumentException if message not found in current thread
+     */
     suspend fun deleteMessage(
         conversationId: Conversation.Id,
         messageId: Conversation.Message.Id
@@ -271,6 +393,18 @@ class ConversationService(
         return conversationRepo.findById(conversationId)
     }
 
+    /**
+     * Deletes multiple messages by creating new thread without them.
+     *
+     * Creates new thread containing all messages except deleted ones,
+     * reindexes positions sequentially. Original thread preserved for history/undo.
+     *
+     * @param conversationId conversation containing messages
+     * @param messageIds list of message IDs to delete (must not be empty)
+     * @return updated conversation with new current thread
+     * @throws IllegalArgumentException if messageIds is empty or some messages not found
+     * @throws IllegalStateException if conversation doesn't exist
+     */
     suspend fun deleteMessages(
         conversationId: Conversation.Id,
         messageIds: List<Conversation.Message.Id>
@@ -317,6 +451,23 @@ class ConversationService(
         return conversationRepo.findById(conversationId)
     }
 
+    /**
+     * Squashes multiple messages into single consolidated message.
+     *
+     * Creates new message with squashed content, creates new thread where
+     * squashed messages are replaced with single consolidated message at
+     * position of last squashed message. Original thread preserved for history/undo.
+     *
+     * This is for manual concatenation - AI-powered squashing should use
+     * SquashOperationRepository for tracking prompt/model/provenance.
+     *
+     * @param conversationId conversation containing messages
+     * @param messageIds list of message IDs to squash (minimum 2 required)
+     * @param squashedContent content for consolidated message
+     * @return updated conversation with new current thread
+     * @throws IllegalArgumentException if fewer than 2 messages or some messages not found
+     * @throws IllegalStateException if conversation doesn't exist
+     */
     suspend fun squashMessages(
         conversationId: Conversation.Id,
         messageIds: List<Conversation.Message.Id>,

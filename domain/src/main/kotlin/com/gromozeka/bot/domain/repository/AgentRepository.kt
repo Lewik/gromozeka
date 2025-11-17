@@ -1,16 +1,16 @@
-package com.gromozeka.bot.domain.service
+package com.gromozeka.bot.domain.repository
 
 import com.gromozeka.bot.domain.model.Agent
 
 /**
- * DataService for managing AI agent definitions.
+ * Repository for managing AI agent definitions.
  *
  * Handles persistence of reusable agent role templates (e.g., "Code Reviewer", "Security Expert").
  * Each agent can be used in multiple conversation sessions.
  *
  * @see Agent for domain model
  */
-interface AgentDataService {
+interface AgentRepository {
 
     /**
      * Saves agent to persistent storage.

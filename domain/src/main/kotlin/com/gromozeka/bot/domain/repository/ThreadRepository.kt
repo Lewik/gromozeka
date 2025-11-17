@@ -1,17 +1,17 @@
-package com.gromozeka.bot.domain.service
+package com.gromozeka.bot.domain.repository
 
 import com.gromozeka.bot.domain.model.Conversation
 import kotlinx.datetime.Instant
 
 /**
- * DataService for managing conversation threads.
+ * Repository for managing conversation threads.
  *
  * Thread represents append-only message sequence within conversation.
  * Explicit operations (delete/edit/squash) create new threads derived from original.
  *
  * @see Conversation.Thread for domain model
  */
-interface ThreadDataService {
+interface ThreadRepository {
 
     /**
      * Saves thread to persistent storage.
@@ -48,7 +48,7 @@ interface ThreadDataService {
     /**
      * Deletes thread permanently.
      *
-     * Associated messages should be deleted separately via ThreadMessageDataService.
+     * Associated messages should be deleted separately via ThreadMessageRepository.
      * Database constraints may handle cascade deletion automatically.
      *
      * @param id thread to delete

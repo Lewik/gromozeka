@@ -1,4 +1,4 @@
-package com.gromozeka.bot.domain.service
+package com.gromozeka.bot.domain.repository
 
 import com.gromozeka.bot.domain.model.Agent
 
@@ -11,7 +11,7 @@ import com.gromozeka.bot.domain.model.Agent
  * - Usage count tracked automatically (managed by infrastructure)
  *
  * @see Agent for domain model
- * @see AgentDataService for persistence operations
+ * @see AgentRepository for persistence operations
  */
 interface AgentDomainService {
 

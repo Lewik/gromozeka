@@ -1,17 +1,17 @@
-package com.gromozeka.bot.domain.service
+package com.gromozeka.bot.domain.repository
 
 import com.gromozeka.bot.domain.model.Conversation
 import com.gromozeka.bot.domain.model.Project
 
 /**
- * DataService for managing conversation entities.
+ * Repository for managing conversation entities.
  *
  * Conversation is the top-level aggregate containing threads, messages, and metadata.
  * Each conversation belongs to a project and tracks AI provider/model configuration.
  *
  * @see Conversation for domain model
  */
-interface ConversationDataService {
+interface ConversationRepository {
 
     /**
      * Creates new conversation.
