@@ -467,6 +467,7 @@ fun SessionScreen(
                             message = message,
                             settings = settings,
                             toolResultsMap = toolResultsMap,
+                            projectPath = viewModel.projectPath,
                             isSelected = message.id in uiState.selectedMessageIds,
                             isCollapsed = message.id in uiState.collapsedMessageIds,
                             onToggleSelection = { messageId, isShiftPressed ->

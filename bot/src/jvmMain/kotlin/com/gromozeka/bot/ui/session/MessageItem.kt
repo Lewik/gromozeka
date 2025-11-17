@@ -35,6 +35,7 @@ fun MessageItem(
     message: Conversation.Message,
     settings: Settings,
     toolResultsMap: Map<String, Conversation.Message.ContentItem.ToolResult>,
+    projectPath: String,
     isSelected: Boolean = false,
     isCollapsed: Boolean = false,
     onToggleSelection: (Conversation.Message.Id, Boolean) -> Unit = { _, _ -> },
@@ -321,7 +322,8 @@ fun MessageItem(
                         val correspondingResult = toolResultsMap[content.id.value]
                         ToolCallItem(
                             toolCall = content.call,
-                            toolResult = correspondingResult
+                            toolResult = correspondingResult,
+                            projectPath = projectPath
                         )
                     }
 
