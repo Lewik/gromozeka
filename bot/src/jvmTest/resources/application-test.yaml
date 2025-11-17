@@ -1,0 +1,7 @@
+# Test configuration - minimal overrides only
+# Inherits most settings from application.yaml (production config)
+
+# Logging directory for tests (different from production)
+logging:
+  file:
+    path: build/test-logs

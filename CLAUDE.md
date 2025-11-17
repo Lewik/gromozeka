@@ -98,13 +98,25 @@ This is a Kotlin Multiplatform Project (MPP) with the following modules:
 
 ## Build and Test Commands
 
-
 **Individual commands** (for reference):
 - Build project: `./gradlew :bot:build`
 - Run application: `./gradlew :bot:run`
 - Run all tests: `./gradlew :bot:allTests -q || ./gradlew :bot:allTests`
+- Spring Context Test: `./gradlew :bot:jvmTest --tests ApplicationContextTest -q || ./gradlew :bot:jvmTest --tests ApplicationContextTest`
 - Clean build: `./gradlew clean`
 - Build check: `./gradlew :bot:build -q || ./gradlew :bot:build`
+
+**Recommended verification workflow** (after code changes):
+
+```bash
+# Optimistic approach: compile + Spring context init
+./gradlew :bot:build :bot:jvmTest --tests ApplicationContextTest -q || \
+  ./gradlew :bot:build :bot:jvmTest --tests ApplicationContextTest
+```
+
+**Test location:** `bot/src/jvmTest/kotlin/com/gromozeka/bot/ApplicationContextTest.kt`
+
+**Test configuration:** `bot/src/jvmTest/resources/application-test.yaml` (minimal overrides, inherits production config)
 
 **Gradle optimization**: Always use quiet mode first (`-q`) for token efficiency, then full output only if errors occur.
 
