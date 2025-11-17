@@ -366,11 +366,18 @@ class TabViewModel(
                 selectedIds + messageId
             }
             val action = !wasSelected
+            
             currentState.copy(
                 selectedMessageIds = newSelectedIds,
                 lastToggledMessageId = messageId,
                 lastToggleAction = action
             )
+        }
+    }
+    
+    fun toggleEditMode() {
+        _uiState.update { currentState ->
+            currentState.copy(editMode = !currentState.editMode)
         }
     }
 

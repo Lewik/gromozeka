@@ -49,6 +49,7 @@ data class UIState(
         val customPrompts: List<String> = emptyList(),
 
         // Message editing state
+        val editMode: Boolean = false,
         val selectedMessageIds: Set<Conversation.Message.Id> = emptySet(),
         val collapsedMessageIds: Set<Conversation.Message.Id> = emptySet(),
         val lastToggledMessageId: Conversation.Message.Id? = null,
