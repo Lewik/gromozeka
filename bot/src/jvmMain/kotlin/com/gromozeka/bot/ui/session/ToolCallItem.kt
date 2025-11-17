@@ -3,12 +3,14 @@ package com.gromozeka.bot.ui.session
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.DisableSelection
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -431,6 +433,11 @@ fun ToolCallItem(
                 },
                 modifier = Modifier.Companion,
                 enabled = toolResult != null,
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = MaterialTheme.colorScheme.onSurface
+                ),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)),
+                elevation = null,
                 tooltip = when {
                     toolResult == null -> "Выполняется..."
                     toolResult.isError -> "Ошибка - клик для просмотра"
@@ -477,6 +484,11 @@ fun ToolCallItem(
                 DisableSelection {
                     CompactButton(
                         onClick = { executeToolAction(action) },
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = MaterialTheme.colorScheme.onSurface
+                        ),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)),
+                        elevation = null,
                         tooltip = when (action) {
                             is ToolAction.OpenInIde -> "Open in IDE"
                             is ToolAction.OpenUrl -> "Open URL"
