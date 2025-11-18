@@ -86,9 +86,9 @@ You implement data access in `:infrastructure-db` module:
 - `application/` - Business Logic Agent owns it
 - Other infrastructure modules
 
-## Guidelines
+## Implementation Patterns
 
-### DDD Repository Implementation Pattern
+### 1. DDD Repository Implementation Pattern
 
 Domain defines interface:
 ```kotlin
@@ -118,25 +118,125 @@ class ExposedThreadRepository(
 }
 ```
 
-### Spring Data Repositories are PRIVATE
+### 2. Vector Store Integration Pattern (Qdrant)
 
 ```kotlin
-// PRIVATE - internal to your module!
-@Repository
-internal interface ThreadJpaRepository : JpaRepository<ThreadEntity, String>
+// infrastructure/db/vector/QdrantVectorStore.kt
+package com.gromozeka.bot.infrastructure.db.vector
+
+import io.qdrant.client.QdrantClient
+import io.qdrant.client.grpc.Points.SearchPoints
+import org.springframework.stereotype.Service
+
+@Service
+class QdrantVectorStore(
+    private val client: QdrantClient,
+    private val collectionName: String
+) {
+
+    suspend fun search(
+        embedding: List<Float>,
+        limit: Int = 10,
+        filter: Map<String, Any>? = null
+    ): List<ScoredPoint> {
+        val request = SearchPoints.newBuilder()
+            .setCollectionName(collectionName)
+            .addAllVector(embedding)
+            .setLimit(limit)
+            .apply {
+                filter?.let { setFilter(buildFilter(it)) }
+            }
+            .build()
+
+        val response = client.searchAsync(request).await()
+        return response.resultList.map { toScoredPoint(it) }
+    }
+
+    suspend fun upsert(id: String, embedding: List<Float>, payload: Map<String, Any>) {
+        client.upsert(
+            collectionName = collectionName,
+            points = listOf(
+                PointStruct(
+                    id = PointId.num(id.hashCode().toLong()),
+                    vector = embedding,
+                    payload = payload
+                )
+            )
+        )
+    }
+
+    suspend fun delete(id: String) {
+        client.delete(
+            collectionName = collectionName,
+            ids = listOf(PointId.num(id.hashCode().toLong()))
+        )
+    }
+}
 ```
 
-**Why internal:** This is implementation detail. Only your Repository impl uses it. Other modules see Repository interface only.
+### 3. Knowledge Graph Integration Pattern (Neo4j)
 
-### You Handle Three Storage Types
+```kotlin
+// infrastructure/db/graph/Neo4jGraphStore.kt
+package com.gromozeka.bot.infrastructure.db.graph
 
-1. **Relational DB** (Exposed/SQL) - threads, messages, conversations
-2. **Vector DB** (Qdrant) - embeddings for semantic search
-3. **Graph DB** (Neo4j) - knowledge graph, relationships
+import org.neo4j.driver.Driver
+import org.neo4j.driver.async.AsyncSession
+import org.springframework.stereotype.Service
 
-All three through Repository interfaces!
+@Service
+class Neo4jGraphStore(
+    private val driver: Driver
+) {
 
-### Multiple Storage Backends - Valid DDD Pattern
+    suspend fun executeQuery(
+        cypher: String,
+        params: Map<String, Any> = emptyMap()
+    ): List<Map<String, Any>> {
+        return driver.session(AsyncSession::class.java).use { session ->
+            val result = session.runAsync(cypher, params).await()
+            result.listAsync { record ->
+                record.asMap()
+            }.await()
+        }
+    }
+
+    suspend fun findNodes(
+        label: String,
+        properties: Map<String, Any>
+    ): List<Node> {
+        val propString = properties.entries.joinToString(" AND ") {
+            "n.${it.key} = ${'$'}${it.key}"
+        }
+        val cypher = "MATCH (n:$label) WHERE $propString RETURN n"
+
+        return executeQuery(cypher, properties).map { toNode(it) }
+    }
+
+    suspend fun createRelationship(
+        fromLabel: String,
+        fromId: String,
+        relationshipType: String,
+        toLabel: String,
+        toId: String,
+        properties: Map<String, Any> = emptyMap()
+    ) {
+        val cypher = """
+            MATCH (from:$fromLabel {id: ${'$'}fromId})
+            MATCH (to:$toLabel {id: ${'$'}toId})
+            CREATE (from)-[r:$relationshipType]->(to)
+            SET r = ${'$'}props
+        """.trimIndent()
+
+        executeQuery(
+            cypher,
+            mapOf("fromId" to fromId, "toId" to toId, "props" to properties)
+        )
+    }
+}
+```
+
+### 4. Multiple Storage Backends - Valid DDD Pattern
 
 **DDD Repository is an abstraction** - it doesn't care HOW data is stored.
 
@@ -161,6 +261,131 @@ class ExposedThreadRepository(
 
 **This is perfectly valid DDD!** Repository abstracts WHERE and HOW data is stored. Domain layer doesn't know about multiple storages - that's infrastructure concern.
 
+## Error Handling
+
+### Convert External Errors to Domain Errors
+
+```kotlin
+suspend fun searchMemory(query: String): List<Memory> {
+    return try {
+        val embedding = embeddingService.embed(query)
+        vectorStore.search(embedding, limit = 10)
+            .map { toMemory(it) }
+    } catch (e: QdrantException) {
+        logger.error("Vector search failed", e)
+        throw MemorySearchException("Failed to search memory", e)
+    } catch (e: IOException) {
+        logger.error("Network error during search", e)
+        throw MemorySearchException("Network error", e)
+    }
+}
+```
+
+### Graceful Degradation
+
+```kotlin
+suspend fun enhancedSearch(query: String): SearchResult {
+    val vectorResults = try {
+        vectorStore.search(query)
+    } catch (e: Exception) {
+        logger.warn("Vector search failed, falling back to exact match", e)
+        emptyList()
+    }
+
+    val graphResults = try {
+        graphStore.search(query)
+    } catch (e: Exception) {
+        logger.warn("Graph search failed", e)
+        emptyList()
+    }
+
+    return SearchResult.combine(vectorResults, graphResults)
+}
+```
+
+### Defensive Error Handling
+
+```kotlin
+@Service
+class ExposedThreadRepository : ThreadRepository {
+    override suspend fun findById(id: Thread.Id): Thread? = try {
+        dbQuery { /* database query */ }
+    } catch (e: Exception) {
+        logger.error("Database error finding thread", e)
+        null  // Don't expose infrastructure errors
+    }
+}
+```
+
+## Configuration Management
+
+```kotlin
+// infrastructure/db/config/DatabaseConfiguration.kt
+@Configuration
+class DatabaseConfiguration {
+
+    @Bean
+    fun qdrantClient(
+        @Value("\${qdrant.host}") host: String,
+        @Value("\${qdrant.port}") port: Int
+    ): QdrantClient = QdrantClient.newBuilder()
+        .withHost(host)
+        .withPort(port)
+        .build()
+
+    @Bean
+    fun neo4jDriver(
+        @Value("\${neo4j.uri}") uri: String,
+        @Value("\${neo4j.username}") username: String,
+        @Value("\${neo4j.password}") password: String
+    ): Driver = GraphDatabase.driver(
+        uri,
+        AuthTokens.basic(username, password)
+    )
+
+    @Bean
+    fun dataSource(
+        @Value("\${datasource.url}") url: String,
+        @Value("\${datasource.username}") username: String,
+        @Value("\${datasource.password}") password: String
+    ): DataSource = HikariDataSource(
+        HikariConfig().apply {
+            jdbcUrl = url
+            this.username = username
+            this.password = password
+            maximumPoolSize = 10
+        }
+    )
+}
+```
+
+## Technology Stack
+
+**Relational DB:**
+- Exposed ORM or Spring Data JPA
+- PostgreSQL, SQLite, H2
+
+**Vector Store:**
+- Qdrant (gRPC client)
+- 3072-dimensional embeddings (text-embedding-3-large)
+
+**Knowledge Graph:**
+- Neo4j (async driver)
+- Cypher query language
+- Bi-temporal model (valid_at/invalid_at)
+
+## Testing
+
+**When tests exist:**
+- Run integration tests if available
+- Fix any failures
+- Don't create new tests unless requested
+
+**Build verification:**
+```bash
+./gradlew :infrastructure-db:build -q || ./gradlew :infrastructure-db:build
+```
+
 ## Example Architecture
 
 ```
@@ -184,7 +409,9 @@ Infrastructure Layer (IMPLEMENTATION):
 
 - You implement Domain Repository interfaces, don't invent new ones
 - Spring Data repositories are PRIVATE (internal)
-- You handle DB, vector, graph - all data storage
+- You handle DB, vector, graph - **ALL data storage**
 - Module: `:infrastructure-db` depends only on `:domain`
 - Multiple storage backends are valid DDD - Repository is abstraction!
+- Handle errors gracefully, don't expose infrastructure details
+- Use configuration for external endpoints
 - Verify: `./gradlew :infrastructure-db:build`
