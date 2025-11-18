@@ -304,10 +304,12 @@ fun ApplicationScope.ChatWindow(
                                 tabRowComponent()
                             }
 
-                            Column(modifier = Modifier.weight(1f).padding(16.dp)) {
-                                Box(modifier = Modifier.weight(1f)) {
-                                    if (currentTab != null) {
-                                        currentTab?.let { tabViewModel ->
+                            Column(modifier = Modifier.weight(1f)) {
+                                Row(modifier = Modifier.weight(1f)) {
+                                    Column(modifier = Modifier.weight(1f).padding(16.dp)) {
+                                        Box(modifier = Modifier.weight(1f)) {
+                                            if (currentTab != null) {
+                                                currentTab?.let { tabViewModel ->
                                             val tabUiState by tabViewModel.uiState.collectAsState()
                                             
                                             SessionScreen(
@@ -407,14 +409,14 @@ fun ApplicationScope.ChatWindow(
                                                 tabPromptService = tabPromptService,
                                                 customPrompts = tabUiState.customPrompts,
                                                 onCustomPromptsChange = { tabViewModel.updateCustomPrompts(it) },
-                                                showPromptsPanel = showPromptsPanel,
                                                 onShowPromptsPanelChange = { showPromptsPanel = it },
 
                                                 isDev = settingsService.mode == AppMode.DEV,
                                             )
                                         }
                                     } else {
-                                        SessionListScreen(
+                                        Box(modifier = Modifier.padding(16.dp)) {
+                                            SessionListScreen(
                                             onConversationSelected = { _, _ ->
                                                 refreshTrigger++
                                             },
@@ -427,6 +429,21 @@ fun ApplicationScope.ChatWindow(
                                             showSettingsPanel = showSettingsPanel,
                                             onShowSettingsPanelChange = { showSettingsPanel = it },
                                             refreshTrigger = refreshTrigger
+                                        )
+                                        }
+                                    }
+                                }
+                                    }
+                                    
+                                    // Tab Prompts Panel (tab-specific, edge-to-edge under tabs)
+                                    currentTab?.let { tabViewModel ->
+                                        val tabUiState by tabViewModel.uiState.collectAsState()
+                                        TabPromptsPanel(
+                                            isVisible = showPromptsPanel,
+                                            customPrompts = tabUiState.customPrompts,
+                                            onCustomPromptsChange = { tabViewModel.updateCustomPrompts(it) },
+                                            onClose = { showPromptsPanel = false },
+                                            tabPromptService = tabPromptService
                                         )
                                     }
                                 }
