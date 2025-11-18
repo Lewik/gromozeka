@@ -33,6 +33,9 @@ class DatabaseBackupCallback(
     }
     
     override fun handle(event: Event, context: Context) {
+        // TODO: Verify this callback actually executes during migrations
+        //  Beta V2 migration applied at 2025-11-18 04:58:27 but no backup log message found
+        //  Need to check: 1) Spring registers @Component 2) Flyway invokes callback 3) No silent failures
         val migrationInfo = context.migrationInfo ?: return
         val version = migrationInfo.version?.toString() ?: "unknown"
         val description = migrationInfo.description
