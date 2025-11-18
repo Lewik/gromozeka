@@ -22,6 +22,7 @@ import com.gromozeka.bot.settings.Settings
 import com.gromozeka.bot.ui.CompactButton
 import com.gromozeka.bot.ui.LocalTranslation
 import com.gromozeka.bot.ui.viewmodel.TabViewModel
+import com.gromozeka.domain.model.Conversation
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
@@ -149,33 +150,33 @@ fun SessionScreen(
                                     add(0)
                                 }
                                 
-                                val userMessages = filteredHistory.filter { it.role == com.gromozeka.shared.domain.Conversation.Message.Role.USER }
+                                val userMessages = filteredHistory.filter { it.role == Conversation.Message.Role.USER }
                                 if (userMessages.isNotEmpty() && userMessages.all { it.id in uiState.selectedMessageIds }) {
                                     add(1)
                                 }
                                 
-                                val assistantMessages = filteredHistory.filter { it.role == com.gromozeka.shared.domain.Conversation.Message.Role.ASSISTANT }
+                                val assistantMessages = filteredHistory.filter { it.role == Conversation.Message.Role.ASSISTANT }
                                 if (assistantMessages.isNotEmpty() && assistantMessages.all { it.id in uiState.selectedMessageIds }) {
                                     add(2)
                                 }
                                 
                                 val thinkingMessages = filteredHistory.filter { message -> 
-                                    message.content.any { it is com.gromozeka.shared.domain.Conversation.Message.ContentItem.Thinking }
+                                    message.content.any { it is Conversation.Message.ContentItem.Thinking }
                                 }
                                 if (thinkingMessages.isNotEmpty() && thinkingMessages.all { it.id in uiState.selectedMessageIds }) {
                                     add(3)
                                 }
                                 
                                 val toolMessages = filteredHistory.filter { message -> 
-                                    message.content.any { it is com.gromozeka.shared.domain.Conversation.Message.ContentItem.ToolCall }
+                                    message.content.any { it is Conversation.Message.ContentItem.ToolCall }
                                 }
                                 if (toolMessages.isNotEmpty() && toolMessages.all { it.id in uiState.selectedMessageIds }) {
                                     add(4)
                                 }
                                 
                                 val plainMessages = filteredHistory.filter { message -> 
-                                    message.content.none { it is com.gromozeka.shared.domain.Conversation.Message.ContentItem.Thinking } &&
-                                    message.content.none { it is com.gromozeka.shared.domain.Conversation.Message.ContentItem.ToolCall }
+                                    message.content.none { it is Conversation.Message.ContentItem.Thinking } &&
+                                    message.content.none { it is Conversation.Message.ContentItem.ToolCall }
                                 }
                                 if (plainMessages.isNotEmpty() && plainMessages.all { it.id in uiState.selectedMessageIds }) {
                                     add(5)
