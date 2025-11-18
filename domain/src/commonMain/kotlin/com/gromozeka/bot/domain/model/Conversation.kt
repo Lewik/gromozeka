@@ -204,6 +204,7 @@ data class Conversation(
                  * Tool result data item.
                  */
                 @Serializable
+                @JsonClassDiscriminator("type")
                 sealed class Data {
                     /**
                      * Text result.
@@ -435,6 +436,7 @@ data class Conversation(
          * (user instructions, response expectations, source metadata).
          */
         @Serializable
+        @JsonClassDiscriminator("type")
         sealed class Instruction {
             abstract val title: String
             abstract val description: String
