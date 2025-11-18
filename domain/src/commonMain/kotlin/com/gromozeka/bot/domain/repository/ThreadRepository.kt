@@ -14,16 +14,16 @@ import kotlinx.datetime.Instant
 interface ThreadRepository {
 
     /**
-     * Saves thread to persistent storage.
+     * Creates new thread in persistent storage.
      *
-     * Creates new thread if ID doesn't exist, updates existing otherwise.
      * Thread ID must be set before calling (use uuid7() for time-based ordering).
+     * Calling with existing ID will fail with constraint violation.
      * This is a transactional operation.
      *
-     * @param thread thread to save with all fields populated
+     * @param thread thread to create with all fields populated
      * @return saved thread (unchanged, for fluent API)
      * @throws IllegalArgumentException if thread.id is blank
-     * @throws IllegalStateException if conversation doesn't exist
+     * @throws IllegalStateException if conversation doesn't exist or thread with this ID already exists
      */
     suspend fun save(thread: Conversation.Thread): Conversation.Thread
 

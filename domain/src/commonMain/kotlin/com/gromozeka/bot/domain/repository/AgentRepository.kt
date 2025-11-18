@@ -34,23 +34,22 @@ interface AgentRepository {
     suspend fun findById(id: Agent.Id): Agent?
 
     /**
-     * Finds all agents, ordered by usage count (most used first).
+     * Finds all agents, ordered by name (alphabetically).
      *
      * Returns empty list if no agents exist.
      * Both builtin and user-created agents included.
      *
-     * @return all agents in descending usage order
+     * @return all agents in ascending alphabetical order
      */
     suspend fun findAll(): List<Agent>
 
     /**
      * Deletes agent permanently.
      *
-     * Deletion fails if agent is currently used in any conversation.
      * This is a transactional operation.
+     * Database constraints may prevent deletion if agent is referenced by conversations.
      *
      * @param id agent to delete
-     * @throws IllegalStateException if agent is in use (usageCount > 0)
      */
     suspend fun delete(id: Agent.Id)
 

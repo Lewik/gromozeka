@@ -47,12 +47,12 @@ interface SquashOperationRepository {
     suspend fun findByResultMessage(messageId: Conversation.Message.Id): Conversation.SquashOperation?
 
     /**
-     * Finds all squash operations in conversation, ordered by creation time (newest first).
+     * Finds all squash operations in conversation, ordered by creation time (oldest first).
      *
      * Returns empty list if conversation has no squash operations or conversation doesn't exist.
      *
      * @param conversationId conversation to query
-     * @return squash operations in descending createdAt order
+     * @return squash operations in ascending createdAt order
      */
     suspend fun findByConversation(conversationId: Conversation.Id): List<Conversation.SquashOperation>
 }

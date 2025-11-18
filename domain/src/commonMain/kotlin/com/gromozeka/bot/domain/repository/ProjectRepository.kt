@@ -73,13 +73,13 @@ interface ProjectRepository {
     suspend fun findFavorites(): List<Project>
 
     /**
-     * Searches projects by name or path (fuzzy match).
+     * Searches projects by name or description (fuzzy match).
      *
-     * Search is case-insensitive and matches substrings in name or path.
-     * Results ordered by relevance (exact matches first, then partial matches).
+     * Search is case-insensitive and matches substrings in name or description.
+     * Results ordered by last used (most recent first).
      *
      * @param query search query (non-empty)
-     * @return matching projects ordered by relevance
+     * @return matching projects ordered by lastUsedAt descending
      */
     suspend fun search(query: String): List<Project>
 

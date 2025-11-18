@@ -61,6 +61,8 @@ interface ConversationRepository {
      * Current thread changed when user switches between threads or creates new thread.
      * This operation is NOT transactional - caller must handle transaction boundaries.
      *
+     * Side effect: Updates conversation.updatedAt to current timestamp.
+     *
      * @param id conversation to update
      * @param threadId new current thread ID
      * @throws IllegalStateException if conversation or thread doesn't exist
@@ -71,6 +73,8 @@ interface ConversationRepository {
      * Updates conversation's display name.
      *
      * This operation is NOT transactional - caller must handle transaction boundaries.
+     *
+     * Side effect: Updates conversation.updatedAt to current timestamp.
      *
      * @param id conversation to update
      * @param displayName new display name (can be empty)
