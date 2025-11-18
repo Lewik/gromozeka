@@ -2,6 +2,7 @@ package com.gromozeka.shared.services
 
 import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.repository.ProjectRepository
+import com.gromozeka.domain.repository.ProjectDomainService
 import klog.KLoggers
 import com.gromozeka.shared.uuid.uuid7
 import kotlinx.datetime.Instant
@@ -18,7 +19,7 @@ import kotlinx.datetime.Instant
  */
 class ProjectService(
     private val projectRepository: ProjectRepository,
-) {
+) : ProjectDomainService {
     private val log = KLoggers.logger(this)
 
     /**
@@ -33,7 +34,7 @@ class ProjectService(
      * @param path absolute file system path to project directory
      * @return existing or newly created project
      */
-    suspend fun getOrCreate(path: String): Project {
+    override suspend fun getOrCreate(path: String): Project {
         val existing = projectRepository.findByPath(path)
         if (existing != null) {
             updateLastUsed(existing.id)
@@ -50,7 +51,7 @@ class ProjectService(
      * @param id project identifier
      * @return project if found, null otherwise
      */
-    suspend fun findById(id: Project.Id): Project? =
+    override suspend fun findById(id: Project.Id): Project? =
         projectRepository.findById(id)
 
     /**
@@ -59,7 +60,7 @@ class ProjectService(
      * @param path absolute file system path (exact match, case-sensitive)
      * @return project if found, null otherwise
      */
-    suspend fun findByPath(path: String): Project? =
+    override suspend fun findByPath(path: String): Project? =
         projectRepository.findByPath(path)
 
     /**
@@ -68,7 +69,7 @@ class ProjectService(
      * @param limit maximum number of projects to return (default: 10)
      * @return recent projects ordered by lastUsedAt (newest first)
      */
-    suspend fun findRecent(limit: Int = 10): List<Project> =
+    override suspend fun findRecent(limit: Int): List<Project> =
         projectRepository.findRecent(limit)
 
     /**
@@ -76,7 +77,7 @@ class ProjectService(
      *
      * @return list of favorite projects
      */
-    suspend fun findFavorites(): List<Project> =
+    override suspend fun findFavorites(): List<Project> =
         projectRepository.findFavorites()
 
     /**
@@ -85,7 +86,7 @@ class ProjectService(
      * @param query search text
      * @return list of matching projects
      */
-    suspend fun search(query: String): List<Project> =
+    override suspend fun search(query: String): List<Project> =
         projectRepository.search(query)
 
     /**
@@ -96,7 +97,7 @@ class ProjectService(
      * @param id project identifier
      * @return updated project if exists, null otherwise
      */
-    suspend fun toggleFavorite(id: Project.Id): Project? {
+    override suspend fun toggleFavorite(id: Project.Id): Project? {
         val project = projectRepository.findById(id) ?: return null
         val updated = project.copy(favorite = !project.favorite)
         return projectRepository.save(updated)
@@ -110,7 +111,7 @@ class ProjectService(
      * @param id project identifier
      * @return updated project if exists, null otherwise
      */
-    suspend fun updateLastUsed(id: Project.Id): Project? {
+    override suspend fun updateLastUsed(id: Project.Id): Project? {
         val project = projectRepository.findById(id) ?: return null
         val updated = project.copy(lastUsedAt = Instant.fromEpochMilliseconds(System.currentTimeMillis()))
         return projectRepository.save(updated)

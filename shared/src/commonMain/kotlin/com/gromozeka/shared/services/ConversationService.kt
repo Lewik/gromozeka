@@ -3,6 +3,7 @@ package com.gromozeka.shared.services
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.repository.ConversationRepository
+import com.gromozeka.domain.repository.ConversationDomainService
 import klog.KLoggers
 import com.gromozeka.domain.repository.MessageRepository
 import com.gromozeka.domain.repository.ThreadMessageRepository
@@ -33,7 +34,7 @@ class ConversationService(
     private val messageRepo: MessageRepository,
     private val threadMessageRepo: ThreadMessageRepository,
     private val projectService: ProjectService
-) {
+) : ConversationDomainService {
     private val log = KLoggers.logger(this)
 
     /**
@@ -48,11 +49,11 @@ class ConversationService(
      * @param modelName model identifier (default: "llama3.2")
      * @return created conversation with new thread
      */
-    suspend fun create(
+    override suspend fun create(
         projectPath: String,
-        displayName: String = "",
-        aiProvider: String = "OLLAMA",
-        modelName: String = "llama3.2"
+        displayName: String,
+        aiProvider: String,
+        modelName: String
     ): Conversation {
         val project = projectService.getOrCreate(projectPath)
         val now = Clock.System.now()
@@ -89,7 +90,7 @@ class ConversationService(
      * @param id conversation identifier
      * @return conversation if found, null otherwise
      */
-    suspend fun findById(id: Conversation.Id): Conversation? =
+    override suspend fun findById(id: Conversation.Id): Conversation? =
         conversationRepo.findById(id)
 
     /**
@@ -100,7 +101,7 @@ class ConversationService(
      * @param conversationId conversation to query
      * @return project path if conversation and project exist, null otherwise
      */
-    suspend fun getProjectPath(conversationId: Conversation.Id): String? {
+    override suspend fun getProjectPath(conversationId: Conversation.Id): String? {
         val conversation = findById(conversationId) ?: return null
         val project = projectService.findById(conversation.projectId) ?: return null
         return project.path
@@ -112,7 +113,7 @@ class ConversationService(
      * @param projectPath absolute file system path to project
      * @return list of conversations (empty if project doesn't exist or has no conversations)
      */
-    suspend fun findByProject(projectPath: String): List<Conversation> {
+    override suspend fun findByProject(projectPath: String): List<Conversation> {
         val project = projectService.findByPath(projectPath) ?: return emptyList()
         return conversationRepo.findByProject(project.id)
     }
@@ -125,7 +126,7 @@ class ConversationService(
      *
      * @param id conversation identifier
      */
-    suspend fun delete(id: Conversation.Id) {
+    override suspend fun delete(id: Conversation.Id) {
         conversationRepo.delete(id)
     }
 
@@ -136,7 +137,7 @@ class ConversationService(
      * @param displayName new display name
      * @return updated conversation if exists, null otherwise
      */
-    suspend fun updateDisplayName(
+    override suspend fun updateDisplayName(
         conversationId: Conversation.Id,
         displayName: String
     ): Conversation? {
@@ -158,7 +159,7 @@ class ConversationService(
      * @return new forked conversation
      * @throws IllegalStateException if source conversation doesn't exist
      */
-    suspend fun fork(conversationId: Conversation.Id): Conversation {
+    override suspend fun fork(conversationId: Conversation.Id): Conversation {
         val sourceConversation = conversationRepo.findById(conversationId)
             ?: throw IllegalStateException("Conversation not found: $conversationId")
         
@@ -232,7 +233,7 @@ class ConversationService(
      * @throws IllegalArgumentException if message conversationId doesn't match
      * @throws IllegalStateException if conversation doesn't exist
      */
-    suspend fun addMessage(
+    override suspend fun addMessage(
         conversationId: Conversation.Id,
         message: Conversation.Message
     ): Conversation? {
@@ -265,7 +266,7 @@ class ConversationService(
      * @return ordered list of messages in current thread
      * @throws IllegalStateException if conversation doesn't exist
      */
-    suspend fun loadCurrentMessages(conversationId: Conversation.Id): List<Conversation.Message> {
+    override suspend fun loadCurrentMessages(conversationId: Conversation.Id): List<Conversation.Message> {
         val conversation = conversationRepo.findById(conversationId)
             ?: throw IllegalStateException("Conversation not found: $conversationId")
 
@@ -286,7 +287,7 @@ class ConversationService(
      * @throws IllegalStateException if conversation doesn't exist
      * @throws IllegalArgumentException if message not found in current thread
      */
-    suspend fun editMessage(
+    override suspend fun editMessage(
         conversationId: Conversation.Id,
         messageId: Conversation.Message.Id,
         newContent: List<Conversation.Message.ContentItem>
@@ -353,7 +354,7 @@ class ConversationService(
      * @throws IllegalStateException if conversation doesn't exist
      * @throws IllegalArgumentException if message not found in current thread
      */
-    suspend fun deleteMessage(
+    override suspend fun deleteMessage(
         conversationId: Conversation.Id,
         messageId: Conversation.Message.Id
     ): Conversation? {
@@ -405,7 +406,7 @@ class ConversationService(
      * @throws IllegalArgumentException if messageIds is empty or some messages not found
      * @throws IllegalStateException if conversation doesn't exist
      */
-    suspend fun deleteMessages(
+    override suspend fun deleteMessages(
         conversationId: Conversation.Id,
         messageIds: List<Conversation.Message.Id>
     ): Conversation? {
@@ -468,7 +469,7 @@ class ConversationService(
      * @throws IllegalArgumentException if fewer than 2 messages or some messages not found
      * @throws IllegalStateException if conversation doesn't exist
      */
-    suspend fun squashMessages(
+    override suspend fun squashMessages(
         conversationId: Conversation.Id,
         messageIds: List<Conversation.Message.Id>,
         squashedContent: List<Conversation.Message.ContentItem>

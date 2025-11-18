@@ -2,6 +2,7 @@ package com.gromozeka.shared.services
 
 import com.gromozeka.domain.model.Agent
 import com.gromozeka.domain.repository.AgentRepository
+import com.gromozeka.domain.repository.AgentDomainService
 import klog.KLoggers
 import com.gromozeka.shared.uuid.uuid7
 import kotlinx.datetime.Instant
@@ -17,7 +18,7 @@ import kotlinx.datetime.Instant
  */
 class AgentService(
     private val agentRepository: AgentRepository,
-) {
+) : AgentDomainService {
     private val log = KLoggers.logger(this)
 
     /**
@@ -32,11 +33,11 @@ class AgentService(
      * @param isBuiltin true for system agents (prevents deletion), false for user agents
      * @return created agent
      */
-    suspend fun createAgent(
+    override suspend fun createAgent(
         name: String,
         systemPrompt: String,
-        description: String? = null,
-        isBuiltin: Boolean = false
+        description: String?,
+        isBuiltin: Boolean
     ): Agent {
         val now = Instant.fromEpochMilliseconds(System.currentTimeMillis())
 
@@ -60,7 +61,7 @@ class AgentService(
      * @param id agent identifier
      * @return agent if found, null otherwise
      */
-    suspend fun findById(id: Agent.Id): Agent? =
+    override suspend fun findById(id: Agent.Id): Agent? =
         agentRepository.findById(id)
 
     /**
@@ -68,7 +69,7 @@ class AgentService(
      *
      * @return list of all agents
      */
-    suspend fun findAll(): List<Agent> =
+    override suspend fun findAll(): List<Agent> =
         agentRepository.findAll()
 
     /**
@@ -82,10 +83,10 @@ class AgentService(
      * @param description new description (null keeps existing)
      * @return updated agent if exists, null otherwise
      */
-    suspend fun update(
+    override suspend fun update(
         id: Agent.Id,
-        systemPrompt: String? = null,
-        description: String? = null
+        systemPrompt: String?,
+        description: String?
     ): Agent? {
         val agent = agentRepository.findById(id) ?: return null
         val now = Instant.fromEpochMilliseconds(System.currentTimeMillis())
@@ -107,7 +108,7 @@ class AgentService(
      *
      * @param id agent identifier
      */
-    suspend fun delete(id: Agent.Id) {
+    override suspend fun delete(id: Agent.Id) {
         val agent = agentRepository.findById(id)
         if (agent?.isBuiltin == true) {
             log.warn("Cannot delete builtin agent: ${agent.name}")
@@ -121,6 +122,6 @@ class AgentService(
      *
      * @return number of agents (includes built-in and user-created)
      */
-    suspend fun count(): Int =
+    override suspend fun count(): Int =
         agentRepository.count()
 }
