@@ -56,10 +56,11 @@ interface ProjectRepository {
     /**
      * Finds recently used projects, ordered by last used (most recent first).
      *
-     * Excludes archived projects (archived = false).
+     * TODO: Should filter out archived projects (archived = false), but currently returns all projects.
+     *       Implementation needs WHERE clause: Projects.archived eq false
      *
      * @param limit maximum number of projects to return
-     * @return recent projects up to specified limit
+     * @return recent projects up to specified limit (currently includes archived)
      */
     suspend fun findRecent(limit: Int): List<Project>
 

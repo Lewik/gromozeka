@@ -57,10 +57,14 @@ interface ContextRepository {
      * Finds contexts matching any of specified tags.
      *
      * Returns contexts where tags intersect with query tags (OR operation).
-     * Ordered by relevance (number of matching tags, then by recency).
+     * Currently ordered by recency (updatedAt DESC) only.
+     *
+     * TODO: Implement proper relevance ordering (number of matching tags, then by recency).
+     *       Current implementation uses in-memory filtering - should use PostgreSQL JSON functions
+     *       for better performance: WHERE tags @> ANY($tags) or similar JSON operators.
      *
      * @param tags tags to search for (non-empty)
-     * @return matching contexts ordered by relevance
+     * @return matching contexts ordered by updatedAt descending
      */
     suspend fun findByTags(tags: Set<String>): List<Context>
 
