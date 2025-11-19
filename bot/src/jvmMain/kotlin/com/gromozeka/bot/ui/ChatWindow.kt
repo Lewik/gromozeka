@@ -22,7 +22,7 @@ import com.gromozeka.bot.services.*
 import com.gromozeka.bot.services.theming.AIThemeGenerator
 import com.gromozeka.bot.services.theming.ThemeService
 import com.gromozeka.bot.services.translation.TranslationService
-import com.gromozeka.bot.settings.AppMode
+import com.gromozeka.domain.service.AppMode
 import com.gromozeka.bot.settings.Settings
 import com.gromozeka.bot.ui.session.SessionScreen
 import com.gromozeka.bot.ui.state.ConversationInitiator

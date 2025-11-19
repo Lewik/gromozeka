@@ -2,11 +2,11 @@ package com.gromozeka.bot.services.memory.graph
 
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.gromozeka.bot.services.ChatModelFactory
+import com.gromozeka.infrastructure.ai.springai.ChatModelFactory
 import com.gromozeka.bot.services.SettingsService
 import com.gromozeka.bot.services.memory.graph.models.MemoryLink
 import com.gromozeka.bot.services.memory.graph.models.MemoryObject
-import com.gromozeka.bot.settings.AIProvider
+import com.gromozeka.domain.service.AIProvider
 import klog.KLoggers
 import kotlinx.coroutines.reactor.awaitSingle
 import kotlinx.datetime.Instant

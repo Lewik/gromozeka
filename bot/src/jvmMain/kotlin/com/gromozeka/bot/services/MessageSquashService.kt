@@ -1,9 +1,10 @@
 package com.gromozeka.bot.services
 
-import com.gromozeka.bot.settings.AIProvider
+import com.gromozeka.domain.service.AIProvider
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.SquashType
 import com.gromozeka.domain.repository.ConversationDomainService
+import com.gromozeka.infrastructure.ai.springai.ChatModelFactory
 import klog.KLoggers
 import kotlinx.coroutines.reactive.awaitSingle
 import org.springframework.ai.chat.messages.UserMessage

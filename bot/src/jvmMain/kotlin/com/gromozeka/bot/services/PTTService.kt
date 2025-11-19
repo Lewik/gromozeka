@@ -3,6 +3,7 @@ package com.gromozeka.bot.services
 import klog.KLoggers
 
 import com.gromozeka.bot.platform.SystemAudioController
+import com.gromozeka.infrastructure.ai.springai.SttService
 import com.gromozeka.shared.audio.AudioConfig
 import com.gromozeka.shared.audio.AudioRecorder
 import com.gromozeka.shared.audio.RecordingSession

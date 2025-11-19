@@ -1,6 +1,8 @@
-package com.gromozeka.bot.services
+package com.gromozeka.infrastructure.ai.springai
 
-import com.gromozeka.bot.platform.AudioPlayerController
+import com.gromozeka.domain.service.AudioController
+import com.gromozeka.domain.service.SettingsProvider
+import com.gromozeka.domain.service.TtsTask
 import klog.KLoggers
 
 import kotlinx.coroutines.Dispatchers
@@ -13,8 +15,8 @@ import java.io.File
 
 class TtsService(
     private val openAiAudioSpeechModel: OpenAiAudioSpeechModel,
-    private val settingsService: SettingsService,
-    private val audioPlayerController: AudioPlayerController,
+    private val settingsProvider: SettingsProvider,
+    private val audioController: AudioController,
 ) {
     private val log = KLoggers.logger(this)
 
@@ -30,14 +32,14 @@ class TtsService(
             val response = openAiAudioSpeechModel.call(
                 TextToSpeechPrompt(
                     text, OpenAiAudioSpeechOptions.builder()
-                        .model(settingsService.settings.ttsModel)
+                        .model(settingsProvider.ttsModel)
                         .voice(
                             OpenAiAudioApi.SpeechRequest.Voice.valueOf(
-                                settingsService.settings.ttsVoice.uppercase()
+                                settingsProvider.ttsVoice.uppercase()
                             )
                         )
                         .responseFormat(OpenAiAudioApi.SpeechRequest.AudioResponseFormat.MP3)
-                        .speed(settingsService.settings.ttsSpeed.toDouble())
+                        .speed(settingsProvider.ttsSpeed.toDouble())
                         .build()
                 )
             ).result.output
@@ -52,18 +54,19 @@ class TtsService(
     }
 
     suspend fun playAudio(audioFile: File) {
-        audioPlayerController.playAudioFile(audioFile)
+        audioController.playAudioFile(audioFile)
     }
 
     suspend fun stopPlayback() {
-        audioPlayerController.stopPlayback()
+        audioController.stopPlayback()
     }
 
-    suspend fun generateAndPlay(task: TTSQueueService.Task) {
+    suspend fun generateAndPlay(task: TtsTask) {
         val audioFile = generateSpeech(task.text, task.tone)
         audioFile?.let {
             playAudio(it)
-            it.delete() // cleanup temp file
+            it.delete()
         }
     }
+
 }

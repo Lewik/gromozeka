@@ -1,4 +1,4 @@
-package com.gromozeka.bot.config
+package com.gromozeka.infrastructure.ai.config
 
 import org.springframework.ai.ollama.api.OllamaApi
 import org.springframework.beans.factory.annotation.Value

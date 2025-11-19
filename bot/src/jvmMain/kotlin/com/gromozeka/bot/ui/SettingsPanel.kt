@@ -22,7 +22,7 @@ import com.gromozeka.bot.services.theming.ThemeService
 import com.gromozeka.bot.services.theming.data.Theme
 import com.gromozeka.bot.services.translation.TranslationService
 import com.gromozeka.bot.services.translation.data.Translation
-import com.gromozeka.bot.settings.AIProvider
+import com.gromozeka.domain.service.AIProvider
 import com.gromozeka.bot.settings.ResponseFormat
 import com.gromozeka.bot.settings.Settings
 import klog.KLoggers

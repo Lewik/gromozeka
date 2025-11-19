@@ -264,7 +264,8 @@ private fun determineLogPath(modeEnv: String?): String {
     scanBasePackages = [
         "com.gromozeka.bot",
         "com.gromozeka.application",
-        "com.gromozeka.infrastructure.db"
+        "com.gromozeka.infrastructure.db",
+        "com.gromozeka.infrastructure.ai"
     ],
     exclude = [
         OpenAiEmbeddingAutoConfiguration::class,

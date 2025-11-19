@@ -6,7 +6,7 @@ import com.gromozeka.bot.services.DefaultAgentProvider
 import com.gromozeka.bot.services.MessageSquashService
 import com.gromozeka.bot.services.SettingsService
 import com.gromozeka.bot.services.SoundNotificationService
-import com.gromozeka.bot.settings.AIProvider
+import com.gromozeka.domain.service.AIProvider
 import com.gromozeka.bot.ui.state.ConversationInitiator
 import com.gromozeka.bot.ui.state.UIState
 import com.gromozeka.domain.model.Agent

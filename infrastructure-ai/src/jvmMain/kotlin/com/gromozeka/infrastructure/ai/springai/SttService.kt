@@ -1,4 +1,4 @@
-package com.gromozeka.bot.services
+package com.gromozeka.infrastructure.ai.springai
 
 import klog.KLoggers
 
@@ -14,12 +14,13 @@ import org.springframework.ai.openai.OpenAiAudioTranscriptionOptions
 import org.springframework.ai.openai.api.OpenAiAudioApi.TranscriptResponseFormat
 import org.springframework.core.io.FileSystemResource
 import org.springframework.stereotype.Service
+import com.gromozeka.domain.service.SettingsProvider
 import java.io.File
 
 @Service
 class SttService(
     private val openAiAudioTranscriptionModel: OpenAiAudioTranscriptionModel,
-    private val settingsService: SettingsService,
+    private val settingsProvider: SettingsProvider,
 ) {
     private val log = KLoggers.logger(this)
 
@@ -46,7 +47,7 @@ class SttService(
             val transcriptionOptions = OpenAiAudioTranscriptionOptions.builder()
                 .responseFormat(TranscriptResponseFormat.TEXT)
                 .temperature(0f)
-                .language(settingsService.settings.sttMainLanguage)
+                .language(settingsProvider.sttMainLanguage)
                 .build()
 
             val transcriptionRequest = AudioTranscriptionPrompt(FileSystemResource(tempFile), transcriptionOptions)

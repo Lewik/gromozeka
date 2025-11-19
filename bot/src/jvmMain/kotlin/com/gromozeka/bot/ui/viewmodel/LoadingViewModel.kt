@@ -1,6 +1,6 @@
 package com.gromozeka.bot.ui.viewmodel
 
-import com.gromozeka.bot.config.mcp.McpConfigurationService
+import com.gromozeka.infrastructure.ai.config.mcp.McpConfigurationService
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow

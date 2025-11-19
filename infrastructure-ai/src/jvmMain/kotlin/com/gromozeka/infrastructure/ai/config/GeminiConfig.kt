@@ -1,4 +1,4 @@
-package com.gromozeka.bot.config
+package com.gromozeka.infrastructure.ai.config
 
 import com.google.auth.oauth2.GoogleCredentials
 import com.google.genai.Client

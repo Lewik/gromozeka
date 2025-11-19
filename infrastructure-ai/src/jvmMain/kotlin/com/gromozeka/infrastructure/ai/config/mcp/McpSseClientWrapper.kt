@@ -1,4 +1,4 @@
-package com.gromozeka.bot.config.mcp
+package com.gromozeka.infrastructure.ai.config.mcp
 
 import io.modelcontextprotocol.client.McpAsyncClient
 import io.modelcontextprotocol.client.McpClient

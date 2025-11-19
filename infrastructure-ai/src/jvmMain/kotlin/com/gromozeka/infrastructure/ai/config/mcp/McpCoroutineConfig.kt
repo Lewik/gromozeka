@@ -1,4 +1,4 @@
-package com.gromozeka.bot.config.mcp
+package com.gromozeka.infrastructure.ai.config.mcp
 
 import jakarta.annotation.PreDestroy
 import kotlinx.coroutines.*

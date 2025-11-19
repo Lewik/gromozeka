@@ -1,5 +1,7 @@
 package com.gromozeka.bot.services
 
+import com.gromozeka.domain.service.TtsTask
+import com.gromozeka.infrastructure.ai.springai.TtsService
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -11,13 +13,8 @@ class TTSQueueService(
     private val ttsService: TtsService,
 ) {
 
-    data class Task(
-        val text: String,
-        val tone: String,
-    )
-
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-    private val ttsQueue = Channel<Task>(Channel.UNLIMITED)
+    private val ttsQueue = Channel<TtsTask>(Channel.UNLIMITED)
     private var currentPlaybackJob: Job? = null
     private var actorJob: Job? = null
 
@@ -48,7 +45,7 @@ class TTSQueueService(
         }
     }
 
-    suspend fun enqueue(task: Task) {
+    suspend fun enqueue(task: TtsTask) {
         require(task.text.isNotBlank()) { "TTS text cannot be blank" }
         check(actorJob != null) { "TTS service not started - call start() first" }
         check(serviceScope.isActive) { "TTS service is shut down" }

@@ -1,4 +1,4 @@
-package com.gromozeka.bot.services
+package com.gromozeka.infrastructure.ai.springai
 
 import klog.KLoggers
 import java.io.File

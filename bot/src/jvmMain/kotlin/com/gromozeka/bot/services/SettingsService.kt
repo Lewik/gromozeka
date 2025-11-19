@@ -1,7 +1,9 @@
 package com.gromozeka.bot.services
 
-import com.gromozeka.bot.settings.AppMode
 import com.gromozeka.bot.settings.Settings
+import com.gromozeka.domain.service.AIProvider
+import com.gromozeka.domain.service.AppMode
+import com.gromozeka.domain.service.SettingsProvider
 import com.gromozeka.bot.utils.findRandomAvailablePort
 import klog.KLoggers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -16,7 +18,7 @@ import java.nio.file.Path
 import java.util.*
 import kotlin.io.path.Path
 
-class SettingsService {
+class SettingsService : SettingsProvider {
 
     private val log = KLoggers.logger("SettingsService")
 
@@ -26,7 +28,7 @@ class SettingsService {
         ignoreUnknownKeys = true
     }
 
-    val mode: AppMode = determineMode()
+    override val mode: AppMode = determineMode()
 
     val gromozekaHome: File = determineGromozekaHome()
 
@@ -40,6 +42,13 @@ class SettingsService {
 
     private val _settingsFlow = MutableStateFlow(Settings())
     val settingsFlow: StateFlow<Settings> = _settingsFlow.asStateFlow()
+
+    // SettingsProvider implementation - delegate to current settings
+    override val sttMainLanguage: String get() = settings.sttMainLanguage
+    override val ttsModel: String get() = settings.ttsModel
+    override val ttsVoice: String get() = settings.ttsVoice
+    override val ttsSpeed: Float get() = settings.ttsSpeed
+    override val aiProvider: AIProvider get() = settings.defaultAiProvider
 
     /**
      * Initialize the service automatically after Spring bean creation
@@ -63,8 +72,8 @@ class SettingsService {
 
         return when (modeEnv?.lowercase()) {
             "dev", "development" -> AppMode.DEV
-            "prod", "production" -> AppMode.PROD
-            null -> AppMode.PROD
+            "prod", "production" -> AppMode.PRODUCTION
+            null -> AppMode.PRODUCTION
             else -> throw IllegalArgumentException("GROMOZEKA_MODE value '$modeEnv' not supported")
         }
     }

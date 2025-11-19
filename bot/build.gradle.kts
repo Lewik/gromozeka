@@ -58,6 +58,7 @@ kotlin {
                 implementation(project(":application"))
                 implementation(project(":shared"))
                 implementation(project(":infrastructure-db"))
+                implementation(project(":infrastructure-ai"))
 
                 implementation(libs.kotlin.reflect)
                 implementation(libs.kotlinx.coroutines.reactor)

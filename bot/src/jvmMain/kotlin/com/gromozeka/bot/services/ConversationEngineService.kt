@@ -5,6 +5,7 @@ import com.gromozeka.domain.model.TokenUsageStatistics
 import com.gromozeka.domain.repository.ThreadRepository
 import com.gromozeka.domain.repository.TokenUsageStatisticsRepository
 import com.gromozeka.domain.repository.ConversationDomainService
+import com.gromozeka.domain.service.AIProvider
 import klog.KLoggers
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
@@ -19,7 +20,8 @@ import org.springframework.ai.google.genai.metadata.GoogleGenAiUsage
 import org.springframework.ai.model.tool.ToolCallingChatOptions
 import org.springframework.ai.model.tool.ToolCallingManager
 import org.springframework.stereotype.Service
-import com.gromozeka.bot.config.mcp.McpConfigurationService
+import com.gromozeka.infrastructure.ai.config.mcp.McpConfigurationService
+import com.gromozeka.infrastructure.ai.springai.ChatModelFactory
 import java.util.UUID
 import kotlinx.datetime.Clock
 
@@ -117,7 +119,7 @@ class ConversationEngineService(
         log.debug { "Using project path: $projectPath" }
 
         // 3. Get ChatModel for this conversation's provider with user's model
-        val aiProvider = com.gromozeka.bot.settings.AIProvider.valueOf(conversation.aiProvider)
+        val aiProvider = AIProvider.valueOf(conversation.aiProvider)
         val chatModel = chatModelFactory.get(
             aiProvider,
             conversation.modelName,

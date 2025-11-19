@@ -1,8 +1,8 @@
-package com.gromozeka.bot.services
+package com.gromozeka.infrastructure.ai.springai
 
 import com.google.genai.Client
-import com.gromozeka.bot.settings.AIProvider
-import com.gromozeka.bot.settings.AppMode
+import com.gromozeka.domain.service.AIProvider
+import com.gromozeka.domain.service.AppMode
 import io.micrometer.observation.ObservationRegistry
 import klog.KLoggers
 import org.springframework.ai.chat.model.ChatModel
@@ -20,13 +20,14 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.retry.support.RetryTemplate
 import org.springframework.stereotype.Service
 import java.util.concurrent.ConcurrentHashMap
+import com.gromozeka.domain.service.SettingsProvider
 
 @Service
 class ChatModelFactory(
     @Autowired(required = false) private val ollamaApi: OllamaApi?,
     @Autowired(required = false) private val geminiClient: Client?,
     private val toolCallingManager: ToolCallingManager,
-    private val settingsService: SettingsService,
+    private val settingsProvider: SettingsProvider,
 ) {
     private val log = KLoggers.logger(this)
 
@@ -107,7 +108,7 @@ class ChatModelFactory(
                 val api = ClaudeCodeApi.builder()
                     .cliPath(claudePath)
                     .workingDirectory(workingDir)
-                    .devMode(settingsService.mode == AppMode.DEV)
+                    .devMode(settingsProvider.mode == AppMode.DEV)
                     .build()
 
                 val options = ClaudeCodeChatOptions.builder()

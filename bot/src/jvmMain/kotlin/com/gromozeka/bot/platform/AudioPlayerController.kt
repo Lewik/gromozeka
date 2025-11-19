@@ -2,11 +2,13 @@ package com.gromozeka.bot.platform
 
 import java.io.File
 
-interface AudioPlayerController {
+import com.gromozeka.domain.service.AudioController
 
-    suspend fun playAudioFile(audioFile: File)
+interface AudioPlayerController : AudioController {
 
-    suspend fun stopPlayback()
+    override suspend fun playAudioFile(audioFile: File)
+
+    override suspend fun stopPlayback()
 
     fun isPlaying(): Boolean
 }

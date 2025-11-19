@@ -2,6 +2,7 @@ package com.gromozeka.bot.settings
 
 import com.gromozeka.bot.services.theming.data.DarkTheme
 import com.gromozeka.bot.services.translation.data.EnglishTranslation
+import com.gromozeka.domain.service.AIProvider
 import kotlinx.serialization.Serializable
 
 @Serializable

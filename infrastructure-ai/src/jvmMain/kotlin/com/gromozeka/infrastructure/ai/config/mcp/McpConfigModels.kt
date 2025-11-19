@@ -1,4 +1,4 @@
-package com.gromozeka.bot.config.mcp
+package com.gromozeka.infrastructure.ai.config.mcp
 
 import com.fasterxml.jackson.annotation.JsonProperty
 

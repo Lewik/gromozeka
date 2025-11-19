@@ -10,6 +10,7 @@ include(":shared")
 include(":domain")
 include(":application")
 include(":infrastructure-db")
+include(":infrastructure-ai")
 
 // Настройка репозиториев для всех проектов
 dependencyResolutionManagement {

@@ -3,12 +3,12 @@ package com.gromozeka.bot.services.memory.graph
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
-import com.gromozeka.bot.services.ChatModelFactory
+import com.gromozeka.infrastructure.ai.springai.ChatModelFactory
 import com.gromozeka.bot.services.SettingsService
 import com.gromozeka.bot.services.memory.graph.models.EntityType
 import com.gromozeka.bot.services.memory.graph.models.EntityTypesConfig
 import com.gromozeka.bot.services.memory.graph.models.MissedEntities
-import com.gromozeka.bot.settings.AIProvider
+import com.gromozeka.domain.service.AIProvider
 import klog.KLoggers
 import kotlinx.coroutines.reactor.awaitSingle
 import kotlinx.serialization.json.Json

@@ -2,6 +2,7 @@ package com.gromozeka.bot.services
 
 import com.gromozeka.bot.ui.viewmodel.AppViewModel
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.service.TtsTask
 import klog.KLoggers
 
 import kotlinx.coroutines.CoroutineScope
@@ -90,7 +91,7 @@ class TTSAutoplayService(
             val voiceTone = assistantContent.structured.voiceTone ?: ""
 
             ttsQueueService.enqueue(
-                TTSQueueService.Task(
+                TtsTask(
                     text = ttsText,
                     tone = voiceTone
                 )

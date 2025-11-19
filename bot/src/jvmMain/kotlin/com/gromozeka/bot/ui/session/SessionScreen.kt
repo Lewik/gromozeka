@@ -23,6 +23,7 @@ import com.gromozeka.bot.ui.CompactButton
 import com.gromozeka.bot.ui.LocalTranslation
 import com.gromozeka.bot.ui.viewmodel.TabViewModel
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.service.TtsTask
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
@@ -525,7 +526,7 @@ fun SessionScreen(
                             onShowJson = { json -> viewModel.jsonToShow = json },
                             onSpeakRequest = { text, tone ->
                                 coroutineScope.launch {
-                                    ttsQueueService.enqueue(TTSQueueService.Task(text, tone))
+                                    ttsQueueService.enqueue(TtsTask(text, tone))
                                 }
                             },
                             onEditRequest = { messageId ->
