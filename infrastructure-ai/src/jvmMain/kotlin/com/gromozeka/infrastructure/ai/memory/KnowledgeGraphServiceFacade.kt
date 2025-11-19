@@ -1,12 +1,11 @@
-package com.gromozeka.bot.services.memory.graph
+package com.gromozeka.infrastructure.ai.memory
 
-import com.gromozeka.bot.services.memory.graph.models.MemoryObject
-import com.gromozeka.infrastructure.db.graph.Neo4jGraphStore
+import com.gromozeka.bot.domain.model.memory.MemoryObject
+import com.gromozeka.bot.domain.repository.KnowledgeGraphStore
 import klog.KLoggers
 import kotlinx.coroutines.coroutineScope
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
-import org.neo4j.driver.Driver
 import org.springframework.ai.embedding.EmbeddingModel
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.stereotype.Service
@@ -15,12 +14,10 @@ import java.util.*
 @Service
 @ConditionalOnProperty(name = ["knowledge-graph.enabled"], havingValue = "true", matchIfMissing = false)
 class KnowledgeGraphServiceFacade(
-    private val neo4jDriver: Driver?,
-    private val neo4jGraphStore: Neo4jGraphStore,
+    private val knowledgeGraphStore: KnowledgeGraphStore,
     private val entityExtractionService: EntityExtractionService,
     private val relationshipExtractionService: RelationshipExtractionService,
     private val entityDeduplicationService: EntityDeduplicationService,
-    private val graphPersistenceService: GraphPersistenceService,
     private val embeddingModel: EmbeddingModel
 ) {
     private val log = KLoggers.logger(this)
@@ -34,11 +31,6 @@ class KnowledgeGraphServiceFacade(
     ): String = coroutineScope {
         log.info { "Starting knowledge extraction from content (${content.length} chars)" }
         
-        if (neo4jDriver == null) {
-            log.warn { "Neo4j driver not available, cannot extract to graph" }
-            return@coroutineScope "Neo4j driver not available"
-        }
-
         val entities = entityExtractionService.extractEntities(content, previousMessages)
         log.debug { "Extracted ${entities.size} entities, starting deduplication" }
 
@@ -91,7 +83,7 @@ class KnowledgeGraphServiceFacade(
             emptyList()
         }
 
-        graphPersistenceService.saveToNeo4j(entityNodes, relationships)
+        knowledgeGraphStore.saveToGraph(entityNodes, relationships)
 
         val result = "Added ${entityNodes.size} entities and ${relationships.size} relationships to knowledge graph"
         log.info { result }
@@ -100,7 +92,7 @@ class KnowledgeGraphServiceFacade(
 
     private suspend fun fetchExistingSummary(uuid: String): String? {
         return try {
-            val results = neo4jGraphStore.executeQuery(
+            val results = knowledgeGraphStore.executeQuery(
                 """
                 MATCH (n:MemoryObject {uuid: ${'$'}uuid, group_id: ${'$'}groupId})
                 RETURN n.summary as summary

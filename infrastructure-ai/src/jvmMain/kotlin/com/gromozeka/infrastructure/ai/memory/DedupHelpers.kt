@@ -1,6 +1,6 @@
-package com.gromozeka.bot.services.memory.graph
+package com.gromozeka.infrastructure.ai.memory
 
-import com.gromozeka.infrastructure.db.graph.Neo4jGraphStore
+import com.gromozeka.bot.domain.repository.KnowledgeGraphStore
 import java.security.MessageDigest
 import kotlin.math.min
 
@@ -94,7 +94,7 @@ object DedupHelpers {
     }
 
     suspend fun collectCandidates(
-        neo4jGraphStore: Neo4jGraphStore,
+        knowledgeGraphStore: KnowledgeGraphStore,
         groupId: String,
         extractedNames: List<String>
     ): List<EntityCandidate> {
@@ -103,7 +103,7 @@ object DedupHelpers {
         for (name in extractedNames) {
             val normalized = normalize(name)
 
-            val results = neo4jGraphStore.executeQuery(
+            val results = knowledgeGraphStore.executeQuery(
                 """
                 CALL db.index.fulltext.queryNodes('memory_object_index', ${'$'}query)
                 YIELD node, score

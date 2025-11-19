@@ -1,4 +1,4 @@
-package com.gromozeka.bot.services.memory.graph
+package com.gromozeka.infrastructure.db.memory.graph
 
 import com.gromozeka.infrastructure.db.graph.Neo4jGraphStore
 import klog.KLoggers

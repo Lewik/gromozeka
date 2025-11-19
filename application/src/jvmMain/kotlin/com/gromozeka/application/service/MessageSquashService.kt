@@ -1,4 +1,4 @@
-package com.gromozeka.bot.services
+package com.gromozeka.application.service
 
 import com.gromozeka.domain.service.AIProvider
 import com.gromozeka.domain.model.Conversation

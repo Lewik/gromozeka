@@ -1,6 +1,5 @@
-package com.gromozeka.bot.services.memory
+package com.gromozeka.infrastructure.db.memory
 
-import com.gromozeka.bot.services.SettingsService
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.repository.ThreadMessageRepository
 import com.gromozeka.infrastructure.db.vector.QdrantVectorStore
@@ -8,12 +7,13 @@ import klog.KLoggers
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.springframework.ai.document.Document
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.stereotype.Service
 
 @Service
+@ConditionalOnProperty(name = ["gromozeka.vector.enabled"], havingValue = "true", matchIfMissing = true)
 class VectorMemoryService(
     private val qdrantVectorStore: QdrantVectorStore?,
-    private val settingsService: SettingsService,
     private val threadMessageRepository: ThreadMessageRepository
 ) {
     private val log = KLoggers.logger(this)
@@ -111,7 +111,7 @@ class VectorMemoryService(
     }
 
     private fun isMemoryAvailable(): Boolean {
-        return settingsService.settings.vectorStorageEnabled && qdrantVectorStore != null
+        return qdrantVectorStore != null
     }
 }
 

@@ -1,7 +1,7 @@
-package com.gromozeka.bot.services.memory.graph
+package com.gromozeka.infrastructure.db.memory.graph
 
-import com.gromozeka.bot.services.memory.graph.models.MemoryLink
-import com.gromozeka.bot.services.memory.graph.models.MemoryObject
+import com.gromozeka.bot.domain.model.memory.MemoryLink
+import com.gromozeka.bot.domain.model.memory.MemoryObject
 import com.gromozeka.infrastructure.db.graph.Neo4jGraphStore
 import klog.KLoggers
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty

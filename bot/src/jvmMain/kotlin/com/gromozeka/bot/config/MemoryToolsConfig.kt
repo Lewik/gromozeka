@@ -1,6 +1,6 @@
 package com.gromozeka.bot.config
 
-import com.gromozeka.bot.services.memory.UnifiedSearchService
+import com.gromozeka.infrastructure.db.memory.UnifiedSearchService
 import kotlinx.coroutines.runBlocking
 import org.slf4j.LoggerFactory
 import org.springframework.ai.chat.model.ToolContext
@@ -67,8 +67,8 @@ class MemoryToolsConfig {
                             appendLine("Found ${results.size} relevant results:")
                             results.forEachIndexed { index, result ->
                                 val sourceLabel = when (result.source) {
-                                    com.gromozeka.bot.services.memory.SearchSource.VECTOR -> "[Conversation]"
-                                    com.gromozeka.bot.services.memory.SearchSource.GRAPH -> "[Knowledge]"
+                                    com.gromozeka.infrastructure.db.memory.SearchSource.VECTOR -> "[Conversation]"
+                                    com.gromozeka.infrastructure.db.memory.SearchSource.GRAPH -> "[Knowledge]"
                                 }
                                 appendLine("${index + 1}. $sourceLabel ${result.content}")
                             }

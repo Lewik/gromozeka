@@ -1,4 +1,4 @@
-package com.gromozeka.bot.services.memory.graph
+package com.gromozeka.infrastructure.db.memory.graph
 
 import io.ktor.client.*
 import io.ktor.client.call.*

@@ -1,7 +1,7 @@
-package com.gromozeka.bot.services.memory
+package com.gromozeka.infrastructure.db.memory
 
-import com.gromozeka.bot.services.memory.graph.GraphSearchService
-import com.gromozeka.bot.services.memory.graph.RerankService
+import com.gromozeka.infrastructure.db.memory.graph.GraphSearchService
+import com.gromozeka.infrastructure.db.memory.graph.RerankService
 
 import klog.KLoggers
 import kotlinx.coroutines.async

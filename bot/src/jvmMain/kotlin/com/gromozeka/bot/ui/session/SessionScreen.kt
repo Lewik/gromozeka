@@ -49,7 +49,7 @@ fun SessionScreen(
     onShowSettingsPanelChange: (Boolean) -> Unit,
 
     // Tab Prompts Panel
-    tabPromptService: com.gromozeka.bot.services.TabPromptService,
+    tabPromptService: com.gromozeka.application.service.TabPromptService,
     customPrompts: List<String>,
     onCustomPromptsChange: (List<String>) -> Unit,
     onShowPromptsPanelChange: (Boolean) -> Unit,

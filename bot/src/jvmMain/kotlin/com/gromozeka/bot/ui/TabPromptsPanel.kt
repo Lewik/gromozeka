@@ -16,7 +16,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.gromozeka.bot.services.TabPromptService
+import com.gromozeka.application.service.TabPromptService
 
 @Composable
 fun TabPromptsPanel(

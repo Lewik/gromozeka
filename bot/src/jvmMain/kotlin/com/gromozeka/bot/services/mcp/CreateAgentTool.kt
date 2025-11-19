@@ -1,6 +1,6 @@
 package com.gromozeka.bot.services.mcp
 
-import com.gromozeka.bot.services.DefaultAgentProvider
+import com.gromozeka.application.service.DefaultAgentProvider
 import com.gromozeka.bot.ui.viewmodel.AppViewModel
 import com.gromozeka.bot.ui.state.ConversationInitiator
 import com.gromozeka.domain.model.Conversation

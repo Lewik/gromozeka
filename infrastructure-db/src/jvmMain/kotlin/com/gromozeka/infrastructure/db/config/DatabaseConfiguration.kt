@@ -19,7 +19,7 @@ class DatabaseConfiguration {
 
     @Bean
     @Primary
-    fun sqliteFlyway(@Value("\${gromozeka.home:build/test-data/.gromozeka}") gromozekaHome: String): Flyway {
+    fun sqliteFlyway(@Value("\${GROMOZEKA_HOME:build/test-data/.gromozeka}") gromozekaHome: String): Flyway {
         val dbPath = Path.of(gromozekaHome) / "gromozeka.db"
         dbPath.parent.createDirectories()
 
@@ -37,7 +37,7 @@ class DatabaseConfiguration {
     @Bean
     @Primary
     fun database(
-        @Value("\${gromozeka.home:build/test-data/.gromozeka}") gromozekaHome: String,
+        @Value("\${GROMOZEKA_HOME:build/test-data/.gromozeka}") gromozekaHome: String,
         @Qualifier("sqliteFlyway") flyway: Flyway
     ): Database {
         val dbPath = Path.of(gromozekaHome) / "gromozeka.db"

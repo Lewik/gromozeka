@@ -1,6 +1,6 @@
 package com.gromozeka.bot.ui.viewmodel
 
-import com.gromozeka.bot.services.ConversationSearchService
+import com.gromozeka.application.service.ConversationSearchService
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.Project
 import klog.KLoggers

@@ -1,6 +1,6 @@
 package com.gromozeka.bot.config
 
-import com.gromozeka.bot.services.memory.graph.GraphPersistenceService
+import com.gromozeka.infrastructure.db.memory.graph.GraphPersistenceService
 import klog.KLoggers
 import kotlinx.coroutines.runBlocking
 import org.springframework.boot.ApplicationArguments

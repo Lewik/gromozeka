@@ -1,4 +1,4 @@
-package com.gromozeka.bot.services
+package com.gromozeka.application.service
 
 import klog.KLoggers
 import org.springframework.stereotype.Service

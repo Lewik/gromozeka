@@ -1,4 +1,4 @@
-package com.gromozeka.bot.services.memory.graph.models
+package com.gromozeka.infrastructure.db.memory.graph.models
 
 import com.fasterxml.jackson.annotation.JsonProperty
 

@@ -5,6 +5,7 @@ import androidx.compose.ui.window.application
 import kotlin.system.exitProcess
 import com.gromozeka.bot.platform.GlobalHotkeyController
 import com.gromozeka.bot.services.*
+import com.gromozeka.application.service.TabPromptService
 import com.gromozeka.bot.services.theming.AIThemeGenerator
 import com.gromozeka.bot.services.theming.ThemeService
 import com.gromozeka.bot.services.translation.TranslationService

@@ -22,6 +22,9 @@ import org.springframework.ai.model.tool.ToolCallingManager
 import org.springframework.stereotype.Service
 import com.gromozeka.infrastructure.ai.config.mcp.McpConfigurationService
 import com.gromozeka.infrastructure.ai.springai.ChatModelFactory
+import com.gromozeka.application.service.MessageConversionService
+import com.gromozeka.application.service.SystemPromptBuilder
+import com.gromozeka.application.service.TabPromptService
 import java.util.UUID
 import kotlinx.datetime.Clock
 
@@ -58,8 +61,8 @@ class ConversationEngineService(
     private val mcpConfigurationService: McpConfigurationService,
     private val tokenUsageStatisticsRepository: TokenUsageStatisticsRepository,
     private val coroutineScope: CoroutineScope,
-    private val vectorMemoryService: com.gromozeka.bot.services.memory.VectorMemoryService,
-    private val knowledgeGraphServiceFacade: com.gromozeka.bot.services.memory.graph.KnowledgeGraphServiceFacade?,
+    private val vectorMemoryService: com.gromozeka.infrastructure.db.memory.VectorMemoryService,
+    private val knowledgeGraphServiceFacade: com.gromozeka.infrastructure.ai.memory.KnowledgeGraphServiceFacade?,
 ) {
     private val log = KLoggers.logger(this)
 

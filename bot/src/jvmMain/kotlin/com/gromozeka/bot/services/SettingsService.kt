@@ -49,6 +49,7 @@ class SettingsService : SettingsProvider {
     override val ttsVoice: String get() = settings.ttsVoice
     override val ttsSpeed: Float get() = settings.ttsSpeed
     override val aiProvider: AIProvider get() = settings.defaultAiProvider
+    override val homeDirectory: String get() = gromozekaHome.absolutePath
 
     /**
      * Initialize the service automatically after Spring bean creation

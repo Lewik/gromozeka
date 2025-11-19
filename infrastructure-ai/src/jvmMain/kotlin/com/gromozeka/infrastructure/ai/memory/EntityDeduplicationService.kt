@@ -1,19 +1,19 @@
-package com.gromozeka.bot.services.memory.graph
+package com.gromozeka.infrastructure.ai.memory
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import com.gromozeka.infrastructure.ai.springai.ChatModelFactory
-import com.gromozeka.bot.services.SettingsService
-import com.gromozeka.bot.services.memory.graph.models.EntityType
-import com.gromozeka.bot.services.memory.graph.models.EntityTypesConfig
-import com.gromozeka.bot.services.memory.graph.models.NodeResolutions
+import com.gromozeka.bot.domain.model.memory.EntityType
+import com.gromozeka.bot.domain.model.memory.EntityTypesConfig
+import com.gromozeka.infrastructure.ai.memory.models.NodeResolutions
 import com.gromozeka.domain.service.AIProvider
-import com.gromozeka.infrastructure.db.graph.Neo4jGraphStore
+import com.gromozeka.bot.domain.repository.KnowledgeGraphStore
 import klog.KLoggers
 import kotlinx.coroutines.reactor.awaitSingle
 import kotlinx.serialization.json.Json
 import org.springframework.ai.chat.messages.UserMessage
 import org.springframework.ai.chat.prompt.Prompt
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.stereotype.Service
 import java.util.*
@@ -21,9 +21,16 @@ import java.util.*
 @Service
 @ConditionalOnProperty(name = ["knowledge-graph.enabled"], havingValue = "true", matchIfMissing = false)
 class EntityDeduplicationService(
-    private val neo4jGraphStore: Neo4jGraphStore,
+    private val knowledgeGraphStore: KnowledgeGraphStore,
     private val chatModelFactory: ChatModelFactory,
-    private val settingsService: SettingsService
+    @Value("\${gromozeka.ai.provider:GEMINI}")
+    private val aiProvider: String,
+    @Value("\${gromozeka.ai.gemini.model:gemini-2.0-flash-thinking-exp-01-21}")
+    private val geminiModel: String,
+    @Value("\${gromozeka.ai.claude.model:claude-sonnet-4-5}")
+    private val claudeModel: String,
+    @Value("\${gromozeka.ai.ollama.model:llama3}")
+    private val ollamaModel: String
 ) {
     private val log = KLoggers.logger(this)
     private val objectMapper = ObjectMapper()
@@ -38,8 +45,18 @@ class EntityDeduplicationService(
             ?: throw IllegalStateException("entity-types.json not found")
 
         val config = Json.decodeFromString<EntityTypesConfig>(configJson)
-        entityTypes = config.entity_types
+        entityTypes = config.entityTypes
     }
+
+    private fun getChatModel() = chatModelFactory.get(
+        provider = AIProvider.valueOf(aiProvider),
+        modelName = when (AIProvider.valueOf(aiProvider)) {
+            AIProvider.GEMINI -> geminiModel
+            AIProvider.CLAUDE_CODE -> claudeModel
+            AIProvider.OLLAMA -> ollamaModel
+        },
+        projectPath = null
+    )
 
     suspend fun deduplicateExtractedEntities(
         extractedEntities: List<Pair<String, Int>>,
@@ -55,7 +72,7 @@ class EntityDeduplicationService(
 
         val extractedNames = extractedEntities.map { it.first }
         val candidates = DedupHelpers.collectCandidates(
-            neo4jGraphStore = neo4jGraphStore,
+            knowledgeGraphStore = knowledgeGraphStore,
             groupId = groupId,
             extractedNames = extractedNames
         )
@@ -135,16 +152,7 @@ class EntityDeduplicationService(
             previousMessages = previousMessages
         )
 
-        val settings = settingsService.settings
-        val chatModel = chatModelFactory.get(
-            provider = settings.defaultAiProvider,
-            modelName = when (settings.defaultAiProvider) {
-                AIProvider.GEMINI -> settings.geminiModel
-                AIProvider.CLAUDE_CODE -> settings.claudeModel ?: "claude-sonnet-4-5"
-                AIProvider.OLLAMA -> settings.ollamaModel
-            },
-            projectPath = null
-        )
+        val chatModel = getChatModel()
 
         val response = chatModel.stream(Prompt(UserMessage(prompt))).collectList().awaitSingle().lastOrNull()
             ?.result?.output?.text

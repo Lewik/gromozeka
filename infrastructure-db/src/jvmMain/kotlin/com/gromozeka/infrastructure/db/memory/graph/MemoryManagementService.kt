@@ -1,5 +1,6 @@
-package com.gromozeka.bot.services.memory.graph
+package com.gromozeka.infrastructure.db.memory.graph
 
+import com.gromozeka.bot.domain.repository.MemoryManagementService as IMemoryManagementService
 import com.gromozeka.infrastructure.db.graph.Neo4jGraphStore
 import klog.KLoggers
 import kotlinx.datetime.Clock
@@ -13,15 +14,15 @@ import java.util.*
 class MemoryManagementService(
     private val neo4jGraphStore: Neo4jGraphStore,
     private val embeddingModel: EmbeddingModel
-) {
+) : IMemoryManagementService {
     private val log = KLoggers.logger(this)
     private val groupId = "dev-user"
 
-    suspend fun addFactDirectly(
+    override suspend fun addFactDirectly(
         from: String,
         relation: String,
         to: String,
-        summary: String? = null
+        summary: String?
     ): String {
         val referenceTime = Clock.System.now()
 
@@ -122,7 +123,7 @@ class MemoryManagementService(
         return "Successfully added fact: '$from' -[$relation]-> '$to'"
     }
 
-    suspend fun getEntityDetails(name: String): String {
+    override suspend fun getEntityDetails(name: String): String {
         log.info { "Getting entity details for: $name" }
 
         val entityResult = neo4jGraphStore.executeQuery(
@@ -190,7 +191,7 @@ class MemoryManagementService(
         }
     }
 
-    suspend fun invalidateFact(
+    override suspend fun invalidateFact(
         from: String,
         relation: String,
         to: String
@@ -226,10 +227,10 @@ class MemoryManagementService(
         }
     }
 
-    suspend fun updateEntity(
+    override suspend fun updateEntity(
         name: String,
-        newSummary: String? = null,
-        newType: String? = null
+        newSummary: String?,
+        newType: String?
     ): String {
         log.info { "Updating entity: $name (summary: ${newSummary != null}, type: ${newType != null})" }
 
@@ -274,9 +275,9 @@ class MemoryManagementService(
         }
     }
 
-    suspend fun hardDeleteEntity(
+    override suspend fun hardDeleteEntity(
         name: String,
-        cascade: Boolean = true
+        cascade: Boolean
     ): String {
         log.warn { "⚠️ HARD DELETE requested for entity: $name (cascade: $cascade)" }
 

@@ -1,19 +1,19 @@
-package com.gromozeka.bot.services.memory.graph
+package com.gromozeka.infrastructure.ai.memory
 
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import com.gromozeka.infrastructure.ai.springai.ChatModelFactory
-import com.gromozeka.bot.services.SettingsService
-import com.gromozeka.bot.services.memory.graph.models.EntityType
-import com.gromozeka.bot.services.memory.graph.models.EntityTypesConfig
-import com.gromozeka.bot.services.memory.graph.models.MissedEntities
+import com.gromozeka.bot.domain.model.memory.EntityType
+import com.gromozeka.bot.domain.model.memory.EntityTypesConfig
+import com.gromozeka.infrastructure.ai.memory.models.MissedEntities
 import com.gromozeka.domain.service.AIProvider
 import klog.KLoggers
 import kotlinx.coroutines.reactor.awaitSingle
 import kotlinx.serialization.json.Json
 import org.springframework.ai.chat.messages.UserMessage
 import org.springframework.ai.chat.prompt.Prompt
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.stereotype.Service
 
@@ -21,7 +21,14 @@ import org.springframework.stereotype.Service
 @ConditionalOnProperty(name = ["knowledge-graph.enabled"], havingValue = "true", matchIfMissing = false)
 class EntityExtractionService(
     private val chatModelFactory: ChatModelFactory,
-    private val settingsService: SettingsService
+    @Value("\${gromozeka.ai.provider:GEMINI}")
+    private val aiProvider: String,
+    @Value("\${gromozeka.ai.gemini.model:gemini-2.0-flash-thinking-exp-01-21}")
+    private val geminiModel: String,
+    @Value("\${gromozeka.ai.claude.model:claude-sonnet-4-5}")
+    private val claudeModel: String,
+    @Value("\${gromozeka.ai.ollama.model:llama3}")
+    private val ollamaModel: String
 ) {
     private val log = KLoggers.logger(this)
     private val objectMapper = ObjectMapper()
@@ -32,13 +39,23 @@ class EntityExtractionService(
             ?.readText()
             ?: throw IllegalStateException("entity-types.json not found")
 
-        Json.decodeFromString<EntityTypesConfig>(configJson).entity_types
+        Json.decodeFromString<EntityTypesConfig>(configJson).entityTypes
     }
 
     companion object {
         private const val MAX_SUMMARY_CHARS = 250
         private const val MAX_REFLEXION_ITERATIONS = 2
     }
+
+    private fun getChatModel() = chatModelFactory.get(
+        provider = AIProvider.valueOf(aiProvider),
+        modelName = when (AIProvider.valueOf(aiProvider)) {
+            AIProvider.GEMINI -> geminiModel
+            AIProvider.CLAUDE_CODE -> claudeModel
+            AIProvider.OLLAMA -> ollamaModel
+        },
+        projectPath = null
+    )
 
     suspend fun extractEntities(
         content: String,
@@ -63,16 +80,7 @@ class EntityExtractionService(
             log.info { "Content length: ${content.length} chars" }
             log.info { "Full prompt:\n$prompt" }
 
-            val settings = settingsService.settings
-            val chatModel = chatModelFactory.get(
-                provider = settings.defaultAiProvider,
-                modelName = when (settings.defaultAiProvider) {
-                    AIProvider.GEMINI -> settings.geminiModel
-                    AIProvider.CLAUDE_CODE -> settings.claudeModel ?: "claude-sonnet-4-5"
-                    AIProvider.OLLAMA -> settings.ollamaModel
-                },
-                projectPath = null
-            )
+            val chatModel = getChatModel()
 
             val response = chatModel.stream(Prompt(UserMessage(prompt))).collectList().awaitSingle().lastOrNull()
                 ?.result?.output?.text
@@ -124,16 +132,7 @@ class EntityExtractionService(
             extractedEntityNames = extractedEntityNames
         )
 
-        val settings = settingsService.settings
-        val chatModel = chatModelFactory.get(
-            provider = settings.defaultAiProvider,
-            modelName = when (settings.defaultAiProvider) {
-                AIProvider.GEMINI -> settings.geminiModel
-                AIProvider.CLAUDE_CODE -> settings.claudeModel ?: "claude-sonnet-4-5"
-                AIProvider.OLLAMA -> settings.ollamaModel
-            },
-            projectPath = null
-        )
+        val chatModel = getChatModel()
 
         val response = chatModel.stream(Prompt(UserMessage(prompt))).collectList().awaitSingle().lastOrNull()
             ?.result?.output?.text
@@ -189,16 +188,7 @@ class EntityExtractionService(
             existingSummary = existingSummary
         )
 
-        val settings = settingsService.settings
-        val chatModel = chatModelFactory.get(
-            provider = settings.defaultAiProvider,
-            modelName = when (settings.defaultAiProvider) {
-                AIProvider.GEMINI -> settings.geminiModel
-                AIProvider.CLAUDE_CODE -> settings.claudeModel ?: "claude-sonnet-4-5"
-                AIProvider.OLLAMA -> settings.ollamaModel
-            },
-            projectPath = null
-        )
+        val chatModel = getChatModel()
 
         val response = chatModel.stream(Prompt(UserMessage(prompt))).collectList().awaitSingle().lastOrNull()
             ?.result?.output?.text

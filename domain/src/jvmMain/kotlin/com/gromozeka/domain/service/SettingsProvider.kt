@@ -7,4 +7,5 @@ interface SettingsProvider {
     val ttsSpeed: Float
     val aiProvider: AIProvider
     val mode: AppMode
+    val homeDirectory: String  // Absolute path to Gromozeka home directory
 }

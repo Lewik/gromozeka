@@ -1,5 +1,6 @@
-package com.gromozeka.bot.services.memory.graph
+package com.gromozeka.infrastructure.ai.memory
 
+import com.gromozeka.bot.domain.repository.MemoryManagementService
 import kotlinx.coroutines.runBlocking
 import org.slf4j.LoggerFactory
 import org.springframework.ai.chat.model.ToolContext

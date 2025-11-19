@@ -1,11 +1,10 @@
-package com.gromozeka.bot.services.memory.graph
+package com.gromozeka.infrastructure.ai.memory
 
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.gromozeka.infrastructure.ai.springai.ChatModelFactory
-import com.gromozeka.bot.services.SettingsService
-import com.gromozeka.bot.services.memory.graph.models.MemoryLink
-import com.gromozeka.bot.services.memory.graph.models.MemoryObject
+import com.gromozeka.bot.domain.model.memory.MemoryLink
+import com.gromozeka.bot.domain.model.memory.MemoryObject
 import com.gromozeka.domain.service.AIProvider
 import klog.KLoggers
 import kotlinx.coroutines.reactor.awaitSingle
@@ -13,6 +12,7 @@ import kotlinx.datetime.Instant
 import org.springframework.ai.chat.messages.UserMessage
 import org.springframework.ai.chat.prompt.Prompt
 import org.springframework.ai.embedding.EmbeddingModel
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.stereotype.Service
 import java.util.*
@@ -21,12 +21,29 @@ import java.util.*
 @ConditionalOnProperty(name = ["knowledge-graph.enabled"], havingValue = "true", matchIfMissing = false)
 class RelationshipExtractionService(
     private val chatModelFactory: ChatModelFactory,
-    private val settingsService: SettingsService,
-    private val embeddingModel: EmbeddingModel
+    private val embeddingModel: EmbeddingModel,
+    @Value("\${gromozeka.ai.provider:GEMINI}")
+    private val aiProvider: String,
+    @Value("\${gromozeka.ai.gemini.model:gemini-2.0-flash-thinking-exp-01-21}")
+    private val geminiModel: String,
+    @Value("\${gromozeka.ai.claude.model:claude-sonnet-4-5}")
+    private val claudeModel: String,
+    @Value("\${gromozeka.ai.ollama.model:llama3}")
+    private val ollamaModel: String
 ) {
     private val log = KLoggers.logger(this)
     private val objectMapper = ObjectMapper()
     private val groupId = "dev-user"
+
+    private fun getChatModel() = chatModelFactory.get(
+        provider = AIProvider.valueOf(aiProvider),
+        modelName = when (AIProvider.valueOf(aiProvider)) {
+            AIProvider.GEMINI -> geminiModel
+            AIProvider.CLAUDE_CODE -> claudeModel
+            AIProvider.OLLAMA -> ollamaModel
+        },
+        projectPath = null
+    )
 
     suspend fun extractRelationships(
         content: String,
@@ -49,16 +66,7 @@ class RelationshipExtractionService(
         log.info { "Entities count: ${entityNodes.size}" }
         log.info { "Content: ${content.take(500)}..." }
 
-        val settings = settingsService.settings
-        val chatModel = chatModelFactory.get(
-            provider = settings.defaultAiProvider,
-            modelName = when (settings.defaultAiProvider) {
-                AIProvider.GEMINI -> settings.geminiModel
-                AIProvider.CLAUDE_CODE -> settings.claudeModel ?: "claude-sonnet-4-5"
-                AIProvider.OLLAMA -> settings.ollamaModel
-            },
-            projectPath = null
-        )
+        val chatModel = getChatModel()
         
         val response = chatModel.stream(Prompt(UserMessage(prompt))).collectList().awaitSingle().lastOrNull()
             ?.result?.output?.text
@@ -156,7 +164,6 @@ class RelationshipExtractionService(
                         validAt = parseInstant(validAtStr),
                         invalidAt = parseInstant(invalidAtStr),
                         createdAt = referenceTime,
-                        expiredAt = null,
                         sources = if (episodeId != null) listOf(episodeId) else emptyList(),
                         groupId = groupId
                     ))
