@@ -118,8 +118,6 @@ fun main() {
         val translationService = context.getBean<TranslationService>()
         val themeService = context.getBean<ThemeService>()
         val screenCaptureController = context.getBean<com.gromozeka.bot.platform.ScreenCaptureController>()
-        val contextExtractionService = context.getBean<ContextExtractionService>()
-        val contextFileService = context.getBean<ContextFileService>()
         val logEncryptor = context.getBean<LogEncryptor>()
 
         // Create AI theme generator
@@ -163,8 +161,6 @@ fun main() {
             aiThemeGenerator = aiThemeGenerator,
             logEncryptor = logEncryptor,
             ollamaModelService = context.getBean(),
-            contextExtractionService = contextExtractionService,
-            contextFileService = contextFileService,
             projectService = context.getBean(),
             conversationService = context.getBean(),
             conversationSearchViewModel = context.getBean(),
@@ -204,8 +200,6 @@ fun main() {
                         appComponents.aiThemeGenerator,
                         appComponents.logEncryptor,
                         appComponents.ollamaModelService,
-                        appComponents.contextExtractionService,
-                        appComponents.contextFileService,
                         appComponents.projectService,
                         appComponents.conversationService,
                         appComponents.conversationSearchViewModel,
@@ -232,8 +226,6 @@ data class AppComponents(
     val aiThemeGenerator: AIThemeGenerator,
     val logEncryptor: LogEncryptor,
     val ollamaModelService: com.gromozeka.bot.services.OllamaModelService,
-    val contextExtractionService: ContextExtractionService,
-    val contextFileService: ContextFileService,
     val projectService: com.gromozeka.domain.repository.ProjectDomainService,
     val conversationService: com.gromozeka.domain.repository.ConversationDomainService,
     val conversationSearchViewModel: com.gromozeka.bot.ui.viewmodel.ConversationSearchViewModel,

@@ -28,7 +28,6 @@ import com.gromozeka.bot.settings.Settings
 import com.gromozeka.bot.ui.session.SessionScreen
 import com.gromozeka.bot.ui.state.ConversationInitiator
 import com.gromozeka.bot.ui.viewmodel.AppViewModel
-import com.gromozeka.bot.ui.viewmodel.ContextsPanelViewModel
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.repository.ProjectDomainService
 import com.gromozeka.domain.repository.ConversationDomainService
@@ -55,8 +54,6 @@ fun ApplicationScope.ChatWindow(
     aiThemeGenerator: AIThemeGenerator,
     logEncryptor: LogEncryptor,
     ollamaModelService: OllamaModelService,
-    contextExtractionService: ContextExtractionService,
-    contextFileService: ContextFileService,
     projectService: ProjectDomainService,
     conversationTreeService: ConversationDomainService,
     conversationSearchViewModel: com.gromozeka.bot.ui.viewmodel.ConversationSearchViewModel,
@@ -65,15 +62,6 @@ fun ApplicationScope.ChatWindow(
 ) {
     val log = KLoggers.logger("ChatWindow")
     val coroutineScope = rememberCoroutineScope()
-
-    val contextsPanelViewModel = remember {
-        ContextsPanelViewModel(
-            contextFileService = contextFileService,
-            contextExtractionService = contextExtractionService,
-            appViewModel = appViewModel,
-            scope = coroutineScope
-        )
-    }
 
     var initialized by remember { mutableStateOf(false) }
     var isLoadingComplete by remember { mutableStateOf(false) }
@@ -87,7 +75,6 @@ fun ApplicationScope.ChatWindow(
     val currentTabIndex by appViewModel.currentTabIndex.collectAsState()
     val currentTab by appViewModel.currentTab.collectAsState()
     var showSettingsPanel by remember { mutableStateOf(false) }
-    var showContextsPanel by remember { mutableStateOf(false) }
     var showPromptsPanel by remember { mutableStateOf(false) }
     var refreshTrigger by remember { mutableStateOf(0) }
 
@@ -369,19 +356,6 @@ fun ApplicationScope.ChatWindow(
                                                 showSettingsPanel = showSettingsPanel,
                                                 onShowSettingsPanelChange = { showSettingsPanel = it },
 
-                                                onExtractContexts = {
-                                                    coroutineScope.launch {
-                                                        try {
-                                                            contextExtractionService.extractContextsFromTab(tabViewModel.uiState.first().tabId)
-                                                            log.info("Context extraction")
-                                                        } catch (e: Exception) {
-                                                            log.warn(e) { "Context extraction failed: ${e.message}" }
-                                                        }
-                                                    }
-                                                },
-
-                                                onShowContextsPanel = { showContextsPanel = true },
-
                                                 onRememberThread = if (currentSettings.vectorStorageEnabled) {
                                                     {
                                                         coroutineScope.launch {
@@ -470,12 +444,6 @@ fun ApplicationScope.ChatWindow(
                             coroutineScope = coroutineScope,
                             onOpenTab = createNewSession,
                             onOpenTabWithMessage = createNewSessionWithMessage
-                        )
-
-                        ContextsPanel(
-                            isVisible = showContextsPanel,
-                            onClose = { showContextsPanel = false },
-                            viewModel = contextsPanelViewModel
                         )
                     }
                     }
