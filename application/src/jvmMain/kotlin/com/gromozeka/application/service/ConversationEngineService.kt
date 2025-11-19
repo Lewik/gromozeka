@@ -1,4 +1,4 @@
-package com.gromozeka.bot.services
+package com.gromozeka.application.service
 
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.TokenUsageStatistics
@@ -22,9 +22,6 @@ import org.springframework.ai.model.tool.ToolCallingManager
 import org.springframework.stereotype.Service
 import com.gromozeka.infrastructure.ai.config.mcp.McpConfigurationService
 import com.gromozeka.infrastructure.ai.springai.ChatModelFactory
-import com.gromozeka.application.service.MessageConversionService
-import com.gromozeka.application.service.SystemPromptBuilder
-import com.gromozeka.application.service.TabPromptService
 import java.util.UUID
 import kotlinx.datetime.Clock
 

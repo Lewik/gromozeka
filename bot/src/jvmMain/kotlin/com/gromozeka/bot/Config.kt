@@ -5,7 +5,7 @@ import com.gromozeka.bot.platform.ScreenCaptureController
 import com.gromozeka.bot.platform.SystemAudioController
 import com.gromozeka.bot.services.SettingsService
 import com.gromozeka.bot.services.WindowStateService
-import com.gromozeka.bot.services.ConversationEngineService
+import com.gromozeka.application.service.ConversationEngineService
 import com.gromozeka.application.service.ConversationSearchService
 import com.gromozeka.application.service.DefaultAgentProvider
 import com.gromozeka.application.service.MessageSquashService
@@ -13,7 +13,7 @@ import com.gromozeka.bot.services.OllamaModelService
 import com.gromozeka.bot.services.PTTEventRouter
 import com.gromozeka.bot.services.PTTService
 import com.gromozeka.bot.services.SoundNotificationService
-import com.gromozeka.bot.services.ToolApprovalService
+import com.gromozeka.application.service.ToolApprovalService
 import com.gromozeka.bot.services.TTSQueueService
 import com.gromozeka.bot.services.theming.ThemeService
 import com.gromozeka.bot.services.translation.TranslationService

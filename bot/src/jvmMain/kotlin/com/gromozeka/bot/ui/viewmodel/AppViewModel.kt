@@ -1,7 +1,7 @@
 package com.gromozeka.bot.ui.viewmodel
 
 import com.gromozeka.bot.platform.ScreenCaptureController
-import com.gromozeka.bot.services.ConversationEngineService
+import com.gromozeka.application.service.ConversationEngineService
 import com.gromozeka.application.service.DefaultAgentProvider
 import com.gromozeka.application.service.MessageSquashService
 import com.gromozeka.bot.services.SettingsService

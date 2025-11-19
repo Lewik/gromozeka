@@ -4,7 +4,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.gromozeka.bot.platform.ScreenCaptureController
-import com.gromozeka.bot.services.ConversationEngineService
+import com.gromozeka.application.service.ConversationEngineService
 import com.gromozeka.application.service.MessageSquashService
 import com.gromozeka.bot.services.SoundNotificationService
 import com.gromozeka.domain.service.AIProvider

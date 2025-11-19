@@ -12,14 +12,16 @@ kotlin {
                 implementation(project(":domain"))
                 implementation(project(":shared"))
                 implementation(project(":infrastructure-ai"))
+                implementation(project(":infrastructure-db"))
                 
                 implementation(libs.spring.boot.starter)
                 implementation("org.springframework:spring-tx:6.2.2")
                 implementation(libs.kotlinx.datetime)
                 implementation(libs.klog)
                 
-                // Spring AI для MessageConversionService, MessageSquashService
+                // Spring AI для MessageConversionService, MessageSquashService, ConversationEngineService
                 implementation(libs.spring.ai.openai)
+                implementation(libs.spring.ai.google.genai)
                 
                 // kotlinx.serialization для JSON парсинга
                 implementation(libs.kotlinx.serialization.json)
