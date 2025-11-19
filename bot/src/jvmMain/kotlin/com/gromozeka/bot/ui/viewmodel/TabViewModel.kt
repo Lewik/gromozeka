@@ -16,7 +16,7 @@ import com.gromozeka.domain.model.MessageTagDefinition
 import com.gromozeka.domain.model.SquashType
 import com.gromozeka.domain.model.TokenUsageStatistics
 import com.gromozeka.domain.repository.TokenUsageStatisticsRepository
-import com.gromozeka.shared.services.ConversationService
+import com.gromozeka.domain.repository.ConversationDomainService
 import klog.KLoggers
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.*
@@ -28,7 +28,7 @@ class TabViewModel(
     val conversationId: Conversation.Id,
     val projectPath: String,
     private val conversationEngineService: ConversationEngineService,
-    private val conversationService: ConversationService,
+    private val conversationService: ConversationDomainService,
     private val messageSquashService: MessageSquashService,
     private val soundNotificationService: SoundNotificationService,
     private val settingsFlow: StateFlow<Settings>,

@@ -1,9 +1,10 @@
-package com.gromozeka.shared.services
+package com.gromozeka.application.service
 
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.repository.ConversationRepository
 import com.gromozeka.domain.repository.ConversationDomainService
+import com.gromozeka.domain.repository.ProjectDomainService
 import klog.KLoggers
 import com.gromozeka.domain.repository.MessageRepository
 import com.gromozeka.domain.repository.ThreadMessageRepository
@@ -11,6 +12,8 @@ import com.gromozeka.domain.repository.ThreadRepository
 import com.gromozeka.shared.uuid.uuid7
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
+import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 
 /**
  * Application service for conversation lifecycle and message management.
@@ -28,12 +31,13 @@ import kotlinx.datetime.Instant
  * This service implements conversation branching model where threads are
  * immutable by default - edits create new threads preserving original history.
  */
-class ConversationService(
+@Service
+class ConversationApplicationService(
     private val conversationRepo: ConversationRepository,
     private val threadRepo: ThreadRepository,
     private val messageRepo: MessageRepository,
     private val threadMessageRepo: ThreadMessageRepository,
-    private val projectService: ProjectService
+    private val projectService: ProjectDomainService
 ) : ConversationDomainService {
     private val log = KLoggers.logger(this)
 
@@ -49,6 +53,7 @@ class ConversationService(
      * @param modelName model identifier (default: "llama3.2")
      * @return created conversation with new thread
      */
+    @Transactional
     override suspend fun create(
         projectPath: String,
         displayName: String,
@@ -126,6 +131,7 @@ class ConversationService(
      *
      * @param id conversation identifier
      */
+    @Transactional
     override suspend fun delete(id: Conversation.Id) {
         conversationRepo.delete(id)
     }
@@ -137,6 +143,7 @@ class ConversationService(
      * @param displayName new display name
      * @return updated conversation if exists, null otherwise
      */
+    @Transactional
     override suspend fun updateDisplayName(
         conversationId: Conversation.Id,
         displayName: String
@@ -159,6 +166,7 @@ class ConversationService(
      * @return new forked conversation
      * @throws IllegalStateException if source conversation doesn't exist
      */
+    @Transactional
     override suspend fun fork(conversationId: Conversation.Id): Conversation {
         val sourceConversation = conversationRepo.findById(conversationId)
             ?: throw IllegalStateException("Conversation not found: $conversationId")
@@ -233,6 +241,7 @@ class ConversationService(
      * @throws IllegalArgumentException if message conversationId doesn't match
      * @throws IllegalStateException if conversation doesn't exist
      */
+    @Transactional
     override suspend fun addMessage(
         conversationId: Conversation.Id,
         message: Conversation.Message
@@ -287,6 +296,7 @@ class ConversationService(
      * @throws IllegalStateException if conversation doesn't exist
      * @throws IllegalArgumentException if message not found in current thread
      */
+    @Transactional
     override suspend fun editMessage(
         conversationId: Conversation.Id,
         messageId: Conversation.Message.Id,
@@ -354,6 +364,7 @@ class ConversationService(
      * @throws IllegalStateException if conversation doesn't exist
      * @throws IllegalArgumentException if message not found in current thread
      */
+    @Transactional
     override suspend fun deleteMessage(
         conversationId: Conversation.Id,
         messageId: Conversation.Message.Id
@@ -406,6 +417,7 @@ class ConversationService(
      * @throws IllegalArgumentException if messageIds is empty or some messages not found
      * @throws IllegalStateException if conversation doesn't exist
      */
+    @Transactional
     override suspend fun deleteMessages(
         conversationId: Conversation.Id,
         messageIds: List<Conversation.Message.Id>
@@ -469,6 +481,7 @@ class ConversationService(
      * @throws IllegalArgumentException if fewer than 2 messages or some messages not found
      * @throws IllegalStateException if conversation doesn't exist
      */
+    @Transactional
     override suspend fun squashMessages(
         conversationId: Conversation.Id,
         messageIds: List<Conversation.Message.Id>,

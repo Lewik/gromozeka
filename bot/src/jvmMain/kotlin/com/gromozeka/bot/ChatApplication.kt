@@ -233,8 +233,8 @@ data class AppComponents(
     val ollamaModelService: com.gromozeka.bot.services.OllamaModelService,
     val contextExtractionService: ContextExtractionService,
     val contextFileService: ContextFileService,
-    val projectService: com.gromozeka.shared.services.ProjectService,
-    val conversationService: com.gromozeka.shared.services.ConversationService,
+    val projectService: com.gromozeka.domain.repository.ProjectDomainService,
+    val conversationService: com.gromozeka.domain.repository.ConversationDomainService,
     val conversationSearchViewModel: com.gromozeka.bot.ui.viewmodel.ConversationSearchViewModel,
     val loadingViewModel: com.gromozeka.bot.ui.viewmodel.LoadingViewModel,
     val tabPromptService: TabPromptService
@@ -263,6 +263,7 @@ private fun determineLogPath(modeEnv: String?): String {
 @SpringBootApplication(
     scanBasePackages = [
         "com.gromozeka.bot",
+        "com.gromozeka.application",
         "com.gromozeka.infrastructure.db"
     ],
     exclude = [

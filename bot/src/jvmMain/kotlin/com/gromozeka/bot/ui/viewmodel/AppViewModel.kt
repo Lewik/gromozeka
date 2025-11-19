@@ -12,7 +12,7 @@ import com.gromozeka.bot.ui.state.UIState
 import com.gromozeka.domain.model.Agent
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.repository.TokenUsageStatisticsRepository
-import com.gromozeka.shared.services.ConversationService
+import com.gromozeka.domain.repository.ConversationDomainService
 import klog.KLoggers
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.*
@@ -22,7 +22,7 @@ import java.util.*
 
 open class AppViewModel(
     private val conversationEngineService: ConversationEngineService,
-    private val conversationService: ConversationService,
+    private val conversationService: ConversationDomainService,
     private val messageSquashService: MessageSquashService,
     private val soundNotificationService: SoundNotificationService,
     private val settingsService: SettingsService,

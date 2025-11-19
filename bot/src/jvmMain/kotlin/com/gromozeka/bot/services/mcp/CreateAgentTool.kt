@@ -4,7 +4,7 @@ import com.gromozeka.bot.services.DefaultAgentProvider
 import com.gromozeka.bot.ui.viewmodel.AppViewModel
 import com.gromozeka.bot.ui.state.ConversationInitiator
 import com.gromozeka.domain.model.Conversation
-import com.gromozeka.shared.services.AgentService
+import com.gromozeka.domain.repository.AgentDomainService
 import io.modelcontextprotocol.kotlin.sdk.CallToolRequest
 import io.modelcontextprotocol.kotlin.sdk.CallToolResult
 import io.modelcontextprotocol.kotlin.sdk.TextContent
@@ -23,7 +23,7 @@ import kotlinx.datetime.Clock
 @Service
 class CreateAgentTool(
     private val applicationContext: ApplicationContext,
-    private val agentService: AgentService,
+    private val agentService: AgentDomainService,
     private val defaultAgentProvider: DefaultAgentProvider,
 ) : GromozekaMcpTool {
 

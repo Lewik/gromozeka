@@ -4,7 +4,7 @@ import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.TokenUsageStatistics
 import com.gromozeka.domain.repository.ThreadRepository
 import com.gromozeka.domain.repository.TokenUsageStatisticsRepository
-import com.gromozeka.shared.services.ConversationService
+import com.gromozeka.domain.repository.ConversationDomainService
 import klog.KLoggers
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
@@ -48,7 +48,7 @@ class ConversationEngineService(
     private val tabPromptService: TabPromptService,
     private val toolCallingManager: ToolCallingManager,
     private val toolApprovalService: ToolApprovalService,
-    private val conversationService: ConversationService,
+    private val conversationService: ConversationDomainService,
     private val threadRepository: ThreadRepository,
     private val threadMessageRepository: com.gromozeka.domain.repository.ThreadMessageRepository,
     private val messageConversionService: MessageConversionService,

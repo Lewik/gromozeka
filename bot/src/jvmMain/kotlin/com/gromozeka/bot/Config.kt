@@ -10,7 +10,7 @@ import com.gromozeka.bot.ui.viewmodel.AppViewModel
 import com.gromozeka.bot.ui.viewmodel.ConversationSearchViewModel
 import com.gromozeka.shared.audio.AudioRecorder
 import com.gromozeka.domain.repository.TokenUsageStatisticsRepository
-import com.gromozeka.shared.services.ConversationService
+import com.gromozeka.domain.repository.ConversationDomainService
 import io.ktor.client.*
 import io.ktor.client.engine.cio.*
 import io.ktor.client.plugins.contentnegotiation.*
@@ -65,7 +65,7 @@ class Config {
     @Bean
     fun appViewModel(
         conversationEngineService: ConversationEngineService,
-        conversationService: ConversationService,
+        conversationService: ConversationDomainService,
         messageSquashService: MessageSquashService,
         soundNotificationService: SoundNotificationService,
         settingsService: SettingsService,

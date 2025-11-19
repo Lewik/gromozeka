@@ -16,13 +16,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.gromozeka.shared.services.ProjectService
+import com.gromozeka.domain.repository.ProjectDomainService
 import com.gromozeka.bot.ui.viewmodel.AppViewModel
 import com.gromozeka.bot.ui.state.ConversationInitiator
 import com.gromozeka.bot.ui.viewmodel.ConversationSearchViewModel
 import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.Conversation
-import com.gromozeka.shared.services.ConversationService
+import com.gromozeka.domain.repository.ConversationDomainService
 import klog.KLoggers
 import io.github.vinceglb.filekit.compose.rememberDirectoryPickerLauncher
 import kotlinx.coroutines.CoroutineScope
@@ -45,8 +45,8 @@ fun SessionListScreen(
     onConversationSelected: (Conversation, Project) -> Unit,
     coroutineScope: CoroutineScope,
     onNewSession: (String) -> Unit,
-    projectService: ProjectService,
-    conversationTreeService: ConversationService,
+    projectService: ProjectDomainService,
+    conversationTreeService: ConversationDomainService,
     appViewModel: AppViewModel,
     searchViewModel: ConversationSearchViewModel,
     showSettingsPanel: Boolean,

@@ -29,7 +29,8 @@ import com.gromozeka.bot.ui.state.ConversationInitiator
 import com.gromozeka.bot.ui.viewmodel.AppViewModel
 import com.gromozeka.bot.ui.viewmodel.ContextsPanelViewModel
 import com.gromozeka.domain.model.Conversation
-import com.gromozeka.shared.services.ProjectService
+import com.gromozeka.domain.repository.ProjectDomainService
+import com.gromozeka.domain.repository.ConversationDomainService
 import klog.KLoggers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
@@ -55,8 +56,8 @@ fun ApplicationScope.ChatWindow(
     ollamaModelService: OllamaModelService,
     contextExtractionService: ContextExtractionService,
     contextFileService: ContextFileService,
-    projectService: ProjectService,
-    conversationTreeService: com.gromozeka.shared.services.ConversationService,
+    projectService: ProjectDomainService,
+    conversationTreeService: ConversationDomainService,
     conversationSearchViewModel: com.gromozeka.bot.ui.viewmodel.ConversationSearchViewModel,
     loadingViewModel: com.gromozeka.bot.ui.viewmodel.LoadingViewModel,
     tabPromptService: TabPromptService,

@@ -55,6 +55,7 @@ kotlin {
                 implementation(libs.multiplatform.markdown.renderer.code)
                 
                 implementation(project(":domain"))
+                implementation(project(":application"))
                 implementation(project(":shared"))
                 implementation(project(":infrastructure-db"))
 

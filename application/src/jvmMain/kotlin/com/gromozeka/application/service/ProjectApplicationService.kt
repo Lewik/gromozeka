@@ -1,4 +1,4 @@
-package com.gromozeka.shared.services
+package com.gromozeka.application.service
 
 import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.repository.ProjectRepository
@@ -6,6 +6,8 @@ import com.gromozeka.domain.repository.ProjectDomainService
 import klog.KLoggers
 import com.gromozeka.shared.uuid.uuid7
 import kotlinx.datetime.Instant
+import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 
 /**
  * Application service for project management.
@@ -17,7 +19,8 @@ import kotlinx.datetime.Instant
  * file system directories. Service ensures projects exist before
  * creating dependent entities (conversations, contexts).
  */
-class ProjectService(
+@Service
+class ProjectApplicationService(
     private val projectRepository: ProjectRepository,
 ) : ProjectDomainService {
     private val log = KLoggers.logger(this)
@@ -34,6 +37,7 @@ class ProjectService(
      * @param path absolute file system path to project directory
      * @return existing or newly created project
      */
+    @Transactional
     override suspend fun getOrCreate(path: String): Project {
         val existing = projectRepository.findByPath(path)
         if (existing != null) {
@@ -97,6 +101,7 @@ class ProjectService(
      * @param id project identifier
      * @return updated project if exists, null otherwise
      */
+    @Transactional
     override suspend fun toggleFavorite(id: Project.Id): Project? {
         val project = projectRepository.findById(id) ?: return null
         val updated = project.copy(favorite = !project.favorite)
@@ -111,6 +116,7 @@ class ProjectService(
      * @param id project identifier
      * @return updated project if exists, null otherwise
      */
+    @Transactional
     override suspend fun updateLastUsed(id: Project.Id): Project? {
         val project = projectRepository.findById(id) ?: return null
         val updated = project.copy(lastUsedAt = Instant.fromEpochMilliseconds(System.currentTimeMillis()))

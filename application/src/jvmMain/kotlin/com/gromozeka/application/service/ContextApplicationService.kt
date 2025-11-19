@@ -1,12 +1,15 @@
-package com.gromozeka.shared.services
+package com.gromozeka.application.service
 
 import com.gromozeka.domain.model.Context
 import com.gromozeka.domain.model.toContextId
 import com.gromozeka.domain.repository.ContextRepository
 import com.gromozeka.domain.repository.ContextDomainService
+import com.gromozeka.domain.repository.ProjectDomainService
 import klog.KLoggers
 import com.gromozeka.shared.uuid.uuid7
 import kotlinx.datetime.Instant
+import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 
 /**
  * Application service for extracted context management.
@@ -17,9 +20,10 @@ import kotlinx.datetime.Instant
  * Contexts are distilled knowledge extracted from conversations, containing
  * key information, file references, and searchable tags for efficient reuse.
  */
-class ContextService(
+@Service
+class ContextApplicationService(
     private val contextRepository: ContextRepository,
-    private val projectService: ProjectService,
+    private val projectService: ProjectDomainService,
 ) : ContextDomainService {
     private val log = KLoggers.logger(this)
 
@@ -37,6 +41,7 @@ class ContextService(
      * @param tags searchable keywords for categorization (default: empty)
      * @return created context
      */
+    @Transactional
     override suspend fun createContext(
         projectPath: String,
         name: String,
@@ -133,6 +138,7 @@ class ContextService(
      * @param tags new tag set (null keeps existing)
      * @return updated context if exists, null otherwise
      */
+    @Transactional
     override suspend fun updateContent(
         id: Context.Id,
         content: String?,
@@ -159,6 +165,7 @@ class ContextService(
      *
      * @param id context identifier
      */
+    @Transactional
     override suspend fun delete(id: Context.Id) {
         contextRepository.delete(id)
     }

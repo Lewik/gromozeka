@@ -3,7 +3,7 @@ package com.gromozeka.bot.services
 import com.gromozeka.bot.settings.AIProvider
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.SquashType
-import com.gromozeka.shared.services.ConversationService
+import com.gromozeka.domain.repository.ConversationDomainService
 import klog.KLoggers
 import kotlinx.coroutines.reactive.awaitSingle
 import org.springframework.ai.chat.messages.UserMessage
@@ -13,7 +13,7 @@ import org.springframework.stereotype.Service
 @Service
 class MessageSquashService(
     private val chatModelFactory: ChatModelFactory,
-    private val conversationService: ConversationService,
+    private val conversationService: ConversationDomainService,
     private val messageConversionService: MessageConversionService
 ) {
     private val log = KLoggers.logger(this)

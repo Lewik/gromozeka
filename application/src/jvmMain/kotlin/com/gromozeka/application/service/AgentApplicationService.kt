@@ -1,4 +1,4 @@
-package com.gromozeka.shared.services
+package com.gromozeka.application.service
 
 import com.gromozeka.domain.model.Agent
 import com.gromozeka.domain.repository.AgentRepository
@@ -6,6 +6,8 @@ import com.gromozeka.domain.repository.AgentDomainService
 import klog.KLoggers
 import com.gromozeka.shared.uuid.uuid7
 import kotlinx.datetime.Instant
+import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 
 /**
  * Application service for AI agent definition management.
@@ -16,7 +18,8 @@ import kotlinx.datetime.Instant
  * Agents are reusable templates defining AI behavior through system prompts.
  * Each agent has specific role and can be used across multiple conversations.
  */
-class AgentService(
+@Service
+class AgentApplicationService(
     private val agentRepository: AgentRepository,
 ) : AgentDomainService {
     private val log = KLoggers.logger(this)
@@ -33,6 +36,7 @@ class AgentService(
      * @param isBuiltin true for system agents (prevents deletion), false for user agents
      * @return created agent
      */
+    @Transactional
     override suspend fun createAgent(
         name: String,
         systemPrompt: String,
@@ -83,6 +87,7 @@ class AgentService(
      * @param description new description (null keeps existing)
      * @return updated agent if exists, null otherwise
      */
+    @Transactional
     override suspend fun update(
         id: Agent.Id,
         systemPrompt: String?,
@@ -108,6 +113,7 @@ class AgentService(
      *
      * @param id agent identifier
      */
+    @Transactional
     override suspend fun delete(id: Agent.Id) {
         val agent = agentRepository.findById(id)
         if (agent?.isBuiltin == true) {

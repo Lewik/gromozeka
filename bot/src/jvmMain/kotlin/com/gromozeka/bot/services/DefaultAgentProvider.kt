@@ -1,13 +1,13 @@
 package com.gromozeka.bot.services
 
 import com.gromozeka.domain.model.Agent
-import com.gromozeka.shared.services.AgentService
+import com.gromozeka.domain.repository.AgentDomainService
 import klog.KLoggers
 import org.springframework.stereotype.Service
 
 @Service
 class DefaultAgentProvider(
-    private val agentService: AgentService
+    private val agentService: AgentDomainService
 ) {
     private val log = KLoggers.logger(this)
 
