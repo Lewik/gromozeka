@@ -47,7 +47,8 @@ data class HardDeleteEntityParams(
 @Configuration
 @ConditionalOnProperty(name = ["knowledge-graph.enabled"], havingValue = "true", matchIfMissing = false)
 class MemoryMcpTools(
-    private val knowledgeGraphService: KnowledgeGraphService
+    private val knowledgeGraphServiceFacade: KnowledgeGraphServiceFacade,
+    private val memoryManagementService: MemoryManagementService
 ) {
     private val logger = LoggerFactory.getLogger(MemoryMcpTools::class.java)
 
@@ -57,7 +58,7 @@ class MemoryMcpTools(
             override fun apply(request: AddToGraphParams, context: ToolContext?): Map<String, Any> {
                 return try {
                     val result = runBlocking {
-                        knowledgeGraphService.extractAndSaveToGraph(
+                        knowledgeGraphServiceFacade.extractAndSaveToGraph(
                             content = request.content,
                             previousMessages = request.previousMessages ?: ""
                         )
@@ -104,7 +105,7 @@ class MemoryMcpTools(
             override fun apply(request: AddFactParams, context: ToolContext?): Map<String, Any> {
                 return try {
                     val result = runBlocking {
-                        knowledgeGraphService.addFactDirectly(
+                        memoryManagementService.addFactDirectly(
                             from = request.from,
                             relation = request.relation,
                             to = request.to,
@@ -156,7 +157,7 @@ class MemoryMcpTools(
             override fun apply(request: GetEntityDetailsParams, context: ToolContext?): Map<String, Any> {
                 return try {
                     val details = runBlocking {
-                        knowledgeGraphService.getEntityDetails(request.name)
+                        memoryManagementService.getEntityDetails(request.name)
                     }
 
                     logger.debug("Retrieved entity details for: ${request.name}")
@@ -204,7 +205,7 @@ class MemoryMcpTools(
             override fun apply(request: InvalidateFactParams, context: ToolContext?): Map<String, Any> {
                 return try {
                     val result = runBlocking {
-                        knowledgeGraphService.invalidateFact(
+                        memoryManagementService.invalidateFact(
                             from = request.from,
                             relation = request.relation,
                             to = request.to
@@ -260,7 +261,7 @@ class MemoryMcpTools(
             override fun apply(request: UpdateEntityParams, context: ToolContext?): Map<String, Any> {
                 return try {
                     val result = runBlocking {
-                        knowledgeGraphService.updateEntity(
+                        memoryManagementService.updateEntity(
                             name = request.name,
                             newSummary = request.newSummary,
                             newType = request.newType
@@ -313,7 +314,7 @@ class MemoryMcpTools(
             override fun apply(request: HardDeleteEntityParams, context: ToolContext?): Map<String, Any> {
                 return try {
                     val result = runBlocking {
-                        knowledgeGraphService.hardDeleteEntity(
+                        memoryManagementService.hardDeleteEntity(
                             name = request.name,
                             cascade = request.cascade
                         )

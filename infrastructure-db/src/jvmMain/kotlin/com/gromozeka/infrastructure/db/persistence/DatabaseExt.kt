@@ -1,4 +1,4 @@
-package com.gromozeka.bot.repository.exposed
+package com.gromozeka.infrastructure.db.persistence
 
 import kotlinx.coroutines.Dispatchers
 import org.jetbrains.exposed.v1.jdbc.transactions.experimental.newSuspendedTransaction

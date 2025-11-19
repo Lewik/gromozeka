@@ -1,6 +1,6 @@
-package com.gromozeka.bot.repository.exposed
+package com.gromozeka.infrastructure.db.persistence
 
-import com.gromozeka.bot.repository.exposed.tables.TokenUsageStatisticsTable
+import com.gromozeka.infrastructure.db.persistence.tables.TokenUsageStatisticsTable
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.TokenUsageStatistics
 import com.gromozeka.domain.repository.TokenUsageStatisticsRepository
@@ -9,7 +9,9 @@ import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.*
 import kotlinx.datetime.Instant
+import org.springframework.stereotype.Service
 
+@Service
 class ExposedTokenUsageStatisticsRepository : TokenUsageStatisticsRepository {
 
     override suspend fun save(stats: TokenUsageStatistics): Unit = dbQuery {

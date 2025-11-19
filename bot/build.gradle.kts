@@ -56,9 +56,14 @@ kotlin {
                 
                 implementation(project(":domain"))
                 implementation(project(":shared"))
+                implementation(project(":infrastructure-db"))
 
                 implementation(libs.kotlin.reflect)
                 implementation(libs.kotlinx.coroutines.reactor)
+                implementation(libs.kotlinx.datetime)
+                
+                // Flyway (for DatabaseBackupCallback)
+                implementation(libs.flyway.core)
                 
                 // Ktor Client
                 implementation(libs.ktor.client.core)
@@ -76,17 +81,7 @@ kotlin {
                 implementation(libs.xmlutil.serialization)
                 implementation(libs.jackson.module.kotlin)
 
-                // SQLite + Exposed ORM
-                implementation(libs.sqlite.jdbc)
-                implementation(libs.exposed.core)
-                implementation(libs.exposed.dao)
-                implementation(libs.exposed.jdbc)
-                implementation(libs.exposed.kotlin.datetime)
-                implementation(libs.exposed.migration.core)
-                implementation(libs.exposed.migration.jdbc)
 
-                // Flyway migrations (for SQLite)
-                implementation(libs.flyway.core)
 
                 // MCP SDK for Gromozeka MCP tools (coexists with Java MCP SDK from Spring AI)
                 implementation(libs.mcp.kotlin.sdk)
@@ -103,8 +98,8 @@ kotlin {
 
                 // Apache PDFBox for PDF parsing
                 implementation(libs.pdfbox)
-
-                // Neo4j Driver for Knowledge Graph (Phase 2)
+                
+                // Neo4j Driver for Knowledge Graph
                 implementation(libs.neo4j.driver)
             }
         }

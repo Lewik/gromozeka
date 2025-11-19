@@ -1,4 +1,4 @@
-package com.gromozeka.bot.repository.exposed.tables
+package com.gromozeka.infrastructure.db.persistence.tables
 
 import org.jetbrains.exposed.v1.core.Column
 import org.jetbrains.exposed.v1.core.ReferenceOption
@@ -6,7 +6,7 @@ import org.jetbrains.exposed.v1.core.Table
 import org.jetbrains.exposed.v1.datetime.timestamp
 import kotlinx.datetime.Instant
 
-object Projects : Table("projects") {
+internal object Projects : Table("projects") {
     val id = varchar("id", 255)
     val path = varchar("path", 500)
     val name = varchar("name", 255)
@@ -19,14 +19,14 @@ object Projects : Table("projects") {
     override val primaryKey = PrimaryKey(id)
 }
 
-object Contexts : Table("contexts") {
+internal object Contexts : Table("contexts") {
     val id = varchar("id", 255)
     val projectId = varchar("project_id", 255).references(Projects.id, onDelete = ReferenceOption.CASCADE)
     val name = varchar("name", 255)
     val content = text("content")
-    val filesJson = text("files_json")  // Serialized List<Context.File>
-    val linksJson = text("links_json")  // Serialized List<String>
-    val tags = text("tags")  // JSON array
+    val filesJson = text("files_json")
+    val linksJson = text("links_json")
+    val tags = text("tags")
     val extractedAt = timestamp("extracted_at")
     val createdAt = timestamp("created_at")
     val updatedAt = timestamp("updated_at")
@@ -34,7 +34,7 @@ object Contexts : Table("contexts") {
     override val primaryKey = PrimaryKey(id)
 }
 
-object Agents : Table("agents") {
+internal object Agents : Table("agents") {
     val id = varchar("id", 255)
     val name = varchar("name", 255)
     val systemPrompt = text("system_prompt")
@@ -47,7 +47,7 @@ object Agents : Table("agents") {
     override val primaryKey = PrimaryKey(id)
 }
 
-object Conversations : Table("conversations") {
+internal object Conversations : Table("conversations") {
     val id = varchar("id", 255)
     val projectId = varchar("project_id", 255).references(Projects.id, onDelete = ReferenceOption.CASCADE)
     val displayName = varchar("display_name", 255)
@@ -60,7 +60,7 @@ object Conversations : Table("conversations") {
     override val primaryKey = PrimaryKey(id)
 }
 
-object Threads : Table("threads") {
+internal object Threads : Table("threads") {
     val id = varchar("id", 255)
     val conversationId = varchar("conversation_id", 255).references(Conversations.id, onDelete = ReferenceOption.CASCADE)
     val originalThreadId = varchar("original_thread_id", 255).nullable()
@@ -71,7 +71,7 @@ object Threads : Table("threads") {
     override val primaryKey = PrimaryKey(id)
 }
 
-object ThreadMessages : Table("thread_messages") {
+internal object ThreadMessages : Table("thread_messages") {
     val threadId = varchar("thread_id", 255).references(Threads.id, onDelete = ReferenceOption.CASCADE)
     val messageId = varchar("message_id", 255).references(Messages.id)
     val position = integer("position")
@@ -79,7 +79,7 @@ object ThreadMessages : Table("thread_messages") {
     override val primaryKey = PrimaryKey(threadId, messageId)
 }
 
-object Messages : Table("messages") {
+internal object Messages : Table("messages") {
     val id = varchar("id", 255)
     val conversationId = varchar("conversation_id", 255).references(Conversations.id, onDelete = ReferenceOption.CASCADE)
     val originalIdsJson = text("original_ids_json")
@@ -92,7 +92,7 @@ object Messages : Table("messages") {
     override val primaryKey = PrimaryKey(id)
 }
 
-object SquashOperations : Table("squash_operations") {
+internal object SquashOperations : Table("squash_operations") {
     val id = varchar("id", 255)
     val conversationId = varchar("conversation_id", 255).references(Conversations.id, onDelete = ReferenceOption.CASCADE)
     val sourceMessageIdsJson = text("source_message_ids")
@@ -105,7 +105,7 @@ object SquashOperations : Table("squash_operations") {
     override val primaryKey = PrimaryKey(id)
 }
 
-object ToolExecutions : Table("tool_executions") {
+internal object ToolExecutions : Table("tool_executions") {
     val id = varchar("id", 255)
     val conversationId = varchar("conversation_id", 255).references(Conversations.id, onDelete = ReferenceOption.CASCADE)
     val messageId = varchar("message_id", 255)
@@ -121,7 +121,7 @@ object ToolExecutions : Table("tool_executions") {
     override val primaryKey = PrimaryKey(id)
 }
 
-object TokenUsageStatisticsTable : Table("token_usage_statistics") {
+internal object TokenUsageStatisticsTable : Table("token_usage_statistics") {
     val id = varchar("id", 255)
     val threadId = varchar("thread_id", 255).references(Threads.id, onDelete = ReferenceOption.CASCADE)
     val turnNumber = integer("turn_number")

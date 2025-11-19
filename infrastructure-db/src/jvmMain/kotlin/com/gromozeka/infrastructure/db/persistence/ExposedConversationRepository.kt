@@ -1,6 +1,6 @@
-package com.gromozeka.bot.repository.exposed
+package com.gromozeka.infrastructure.db.persistence
 
-import com.gromozeka.bot.repository.exposed.tables.Conversations
+import com.gromozeka.infrastructure.db.persistence.tables.Conversations
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.repository.ConversationRepository
@@ -10,7 +10,9 @@ import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.*
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
+import org.springframework.stereotype.Service
 
+@Service
 class ExposedConversationRepository : ConversationRepository {
 
     override suspend fun create(conversation: Conversation): Conversation = dbQuery {

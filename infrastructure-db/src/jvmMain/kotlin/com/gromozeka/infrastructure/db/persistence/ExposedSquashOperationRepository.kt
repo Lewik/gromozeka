@@ -1,6 +1,6 @@
-package com.gromozeka.bot.repository.exposed
+package com.gromozeka.infrastructure.db.persistence
 
-import com.gromozeka.bot.repository.exposed.tables.SquashOperations
+import com.gromozeka.infrastructure.db.persistence.tables.SquashOperations
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.repository.SquashOperationRepository
 import kotlinx.serialization.encodeToString
@@ -8,7 +8,9 @@ import kotlinx.serialization.json.Json
 import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.*
+import org.springframework.stereotype.Service
 
+@Service
 class ExposedSquashOperationRepository(
     private val json: Json
 ) : SquashOperationRepository {

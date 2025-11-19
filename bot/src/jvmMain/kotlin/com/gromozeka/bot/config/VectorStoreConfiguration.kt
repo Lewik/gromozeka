@@ -11,7 +11,7 @@ import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 
 @Configuration
-class VectorMemoryConfig {
+class VectorStoreConfiguration {
 
     private val log = KLoggers.logger(this)
 
@@ -35,7 +35,7 @@ class VectorMemoryConfig {
     }
 
     @Bean
-    fun qdrantVectorStore(
+    fun vectorStore(
         qdrantClient: QdrantClient?,
         embeddingModel: EmbeddingModel,
         settingsService: SettingsService

@@ -1,7 +1,8 @@
 package com.gromozeka.bot.services.memory
 
-import com.gromozeka.bot.services.memory.graph.KnowledgeGraphService
+import com.gromozeka.bot.services.memory.graph.GraphSearchService
 import com.gromozeka.bot.services.memory.graph.RerankService
+
 import klog.KLoggers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -11,7 +12,7 @@ import org.springframework.stereotype.Service
 @Service
 class UnifiedSearchService(
     private val vectorMemoryService: VectorMemoryService,
-    private val knowledgeGraphService: KnowledgeGraphService?,
+    private val graphSearchService: GraphSearchService?,
     private val rerankService: RerankService
 ) {
     private val log = KLoggers.logger(this)
@@ -61,10 +62,10 @@ class UnifiedSearchService(
             candidates.addAll(vectorDeferred.await())
         }
 
-        if (searchGraph && knowledgeGraphService != null) {
+        if (searchGraph && graphSearchService != null) {
             val graphDeferred = async {
                 try {
-                    val graphResults = knowledgeGraphService.hybridSearch(
+                    val graphResults = graphSearchService.hybridSearch(
                         query = query,
                         limit = candidateLimit,
                         useReranking = false,
@@ -100,8 +101,8 @@ class UnifiedSearchService(
                 }
             }
             candidates.addAll(graphDeferred.await())
-        } else if (searchGraph && knowledgeGraphService == null) {
-            log.warn { "Graph search requested but KnowledgeGraphService is not available" }
+        } else if (searchGraph && graphSearchService == null) {
+            log.warn { "Graph search requested but GraphSearchService is not available" }
         }
 
         if (candidates.isEmpty()) {

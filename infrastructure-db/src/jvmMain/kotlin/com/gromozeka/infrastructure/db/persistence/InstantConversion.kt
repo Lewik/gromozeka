@@ -1,4 +1,4 @@
-package com.gromozeka.bot.repository.exposed
+package com.gromozeka.infrastructure.db.persistence
 
 import kotlinx.datetime.Instant as KotlinxInstant
 import kotlin.time.Instant as KotlinInstant

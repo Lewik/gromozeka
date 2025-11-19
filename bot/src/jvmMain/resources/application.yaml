@@ -12,3 +12,7 @@ spring:
 
     ollama:
       base-url: http://localhost:11434
+
+# Knowledge Graph Configuration
+knowledge-graph:
+  enabled: true

@@ -261,6 +261,10 @@ private fun determineLogPath(modeEnv: String?): String {
 }
 
 @SpringBootApplication(
+    scanBasePackages = [
+        "com.gromozeka.bot",
+        "com.gromozeka.infrastructure.db"
+    ],
     exclude = [
         OpenAiEmbeddingAutoConfiguration::class,
         OpenAiImageAutoConfiguration::class,

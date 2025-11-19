@@ -1,6 +1,6 @@
-package com.gromozeka.bot.repository.exposed
+package com.gromozeka.infrastructure.db.persistence
 
-import com.gromozeka.bot.repository.exposed.tables.Agents
+import com.gromozeka.infrastructure.db.persistence.tables.Agents
 import com.gromozeka.domain.model.Agent
 import com.gromozeka.domain.repository.AgentRepository
 
@@ -9,7 +9,9 @@ import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.*
 import kotlinx.datetime.Instant
+import org.springframework.stereotype.Service
 
+@Service
 class ExposedAgentRepository : AgentRepository {
 
     override suspend fun save(agent: Agent): Agent = dbQuery {

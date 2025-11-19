@@ -1,6 +1,6 @@
-package com.gromozeka.bot.repository.exposed
+package com.gromozeka.infrastructure.db.persistence
 
-import com.gromozeka.bot.repository.exposed.tables.*
+import com.gromozeka.infrastructure.db.persistence.tables.*
 import org.jetbrains.exposed.v1.migration.jdbc.MigrationUtils
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction

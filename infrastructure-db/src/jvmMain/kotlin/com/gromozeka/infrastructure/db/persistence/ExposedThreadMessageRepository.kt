@@ -1,7 +1,7 @@
-package com.gromozeka.bot.repository.exposed
+package com.gromozeka.infrastructure.db.persistence
 
-import com.gromozeka.bot.repository.exposed.tables.Messages
-import com.gromozeka.bot.repository.exposed.tables.ThreadMessages
+import com.gromozeka.infrastructure.db.persistence.tables.Messages
+import com.gromozeka.infrastructure.db.persistence.tables.ThreadMessages
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.repository.ThreadMessageLink
 import com.gromozeka.domain.repository.ThreadMessageRepository
@@ -9,7 +9,9 @@ import kotlinx.serialization.json.Json
 import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.*
+import org.springframework.stereotype.Service
 
+@Service
 class ExposedThreadMessageRepository(
     private val json: Json
 ) : ThreadMessageRepository {

@@ -1,6 +1,6 @@
-package com.gromozeka.bot.repository.exposed
+package com.gromozeka.infrastructure.db.persistence
 
-import com.gromozeka.bot.repository.exposed.tables.Messages
+import com.gromozeka.infrastructure.db.persistence.tables.Messages
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.repository.MessageRepository
 import kotlinx.serialization.encodeToString
@@ -11,7 +11,9 @@ import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.core.like
 import org.jetbrains.exposed.v1.jdbc.*
 import kotlinx.datetime.Instant
+import org.springframework.stereotype.Service
 
+@Service
 class ExposedMessageRepository(
     private val json: Json
 ) : MessageRepository {

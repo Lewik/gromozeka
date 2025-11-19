@@ -1,7 +1,6 @@
 package com.gromozeka.bot.services.memory.graph
 
-import org.neo4j.driver.Driver
-import org.neo4j.driver.Values
+import com.gromozeka.infrastructure.db.graph.Neo4jGraphStore
 import java.security.MessageDigest
 import kotlin.math.min
 
@@ -95,54 +94,54 @@ object DedupHelpers {
     }
 
     suspend fun collectCandidates(
-        neo4jDriver: Driver,
+        neo4jGraphStore: Neo4jGraphStore,
         groupId: String,
         extractedNames: List<String>
     ): List<EntityCandidate> {
         val candidates = mutableListOf<EntityCandidate>()
 
-        neo4jDriver.session().use { session ->
-            for (name in extractedNames) {
-                val normalized = normalize(name)
+        for (name in extractedNames) {
+            val normalized = normalize(name)
 
-                val result = session.run(
-                    """
-                    CALL db.index.fulltext.queryNodes('memory_object_index', ${'$'}query)
-                    YIELD node, score
-                    WHERE node.group_id = ${'$'}groupId
-                    RETURN node.uuid as uuid,
-                           node.name as name,
-                           node.summary as summary,
-                           node.entity_type as entityType
-                    LIMIT 20
-                    """.trimIndent(),
-                    Values.parameters(
-                        "query", "${escapeLucene(normalized)}~",
-                        "groupId", groupId
+            val results = neo4jGraphStore.executeQuery(
+                """
+                CALL db.index.fulltext.queryNodes('memory_object_index', ${'$'}query)
+                YIELD node, score
+                WHERE node.group_id = ${'$'}groupId
+                RETURN node.uuid as uuid,
+                       node.name as name,
+                       node.summary as summary,
+                       node.labels as labels
+                LIMIT 20
+                """.trimIndent(),
+                mapOf(
+                    "query" to "${escapeLucene(normalized)}~",
+                    "groupId" to groupId
+                )
+            )
+
+            for (record in results) {
+                val candidateName = record["name"] as? String ?: continue
+                val candidateNormalized = normalize(candidateName)
+                val candidateShingles = shingles(candidateNormalized)
+                val candidateSignature = minhashSignature(candidateShingles)
+                val candidateBands = lshBands(candidateSignature)
+
+                val labels = record["labels"] as? List<*> ?: emptyList<String>()
+                val entityType = labels.firstOrNull()?.toString() ?: ""
+
+                candidates.add(
+                    EntityCandidate(
+                        uuid = record["uuid"] as? String ?: "",
+                        name = candidateName,
+                        normalizedName = candidateNormalized,
+                        summary = record["summary"] as? String ?: "",
+                        entityType = entityType,
+                        shingles = candidateShingles,
+                        signature = candidateSignature,
+                        bands = candidateBands
                     )
                 )
-
-                while (result.hasNext()) {
-                    val record = result.next()
-                    val candidateName = record["name"].asString()
-                    val candidateNormalized = normalize(candidateName)
-                    val candidateShingles = shingles(candidateNormalized)
-                    val candidateSignature = minhashSignature(candidateShingles)
-                    val candidateBands = lshBands(candidateSignature)
-
-                    candidates.add(
-                        EntityCandidate(
-                            uuid = record["uuid"].asString(),
-                            name = candidateName,
-                            normalizedName = candidateNormalized,
-                            summary = record["summary"].asString(""),
-                            entityType = record["entityType"].asString(""),
-                            shingles = candidateShingles,
-                            signature = candidateSignature,
-                            bands = candidateBands
-                        )
-                    )
-                }
             }
         }
 

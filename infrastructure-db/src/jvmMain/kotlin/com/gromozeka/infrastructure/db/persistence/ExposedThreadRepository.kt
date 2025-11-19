@@ -1,6 +1,6 @@
-package com.gromozeka.bot.repository.exposed
+package com.gromozeka.infrastructure.db.persistence
 
-import com.gromozeka.bot.repository.exposed.tables.Threads
+import com.gromozeka.infrastructure.db.persistence.tables.Threads
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.repository.ThreadRepository
 import org.jetbrains.exposed.v1.core.ResultRow
@@ -8,7 +8,9 @@ import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.*
 import kotlinx.datetime.Instant
+import org.springframework.stereotype.Service
 
+@Service
 class ExposedThreadRepository : ThreadRepository {
 
     override suspend fun save(thread: Conversation.Thread): Conversation.Thread = dbQuery {
@@ -48,11 +50,12 @@ class ExposedThreadRepository : ThreadRepository {
     }
 
     override suspend fun incrementTurnNumber(id: Conversation.Thread.Id): Int = dbQuery {
-        val currentTurn = Threads.selectAll()
+        val row = Threads.selectAll()
             .where { Threads.id eq id.value }
-            .single()[Threads.lastTurnNumber]
+            .forUpdate()
+            .single()
 
-        val newTurn = currentTurn + 1
+        val newTurn = row[Threads.lastTurnNumber] + 1
 
         Threads.update({ Threads.id eq id.value }) {
             it[lastTurnNumber] = newTurn

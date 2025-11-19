@@ -3,17 +3,16 @@ package com.gromozeka.bot.services.memory
 import com.gromozeka.bot.services.SettingsService
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.repository.ThreadMessageRepository
+import com.gromozeka.infrastructure.db.vector.QdrantVectorStore
 import klog.KLoggers
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.springframework.ai.document.Document
-import org.springframework.ai.vectorstore.SearchRequest
-import org.springframework.ai.vectorstore.VectorStore
 import org.springframework.stereotype.Service
 
 @Service
 class VectorMemoryService(
-    private val vectorStore: VectorStore?,
+    private val qdrantVectorStore: QdrantVectorStore?,
     private val settingsService: SettingsService,
     private val threadMessageRepository: ThreadMessageRepository
 ) {
@@ -43,7 +42,7 @@ class VectorMemoryService(
             }
             
             if (documents.isNotEmpty()) {
-                vectorStore?.add(documents)
+                qdrantVectorStore?.add(documents)
                 log.info { "Remembered ${documents.size} messages for thread $threadId" }
             }
         } catch (e: Exception) {
@@ -62,17 +61,8 @@ class VectorMemoryService(
         }
 
         try {
-            val searchRequest = SearchRequest.builder()
-                .query(query)
-                .topK(limit)
-                .apply {
-                    threadId?.let {
-                        filterExpression("threadId == '$it'")
-                    }
-                }
-                .build()
-
-            val results = vectorStore?.similaritySearch(searchRequest) ?: emptyList()
+            val filterExpression = threadId?.let { "threadId == '$it'" }
+            val results = qdrantVectorStore?.search(query, limit, filterExpression) ?: emptyList()
 
             results.map { doc ->
                 Memory(
@@ -95,7 +85,7 @@ class VectorMemoryService(
         }
 
         try {
-            vectorStore?.delete(listOf(messageId))
+            qdrantVectorStore?.delete(listOf(messageId))
             log.debug { "Forgot message $messageId" }
         } catch (e: Exception) {
             log.error(e) { "Failed to forget message $messageId: ${e.message}" }
@@ -121,7 +111,7 @@ class VectorMemoryService(
     }
 
     private fun isMemoryAvailable(): Boolean {
-        return settingsService.settings.vectorStorageEnabled && vectorStore != null
+        return settingsService.settings.vectorStorageEnabled && qdrantVectorStore != null
     }
 }
 

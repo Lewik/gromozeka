@@ -57,7 +57,7 @@ class ConversationEngineService(
     private val tokenUsageStatisticsRepository: TokenUsageStatisticsRepository,
     private val coroutineScope: CoroutineScope,
     private val vectorMemoryService: com.gromozeka.bot.services.memory.VectorMemoryService,
-    private val knowledgeGraphService: com.gromozeka.bot.services.memory.graph.KnowledgeGraphService?,
+    private val knowledgeGraphServiceFacade: com.gromozeka.bot.services.memory.graph.KnowledgeGraphServiceFacade?,
 ) {
     private val log = KLoggers.logger(this)
 
@@ -545,8 +545,8 @@ class ConversationEngineService(
      * This method triggers entity and relationship extraction from conversation.
      */
     suspend fun addToGraphCurrentThread(conversationId: Conversation.Id) {
-        if (knowledgeGraphService == null) {
-            log.warn { "KnowledgeGraphService not available (knowledge-graph.enabled=false)" }
+        if (knowledgeGraphServiceFacade == null) {
+            log.warn { "KnowledgeGraphServiceFacade not available (knowledge-graph.enabled=false)" }
             return
         }
 
@@ -564,7 +564,7 @@ class ConversationEngineService(
 
             log.info { "Adding thread ${conversation.currentThread} to knowledge graph for conversation $conversationId" }
 
-            val result = knowledgeGraphService.extractAndSaveToGraph(threadMessages)
+            val result = knowledgeGraphServiceFacade.extractAndSaveToGraph(threadMessages)
             log.info { "Knowledge graph update result: $result" }
         } catch (e: Exception) {
             log.error(e) { "Failed to add thread to graph for conversation $conversationId: ${e.message}" }

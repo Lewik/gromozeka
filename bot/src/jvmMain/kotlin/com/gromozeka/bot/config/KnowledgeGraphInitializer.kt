@@ -1,6 +1,6 @@
 package com.gromozeka.bot.config
 
-import com.gromozeka.bot.services.memory.graph.KnowledgeGraphService
+import com.gromozeka.bot.services.memory.graph.GraphPersistenceService
 import klog.KLoggers
 import kotlinx.coroutines.runBlocking
 import org.springframework.boot.ApplicationArguments
@@ -11,7 +11,7 @@ import org.springframework.stereotype.Component
 @Component
 @ConditionalOnProperty(name = ["knowledge-graph.enabled"], havingValue = "true", matchIfMissing = false)
 class KnowledgeGraphInitializer(
-    private val knowledgeGraphService: KnowledgeGraphService
+    private val graphPersistenceService: GraphPersistenceService
 ) : ApplicationRunner {
     private val log = KLoggers.logger(this)
 
@@ -20,7 +20,7 @@ class KnowledgeGraphInitializer(
 
         runBlocking {
             try {
-                knowledgeGraphService.initializeIndexes()
+                graphPersistenceService.initializeIndexes()
                 log.info { "Knowledge graph indexes initialized successfully" }
             } catch (e: Exception) {
                 log.warn(e) { "Failed to initialize knowledge graph indexes: ${e.message}" }
