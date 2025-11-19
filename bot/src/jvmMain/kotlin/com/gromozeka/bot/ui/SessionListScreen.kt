@@ -18,7 +18,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.gromozeka.domain.repository.ProjectDomainService
 import com.gromozeka.bot.ui.viewmodel.AppViewModel
-import com.gromozeka.bot.ui.state.ConversationInitiator
+import com.gromozeka.bot.domain.model.ConversationInitiator
 import com.gromozeka.bot.ui.viewmodel.ConversationSearchViewModel
 import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.Conversation

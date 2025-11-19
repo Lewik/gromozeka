@@ -1,20 +1,9 @@
 package com.gromozeka.bot.ui.state
 
+import com.gromozeka.bot.domain.model.ConversationInitiator
 import com.gromozeka.domain.model.Agent
 import com.gromozeka.domain.model.Conversation
 import kotlinx.serialization.Serializable
-
-@Serializable
-sealed class ConversationInitiator {
-    @Serializable
-    object User : ConversationInitiator()
-    
-    @Serializable
-    data class Agent(val tabId: String) : ConversationInitiator()
-    
-    @Serializable
-    object System : ConversationInitiator()  // Resume, context, etc.
-}
 
 /**
  * Root UI state for the entire Gromozeka application

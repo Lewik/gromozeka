@@ -1,18 +1,16 @@
 package com.gromozeka.bot.services.mcp
 
-import com.gromozeka.bot.ui.viewmodel.AppViewModel
+import com.gromozeka.application.service.TabManager
 import io.modelcontextprotocol.kotlin.sdk.CallToolRequest
 import io.modelcontextprotocol.kotlin.sdk.CallToolResult
 import io.modelcontextprotocol.kotlin.sdk.TextContent
 import io.modelcontextprotocol.kotlin.sdk.Tool
-import kotlinx.coroutines.flow.first
 import kotlinx.serialization.json.buildJsonObject
-import org.springframework.context.ApplicationContext
 import org.springframework.stereotype.Service
 
 @Service
 class ListTabsTool(
-    private val applicationContext: ApplicationContext,
+    private val tabManager: TabManager,
 ) : GromozekaMcpTool {
 
     override val definition = Tool(
@@ -27,20 +25,18 @@ class ListTabsTool(
     )
 
     override suspend fun execute(request: CallToolRequest): CallToolResult {
-        val appViewModel = applicationContext.getBean(AppViewModel::class.java)
-        val tabViewModels = appViewModel.tabs.first()
+        val tabs = tabManager.listTabs()
 
-        val responseText = if (tabViewModels.isEmpty()) {
+        val responseText = if (tabs.isEmpty()) {
             "No active tabs found."
         } else {
-            "Active tabs (${tabViewModels.size}):\n" +
-                    tabViewModels.mapIndexed { index, tabViewModel ->
-                        val uiState = tabViewModel.uiState.first()
-                        val status = if (uiState.isWaitingForResponse) "(waiting)" else "(ready)"
-                        val parentInfo = uiState.parentTabId?.let { " parent:$it" } ?: ""
+            "Active tabs (${tabs.size}):\n" +
+                    tabs.mapIndexed { index, tab ->
+                        val status = if (tab.isWaitingForResponse) "(waiting)" else "(ready)"
+                        val parentInfo = tab.parentTabId?.let { " parent:$it" } ?: ""
 
-                        "[$index] ${tabViewModel.projectPath} $status\n" +
-                                "    Tab ID: ${uiState.tabId} | Thread: ${tabViewModel.conversationId.value}$parentInfo"
+                        "[$index] ${tab.projectPath} $status\n" +
+                                "    Tab ID: ${tab.tabId} | Thread: ${tab.conversationId.value}$parentInfo"
                     }.joinToString("\n")
         }
 

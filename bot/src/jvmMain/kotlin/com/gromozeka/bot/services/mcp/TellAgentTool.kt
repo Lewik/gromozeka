@@ -1,6 +1,6 @@
 package com.gromozeka.bot.services.mcp
 
-import com.gromozeka.bot.ui.viewmodel.AppViewModel
+import com.gromozeka.application.service.TabManager
 import com.gromozeka.domain.model.Conversation
 import klog.KLoggers
 
@@ -8,15 +8,13 @@ import io.modelcontextprotocol.kotlin.sdk.CallToolRequest
 import io.modelcontextprotocol.kotlin.sdk.CallToolResult
 import io.modelcontextprotocol.kotlin.sdk.TextContent
 import io.modelcontextprotocol.kotlin.sdk.Tool
-import kotlinx.coroutines.flow.first
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.*
-import org.springframework.context.ApplicationContext
 import org.springframework.stereotype.Service
 
 @Service
 class TellAgentTool(
-    private val applicationContext: ApplicationContext,
+    private val tabManager: TabManager,
 ) : GromozekaMcpTool {
     private val log = KLoggers.logger(this)
 
@@ -64,7 +62,6 @@ class TellAgentTool(
     )
 
     override suspend fun execute(request: CallToolRequest): CallToolResult {
-        val appViewModel = applicationContext.getBean(AppViewModel::class.java)
         val input = Json.decodeFromJsonElement<Input>(request.arguments)
         val senderTabId = input.sender_tab_id
         log.info("Executing with senderTabId=$senderTabId, targetTabId=${input.target_tab_id}")
@@ -76,23 +73,14 @@ class TellAgentTool(
             )
         }
 
-        val tabs = appViewModel.tabs.first()
-
         // Find target tab
-        val targetTabIndex = tabs.indexOfFirst { tab ->
-            val tabUiState = tab.uiState.value
-            tabUiState.tabId == input.target_tab_id
-        }
-
-        if (targetTabIndex == -1) {
-            val identifier = input.target_tab_id
+        val targetTab = tabManager.findTabById(input.target_tab_id)
+        if (targetTab == null) {
             return CallToolResult(
-                content = listOf(TextContent("Error: target tab/session not found: $identifier")),
+                content = listOf(TextContent("Error: target tab/session not found: ${input.target_tab_id}")),
                 isError = true
             )
         }
-
-        val targetTab = tabs[targetTabIndex]
 
         // Create instructions for the message
         val allInstructions = mutableListOf<Conversation.Message.Instruction>()
@@ -105,17 +93,17 @@ class TellAgentTool(
             allInstructions.add(Conversation.Message.Instruction.ResponseExpected(targetTabId = senderTabId))
         }
 
-        // Send message to target session via TabViewModel with structured instructions
-        targetTab.sendMessageToSession(input.message, allInstructions)
-        log.info("Sent message from senderTabId=$senderTabId to targetTab=${targetTab.uiState.value.tabId} (threadId=${targetTab.conversationId.value})")
+        // Send message via TabManager
+        tabManager.sendMessageToTab(input.target_tab_id, input.message, allInstructions)
+        log.info("Sent message from senderTabId=$senderTabId to targetTab=${input.target_tab_id}")
 
         // Switch to target tab if requested
         if (input.set_as_current) {
-            appViewModel.selectTab(targetTabIndex)
+            tabManager.switchToTab(input.target_tab_id)
         }
 
         val targetProjectPath = targetTab.projectPath
-        val targetThreadId = targetTab.conversationId.value
+        val targetConversationId = targetTab.conversationId
         val tabIdInfo = input.target_tab_id
         val switchInfo = if (input.set_as_current) " (set as current)" else ""
 

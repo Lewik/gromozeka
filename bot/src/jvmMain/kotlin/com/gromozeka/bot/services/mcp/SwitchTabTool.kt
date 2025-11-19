@@ -1,22 +1,20 @@
 package com.gromozeka.bot.services.mcp
 
-import com.gromozeka.bot.ui.viewmodel.AppViewModel
+import com.gromozeka.application.service.TabManager
 import io.modelcontextprotocol.kotlin.sdk.CallToolRequest
 import io.modelcontextprotocol.kotlin.sdk.CallToolResult
 import io.modelcontextprotocol.kotlin.sdk.TextContent
 import io.modelcontextprotocol.kotlin.sdk.Tool
-import kotlinx.coroutines.flow.first
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.put
-import org.springframework.context.ApplicationContext
 import org.springframework.stereotype.Service
 
 @Service
 class SwitchTabTool(
-    private val applicationContext: ApplicationContext,
+    private val tabManager: TabManager,
 ) : GromozekaMcpTool {
 
     @Serializable
@@ -41,24 +39,22 @@ class SwitchTabTool(
     )
 
     override suspend fun execute(request: CallToolRequest): CallToolResult {
-        val appViewModel = applicationContext.getBean(AppViewModel::class.java)
         val input = Json.decodeFromJsonElement<Input>(request.arguments)
 
-        // Select tab and get the selected tab back
-        val selectedTab = appViewModel.selectTab(input.tab_id) ?: return CallToolResult(
+        // Switch to tab and get the tab info
+        val selectedTab = tabManager.switchToTab(input.tab_id) ?: return CallToolResult(
             content = listOf(TextContent("Tab not found: ${input.tab_id}")),
             isError = true
         )
 
         val threadId = selectedTab.conversationId
         val projectPath = selectedTab.projectPath
-        val currentTabs = appViewModel.tabs.first()
-        val tabIndex = currentTabs.indexOf(selectedTab)
+        val allTabs = tabManager.listTabs()
+        val tabIndex = allTabs.indexOfFirst { it.tabId == input.tab_id }
 
         return CallToolResult(
             content = listOf(TextContent("Successfully switched to tab $tabIndex (${input.tab_id}): $projectPath (Thread ID: ${threadId.value})")),
             isError = false
         )
-
     }
 }

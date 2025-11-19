@@ -1,28 +1,26 @@
 package com.gromozeka.bot.services.mcp
 
 import com.gromozeka.application.service.DefaultAgentProvider
-import com.gromozeka.bot.ui.viewmodel.AppViewModel
-import com.gromozeka.bot.ui.state.ConversationInitiator
+import com.gromozeka.application.service.TabManager
+import com.gromozeka.bot.domain.model.ConversationInitiator
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.repository.AgentDomainService
 import io.modelcontextprotocol.kotlin.sdk.CallToolRequest
 import io.modelcontextprotocol.kotlin.sdk.CallToolResult
 import io.modelcontextprotocol.kotlin.sdk.TextContent
 import io.modelcontextprotocol.kotlin.sdk.Tool
-import kotlinx.coroutines.flow.first
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.put
-import org.springframework.context.ApplicationContext
 import org.springframework.stereotype.Service
 import java.util.*
 import kotlinx.datetime.Clock
 
 @Service
 class CreateAgentTool(
-    private val applicationContext: ApplicationContext,
+    private val tabManager: TabManager,
     private val agentService: AgentDomainService,
     private val defaultAgentProvider: DefaultAgentProvider,
 ) : GromozekaMcpTool {
@@ -85,7 +83,6 @@ class CreateAgentTool(
     )
 
     override suspend fun execute(request: CallToolRequest): CallToolResult {
-        val appViewModel = applicationContext.getBean(AppViewModel::class.java)
         val input = Json.decodeFromJsonElement<Input>(request.arguments)
 
         val agent = if (input.agent_prompt != null) {
@@ -121,7 +118,7 @@ class CreateAgentTool(
             instructions = allInstructions
         )
 
-        val newTabIndex = appViewModel.createTab(
+        val newTabIndex = tabManager.createTab(
             projectPath = input.project_path,
             agent = agent,
             conversationId = null,
@@ -131,8 +128,8 @@ class CreateAgentTool(
         )
 
         // Get information about the created tab
-        val newTab = appViewModel.tabs.first()[newTabIndex]
-        val tabId = newTab.uiState.first().tabId
+        val allTabs = tabManager.listTabs()
+        val tabId = allTabs[newTabIndex].tabId
 
         val agentInfo = input.agent_name ?: "Gromozeka"
         
