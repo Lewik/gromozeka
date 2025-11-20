@@ -125,24 +125,99 @@ tasks.withType<Test> {
 compose.desktop {
     application {
         mainClass = "com.gromozeka.presentation.MainKt"
+        jvmArgs += listOf(
+            "-Xdock:icon=src/jvmMain/resources/logos/logo-256x256.png",
+            "-Xdock:name=Gromozeka",
+            "-Dapple.awt.application.appearance=system",
+            "-Djava.library.path=\$APP_DIR/native-libs",
+        )
         
         nativeDistributions {
-            targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
+            targetFormats(
+                TargetFormat.Dmg,  // macOS universal
+//                TargetFormat.Msi,  // Windows
+//                TargetFormat.Deb,  // Ubuntu/Debian
+//                TargetFormat.Rpm,  // Red Hat/Fedora
+//                TargetFormat.AppImage  // Linux AppImage (requires appimagetool)
+            )
+            
             packageName = "Gromozeka"
             packageVersion = rootProject.version.toString()
+            description = "Multi-armed AI agent for comprehensive task automation"
+            copyright = "© 2024 Gromozeka Project"
+            vendor = "Gromozeka"
+            
+            appResourcesRootDir.set(project.layout.projectDirectory.dir("src/jvmMain/resources"))
+            includeAllModules = true
             
             macOS {
-                iconFile.set(project.file("../bot/src/jvmMain/resources/logos/gromozeka-app-icon.icns"))
+                packageBuildVersion = rootProject.version.toString()
+                dmgPackageVersion = rootProject.version.toString()
                 bundleID = "com.gromozeka.app"
+                
+                infoPlist {
+                    extraKeysRawXml = """
+                        <key>NSMicrophoneUsageDescription</key>
+                        <string>Gromozeka needs microphone access for voice input and speech-to-text functionality</string>
+                        <key>NSAccessibilityUsageDescription</key>
+                        <string>Gromozeka may request accessibility access for future global hotkey functionality</string>
+                        <key>NSInputMonitoringUsageDescription</key>
+                        <string>Gromozeka may request input monitoring access for future global hotkey functionality</string>
+                    """
+                }
+                
+                signing {
+                    sign.set(false)
+                }
             }
+        }
+    }
+}
+
+tasks.register("removeJarSignatures") {
+    description = "Remove signature files from JAR to prevent SecurityException"
+    group = "build"
+    
+    dependsOn("packageUberJarForCurrentOS")
+    
+    val jarDir = layout.buildDirectory.dir("compose/jars")
+    inputs.dir(jarDir)
+    
+    doLast {
+        val jarsDir = jarDir.get().asFile
+        val jarFiles = jarsDir.listFiles { _, name -> name.endsWith(".jar") } ?: emptyArray()
+        
+        if (jarFiles.isEmpty()) {
+            logger.warn("No JAR files found in ${jarsDir.absolutePath}")
+            return@doLast
+        }
+        
+        jarFiles.forEach { jarFile ->
+            logger.lifecycle("Removing signature files from: ${jarFile.name}")
             
-            windows {
-                iconFile.set(project.file("../bot/src/jvmMain/resources/logos/gromozeka-app-icon.ico"))
+            try {
+                val process = ProcessBuilder(
+                    "zip", "-d", jarFile.absolutePath,
+                    "META-INF/*.SF", "META-INF/*.DSA", "META-INF/*.RSA"
+                ).start()
+                
+                val exitCode = process.waitFor()
+                when (exitCode) {
+                    0 -> logger.info("Successfully removed signature files from ${jarFile.name}")
+                    12 -> logger.info("No signature files found in ${jarFile.name} (expected)")
+                    else -> logger.warn("zip command returned exit code $exitCode for ${jarFile.name}")
+                }
+            } catch (e: Exception) {
+                logger.error("Failed to remove signatures from ${jarFile.name}: ${e.message}")
             }
-            
-            linux {
-                iconFile.set(project.file("../bot/src/jvmMain/resources/logos/gromozeka-app-icon.png"))
-            }
+        }
+    }
+}
+
+tasks.whenTaskAdded {
+    if (name == "run" && this is JavaExec) {
+        System.getenv("GROMOZEKA_MODE")?.let {
+            environment("GROMOZEKA_MODE", it)
         }
     }
 }
