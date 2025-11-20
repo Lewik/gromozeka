@@ -1,3 +1,0 @@
-# Ignore everything in .gromozeka folder except dist file
-.gromozeka/*
-!.gromozeka/settings.dist.json

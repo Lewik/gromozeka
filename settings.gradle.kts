@@ -5,12 +5,12 @@
 
 rootProject.name = "gromozeka"
 
-include(":bot")
 include(":shared")
 include(":domain")
 include(":application")
 include(":infrastructure-db")
 include(":infrastructure-ai")
+include(":presentation")
 
 // Настройка репозиториев для всех проектов
 dependencyResolutionManagement {
