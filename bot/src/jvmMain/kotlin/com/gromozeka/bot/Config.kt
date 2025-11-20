@@ -9,7 +9,7 @@ import com.gromozeka.application.service.ConversationEngineService
 import com.gromozeka.application.service.ConversationSearchService
 import com.gromozeka.application.service.DefaultAgentProvider
 import com.gromozeka.application.service.MessageSquashService
-import com.gromozeka.bot.services.OllamaModelService
+import com.gromozeka.infrastructure.ai.service.OllamaModelService
 import com.gromozeka.bot.services.PTTEventRouter
 import com.gromozeka.bot.services.PTTService
 import com.gromozeka.bot.services.SoundNotificationService

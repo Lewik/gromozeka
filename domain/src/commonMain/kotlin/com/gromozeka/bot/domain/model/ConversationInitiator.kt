@@ -16,7 +16,7 @@ sealed class ConversationInitiator {
     object User : ConversationInitiator()
     
     @Serializable
-    data class Agent(val tabId: String) : ConversationInitiator()
+    data class Agent(val tabId: Tab.Id) : ConversationInitiator()
     
     @Serializable
     object System : ConversationInitiator()

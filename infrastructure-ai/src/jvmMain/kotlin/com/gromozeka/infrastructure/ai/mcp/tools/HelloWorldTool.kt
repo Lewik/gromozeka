@@ -1,4 +1,4 @@
-package com.gromozeka.bot.services.mcp
+package com.gromozeka.infrastructure.ai.mcp.tools
 
 import io.modelcontextprotocol.kotlin.sdk.CallToolRequest
 import io.modelcontextprotocol.kotlin.sdk.CallToolResult

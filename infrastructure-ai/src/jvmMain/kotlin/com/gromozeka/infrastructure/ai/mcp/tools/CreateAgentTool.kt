@@ -1,7 +1,7 @@
-package com.gromozeka.bot.services.mcp
+package com.gromozeka.infrastructure.ai.mcp.tools
 
-import com.gromozeka.application.service.DefaultAgentProvider
-import com.gromozeka.application.service.TabManager
+import com.gromozeka.bot.domain.repository.TabManager
+import com.gromozeka.bot.domain.model.Tab
 import com.gromozeka.bot.domain.model.ConversationInitiator
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.repository.AgentDomainService
@@ -22,7 +22,6 @@ import kotlinx.datetime.Clock
 class CreateAgentTool(
     private val tabManager: TabManager,
     private val agentService: AgentDomainService,
-    private val defaultAgentProvider: DefaultAgentProvider,
 ) : GromozekaMcpTool {
 
     @Serializable
@@ -93,7 +92,9 @@ class CreateAgentTool(
                 isBuiltin = false
             )
         } else {
-            defaultAgentProvider.getDefault()
+            agentService.findAll()
+                .firstOrNull { it.isBuiltin && it.name == "Gromozeka" }
+                ?: error("Default agent 'Gromozeka' not found in database")
         }
 
         val baseMessageText = input.initial_message ?: "Ready to work on this project"
@@ -124,7 +125,7 @@ class CreateAgentTool(
             conversationId = null,
             initialMessage = chatMessage,
             setAsCurrent = input.set_as_current,
-            initiator = ConversationInitiator.Agent(input.parent_tab_id)
+            initiator = ConversationInitiator.Agent(Tab.Id(input.parent_tab_id))
         )
 
         // Get information about the created tab
@@ -137,7 +138,7 @@ class CreateAgentTool(
             content = listOf(
                 TextContent(
                     "Successfully created agent '$agentInfo' for project: ${input.project_path}\n" +
-                            "Agent ID: $tabId (${if (input.set_as_current) "focused" else "background"})\n" +
+                            "Agent ID: ${tabId.value} (${if (input.set_as_current) "focused" else "background"})\n" +
                             if (input.expects_response) "Expecting response back to parent agent\n" else "" +
                             if (baseMessageText.isNotBlank()) "\nInitial message sent: ${baseMessageText.take(150)}${if (baseMessageText.length > 150) "..." else ""}" else ""
                 )

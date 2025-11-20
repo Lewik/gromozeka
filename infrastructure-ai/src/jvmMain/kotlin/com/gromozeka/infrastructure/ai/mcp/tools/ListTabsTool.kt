@@ -1,6 +1,7 @@
-package com.gromozeka.bot.services.mcp
+package com.gromozeka.infrastructure.ai.mcp.tools
 
-import com.gromozeka.application.service.TabManager
+import com.gromozeka.bot.domain.repository.TabManager
+import com.gromozeka.bot.domain.model.Tab
 import io.modelcontextprotocol.kotlin.sdk.CallToolRequest
 import io.modelcontextprotocol.kotlin.sdk.CallToolResult
 import io.modelcontextprotocol.kotlin.sdk.TextContent
@@ -33,10 +34,10 @@ class ListTabsTool(
             "Active tabs (${tabs.size}):\n" +
                     tabs.mapIndexed { index, tab ->
                         val status = if (tab.isWaitingForResponse) "(waiting)" else "(ready)"
-                        val parentInfo = tab.parentTabId?.let { " parent:$it" } ?: ""
+                        val parentInfo = tab.parentTabId?.let { " parent:${it.value}" } ?: ""
 
                         "[$index] ${tab.projectPath} $status\n" +
-                                "    Tab ID: ${tab.tabId} | Thread: ${tab.conversationId.value}$parentInfo"
+                                "    Tab ID: ${tab.tabId.value} | Thread: ${tab.conversationId.value}$parentInfo"
                     }.joinToString("\n")
         }
 

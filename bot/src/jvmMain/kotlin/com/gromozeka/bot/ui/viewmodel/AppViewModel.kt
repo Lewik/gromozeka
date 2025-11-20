@@ -4,7 +4,8 @@ import com.gromozeka.bot.platform.ScreenCaptureController
 import com.gromozeka.application.service.ConversationEngineService
 import com.gromozeka.application.service.DefaultAgentProvider
 import com.gromozeka.application.service.MessageSquashService
-import com.gromozeka.application.service.TabManager
+import com.gromozeka.bot.domain.repository.TabManager
+import com.gromozeka.bot.domain.model.Tab
 import com.gromozeka.bot.services.SettingsService
 import com.gromozeka.bot.services.SoundNotificationService
 import com.gromozeka.domain.service.AIProvider
@@ -54,7 +55,7 @@ open class AppViewModel(
         initiator: ConversationInitiator,
     ): Int = mutex.withLock {
 
-        val tabId = UUID.randomUUID().toString()
+        val tabId = Tab.Id(UUID.randomUUID().toString())
 
         val tabAgent = agent ?: defaultAgentProvider.getDefault()
 
@@ -84,7 +85,7 @@ open class AppViewModel(
             projectPath = projectPath,
             conversationId = conversation.id,
             activeMessageTags = TabViewModel.getDefaultEnabledTags(),
-            tabId = tabId,
+            tabId = tabId.value,
             parentTabId = parentTabId,
             agent = tabAgent,
             initiator = initiator
@@ -172,20 +173,20 @@ open class AppViewModel(
         log.info("Selected tab: $index")
     }
 
-    suspend fun selectTab(tabId: String): TabViewModel? {
+    suspend fun selectTab(tabId: Tab.Id): TabViewModel? {
         val tab = findTabByTabId(tabId)
         if (tab != null) {
             val index = tabs.value.indexOf(tab)
             selectTab(index)
             return tab
         } else {
-            log.warn("Tab not found for ID: $tabId")
+            log.warn("Tab not found for ID: ${tabId.value}")
             return null
         }
     }
 
-    fun findTabByTabId(tabId: String): TabViewModel? {
-        return tabs.value.find { it.uiState.value.tabId == tabId }
+    fun findTabByTabId(tabId: Tab.Id): TabViewModel? {
+        return tabs.value.find { it.uiState.value.tabId == tabId.value }
     }
     
     // TabManager implementation
@@ -193,27 +194,27 @@ open class AppViewModel(
     private suspend fun TabViewModel.toTabInfo(): TabManager.TabInfo {
         val uiState = this.uiState.first()
         return TabManager.TabInfo(
-            tabId = uiState.tabId,
+            tabId = Tab.Id(uiState.tabId),
             conversationId = this.conversationId,
             agentId = uiState.agent.id,
             projectPath = this.projectPath,
             isWaitingForResponse = uiState.isWaitingForResponse,
-            parentTabId = uiState.parentTabId
+            parentTabId = uiState.parentTabId?.let { Tab.Id(it) }
         )
     }
     
-    override suspend fun switchToTab(tabId: String): TabManager.TabInfo? {
+    override suspend fun switchToTab(tabId: Tab.Id): TabManager.TabInfo? {
         val tab = selectTab(tabId)
         return tab?.toTabInfo()
     }
     
     override suspend fun sendMessageToTab(
-        tabId: String,
+        tabId: Tab.Id,
         message: String,
         instructions: List<Conversation.Message.Instruction>
     ) {
         val tab = findTabByTabId(tabId) 
-            ?: throw IllegalArgumentException("Tab not found: $tabId")
+            ?: throw IllegalArgumentException("Tab not found: ${tabId.value}")
         tab.sendMessageToSession(message, instructions)
     }
     
@@ -221,7 +222,7 @@ open class AppViewModel(
         return tabs.first().map { it.toTabInfo() }
     }
     
-    override suspend fun findTabById(tabId: String): TabManager.TabInfo? {
+    override suspend fun findTabById(tabId: Tab.Id): TabManager.TabInfo? {
         return findTabByTabId(tabId)?.toTabInfo()
     }
 

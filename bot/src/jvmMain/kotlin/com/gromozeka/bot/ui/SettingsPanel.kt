@@ -43,7 +43,7 @@ fun SettingsPanel(
     aiThemeGenerator: AIThemeGenerator,
     logEncryptor: LogEncryptor,
     settingsService: SettingsService,
-    ollamaModelService: com.gromozeka.bot.services.OllamaModelService,
+    ollamaModelService: com.gromozeka.infrastructure.ai.service.OllamaModelService,
     coroutineScope: CoroutineScope,
     onOpenTab: (String) -> Unit, // Callback to open new tab with project path
     onOpenTabWithMessage: ((String, String) -> Unit)? = null, // Callback to open new tab with initial message (uses default agent)

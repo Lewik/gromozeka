@@ -1,6 +1,7 @@
-package com.gromozeka.bot.services.mcp
+package com.gromozeka.infrastructure.ai.mcp.tools
 
-import com.gromozeka.application.service.TabManager
+import com.gromozeka.bot.domain.repository.TabManager
+import com.gromozeka.bot.domain.model.Tab
 import io.modelcontextprotocol.kotlin.sdk.CallToolRequest
 import io.modelcontextprotocol.kotlin.sdk.CallToolResult
 import io.modelcontextprotocol.kotlin.sdk.TextContent
@@ -42,7 +43,7 @@ class SwitchTabTool(
         val input = Json.decodeFromJsonElement<Input>(request.arguments)
 
         // Switch to tab and get the tab info
-        val selectedTab = tabManager.switchToTab(input.tab_id) ?: return CallToolResult(
+        val selectedTab = tabManager.switchToTab(Tab.Id(input.tab_id)) ?: return CallToolResult(
             content = listOf(TextContent("Tab not found: ${input.tab_id}")),
             isError = true
         )
@@ -50,7 +51,7 @@ class SwitchTabTool(
         val threadId = selectedTab.conversationId
         val projectPath = selectedTab.projectPath
         val allTabs = tabManager.listTabs()
-        val tabIndex = allTabs.indexOfFirst { it.tabId == input.tab_id }
+        val tabIndex = allTabs.indexOfFirst { it.tabId.value == input.tab_id }
 
         return CallToolResult(
             content = listOf(TextContent("Successfully switched to tab $tabIndex (${input.tab_id}): $projectPath (Thread ID: ${threadId.value})")),

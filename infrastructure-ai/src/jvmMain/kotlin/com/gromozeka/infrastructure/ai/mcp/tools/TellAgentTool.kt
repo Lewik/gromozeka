@@ -1,6 +1,7 @@
-package com.gromozeka.bot.services.mcp
+package com.gromozeka.infrastructure.ai.mcp.tools
 
-import com.gromozeka.application.service.TabManager
+import com.gromozeka.bot.domain.repository.TabManager
+import com.gromozeka.bot.domain.model.Tab
 import com.gromozeka.domain.model.Conversation
 import klog.KLoggers
 
@@ -74,7 +75,7 @@ class TellAgentTool(
         }
 
         // Find target tab
-        val targetTab = tabManager.findTabById(input.target_tab_id)
+        val targetTab = tabManager.findTabById(Tab.Id(input.target_tab_id))
         if (targetTab == null) {
             return CallToolResult(
                 content = listOf(TextContent("Error: target tab/session not found: ${input.target_tab_id}")),
@@ -94,12 +95,12 @@ class TellAgentTool(
         }
 
         // Send message via TabManager
-        tabManager.sendMessageToTab(input.target_tab_id, input.message, allInstructions)
+        tabManager.sendMessageToTab(Tab.Id(input.target_tab_id), input.message, allInstructions)
         log.info("Sent message from senderTabId=$senderTabId to targetTab=${input.target_tab_id}")
 
         // Switch to target tab if requested
         if (input.set_as_current) {
-            tabManager.switchToTab(input.target_tab_id)
+            tabManager.switchToTab(Tab.Id(input.target_tab_id))
         }
 
         val targetProjectPath = targetTab.projectPath

@@ -1,4 +1,4 @@
-package com.gromozeka.bot.services
+package com.gromozeka.infrastructure.ai.service
 
 import klog.KLoggers
 import java.util.concurrent.TimeUnit

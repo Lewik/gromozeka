@@ -1,6 +1,6 @@
 package com.gromozeka.bot.config
 
-import com.gromozeka.bot.services.mcp.GromozekaMcpTool
+import com.gromozeka.infrastructure.ai.mcp.tools.GromozekaMcpTool
 import io.modelcontextprotocol.kotlin.sdk.CallToolRequest
 import jakarta.annotation.PostConstruct
 import klog.KLoggers

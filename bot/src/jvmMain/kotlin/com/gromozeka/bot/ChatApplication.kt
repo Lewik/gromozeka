@@ -225,7 +225,7 @@ data class AppComponents(
     val themeService: ThemeService,
     val aiThemeGenerator: AIThemeGenerator,
     val logEncryptor: LogEncryptor,
-    val ollamaModelService: com.gromozeka.bot.services.OllamaModelService,
+    val ollamaModelService: com.gromozeka.infrastructure.ai.service.OllamaModelService,
     val projectService: com.gromozeka.domain.repository.ProjectDomainService,
     val conversationService: com.gromozeka.domain.repository.ConversationDomainService,
     val conversationSearchViewModel: com.gromozeka.bot.ui.viewmodel.ConversationSearchViewModel,
