@@ -130,6 +130,7 @@ compose.desktop {
             "-Xdock:name=Gromozeka",
             "-Dapple.awt.application.appearance=system",
             "-Djava.library.path=\$APP_DIR/native-libs",
+            "-Dgromozeka.project.root=${rootProject.projectDir.absolutePath}",
         )
         
         nativeDistributions {

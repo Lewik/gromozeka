@@ -90,10 +90,14 @@ class SettingsService : SettingsProvider {
             }
 
             mode == AppMode.DEV -> {
-                // Use project dev-data directory in client subdirectory
-                val projectDir = File(System.getProperty("user.dir"))
-                val devDataDir = File(projectDir, "dev-data/client/.gromozeka")
-                log.info("DEV mode - using project dev-data: ${devDataDir.absolutePath}")
+                // Read project root from system property (set by Gradle in build.gradle.kts)
+                val projectRoot = System.getProperty("gromozeka.project.root")
+                    ?: error("DEV mode requires 'gromozeka.project.root' system property. " +
+                             "Ensure application is started via Gradle: ./gradlew :presentation:run")
+                
+                val devDataDir = File(projectRoot, "dev-data/client/.gromozeka")
+                log.info("DEV mode - project root: $projectRoot")
+                log.info("DEV mode - using dev-data: ${devDataDir.absolutePath}")
                 devDataDir
             }
 
