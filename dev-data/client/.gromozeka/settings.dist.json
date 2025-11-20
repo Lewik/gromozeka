@@ -1,0 +1,17 @@
+{
+    "enableTts": true,
+    "enableStt": true,
+    "ttsSpeed": 1.0,
+    "ttsModel": "gpt-4o-mini-tts",
+    "ttsVoice": "alloy",
+    "sttMainLanguage": "en",
+    "sttModel": "whisper-1",
+    "autoSend": true,
+    "globalPttHotkeyEnabled": false,
+    "muteSystemAudioDuringPTT": true,
+    "includeCurrentTime": true,
+    "responseFormat": "XML_INLINE",
+    "openAiApiKey": null,
+    "showSystemMessages": true,
+    "showOriginalJson": false
+}

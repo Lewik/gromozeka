@@ -10,9 +10,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Purpose**: Primary development location for all new code and experiments
 - **Usage**: Code changes are written here first, run only for manual testing
 - **Branch**: `main`
-- **Home Directory**: `bot/dev-data/.gromozeka` (DEV mode)
-- **Launch**: `GROMOZEKA_MODE=dev ./gradlew :bot:run` (sets DEV mode via environment variable)
-- **Logs Location**: `bot/logs/dev.log` (working directory is bot module, not project root)
+- **Home Directory**: `dev-data/client/.gromozeka` (DEV mode)
+- **Launch**: `GROMOZEKA_MODE=dev ./gradlew :presentation:run` (sets DEV mode via environment variable)
+- **Logs Location**: `logs/dev.log` (working directory is project root)
 
 ### 2. `~/code/gromozeka/release/` - Production (Stable)
 - **Purpose**: Stable working version used for daily work and development of other projects
@@ -29,9 +29,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Status**: Unstable, but this is the future main version
 - **Dogfooding**: Used to develop Gromozeka itself (testing through real usage)
 - **Branch**: `main` (synced with dev)
-- **Home Directory**: `bot/dev-data/.gromozeka` (DEV mode)
-- **Launch**: `GROMOZEKA_MODE=dev ./gradlew :bot:run` (sets DEV mode via environment variable)
-- **Logs Location**: `bot/logs/dev.log` (working directory is bot module, not project root)
+- **Home Directory**: `dev-data/client/.gromozeka` (DEV mode)
+- **Launch**: `GROMOZEKA_MODE=dev ./gradlew :presentation:run` (sets DEV mode via environment variable)
+- **Logs Location**: `logs/dev.log` (working directory is project root)
 
 ### Development Workflow
 - **New features**: Write in `dev/` → sync to `beta/` for testing
@@ -523,7 +523,7 @@ age --decrypt --identity developer_private.age --output logs/logs.zip path/to/en
 **User workflow**: Settings → "Encrypt Logs" → creates sanitized .age file in Gromozeka home directory
 **File locations**:
 - **Production mode**: `~/.gromozeka/encrypted-logs/`
-- **Development mode**: `bot/dev-data/.gromozeka/encrypted-logs/`
+- **Development mode**: `dev-data/client/.gromozeka/encrypted-logs/`
 **Security**: Personal data should not be logged, only technical diagnostics preserved
 
 ## Spring AI API Migration (November 2024)

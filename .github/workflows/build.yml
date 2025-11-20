@@ -74,9 +74,9 @@ jobs:
           echo "Using version $VERSION for macOS"
           
           # Update build.gradle.kts with unified version
-          sed -i.bak 's/packageVersion = ".*"/packageVersion = "'$VERSION'"/g' bot/build.gradle.kts
-          sed -i.bak 's/packageBuildVersion = ".*"/packageBuildVersion = "'$VERSION'"/g' bot/build.gradle.kts
-          sed -i.bak 's/dmgPackageVersion = ".*"/dmgPackageVersion = "'$VERSION'"/g' bot/build.gradle.kts
+          sed -i.bak 's/packageVersion = ".*"/packageVersion = "'$VERSION'"/g' presentation/build.gradle.kts
+          sed -i.bak 's/packageBuildVersion = ".*"/packageBuildVersion = "'$VERSION'"/g' presentation/build.gradle.kts
+          sed -i.bak 's/dmgPackageVersion = ".*"/dmgPackageVersion = "'$VERSION'"/g' presentation/build.gradle.kts
 
       - name: Install FUSE for AppImage
         if: matrix.target-formats == 'AppImage'
@@ -99,11 +99,11 @@ jobs:
             ./build-appimage.sh
           elif [ "${{ matrix.target-formats }}" = "Jar" ]; then
             echo "Building cross-platform JAR..."
-            ./gradlew :bot:removeJarSignatures
+            ./gradlew :presentation:removeJarSignatures
           elif [ "$RUNNER_OS" = "Windows" ]; then
-            ./gradlew.bat :bot:packageDistributionForCurrentOS
+            ./gradlew.bat :presentation:packageDistributionForCurrentOS
           else
-            ./gradlew :bot:packageDistributionForCurrentOS
+            ./gradlew :presentation:packageDistributionForCurrentOS
           fi
 
       - name: Find and list built packages
@@ -113,9 +113,9 @@ jobs:
           if [ "${{ matrix.target-formats }}" = "AppImage" ]; then
             find build/appimage -type f -name "Gromozeka-*.AppImage" -exec ls -la {} \; 2>/dev/null || echo "No AppImage files found"
           elif [ "${{ matrix.target-formats }}" = "Jar" ]; then
-            find bot/build/compose/jars -type f -name "*.jar" -exec ls -la {} \; 2>/dev/null || echo "No JAR files found"
+            find presentation/build/compose/jars -type f -name "*.jar" -exec ls -la {} \; 2>/dev/null || echo "No JAR files found"
           else
-            find bot/build/compose/binaries -type f -name "*.dmg" -exec ls -la {} \; 2>/dev/null || echo "No DMG files found"
+            find presentation/build/compose/binaries -type f -name "*.dmg" -exec ls -la {} \; 2>/dev/null || echo "No DMG files found"
           fi
 
       - name: Upload artifacts
@@ -123,7 +123,7 @@ jobs:
         with:
           name: ${{ matrix.artifact-name }}-${{ env.VERSION }}
           path: |
-            ${{ matrix.target-formats == 'AppImage' && 'build/appimage/Gromozeka-*.AppImage' || matrix.target-formats == 'Jar' && 'bot/build/compose/jars/*.jar' || 'bot/build/compose/binaries/**/*.dmg' }}
+            ${{ matrix.target-formats == 'AppImage' && 'build/appimage/Gromozeka-*.AppImage' || matrix.target-formats == 'Jar' && 'presentation/build/compose/jars/*.jar' || 'presentation/build/compose/binaries/**/*.dmg' }}
           retention-days: 30
 
   release:

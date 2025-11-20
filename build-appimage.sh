@@ -9,7 +9,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$SCRIPT_DIR"
 APPIMAGE_RESOURCES="$PROJECT_ROOT/appimage-resources"
 BUILD_DIR="$PROJECT_ROOT/build/appimage"
-COMPOSE_BUILD_DIR="$PROJECT_ROOT/bot/build/compose/binaries/main"
+COMPOSE_BUILD_DIR="$PROJECT_ROOT/presentation/build/compose/binaries/main"
 
 # Colors for output
 RED='\033[0;31m'
@@ -107,7 +107,7 @@ download_appimagetool() {
 enable_appimage_target() {
     log "Enabling AppImage target in build.gradle.kts..."
     
-    local gradle_file="$PROJECT_ROOT/bot/build.gradle.kts"
+    local gradle_file="$PROJECT_ROOT/presentation/build.gradle.kts"
     
     # Check if AppImage is already enabled
     if grep -q "^[[:space:]]*TargetFormat\.AppImage" "$gradle_file"; then
@@ -139,7 +139,7 @@ build_compose_app() {
     
     # Build with AppImage target
     log "Running Gradle build with AppImage support..."
-    if ! ./gradlew :bot:packageDistributionForCurrentOS -q; then
+    if ! ./gradlew :presentation:packageDistributionForCurrentOS -q; then
         error "Gradle build failed"
         exit 1
     fi
@@ -154,7 +154,7 @@ find_app_directory() {
     local app_dir_candidates=(
         "$COMPOSE_BUILD_DIR/app"
         "$COMPOSE_BUILD_DIR/Gromozeka/app"
-        "$PROJECT_ROOT/bot/build/compose/binaries/main-release/app"
+        "$PROJECT_ROOT/presentation/build/compose/binaries/main-release/app"
     )
     
     for candidate in "${app_dir_candidates[@]}"; do
@@ -199,7 +199,7 @@ prepare_appdir() {
     
     # Copy icon (use the 256x256 PNG as main icon)
     log "Installing application icon..."
-    local icon_source="$PROJECT_ROOT/bot/src/jvmMain/resources/logos/logo-256x256.png"
+    local icon_source="$PROJECT_ROOT/presentation/src/jvmMain/resources/logos/logo-256x256.png"
     if [ -f "$icon_source" ]; then
         cp "$icon_source" "$appdir/gromozeka.png"
     else
@@ -281,9 +281,9 @@ build_appimage() {
 
 cleanup() {
     # Disable AppImage target to restore original state
-    if grep -q "^[[:space:]]*TargetFormat\.AppImage" "$PROJECT_ROOT/bot/build.gradle.kts"; then
+    if grep -q "^[[:space:]]*TargetFormat\.AppImage" "$PROJECT_ROOT/presentation/build.gradle.kts"; then
         log "Disabling AppImage target to restore original state..."
-        sed -i 's|^[[:space:]]*TargetFormat\.AppImage.*|//                TargetFormat.AppImage  // Linux AppImage (requires appimagetool)|' "$PROJECT_ROOT/bot/build.gradle.kts"
+        sed -i 's|^[[:space:]]*TargetFormat\.AppImage.*|//                TargetFormat.AppImage  // Linux AppImage (requires appimagetool)|' "$PROJECT_ROOT/presentation/build.gradle.kts"
     fi
 }
 

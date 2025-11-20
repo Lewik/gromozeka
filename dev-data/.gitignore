@@ -1,0 +1,3 @@
+# Ignore everything in client/.gromozeka folder except dist file
+client/.gromozeka/*
+!client/.gromozeka/settings.dist.json

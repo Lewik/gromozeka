@@ -90,15 +90,9 @@ class SettingsService : SettingsProvider {
             }
 
             mode == AppMode.DEV -> {
-                // Use project directory for dev mode - more reliable than resources
+                // Use project dev-data directory in client subdirectory
                 val projectDir = File(System.getProperty("user.dir"))
-                val devDataDir = if (projectDir.name == "bot") {
-                    // Running from bot/ subdirectory (gradlew from bot/)
-                    File(projectDir, "dev-data/.gromozeka")
-                } else {
-                    // Running from project root
-                    File(projectDir, "bot/dev-data/.gromozeka")
-                }
+                val devDataDir = File(projectDir, "dev-data/client/.gromozeka")
                 log.info("DEV mode - using project dev-data: ${devDataDir.absolutePath}")
                 devDataDir
             }

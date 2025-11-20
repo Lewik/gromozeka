@@ -178,7 +178,8 @@ class ConversationEngineService(
 
         var currentPrompt = Prompt(fullHistory, toolOptions)
         var iterationCount = 0
-        val maxIterations = 10
+        //lowering this number lead to conversation stop in the middle
+        val maxIterations = 50
 
         // 10. Tool execution loop - manually handle tool calls
         while (iterationCount < maxIterations) {
