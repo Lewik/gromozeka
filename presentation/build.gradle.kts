@@ -221,3 +221,8 @@ tasks.whenTaskAdded {
         }
     }
 }
+
+// Enable zip64 for large JAR files (> 65535 entries)
+tasks.withType<Zip>().configureEach {
+    isZip64 = true
+}
