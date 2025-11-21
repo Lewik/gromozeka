@@ -3,6 +3,7 @@ package com.gromozeka.presentation.ui
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Face
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -43,7 +44,7 @@ fun CustomTabRow(
         },
         divider = {},
     ) {
-        // Projects tab (first tab)
+        // Projects tab (index 0)
         OptionalTooltip("Проекты") {
             Tab(
                 selected = selectedTabIndex == 0,
@@ -54,17 +55,34 @@ fun CustomTabRow(
                 },
                 text = {
                     Row(verticalAlignment = Alignment.Companion.CenterVertically) {
-                        Icon(Icons.Default.Folder, contentDescription = "Sessions list")
+                        Icon(Icons.Default.Folder, contentDescription = "Projects")
                     }
                 }
             )
         }
 
-        // Session tabs with loading indicators and edit button
+        // Agents tab (index 1) - NEW
+        OptionalTooltip("Агенты") {
+            Tab(
+                selected = selectedTabIndex == 1,
+                onClick = {
+                    coroutineScope.launch {
+                        onTabSelect(-1) // special index for Agents tab
+                    }
+                },
+                text = {
+                    Row(verticalAlignment = Alignment.Companion.CenterVertically) {
+                        Icon(Icons.Default.Face, contentDescription = "Agents")
+                    }
+                }
+            )
+        }
+
+        // Session tabs with loading indicators and edit button (index 2+)
         tabs.forEachIndexed { index, tab ->
             val isLoading = tab.isWaitingForResponse.collectAsState().value
             val tabUiState = tab.uiState.collectAsState().value
-            val tabIndex = index + 1
+            val tabIndex = index + 2 // was index + 1, now +2 to account for Agents tab
 
             Tab(
                 selected = selectedTabIndex == tabIndex,

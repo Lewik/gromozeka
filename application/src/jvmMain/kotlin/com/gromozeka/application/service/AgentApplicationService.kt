@@ -21,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional
 @Service
 class AgentApplicationService(
     private val agentRepository: AgentRepository,
+    private val promptDomainService: com.gromozeka.domain.repository.PromptDomainService,
 ) : AgentDomainService {
     private val log = KLoggers.logger(this)
 
@@ -39,7 +40,7 @@ class AgentApplicationService(
     @Transactional
     override suspend fun createAgent(
         name: String,
-        systemPrompt: String,
+        prompts: List<com.gromozeka.domain.model.Prompt.Id>,
         description: String?,
         isBuiltin: Boolean
     ): Agent {
@@ -48,7 +49,7 @@ class AgentApplicationService(
         val agent = Agent(
             id = Agent.Id(uuid7()),
             name = name,
-            systemPrompt = systemPrompt,
+            prompts = prompts,
             description = description,
             isBuiltin = isBuiltin,
             usageCount = 0,
@@ -57,6 +58,10 @@ class AgentApplicationService(
         )
 
         return agentRepository.save(agent)
+    }
+    
+    override suspend fun assembleSystemPrompt(agent: Agent): String {
+        return promptDomainService.assembleSystemPrompt(agent.prompts)
     }
 
     /**
@@ -90,14 +95,14 @@ class AgentApplicationService(
     @Transactional
     override suspend fun update(
         id: Agent.Id,
-        systemPrompt: String?,
+        prompts: List<com.gromozeka.domain.model.Prompt.Id>?,
         description: String?
     ): Agent? {
         val agent = agentRepository.findById(id) ?: return null
         val now = Instant.fromEpochMilliseconds(System.currentTimeMillis())
 
         val updated = agent.copy(
-            systemPrompt = systemPrompt ?: agent.systemPrompt,
+            prompts = prompts ?: agent.prompts,
             description = description ?: agent.description,
             updatedAt = now
         )

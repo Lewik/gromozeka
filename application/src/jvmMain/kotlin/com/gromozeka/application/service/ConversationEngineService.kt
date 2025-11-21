@@ -1,7 +1,9 @@
 package com.gromozeka.application.service
 
+import com.gromozeka.domain.model.Agent
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.TokenUsageStatistics
+import com.gromozeka.domain.repository.AgentDomainService
 import com.gromozeka.domain.repository.ThreadRepository
 import com.gromozeka.domain.repository.TokenUsageStatisticsRepository
 import com.gromozeka.domain.repository.ConversationDomainService
@@ -47,7 +49,7 @@ import kotlinx.datetime.Clock
 class ConversationEngineService(
     private val chatModelFactory: ChatModelFactory,
     private val systemPromptBuilder: SystemPromptBuilder,
-    private val tabPromptService: TabPromptService,
+    private val agentDomainService: AgentDomainService,
     private val toolCallingManager: ToolCallingManager,
     private val toolApprovalService: ToolApprovalService,
     private val conversationService: ConversationDomainService,
@@ -100,12 +102,13 @@ class ConversationEngineService(
      *
      * @param conversationId The conversation to append messages to
      * @param userMessage The user message to send
+     * @param agent The agent to use for this conversation (provides system prompts)
      * @return Flow of StreamUpdate events representing the conversation progress
      */
     suspend fun streamMessage(
         conversationId: Conversation.Id,
         userMessage: Conversation.Message,
-        customPrompts: List<String> = emptyList()
+        agent: Agent
     ): Flow<StreamUpdate> = flow {
         log.debug { "Starting user-controlled tool execution for conversation: $conversationId" }
 
@@ -134,23 +137,18 @@ class ConversationEngineService(
         // 5. Persist user message immediately
         conversationService.addMessage(conversationId, userMessage)
 
-        // 6. Build system prompt with CLAUDE.md context, default agent prompts, custom prompts, and environment info
+        // 6. Build system prompt with CLAUDE.md context, agent prompts, and environment info
         val claudeMdAndEnv = systemPromptBuilder.build(projectPath)
-        val defaultPrompts = tabPromptService.buildDefaultPrompts()
-        val additionalPrompts = tabPromptService.buildAdditionalPrompt(customPrompts)
+        val agentPrompts = agentDomainService.assembleSystemPrompt(agent)
         val systemPromptText = buildString {
             append(claudeMdAndEnv)
-            if (defaultPrompts.isNotEmpty()) {
+            if (agentPrompts.isNotEmpty()) {
                 append("\n\n")
-                append(defaultPrompts)
-            }
-            if (additionalPrompts.isNotEmpty()) {
-                append("\n\n---\n\n")
-                append(additionalPrompts)
+                append(agentPrompts)
             }
         }
         val systemMessage = org.springframework.ai.chat.messages.SystemMessage(systemPromptText)
-        log.debug { "Built system prompt: ${systemPromptText.length} chars (CLAUDE.md+env: ${claudeMdAndEnv.length}, default: ${defaultPrompts.length}, custom: ${additionalPrompts.length})" }
+        log.debug { "Built system prompt: ${systemPromptText.length} chars (CLAUDE.md+env: ${claudeMdAndEnv.length}, agent prompts: ${agentPrompts.length})" }
 
         // 7. Convert history to Spring AI format
         val springHistory = messageConversionService.convertHistoryToSpringAI(

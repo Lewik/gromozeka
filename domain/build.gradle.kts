@@ -13,6 +13,7 @@ kotlin {
     sourceSets {
         val commonMain by getting {
             dependencies {
+                api(project(":shared"))  // Transitive dependency for all domain consumers
                 implementation(libs.kotlinx.datetime)
                 implementation(libs.kotlinx.serialization.json)
             }

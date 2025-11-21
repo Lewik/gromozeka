@@ -64,11 +64,11 @@ fun formatProjectName(projectPath: String): String {
 }
 
 /**
- * Get display name for a tab based on custom name or formatted project path
+ * Get display name for a tab based on custom name or agent name
  */
 fun getTabDisplayName(tabUiState: UIState.Tab, index: Int): String {
     return tabUiState.customName?.takeIf { it.isNotBlank() }
-        ?: formatProjectName(tabUiState.projectPath)
+        ?: tabUiState.agent.name
 }
 
 fun main() {
@@ -165,7 +165,9 @@ fun main() {
             conversationService = context.getBean(),
             conversationSearchViewModel = context.getBean(),
             loadingViewModel = context.getBean(),
-            tabPromptService = context.getBean()
+            tabPromptService = context.getBean(),
+            agentService = context.getBean(),
+            promptService = context.getBean()
         )
 
     } catch (e: Throwable) {
@@ -204,7 +206,9 @@ fun main() {
                         appComponents.conversationService,
                         appComponents.conversationSearchViewModel,
                         appComponents.loadingViewModel,
-                        appComponents.tabPromptService
+                        appComponents.tabPromptService,
+                        appComponents.agentService,
+                        appComponents.promptService
                     )
                 }
             }
@@ -230,7 +234,9 @@ data class AppComponents(
     val conversationService: com.gromozeka.domain.repository.ConversationDomainService,
     val conversationSearchViewModel: com.gromozeka.presentation.ui.viewmodel.ConversationSearchViewModel,
     val loadingViewModel: com.gromozeka.presentation.ui.viewmodel.LoadingViewModel,
-    val tabPromptService: TabPromptService
+    val tabPromptService: TabPromptService,
+    val agentService: com.gromozeka.domain.repository.AgentDomainService,
+    val promptService: com.gromozeka.domain.repository.PromptDomainService
 )
 
 /**

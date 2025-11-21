@@ -13,8 +13,7 @@ kotlin {
     sourceSets {
         val jvmMain by getting {
             dependencies {
-                implementation(project(":domain"))
-                implementation(project(":shared"))
+                implementation(project(":domain"))  // Transitively provides :shared
                 
                 // SQL + Exposed
                 implementation(libs.sqlite.jdbc)

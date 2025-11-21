@@ -32,9 +32,8 @@ kotlin {
                 implementation(libs.spring.boot.starter)
                 
                 // Dependencies on other modules
-                implementation(project(":domain"))
+                implementation(project(":domain"))  // Transitively provides :shared
                 implementation(project(":application"))
-                implementation(project(":shared"))
                 implementation(project(":infrastructure-db"))
                 implementation(project(":infrastructure-ai"))
 

@@ -11,6 +11,7 @@ import com.gromozeka.domain.service.AIProvider
 import com.gromozeka.presentation.model.Settings
 import com.gromozeka.presentation.ui.state.UIState
 import com.gromozeka.presentation.utils.ChatMessageSoundDetector
+import com.gromozeka.domain.model.Agent
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.MessageTagDefinition
 import com.gromozeka.domain.model.SquashType
@@ -231,9 +232,9 @@ class TabViewModel(
         }
     }
 
-    fun updateCustomPrompts(customPrompts: List<String>) {
+    fun updateAgent(agent: Agent) {
         _uiState.update { currentState ->
-            currentState.copy(customPrompts = customPrompts)
+            currentState.copy(agent = agent)
         }
     }
 
@@ -277,7 +278,7 @@ class TabViewModel(
 
                 var lastMessage: Conversation.Message? = null
 
-                conversationEngineService.streamMessage(conversationId, userMessage, currentState.customPrompts)
+                conversationEngineService.streamMessage(conversationId, userMessage, currentState.agent)
                     .collect { update ->
                         when (update) {
                             is ConversationEngineService.StreamUpdate.Chunk -> {

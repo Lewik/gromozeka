@@ -50,6 +50,10 @@ class SettingsService : SettingsProvider {
     override val ttsSpeed: Float get() = settings.ttsSpeed
     override val aiProvider: AIProvider get() = settings.defaultAiProvider
     override val homeDirectory: String get() = gromozekaHome.absolutePath
+    override val enableBraveSearch: Boolean get() = settings.enableBraveSearch
+    override val braveApiKey: String? get() = settings.braveApiKey
+    override val enableJinaReader: Boolean get() = settings.enableJinaReader
+    override val jinaApiKey: String? get() = settings.jinaApiKey
 
     /**
      * Initialize the service automatically after Spring bean creation

@@ -22,6 +22,7 @@ import kotlinx.datetime.Clock
 class CreateAgentTool(
     private val tabManager: TabManager,
     private val agentService: AgentDomainService,
+    private val promptService: com.gromozeka.domain.repository.PromptDomainService,
 ) : GromozekaMcpTool {
 
     @Serializable
@@ -85,9 +86,13 @@ class CreateAgentTool(
         val input = Json.decodeFromJsonElement<Input>(request.arguments)
 
         val agent = if (input.agent_prompt != null) {
+            val inlinePrompt = promptService.createInlinePrompt(
+                name = "${input.agent_name} prompt",
+                content = input.agent_prompt
+            )
             agentService.createAgent(
                 name = input.agent_name,
-                systemPrompt = input.agent_prompt,
+                prompts = listOf(inlinePrompt.id),
                 description = "Created via MCP from parent tab: ${input.parent_tab_id}",
                 isBuiltin = false
             )

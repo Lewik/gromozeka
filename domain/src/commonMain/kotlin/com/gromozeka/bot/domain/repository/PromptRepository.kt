@@ -1,0 +1,63 @@
+package com.gromozeka.domain.repository
+
+import com.gromozeka.domain.model.Prompt
+
+/**
+ * Repository for managing prompt templates.
+ *
+ * Prompts are stored as files and edited in external editor (IDEA).
+ * Repository provides read-only access to prompt files.
+ *
+ * Sources:
+ * - Builtin: Shipped with application (resources)
+ * - File: Files on disk (user, Claude global/project, imported)
+ * - Remote: Downloaded from URLs
+ *
+ * @see Prompt for domain model
+ */
+interface PromptRepository {
+
+    /**
+     * Finds prompt by unique identifier.
+     *
+     * Searches across all sources (builtin, file, remote).
+     *
+     * @param id prompt identifier
+     * @return prompt if found, null otherwise
+     */
+    suspend fun findById(id: Prompt.Id): Prompt?
+
+    /**
+     * Finds all available prompts from all sources.
+     *
+     * Includes builtin, file-based, and remote prompts.
+     *
+     * @return all prompts ordered by source, then by name
+     */
+    suspend fun findAll(): List<Prompt>
+
+    /**
+     * Finds prompts by source type.
+     *
+     * @param sourceType filter by prompt source type
+     * @return prompts from specified source, ordered by name
+     */
+    suspend fun findBySourceType(sourceType: Class<out Prompt.Source>): List<Prompt>
+
+    /**
+     * Refreshes prompt list from filesystem.
+     *
+     * Re-scans directories to detect file changes.
+     * Use after external editor modified files.
+     */
+    suspend fun refresh()
+
+    /**
+     * Counts total number of prompts.
+     *
+     * Includes all sources (builtin, file, remote).
+     *
+     * @return total prompt count
+     */
+    suspend fun count(): Int
+}

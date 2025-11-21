@@ -14,8 +14,7 @@ kotlin {
     sourceSets {
         val jvmMain by getting {
             dependencies {
-                implementation(project(":domain"))
-                implementation(project(":shared"))
+                implementation(project(":domain"))  // Transitively provides :shared
                 
                 // Spring AI providers
                 implementation(libs.spring.ai.openai)

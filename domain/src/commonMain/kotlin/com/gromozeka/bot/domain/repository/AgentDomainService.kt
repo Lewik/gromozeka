@@ -1,14 +1,16 @@
 package com.gromozeka.domain.repository
 
 import com.gromozeka.domain.model.Agent
+import com.gromozeka.domain.model.Prompt
 
 /**
  * Domain service for managing AI agent definitions.
  *
  * Coordinates agent lifecycle and enforces business rules:
  * - Builtin agents cannot be deleted
- * - System prompts and descriptions can be updated independently
+ * - Prompts and descriptions can be updated independently
  * - Usage count tracked automatically (managed by infrastructure)
+ * - All agents use ordered list of prompts for behavior definition
  *
  * @see Agent for domain model
  * @see AgentRepository for persistence operations
@@ -16,23 +18,34 @@ import com.gromozeka.domain.model.Agent
 interface AgentDomainService {
 
     /**
-     * Creates new agent definition.
+     * Creates new agent definition from prompts.
      *
      * Generates UUIDv7 for time-based ordering and sets creation timestamps.
      * This is a transactional operation.
      *
      * @param name agent role name (e.g., "Code Reviewer", "Security Expert")
-     * @param systemPrompt defines agent behavior and personality
+     * @param prompts ordered list of prompt IDs
      * @param description optional human-readable agent description
      * @param isBuiltin true for system agents, false for user-created
      * @return created agent with assigned ID
      */
     suspend fun createAgent(
         name: String,
-        systemPrompt: String,
+        prompts: List<Prompt.Id>,
         description: String? = null,
         isBuiltin: Boolean = false
     ): Agent
+
+    /**
+     * Assembles system prompt for agent.
+     *
+     * Convenience method that delegates to PromptDomainService.assembleSystemPrompt().
+     * Returns final system prompt ready for AI model.
+     *
+     * @param agent agent to assemble prompt for
+     * @return assembled system prompt string
+     */
+    suspend fun assembleSystemPrompt(agent: Agent): String
 
     /**
      * Finds agent by unique identifier.
@@ -50,20 +63,19 @@ interface AgentDomainService {
     suspend fun findAll(): List<Agent>
 
     /**
-     * Updates agent configuration.
+     * Updates agent prompts or description.
      *
-     * Only systemPrompt and description can be updated.
      * Name and isBuiltin are immutable after creation.
      * This is a transactional operation.
      *
      * @param id agent to update
-     * @param systemPrompt new system prompt (null = keep existing)
+     * @param prompts new ordered prompts list (null = keep existing)
      * @param description new description (null = keep existing)
      * @return updated agent, or null if agent not found
      */
     suspend fun update(
         id: Agent.Id,
-        systemPrompt: String? = null,
+        prompts: List<Prompt.Id>? = null,
         description: String? = null
     ): Agent?
 

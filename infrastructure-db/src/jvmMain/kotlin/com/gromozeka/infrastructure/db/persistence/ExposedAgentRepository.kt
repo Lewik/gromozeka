@@ -2,6 +2,7 @@ package com.gromozeka.infrastructure.db.persistence
 
 import com.gromozeka.infrastructure.db.persistence.tables.Agents
 import com.gromozeka.domain.model.Agent
+import com.gromozeka.domain.model.Prompt
 import com.gromozeka.domain.repository.AgentRepository
 
 import org.jetbrains.exposed.v1.core.ResultRow
@@ -9,18 +10,26 @@ import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.*
 import kotlinx.datetime.Instant
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.builtins.serializer
 import org.springframework.stereotype.Service
 
 @Service
 class ExposedAgentRepository : AgentRepository {
+    
+    private val json = Json { ignoreUnknownKeys = true }
+    private val promptIdListSerializer = ListSerializer(Prompt.Id.serializer())
 
     override suspend fun save(agent: Agent): Agent = dbQuery {
         val exists = Agents.selectAll().where { Agents.id eq agent.id.value }.count() > 0
+        
+        val promptsJson = json.encodeToString(promptIdListSerializer, agent.prompts)
 
         if (exists) {
             Agents.update({ Agents.id eq agent.id.value }) {
                 it[name] = agent.name
-                it[systemPrompt] = agent.systemPrompt
+                it[Agents.promptsJson] = promptsJson
                 it[description] = agent.description
                 it[isBuiltin] = agent.isBuiltin
                 it[usageCount] = agent.usageCount
@@ -30,7 +39,7 @@ class ExposedAgentRepository : AgentRepository {
             Agents.insert {
                 it[id] = agent.id.value
                 it[name] = agent.name
-                it[systemPrompt] = agent.systemPrompt
+                it[Agents.promptsJson] = promptsJson
                 it[description] = agent.description
                 it[isBuiltin] = agent.isBuiltin
                 it[usageCount] = agent.usageCount
@@ -61,14 +70,19 @@ class ExposedAgentRepository : AgentRepository {
         Agents.selectAll().count().toInt()
     }
 
-    private fun ResultRow.toAgent() = Agent(
-        id = Agent.Id(this[Agents.id]),
-        name = this[Agents.name],
-        systemPrompt = this[Agents.systemPrompt],
-        description = this[Agents.description],
-        isBuiltin = this[Agents.isBuiltin],
-        usageCount = this[Agents.usageCount],
-        createdAt = this[Agents.createdAt].toKotlinx(),
-        updatedAt = this[Agents.updatedAt].toKotlinx()
-    )
+    private fun ResultRow.toAgent(): Agent {
+        val promptsJson = this[Agents.promptsJson]
+        val prompts = json.decodeFromString(promptIdListSerializer, promptsJson)
+        
+        return Agent(
+            id = Agent.Id(this[Agents.id]),
+            name = this[Agents.name],
+            prompts = prompts,
+            description = this[Agents.description],
+            isBuiltin = this[Agents.isBuiltin],
+            usageCount = this[Agents.usageCount],
+            createdAt = this[Agents.createdAt].toKotlinx(),
+            updatedAt = this[Agents.updatedAt].toKotlinx()
+        )
+    }
 }

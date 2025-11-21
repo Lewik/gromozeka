@@ -32,6 +32,9 @@ import com.gromozeka.presentation.ui.viewmodel.AppViewModel
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.repository.ProjectDomainService
 import com.gromozeka.domain.repository.ConversationDomainService
+import com.gromozeka.domain.repository.AgentDomainService
+import com.gromozeka.domain.repository.PromptDomainService
+import com.gromozeka.presentation.ui.agents.AgentConstructorScreen
 import klog.KLoggers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
@@ -60,6 +63,8 @@ fun ApplicationScope.ChatWindow(
     conversationSearchViewModel: com.gromozeka.presentation.ui.viewmodel.ConversationSearchViewModel,
     loadingViewModel: com.gromozeka.presentation.ui.viewmodel.LoadingViewModel,
     tabPromptService: TabPromptService,
+    agentService: AgentDomainService,
+    promptService: PromptDomainService,
 ) {
     val log = KLoggers.logger("ChatWindow")
     val coroutineScope = rememberCoroutineScope()
@@ -267,7 +272,11 @@ fun ApplicationScope.ChatWindow(
                         Row(modifier = Modifier.fillMaxSize()) {
                         Column(modifier = Modifier.weight(1f)) {
                             val currentIndex = currentTabIndex
-                            val selectedTabIndex = if (currentIndex == null) 0 else (currentIndex + 1)
+                            val selectedTabIndex = when (currentIndex) {
+                                null -> 0  // Projects tab
+                                -1 -> 1    // Agents tab
+                                else -> currentIndex + 2  // Session tabs (now start at index 2)
+                            }
                             val tabRowComponent = @Composable {
                                 CustomTabRow(
                                     selectedTabIndex = selectedTabIndex,
@@ -383,9 +392,6 @@ fun ApplicationScope.ChatWindow(
                                                     }
                                                 } else null,
 
-                                                tabPromptService = tabPromptService,
-                                                customPrompts = tabUiState.customPrompts,
-                                                onCustomPromptsChange = { tabViewModel.updateCustomPrompts(it) },
                                                 onShowPromptsPanelChange = { showPromptsPanel = it },
 
                                                 isDev = settingsService.mode == AppMode.DEV,
@@ -393,34 +399,48 @@ fun ApplicationScope.ChatWindow(
                                         }
                                     } else {
                                         Box(modifier = Modifier.padding(16.dp)) {
-                                            SessionListScreen(
-                                            onConversationSelected = { _, _ ->
-                                                refreshTrigger++
-                                            },
-                                            coroutineScope = coroutineScope,
-                                            onNewSession = createNewSession,
-                                            projectService = projectService,
-                                            conversationTreeService = conversationTreeService,
-                                            appViewModel = appViewModel,
-                                            searchViewModel = conversationSearchViewModel,
-                                            showSettingsPanel = showSettingsPanel,
-                                            onShowSettingsPanelChange = { showSettingsPanel = it },
-                                            refreshTrigger = refreshTrigger
-                                        )
+                                            when (selectedTabIndex) {
+                                                1 -> {
+                                                    // Agents tab
+                                                    AgentConstructorScreen(
+                                                        agentService = agentService,
+                                                        promptService = promptService,
+                                                        coroutineScope = coroutineScope
+                                                    )
+                                                }
+                                                else -> {
+                                                    // Projects tab (index 0)
+                                                    SessionListScreen(
+                                                        onConversationSelected = { _, _ ->
+                                                            refreshTrigger++
+                                                        },
+                                                        coroutineScope = coroutineScope,
+                                                        onNewSession = createNewSession,
+                                                        projectService = projectService,
+                                                        conversationTreeService = conversationTreeService,
+                                                        appViewModel = appViewModel,
+                                                        searchViewModel = conversationSearchViewModel,
+                                                        showSettingsPanel = showSettingsPanel,
+                                                        onShowSettingsPanelChange = { showSettingsPanel = it },
+                                                        refreshTrigger = refreshTrigger
+                                                    )
+                                                }
+                                            }
                                         }
                                     }
                                 }
                                     }
                                     
-                                    // Tab Prompts Panel (tab-specific, edge-to-edge under tabs)
+                                    // Tab Settings Panel (tab-specific, edge-to-edge under tabs)
                                     currentTab?.let { tabViewModel ->
                                         val tabUiState by tabViewModel.uiState.collectAsState()
-                                        TabPromptsPanel(
+                                        TabSettingsPanel(
                                             isVisible = showPromptsPanel,
-                                            customPrompts = tabUiState.customPrompts,
-                                            onCustomPromptsChange = { tabViewModel.updateCustomPrompts(it) },
+                                            currentAgent = tabUiState.agent,
+                                            onAgentChange = { tabViewModel.updateAgent(it) },
                                             onClose = { showPromptsPanel = false },
-                                            tabPromptService = tabPromptService
+                                            agentService = agentService,
+                                            coroutineScope = coroutineScope
                                         )
                                     }
                                 }

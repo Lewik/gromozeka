@@ -48,10 +48,7 @@ fun SessionScreen(
     showSettingsPanel: Boolean,
     onShowSettingsPanelChange: (Boolean) -> Unit,
 
-    // Tab Prompts Panel
-    tabPromptService: com.gromozeka.application.service.TabPromptService,
-    customPrompts: List<String>,
-    onCustomPromptsChange: (List<String>) -> Unit,
+    // Tab Settings Panel
     onShowPromptsPanelChange: (Boolean) -> Unit,
 
     // Context extraction

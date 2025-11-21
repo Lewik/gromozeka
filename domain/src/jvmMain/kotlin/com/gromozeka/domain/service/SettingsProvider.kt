@@ -8,4 +8,10 @@ interface SettingsProvider {
     val aiProvider: AIProvider
     val mode: AppMode
     val homeDirectory: String  // Absolute path to Gromozeka home directory
+    
+    // Web Tools
+    val enableBraveSearch: Boolean
+    val braveApiKey: String?
+    val enableJinaReader: Boolean
+    val jinaApiKey: String?
 }

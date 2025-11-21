@@ -37,7 +37,7 @@ internal object Contexts : Table("contexts") {
 internal object Agents : Table("agents") {
     val id = varchar("id", 255)
     val name = varchar("name", 255)
-    val systemPrompt = text("system_prompt")
+    val promptsJson = text("prompts_json")  // JSON array of Prompt IDs
     val description = text("description").nullable()
     val isBuiltin = bool("is_builtin")
     val usageCount = integer("usage_count")
