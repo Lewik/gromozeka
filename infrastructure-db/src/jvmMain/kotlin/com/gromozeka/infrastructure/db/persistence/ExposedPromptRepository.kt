@@ -54,10 +54,9 @@ class ExposedPromptRepository(
         val sourceTypeName = when {
             sourceType.isAssignableFrom(Prompt.Source.Builtin::class.java) -> "BUILTIN"
             sourceType.isAssignableFrom(Prompt.Source.LocalFile.User::class.java) -> "USER_FILE"
-            sourceType.isAssignableFrom(Prompt.Source.LocalFile.ClaudeGlobal::class.java) -> "CLAUDE_GLOBAL"
-            sourceType.isAssignableFrom(Prompt.Source.LocalFile.ClaudeProject::class.java) -> "CLAUDE_PROJECT"
             sourceType.isAssignableFrom(Prompt.Source.LocalFile.Imported::class.java) -> "IMPORTED"
             sourceType.isAssignableFrom(Prompt.Source.Remote.Url::class.java) -> "REMOTE_URL"
+            sourceType.isAssignableFrom(Prompt.Source.Dynamic.Environment::class.java) -> "DYNAMIC_ENVIRONMENT"
             else -> "INLINE"
         }
 
@@ -79,6 +78,37 @@ class ExposedPromptRepository(
         return cachedBuiltinPrompts.size + cachedFilePrompts.size + dbCount
     }
     
+    override suspend fun save(prompt: Prompt): Prompt = dbQuery {
+        val sourceTypeName = when (prompt.source) {
+            is Prompt.Source.Builtin -> "BUILTIN"
+            is Prompt.Source.LocalFile.User -> "USER_FILE"
+            is Prompt.Source.LocalFile.Imported -> "IMPORTED"
+            is Prompt.Source.Remote.Url -> "REMOTE_URL"
+            is Prompt.Source.Dynamic.Environment -> "DYNAMIC_ENVIRONMENT"
+            is Prompt.Source.Text -> "INLINE"
+        }
+        
+        val sourcePath = when (val source = prompt.source) {
+            is Prompt.Source.Builtin -> source.resourcePath.value
+            is Prompt.Source.LocalFile -> source.path.value
+            is Prompt.Source.Remote.Url -> source.url
+            is Prompt.Source.Dynamic.Environment -> null
+            is Prompt.Source.Text -> null
+        }
+        
+        Prompts.insert {
+            it[id] = prompt.id.value
+            it[name] = prompt.name
+            it[content] = prompt.content
+            it[sourceType] = sourceTypeName
+            it[this.sourcePath] = sourcePath
+            it[createdAt] = prompt.createdAt.toKotlin()
+            it[updatedAt] = prompt.updatedAt.toKotlin()
+        }
+        
+        prompt
+    }
+    
     @jakarta.annotation.PostConstruct
     fun initialize() {
         // Load builtin and file-based prompts on startup
@@ -93,18 +123,11 @@ class ExposedPromptRepository(
         val source: Prompt.Source = when (sourceType) {
             "BUILTIN" -> Prompt.Source.Builtin(KPath(sourcePath ?: ""))
             "USER_FILE" -> Prompt.Source.LocalFile.User(KPath(sourcePath ?: ""))
-            "CLAUDE_GLOBAL" -> Prompt.Source.LocalFile.ClaudeGlobal(KPath(sourcePath ?: ""))
-            "CLAUDE_PROJECT" -> {
-                // Parse project path and prompt path from sourcePath
-                val parts = sourcePath?.split("/.claude/prompts/") ?: listOf("", "")
-                Prompt.Source.LocalFile.ClaudeProject(
-                    projectPath = KPath(parts.getOrNull(0) ?: ""),
-                    promptPath = KPath(parts.getOrNull(1) ?: "")
-                )
-            }
             "IMPORTED" -> Prompt.Source.LocalFile.Imported(KPath(sourcePath ?: ""))
             "REMOTE_URL" -> Prompt.Source.Remote.Url(sourcePath ?: "")
-            else -> Prompt.Source.Builtin(KPath("inline"))  // Inline prompts stored in DB
+            "DYNAMIC_ENVIRONMENT" -> Prompt.Source.Dynamic.Environment
+            "CLAUDE_GLOBAL", "CLAUDE_PROJECT" -> Prompt.Source.LocalFile.Imported(KPath(sourcePath ?: ""))
+            else -> Prompt.Source.Builtin(KPath("inline"))
         }
 
         return Prompt(

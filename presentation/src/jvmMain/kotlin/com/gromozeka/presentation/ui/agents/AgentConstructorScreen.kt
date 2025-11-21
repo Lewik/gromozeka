@@ -49,14 +49,13 @@ fun AgentConstructorScreen(
     var showPromptCreateDialog by remember { mutableStateOf(false) }
     
     // Prompt filters
-    var selectedPromptTypes by remember { mutableStateOf(setOf(0, 1, 2, 3)) } // All types selected by default
+    var selectedPromptTypes by remember { mutableStateOf(setOf(0, 1, 2)) } // All types selected by default
     
     val filterOptions = remember {
         listOf(
             com.gromozeka.presentation.ui.ToggleButtonOption(Icons.Default.Lock, "Builtin"),
             com.gromozeka.presentation.ui.ToggleButtonOption(Icons.Default.Folder, "User"),
-            com.gromozeka.presentation.ui.ToggleButtonOption(Icons.Default.CloudQueue, "Claude"),
-            com.gromozeka.presentation.ui.ToggleButtonOption(Icons.Default.Description, "Inline")
+            com.gromozeka.presentation.ui.ToggleButtonOption(Icons.Default.Description, "Other")
         )
     }
     
@@ -65,11 +64,10 @@ fun AgentConstructorScreen(
             when (prompt.source) {
                 is Prompt.Source.Builtin -> 0 in selectedPromptTypes
                 is Prompt.Source.LocalFile.User -> 1 in selectedPromptTypes
-                is Prompt.Source.LocalFile.ClaudeGlobal,
-                is Prompt.Source.LocalFile.ClaudeProject -> 2 in selectedPromptTypes
                 is Prompt.Source.Text,
                 is Prompt.Source.LocalFile.Imported,
-                is Prompt.Source.Remote.Url -> 3 in selectedPromptTypes
+                is Prompt.Source.Remote.Url,
+                is Prompt.Source.Dynamic -> 2 in selectedPromptTypes
             }
         }
     }
@@ -143,8 +141,35 @@ fun AgentConstructorScreen(
                     }
                 }
                 
-                // Reset All Prompts button (only for Prompts tab)
+                // Prompts tab buttons
                 if (selectedTab == 1) {
+                    CompactButton(
+                        onClick = {
+                            coroutineScope.launch {
+                                try {
+                                    val result = promptService.importAllClaudeMd()
+                                    result.fold(
+                                        onSuccess = { count ->
+                                            log.info { "Imported $count CLAUDE.md files" }
+                                            promptService.refresh()
+                                            loadData()
+                                        },
+                                        onFailure = { e ->
+                                            error = "Failed to import: ${e.message}"
+                                            log.error(e) { "Error importing CLAUDE.md files" }
+                                        }
+                                    )
+                                } catch (e: Exception) {
+                                    error = "Failed to import: ${e.message}"
+                                    log.error(e) { "Error importing CLAUDE.md files" }
+                                }
+                            }
+                        },
+                        tooltip = "Find and import all CLAUDE.md files from disk"
+                    ) {
+                        Text("Find all CLAUDE.md")
+                    }
+                    
                     CompactButton(
                         onClick = {
                             coroutineScope.launch {
@@ -153,8 +178,8 @@ fun AgentConstructorScreen(
                                     result.fold(
                                         onSuccess = { count ->
                                             log.info { "Reset $count builtin prompts to user directory" }
-                                            promptService.refresh() // Re-scan file system
-                                            loadData() // Refresh UI
+                                            promptService.refresh()
+                                            loadData()
                                         },
                                         onFailure = { e ->
                                             error = "Failed to reset prompts: ${e.message}"
@@ -366,10 +391,9 @@ fun AgentConstructorScreen(
                             text = when (val source = viewingPrompt!!.source) {
                                 is Prompt.Source.Builtin -> "Built-in prompt"
                                 is Prompt.Source.LocalFile.User -> "User prompt: ${source.path.value}"
-                                is Prompt.Source.LocalFile.ClaudeGlobal -> "Claude Global: ${source.path.value}"
-                                is Prompt.Source.LocalFile.ClaudeProject -> "Claude Project: ${source.promptPath.value}"
                                 is Prompt.Source.LocalFile.Imported -> "Imported: ${source.path.value}"
                                 is Prompt.Source.Remote.Url -> "URL: ${source.url}"
+                                is Prompt.Source.Dynamic.Environment -> "Environment info (generated dynamically)"
                                 is Prompt.Source.Text -> "Inline prompt"
                             },
                             style = MaterialTheme.typography.bodySmall,

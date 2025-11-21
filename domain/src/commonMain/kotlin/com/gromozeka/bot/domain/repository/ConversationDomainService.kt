@@ -57,7 +57,7 @@ interface ConversationDomainService {
      * @param conversationId conversation identifier
      * @return project filesystem path, or null if conversation or project not found
      */
-    suspend fun getProjectPath(conversationId: Conversation.Id): String?
+    suspend fun getProjectPath(conversationId: Conversation.Id): String
 
     /**
      * Retrieves all conversations in project.

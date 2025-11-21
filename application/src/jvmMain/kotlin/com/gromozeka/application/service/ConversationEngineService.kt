@@ -137,18 +137,10 @@ class ConversationEngineService(
         // 5. Persist user message immediately
         conversationService.addMessage(conversationId, userMessage)
 
-        // 6. Build system prompt with CLAUDE.md context, agent prompts, and environment info
-        val claudeMdAndEnv = systemPromptBuilder.build(projectPath)
-        val agentPrompts = agentDomainService.assembleSystemPrompt(agent)
-        val systemPromptText = buildString {
-            append(claudeMdAndEnv)
-            if (agentPrompts.isNotEmpty()) {
-                append("\n\n")
-                append(agentPrompts)
-            }
-        }
+        // 6. Build system prompt from agent prompts only (no auto-loading)
+        val systemPromptText = agentDomainService.assembleSystemPrompt(agent, projectPath)
         val systemMessage = org.springframework.ai.chat.messages.SystemMessage(systemPromptText)
-        log.debug { "Built system prompt: ${systemPromptText.length} chars (CLAUDE.md+env: ${claudeMdAndEnv.length}, agent prompts: ${agentPrompts.length})" }
+        log.debug { "Built system prompt: ${systemPromptText.length} chars from agent prompts" }
 
         // 7. Convert history to Spring AI format
         val springHistory = messageConversionService.convertHistoryToSpringAI(

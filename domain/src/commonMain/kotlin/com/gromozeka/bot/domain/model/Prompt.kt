@@ -15,7 +15,7 @@ import kotlinx.serialization.Serializable
  * @property id unique prompt identifier
  * @property name human-readable prompt name (displayed in UI)
  * @property content markdown text of the prompt
- * @property source origin of this prompt (builtin/file/remote)
+ * @property source origin of this prompt (builtin/file/remote/dynamic)
  * @property createdAt timestamp when prompt was created (immutable)
  * @property updatedAt timestamp of last modification
  */
@@ -67,30 +67,8 @@ data class Prompt(
             data class User(override val path: KPath) : LocalFile
 
             /**
-             * Prompt from global Claude configuration.
-             *
-             * @property path path relative to ~/.claude/prompts/
-             */
-            @Serializable
-            data class ClaudeGlobal(override val path: KPath) : LocalFile
-
-            /**
-             * Prompt from project-specific Claude configuration.
-             *
-             * @property projectPath path to project root
-             * @property promptPath path relative to project/.claude/prompts/
-             */
-            @Serializable
-            data class ClaudeProject(
-                val projectPath: KPath,
-                val promptPath: KPath
-            ) : LocalFile {
-                override val path: KPath
-                    get() = KPath("${projectPath.value}/.claude/prompts/${promptPath.value}")
-            }
-
-            /**
              * Imported prompt from arbitrary file.
+             * Used for all file-based prompts including CLAUDE.md files.
              *
              * @property path absolute path to imported file
              */
@@ -109,6 +87,19 @@ data class Prompt(
              */
             @Serializable
             data class Url(val url: String) : Remote
+        }
+
+        /**
+         * Dynamic prompt with content generated at runtime.
+         */
+        @Serializable
+        sealed interface Dynamic : Source {
+            /**
+             * Environment information (working directory, OS, date, git status).
+             * Content regenerated on each assembleSystemPrompt() call.
+             */
+            @Serializable
+            object Environment : Dynamic
         }
 
         /**

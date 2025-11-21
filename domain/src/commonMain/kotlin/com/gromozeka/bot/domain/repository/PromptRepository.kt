@@ -60,4 +60,15 @@ interface PromptRepository {
      * @return total prompt count
      */
     suspend fun count(): Int
+    
+    /**
+     * Saves prompt to database.
+     *
+     * Used for imported and inline prompts that need persistence.
+     * Builtin and scanned file prompts are not saved (exist as files).
+     *
+     * @param prompt prompt to save
+     * @return saved prompt
+     */
+    suspend fun save(prompt: Prompt): Prompt
 }

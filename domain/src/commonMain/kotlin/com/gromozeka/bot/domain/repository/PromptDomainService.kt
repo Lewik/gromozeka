@@ -22,12 +22,14 @@ interface PromptDomainService {
      *
      * @param promptIds ordered list of prompt IDs to assemble
      * @param separator string to join prompts with
+     * @param projectPath optional project path for Dynamic prompts (e.g., Environment)
      * @return assembled system prompt string
      * @throws Prompt.NotFoundException if any referenced prompt doesn't exist
      */
     suspend fun assembleSystemPrompt(
         promptIds: List<Prompt.Id>,
-        separator: String = "\n\n---\n\n"
+        separator: String = "\n\n---\n\n",
+        projectPath: String
     ): String
 
     /**
@@ -88,4 +90,15 @@ interface PromptDomainService {
      * @return success with count of copied prompts, or failure
      */
     suspend fun resetAllBuiltinPrompts(): Result<Int>
+    
+    /**
+     * Imports all CLAUDE.md files found on disk.
+     *
+     * Uses mdfind (Spotlight) on macOS for fast search.
+     * Fallback to find in home directory on other platforms.
+     * Skips already imported files.
+     *
+     * @return success with count of imported prompts, or failure
+     */
+    suspend fun importAllClaudeMd(): Result<Int>
 }

@@ -104,11 +104,11 @@ class ConversationApplicationService(
      * Looks up conversation, then resolves project path via ProjectService.
      *
      * @param conversationId conversation to query
-     * @return project path if conversation and project exist, null otherwise
+     * @return project path
      */
-    override suspend fun getProjectPath(conversationId: Conversation.Id): String? {
-        val conversation = findById(conversationId) ?: return null
-        val project = projectService.findById(conversation.projectId) ?: return null
+    override suspend fun getProjectPath(conversationId: Conversation.Id): String {
+        val conversation = findById(conversationId)!!
+        val project = projectService.findById(conversation.projectId)!!
         return project.path
     }
 

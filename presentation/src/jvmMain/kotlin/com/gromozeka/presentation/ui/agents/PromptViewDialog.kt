@@ -38,10 +38,9 @@ fun PromptViewDialog(
                     text = when (val source = prompt.source) {
                         is Prompt.Source.Builtin -> "Built-in prompt"
                         is Prompt.Source.LocalFile.User -> "User prompt: ${source.path.value}"
-                        is Prompt.Source.LocalFile.ClaudeGlobal -> "Claude Global: ${source.path.value}"
-                        is Prompt.Source.LocalFile.ClaudeProject -> "Claude Project: ${source.promptPath.value}"
                         is Prompt.Source.LocalFile.Imported -> "Imported: ${source.path.value}"
                         is Prompt.Source.Remote.Url -> "URL: ${source.url}"
+                        is Prompt.Source.Dynamic.Environment -> "Environment info (generated dynamically)"
                         is Prompt.Source.Text -> "Inline prompt"
                     },
                     style = MaterialTheme.typography.bodySmall,

@@ -44,10 +44,9 @@ fun PromptListItem(
                         val typeIcon = when (prompt.source) {
                             is Prompt.Source.Builtin -> Icons.Default.Lock
                             is Prompt.Source.LocalFile.User -> Icons.Default.Folder
-                            is Prompt.Source.LocalFile.ClaudeGlobal -> Icons.Default.CloudQueue
-                            is Prompt.Source.LocalFile.ClaudeProject -> Icons.Default.AccountTree
                             is Prompt.Source.LocalFile.Imported -> Icons.Default.Input
                             is Prompt.Source.Remote.Url -> Icons.Default.Link
+                            is Prompt.Source.Dynamic.Environment -> Icons.Default.Settings
                             is Prompt.Source.Text -> Icons.Default.Description
                         }
                         
@@ -71,10 +70,9 @@ fun PromptListItem(
                         text = when (val source = prompt.source) {
                             is Prompt.Source.Builtin -> "Built-in: ${source.resourcePath.value}"
                             is Prompt.Source.LocalFile.User -> "User: ${source.path.value}"
-                            is Prompt.Source.LocalFile.ClaudeGlobal -> "Claude Global: ${source.path.value}"
-                            is Prompt.Source.LocalFile.ClaudeProject -> "Claude Project: ${source.promptPath.value}"
                             is Prompt.Source.LocalFile.Imported -> "Imported: ${source.path.value}"
                             is Prompt.Source.Remote.Url -> "URL: ${source.url}"
+                            is Prompt.Source.Dynamic.Environment -> "Environment info (generated dynamically)"
                             is Prompt.Source.Text -> "Inline prompt"
                         },
                         style = MaterialTheme.typography.bodySmall,
