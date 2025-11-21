@@ -37,7 +37,7 @@ class FileSystemPromptScanner(
                     .replaceFirstChar { it.uppercase() }
                 
                 Prompt(
-                    id = Prompt.Id(UUID.randomUUID().toString()),
+                    id = Prompt.Id("user:${file.nameWithoutExtension}"),
                     name = name,
                     content = content,
                     source = Prompt.Source.LocalFile.User(KPath(file.name)),
