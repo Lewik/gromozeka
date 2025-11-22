@@ -416,6 +416,158 @@ After all Application Services implemented, verify Spring context loads:
 
 This ensures Spring can wire all dependencies correctly.
 
+## Examples
+
+### ✅ Good Application Service Implementation
+
+```kotlin
+@Service
+class ConversationApplicationService(
+    private val conversationRepo: ConversationRepository,
+    private val threadRepo: ThreadRepository,
+    private val messageRepo: MessageRepository,
+    private val projectService: ProjectDomainService
+) : ConversationDomainService {
+
+    @Transactional
+    override suspend fun create(
+        projectPath: String,
+        displayName: String,
+        aiProvider: String,
+        modelName: String
+    ): Conversation {
+        // Orchestrate multiple repositories
+        val project = projectService.getOrCreate(projectPath)
+        val now = Clock.System.now()
+        
+        val conversationId = Conversation.Id(uuid7())
+        val initialThread = Conversation.Thread(
+            id = Conversation.Thread.Id(uuid7()),
+            conversationId = conversationId,
+            createdAt = now,
+            updatedAt = now
+        )
+        
+        threadRepo.save(initialThread)
+        
+        val conversation = Conversation(
+            id = conversationId,
+            projectId = project.id,
+            displayName = displayName,
+            aiProvider = aiProvider,
+            modelName = modelName,
+            currentThread = initialThread.id,
+            createdAt = now,
+            updatedAt = now
+        )
+        
+        return conversationRepo.create(conversation)
+    }
+}
+```
+
+**Why this is good:**
+- Implements Domain Service interface (ConversationDomainService)
+- Orchestrates multiple repositories (conversation, thread, project)
+- Uses `@Transactional` for atomic multi-repository operation
+- Validates business invariants before repository calls
+- Injects Repository interfaces (not implementations)
+
+### ❌ Bad Application Service
+
+```kotlin
+@Service
+class BadConversationService(
+    private val exposedThreadRepo: ExposedThreadRepository  // WRONG! Implementation, not interface
+) {
+    // No @Transactional despite multi-repository operation
+    suspend fun create(title: String): Conversation {
+        // Direct SQL query - WRONG! This is Repository's job
+        val result = database.execute("INSERT INTO conversations ...")
+        
+        // No error handling
+        // No business logic validation
+        
+        return result
+    }
+}
+```
+
+**Why this is bad:**
+- Depends on Infrastructure implementation (ExposedThreadRepository), not interface
+- No `@Transactional` for multi-repository operation
+- Direct database access (should use Repository)
+- No error handling or business validation
+- Not implementing Domain Service interface
+
+### ✅ Good Error Handling
+
+```kotlin
+@Service
+class ThreadApplicationService(
+    private val threadRepo: ThreadRepository
+) : ThreadDomainService {
+
+    @Transactional
+    override suspend fun fork(threadId: Thread.Id): Thread {
+        // Validate preconditions
+        require(threadId.value.isNotBlank()) { "Thread ID cannot be blank" }
+        
+        // Business rule validation
+        val source = threadRepo.findById(threadId)
+            ?: throw ThreadNotFoundException(threadId)
+        
+        // Orchestrate business logic
+        val newThread = source.copy(
+            id = Thread.Id(uuid7()),
+            createdAt = Clock.System.now()
+        )
+        
+        return threadRepo.create(newThread)
+    }
+}
+```
+
+**Why this is good:**
+- Validates preconditions with `require()`
+- Throws domain exception for business rule violation
+- `@Transactional` ensures atomicity
+- Clear error messages
+
+## Architecture Decision Records (ADR)
+
+**Your scope:** Application layer - use case orchestration, business workflow, multi-repository coordination
+
+**ADR Location:** `docs/adr/application/`
+
+**When to create ADR:**
+- Complex use case orchestration strategies
+- Transaction boundary decisions (what operations are atomic)
+- Business rule enforcement approaches
+- Multi-repository coordination patterns
+- Domain Service interface design (when Architect delegates)
+- Error handling strategies for business logic
+- Validation and precondition patterns
+
+**When NOT to create ADR:**
+- Simple CRUD use cases
+- Straightforward repository calls
+- Standard validation additions
+- Minor orchestration tweaks
+
+**Process:**
+1. Identify significant application-level decision
+2. Use template: `docs/adr/template.md`
+3. Document WHY (business rationale, alternatives, impact on use cases)
+4. Save to `docs/adr/application/`
+5. Update Knowledge Graph with decision summary
+
+**Example ADR topics:**
+- "Why conversation creation is TRANSACTIONAL (thread + initial message atomically)"
+- "Why fork() creates new IDs for all entities instead of copying"
+- "Why validation happens in Application layer vs Domain entities"
+- "Why use case coordination vs separate service calls from UI"
+
 ## Remember
 
 - You **implement** Domain Service interfaces (Architect created them)

@@ -1062,6 +1062,41 @@ class BadSearchTool {
 - No @Component annotation (Spring won't discover it)
 - No Tool schema definition (can't be discovered by MCP clients)
 
+## Architecture Decision Records (ADR)
+
+**Your scope:** Infrastructure/AI layer - AI provider integrations, MCP tools/servers, streaming patterns
+
+**ADR Location:** `docs/adr/infrastructure/` (same as Repository Agent - both are infrastructure)
+
+**When to create ADR:**
+- AI provider selection and integration approaches (Claude Code CLI vs Spring AI native vs API)
+- ChatModel implementation strategies (custom vs native Spring AI)
+- Streaming architecture decisions (Flux vs Flow, backpressure handling)
+- MCP tool design patterns (schema structure, parameter validation, error handling)
+- Tool execution security (permission models, sandboxing)
+- Multi-model coordination strategies (fallback chains, model selection)
+- Configuration management for AI services
+
+**When NOT to create ADR:**
+- Adding simple MCP tools
+- Standard ChatModel method implementations
+- Minor prompt adjustments
+- Configuration value changes
+
+**Process:**
+1. Identify significant AI/MCP integration decision
+2. Use template: `docs/adr/template.md`
+3. Document WHY (provider comparison, streaming rationale, security trade-offs)
+4. Save to `docs/adr/infrastructure/`
+5. Update Knowledge Graph with decision summary
+
+**Example ADR topics:**
+- "Why custom ClaudeCodeChatModel instead of direct API"
+- "Why text-based tool calling for Claude Code CLI (Cline approach)"
+- "Why Kotlin MCP SDK for servers, Java MCP SDK for Spring AI integration"
+- "Why unified ToolCallingManager for permission checks across all models"
+- "Why Reactor Flux for streaming instead of Kotlin Flow"
+
 ## Remember
 
 - You integrate AI/MCP, expose via Domain interfaces

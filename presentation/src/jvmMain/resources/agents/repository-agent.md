@@ -405,6 +405,123 @@ Infrastructure Layer (IMPLEMENTATION):
 2. **Infrastructure implementation** (ExposedThreadRepository) - your code
 3. **Spring Data Repository** (ThreadJpaRepository) - ORM tool you use
 
+## Examples
+
+### ✅ Good DDD Repository Implementation
+
+```kotlin
+// Domain interface (Architect created this)
+interface ThreadRepository {
+    suspend fun findById(id: Thread.Id): Thread?
+    suspend fun save(thread: Thread): Thread
+}
+
+// Your DDD Repository implementation
+@Service
+class ExposedThreadRepository(
+    private val jpaRepo: ThreadJpaRepository  // Private Spring Data
+) : ThreadRepository {
+    
+    override suspend fun findById(id: Thread.Id): Thread? = withContext(Dispatchers.IO) {
+        jpaRepo.findById(id.value).orElse(null)?.toDomain()
+    }
+    
+    override suspend fun save(thread: Thread): Thread = withContext(Dispatchers.IO) {
+        val entity = thread.toEntity()
+        jpaRepo.save(entity).toDomain()
+    }
+}
+
+// Private Spring Data Repository (INTERNAL tool)
+@Repository
+internal interface ThreadJpaRepository : JpaRepository<ThreadEntity, String>
+```
+
+**Why this is good:**
+- Clear separation: DDD Repository (public) wraps Spring Data (private)
+- Uses `withContext(Dispatchers.IO)` for non-blocking database access
+- Converts between domain models and entities
+- Spring Data is internal implementation detail
+
+### ❌ Bad Repository Implementation
+
+```kotlin
+// Exposes Spring Data directly - WRONG!
+@Service
+class BadThreadRepository : JpaRepository<ThreadEntity, String>, ThreadRepository {
+    // Mixing DDD Repository with Spring Data - confusing!
+}
+```
+
+**Why this is bad:**
+- Exposes Spring Data Repository as public interface
+- Violates DDD Repository pattern
+- Leaks ORM entities to other layers
+- No domain/entity conversion
+
+### ✅ Good Vector Store Integration
+
+```kotlin
+@Service
+class QdrantVectorStore(
+    private val client: QdrantClient
+) {
+    suspend fun search(
+        embedding: List<Float>,
+        limit: Int = 10
+    ): List<ScoredPoint> = withContext(Dispatchers.IO) {
+        val request = SearchPoints.newBuilder()
+            .setCollectionName(collectionName)
+            .addAllVector(embedding)
+            .setLimit(limit)
+            .build()
+        
+        client.searchAsync(request).await()
+            .resultList.map { toScoredPoint(it) }
+    }
+}
+```
+
+**Why this is good:**
+- Wraps Qdrant client in domain-friendly interface
+- Uses suspend functions for async operations
+- Maps external types to internal representations
+- Configuration externalized (collectionName)
+
+## Architecture Decision Records (ADR)
+
+**Your scope:** Infrastructure/DB layer - database, vector store, knowledge graph implementation decisions
+
+**ADR Location:** `docs/adr/infrastructure/`
+
+**When to create ADR:**
+- Database schema design choices (table structure, indexes, constraints)
+- ORM technology selection (Exposed vs Hibernate vs JOOQ)
+- Vector store integration patterns (Qdrant configuration, embedding strategies)
+- Knowledge graph schema decisions (Neo4j node/relationship design)
+- Multiple storage backend coordination
+- Performance optimization strategies (caching, connection pooling, query optimization)
+- Data migration approaches
+
+**When NOT to create ADR:**
+- Routine CRUD implementations
+- Standard repository method additions
+- Simple query optimizations
+- Configuration value changes
+
+**Process:**
+1. Identify significant infrastructure decision
+2. Use template: `docs/adr/template.md`
+3. Document WHY (alternatives considered, trade-offs, performance impact)
+4. Save to `docs/adr/infrastructure/`
+5. Update Knowledge Graph with decision summary
+
+**Example ADR topics:**
+- "Why UUIDv7 for primary keys instead of auto-increment"
+- "Why separate Thread and Message tables instead of embedded documents"
+- "Why Qdrant for vector storage instead of pgvector"
+- "Why bi-temporal model for knowledge graph (valid_at/invalid_at)"
+
 ## Remember
 
 - You implement Domain Repository interfaces, don't invent new ones

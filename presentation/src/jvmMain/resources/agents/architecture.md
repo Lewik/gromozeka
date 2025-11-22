@@ -37,25 +37,12 @@ domain/
 
 **Key principle:** Domain has NO dependencies. Pure business logic and contracts.
 
-**Example:**
-```kotlin
-// domain/model/Thread.kt
-data class Thread(
-    val id: Id,
-    val title: String,
-    val createdAt: Instant
-) {
-    @JvmInline
-    value class Id(val value: String)
-}
+**Pattern:**
+- Entities as immutable data classes with nested value class IDs
+- Repository interfaces with suspend functions for async operations
+- No framework annotations, pure Kotlin
 
-// domain/repository/ThreadRepository.kt
-interface ThreadRepository {
-    suspend fun findById(id: Thread.Id): Thread?
-    suspend fun save(thread: Thread): Thread
-    suspend fun findAll(): List<Thread>
-}
-```
+**See Architect Agent for concrete examples.**
 
 **Important:** Architect creates **Repository** interfaces in `domain/repository/`, NOT in `domain/service/`. This follows DDD Repository Pattern.
 
@@ -83,32 +70,13 @@ application/
 
 **Dependencies:** `:domain` only
 
-**Example:**
-```kotlin
-// application/service/ConversationService.kt
-import com.gromozeka.shared.uuid.uuid7
+**Pattern:**
+- Use `@Service` annotation for Spring DI
+- Inject Repository interfaces via constructor
+- Coordinate multiple repositories in use cases
+- Add `@Transactional` for multi-repository operations
 
-@Service
-class ConversationService(
-    private val threadRepository: ThreadRepository,
-    private val messageRepository: MessageRepository,
-    private val vectorMemory: VectorMemoryService
-) {
-    suspend fun startConversation(title: String, agentId: String): Thread {
-        // Use Case: orchestrate multiple repositories
-        val thread = Thread(
-            id = uuid7(),
-            title = title,
-            createdAt = Clock.System.now()
-        )
-
-        threadRepository.save(thread)
-        vectorMemory.indexThread(thread.id)
-
-        return thread
-    }
-}
-```
+**See Business Logic Agent for concrete examples.**
 
 ---
 
@@ -142,36 +110,7 @@ infrastructure/db/
 - **Private:** Exposed Table definitions, Spring Data JPA repositories (internal implementation detail)
 - **Public:** DDD Repository implementations (expose to other modules)
 
-**Example:**
-```kotlin
-// Private Exposed Table definition (INTERNAL)
-internal object ThreadsTable : Table("threads") {
-    val id = varchar("id", 255)
-    val title = varchar("title", 500)
-    val createdAt = long("created_at")
-}
-
-// Private Spring Data Repository (INTERNAL) - ORM tool only!
-@Repository
-internal interface ThreadJpaRepository : JpaRepository<ThreadEntity, String>
-
-// Public DDD Repository implementation
-@Service
-class ExposedThreadRepository(
-    private val jpaRepo: ThreadJpaRepository  // Uses Spring Data internally
-) : ThreadRepository {
-    override suspend fun findById(id: Thread.Id): Thread? = dbQuery {
-        jpaRepo.findById(id.value).orElse(null)?.toDomain()
-    }
-
-    override suspend fun save(thread: Thread): Thread = dbQuery {
-        val entity = thread.toEntity()
-        jpaRepo.save(entity).toDomain()
-    }
-}
-```
-
-**CRITICAL: Three levels of abstraction:**
+**Three levels of abstraction:**
 1. **DDD Repository interface** (domain/repository/) - PUBLIC, what other layers see
 2. **DDD Repository implementation** (infrastructure/db/persistence/) - your code
 3. **Spring Data Repository** (infrastructure/db/persistence/, internal) - ORM tool you use privately
@@ -252,19 +191,12 @@ shared/
 
 **Dependencies:** NONE (like Domain, completely independent)
 
-**Usage pattern:**
-```kotlin
-// shared/uuid/UUID7.kt
-fun uuid7(): String = ...
+**Pattern:**
+- Utility functions for cross-cutting concerns
+- Value objects used across multiple modules
+- No Spring, pure Kotlin
 
-// Used in Application layer
-import com.gromozeka.shared.uuid.uuid7
-
-val thread = Thread(
-    id = uuid7(),
-    ...
-)
-```
+**See Shared Agent (future) for examples.**
 
 **Important notes:**
 - `:shared` is for truly cross-cutting code only
@@ -372,45 +304,23 @@ Both refer to services in `:application` module that coordinate multiple Reposit
 
 ## Spring Framework Usage
 
-### Domain - NO Spring
-```kotlin
-// Pure Kotlin interfaces and data classes
-interface ThreadRepository {  // No @Service!
-    suspend fun findById(id: Thread.Id): Thread?
-}
-```
+**Domain - NO Spring:**
+- Pure Kotlin interfaces and data classes
+- No annotations, no framework code
 
-### Application - YES Spring
-```kotlin
-@Service  // Spring annotation here
-class ConversationService(
-    private val threadRepository: ThreadRepository  // Constructor injection
-) { ... }
-```
+**Application - YES Spring:**
+- Use `@Service` annotation
+- Constructor injection for dependencies
 
-### Infrastructure - YES Spring
-```kotlin
-@Service  // Spring annotation here
-class ExposedThreadRepository : ThreadRepository { ... }
+**Infrastructure - YES Spring:**
+- Use `@Service` for implementations
+- Use `@Configuration` for setup
 
-@Configuration  // Spring configuration
-class DbConfiguration { ... }
-```
+**Presentation - YES Spring (transitive):**
+- `@SpringBootApplication` for Main.kt
+- `@Component` for ViewModels if using Spring DI
 
-### Presentation - YES Spring (transitive)
-```kotlin
-// Main.kt - Spring Boot startup
-@SpringBootApplication
-class GromozemkaApplication
-
-fun main(args: Array<String>) {
-    runApplication<GromozemkaApplication>(*args)
-}
-
-// ViewModels - use Spring DI via @Component if needed
-@Component
-class TabViewModel(...) { ... }
-```
+**See agent-specific prompts for concrete examples.**
 
 ---
 
@@ -423,21 +333,11 @@ class TabViewModel(...) { ... }
 3. Application uses interfaces via constructor injection
 4. Spring automatically wires implementations
 
-**Example:**
-```kotlin
-// Domain
-interface ThreadRepository { ... }
-
-// Infrastructure
-@Service
-class ExposedThreadRepository : ThreadRepository { ... }
-
-// Application
-@Service
-class ConversationService(
-    private val threadRepository: ThreadRepository  // Spring injects ExposedThreadRepository
-) { ... }
-```
+**Pattern:**
+- Domain layer: Interface definitions (pure Kotlin)
+- Infrastructure layer: Implementations with `@Service`
+- Application layer: Constructor injection of interfaces
+- Spring autowiring: Finds implementation by interface type
 
 **Configuration:**
 
@@ -445,6 +345,8 @@ Each module can have its own `@Configuration` if needed:
 - `:infrastructure-db` → `DbConfiguration.kt`
 - `:infrastructure-ai` → `AiConfiguration.kt`
 - `:application` → Usually not needed (auto-configuration via `@Service`)
+
+**See agent-specific prompts for concrete DI examples.**
 
 ---
 
@@ -494,6 +396,126 @@ presentation/utils/           - UI-specific utilities
 5. **Spring in outer layers only** - Application and Infrastructure (NOT Domain)
 6. **Each module is independent** - Can be compiled separately
 7. **DI wiring is automatic** - Spring finds implementations by interface
+
+---
+
+## Multi-Agent Workflow Example
+
+**Task:** "Add note storage feature"
+
+Demonstrates how development agents work in parallel through Code-as-Contract, with zero chat overhead.
+
+### Step 1: Architect Agent
+
+Creates domain contracts:
+
+```kotlin
+// domain/model/Note.kt
+data class Note(
+    val id: Id,
+    val content: String,
+    val createdAt: Instant
+) {
+    @JvmInline
+    value class Id(val value: String)
+}
+
+// domain/repository/NoteRepository.kt
+interface NoteRepository {
+    suspend fun findById(id: Note.Id): Note?
+    suspend fun save(note: Note): Note
+    suspend fun findAll(): List<Note>
+}
+```
+
+Saves to Knowledge Graph: "Designed note storage with simple CRUD operations"
+
+### Step 2: Repository Agent
+
+Reads `domain/repository/NoteRepository.kt` from filesystem, implements:
+
+```kotlin
+// infrastructure/db/persistence/ExposedNoteRepository.kt
+@Service
+class ExposedNoteRepository : NoteRepository {
+    override suspend fun findById(id: Note.Id): Note? = transaction {
+        Notes.selectAll().where { Notes.id eq UUID.fromString(id.value) }
+            .singleOrNull()?.let { rowToNote(it) }
+    }
+    // ... other methods
+}
+```
+
+Saves to Knowledge Graph: "Implemented NoteRepository with Exposed, added table definition"
+
+### Step 3: Business Logic Agent
+
+Reads interfaces from filesystem, implements orchestration:
+
+```kotlin
+// application/service/NoteServiceImpl.kt
+@Service
+class NoteServiceImpl(
+    private val noteRepository: NoteRepository
+) : NoteService {
+    override suspend fun createNote(content: String): Note {
+        require(content.isNotBlank()) { "Content cannot be blank" }
+
+        val note = Note(
+            id = UUID.randomUUID().toString(),
+            content = content,
+            createdAt = Clock.System.now()
+        )
+        return noteRepository.save(note)
+    }
+}
+```
+
+Saves to Knowledge Graph: "Implemented NoteService with validation, generates UUID for new notes"
+
+### Step 4: UI Agent
+
+Reads interfaces from filesystem, builds UI:
+
+```kotlin
+// presentation/viewmodel/NoteListViewModel.kt
+class NoteListViewModel(
+    private val noteService: NoteService
+) : ViewModel() {
+    private val _notes = MutableStateFlow<List<Note>>(emptyList())
+    val notes = _notes.asStateFlow()
+
+    fun loadNotes() {
+        viewModelScope.launch {
+            _notes.value = noteService.getAllNotes()
+        }
+    }
+}
+
+// presentation/ui/NoteListScreen.kt
+@Composable
+fun NoteListScreen(viewModel: NoteListViewModel) {
+    val notes by viewModel.notes.collectAsState()
+
+    LazyColumn {
+        items(notes) { note ->
+            NoteItem(note)
+        }
+    }
+}
+```
+
+Saves to Knowledge Graph: "Implemented note list UI with ViewModel pattern, auto-loads on init"
+
+### Result
+
+- ✅ Zero coordination overhead (no chat between agents)
+- ✅ Compiler validates all contracts
+- ✅ Clean layer separation enforced by module dependencies
+- ✅ Knowledge Graph captures decisions for future reference
+- ✅ Build succeeds - integration verified through compilation
+
+**Key takeaway:** Agents work independently on their layer, communicate through typed interfaces written to filesystem. Compiler is the coordinator.
 
 ---
 
@@ -558,17 +580,16 @@ Use `T?` when absence of result is a valid, expected outcome.
 - Query operations that may not find results
 - Optional data retrieval
 
-**Example:**
+**Pattern:**
 ```kotlin
-// Domain
-interface ThreadRepository {
-    suspend fun findById(id: Thread.Id): Thread?  // null = not found (normal)
+interface EntityRepository {
+    suspend fun findById(id: Entity.Id): Entity?  // null = not found (normal)
 }
 
 // Usage
-val thread = threadRepository.findById(id)
-if (thread != null) {
-    // work with thread
+val entity = repository.findById(id)
+if (entity != null) {
+    // work with entity
 } else {
     // handle absence
 }
@@ -588,39 +609,37 @@ Use exceptions when operation fails due to violated business rules or unexpected
 // Domain exceptions live in domain/model/ package
 package com.gromozeka.domain.model
 
-class DuplicateThreadException(
-    val title: String
-) : Exception("Thread with title '$title' already exists")
+class DuplicateEntityException(
+    val fieldValue: String
+) : Exception("Entity with field '$fieldValue' already exists")
 
-class ThreadNotFoundException(
-    val threadId: Thread.Id
-) : Exception("Thread not found: ${threadId.value}")
+class EntityNotFoundException(
+    val entityId: Entity.Id
+) : Exception("Entity not found: ${entityId.value}")
 ```
 
-**Usage example:**
+**Pattern:**
 ```kotlin
-// Domain
-interface ThreadRepository {
-    suspend fun save(thread: Thread): Thread
-    // throws DuplicateThreadException if thread with title exists
+// Domain interface
+interface EntityRepository {
+    suspend fun save(entity: Entity): Entity
+    // throws DuplicateEntityException if constraint violated
 }
 
 // Infrastructure implementation
 @Service
-class ExposedThreadRepository : ThreadRepository {
-    override suspend fun save(thread: Thread): Thread = dbQuery {
-        // Check for duplicate
-        val existing = ThreadsTable.select { 
-            ThreadsTable.title eq thread.title 
-        }.singleOrNull()
+class EntityRepositoryImpl : EntityRepository {
+    override suspend fun save(entity: Entity): Entity = dbQuery {
+        // Check for constraint violation
+        val existing = checkDuplicate(entity)
         
         if (existing != null) {
-            throw DuplicateThreadException(thread.title)
+            throw DuplicateEntityException(entity.field)
         }
         
-        // Insert new thread
-        ThreadsTable.insert { ... }
-        thread
+        // Persist entity
+        persistToDatabase(entity)
+        entity
     }
 }
 ```
@@ -634,24 +653,24 @@ Use sealed classes/Result when operation has multiple distinct failure cases tha
 - Complex operations with different failure modes
 - When you want caller to handle each case explicitly
 
-**Example:**
+**Pattern:**
 ```kotlin
 // Domain
-sealed interface CreateThreadResult {
-    data class Success(val thread: Thread) : CreateThreadResult
-    data class DuplicateTitle(val existingId: Thread.Id) : CreateThreadResult
-    data class InvalidTitle(val reason: String) : CreateThreadResult
+sealed interface CreateEntityResult {
+    data class Success(val entity: Entity) : CreateEntityResult
+    data class DuplicateField(val existingId: Entity.Id) : CreateEntityResult
+    data class InvalidField(val reason: String) : CreateEntityResult
 }
 
-interface ThreadRepository {
-    suspend fun createThread(thread: Thread): CreateThreadResult
+interface EntityRepository {
+    suspend fun createEntity(entity: Entity): CreateEntityResult
 }
 
 // Usage in Application
-when (val result = threadRepository.createThread(thread)) {
-    is Success -> result.thread
-    is DuplicateTitle -> // handle duplicate
-    is InvalidTitle -> // handle invalid
+when (val result = repository.createEntity(entity)) {
+    is Success -> result.entity
+    is DuplicateField -> // handle duplicate
+    is InvalidField -> // handle invalid
 }
 ```
 
@@ -659,8 +678,8 @@ when (val result = threadRepository.createThread(thread)) {
 
 **Use this guide to choose error handling strategy:**
 
-1. **Not finding something?** → Nullable (`Thread?`)
-2. **Business rule violated?** → Exception (`DuplicateThreadException`)
+1. **Not finding something?** → Nullable (`Entity?`)
+2. **Business rule violated?** → Exception (`DuplicateEntityException`)
 3. **Multiple failure types?** → Result/Sealed class
 4. **Unexpected infrastructure error?** → Exception (let it propagate)
 
@@ -669,21 +688,21 @@ when (val result = threadRepository.createThread(thread)) {
 - **Internal components** - Use `require()`, `check()` - fail immediately on invalid input
 - **External interfaces** - Defensive error handling, return Result or null
 
-**Example:**
+**Pattern:**
 ```kotlin
 // Internal - fail fast
-internal fun processThread(thread: Thread) {
-    require(thread.id.value.isNotBlank()) { "Thread ID cannot be blank" }
-    // Caller should never pass invalid thread
+internal fun processEntity(entity: Entity) {
+    require(entity.id.value.isNotBlank()) { "Entity ID cannot be blank" }
+    // Caller should never pass invalid entity
 }
 
 // External - defensive
 @Service
-class ExposedThreadRepository : ThreadRepository {
-    override suspend fun findById(id: Thread.Id): Thread? = try {
+class EntityRepositoryImpl : EntityRepository {
+    override suspend fun findById(id: Entity.Id): Entity? = try {
         dbQuery { ... }
     } catch (e: Exception) {
-        logger.error("Database error finding thread", e)
+        logger.error("Database error finding entity", e)
         null  // Don't expose infrastructure errors
     }
 }
@@ -692,8 +711,8 @@ class ExposedThreadRepository : ThreadRepository {
 ### Exception Guidelines
 
 **Naming:**
-- Use specific names: `DuplicateThreadException`, not `ThreadException`
-- Include entity name: `ThreadNotFoundException`, not `NotFoundException`
+- Use specific names: `DuplicateEntityException`, not `EntityException`
+- Include entity name: `EntityNotFoundException`, not `NotFoundException`
 
 **Location:**
 - Domain exceptions: `domain/model/`

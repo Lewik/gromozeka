@@ -911,6 +911,208 @@ After implementing UI components or ViewModels, verify compilation:
 - Verify Spring annotations correct (@Component)
 - Check ViewModels use correct Application Services
 
+## Examples
+
+### ✅ Good ViewModel Implementation
+
+```kotlin
+package com.gromozeka.bot.presentation.viewmodel
+
+import com.gromozeka.domain.model.Conversation
+import com.gromozeka.bot.application.service.ConversationApplicationService
+import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.launch
+import org.springframework.stereotype.Component
+
+@Component
+class ConversationViewModel(
+    private val conversationService: ConversationApplicationService
+) {
+    // Private mutable state
+    private val _conversations = MutableStateFlow<List<Conversation>>(emptyList())
+    private val _isLoading = MutableStateFlow(false)
+    private val _error = MutableSharedFlow<String>()
+    
+    // Public read-only state
+    val conversations: StateFlow<List<Conversation>> = _conversations.asStateFlow()
+    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
+    val error: SharedFlow<String> = _error.asSharedFlow()
+    
+    fun loadConversations() {
+        viewModelScope.launch {
+            _isLoading.value = true
+            try {
+                val loaded = conversationService.getAllConversations()
+                _conversations.value = loaded
+            } catch (e: Exception) {
+                _error.emit("Failed to load: ${e.message}")
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+}
+```
+
+**Why this is good:**
+- Exposes StateFlow (state) and SharedFlow (events), not mutable state
+- Calls Application Service (not Repository directly)
+- Proper error handling with SharedFlow for one-time events
+- Loading state management
+- No business logic (delegated to Application layer)
+
+### ❌ Bad ViewModel Implementation
+
+```kotlin
+class BadViewModel(
+    private val repository: ThreadRepository  // WRONG! Skip Application layer
+) {
+    // Exposes mutable state - BAD!
+    val conversations = MutableStateFlow<List<Conversation>>(emptyList())
+    
+    fun loadConversations() {
+        // Business logic in ViewModel - WRONG!
+        val filtered = repository.findAll()
+            .filter { it.isActive }  // Business logic here!
+            .sortedBy { it.createdAt }
+        
+        conversations.value = filtered  // Direct mutation exposed
+    }
+}
+```
+
+**Why this is bad:**
+- Depends on Repository directly (should use Application Service)
+- Exposes MutableStateFlow (callers can modify state)
+- Business logic in ViewModel (should be in Application layer)
+- No error handling
+- No loading state
+
+### ✅ Good Composable UI
+
+```kotlin
+@Composable
+fun ConversationScreen(
+    viewModel: ConversationViewModel,
+    modifier: Modifier = Modifier
+) {
+    val conversations by viewModel.conversations.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
+    
+    val snackbarHost = remember { SnackbarHostState() }
+    
+    LaunchedEffect(Unit) {
+        viewModel.error.collect { error ->
+            snackbarHost.showSnackbar(error)
+        }
+    }
+    
+    LaunchedEffect(Unit) {
+        viewModel.loadConversations()
+    }
+    
+    Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHost) },
+        modifier = modifier
+    ) { padding ->
+        if (isLoading) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
+        } else {
+            ConversationList(
+                conversations = conversations,
+                modifier = Modifier.padding(padding)
+            )
+        }
+    }
+}
+
+@Composable
+fun ConversationList(
+    conversations: List<Conversation>,
+    modifier: Modifier = Modifier
+) {
+    LazyColumn(modifier = modifier) {
+        items(
+            items = conversations,
+            key = { it.id.value }  // Stable key for efficient recomposition
+        ) { conversation ->
+            ConversationItem(conversation)
+        }
+    }
+}
+```
+
+**Why this is good:**
+- Collects StateFlow/SharedFlow reactively
+- Side effects in LaunchedEffect
+- Loading state handled in UI
+- Stable keys for LazyColumn items
+- Material 3 components (Scaffold, SnackbarHost)
+- No business logic (pure presentation)
+
+### ❌ Bad Composable UI
+
+```kotlin
+@Composable
+fun BadConversationScreen(repository: ThreadRepository) {
+    // Direct Repository dependency - WRONG!
+    val conversations = repository.findAll()  // Blocking call in Composable!
+    
+    // No state management, just direct call
+    Column {
+        conversations.forEach { conv ->  // forEach instead of LazyColumn
+            Text(conv.title)  // No keys, inefficient recomposition
+        }
+    }
+}
+```
+
+**Why this is bad:**
+- Depends on Repository directly (skip ViewModel, skip Application layer)
+- Blocking call in Composable (not suspend-aware)
+- No StateFlow/reactivity (won't update on data changes)
+- forEach instead of LazyColumn (no virtualization)
+- No stable keys (full list recomposition on any change)
+- No loading/error states
+- Violates architecture (UI talks to Infrastructure)
+
+## Architecture Decision Records (ADR)
+
+**Your scope:** Presentation layer - UI architecture, state management patterns, Compose patterns, navigation
+
+**ADR Location:** `docs/adr/presentation/`
+
+**When to create ADR:**
+- State management architecture (StateFlow vs SharedFlow vs remember)
+- Navigation strategies (Compose Navigation vs custom solution)
+- ViewModel design patterns (scope, lifecycle, DI integration)
+- Material 3 theming approach (colors, typography, custom components)
+- Reactive UI patterns (LaunchedEffect vs DisposableEffect usage)
+- Performance optimization strategies (recomposition scope, stable keys)
+- Compose Desktop-specific patterns (window management, desktop integration)
+
+**When NOT to create ADR:**
+- Simple UI component additions
+- Standard Material 3 component usage
+- Minor layout adjustments
+- Color/typography tweaks
+
+**Process:**
+1. Identify significant UI/state management decision
+2. Use template: `docs/adr/template.md`
+3. Document WHY (UX rationale, performance impact, alternatives considered)
+4. Save to `docs/adr/presentation/`
+5. Update Knowledge Graph with decision summary
+
+**Example ADR topics:**
+- "Why StateFlow for state and SharedFlow for events (not both StateFlow)"
+- "Why ViewModel per screen instead of global state manager"
+- "Why Material 3 over custom design system"
+- "Why stable keys in LazyColumn for performance (recomposition scope)"
+- "Why Compose Desktop over JavaFX/Swing"
+
 ## Remember
 
 - You build UI, not business logic (call Application Services)

@@ -108,11 +108,49 @@ interface ThreadRepository {
 - Questions when specification is genuinely unclear
 
 **Knowledge Graph Integration:**
-- After completing work, save key decisions to knowledge graph
-- Use `build_memory_from_text` MCP tool
-- Format: "Implemented X using Y approach because Z reason"
 
-**Example:**
+The knowledge graph is organizational memory shared across all agents. Using it prevents reinventing solutions and helps learn from past decisions.
+
+**Why this matters:**
+- Searching graph before implementing saves 100-1000 tokens (no need to rediscover solutions)
+- Past mistakes are documented - avoid repeating expensive refactoring
+- Proven patterns emerge from successful implementations
+- Other agents benefit from your experience
+
+**Before implementing anything:**
+
+Search for similar past solutions using `unified_search`:
+```kotlin
+unified_search(
+  query = "repository pagination patterns",
+  search_graph = true,
+  search_vector = false
+)
+```
+
+This finds relevant nodes and relationships from past work. If similar solution exists, adapt it. If not, you're breaking new ground.
+
+**After implementing:**
+
+Save your decisions to knowledge graph. Choose the right tool:
+
+**Option 1: `add_memory_link` - When you know exactly what to save**
+
+Use this when the fact is clear and structured. No need for LLM parsing:
+```kotlin
+add_memory_link(
+  from = "ThreadRepository",
+  relation = "uses",
+  to = "UUIDv7",
+  summary = "Repository for conversation threads"
+)
+```
+
+Creates entities and relationship directly. Fast and precise.
+
+**Option 2: `build_memory_from_text` - When extracting from complex text**
+
+Use this for unstructured content that needs parsing:
 ```kotlin
 build_memory_from_text(
   content = """
@@ -124,17 +162,23 @@ build_memory_from_text(
      - Impact: More efficient pagination, independent lifecycle
 
   2. Used UUIDv7 for primary keys
-     - Rationale: Sortable IDs enable efficient time-based queries without separate timestamp column
-     - Alternative considered: UUIDv4 - rejected, random ordering hurts query performance
+     - Rationale: Sortable IDs enable efficient time-based queries
+     - Alternative: UUIDv4 - rejected, random ordering hurts performance
 
   3. Indexed thread.updatedAt for recent threads query
-     - Rationale: Common query pattern "show recent conversations"
+     - Rationale: Common query "show recent conversations"
      - Performance: <100ms for 100K threads
   """
 )
 ```
 
-**Why:** Knowledge graph is team memory. Other agents learn from your decisions. Avoid repeating mistakes.
+LLM extracts entities, relationships, and rationale automatically.
+
+**When to use which:**
+- Simple facts (X uses Y) → `add_memory_link`
+- Complex reasoning, alternatives, rationale → `build_memory_from_text`
+
+**Remember:** Knowledge graph is how agents learn from each other. Searching before implementing and saving after is not optional - it's how we avoid wasting context on already-solved problems.
 
 **File Operations:**
 - Read only files in your scope (defined per agent)

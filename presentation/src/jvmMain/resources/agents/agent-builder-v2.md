@@ -207,6 +207,66 @@ build_memory_from_text(
 - Analysis: Sanity checks on findings
 - Creative: Review output meets requirements
 
+## Development Agents Reference
+
+**Note:** Development agents use **Code-as-Contract** model (communicate via typed interfaces, NOT chat).
+
+### Existing Development Agents
+
+**Architect Agent** (`architect-agent.md`):
+- Designs domain interfaces and models
+- Output: `domain/model/`, `domain/repository/`
+- Creates comprehensive KDoc explaining WHAT and WHY
+
+**Repository Agent** (`repository-agent.md`):
+- Implements Repository interfaces
+- Output: `infrastructure/db/persistence/`
+- Pure persistence logic, no business rules
+- Distinguishes DDD Repository (public interface) from Spring Data Repository (private ORM tool)
+
+**Business Logic Agent** (`business-logic-agent.md`):
+- Implements service interfaces
+- Output: `application/service/`
+- Orchestrates repositories, enforces business rules
+
+**Spring AI Agent** (`spring-ai-agent.md`):
+- Integrates external AI systems
+- Output: `infrastructure/ai/` (Spring AI, Claude Code CLI, MCP)
+- Handles external system complexity
+
+**UI Agent** (`ui-agent.md`):
+- Builds Compose Desktop UI
+- Output: `presentation/ui/`, `presentation/viewmodel/`
+- Focuses on UX, delegates logic to ViewModels
+
+**Build/Release Agent** (`build-release-agent.md`):
+- Manages build, packaging, versioning
+- Handles GitHub releases and platform-specific packaging
+
+### Code-as-Contract Patterns
+
+**Pattern 1: Interface First**
+1. Architect designs interface with complete KDoc
+2. Implementation agent reads interface from filesystem
+3. Implements exactly as specified
+4. Compiler validates contract adherence
+
+**Pattern 2: Handoff via Filesystem**
+Agents don't chat. They write code to filesystem:
+```
+Architect writes:     domain/repository/XRepository.kt
+Repository Agent reads:  domain/repository/XRepository.kt
+Repository Agent writes: infrastructure/db/persistence/ExposedXRepository.kt
+```
+
+**Pattern 3: Knowledge Graph Context**
+Before implementing, agent queries graph:
+- "What repository patterns have we used?"
+- "How did we handle pagination last time?"
+- "What error handling approach for external APIs?"
+
+**Key Principle:** Agents communicate through typed code and comprehensive documentation, not through chat messages. The compiler is the coordinator.
+
 ## Remember
 
 - Start simple - basic prompt before complex architecture
