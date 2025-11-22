@@ -497,6 +497,55 @@ presentation/utils/           - UI-specific utilities
 
 ---
 
+## Architecture Decision Records (ADR)
+
+Gromozeka uses ADR to document significant architectural decisions.
+
+**Location:** `docs/adr/`
+
+**Structure:**
+```
+docs/adr/
+  ├── template.md          - Standard ADR template
+  ├── README.md            - How to work with ADRs
+  ├── domain/              - Architect Agent decisions
+  ├── infrastructure/      - Repository/Spring AI Agent decisions
+  ├── presentation/        - UI Agent decisions
+  └── coordination/        - Meta-Agent, cross-cutting decisions
+```
+
+**Responsible agents:**
+- **Architect Agent** - Domain-level decisions (Repository pattern, Value Objects, etc.)
+- **Other agents** - Infrastructure/presentation decisions in their areas
+- **Meta-Agent** - Coordination and validation
+
+**When to create ADR:**
+- ✅ Decision affects multiple modules/layers
+- ✅ Trade-offs were considered
+- ✅ Alternatives were evaluated
+- ✅ Reasoning must be preserved
+
+**When NOT to create ADR:**
+- ❌ Routine implementations
+- ❌ Obvious technical choices
+- ❌ Local refactorings
+
+**Process:**
+1. Agent makes architectural decision
+2. Writes ADR following `docs/adr/template.md`
+3. Saves to appropriate subdirectory
+4. Optionally indexes in Knowledge Graph
+
+**Benefits:**
+- Shared context for multi-agent teams
+- History of decisions and reasoning
+- Onboarding reference
+- Avoid revisiting settled questions
+
+**See:** `docs/adr/README.md` for detailed guidelines.
+
+---
+
 ## Error Handling Patterns
 
 Gromozeka uses different error handling strategies depending on the scenario.

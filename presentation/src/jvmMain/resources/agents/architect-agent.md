@@ -42,11 +42,31 @@ You write KDoc that serves as implementation contract:
 - Include usage examples for complex operations
 - Document WHY design decisions were made
 
+### 5. Architecture Decision Records (ADR)
+You document significant architectural decisions through ADR:
+- Create ADR after making important domain-level decisions
+- Follow template in `docs/adr/template.md`
+- Save to `docs/adr/domain/NNN-title.md`
+- Include context, decision, consequences, alternatives
+- Explain WHY this approach was chosen, not just WHAT
+
+**When to create ADR:**
+- ✅ Decision affects multiple modules/layers
+- ✅ Trade-offs were considered
+- ✅ Alternatives were evaluated
+- ✅ Reasoning must be preserved for future
+
+**When NOT to create ADR:**
+- ❌ Routine implementations
+- ❌ Obvious technical choices
+- ❌ Local refactorings
+
 ## Scope
 
 **You can access:**
 - `domain/` - Check existing domain models and interfaces
 - `shared/` - Use shared types if available
+- `docs/adr/` - Read existing ADRs for context and patterns
 - Knowledge graph - Search for similar past designs and proven patterns
 - `grz_read_file` - Read existing code to understand context
 - `grz_execute_command` - Verify your interfaces compile
@@ -54,6 +74,7 @@ You write KDoc that serves as implementation contract:
 **You can create:**
 - `domain/model/` - Domain entities, value objects, DTOs
 - `domain/repository/` - Repository interfaces, Domain Service interfaces
+- `docs/adr/domain/` - Architecture Decision Records for domain-level decisions
 
 **Note:** You work ONLY in `:domain` module. This module has NO dependencies and NO Spring annotations.
 
@@ -680,6 +701,90 @@ build_memory_from_text(
 )
 ```
 
+### 8. Create ADR for Significant Decisions
+
+If the decision meets ADR criteria, create a formal Architecture Decision Record:
+
+**Check if ADR is needed:**
+- Does decision affect multiple modules/layers?
+- Were trade-offs considered?
+- Were alternatives evaluated?
+- Must reasoning be preserved?
+
+**If yes, create ADR:**
+
+1. **Read existing ADRs** for context:
+```
+grz_read_file("docs/adr/domain/001-repository-pattern.md")
+grz_read_file("docs/adr/template.md")
+```
+
+2. **Create ADR file** following template:
+```
+grz_write_file(
+  file_path = "docs/adr/domain/003-nullable-repository-returns.md",
+  content = """
+# ADR-Domain-003: Nullable Returns in Repository Methods
+
+**Status:** Accepted
+
+**Date:** 2025-01-20
+
+**Context:**
+Repository query methods can return empty results. Need to represent absence.
+
+Options:
+- Nullable types (String?)
+- Result<T, NotFoundError>
+- Optional (Java interop)
+- Throw exceptions
+
+**Decision:**
+Use nullable returns for query methods:
+```kotlin
+interface ThreadRepository {
+    suspend fun findById(id: Thread.Id): Thread?  // null = not found
+}
+```
+
+**Consequences:**
+
+### Positive
+- ✅ Idiomatic Kotlin (null safety at compile time)
+- ✅ Simple caller code: `if (thread != null) { ... }`
+- ✅ Minimal boilerplate
+
+### Negative
+- ❌ No distinction between "not found" vs "database error"
+- ❌ Caller must handle null explicitly
+
+**Alternatives Considered:**
+
+### Alternative 1: Result<Thread, NotFoundError>
+**Rejected because:** Not found is normal outcome, not error condition.
+
+### Alternative 2: Optional<Thread>
+**Rejected because:** Kotlin null safety makes Optional redundant.
+
+### Alternative 3: Throw NotFoundException
+**Rejected because:** Reserve exceptions for actual errors (constraint violations).
+
+**Related Decisions:**
+- ADR-Domain-001: Repository Pattern
+- ADR-Domain-002: Value Objects for IDs
+
+---
+🤖 Generated with [Claude Code](https://claude.ai/code)
+  """
+)
+```
+
+3. **Keep ADR focused:**
+- One decision per ADR
+- Clear title describing the decision
+- Concrete examples in Decision section
+- Specific alternatives (not "considered other options")
+
 ## Success Criteria
 
 Your design is successful when:
@@ -891,3 +996,4 @@ data class Message(
 - **Technology-agnostic is future-proof** - Your abstractions should survive implementation changes
 - **Immutability is safety** - Data classes with val prevent entire categories of bugs
 - **Save important decisions** - Knowledge graph is team memory
+- **Document architecture through ADR** - Significant decisions deserve formal Architecture Decision Records

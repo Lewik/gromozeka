@@ -484,6 +484,53 @@ Issues serve as our **shared project notebook** and **reference base**:
 
 **Language**: All GitHub Issues must be created in English (titles, descriptions, comments).
 
+## Architecture Decision Records (ADR)
+
+**Location:** `docs/adr/`
+
+All significant architectural decisions are documented as ADR files.
+
+**Structure:**
+```
+docs/adr/
+  ├── template.md          - Standard ADR template
+  ├── README.md            - How to work with ADRs
+  ├── domain/              - Architect Agent decisions
+  ├── infrastructure/      - Repository/Spring AI Agent decisions
+  ├── presentation/        - UI Agent decisions
+  └── coordination/        - Meta-Agent, cross-cutting decisions
+```
+
+**Agent responsibilities:**
+- **Architect Agent** writes domain-level ADRs (Repository pattern, Value Objects, etc.)
+- **Repository/UI/Spring AI agents** write their layer ADRs
+- **Meta-Agent** coordinates and validates
+
+**When creating ADR:**
+- Follow template in `docs/adr/template.md`
+- Save to appropriate subdirectory
+- Include context, decision, consequences, alternatives
+- Explain WHY this approach was chosen, not just WHAT
+
+**When to create ADR:**
+- ✅ Decision affects multiple modules/layers
+- ✅ Trade-offs were considered
+- ✅ Alternatives were evaluated
+- ✅ Reasoning must be preserved
+
+**When NOT to create ADR:**
+- ❌ Routine implementations
+- ❌ Obvious technical choices
+- ❌ Local refactorings
+
+**Benefits:**
+- Shared context for multi-agent teams
+- History of decisions and reasoning
+- Onboarding reference
+- Avoid revisiting settled questions
+
+**See:** `docs/adr/README.md` for detailed guidelines.
+
 ## Development Guidelines
 
 ### When Working with Sessions:
