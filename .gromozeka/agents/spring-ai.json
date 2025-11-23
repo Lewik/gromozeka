@@ -1,0 +1,21 @@
+{
+  "id": {
+    "value": "spring-ai"
+  },
+  "name": "Spring AI агент",
+  "prompts": [
+    {
+      "value": "builtin:shared-base.md"
+    },
+    {
+      "value": "builtin:spring-ai-agent.md"
+    },
+    {
+      "value": "builtin:architecture.md"
+    }
+  ],
+  "description": "Spring AI integration",
+  "type": "BUILTIN",
+  "createdAt": "2025-11-22T19:11:52Z",
+  "updatedAt": "2025-11-22T19:11:52Z"
+}

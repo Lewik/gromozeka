@@ -42,13 +42,26 @@ fun AgentListItem(
                             fontWeight = FontWeight.Bold
                         )
                         
-                        if (agent.isBuiltin) {
-                            Spacer(modifier = Modifier.width(8.dp))
-                            AssistChip(
-                                onClick = {},
-                                label = { Text("Built-in") },
-                                enabled = false
-                            )
+                        when (agent.type) {
+                            Agent.Type.BUILTIN -> {
+                                Spacer(modifier = Modifier.width(8.dp))
+                                AssistChip(
+                                    onClick = {},
+                                    label = { Text("Built-in") },
+                                    enabled = false
+                                )
+                            }
+                            Agent.Type.GLOBAL -> {
+                                Spacer(modifier = Modifier.width(8.dp))
+                                AssistChip(
+                                    onClick = {},
+                                    label = { Text("Global") },
+                                    enabled = false
+                                )
+                            }
+                            Agent.Type.PROJECT -> {
+                                // No chip for project agents
+                            }
                         }
                     }
                     
@@ -70,7 +83,7 @@ fun AgentListItem(
                         )
                     }
                     
-                    if (!agent.isBuiltin) {
+                    if (agent.type != Agent.Type.BUILTIN) {
                         IconButton(onClick = onDelete) {
                             Icon(
                                 Icons.Default.Delete,
@@ -84,21 +97,11 @@ fun AgentListItem(
             
             Spacer(modifier = Modifier.height(8.dp))
             
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                Text(
-                    text = "Prompts: ${agent.prompts.size}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                
-                Text(
-                    text = "Used: ${agent.usageCount} times",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
+            Text(
+                text = "Prompts: ${agent.prompts.size}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }

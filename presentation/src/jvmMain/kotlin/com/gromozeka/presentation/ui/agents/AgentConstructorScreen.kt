@@ -528,7 +528,7 @@ fun AgentConstructorScreen(
                                 name = name,
                                 prompts = selectedPrompts,
                                 description = description,
-                                isBuiltin = false
+                                type = Agent.Type.PROJECT
                             )
                             log.info { "Created new agent: $name" }
                         } else {

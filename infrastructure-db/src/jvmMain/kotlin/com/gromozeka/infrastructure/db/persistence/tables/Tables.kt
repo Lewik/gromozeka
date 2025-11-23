@@ -39,8 +39,7 @@ internal object Agents : Table("agents") {
     val name = varchar("name", 255)
     val promptsJson = text("prompts_json")  // JSON array of Prompt IDs
     val description = text("description").nullable()
-    val isBuiltin = bool("is_builtin")
-    val usageCount = integer("usage_count")
+    val type = varchar("type", 50)
     val createdAt = timestamp("created_at")
     val updatedAt = timestamp("updated_at")
 

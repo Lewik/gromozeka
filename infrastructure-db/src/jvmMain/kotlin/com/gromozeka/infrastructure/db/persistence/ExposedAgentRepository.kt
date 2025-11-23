@@ -31,8 +31,7 @@ class ExposedAgentRepository : AgentRepository {
                 it[name] = agent.name
                 it[Agents.promptsJson] = promptsJson
                 it[description] = agent.description
-                it[isBuiltin] = agent.isBuiltin
-                it[usageCount] = agent.usageCount
+                it[type] = agent.type.name
                 it[updatedAt] = agent.updatedAt.toKotlin()
             }
         } else {
@@ -41,8 +40,7 @@ class ExposedAgentRepository : AgentRepository {
                 it[name] = agent.name
                 it[Agents.promptsJson] = promptsJson
                 it[description] = agent.description
-                it[isBuiltin] = agent.isBuiltin
-                it[usageCount] = agent.usageCount
+                it[type] = agent.type.name
                 it[createdAt] = agent.createdAt.toKotlin()
                 it[updatedAt] = agent.updatedAt.toKotlin()
             }
@@ -79,8 +77,7 @@ class ExposedAgentRepository : AgentRepository {
             name = this[Agents.name],
             prompts = prompts,
             description = this[Agents.description],
-            isBuiltin = this[Agents.isBuiltin],
-            usageCount = this[Agents.usageCount],
+            type = Agent.Type.valueOf(this[Agents.type]),
             createdAt = this[Agents.createdAt].toKotlinx(),
             updatedAt = this[Agents.updatedAt].toKotlinx()
         )

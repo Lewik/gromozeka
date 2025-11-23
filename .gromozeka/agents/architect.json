@@ -1,0 +1,21 @@
+{
+  "id": {
+    "value": "architect"
+  },
+  "name": "Архитектор",
+  "prompts": [
+    {
+      "value": "builtin:shared-base.md"
+    },
+    {
+      "value": "builtin:architect-agent.md"
+    },
+    {
+      "value": "builtin:architecture.md"
+    }
+  ],
+  "description": "Domain architect",
+  "type": "BUILTIN",
+  "createdAt": "2025-11-22T19:11:52Z",
+  "updatedAt": "2025-11-22T19:11:52Z"
+}

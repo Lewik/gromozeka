@@ -3,6 +3,7 @@ package com.gromozeka.infrastructure.ai.mcp.tools
 import com.gromozeka.bot.domain.repository.TabManager
 import com.gromozeka.bot.domain.model.Tab
 import com.gromozeka.bot.domain.model.ConversationInitiator
+import com.gromozeka.domain.model.Agent
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.repository.AgentDomainService
 import io.modelcontextprotocol.kotlin.sdk.CallToolRequest
@@ -94,11 +95,11 @@ class CreateAgentTool(
                 name = input.agent_name,
                 prompts = listOf(inlinePrompt.id),
                 description = "Created via MCP from parent tab: ${input.parent_tab_id}",
-                isBuiltin = false
+                type = Agent.Type.PROJECT
             )
         } else {
             agentService.findAll()
-                .firstOrNull { it.isBuiltin && it.name == "Gromozeka" }
+                .firstOrNull { it.type == Agent.Type.BUILTIN && it.name == "Gromozeka" }
                 ?: error("Default agent 'Gromozeka' not found in database")
         }
 

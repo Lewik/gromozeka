@@ -29,12 +29,11 @@ class AgentApplicationService(
      * Creates new agent with specified configuration.
      *
      * Generates unique ID and sets initial timestamps.
-     * New agents start with zero usage count.
      *
      * @param name agent role or display name (e.g., "Code Reviewer")
-     * @param systemPrompt instructions defining agent behavior
+     * @param prompts ordered list of prompt IDs defining agent behavior
      * @param description optional human-readable description of capabilities
-     * @param isBuiltin true for system agents (prevents deletion), false for user agents
+     * @param type agent scope type (builtin, global, or project-specific)
      * @return created agent
      */
     @Transactional
@@ -42,7 +41,7 @@ class AgentApplicationService(
         name: String,
         prompts: List<com.gromozeka.domain.model.Prompt.Id>,
         description: String?,
-        isBuiltin: Boolean
+        type: Agent.Type
     ): Agent {
         val now = Instant.fromEpochMilliseconds(System.currentTimeMillis())
 
@@ -51,8 +50,7 @@ class AgentApplicationService(
             name = name,
             prompts = prompts,
             description = description,
-            isBuiltin = isBuiltin,
-            usageCount = 0,
+            type = type,
             createdAt = now,
             updatedAt = now
         )
@@ -85,10 +83,10 @@ class AgentApplicationService(
      * Updates agent configuration.
      *
      * Only updates non-null parameters. Updates timestamp on any change.
-     * Built-in agents can be updated (no enforcement at service level).
+     * Builtin agents can be updated (no enforcement at service level).
      *
      * @param id agent identifier
-     * @param systemPrompt new system prompt (null keeps existing)
+     * @param prompts new prompts list (null keeps existing)
      * @param description new description (null keeps existing)
      * @return updated agent if exists, null otherwise
      */
@@ -113,15 +111,15 @@ class AgentApplicationService(
     /**
      * Deletes agent.
      *
-     * Prevents deletion of built-in agents - logs warning and returns without error.
-     * User-created agents are deleted normally.
+     * Prevents deletion of builtin agents - logs warning and returns without error.
+     * Global and project agents are deleted normally.
      *
      * @param id agent identifier
      */
     @Transactional
     override suspend fun delete(id: Agent.Id) {
         val agent = agentRepository.findById(id)
-        if (agent?.isBuiltin == true) {
+        if (agent?.type == Agent.Type.BUILTIN) {
             log.warn("Cannot delete builtin agent: ${agent.name}")
             return
         }
@@ -131,7 +129,7 @@ class AgentApplicationService(
     /**
      * Returns total agent count.
      *
-     * @return number of agents (includes built-in and user-created)
+     * @return number of agents (includes builtin, global, and project agents)
      */
     override suspend fun count(): Int =
         agentRepository.count()

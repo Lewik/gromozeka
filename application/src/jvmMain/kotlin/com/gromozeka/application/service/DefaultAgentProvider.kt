@@ -13,7 +13,7 @@ class DefaultAgentProvider(
 
     suspend fun getDefault(): Agent {
         val defaultAgent = agentService.findAll()
-            .firstOrNull { it.isBuiltin && it.name == "Gromozeka" }
+            .firstOrNull { it.type == Agent.Type.BUILTIN && it.name == "Gromozeka" }
             ?: error("Default agent 'Gromozeka' not found in database. Database may be corrupted.")
 
         log.debug("Retrieved default agent: ${defaultAgent.name} (${defaultAgent.id})")

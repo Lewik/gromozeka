@@ -7,9 +7,8 @@ import com.gromozeka.domain.model.Prompt
  * Domain service for managing AI agent definitions.
  *
  * Coordinates agent lifecycle and enforces business rules:
- * - Builtin agents cannot be deleted
+ * - Builtin agents cannot be deleted (protected system agents)
  * - Prompts and descriptions can be updated independently
- * - Usage count tracked automatically (managed by infrastructure)
  * - All agents use ordered list of prompts for behavior definition
  *
  * @see Agent for domain model
@@ -26,14 +25,14 @@ interface AgentDomainService {
      * @param name agent role name (e.g., "Code Reviewer", "Security Expert")
      * @param prompts ordered list of prompt IDs
      * @param description optional human-readable agent description
-     * @param isBuiltin true for system agents, false for user-created
+     * @param type agent scope type (builtin, global, or project-specific)
      * @return created agent with assigned ID
      */
     suspend fun createAgent(
         name: String,
         prompts: List<Prompt.Id>,
         description: String? = null,
-        isBuiltin: Boolean = false
+        type: Agent.Type
     ): Agent
 
     /**
@@ -66,7 +65,7 @@ interface AgentDomainService {
     /**
      * Updates agent prompts or description.
      *
-     * Name and isBuiltin are immutable after creation.
+     * Name and type are immutable after creation.
      * This is a transactional operation.
      *
      * @param id agent to update
