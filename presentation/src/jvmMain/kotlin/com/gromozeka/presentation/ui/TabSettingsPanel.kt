@@ -9,6 +9,9 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -43,8 +46,19 @@ fun TabSettingsPanel(
             isLoading = true
             error = null
             try {
-                agents = agentService.findAll()
-                log.info { "Loaded ${agents.size} agents for tab settings" }
+                val loadedAgents = agentService.findAll()
+                
+                agents = loadedAgents.sortedWith(
+                    compareBy<Agent> { agent ->
+                        when (agent.type) {
+                            Agent.Type.PROJECT -> 0
+                            Agent.Type.GLOBAL -> 1
+                            Agent.Type.BUILTIN -> 2
+                        }
+                    }.thenBy { it.name }
+                )
+                
+                log.info { "Loaded ${agents.size} agents (PROJECT first)" }
             } catch (e: Exception) {
                 error = "Failed to load agents: ${e.message}"
                 log.error(e) { "Error loading agents" }
@@ -178,6 +192,19 @@ private fun AgentRadioItem(
             RadioButton(
                 selected = isSelected,
                 onClick = null
+            )
+
+            Spacer(modifier = Modifier.width(8.dp))
+
+            Icon(
+                imageVector = when (agent.type) {
+                    Agent.Type.PROJECT -> Icons.Default.Folder
+                    Agent.Type.GLOBAL -> Icons.Default.Home
+                    Agent.Type.BUILTIN -> Icons.Default.Lock
+                },
+                contentDescription = agent.type.name,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(20.dp)
             )
 
             Spacer(modifier = Modifier.width(8.dp))
