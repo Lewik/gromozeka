@@ -405,7 +405,8 @@ fun ApplicationScope.ChatWindow(
                                                     AgentConstructorScreen(
                                                         agentService = agentService,
                                                         promptService = promptService,
-                                                        coroutineScope = coroutineScope
+                                                        coroutineScope = coroutineScope,
+                                                        projectPath = currentTab?.uiState?.value?.projectPath
                                                     )
                                                 }
                                                 else -> {
@@ -435,6 +436,7 @@ fun ApplicationScope.ChatWindow(
                                     currentTab?.let { tabViewModel ->
                                         val tabUiState by tabViewModel.uiState.collectAsState()
                                         TabSettingsPanel(
+                                            projectPath = tabUiState.projectPath,
                                             isVisible = showPromptsPanel,
                                             currentAgent = tabUiState.agent,
                                             onAgentChange = { tabViewModel.updateAgent(it) },

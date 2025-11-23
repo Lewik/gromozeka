@@ -2,9 +2,12 @@ package com.gromozeka.presentation.ui
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Face
 import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -12,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.ui.unit.dp
+import com.gromozeka.domain.model.Agent
 import com.gromozeka.presentation.getTabDisplayName
 import com.gromozeka.presentation.ui.viewmodel.TabViewModel
 import kotlinx.coroutines.CoroutineScope
@@ -100,7 +104,23 @@ fun CustomTabRow(
                         modifier = Modifier.Companion.fillMaxWidth(),
                         contentAlignment = Alignment.Companion.Center
                     ) {
-                        Text(getTabDisplayName(tabUiState, index))
+                        Row(
+                            verticalAlignment = Alignment.Companion.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                imageVector = when (val type = tabUiState.agent.type) {
+                                    is Agent.Type.Project -> Icons.Default.Folder
+                                    is Agent.Type.Global -> Icons.Default.Home
+                                    is Agent.Type.Builtin -> Icons.Default.Lock
+                                    is Agent.Type.Inline -> Icons.Default.Description
+                                },
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(getTabDisplayName(tabUiState, index))
+                        }
 
                         // Edit button (pencil) - appears on hover
                         if (hoveredTabIndex == index) {

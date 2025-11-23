@@ -21,17 +21,7 @@ class PromptApplicationService(
         projectPath: String
     ): String {
         val prompts = promptIds.map { id ->
-            val prompt = promptRepository.findById(id) ?: throw Prompt.NotFoundException(id)
-            
-            // Dynamic prompts - generate content on-the-fly
-            when (prompt.source) {
-                is Prompt.Source.Dynamic.Environment -> {
-                    prompt.copy(
-                        content = systemPromptBuilder.buildEnvironmentInfo(projectPath)
-                    )
-                }
-                else -> prompt  // Static prompts use stored content
-            }
+            promptRepository.findById(id) ?: throw Prompt.NotFoundException(id)
         }
         
         return prompts.joinToString(separator) { it.content }
@@ -53,18 +43,16 @@ class PromptApplicationService(
         val now = Clock.System.now()
         
         val prompt = Prompt(
-            id = Prompt.Id(uuid7()),
+            id = Prompt.Id("inline:${uuid7()}"),
             name = name,
             content = content,
-            source = Prompt.Source.Text(content),
+            type = Prompt.Type.Inline,
             createdAt = now,
             updatedAt = now
         )
         
-        // Register inline prompt in repository for lookup
-        // Note: InMemoryPromptRepository needs a register method for this
-        // For now, inline prompts are ephemeral
-        return prompt
+        // Save to repository (will be stored in memory cache for inline prompts)
+        return promptRepository.save(prompt)
     }
     
     override suspend fun copyBuiltinPromptToUser(id: Prompt.Id): Result<Unit> {

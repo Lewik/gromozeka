@@ -37,12 +37,12 @@ interface PromptRepository {
     suspend fun findAll(): List<Prompt>
 
     /**
-     * Finds prompts by source type.
+     * Finds prompts by type.
      *
-     * @param sourceType filter by prompt source type
-     * @return prompts from specified source, ordered by name
+     * @param type filter by prompt type (BUILTIN, PROJECT, or GLOBAL)
+     * @return prompts of specified type, ordered by name
      */
-    suspend fun findBySourceType(sourceType: Class<out Prompt.Source>): List<Prompt>
+    suspend fun findByType(type: Prompt.Type): List<Prompt>
 
     /**
      * Refreshes prompt list from filesystem.

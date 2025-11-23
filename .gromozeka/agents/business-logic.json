@@ -1,21 +1,12 @@
 {
-  "id": {
-    "value": "business-logic"
-  },
+  "id": "business-logic",
   "name": "Агент бизнес логики",
   "prompts": [
-    {
-      "value": "builtin:shared-base.md"
-    },
-    {
-      "value": "builtin:business-logic-agent.md"
-    },
-    {
-      "value": "builtin:architecture.md"
-    }
+    ".gromozeka/prompts/shared-base.md",
+    ".gromozeka/prompts/business-logic-agent.md",
+    ".gromozeka/prompts/architecture.md"
   ],
   "description": "Business logic implementation",
-  "type": "BUILTIN",
   "createdAt": "2025-11-22T19:11:52Z",
   "updatedAt": "2025-11-22T19:11:52Z"
 }

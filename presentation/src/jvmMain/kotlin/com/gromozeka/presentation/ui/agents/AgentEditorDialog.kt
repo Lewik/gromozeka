@@ -121,13 +121,11 @@ fun AgentEditorDialog(
                                         )
 
                                         Text(
-                                            text = when (val source = prompt.source) {
-                                                is Prompt.Source.Builtin -> "Built-in: ${source.resourcePath.value}"
-                                                is Prompt.Source.LocalFile.User -> "User: ${source.path.value}"
-                                                is Prompt.Source.LocalFile.Imported -> "Imported: ${source.path.value}"
-                                                is Prompt.Source.Remote.Url -> "URL: ${source.url}"
-                                                is Prompt.Source.Dynamic.Environment -> "Environment (dynamic)"
-                                                is Prompt.Source.Text -> "Inline text"
+                                            text = when (val type = prompt.type) {
+                                                is Prompt.Type.Builtin -> "Built-in"
+                                                is Prompt.Type.Global -> "Global"
+                                                is Prompt.Type.Project -> "Project"
+                                                is Prompt.Type.Inline -> "Inline"
                                             },
                                             style = MaterialTheme.typography.bodySmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant

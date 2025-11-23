@@ -1,6 +1,5 @@
 package com.gromozeka.domain.model
 
-import com.gromozeka.shared.path.KPath
 import kotlinx.datetime.Instant
 import kotlinx.serialization.Serializable
 
@@ -12,10 +11,10 @@ import kotlinx.serialization.Serializable
  *
  * This is an immutable value type - use copy() to create modified versions.
  *
- * @property id unique prompt identifier
+ * @property id unique prompt identifier (hash of file path or generated for inline)
  * @property name human-readable prompt name (displayed in UI)
  * @property content markdown text of the prompt
- * @property source origin of this prompt (builtin/file/remote/dynamic)
+ * @property type prompt location type with file path (or inline for dynamic prompts)
  * @property createdAt timestamp when prompt was created (immutable)
  * @property updatedAt timestamp of last modification
  */
@@ -24,92 +23,55 @@ data class Prompt(
     val id: Id,
     val name: String,
     val content: String,
-    val source: Source,
+    val type: Type,
     val createdAt: Instant,
     val updatedAt: Instant
 ) {
     /**
-     * Unique prompt identifier.
+     * Unique prompt identifier (hash of file path or UUID for inline).
      */
     @Serializable
     @JvmInline
     value class Id(val value: String)
 
     /**
-     * Origin of a prompt.
+     * Prompt location type.
+     * Type determines where prompt is stored and how its ID is resolved.
+     * ID contains relative path specific to each type.
      */
     @Serializable
-    sealed interface Source {
+    sealed class Type {
         /**
-         * Builtin prompt shipped with application.
-         * Embedded in resources, read-only.
-         *
-         * @property resourcePath path to resource file (e.g., "agents/architect-agent.md")
+         * Builtin prompt shipped with Gromozeka.
+         * Stored in application resources.
+         * ID format: "prompts/shared-base.md" (relative to resources/)
          */
         @Serializable
-        data class Builtin(val resourcePath: KPath) : Source
+        object Builtin : Type()
 
         /**
-         * Prompt stored as local file on disk.
-         * All local file prompts are editable in external editor (IDEA).
-         *
-         * @property path path to file (absolute or relative depending on type)
-         */
-        sealed interface LocalFile : Source {
-            val path: KPath
-
-            /**
-             * User-created prompt in user folder.
-             *
-             * @property path path relative to user prompts directory
-             */
-            @Serializable
-            data class User(override val path: KPath) : LocalFile
-
-            /**
-             * Imported prompt from arbitrary file.
-             * Used for all file-based prompts including CLAUDE.md files.
-             *
-             * @property path absolute path to imported file
-             */
-            @Serializable
-            data class Imported(override val path: KPath) : LocalFile
-        }
-
-        /**
-         * Prompt from remote source.
-         */
-        sealed interface Remote : Source {
-            /**
-             * Prompt downloaded from URL.
-             *
-             * @property url source URL
-             */
-            @Serializable
-            data class Url(val url: String) : Remote
-        }
-
-        /**
-         * Dynamic prompt with content generated at runtime.
+         * Global prompt stored in user's home directory.
+         * Available across all projects for this user.
+         * ID format: "prompts/my-prompt.md" (relative to ~/.gromozeka/)
          */
         @Serializable
-        sealed interface Dynamic : Source {
-            /**
-             * Environment information (working directory, OS, date, git status).
-             * Content regenerated on each assembleSystemPrompt() call.
-             */
-            @Serializable
-            object Environment : Dynamic
-        }
+        object Global : Type()
 
         /**
-         * Inline text prompt.
-         * Used for ad-hoc prompts created dynamically (e.g., via MCP tools).
-         *
-         * @property text inline prompt content
+         * Project-specific prompt stored in project directory.
+         * Versioned with project code.
+         * ID format: ".gromozeka/prompts/shared-base.md" (relative to project root)
          */
         @Serializable
-        data class Text(val text: String) : Source
+        object Project : Type()
+
+        /**
+         * Inline prompt created dynamically (e.g., via MCP).
+         * Exists only in memory, not persisted to filesystem.
+         * ID format: UUID string
+         */
+        @Serializable
+        object Inline : Type()
     }
 
     /**

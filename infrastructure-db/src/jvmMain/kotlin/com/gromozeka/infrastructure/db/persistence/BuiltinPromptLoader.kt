@@ -1,7 +1,6 @@
 package com.gromozeka.infrastructure.db.persistence
 
 import com.gromozeka.domain.model.Prompt
-import com.gromozeka.shared.path.KPath
 import klog.KLoggers
 import kotlinx.datetime.Clock
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver
@@ -15,21 +14,9 @@ class BuiltinPromptLoader {
     fun loadBuiltinPrompts(): List<Prompt> {
         val prompts = mutableListOf<Prompt>()
         
-        // 1. Dynamic Environment prompt (always available)
-        prompts.add(
-            Prompt(
-                id = Prompt.Id("system-environment"),
-                name = "Environment Info",
-                content = "",
-                source = Prompt.Source.Dynamic.Environment,
-                createdAt = Clock.System.now(),
-                updatedAt = Clock.System.now()
-            )
-        )
-        
-        // 2. Load all .md files from /agents directory automatically
+        // Load all .md files from /prompts directory
         try {
-            val resources = resourceResolver.getResources("classpath:/agents/*.md")
+            val resources = resourceResolver.getResources("classpath:/prompts/*.md")
             
             resources.forEach { resource ->
                 try {
@@ -39,24 +26,29 @@ class BuiltinPromptLoader {
                         .replace("-", " ")
                         .replaceFirstChar { it.uppercase() }
                     
+                    val resourcePath = "prompts/$fileName"
+                    val id = Prompt.Id(resourcePath)  // ID = relative path
+                    
                     prompts.add(
                         Prompt(
-                            id = Prompt.Id("builtin:$fileName"),
+                            id = id,
                             name = name,
                             content = content,
-                            source = Prompt.Source.Builtin(KPath("agents/$fileName")),
+                            type = Prompt.Type.Builtin,
                             createdAt = Clock.System.now(),
                             updatedAt = Clock.System.now()
                         )
                     )
+                    
+                    log.debug { "Loaded builtin prompt: $name ($id)" }
                 } catch (e: Exception) {
                     log.error(e) { "Failed to load builtin prompt: ${resource.filename}" }
                 }
             }
             
-            log.info { "Loaded ${prompts.size} builtin prompts from /agents directory" }
+            log.info { "Loaded ${prompts.size} builtin prompts from /prompts directory" }
         } catch (e: Exception) {
-            log.error(e) { "Failed to scan /agents directory for prompts" }
+            log.error(e) { "Failed to scan /prompts directory for prompts" }
         }
 
         return prompts

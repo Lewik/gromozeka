@@ -1,21 +1,12 @@
 {
-  "id": {
-    "value": "repository"
-  },
+  "id": "repository",
   "name": "Репозитори-агент",
   "prompts": [
-    {
-      "value": "builtin:shared-base.md"
-    },
-    {
-      "value": "builtin:repository-agent.md"
-    },
-    {
-      "value": "builtin:architecture.md"
-    }
+    ".gromozeka/prompts/shared-base.md",
+    ".gromozeka/prompts/repository-agent.md",
+    ".gromozeka/prompts/architecture.md"
   ],
   "description": "Repository implementation",
-  "type": "BUILTIN",
   "createdAt": "2025-11-22T19:11:52Z",
   "updatedAt": "2025-11-22T19:11:52Z"
 }

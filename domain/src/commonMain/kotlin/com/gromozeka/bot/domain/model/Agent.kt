@@ -14,11 +14,11 @@ import kotlinx.serialization.Serializable
  *
  * This is an immutable value type - use copy() to create modified versions.
  *
- * @property id unique agent identifier (UUIDv7 for time-based ordering)
+ * @property id unique agent identifier (hash of file path or generated for inline)
  * @property name agent role name displayed in UI (e.g., "Code Reviewer", "Researcher")
  * @property prompts ordered list of prompt IDs defining agent behavior
  * @property description optional human-readable explanation of agent's purpose
- * @property type agent scope type (builtin, global, or project-specific)
+ * @property type agent location type with file path (or inline for dynamic agents)
  * @property createdAt timestamp when agent was created (immutable)
  * @property updatedAt timestamp of last modification (name, prompts, or description change)
  */
@@ -33,33 +33,49 @@ data class Agent(
     val updatedAt: Instant,
 ) {
     /**
-     * Unique agent identifier (UUIDv7).
+     * Unique agent identifier (hash of file path or UUID for inline).
      */
     @Serializable
     @JvmInline
     value class Id(val value: String)
 
     /**
-     * Agent scope type defining where agent is stored and managed.
+     * Agent location type.
+     * Type determines where agent is stored and how its ID is resolved.
+     * ID contains relative path specific to each type.
      */
     @Serializable
-    enum class Type {
+    sealed class Type {
         /**
          * Builtin agent shipped with Gromozeka.
-         * Stored in application resources, immutable.
+         * Stored in application resources.
+         * ID format: "agents/architect.json" (relative to resources/)
          */
-        BUILTIN,
+        @Serializable
+        object Builtin : Type()
 
         /**
-         * Global agent stored in user's home directory (~/.gromozeka/agents).
+         * Global agent stored in user's home directory.
          * Available across all projects for this user.
+         * ID format: "agents/my-agent.json" (relative to ~/.gromozeka/)
          */
-        GLOBAL,
+        @Serializable
+        object Global : Type()
 
         /**
-         * Project-specific agent stored in project directory (.gromozeka/agents).
-         * Serialized and versioned with project code.
+         * Project-specific agent stored in project directory.
+         * Versioned with project code.
+         * ID format: ".gromozeka/agents/architect.json" (relative to project root)
          */
-        PROJECT
+        @Serializable
+        object Project : Type()
+
+        /**
+         * Inline agent created dynamically (e.g., via MCP).
+         * Exists only in memory, not persisted to filesystem.
+         * ID format: UUID string
+         */
+        @Serializable
+        object Inline : Type()
     }
 }

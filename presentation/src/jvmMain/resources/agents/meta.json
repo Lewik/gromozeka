@@ -1,0 +1,10 @@
+{
+  "id": "meta",
+  "name": "Мета агент",
+  "prompts": [
+    "prompts/agent-builder.md"
+  ],
+  "description": "Agent builder",
+  "createdAt": "2025-11-22T19:11:52Z",
+  "updatedAt": "2025-11-22T19:11:52Z"
+}

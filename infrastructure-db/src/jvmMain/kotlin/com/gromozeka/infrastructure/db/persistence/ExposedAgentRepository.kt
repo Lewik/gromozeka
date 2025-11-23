@@ -1,85 +1,89 @@
 package com.gromozeka.infrastructure.db.persistence
 
-import com.gromozeka.infrastructure.db.persistence.tables.Agents
 import com.gromozeka.domain.model.Agent
-import com.gromozeka.domain.model.Prompt
 import com.gromozeka.domain.repository.AgentRepository
-
-import org.jetbrains.exposed.v1.core.ResultRow
-import org.jetbrains.exposed.v1.core.SortOrder
-import org.jetbrains.exposed.v1.core.eq
-import org.jetbrains.exposed.v1.jdbc.*
-import kotlinx.datetime.Instant
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.builtins.ListSerializer
-import kotlinx.serialization.builtins.serializer
 import org.springframework.stereotype.Service
+import java.util.concurrent.ConcurrentHashMap
 
 @Service
-class ExposedAgentRepository : AgentRepository {
+class ExposedAgentRepository(
+    private val builtinAgentLoader: BuiltinAgentLoader,
+    private val fileSystemAgentScanner: FileSystemAgentScanner
+) : AgentRepository {
+
+    private var cachedBuiltinAgents: List<Agent> = emptyList()
+    private var cachedGlobalAgents: List<Agent> = emptyList()
     
-    private val json = Json { ignoreUnknownKeys = true }
-    private val promptIdListSerializer = ListSerializer(Prompt.Id.serializer())
+    // In-memory cache for inline agents (created dynamically via MCP)
+    private val inlineAgentsCache = ConcurrentHashMap<Agent.Id, Agent>()
+    
+    // Lazy cache for PROJECT agents per project path
+    private val projectAgentsCache = ConcurrentHashMap<String, List<Agent>>()
 
-    override suspend fun save(agent: Agent): Agent = dbQuery {
-        val exists = Agents.selectAll().where { Agents.id eq agent.id.value }.count() > 0
-        
-        val promptsJson = json.encodeToString(promptIdListSerializer, agent.prompts)
-
-        if (exists) {
-            Agents.update({ Agents.id eq agent.id.value }) {
-                it[name] = agent.name
-                it[Agents.promptsJson] = promptsJson
-                it[description] = agent.description
-                it[type] = agent.type.name
-                it[updatedAt] = agent.updatedAt.toKotlin()
+    override suspend fun save(agent: Agent): Agent {
+        return when (agent.type) {
+            is Agent.Type.Inline -> {
+                // Store inline agents in memory cache
+                inlineAgentsCache[agent.id] = agent
+                agent
             }
-        } else {
-            Agents.insert {
-                it[id] = agent.id.value
-                it[name] = agent.name
-                it[Agents.promptsJson] = promptsJson
-                it[description] = agent.description
-                it[type] = agent.type.name
-                it[createdAt] = agent.createdAt.toKotlin()
-                it[updatedAt] = agent.updatedAt.toKotlin()
+            else -> {
+                throw UnsupportedOperationException(
+                    "File-based agents cannot be saved via repository. " +
+                    "Use file system to create/edit agents."
+                )
             }
         }
-        agent
     }
 
-    override suspend fun findById(id: Agent.Id): Agent? = dbQuery {
-        Agents.selectAll().where { Agents.id eq id.value }
-            .map { it.toAgent() }
-            .singleOrNull()
-    }
-
-    override suspend fun findAll(): List<Agent> = dbQuery {
-        Agents.selectAll()
-            .orderBy(Agents.name, SortOrder.ASC)
-            .map { it.toAgent() }
-    }
-
-    override suspend fun delete(id: Agent.Id): Unit = dbQuery {
-        Agents.deleteWhere { Agents.id eq id.value }
-    }
-
-    override suspend fun count(): Int = dbQuery {
-        Agents.selectAll().count().toInt()
-    }
-
-    private fun ResultRow.toAgent(): Agent {
-        val promptsJson = this[Agents.promptsJson]
-        val prompts = json.decodeFromString(promptIdListSerializer, promptsJson)
+    override suspend fun findById(id: Agent.Id): Agent? {
+        // Check inline cache first
+        inlineAgentsCache[id]?.let { return it }
         
-        return Agent(
-            id = Agent.Id(this[Agents.id]),
-            name = this[Agents.name],
-            prompts = prompts,
-            description = this[Agents.description],
-            type = Agent.Type.valueOf(this[Agents.type]),
-            createdAt = this[Agents.createdAt].toKotlinx(),
-            updatedAt = this[Agents.updatedAt].toKotlinx()
+        // Check builtin and global
+        (cachedBuiltinAgents + cachedGlobalAgents).find { it.id == id }?.let { return it }
+        
+        // Check all project caches
+        projectAgentsCache.values.flatten().find { it.id == id }?.let { return it }
+        
+        return null
+    }
+
+    override suspend fun findAll(projectPath: String?): List<Agent> {
+        val projectAgents = projectPath?.let { path ->
+            projectAgentsCache.getOrPut(path) {
+                fileSystemAgentScanner.scanProjectAgents(path)
+            }
+        } ?: emptyList()
+        
+        return (cachedBuiltinAgents + cachedGlobalAgents + projectAgents + inlineAgentsCache.values)
+            .sortedBy { it.name }
+    }
+
+    override suspend fun delete(id: Agent.Id) {
+        // Check if it's an inline agent
+        if (inlineAgentsCache.containsKey(id)) {
+            inlineAgentsCache.remove(id)
+            return
+        }
+        
+        throw UnsupportedOperationException(
+            "File-based agents cannot be deleted via repository. " +
+            "Use file system to delete agents."
         )
+    }
+
+    override suspend fun count(): Int {
+        return cachedBuiltinAgents.size + 
+               cachedGlobalAgents.size + 
+               projectAgentsCache.values.flatten().size + 
+               inlineAgentsCache.size
+    }
+    
+    @jakarta.annotation.PostConstruct
+    fun initialize() {
+        cachedBuiltinAgents = builtinAgentLoader.loadBuiltinAgents()
+        cachedGlobalAgents = fileSystemAgentScanner.scanGlobalAgents()
+        // PROJECT agents are loaded lazily in findAll(projectPath)
     }
 }

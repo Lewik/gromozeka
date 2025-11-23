@@ -42,8 +42,8 @@ fun AgentListItem(
                             fontWeight = FontWeight.Bold
                         )
                         
-                        when (agent.type) {
-                            Agent.Type.BUILTIN -> {
+                        when (val type = agent.type) {
+                            is Agent.Type.Builtin -> {
                                 Spacer(modifier = Modifier.width(8.dp))
                                 AssistChip(
                                     onClick = {},
@@ -51,7 +51,7 @@ fun AgentListItem(
                                     enabled = false
                                 )
                             }
-                            Agent.Type.GLOBAL -> {
+                            is Agent.Type.Global -> {
                                 Spacer(modifier = Modifier.width(8.dp))
                                 AssistChip(
                                     onClick = {},
@@ -59,8 +59,16 @@ fun AgentListItem(
                                     enabled = false
                                 )
                             }
-                            Agent.Type.PROJECT -> {
+                            is Agent.Type.Project -> {
                                 // No chip for project agents
+                            }
+                            is Agent.Type.Inline -> {
+                                Spacer(modifier = Modifier.width(8.dp))
+                                AssistChip(
+                                    onClick = {},
+                                    label = { Text("Inline") },
+                                    enabled = false
+                                )
                             }
                         }
                     }
@@ -83,7 +91,7 @@ fun AgentListItem(
                         )
                     }
                     
-                    if (agent.type != Agent.Type.BUILTIN) {
+                    if (agent.type !is Agent.Type.Builtin) {
                         IconButton(onClick = onDelete) {
                             Icon(
                                 Icons.Default.Delete,

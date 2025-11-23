@@ -22,12 +22,12 @@ class PromptCopyService(
             log.info { "Created user prompts directory: ${promptsDir.absolutePath}" }
         }
 
-        val source = builtinPrompt.source
-        if (source !is Prompt.Source.Builtin) {
+        if (builtinPrompt.type !is Prompt.Type.Builtin) {
             return Result.failure(IllegalArgumentException("Prompt is not a builtin prompt"))
         }
 
-        val fileName = source.resourcePath.value.substringAfterLast("/")
+        // Extract filename from ID (ID = relative path like "prompts/shared-base.md")
+        val fileName = builtinPrompt.id.value.substringAfterLast("/")
         val targetFile = File(promptsDir, fileName)
 
         return try {

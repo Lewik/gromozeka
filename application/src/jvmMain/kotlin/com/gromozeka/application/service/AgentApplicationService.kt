@@ -74,10 +74,11 @@ class AgentApplicationService(
     /**
      * Retrieves all agents including built-in and user-created.
      *
+     * @param projectPath path to current project (for loading PROJECT agents), null for global context
      * @return list of all agents
      */
-    override suspend fun findAll(): List<Agent> =
-        agentRepository.findAll()
+    override suspend fun findAll(projectPath: String?): List<Agent> =
+        agentRepository.findAll(projectPath)
 
     /**
      * Updates agent configuration.
@@ -119,7 +120,7 @@ class AgentApplicationService(
     @Transactional
     override suspend fun delete(id: Agent.Id) {
         val agent = agentRepository.findById(id)
-        if (agent?.type == Agent.Type.BUILTIN) {
+        if (agent?.type is Agent.Type.Builtin) {
             log.warn("Cannot delete builtin agent: ${agent.name}")
             return
         }

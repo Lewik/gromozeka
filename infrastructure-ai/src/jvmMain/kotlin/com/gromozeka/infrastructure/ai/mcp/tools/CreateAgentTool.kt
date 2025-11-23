@@ -95,12 +95,12 @@ class CreateAgentTool(
                 name = input.agent_name,
                 prompts = listOf(inlinePrompt.id),
                 description = "Created via MCP from parent tab: ${input.parent_tab_id}",
-                type = Agent.Type.PROJECT
+                type = Agent.Type.Inline
             )
         } else {
             agentService.findAll()
-                .firstOrNull { it.type == Agent.Type.BUILTIN && it.name == "Gromozeka" }
-                ?: error("Default agent 'Gromozeka' not found in database")
+                .firstOrNull { it.type is Agent.Type.Builtin && it.name == "Gromozeka" }
+                ?: error("Default agent 'Gromozeka' not found")
         }
 
         val baseMessageText = input.initial_message ?: "Ready to work on this project"

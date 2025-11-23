@@ -29,6 +29,7 @@ fun AgentConstructorScreen(
     agentService: AgentDomainService,
     promptService: PromptDomainService,
     coroutineScope: CoroutineScope,
+    projectPath: String? = null,
     modifier: Modifier = Modifier
 ) {
     var selectedTab by remember { mutableStateOf(0) } // 0 = Agents, 1 = Prompts
@@ -54,20 +55,18 @@ fun AgentConstructorScreen(
     val filterOptions = remember {
         listOf(
             com.gromozeka.presentation.ui.ToggleButtonOption(Icons.Default.Lock, "Builtin"),
-            com.gromozeka.presentation.ui.ToggleButtonOption(Icons.Default.Folder, "User"),
-            com.gromozeka.presentation.ui.ToggleButtonOption(Icons.Default.Description, "Other")
+            com.gromozeka.presentation.ui.ToggleButtonOption(Icons.Default.Home, "Global"),
+            com.gromozeka.presentation.ui.ToggleButtonOption(Icons.Default.Folder, "Project")
         )
     }
     
     val filteredPrompts = remember(prompts, selectedPromptTypes) {
         prompts.filter { prompt ->
-            when (prompt.source) {
-                is Prompt.Source.Builtin -> 0 in selectedPromptTypes
-                is Prompt.Source.LocalFile.User -> 1 in selectedPromptTypes
-                is Prompt.Source.Text,
-                is Prompt.Source.LocalFile.Imported,
-                is Prompt.Source.Remote.Url,
-                is Prompt.Source.Dynamic -> 2 in selectedPromptTypes
+            when (val type = prompt.type) {
+                is Prompt.Type.Builtin -> 0 in selectedPromptTypes
+                is Prompt.Type.Global -> 1 in selectedPromptTypes
+                is Prompt.Type.Project -> 2 in selectedPromptTypes
+                is Prompt.Type.Inline -> 2 in selectedPromptTypes // Group with "Other"
             }
         }
     }
@@ -76,7 +75,7 @@ fun AgentConstructorScreen(
         isLoading = true
         error = null
         try {
-            agents = agentService.findAll()
+            agents = agentService.findAll(projectPath)
             prompts = promptService.findAll()
             log.info { "Loaded ${agents.size} agents and ${prompts.size} prompts" }
         } catch (e: Exception) {
@@ -343,17 +342,17 @@ fun AgentConstructorScreen(
                                 }
                             }
                             
-                            val isFilePrompt = viewingPrompt!!.source is Prompt.Source.LocalFile
-                            if (isFilePrompt) {
+                            val isEditablePrompt = viewingPrompt!!.type !is Prompt.Type.Builtin
+                            if (isEditablePrompt) {
                                 CompactButton(
                                     onClick = {
-                                        val fullPath = when (val source = viewingPrompt!!.source) {
-                                            is Prompt.Source.LocalFile.User -> {
-                                                val gromozekaHome = System.getProperty("GROMOZEKA_HOME") ?: ""
-                                                "$gromozekaHome/prompts/${source.path.value}"
-                                            }
-                                            is Prompt.Source.LocalFile -> source.path.value
-                                            else -> null
+                                        val gromozekaHome = System.getProperty("GROMOZEKA_HOME") ?: ""
+                                        val fileName = viewingPrompt!!.id.value.substringAfter(":")
+                                        val fullPath = when (val type = viewingPrompt!!.type) {
+                                            is Prompt.Type.Global -> "$gromozekaHome/prompts/$fileName"
+                                            is Prompt.Type.Project -> "" // TODO: Get project path
+                                            is Prompt.Type.Builtin -> null
+                                            is Prompt.Type.Inline -> null
                                         }
                                         fullPath?.let {
                                             try {
@@ -388,13 +387,11 @@ fun AgentConstructorScreen(
                         Spacer(modifier = Modifier.height(8.dp))
                         
                         Text(
-                            text = when (val source = viewingPrompt!!.source) {
-                                is Prompt.Source.Builtin -> "Built-in prompt"
-                                is Prompt.Source.LocalFile.User -> "User prompt: ${source.path.value}"
-                                is Prompt.Source.LocalFile.Imported -> "Imported: ${source.path.value}"
-                                is Prompt.Source.Remote.Url -> "URL: ${source.url}"
-                                is Prompt.Source.Dynamic.Environment -> "Environment info (generated dynamically)"
-                                is Prompt.Source.Text -> "Inline prompt"
+                            text = when (val type = viewingPrompt!!.type) {
+                                is Prompt.Type.Builtin -> "Built-in prompt"
+                                is Prompt.Type.Global -> "Global prompt"
+                                is Prompt.Type.Project -> "Project prompt"
+                                is Prompt.Type.Inline -> "Inline prompt"
                             },
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -447,25 +444,24 @@ fun AgentConstructorScreen(
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         items(filteredPrompts) { prompt ->
-                            val isBuiltinPrompt = prompt.source is Prompt.Source.Builtin
-                            val isFilePrompt = prompt.source is Prompt.Source.LocalFile
-                            val isInlinePrompt = prompt.source is Prompt.Source.Text
+                            val isBuiltinPrompt = prompt.type is Prompt.Type.Builtin
+                            val isEditablePrompt = prompt.type !is Prompt.Type.Builtin
                             
                             PromptListItem(
                                 prompt = prompt,
                                 onView = {
                                     viewingPrompt = prompt
                                 },
-                                onEdit = if (isFilePrompt) {
+                                onEdit = if (isEditablePrompt) {
                                     {
                                         // Open in IDEA with full path
-                                        val fullPath = when (val source = prompt.source) {
-                                            is Prompt.Source.LocalFile.User -> {
-                                                val gromozekaHome = System.getProperty("GROMOZEKA_HOME") ?: ""
-                                                "$gromozekaHome/prompts/${source.path.value}"
-                                            }
-                                            is Prompt.Source.LocalFile -> source.path.value
-                                            else -> null
+                                        val gromozekaHome = System.getProperty("GROMOZEKA_HOME") ?: ""
+                                        val fileName = prompt.id.value.substringAfter(":")
+                                        val fullPath = when (val type = prompt.type) {
+                                            is Prompt.Type.Global -> "$gromozekaHome/prompts/$fileName"
+                                            is Prompt.Type.Project -> "" // TODO: Get project path
+                                            is Prompt.Type.Builtin -> null
+                                            is Prompt.Type.Inline -> null
                                         }
                                         fullPath?.let {
                                             try {
@@ -478,12 +474,7 @@ fun AgentConstructorScreen(
                                         }
                                     }
                                 } else null,
-                                onDelete = if (isInlinePrompt) {
-                                    {
-                                        // TODO: Implement inline prompt deletion
-                                        log.warn { "Inline prompt deletion not yet implemented" }
-                                    }
-                                } else null,
+                                onDelete = null,
                                 onCopyToUser = if (isBuiltinPrompt) {
                                     {
                                         coroutineScope.launch {
@@ -528,7 +519,7 @@ fun AgentConstructorScreen(
                                 name = name,
                                 prompts = selectedPrompts,
                                 description = description,
-                                type = Agent.Type.PROJECT
+                                type = Agent.Type.Inline
                             )
                             log.info { "Created new agent: $name" }
                         } else {

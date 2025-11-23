@@ -1,21 +1,12 @@
 {
-  "id": {
-    "value": "ui"
-  },
+  "id": "ui",
   "name": "UI агент",
   "prompts": [
-    {
-      "value": "builtin:shared-base.md"
-    },
-    {
-      "value": "builtin:ui-agent.md"
-    },
-    {
-      "value": "builtin:architecture.md"
-    }
+    ".gromozeka/prompts/shared-base.md",
+    ".gromozeka/prompts/ui-agent.md",
+    ".gromozeka/prompts/architecture.md"
   ],
   "description": "Compose Desktop UI",
-  "type": "BUILTIN",
   "createdAt": "2025-11-22T19:11:52Z",
   "updatedAt": "2025-11-22T19:11:52Z"
 }

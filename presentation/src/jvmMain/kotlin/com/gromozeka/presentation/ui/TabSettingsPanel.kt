@@ -9,6 +9,7 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Lock
@@ -29,6 +30,7 @@ private val log = KLoggers.logger("TabSettingsPanel")
 
 @Composable
 fun TabSettingsPanel(
+    projectPath: String,
     isVisible: Boolean,
     currentAgent: Agent,
     onAgentChange: (Agent) -> Unit,
@@ -46,14 +48,15 @@ fun TabSettingsPanel(
             isLoading = true
             error = null
             try {
-                val loadedAgents = agentService.findAll()
+                val loadedAgents = agentService.findAll(projectPath)
                 
                 agents = loadedAgents.sortedWith(
                     compareBy<Agent> { agent ->
-                        when (agent.type) {
-                            Agent.Type.PROJECT -> 0
-                            Agent.Type.GLOBAL -> 1
-                            Agent.Type.BUILTIN -> 2
+                        when (val type = agent.type) {
+                            is Agent.Type.Project -> 0
+                            is Agent.Type.Global -> 1
+                            is Agent.Type.Builtin -> 2
+                            is Agent.Type.Inline -> 3
                         }
                     }.thenBy { it.name }
                 )
@@ -197,12 +200,18 @@ private fun AgentRadioItem(
             Spacer(modifier = Modifier.width(8.dp))
 
             Icon(
-                imageVector = when (agent.type) {
-                    Agent.Type.PROJECT -> Icons.Default.Folder
-                    Agent.Type.GLOBAL -> Icons.Default.Home
-                    Agent.Type.BUILTIN -> Icons.Default.Lock
+                imageVector = when (val type = agent.type) {
+                    is Agent.Type.Project -> Icons.Default.Folder
+                    is Agent.Type.Global -> Icons.Default.Home
+                    is Agent.Type.Builtin -> Icons.Default.Lock
+                    is Agent.Type.Inline -> Icons.Default.Description
                 },
-                contentDescription = agent.type.name,
+                contentDescription = when (val type = agent.type) {
+                    is Agent.Type.Project -> "Project"
+                    is Agent.Type.Global -> "Global"
+                    is Agent.Type.Builtin -> "Builtin"
+                    is Agent.Type.Inline -> "Inline"
+                },
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(20.dp)
             )

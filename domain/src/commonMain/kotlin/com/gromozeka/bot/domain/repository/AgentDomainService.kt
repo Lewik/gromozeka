@@ -58,9 +58,12 @@ interface AgentDomainService {
     /**
      * Retrieves all agents in system.
      *
-     * @return all agents (builtin and user-created)
+     * Includes BUILTIN + GLOBAL + PROJECT (if projectPath provided) + INLINE agents.
+     *
+     * @param projectPath path to current project (for loading PROJECT agents), null for global context
+     * @return all agents (builtin, global, project-specific, and inline)
      */
-    suspend fun findAll(): List<Agent>
+    suspend fun findAll(projectPath: String? = null): List<Agent>
 
     /**
      * Updates agent prompts or description.

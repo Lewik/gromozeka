@@ -1,15 +1,10 @@
 {
-  "id": {
-    "value": "default-gromozeka"
-  },
+  "id": "default-gromozeka",
   "name": "Gromozeka",
   "prompts": [
-    {
-      "value": "builtin:default-agent.md"
-    }
+    "prompts/default-agent.md"
   ],
   "description": "Multi-armed AI assistant",
-  "type": "BUILTIN",
   "createdAt": "2025-11-22T19:11:52Z",
   "updatedAt": "2025-11-22T19:11:52Z"
 }

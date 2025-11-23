@@ -41,13 +41,11 @@ fun PromptListItem(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         // Type icon
-                        val typeIcon = when (prompt.source) {
-                            is Prompt.Source.Builtin -> Icons.Default.Lock
-                            is Prompt.Source.LocalFile.User -> Icons.Default.Folder
-                            is Prompt.Source.LocalFile.Imported -> Icons.Default.Input
-                            is Prompt.Source.Remote.Url -> Icons.Default.Link
-                            is Prompt.Source.Dynamic.Environment -> Icons.Default.Settings
-                            is Prompt.Source.Text -> Icons.Default.Description
+                        val typeIcon = when (val type = prompt.type) {
+                            is Prompt.Type.Builtin -> Icons.Default.Lock
+                            is Prompt.Type.Global -> Icons.Default.Home
+                            is Prompt.Type.Project -> Icons.Default.Folder
+                            is Prompt.Type.Inline -> Icons.Default.Description
                         }
                         
                         Icon(
@@ -67,13 +65,11 @@ fun PromptListItem(
                     Spacer(modifier = Modifier.height(4.dp))
                     
                     Text(
-                        text = when (val source = prompt.source) {
-                            is Prompt.Source.Builtin -> "Built-in: ${source.resourcePath.value}"
-                            is Prompt.Source.LocalFile.User -> "User: ${source.path.value}"
-                            is Prompt.Source.LocalFile.Imported -> "Imported: ${source.path.value}"
-                            is Prompt.Source.Remote.Url -> "URL: ${source.url}"
-                            is Prompt.Source.Dynamic.Environment -> "Environment info (generated dynamically)"
-                            is Prompt.Source.Text -> "Inline prompt"
+                        text = when (val type = prompt.type) {
+                            is Prompt.Type.Builtin -> "Built-in prompt"
+                            is Prompt.Type.Global -> "Global prompt"
+                            is Prompt.Type.Project -> "Project prompt"
+                            is Prompt.Type.Inline -> "Inline prompt"
                         },
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
