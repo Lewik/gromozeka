@@ -66,7 +66,7 @@ fun AgentConstructorScreen(
                 is Prompt.Type.Builtin -> 0 in selectedPromptTypes
                 is Prompt.Type.Global -> 1 in selectedPromptTypes
                 is Prompt.Type.Project -> 2 in selectedPromptTypes
-                is Prompt.Type.Inline -> 2 in selectedPromptTypes // Group with "Other"
+                is Prompt.Type.Environment -> 2 in selectedPromptTypes // Group with "Other"
             }
         }
     }
@@ -352,7 +352,7 @@ fun AgentConstructorScreen(
                                             is Prompt.Type.Global -> "$gromozekaHome/prompts/$fileName"
                                             is Prompt.Type.Project -> "" // TODO: Get project path
                                             is Prompt.Type.Builtin -> null
-                                            is Prompt.Type.Inline -> null
+                                            is Prompt.Type.Environment -> null
                                         }
                                         fullPath?.let {
                                             try {
@@ -391,7 +391,7 @@ fun AgentConstructorScreen(
                                 is Prompt.Type.Builtin -> "Built-in prompt"
                                 is Prompt.Type.Global -> "Global prompt"
                                 is Prompt.Type.Project -> "Project prompt"
-                                is Prompt.Type.Inline -> "Inline prompt"
+                                is Prompt.Type.Environment -> "Inline prompt"
                             },
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -461,7 +461,7 @@ fun AgentConstructorScreen(
                                             is Prompt.Type.Global -> "$gromozekaHome/prompts/$fileName"
                                             is Prompt.Type.Project -> "" // TODO: Get project path
                                             is Prompt.Type.Builtin -> null
-                                            is Prompt.Type.Inline -> null
+                                            is Prompt.Type.Environment -> null
                                         }
                                         fullPath?.let {
                                             try {
@@ -601,7 +601,7 @@ fun AgentConstructorScreen(
             onSave = { name, content ->
                 coroutineScope.launch {
                     try {
-                        promptService.createInlinePrompt(name, content)
+                        promptService.createEnvironmentPrompt(name, content)
                         log.info { "Created inline prompt: $name" }
                         loadData()
                         showPromptCreateDialog = false

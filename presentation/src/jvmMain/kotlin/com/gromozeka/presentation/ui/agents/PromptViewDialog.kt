@@ -39,7 +39,7 @@ fun PromptViewDialog(
                         is Prompt.Type.Builtin -> "Built-in prompt"
                         is Prompt.Type.Global -> "Global prompt"
                         is Prompt.Type.Project -> "Project prompt"
-                        is Prompt.Type.Inline -> "Inline prompt"
+                        is Prompt.Type.Environment -> "Inline prompt"
                     },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant

@@ -45,7 +45,7 @@ fun PromptListItem(
                             is Prompt.Type.Builtin -> Icons.Default.Lock
                             is Prompt.Type.Global -> Icons.Default.Home
                             is Prompt.Type.Project -> Icons.Default.Folder
-                            is Prompt.Type.Inline -> Icons.Default.Description
+                            is Prompt.Type.Environment -> Icons.Default.Description
                         }
                         
                         Icon(
@@ -69,7 +69,7 @@ fun PromptListItem(
                             is Prompt.Type.Builtin -> "Built-in prompt"
                             is Prompt.Type.Global -> "Global prompt"
                             is Prompt.Type.Project -> "Project prompt"
-                            is Prompt.Type.Inline -> "Inline prompt"
+                            is Prompt.Type.Environment -> "Inline prompt"
                         },
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
