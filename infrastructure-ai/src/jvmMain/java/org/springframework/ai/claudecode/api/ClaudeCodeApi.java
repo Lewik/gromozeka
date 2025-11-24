@@ -233,7 +233,7 @@ public class ClaudeCodeApi {
 
         StringBuilder toolsSection = new StringBuilder();
         toolsSection.append("\n\n# Available Tools\n\n");
-        toolsSection.append("You have access to the following tools. Call them using standard Anthropic tool_use format (native JSON blocks).\n\n");
+        toolsSection.append("You have access to the following tools.\n\n");
 
         for (org.springframework.ai.tool.ToolCallback toolCallback : toolCallbacks) {
             var definition = toolCallback.getToolDefinition();
