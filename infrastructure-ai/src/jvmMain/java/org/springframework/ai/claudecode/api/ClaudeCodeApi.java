@@ -23,7 +23,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -106,7 +105,7 @@ public class ClaudeCodeApi {
                 // Disable CLAUDE.md and other settings loading
                 // Empty string means don't load any settings (user, project, local)
                 claudeArgs.add("--setting-sources");
-                claudeArgs.add("");
+                claudeArgs.add("\"\"");
 
                 // Join arguments into single command string
                 String claudeCommand = String.join(" ", claudeArgs);
@@ -131,7 +130,6 @@ public class ClaudeCodeApi {
                 process = processBuilder.start();
 
                 Process finalProcess = process;
-                File finalTempFile = tempFile;
 
                 writeMessagesToStdin(process, messages);
 
