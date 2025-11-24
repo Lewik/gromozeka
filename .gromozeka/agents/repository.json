@@ -2,7 +2,9 @@
   "id": "repository",
   "name": "Репозитори-агент",
   "prompts": [
+    "env",
     ".gromozeka/prompts/shared-base.md",
+    ".gromozeka/prompts/agents-directory.md",
     ".gromozeka/prompts/repository-agent.md",
     ".gromozeka/prompts/architecture.md"
   ],

@@ -15,12 +15,12 @@ class ExposedPromptRepository(
     private var cachedProjectPrompts: List<Prompt> = emptyList()
     private var cachedGlobalPrompts: List<Prompt> = emptyList()
     
-    // In-memory cache for inline prompts (created dynamically via MCP)
-    private val inlinePromptsCache = ConcurrentHashMap<Prompt.Id, Prompt>()
+    // In-memory cache for environment prompts (created dynamically via MCP)
+    private val environmentPromptsCache = ConcurrentHashMap<Prompt.Id, Prompt>()
 
     override suspend fun findById(id: Prompt.Id): Prompt? {
-        // Check inline cache first
-        inlinePromptsCache[id]?.let { return it }
+        // Check environment cache first
+        environmentPromptsCache[id]?.let { return it }
         
         // Then check file-based prompts
         return allPrompts().find { it.id == id }
@@ -46,9 +46,9 @@ class ExposedPromptRepository(
     
     override suspend fun save(prompt: Prompt): Prompt {
         return when (prompt.type) {
-            is Prompt.Type.Inline -> {
-                // Store inline prompts in memory cache
-                inlinePromptsCache[prompt.id] = prompt
+            is Prompt.Type.Environment -> {
+                // Store environment prompts in memory cache
+                environmentPromptsCache[prompt.id] = prompt
                 prompt
             }
             else -> {
@@ -68,6 +68,6 @@ class ExposedPromptRepository(
     }
 
     private fun allPrompts(): List<Prompt> {
-        return cachedBuiltinPrompts + cachedGlobalPrompts + cachedProjectPrompts + inlinePromptsCache.values
+        return cachedBuiltinPrompts + cachedGlobalPrompts + cachedProjectPrompts + environmentPromptsCache.values
     }
 }

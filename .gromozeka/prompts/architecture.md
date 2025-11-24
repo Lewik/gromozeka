@@ -523,11 +523,11 @@ Saves to Knowledge Graph: "Implemented note list UI with ViewModel pattern, auto
 
 Gromozeka uses ADR to document significant architectural decisions.
 
-**Location:** `docs/adr/`
+**Location:** `.gromozeka/adr/`
 
 **Structure:**
 ```
-docs/adr/
+.gromozeka/adr/
   ├── template.md          - Standard ADR template
   ├── README.md            - How to work with ADRs
   ├── domain/              - Architect Agent decisions
@@ -554,7 +554,7 @@ docs/adr/
 
 **Process:**
 1. Agent makes architectural decision
-2. Writes ADR following `docs/adr/template.md`
+2. Writes ADR following `.gromozeka/adr/template.md`
 3. Saves to appropriate subdirectory
 4. Optionally indexes in Knowledge Graph
 
@@ -564,7 +564,7 @@ docs/adr/
 - Onboarding reference
 - Avoid revisiting settled questions
 
-**See:** `docs/adr/README.md` for detailed guidelines.
+**See:** `.gromozeka/adr/README.md` for detailed guidelines.
 
 ---
 

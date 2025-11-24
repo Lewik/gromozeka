@@ -2,7 +2,9 @@
   "id": "business-logic",
   "name": "Агент бизнес логики",
   "prompts": [
+    "env",
     ".gromozeka/prompts/shared-base.md",
+    ".gromozeka/prompts/agents-directory.md",
     ".gromozeka/prompts/business-logic-agent.md",
     ".gromozeka/prompts/architecture.md"
   ],

@@ -55,7 +55,7 @@ interface PromptDomainService {
     suspend fun refresh()
 
     /**
-     * Creates inline text prompt for ad-hoc use.
+     * Creates environment prompt for ad-hoc use.
      *
      * Used for dynamically created prompts (e.g., via MCP tools).
      * Generates UUIDv7 for time-based ordering.
@@ -65,7 +65,7 @@ interface PromptDomainService {
      * @param content markdown text of the prompt
      * @return created prompt with assigned ID
      */
-    suspend fun createInlinePrompt(name: String, content: String): Prompt
+    suspend fun createEnvironmentPrompt(name: String, content: String): Prompt
     
     /**
      * Copies single builtin prompt to user prompts directory.

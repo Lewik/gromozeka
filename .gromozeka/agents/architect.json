@@ -2,7 +2,9 @@
   "id": "architect",
   "name": "Архитектор",
   "prompts": [
+    "env",
     ".gromozeka/prompts/shared-base.md",
+    ".gromozeka/prompts/agents-directory.md",
     ".gromozeka/prompts/architect-agent.md",
     ".gromozeka/prompts/architecture.md"
   ],

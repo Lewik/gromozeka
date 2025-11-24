@@ -104,8 +104,86 @@ interface ThreadRepository {
 
 **Agent coordination via tell_agent is fine** for:
 - "Architect: I finished domain interfaces, you can start implementing"
-- "User needs performance optimization for message loading"
+- "User needs performance optimization for message loading"  
 - Questions when specification is genuinely unclear
+
+### Source Code Investigation Pattern (.sources)
+
+**Principle: Source code is the ultimate truth. Read implementation, not documentation.**
+
+When working with external dependencies, **always check their source code first**. The `.sources/` directory in project root contains cloned repositories for deep investigation.
+
+**Why this matters:**
+- ✅ **Tests show REAL usage patterns** - not idealized documentation examples
+- ✅ **Implementation reveals edge cases** - see actual constraints and limitations
+- ✅ **No hallucinations** - you read actual code, not AI's assumptions
+- ✅ **Version-specific** - matches exact version project uses
+- ✅ **Find undocumented features** - discover internal APIs and patterns
+
+**Step 1: Check what's already cloned**
+```bash
+ls -la .sources/
+# Shows: spring-ai, exposed, claude-code-sdk, qdrant-java-client, etc.
+```
+
+**Step 2: Clone if needed**
+```bash
+cd /Users/lewik/code/gromozeka/dev/.sources
+
+# Clone specific version matching project dependencies
+git clone https://github.com/spring-projects/spring-ai.git
+cd spring-ai
+git checkout v1.1.0-SNAPSHOT  # Match version from build.gradle.kts
+```
+
+**Step 3: Search for usage patterns**
+```bash
+# Find tests - best source of usage examples
+find . -name "*Test.java" -o -name "*Test.kt" | xargs grep "ChatModel"
+
+# Find implementation
+rg "class.*ChatModel" --type java -A 10
+
+# Find examples
+find . -path "*/examples/*" -o -path "*/samples/*"
+
+# Check specific implementation details
+grz_read_file(".sources/spring-ai/spring-ai-core/src/main/java/org/springframework/ai/chat/model/ChatModel.java")
+```
+
+**When to use .sources pattern:**
+- **Before implementing integration** - understand how dependency actually works
+- **When docs are unclear** - source code doesn't lie
+- **Debugging unexpected behavior** - see what really happens
+- **Choosing between approaches** - compare actual implementations
+- **Finding examples** - tests are the best documentation
+
+**Already available in .sources:**
+- `spring-ai/` - AI integrations, streaming, ChatModel
+- `exposed/` - SQL ORM, transaction patterns
+- `claude-code*/` - Claude Code SDK implementations
+- `qdrant-java-client/` - vector database client
+- `mcp-kotlin-sdk/`, `java-sdk/` - MCP implementations
+- `graphiti/`, `graphrag/` - graph processing
+- Run `ls .sources/` for complete list
+
+**Example: Understanding Spring AI streaming**
+```bash
+# Instead of guessing from docs:
+cd .sources/spring-ai
+rg "StreamingChatModel" --type java -A 5
+find . -name "*StreamingTest.java"
+
+# See ACTUAL implementation:
+grz_read_file(".sources/spring-ai/spring-ai-core/src/main/java/org/springframework/ai/chat/model/StreamingChatModel.java")
+```
+
+**After investigation:**
+1. Implement based on real patterns you found
+2. Save key findings to Knowledge Graph for other agents
+3. Only then check Google/StackOverflow if still unclear
+
+**Remember:** One hour reading source code saves ten hours debugging mysterious errors.
 
 **Knowledge Graph Integration:**
 
@@ -119,7 +197,15 @@ The knowledge graph is organizational memory shared across all agents. Using it 
 
 **Before implementing anything:**
 
-Search for similar past solutions using `unified_search`:
+**Step 1: Check source code (if using external dependencies)**
+```bash
+# First, look at real implementation
+cd .sources/spring-ai
+rg "PaginatedResponse" --type java
+find . -name "*PaginationTest.java"
+```
+
+**Step 2: Search Knowledge Graph (for internal patterns)**
 ```kotlin
 unified_search(
   query = "repository pagination patterns",
@@ -128,7 +214,11 @@ unified_search(
 )
 ```
 
-This finds relevant nodes and relationships from past work. If similar solution exists, adapt it. If not, you're breaking new ground.
+**Step 3: Web search (only if steps 1-2 are insufficient)**
+- Google/StackOverflow for additional context
+- Official documentation for API details
+
+This three-step approach ensures you work with facts, not assumptions. Source code (.sources) gives you ground truth about dependencies. Knowledge Graph gives you team's accumulated wisdom. Web search fills remaining gaps.
 
 **After implementing:**
 

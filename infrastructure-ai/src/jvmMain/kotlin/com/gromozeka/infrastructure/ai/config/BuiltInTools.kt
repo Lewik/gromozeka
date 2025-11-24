@@ -53,7 +53,30 @@ class BuiltInTools {
         }
 
         return FunctionToolCallback.builder("grz_read_file", function)
-            .description("Read file contents. Supports text files, images (PNG, JPEG, GIF, WebP), and PDF documents.")
+            .description("""
+                Read file contents with safety limits and metadata.
+                
+                Parameters:
+                - file_path: Path to the file (required)
+                - limit: Max lines to read (optional, default: 1000 for safety, use -1 for entire file)
+                - offset: Skip first N lines (optional, default: 0)
+                
+                Safety & Control:
+                - Default reads first 1000 lines (prevents accidental large file loads)
+                - Use limit=-1 to explicitly read entire file (when you know it's safe)
+                - Returns metadata showing total lines and what was read
+                
+                Common patterns:
+                - Preview file safely: grz_read_file("file.txt")  // First 1000 lines
+                - Read entire small file: grz_read_file("config.json", limit=-1)
+                - Check file size: grz_read_file("huge.log", limit=1)  // See total lines in metadata
+                - Paginate large file: grz_read_file("data.csv", limit=100, offset=1000)
+                
+                Returns:
+                - Content with line numbers (e.g., "1\tline content")
+                - Metadata: [Read lines X-Y of Z total] (more lines available)
+                - Images/PDFs: Base64 encoded
+            """.trimIndent())
             .inputType(object : ParameterizedTypeReference<ReadFileParams>() {})
             .build()
     }
@@ -273,19 +296,37 @@ class BuiltInTools {
 
     private fun readTextFile(file: File, limit: Int?, offset: Int?): Map<String, Any> {
         val lines = file.readLines()
+        val totalLines = lines.size
         val startLine = offset ?: 0
-        val maxLines = limit ?: 2000
+        
+        // Safe default (1000 lines) with -1 for full file (AI-native pattern)
+        val maxLines = when {
+            limit == null -> 1000  // Safe default to prevent accidental huge file loads
+            limit == -1 -> lines.size - startLine  // Explicit intent to read entire file
+            limit <= 0 -> throw IllegalArgumentException("Limit must be positive or -1 for entire file (got: $limit)")
+            else -> limit
+        }
 
         val selectedLines = lines.drop(startLine).take(maxLines)
+        val actualLinesRead = selectedLines.size
+        
         val content = selectedLines.mapIndexed { index, line ->
             val lineNumber = startLine + index + 1
             val truncated = if (line.length > 2000) line.take(2000) + "..." else line
             "$lineNumber\t$truncated"
         }.joinToString("\n")
+        
+        // Add metadata about the file to help AI understand what was read
+        val metadata = if (totalLines > 0) {
+            "\n[Read lines ${startLine + 1}-${startLine + actualLinesRead} of $totalLines total]" +
+            if (startLine + actualLinesRead < totalLines) " (more lines available)" else ""
+        } else {
+            "\n[Empty file]"
+        }
 
         return mapOf(
             "type" to "text",
-            "text" to content
+            "text" to content + metadata
         )
     }
 }

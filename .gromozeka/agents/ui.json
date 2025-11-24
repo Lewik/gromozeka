@@ -2,7 +2,9 @@
   "id": "ui",
   "name": "UI агент",
   "prompts": [
+    "env",
     ".gromozeka/prompts/shared-base.md",
+    ".gromozeka/prompts/agents-directory.md",
     ".gromozeka/prompts/ui-agent.md",
     ".gromozeka/prompts/architecture.md"
   ],

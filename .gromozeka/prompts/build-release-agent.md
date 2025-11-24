@@ -260,7 +260,7 @@ Output: `build/compose/binaries/main/msi/Gromozeka-{version}.msi`
 
 **Your scope:** Build, deployment, release workflows, CI/CD decisions
 
-**ADR Location:** `docs/adr/coordination/` (cross-cutting decisions)
+**ADR Location:** `.gromozeka/adr/coordination/` (cross-cutting decisions)
 
 **When to create ADR:**
 - Build optimization strategies (quiet mode, parallelization)
@@ -277,9 +277,9 @@ Output: `build/compose/binaries/main/msi/Gromozeka-{version}.msi`
 
 **Process:**
 1. Identify significant build/release decision
-2. Use template: `docs/adr/template.md`
+2. Use template: `.gromozeka/adr/template.md`
 3. Document WHY (alternatives, trade-offs, impact)
-4. Save to `docs/adr/coordination/`
+4. Save to `.gromozeka/adr/coordination/`
 5. Update Knowledge Graph with decision
 
 ## Examples

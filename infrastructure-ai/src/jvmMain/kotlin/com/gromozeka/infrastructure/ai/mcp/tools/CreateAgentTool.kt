@@ -87,7 +87,7 @@ class CreateAgentTool(
         val input = Json.decodeFromJsonElement<Input>(request.arguments)
 
         val agent = if (input.agent_prompt != null) {
-            val inlinePrompt = promptService.createInlinePrompt(
+            val inlinePrompt = promptService.createEnvironmentPrompt(
                 name = "${input.agent_name} prompt",
                 content = input.agent_prompt
             )
