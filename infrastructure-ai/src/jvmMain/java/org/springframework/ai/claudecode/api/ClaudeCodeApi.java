@@ -102,6 +102,11 @@ public class ClaudeCodeApi {
                 claudeArgs.add("--model");
                 claudeArgs.add(model);
                 claudeArgs.add("-p");
+                
+                // Disable CLAUDE.md and other settings loading
+                // Empty string means don't load any settings (user, project, local)
+                claudeArgs.add("--setting-sources");
+                claudeArgs.add("");
 
                 // Join arguments into single command string
                 String claudeCommand = String.join(" ", claudeArgs);
