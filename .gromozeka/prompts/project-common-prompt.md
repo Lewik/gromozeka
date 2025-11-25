@@ -253,6 +253,22 @@ presentation/   - UI, ViewModels (UI Agent)
 - `:infrastructure-ai` → `:domain` (Spring AI, MCP)
 - `:presentation` → `:domain`, `:application`
 
+## Repository Structure & Release Workflow
+
+**Directory structure:**
+```
+gromozeka/
+├── dev/        - Development (branch: main)
+├── beta/       - Beta testing (branch: beta)
+└── release/    - Production (branch: release)
+```
+
+**Release workflow:**
+When user asks "update beta" or "update release":
+1. Merge changes into corresponding branch (`beta` or `release`)
+2. Push to remote
+3. Pull in corresponding directory (`beta/` or `release/`)
+
 ## Your Team
 
 You work alongside other specialized agents:

@@ -6,7 +6,7 @@
     "prompts/common-prompt.md",
     "prompts/common-agent-architecture.md",
     "prompts/meta-agent.md",
-    ".gromozeka/prompts/project-agent-context.md",
+    ".gromozeka/prompts/project-agent-design-guide.md",
     ".gromozeka/prompts/agents-roster.md",
     ".gromozeka/prompts/architecture.md"
   ],

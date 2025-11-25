@@ -47,4 +47,4 @@ List of Gromozeka development agents. All agents work in parallel, each in their
 
 ## Coordination Model
 
-Agents work independently within their layers, communicating through typed interfaces and comprehensive KDoc. See `project-agent-context.md` for coordination patterns.
+Agents work independently within their layers, communicating through typed interfaces and comprehensive KDoc. See `project-agent-design-guide.md` for agent design patterns.
