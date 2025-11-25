@@ -3,12 +3,11 @@
   "name": "Spring AI агент",
   "prompts": [
     "env",
-    ".gromozeka/prompts/shared-base.md",
-    ".gromozeka/prompts/agents-directory.md",
-    ".gromozeka/prompts/spring-ai-agent.md",
-    ".gromozeka/prompts/architecture.md"
+    "prompts/common-prompt.md",
+    ".gromozeka/prompts/project-common-prompt.md",
+    ".gromozeka/prompts/spring-ai-agent.md"
   ],
   "description": "Spring AI integration",
   "createdAt": "2025-11-22T19:11:52Z",
-  "updatedAt": "2025-11-22T19:11:52Z"
+  "updatedAt": "2025-11-25T00:00:00Z"
 }

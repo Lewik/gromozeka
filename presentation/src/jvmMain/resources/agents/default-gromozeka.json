@@ -2,9 +2,11 @@
   "id": "default-gromozeka",
   "name": "Gromozeka",
   "prompts": [
+    "env",
+    "prompts/common-prompt.md",
     "prompts/default-agent.md"
   ],
   "description": "Multi-armed AI assistant",
   "createdAt": "2025-11-22T19:11:52Z",
-  "updatedAt": "2025-11-22T19:11:52Z"
+  "updatedAt": "2025-11-25T00:00:00Z"
 }
