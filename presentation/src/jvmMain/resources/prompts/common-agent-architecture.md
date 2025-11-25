@@ -221,3 +221,58 @@ Before deploying new agent, verify:
 - [ ] JSON configuration is valid
 - [ ] Documented in Knowledge Graph
 - [ ] ADR created if significant decision
+
+## UI Agent Guidelines for Flux-Based Frameworks
+
+**Applies to:** React, Vue, Compose, SwiftUI, Flutter, and any Flux-architecture framework
+
+All UI agents working with declarative/reactive frameworks MUST include **Declarative UI Principles** section emphasizing:
+
+### Core Principle: UI = function(State)
+
+**Unidirectional data flow:**
+```
+Action → ViewModel → State → UI
+           ↑                  ↓
+           └─── User Event ───┘
+```
+
+### Required Guidelines
+
+**1. State as Single Source of Truth**
+- UI reads state, never modifies directly
+- State updates trigger UI re-render automatically
+- Immutable state patterns
+
+**2. Unidirectional Flow**
+- Events go UP (callbacks, actions)
+- State flows DOWN (StateFlow, observables)
+- No bidirectional bindings without explicit control
+
+**3. No Imperative Manipulation**
+- ❌ NO: `setText()`, `setVisibility()`, `updateList()`
+- ✅ YES: Declarative composition based on state
+
+**4. Include Anti-Pattern Examples**
+Show what NOT to do:
+```kotlin
+// ❌ WRONG: Imperative manipulation
+textField.setText(message)
+button.setEnabled(false)
+
+// ✅ CORRECT: Declarative composition
+@Composable
+fun UI(viewModel: VM) {
+    val message by viewModel.message.collectAsState()
+    Text(message)  // UI = function(state)
+}
+```
+
+### Why This Matters
+
+- **Predictable:** Same state = same UI, always
+- **Testable:** Test state changes, not UI interactions
+- **No race conditions:** Single source of truth
+- **Framework optimized:** Automatic re-render optimization
+
+**When creating new UI agents for Flux-based frameworks, always include these principles in agent prompt.**

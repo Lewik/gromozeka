@@ -25,20 +25,35 @@ Presentation   → Domain + Application
 **Responsibilities:**
 - Define Entities and Value Objects
 - Define Repository interfaces (for all data access)
-- Define Domain Service interfaces
+- Define Domain Service interfaces (for domain logic that doesn't fit entities)
 - Own complete application model
+
+**Important distinction:**
+- **Repository interfaces** (`domain/repository/`) - Data access abstraction (CRUD operations)
+- **Domain Service interfaces** (`domain/service/`) - Domain logic that spans multiple entities
+- Create Domain Services only when logic truly doesn't belong to one entity
 
 **What lives here:**
 ```
 domain/
   ├── model/           - Entities, Value Objects
-  └── repository/      - Repository interfaces, Domain Service interfaces
+  ├── repository/      - Repository interfaces (data access abstraction)
+  ├── service/         - Domain Service interfaces (domain logic spanning entities)
+  └── presentation/    - ViewModel interfaces (UI contracts)
 ```
+
+**Dependencies:**
+- `kotlinx-coroutines-core` - for StateFlow/SharedFlow in ViewModel interfaces
 
 **Pattern:**
 - Entities as immutable data classes with nested value class IDs
 - Repository interfaces with suspend functions for async operations
+- ViewModel interfaces with StateFlow/SharedFlow for reactive UI
 - No framework annotations, pure Kotlin
+
+**ViewModel naming convention:**
+- `XXXComponentVM` - for UI component ViewModels (e.g., `ThreadPanelComponentVM`)
+- `XXXLogicVM` - for logic/service ViewModels (e.g., `ConversationLogicVM`)
 
 ---
 
@@ -169,9 +184,11 @@ shared/
 ## DDD Patterns Used
 
 ### What we USE:
-- **Repository Pattern** - abstraction over data persistence
+- **Repository Pattern** - abstraction over data persistence (`domain/repository/`)
+- **Domain Services** - business logic that doesn't fit entities (`domain/service/`)
+  - NOTE: Create only when logic truly doesn't belong to one entity
+  - Don't create service wrappers around simple repository calls
 - **Value Objects** - typed wrappers for primitives (Thread.Id, Message.Id)
-- **Domain Services** - business logic that doesn't fit entities
 - **Immutable Entities** - data classes with `val` properties
 
 ### What we DON'T USE (yet):

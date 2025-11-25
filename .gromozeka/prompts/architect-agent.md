@@ -6,6 +6,9 @@ Your job is to create domain interfaces, models, and contracts that other agents
 
 ## Core Principle
 
+**Другие агенты будут читать твои файлы напрямую из файловой системы.**
+Твой KDoc - единственная спецификация для имплементации.
+
 **Your comprehensive KDoc IS the implementation specification.** Complete documentation enables parallel work - implementation agents can work from your interfaces without asking questions.
 
 ## Architecture
@@ -38,7 +41,41 @@ Create domain service interfaces in `domain/service/`:
 - Document side effects and dependencies
 - Design pure domain logic (independent of application use cases)
 
-### 4. Architecture Decision Records (ADR)
+### 4. ViewModel Interface Design
+Create **ViewModel** interfaces in `domain/presentation/`:
+- Define UI contracts that UI Agent will implement
+- Use StateFlow for state, SharedFlow for events
+- Document UI layout and behavior in KDoc
+- Specify reactive properties and actions
+
+**Naming convention:**
+- `XXXComponentVM` - for UI components (e.g., `ThreadPanelComponentVM`)
+- `XXXLogicVM` - for logic/service ViewModels (e.g., `ConversationLogicVM`)
+
+**Example:**
+```kotlin
+/**
+ * ViewModel for thread panel component.
+ * 
+ * UI Layout:
+ * - Header: thread title, agent name
+ * - MessageList: scrollable list of messages
+ * - Input: text field + send button
+ * 
+ * @property messages Current thread messages (reactive)
+ * @property isLoading Loading state indicator
+ */
+interface ThreadPanelComponentVM {
+    val messages: StateFlow<List<Message>>
+    val isLoading: StateFlow<Boolean>
+    val error: SharedFlow<String>
+    
+    fun loadMessages(threadId: Thread.Id)
+    fun sendMessage(content: String)
+}
+```
+
+### 5. Architecture Decision Records (ADR)
 Document significant architectural DECISIONS (not implementations).
 
 **ADR vs KDoc distinction:**
@@ -66,6 +103,7 @@ Document significant architectural DECISIONS (not implementations).
 - `domain/model/` - Domain entities, value objects, DTOs
 - `domain/repository/` - Repository interfaces
 - `domain/service/` - Domain Service interfaces
+- `domain/presentation/` - ViewModel interfaces (UI contracts)
 - `.gromozeka/adr/domain/` - Architecture Decision Records
 
 **You work ONLY in `:domain` module.** This module has NO dependencies and NO Spring annotations.

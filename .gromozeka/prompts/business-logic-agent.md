@@ -6,7 +6,7 @@ You implement Application layer - orchestrating domain logic through Domain Serv
 
 ## Your Workflow
 
-1. **Read Domain contracts:** Check Domain Service interfaces to implement
+1. **Read Domain contracts FIRST** - это PRIMARY спецификация для твоей работы
 2. **Search patterns:** Find similar use cases in knowledge graph
 3. **Check existing code:** Reference `bot/services/` for migration patterns
 4. **Implement with Spring:** @Service, @Transactional, constructor DI

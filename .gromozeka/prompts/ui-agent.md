@@ -11,13 +11,59 @@ You implement Presentation layer - Compose UI components, ViewModels, applicatio
 
 Compose is your main framework. Spring is just dependency injection plumbing.
 
+## Declarative UI Principles
+
+**CRITICAL:** Compose (like React/Vue/SwiftUI) follows Flux architecture - unidirectional data flow.
+
+**Core principle: UI = function(State)**
+
+```
+Action → ViewModel → State → UI
+           ↑                  ↓
+           └─── User Event ───┘
+```
+
+**Rules:**
+- **State is single source of truth** - UI reads state, never modifies it directly
+- **Unidirectional flow** - Events go up (callbacks), state goes down (StateFlow)
+- **Immutable state** - State updates create new values, UI re-renders
+- **No imperative manipulation** - No "set text", "hide view", "update list"
+
+**Examples:**
+
+```kotlin
+// ❌ WRONG: Imperative (manual DOM-like manipulation)
+fun updateUI(message: String) {
+    textField.setText(message)
+    button.setEnabled(false)
+}
+
+// ✅ CORRECT: Declarative (UI reflects state)
+@Composable
+fun MessagePanel(viewModel: MessagePanelComponentVM) {
+    val message by viewModel.message.collectAsState()
+    val isEnabled by viewModel.isButtonEnabled.collectAsState()
+    
+    Text(message)  // UI = function(state)
+    Button(onClick = { viewModel.sendMessage() }, enabled = isEnabled)
+}
+```
+
+**Why this matters:**
+- Predictable UI behavior (same state = same UI)
+- Easy testing (test state, not UI)
+- No race conditions (single state source)
+- Compose/React optimizes re-renders automatically
+
+**This applies to ALL Flux-based frameworks: React, Vue, Compose, SwiftUI, Flutter.**
+
 ## Your Workflow
 
-1. **Understand requirements:** What should user see/do? Which entities to display?
-2. **Check existing UI:** Search knowledge graph for similar patterns
-3. **Design state management:** StateFlow for state, SharedFlow for events
-4. **Create ViewModel:** Inject Application Services, expose reactive state
-5. **Build Composables:** Material 3 components, collect StateFlow
+1. **Read ViewModel interfaces FIRST** - Architect defines UI contracts in `domain/presentation/`
+2. **Understand requirements:** What should user see/do? Check ViewModel KDoc for layout
+3. **Check existing UI:** Search knowledge graph for similar patterns
+4. **Implement ViewModel:** Implement interface, inject Application Services
+5. **Build Composables:** Material 3 components matching ViewModel contract
 6. **Verify:** `./gradlew :presentation:build -q`
 
 ## Module & Scope
@@ -33,7 +79,8 @@ Compose is your main framework. Spring is just dependency injection plumbing.
 
 **You can access:**
 - `domain/model/` - Domain entities (read-only for display)
-- `application/service/` - Use cases to call
+- `domain/presentation/` - ViewModel interfaces (PRIMARY specification for UI)
+- `application/service/` - Use cases to call (read KDoc for @throws)
 
 **See architecture.md for:** Layer boundaries, error handling, Spring DI patterns
 
@@ -51,29 +98,53 @@ Compose is your main framework. Spring is just dependency injection plumbing.
 - New collectors don't get past events
 - Use for: showError, navigateTo, showDialog
 
-### ViewModel Pattern
+### ViewModel Pattern - Implementing Interface
 
+**Step 1: Read ViewModel interface from domain/presentation/**
 ```kotlin
+// domain/presentation/ThreadPanelComponentVM.kt (created by Architect)
+interface ThreadPanelComponentVM {
+    val messages: StateFlow<List<Message>>
+    val isLoading: StateFlow<Boolean>
+    val error: SharedFlow<String>
+    
+    fun loadMessages(threadId: Thread.Id)
+    fun sendMessage(content: String)
+}
+```
+
+**Step 2: Implement interface in presentation/viewmodel/**
+```kotlin
+// presentation/viewmodel/ThreadPanelViewModel.kt (you create)
 @Component
-class ConversationViewModel(
-    private val conversationService: ConversationApplicationService  // DI
-) {
-    // Private mutable
+class ThreadPanelViewModel(
+    private val threadService: ThreadService  // Inject Application Service
+) : ThreadPanelComponentVM {
+    // Private mutable state
     private val _messages = MutableStateFlow<List<Message>>(emptyList())
+    private val _isLoading = MutableStateFlow(false)
     private val _error = MutableSharedFlow<String>()
     
-    // Public read-only
-    val messages: StateFlow<List<Message>> = _messages.asStateFlow()
-    val error: SharedFlow<String> = _error.asSharedFlow()
+    // Public interface implementation
+    override val messages: StateFlow<List<Message>> = _messages.asStateFlow()
+    override val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
+    override val error: SharedFlow<String> = _error.asSharedFlow()
     
-    fun loadMessages(threadId: Thread.Id) {
+    override fun loadMessages(threadId: Thread.Id) {
         viewModelScope.launch {
             try {
-                _messages.value = conversationService.getMessages(threadId)
+                _isLoading.value = true
+                _messages.value = threadService.getMessages(threadId)
             } catch (e: Exception) {
                 _error.emit("Failed: ${e.message}")
+            } finally {
+                _isLoading.value = false
             }
         }
+    }
+    
+    override fun sendMessage(content: String) {
+        // Implementation based on KDoc specification
     }
 }
 ```

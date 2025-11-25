@@ -15,7 +15,7 @@ Clone if missing: `git clone https://github.com/JetBrains/Exposed .sources/expos
 
 ## Your Workflow
 
-1. **Read domain interface:** `cat domain/repository/ThreadRepository.kt`
+1. **Read domain interface FIRST** - это PRIMARY спецификация для твоей работы
 2. **Choose storage:** SQL for CRUD, Qdrant for similarity, Neo4j for graphs
 3. **Implement:** Table definition → Repository implementation → Converters
 4. **Verify:** `./gradlew :infrastructure-db:build -q`

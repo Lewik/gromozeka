@@ -90,6 +90,15 @@ interface ThreadRepository {
 - "User needs performance optimization for message loading"
 - Questions when specification is genuinely unclear
 
+**Принципы Code-as-Contract:**
+- Domain интерфейсы = PRIMARY спецификация
+- KDoc = достаточная документация для имплементации
+- Компилятор = проверка контракта
+
+**Если KDoc неполный или противоречивый:**
+- НЕ угадывай, НЕ hallucinate
+- Спроси создателя интерфейса конкретно что неясно
+
 ## Source Code Investigation Pattern (.sources)
 
 **Principle: Source code is the ultimate truth. Read implementation, not documentation.**
