@@ -1,68 +1,20 @@
-# Gromozeka Project Agent Architecture
+# Gromozeka Clean Architecture
 
-This document defines the complete architecture for Gromozeka project agents, including Clean Architecture layers, agent responsibilities, and coordination patterns.
+This document defines the Clean Architecture structure for Gromozeka project. All development agents must follow this architecture.
 
-## Project Overview
+## Overview
 
-**Gromozeka** is a multi-armed AI assistant built with Kotlin Multiplatform and Compose Desktop. It features:
-- Hybrid memory architecture (knowledge graph + vector store)
-- Multi-agent collaboration system
-- Spring AI integration with Claude Code CLI
-- Clean Architecture with DDD patterns
+Gromozeka follows Clean Architecture principles with clear layer separation and dependency rules.
 
-## Agent Roster
-
-### Architect Agent
-**Role:** Domain Designer  
-**Module:** `:domain`
-**Spring:** NO (pure Kotlin)
-**Output:** `domain/model/`, `domain/repository/`  
-**Key focus:** Technology-agnostic abstractions, comprehensive KDoc, immutable data classes
-
-### Repository Agent
-**Role:** Data Persistence Specialist  
-**Module:** `:infrastructure-db`
-**Spring:** YES (`@Service`, `@Repository`)
-**Output:** `infrastructure/db/persistence/`, `infrastructure/db/vector/`, `infrastructure/db/graph/`  
-**Key focus:** DDD Repository implementation (NOT Spring Data Repository), data access patterns
-
-### Business Logic Agent
-**Role:** Use Case Orchestrator  
-**Module:** `:application`
-**Spring:** YES (`@Service`)
-**Output:** `application/service/`  
-**Key focus:** Multi-repository coordination, transactional workflows, business invariants
-
-### Spring AI Agent
-**Role:** AI Integration Specialist  
-**Module:** `:infrastructure-ai`
-**Spring:** YES (`@Service`, `@Configuration`)
-**Output:** `infrastructure/ai/springai/`, `infrastructure/ai/claudecode/`, `infrastructure/ai/mcp/`  
-**Key focus:** Streaming responses, ChatModel implementations, MCP tools/servers
-
-### UI Agent
-**Role:** User Interface Developer  
-**Module:** `:presentation`
-**Spring:** YES (transitive, for DI and app startup)
-**Output:** `presentation/ui/`, `presentation/viewmodel/`  
-**Key focus:** Material 3 design, reactive StateFlow/SharedFlow, UX patterns
-
-### Build/Release Agent
-**Role:** Build Engineer  
-**Module:** Cross-cutting
-**Output:** Build artifacts, git tags, DMG/AppImage/MSI packages  
-**Key focus:** Quiet mode verification, version management, GitHub releases
-
-## Clean Architecture Layers
-
-### Core Principle
-Dependencies point inward only:
+**Core principle:** Dependencies point inward only.
 
 ```
 Infrastructure → Domain
 Application    → Domain
 Presentation   → Domain + Application
 ```
+
+## Layers
 
 ### 1. Domain Layer
 
@@ -213,38 +165,6 @@ shared/
 ```
 
 **Current status:** Each agent creates utilities locally. Shared Agent will be created later to consolidate common code.
-
-## Code-as-Contract Coordination
-
-### Pattern 1: Interface First
-1. Architect designs interface with complete KDoc
-   - KDoc must be **sufficient** to understand WHAT to implement
-   - Include: operation semantics, parameters, return values, exceptions
-   - **Avoid:** Implementation details, step-by-step HOW
-   - Think: **specification, not tutorial**
-2. Implementation agent reads interface from filesystem
-3. Implements based on KDoc specification
-4. Compiler validates contract adherence
-
-**Key insight:** Architecture leverages Clean Architecture to enable **AI-driven development management**. Domain layer allows AI to control development without loading detailed implementation code.
-
-### Pattern 2: Handoff via Filesystem
-```
-Architect writes:     domain/repository/XRepository.kt
-                     domain/service/XService.kt
-Repository Agent reads:  domain/repository/XRepository.kt
-Repository Agent writes: infrastructure/db/persistence/ExposedXRepository.kt
-Business Logic Agent reads: domain/service/XService.kt
-Business Logic Agent writes: application/service/XServiceImpl.kt
-```
-
-### Pattern 3: Knowledge Graph Context
-Before implementing, agent queries graph:
-- "What repository patterns have we used?"
-- "How did we handle pagination last time?"
-- "What error handling approach for external APIs?"
-
-**Key Principle:** Agents communicate **primarily** through typed code and comprehensive KDoc. Chat supplements for clarifications and coordination.
 
 ## DDD Patterns Used
 
@@ -404,20 +324,7 @@ sealed interface CreateEntityResult {
 3. **Multiple failure types?** → Result/Sealed class
 4. **Unexpected infrastructure error?** → Exception (let it propagate)
 
-## Verification Strategy
-
-**Build verification command:**
-```bash
-./gradlew :presentation:build :presentation:jvmTest --tests ApplicationContextTest -q || \
-  ./gradlew :presentation:build :presentation:jvmTest --tests ApplicationContextTest
-```
-
-**Quiet mode pattern:**
-- Always try `-q` first (saves 80-90% tokens)
-- Full output only on errors
-- Verify both compilation AND Spring context
-
-## Key Principles
+## Key Architecture Principles
 
 1. **Domain is pure** - No dependencies, no framework code
 2. **Dependencies point inward** - Outer layers depend on inner, never reverse
@@ -426,5 +333,3 @@ sealed interface CreateEntityResult {
 5. **Spring in outer layers only** - Application and Infrastructure (NOT Domain)
 6. **Each module is independent** - Can be compiled separately
 7. **DI wiring is automatic** - Spring finds implementations by interface
-8. **Code-as-Contract** - typed interfaces and KDoc drive development
-9. **Parallel independent development** - enabled by Clean Architecture

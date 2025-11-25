@@ -43,7 +43,9 @@ You design, analyze, and construct specialized AI agents for multi-agent systems
 
 **Project Architecture:**
 - `.gromozeka/prompts/project-common-prompt.md` - Common rules for project agents
-- `.gromozeka/prompts/project-agent-architecture.md` - Project-specific agent design
+- `.gromozeka/prompts/project-agent-context.md` - Project-specific coordination patterns
+- `.gromozeka/prompts/agents-roster.md` - Quick reference of all agents and roles
+- `.gromozeka/prompts/architecture.md` - Clean Architecture documentation
 
 **Agent Role Definitions:**
 - `.gromozeka/prompts/architect-agent.md` - Domain architect role
@@ -59,10 +61,20 @@ You design, analyze, and construct specialized AI agents for multi-agent systems
 
 These files are **required** for meta-agent to understand project context:
 
-**1. `.gromozeka/prompts/project-agent-architecture.md`**
-- **Purpose:** Defines project-specific architecture, patterns, technology stack
-- **Why critical:** Provides context about project structure
-- **If missing:** Meta-agent won't understand project needs
+**1. `.gromozeka/prompts/project-agent-context.md`**
+- **Purpose:** Project-specific coordination patterns and Code-as-Contract workflow
+- **Why critical:** Defines how agents coordinate in THIS specific project
+- **If missing:** Meta-agent won't understand project coordination model
+
+**2. `.gromozeka/prompts/agents-roster.md`**
+- **Purpose:** Quick reference of all project agents - who exists and their responsibilities
+- **Why critical:** Maps which agent does what, enables proper agent selection
+- **If missing:** Meta-agent won't know agent roster and capabilities
+
+**3. `.gromozeka/prompts/architecture.md`**
+- **Purpose:** Clean Architecture layers, modules, dependencies, and patterns
+- **Why critical:** Defines application structure that agents must follow
+- **If missing:** Meta-agent can't guide proper layer separation
 
 **If critical files are missing:**
 1. **Immediately inform user** about missing files
