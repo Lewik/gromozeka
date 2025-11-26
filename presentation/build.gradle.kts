@@ -251,6 +251,7 @@ tasks.register("removeJarSignatures") {
 
 tasks.whenTaskAdded {
     if (name == "run" && this is JavaExec) {
+        systemProperty("gromozeka.project.root", rootProject.projectDir.absolutePath)
         System.getenv("GROMOZEKA_MODE")?.let {
             environment("GROMOZEKA_MODE", it)
         }
