@@ -7,7 +7,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import org.springframework.stereotype.Service
-import java.io.File
 
 @Service
 class MacOSAudioPlayerController : AudioPlayerController {
@@ -16,17 +15,18 @@ class MacOSAudioPlayerController : AudioPlayerController {
     @Volatile
     private var currentProcess: Process? = null
 
-    override suspend fun playAudioFile(audioFile: File) = withContext(Dispatchers.IO) {
+    override suspend fun playAudioFile(filePath: String) = withContext(Dispatchers.IO) {
         var process: Process? = null
         try {
             // Kill any existing playback first
             stopPlayback()
 
-            process = ProcessBuilder("afplay", audioFile.absolutePath)
+            process = ProcessBuilder("afplay", filePath)
                 .start()
 
             currentProcess = process
-            log.info("Started playing: ${audioFile.name}")
+            val fileName = filePath.substringAfterLast('/')
+            log.info("Started playing: $fileName")
 
             // Cancellation-aware waiting
             while (process.isAlive) {
@@ -34,7 +34,7 @@ class MacOSAudioPlayerController : AudioPlayerController {
                 Thread.sleep(50) // Short intervals for quick response
             }
 
-            log.info("Finished playing: ${audioFile.name}")
+            log.info("Finished playing: $fileName")
 
         } catch (e: CancellationException) {
             log.info("Audio playback cancelled")

@@ -54,7 +54,7 @@ class TtsService(
     }
 
     suspend fun playAudio(audioFile: File) {
-        audioController.playAudioFile(audioFile)
+        audioController.playAudioFile(audioFile.absolutePath)
     }
 
     suspend fun stopPlayback() {
