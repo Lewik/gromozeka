@@ -1,4 +1,5 @@
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
+import org.gradle.nativeplatform.platform.internal.DefaultNativePlatform
 
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
@@ -125,12 +126,34 @@ compose.desktop {
     application {
         mainClass = "com.gromozeka.presentation.MainKt"
         
-        // ONLY universal JVM arguments (work on ALL platforms)
-        // NOTE: Compose Desktop does NOT support platform-specific jvmArgs inside macOS/windows blocks!
-        // All jvmArgs defined here apply to ALL platforms (DMG, MSI, AppImage, etc.)
-        jvmArgs += listOf(
-            "-Dfile.encoding=UTF-8"
-        )
+        // Platform-specific JVM arguments based on build OS
+        // GitHub Actions builds each platform separately, so this works correctly:
+        // - macOS runner (macos-latest) → macOS-specific args
+        // - Windows runner (windows-latest) → Windows-specific args
+        // - Linux runner (ubuntu-latest) → Linux-specific args
+        val currentOs = DefaultNativePlatform.getCurrentOperatingSystem()
+        when {
+            currentOs.isMacOsX -> {
+                jvmArgs += listOf(
+                    "-Xdock:icon=\$APP_DIR/../Resources/logos/logo-256x256.png",
+                    "-Xdock:name=Gromozeka",
+                    "-Dapple.awt.application.appearance=system",
+                    "-Djava.library.path=\$APP_DIR/native-libs"
+                )
+            }
+            currentOs.isWindows -> {
+                jvmArgs += listOf(
+                    "-Djava.library.path=\$APP_DIR\\native-libs",
+                    "-Dfile.encoding=UTF-8"
+                )
+            }
+            currentOs.isLinux -> {
+                jvmArgs += listOf(
+                    "-Djava.library.path=\$APP_DIR/native-libs",
+                    "-Dfile.encoding=UTF-8"
+                )
+            }
+        }
         
         nativeDistributions {
             targetFormats(
@@ -155,9 +178,7 @@ compose.desktop {
                 dmgPackageVersion = rootProject.version.toString()
                 bundleID = "com.gromozeka.app"
                 
-                // NOTE: Compose Desktop does NOT support jvmArgs inside platform blocks!
-                // macOS-specific appearance and Dock settings lost due to this limitation
-                // TODO: Investigate alternative approaches (custom launcher, runtime detection)
+                // macOS-specific JVM args (Dock, appearance) are set via OS detection above
                 
                 infoPlist {
                     extraKeysRawXml = """
@@ -182,8 +203,7 @@ compose.desktop {
                 upgradeUuid = "1e5a8b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c"
                 console = true  // Enable console window for debugging
                 
-                // NOTE: Compose Desktop does NOT support jvmArgs inside platform blocks!
-                // Universal jvmArgs are defined at application {} level instead
+                // Windows-specific JVM args are set via OS detection above
             }
         }
     }
