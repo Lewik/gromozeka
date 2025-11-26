@@ -135,7 +135,7 @@ compose.desktop {
         nativeDistributions {
             targetFormats(
                 TargetFormat.Dmg,  // macOS universal
-//                TargetFormat.Msi,  // Windows
+                TargetFormat.Msi,  // Windows
 //                TargetFormat.Deb,  // Ubuntu/Debian
 //                TargetFormat.Rpm,  // Red Hat/Fedora
 //                TargetFormat.AppImage  // Linux AppImage (requires appimagetool)
@@ -169,6 +169,13 @@ compose.desktop {
                 signing {
                     sign.set(false)
                 }
+            }
+            
+            windows {
+                menuGroup = "Gromozeka"
+                perUserInstall = true
+                dirChooser = true
+                upgradeUuid = "1e5a8b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c"
             }
         }
     }

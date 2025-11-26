@@ -38,6 +38,11 @@ jobs:
             target-formats: Jar
             artifact-pattern: '**/*.jar'
             artifact-name: 'gromozeka-jar'
+          - name: Windows MSI
+            os: windows-latest
+            target-formats: Msi
+            artifact-pattern: '**/*.msi'
+            artifact-name: 'gromozeka-windows'
 
     steps:
       - name: Checkout code
@@ -158,6 +163,7 @@ jobs:
           mkdir -p release-assets
           find artifacts -type f -name "*.dmg" -exec cp {} release-assets/ \;
           find artifacts -type f -name "Gromozeka-*.AppImage" -exec cp {} release-assets/ \;
+          find artifacts -type f -name "*.msi" -exec cp {} release-assets/ \;
           find artifacts -type f -name "*.jar" -exec cp {} release-assets/ \;
           ls -la release-assets/
 
@@ -170,6 +176,9 @@ jobs:
 
           ### macOS
           - **Universal Binary (M1/M2/M3/M4 + Intel)**: `Gromozeka-${{ env.VERSION }}.dmg`
+
+          ### Windows
+          - **MSI Installer (x64)**: `Gromozeka-${{ env.VERSION }}.msi`
 
           ### Linux
           - **AppImage (x86_64)**: `Gromozeka-${{ env.VERSION }}-x86_64.AppImage`
@@ -184,6 +193,13 @@ jobs:
           2. Open it and drag Gromozeka to Applications folder
           3. First launch: Right-click → Open (to bypass Gatekeeper)
           4. Grant accessibility permissions when prompted for global hotkey support
+
+          ### Windows
+          1. Download the `.msi` file
+          2. Double-click to run the installer
+          3. Follow the installation wizard
+          4. **Requirements**: Claude Code CLI must be installed and available in PATH
+          5. **Compatibility**: Windows 10 and later (x64)
 
           ### Linux
           1. Download the `.AppImage` file
