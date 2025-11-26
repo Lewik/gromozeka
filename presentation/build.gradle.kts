@@ -143,7 +143,7 @@ compose.desktop {
             }
             currentOs.isWindows -> {
                 jvmArgs += listOf(
-                    "-Djava.library.path=\$APP_DIR\\native-libs",
+                    "-Djava.library.path=\$APP_DIR/native-libs",
                     "-Dfile.encoding=UTF-8"
                 )
             }
