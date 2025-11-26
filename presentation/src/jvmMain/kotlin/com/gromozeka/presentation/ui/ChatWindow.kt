@@ -24,7 +24,7 @@ import com.gromozeka.application.service.TabPromptService
 import com.gromozeka.presentation.services.theming.AIThemeGenerator
 import com.gromozeka.presentation.services.theming.ThemeService
 import com.gromozeka.presentation.services.translation.TranslationService
-import com.gromozeka.domain.service.AppMode
+import com.gromozeka.domain.model.AppMode
 import com.gromozeka.presentation.model.Settings
 import com.gromozeka.presentation.ui.session.SessionScreen
 import com.gromozeka.bot.domain.model.ConversationInitiator

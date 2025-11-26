@@ -1,7 +1,9 @@
 package com.gromozeka.infrastructure.ai.memory
 
 import com.gromozeka.bot.domain.model.memory.MemoryObject
+import com.gromozeka.bot.domain.model.memory.MemoryLink
 import com.gromozeka.bot.domain.repository.KnowledgeGraphStore
+import com.gromozeka.domain.service.KnowledgeGraphService
 import klog.KLoggers
 import kotlinx.coroutines.coroutineScope
 import kotlinx.datetime.Clock
@@ -19,10 +21,80 @@ class KnowledgeGraphServiceFacade(
     private val relationshipExtractionService: RelationshipExtractionService,
     private val entityDeduplicationService: EntityDeduplicationService,
     private val embeddingModel: EmbeddingModel
-) {
+) : KnowledgeGraphService {
     private val log = KLoggers.logger(this)
     private val groupId = "dev-user"
 
+    override suspend fun saveMemoryObject(memoryObject: MemoryObject): MemoryObject {
+        knowledgeGraphStore.saveToGraph(listOf(memoryObject), emptyList())
+        return memoryObject
+    }
+    
+    override suspend fun saveMemoryLink(link: MemoryLink): MemoryLink {
+        knowledgeGraphStore.saveToGraph(emptyList(), listOf(link))
+        return link
+    }
+    
+    override suspend fun findMemoryObject(name: String): MemoryObject? {
+        val results = knowledgeGraphStore.executeQuery(
+            """
+            MATCH (n:MemoryObject {name: ${'$'}name, group_id: ${'$'}groupId})
+            RETURN n.uuid as uuid, n.name as name, n.embedding as embedding, 
+                   n.summary as summary, n.group_id as groupId, labels(n) as labels, 
+                   n.created_at as createdAt
+            LIMIT 1
+            """.trimIndent(),
+            mapOf("name" to name, "groupId" to groupId)
+        )
+        
+        return results.firstOrNull()?.let { record ->
+            MemoryObject(
+                uuid = record["uuid"] as String,
+                name = record["name"] as String,
+                embedding = (record["embedding"] as? List<*>)?.mapNotNull { (it as? Number)?.toFloat() } ?: emptyList(),
+                summary = record["summary"] as? String ?: "",
+                groupId = record["groupId"] as String,
+                labels = (record["labels"] as? List<*>)?.mapNotNull { it as? String } ?: emptyList(),
+                createdAt = Clock.System.now()
+            )
+        }
+    }
+    
+    override suspend fun search(query: String, limit: Int): KnowledgeGraphService.SearchResult {
+        // Simple search implementation - can be enhanced with vector similarity
+        val embedding = embeddingModel.embed(query)
+        
+        val objectResults = knowledgeGraphStore.executeQuery(
+            """
+            MATCH (n:MemoryObject {group_id: ${'$'}groupId})
+            RETURN n.uuid as uuid, n.name as name, n.embedding as embedding,
+                   n.summary as summary, n.group_id as groupId, labels(n) as labels,
+                   n.created_at as createdAt
+            LIMIT ${'$'}limit
+            """.trimIndent(),
+            mapOf("groupId" to groupId, "limit" to limit)
+        )
+        
+        val objects = objectResults.map { record ->
+            MemoryObject(
+                uuid = record["uuid"] as String,
+                name = record["name"] as String,
+                embedding = (record["embedding"] as? List<*>)?.mapNotNull { (it as? Number)?.toFloat() } ?: emptyList(),
+                summary = record["summary"] as? String ?: "",
+                groupId = record["groupId"] as String,
+                labels = (record["labels"] as? List<*>)?.mapNotNull { it as? String } ?: emptyList(),
+                createdAt = Clock.System.now()
+            )
+        }
+        
+        return KnowledgeGraphService.SearchResult(objects, emptyList())
+    }
+    
+    override suspend fun extractAndSaveToGraph(
+        content: String,
+        previousMessages: String
+    ): String = extractAndSaveToGraph(content, previousMessages, Clock.System.now(), null)
+    
     suspend fun extractAndSaveToGraph(
         content: String,
         previousMessages: String = "",

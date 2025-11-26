@@ -7,7 +7,7 @@ import com.gromozeka.infrastructure.ai.springai.ChatModelFactory
 import com.gromozeka.bot.domain.model.memory.EntityType
 import com.gromozeka.bot.domain.model.memory.EntityTypesConfig
 import com.gromozeka.infrastructure.ai.memory.models.MissedEntities
-import com.gromozeka.domain.service.AIProvider
+import com.gromozeka.domain.model.AIProvider
 import klog.KLoggers
 import kotlinx.coroutines.reactor.awaitSingle
 import kotlinx.serialization.json.Json

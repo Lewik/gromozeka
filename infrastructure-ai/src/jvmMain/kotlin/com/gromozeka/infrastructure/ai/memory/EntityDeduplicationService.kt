@@ -6,7 +6,7 @@ import com.gromozeka.infrastructure.ai.springai.ChatModelFactory
 import com.gromozeka.bot.domain.model.memory.EntityType
 import com.gromozeka.bot.domain.model.memory.EntityTypesConfig
 import com.gromozeka.infrastructure.ai.memory.models.NodeResolutions
-import com.gromozeka.domain.service.AIProvider
+import com.gromozeka.domain.model.AIProvider
 import com.gromozeka.bot.domain.repository.KnowledgeGraphStore
 import klog.KLoggers
 import kotlinx.coroutines.reactor.awaitSingle

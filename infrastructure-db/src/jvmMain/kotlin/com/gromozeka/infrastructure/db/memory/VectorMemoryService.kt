@@ -15,10 +15,10 @@ import org.springframework.stereotype.Service
 class VectorMemoryService(
     private val qdrantVectorStore: QdrantVectorStore?,
     private val threadMessageRepository: ThreadMessageRepository
-) {
+) : com.gromozeka.domain.service.VectorMemoryService {
     private val log = KLoggers.logger(this)
 
-    suspend fun rememberThread(threadId: String) = withContext(Dispatchers.IO) {
+    override suspend fun rememberThread(threadId: String) = withContext(Dispatchers.IO) {
         if (!isMemoryAvailable()) {
             log.debug { "Vector storage disabled or unavailable, skipping rememberThread" }
             return@withContext
@@ -50,11 +50,11 @@ class VectorMemoryService(
         }
     }
 
-    suspend fun recall(
+    override suspend fun recall(
         query: String,
-        threadId: String? = null,
-        limit: Int = 5
-    ): List<Memory> = withContext(Dispatchers.IO) {
+        threadId: String?,
+        limit: Int
+    ): List<com.gromozeka.domain.service.VectorMemoryService.Memory> = withContext(Dispatchers.IO) {
         if (!isMemoryAvailable()) {
             log.debug { "Vector storage disabled or unavailable, skipping recall" }
             return@withContext emptyList()
@@ -65,7 +65,7 @@ class VectorMemoryService(
             val results = qdrantVectorStore?.search(query, limit, filterExpression) ?: emptyList()
 
             results.map { doc ->
-                Memory(
+                com.gromozeka.domain.service.VectorMemoryService.Memory(
                     content = doc.formattedContent,
                     messageId = doc.id,
                     threadId = doc.metadata["threadId"] as? String ?: "",
@@ -78,7 +78,7 @@ class VectorMemoryService(
         }
     }
 
-    suspend fun forgetMessage(messageId: String) = withContext(Dispatchers.IO) {
+    override suspend fun forgetMessage(messageId: String) = withContext(Dispatchers.IO) {
         if (!isMemoryAvailable()) {
             log.debug { "Vector storage disabled or unavailable, skipping forgetMessage" }
             return@withContext
@@ -114,10 +114,3 @@ class VectorMemoryService(
         return qdrantVectorStore != null
     }
 }
-
-data class Memory(
-    val content: String,
-    val messageId: String,
-    val threadId: String,
-    val score: Double = 1.0
-)

@@ -3,6 +3,8 @@ package com.gromozeka.application.service
 import com.gromozeka.domain.model.Prompt
 import com.gromozeka.domain.repository.PromptDomainService
 import com.gromozeka.domain.repository.PromptRepository
+import com.gromozeka.domain.service.PromptPersistenceService
+import com.gromozeka.domain.service.ImportedPromptsRegistry
 import com.gromozeka.shared.uuid.uuid7
 import kotlinx.datetime.Clock
 import org.springframework.stereotype.Service
@@ -10,9 +12,9 @@ import org.springframework.stereotype.Service
 @Service
 class PromptApplicationService(
     private val promptRepository: PromptRepository,
-    private val promptCopyService: com.gromozeka.infrastructure.db.persistence.PromptCopyService,
+    private val promptPersistenceService: PromptPersistenceService,
     private val systemPromptBuilder: SystemPromptBuilder,
-    private val importedPromptsRegistry: com.gromozeka.infrastructure.db.persistence.ImportedPromptsRegistry,
+    private val importedPromptsRegistry: ImportedPromptsRegistry,
 ) : PromptDomainService {
 
     override suspend fun assembleSystemPrompt(
@@ -90,11 +92,11 @@ class PromptApplicationService(
         val prompt = promptRepository.findById(id)
             ?: return Result.failure(IllegalArgumentException("Prompt not found: ${id.value}"))
 
-        return promptCopyService.copyBuiltinToUser(prompt)
+        return promptPersistenceService.copyBuiltinToUser(prompt)
     }
 
     override suspend fun resetAllBuiltinPrompts(): Result<Int> {
-        return promptCopyService.resetAllBuiltinPrompts()
+        return promptPersistenceService.resetAllBuiltinPrompts()
     }
 
     override suspend fun importAllClaudeMd(): Result<Int> {

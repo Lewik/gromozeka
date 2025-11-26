@@ -7,7 +7,7 @@ import com.gromozeka.domain.repository.AgentDomainService
 import com.gromozeka.domain.repository.ThreadRepository
 import com.gromozeka.domain.repository.TokenUsageStatisticsRepository
 import com.gromozeka.domain.repository.ConversationDomainService
-import com.gromozeka.domain.service.AIProvider
+import com.gromozeka.domain.model.AIProvider
 import klog.KLoggers
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
@@ -22,8 +22,8 @@ import org.springframework.ai.google.genai.metadata.GoogleGenAiUsage
 import org.springframework.ai.model.tool.ToolCallingChatOptions
 import org.springframework.ai.model.tool.ToolCallingManager
 import org.springframework.stereotype.Service
-import com.gromozeka.infrastructure.ai.config.mcp.McpConfigurationService
-import com.gromozeka.infrastructure.ai.springai.ChatModelFactory
+import com.gromozeka.domain.service.McpToolProvider
+import com.gromozeka.domain.service.ChatModelProvider
 import java.util.UUID
 import kotlinx.datetime.Clock
 
@@ -47,7 +47,7 @@ import kotlinx.datetime.Clock
  */
 @Service
 class ConversationEngineService(
-    private val chatModelFactory: ChatModelFactory,
+    private val chatModelProvider: ChatModelProvider,
     private val systemPromptBuilder: SystemPromptBuilder,
     private val agentDomainService: AgentDomainService,
     private val toolCallingManager: ToolCallingManager,
@@ -57,11 +57,11 @@ class ConversationEngineService(
     private val threadMessageRepository: com.gromozeka.domain.repository.ThreadMessageRepository,
     private val messageConversionService: MessageConversionService,
     private val toolCallbacks: List<org.springframework.ai.tool.ToolCallback>,
-    private val mcpConfigurationService: McpConfigurationService,
+    private val mcpToolProvider: McpToolProvider,
     private val tokenUsageStatisticsRepository: TokenUsageStatisticsRepository,
     private val coroutineScope: CoroutineScope,
-    private val vectorMemoryService: com.gromozeka.infrastructure.db.memory.VectorMemoryService,
-    private val knowledgeGraphServiceFacade: com.gromozeka.infrastructure.ai.memory.KnowledgeGraphServiceFacade?,
+    private val vectorMemoryService: com.gromozeka.domain.service.VectorMemoryService,
+    private val knowledgeGraphService: com.gromozeka.domain.service.KnowledgeGraphService?,
 ) {
     private val log = KLoggers.logger(this)
 
@@ -79,7 +79,7 @@ class ConversationEngineService(
         log.debug { "Built-in @Bean tools: ${toolCallbacks.size}" }
 
         // MCP tools
-        val mcpCallbacks = mcpConfigurationService.getToolCallbacks()
+        val mcpCallbacks = mcpToolProvider.getToolCallbacks()
         allCallbacks.addAll(mcpCallbacks)
         allNames.addAll(mcpCallbacks.map { it.toolDefinition.name() })
         log.debug { "MCP tools: ${mcpCallbacks.size}" }
@@ -123,7 +123,7 @@ class ConversationEngineService(
 
         // 3. Get ChatModel for this conversation's provider with user's model
         val aiProvider = AIProvider.valueOf(conversation.aiProvider)
-        val chatModel = chatModelFactory.get(
+        val chatModel = chatModelProvider.getChatModel(
             aiProvider,
             conversation.modelName,
             projectPath
@@ -538,8 +538,8 @@ class ConversationEngineService(
      * This method triggers entity and relationship extraction from conversation.
      */
     suspend fun addToGraphCurrentThread(conversationId: Conversation.Id) {
-        if (knowledgeGraphServiceFacade == null) {
-            log.warn { "KnowledgeGraphServiceFacade not available (knowledge-graph.enabled=false)" }
+        if (knowledgeGraphService == null) {
+            log.warn { "KnowledgeGraphService not available (knowledge-graph.enabled=false)" }
             return
         }
 
@@ -557,7 +557,7 @@ class ConversationEngineService(
 
             log.info { "Adding thread ${conversation.currentThread} to knowledge graph for conversation $conversationId" }
 
-            val result = knowledgeGraphServiceFacade.extractAndSaveToGraph(threadMessages)
+            val result = knowledgeGraphService.extractAndSaveToGraph(threadMessages)
             log.info { "Knowledge graph update result: $result" }
         } catch (e: Exception) {
             log.error(e) { "Failed to add thread to graph for conversation $conversationId: ${e.message}" }

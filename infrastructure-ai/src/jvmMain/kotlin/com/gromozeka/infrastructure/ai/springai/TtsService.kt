@@ -2,7 +2,7 @@ package com.gromozeka.infrastructure.ai.springai
 
 import com.gromozeka.domain.service.AudioController
 import com.gromozeka.domain.service.SettingsProvider
-import com.gromozeka.domain.service.TtsTask
+import com.gromozeka.domain.model.TtsTask
 import klog.KLoggers
 
 import kotlinx.coroutines.Dispatchers

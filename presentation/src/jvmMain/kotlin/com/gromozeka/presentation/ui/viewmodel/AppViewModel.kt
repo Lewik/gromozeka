@@ -8,7 +8,7 @@ import com.gromozeka.bot.domain.repository.TabManager
 import com.gromozeka.bot.domain.model.Tab
 import com.gromozeka.presentation.services.SettingsService
 import com.gromozeka.presentation.services.SoundNotificationService
-import com.gromozeka.domain.service.AIProvider
+import com.gromozeka.domain.model.AIProvider
 import com.gromozeka.bot.domain.model.ConversationInitiator
 import com.gromozeka.presentation.ui.state.UIState
 import com.gromozeka.domain.model.Agent

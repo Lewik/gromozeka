@@ -2,7 +2,7 @@ package com.gromozeka.presentation.services
 
 import com.gromozeka.presentation.ui.viewmodel.AppViewModel
 import com.gromozeka.domain.model.Conversation
-import com.gromozeka.domain.service.TtsTask
+import com.gromozeka.domain.model.TtsTask
 import klog.KLoggers
 
 import kotlinx.coroutines.CoroutineScope

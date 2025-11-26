@@ -10,8 +10,6 @@ kotlin {
         val jvmMain by getting {
             dependencies {
                 implementation(project(":domain"))  // Transitively provides :shared
-                implementation(project(":infrastructure-ai"))
-                implementation(project(":infrastructure-db"))
                 
                 implementation(libs.spring.boot.starter)
                 implementation("org.springframework:spring-tx:6.2.2")

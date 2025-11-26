@@ -23,7 +23,7 @@ import com.gromozeka.presentation.ui.CompactButton
 import com.gromozeka.presentation.ui.LocalTranslation
 import com.gromozeka.presentation.ui.viewmodel.TabViewModel
 import com.gromozeka.domain.model.Conversation
-import com.gromozeka.domain.service.TtsTask
+import com.gromozeka.domain.model.TtsTask
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 

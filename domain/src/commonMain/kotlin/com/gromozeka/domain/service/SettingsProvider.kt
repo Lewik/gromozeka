@@ -1,5 +1,8 @@
 package com.gromozeka.domain.service
 
+import com.gromozeka.domain.model.AIProvider
+import com.gromozeka.domain.model.AppMode
+
 interface SettingsProvider {
     val sttMainLanguage: String
     val ttsModel: String

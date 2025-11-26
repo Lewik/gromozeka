@@ -5,7 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.gromozeka.infrastructure.ai.springai.ChatModelFactory
 import com.gromozeka.bot.domain.model.memory.MemoryLink
 import com.gromozeka.bot.domain.model.memory.MemoryObject
-import com.gromozeka.domain.service.AIProvider
+import com.gromozeka.domain.model.AIProvider
 import klog.KLoggers
 import kotlinx.coroutines.reactor.awaitSingle
 import kotlinx.datetime.Instant

@@ -1,8 +1,9 @@
 package com.gromozeka.infrastructure.ai.springai
 
 import com.google.genai.Client
-import com.gromozeka.domain.service.AIProvider
-import com.gromozeka.domain.service.AppMode
+import com.gromozeka.domain.model.AIProvider
+import com.gromozeka.domain.model.AppMode
+import com.gromozeka.domain.service.ChatModelProvider
 import io.micrometer.observation.ObservationRegistry
 import klog.KLoggers
 import org.springframework.ai.chat.model.ChatModel
@@ -28,7 +29,7 @@ class ChatModelFactory(
     @Autowired(required = false) private val geminiClient: Client?,
     private val toolCallingManager: ToolCallingManager,
     private val settingsProvider: SettingsProvider,
-) {
+) : ChatModelProvider {
     private val log = KLoggers.logger(this)
 
     private data class CacheKey(
@@ -39,12 +40,16 @@ class ChatModelFactory(
 
     private val cache = ConcurrentHashMap<CacheKey, ChatModel>()
 
-    fun get(provider: AIProvider, modelName: String, projectPath: String?): ChatModel {
+    override fun getChatModel(provider: AIProvider, modelName: String, projectPath: String?): ChatModel {
         val key = CacheKey(provider, modelName, projectPath)
         return cache.getOrPut(key) {
             createChatModel(provider, modelName, projectPath)
         }
     }
+    
+    @Deprecated("Use getChatModel instead", ReplaceWith("getChatModel(provider, modelName, projectPath)"))
+    fun get(provider: AIProvider, modelName: String, projectPath: String?): ChatModel = 
+        getChatModel(provider, modelName, projectPath)
 
     private fun createChatModel(
         provider: AIProvider,

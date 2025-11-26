@@ -8,7 +8,7 @@ import java.nio.ByteBuffer
 import java.nio.channels.ReadableByteChannel
 import java.nio.channels.WritableByteChannel
 import java.nio.file.StandardOpenOption
-import com.gromozeka.domain.service.AppMode
+import com.gromozeka.domain.model.AppMode
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.springframework.stereotype.Service

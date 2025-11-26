@@ -1,8 +1,8 @@
 package com.gromozeka.presentation.services
 
 import com.gromozeka.presentation.model.Settings
-import com.gromozeka.domain.service.AIProvider
-import com.gromozeka.domain.service.AppMode
+import com.gromozeka.domain.model.AIProvider
+import com.gromozeka.domain.model.AppMode
 import com.gromozeka.domain.service.SettingsProvider
 import com.gromozeka.shared.utils.findRandomAvailablePort
 import klog.KLoggers

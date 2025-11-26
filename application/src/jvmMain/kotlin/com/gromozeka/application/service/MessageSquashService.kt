@@ -1,10 +1,10 @@
 package com.gromozeka.application.service
 
-import com.gromozeka.domain.service.AIProvider
+import com.gromozeka.domain.model.AIProvider
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.SquashType
 import com.gromozeka.domain.repository.ConversationDomainService
-import com.gromozeka.infrastructure.ai.springai.ChatModelFactory
+import com.gromozeka.domain.service.ChatModelProvider
 import klog.KLoggers
 import kotlinx.coroutines.reactive.awaitSingle
 import org.springframework.ai.chat.messages.UserMessage
@@ -13,7 +13,7 @@ import org.springframework.stereotype.Service
 
 @Service
 class MessageSquashService(
-    private val chatModelFactory: ChatModelFactory,
+    private val chatModelProvider: ChatModelProvider,
     private val conversationService: ConversationDomainService,
     private val messageConversionService: MessageConversionService
 ) {
@@ -57,7 +57,7 @@ class MessageSquashService(
 
         log.debug { "Calling AI with ${fullPrompt.size} messages (${springAIMessages.size} history + 1 command)" }
 
-        val chatModel = chatModelFactory.get(aiProvider, modelName, projectPath)
+        val chatModel = chatModelProvider.getChatModel(aiProvider, modelName, projectPath)
         val result = chatModel.stream(Prompt(fullPrompt))
             .collectList()
             .awaitSingle()

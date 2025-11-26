@@ -1,6 +1,7 @@
 package com.gromozeka.infrastructure.db.persistence
 
 import com.gromozeka.domain.model.Prompt
+import com.gromozeka.domain.service.PromptPersistenceService
 import klog.KLoggers
 import org.springframework.stereotype.Service
 import java.io.File
@@ -8,10 +9,10 @@ import java.io.File
 @Service
 class PromptCopyService(
     private val builtinPromptLoader: BuiltinPromptLoader
-) {
+) : PromptPersistenceService {
     private val log = KLoggers.logger("PromptCopyService")
 
-    fun copyBuiltinToUser(builtinPrompt: Prompt): Result<Unit> {
+    override suspend fun copyBuiltinToUser(builtinPrompt: Prompt): Result<Unit> {
         val gromozekaHome = System.getProperty("GROMOZEKA_HOME") 
             ?: return Result.failure(IllegalStateException("GROMOZEKA_HOME system property not set"))
         
@@ -40,7 +41,7 @@ class PromptCopyService(
         }
     }
 
-    fun resetAllBuiltinPrompts(): Result<Int> {
+    override suspend fun resetAllBuiltinPrompts(): Result<Int> {
         val gromozekaHome = System.getProperty("GROMOZEKA_HOME") 
             ?: return Result.failure(IllegalStateException("GROMOZEKA_HOME system property not set"))
         

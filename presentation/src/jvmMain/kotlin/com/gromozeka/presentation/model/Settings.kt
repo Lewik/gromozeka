@@ -2,7 +2,7 @@ package com.gromozeka.presentation.model
 
 import com.gromozeka.presentation.services.theming.data.DarkTheme
 import com.gromozeka.presentation.services.translation.data.EnglishTranslation
-import com.gromozeka.domain.service.AIProvider
+import com.gromozeka.domain.model.AIProvider
 import kotlinx.serialization.Serializable
 
 @Serializable

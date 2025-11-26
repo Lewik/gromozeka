@@ -1,6 +1,6 @@
 package com.gromozeka.presentation.services
 
-import com.gromozeka.domain.service.TtsTask
+import com.gromozeka.domain.model.TtsTask
 import com.gromozeka.infrastructure.ai.springai.TtsService
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel

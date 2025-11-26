@@ -11,7 +11,7 @@ import java.io.File
  * Stores absolute paths to files discovered via "Find all CLAUDE.md" button.
  */
 @Component
-class ImportedPromptsRegistry {
+class ImportedPromptsRegistry : com.gromozeka.domain.service.ImportedPromptsRegistry {
     
     private val json = Json { prettyPrint = true }
     
@@ -26,7 +26,7 @@ class ImportedPromptsRegistry {
         return File(gromozekaHome, "imported-prompts-registry.json")
     }
     
-    fun load(): List<String> {
+    override suspend fun load(): List<String> {
         val file = getRegistryFile()
         if (!file.exists()) return emptyList()
         
@@ -46,9 +46,13 @@ class ImportedPromptsRegistry {
         file.writeText(json.encodeToString(registry))
     }
     
-    fun add(paths: List<String>) {
+    override suspend fun add(paths: List<String>) {
         val existing = load()
         val updated = (existing + paths).distinct()
         save(updated)
+    }
+    
+    override suspend fun clear() {
+        save(emptyList())
     }
 }

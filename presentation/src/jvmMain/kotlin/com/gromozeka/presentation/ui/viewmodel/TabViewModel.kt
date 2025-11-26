@@ -7,7 +7,7 @@ import com.gromozeka.infrastructure.ai.platform.ScreenCaptureController
 import com.gromozeka.application.service.ConversationEngineService
 import com.gromozeka.application.service.MessageSquashService
 import com.gromozeka.presentation.services.SoundNotificationService
-import com.gromozeka.domain.service.AIProvider
+import com.gromozeka.domain.model.AIProvider
 import com.gromozeka.presentation.model.Settings
 import com.gromozeka.presentation.ui.state.UIState
 import com.gromozeka.presentation.utils.ChatMessageSoundDetector

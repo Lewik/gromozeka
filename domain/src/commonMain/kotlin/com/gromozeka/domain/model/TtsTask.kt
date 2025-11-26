@@ -1,4 +1,4 @@
-package com.gromozeka.domain.service
+package com.gromozeka.domain.model
 
 data class TtsTask(
     val text: String,
