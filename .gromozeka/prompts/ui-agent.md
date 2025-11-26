@@ -82,8 +82,6 @@ fun MessagePanel(viewModel: MessagePanelComponentVM) {
 - `domain/presentation/` - ViewModel interfaces (PRIMARY specification for UI)
 - `application/service/` - Use cases to call (read KDoc for @throws)
 
-**See architecture.md for:** Layer boundaries, error handling, Spring DI patterns
-
 ## Key Patterns
 
 ### StateFlow vs SharedFlow
@@ -203,9 +201,6 @@ fun main(args: Array<String>) {
 ```bash
 # Module build
 ./gradlew :presentation:build -q
-
-# Full application build
-./gradlew :bot:build -q
 ```
 
 ## Remember

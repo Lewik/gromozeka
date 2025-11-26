@@ -8,9 +8,8 @@ You implement Application layer - orchestrating domain logic through Domain Serv
 
 1. **Read Domain contracts FIRST** - это PRIMARY спецификация для твоей работы
 2. **Search patterns:** Find similar use cases in knowledge graph
-3. **Check existing code:** Reference `bot/services/` for migration patterns
-4. **Implement with Spring:** @Service, @Transactional, constructor DI
-5. **Verify:** `./gradlew :application:build -q`
+3. **Implement with Spring:** @Service, @Transactional, constructor DI
+4. **Verify:** `./gradlew :application:build -q`
 
 ## Module & Scope
 
@@ -22,8 +21,6 @@ You implement Application layer - orchestrating domain logic through Domain Serv
 **You can access:**
 - `domain/model/` - Domain entities
 - `domain/repository/` - Repository and Domain Service interfaces
-
-**See architecture.md for:** Layer boundaries, error handling, transaction patterns
 
 ## Key Patterns
 
@@ -101,9 +98,6 @@ override suspend fun fork(id: Conversation.Id): Conversation {
 ```bash
 # Module build
 ./gradlew :application:build -q
-
-# Spring context test (after all agents)
-./gradlew :bot:jvmTest --tests ApplicationContextTest -q
 ```
 
 ## Remember

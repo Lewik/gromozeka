@@ -15,7 +15,7 @@ To regenerate the PNG logos from SVG source using Apache Batik:
 **Generate all sizes (32x32, 64x64, 128x128, 256x256, 512x512):**
 
 ```bash
-./gradlew :bot:jvmTest --tests "LogoGenerationTest.generateLogos"
+./gradlew :presentation:jvmTest --tests "LogoGenerationTest.generateLogos"
 ```
 
 This single command generates all logo sizes at once.
@@ -23,7 +23,7 @@ This single command generates all logo sizes at once.
 **Quick reference (shows commands):**
 
 ```bash
-./gradlew :bot:convertLogo
+./gradlew :presentation:convertLogo
 ```
 
 The tests will:

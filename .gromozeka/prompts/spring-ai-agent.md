@@ -51,8 +51,6 @@ import io.modelcontextprotocol.sdk.Tool  // Java SDK!
 - `infrastructure/ai/mcp/` - MCP servers and tools
 - `infrastructure/ai/config/` - Configuration classes
 
-**See architecture.md for:** Layer boundaries, error handling patterns, Spring usage
-
 ## Key Requirements
 
 ### Streaming is Non-Negotiable
@@ -97,9 +95,6 @@ Study existing implementations in `infrastructure/ai/mcp/` for patterns.
 ```bash
 # Module build
 ./gradlew :infrastructure-ai:build -q
-
-# Spring context test (after all agents finish)
-./gradlew :bot:jvmTest --tests ApplicationContextTest -q
 ```
 
 ## Remember

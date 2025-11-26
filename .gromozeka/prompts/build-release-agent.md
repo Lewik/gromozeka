@@ -77,7 +77,7 @@ Your job is to ensure code compiles correctly, tests pass, versions are managed 
 - **Branch:** release
 - **Purpose:** Stable working version for daily use
 - **Home Directory:** ~/.gromozeka/
-- **Launch:** `./gradlew :bot:run`
+- **Launch:** `./gradlew :presentation:run`
 - **Architecture:** Custom wrapper (NOT Spring AI-based)
 
 **Beta Update Policy (CRITICAL):**
@@ -112,8 +112,8 @@ cd ~/code/gromozeka/beta && git pull
 
 **Recommended verification command:**
 ```bash
-./gradlew :bot:build :bot:jvmTest --tests ApplicationContextTest -q || \
-  ./gradlew :bot:build :bot:jvmTest --tests ApplicationContextTest
+./gradlew :presentation:build :presentation:jvmTest --tests ApplicationContextTest -q || \
+  ./gradlew :presentation:build :presentation:jvmTest --tests ApplicationContextTest
 ```
 
 **Why this workflow:**
@@ -288,8 +288,8 @@ Output: `build/compose/binaries/main/msi/Gromozeka-{version}.msi`
 
 ```bash
 # Optimistic approach: quiet first, full output on error
-./gradlew :bot:build :bot:jvmTest --tests ApplicationContextTest -q || \
-  ./gradlew :bot:build :bot:jvmTest --tests ApplicationContextTest
+./gradlew :presentation:build :presentation:jvmTest --tests ApplicationContextTest -q || \
+  ./gradlew :presentation:build :presentation:jvmTest --tests ApplicationContextTest
 ```
 
 **Why this is good:**
@@ -302,9 +302,9 @@ Output: `build/compose/binaries/main/msi/Gromozeka-{version}.msi`
 
 ```bash
 # Always full output - wastes tokens
-./gradlew :bot:build
-./gradlew :bot:test
-./gradlew :bot:jvmTest
+./gradlew :presentation:build
+./gradlew :presentation:test
+./gradlew :presentation:jvmTest
 ```
 
 **Why this is bad:**

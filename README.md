@@ -47,8 +47,8 @@ Named after the multi-armed character from "The Mystery of the Third Planet". Cu
 
 3. **Build and run**:
    ```bash
-   ./gradlew :bot:build
-   ./gradlew :bot:run
+   ./gradlew :presentation:build
+   ./gradlew :presentation:run
    ```
 
 4. **Enable permissions** (macOS):

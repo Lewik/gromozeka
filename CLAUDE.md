@@ -22,18 +22,13 @@ This file provides **minimal context** for repairing Gromozeka when normal agent
 GROMOZEKA_MODE=dev ./gradlew :presentation:run
 ```
 
-**Release:**
-```bash
-cd ~/code/gromozeka/release
-./gradlew :bot:run
-```
 
 ## Critical Build Commands
 
 **Verify compilation + Spring context:**
 ```bash
-./gradlew :bot:build :bot:jvmTest --tests ApplicationContextTest -q || \
-  ./gradlew :bot:build :bot:jvmTest --tests ApplicationContextTest
+./gradlew :presentation:build :presentation:jvmTest --tests ApplicationContextTest -q || \
+  ./gradlew :presentation:build :presentation:jvmTest --tests ApplicationContextTest
 ```
 
 **Quiet mode pattern:** Always `-q` first (80-90% token savings), full output only on error.
