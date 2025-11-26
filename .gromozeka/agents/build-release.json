@@ -1,0 +1,13 @@
+{
+  "id": "build-release",
+  "name": "Сборщик",
+  "prompts": [
+    "env",
+    "prompts/common-prompt.md",
+    ".gromozeka/prompts/project-common-prompt.md",
+    ".gromozeka/prompts/build-release-agent.md"
+  ],
+  "description": "Build and release engineer",
+  "createdAt": "2025-11-26T20:00:00Z",
+  "updatedAt": "2025-11-26T20:00:00Z"
+}
