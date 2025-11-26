@@ -22,7 +22,7 @@ import java.util.*
 class RelationshipExtractionService(
     private val chatModelFactory: ChatModelFactory,
     private val embeddingModel: EmbeddingModel,
-    @Value("\${gromozeka.ai.provider:GEMINI}")
+    @Value("\${gromozeka.ai.provider:CLAUDE_CODE}")
     private val aiProvider: String,
     @Value("\${gromozeka.ai.gemini.model:gemini-2.0-flash-thinking-exp-01-21}")
     private val geminiModel: String,

@@ -85,6 +85,19 @@ class MemoryMcpTools(
             .description("""
                 Remember information from text by building memory objects and links using LLM extraction.
 
+                ⚠️ **IMPORTANT - Use Sparingly:**
+                - This tool makes MULTIPLE LLM requests (one per entity + relationships)
+                - Expensive in tokens and time
+                - Use ONLY for large, complex texts with many entities
+                - For simple facts, use add_memory_link instead (direct, no LLM parsing)
+                - ALWAYS ask user permission before using this tool
+
+                **When to use:**
+                - ✅ Large documents with many interconnected concepts
+                - ✅ Complex technical explanations requiring entity extraction
+                - ❌ Simple facts like "X uses Y" (use add_memory_link)
+                - ❌ Single relationships (use add_memory_link)
+
                 **Usage:**
                 - Extract entities (people, technologies, concepts, etc.) from the content
                 - Identify relationships between entities with temporal information

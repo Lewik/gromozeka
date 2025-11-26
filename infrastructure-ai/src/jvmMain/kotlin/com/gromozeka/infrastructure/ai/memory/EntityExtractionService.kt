@@ -21,7 +21,7 @@ import org.springframework.stereotype.Service
 @ConditionalOnProperty(name = ["knowledge-graph.enabled"], havingValue = "true", matchIfMissing = false)
 class EntityExtractionService(
     private val chatModelFactory: ChatModelFactory,
-    @Value("\${gromozeka.ai.provider:GEMINI}")
+    @Value("\${gromozeka.ai.provider:CLAUDE_CODE}")
     private val aiProvider: String,
     @Value("\${gromozeka.ai.gemini.model:gemini-2.0-flash-thinking-exp-01-21}")
     private val geminiModel: String,
