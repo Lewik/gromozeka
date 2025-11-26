@@ -16,6 +16,7 @@ kotlin {
                 api(project(":shared"))  // Transitive dependency for all domain consumers
                 implementation(libs.kotlinx.datetime)
                 implementation(libs.kotlinx.serialization.json)
+                implementation(libs.kotlinx.coroutines.core)  // For StateFlow, SharedFlow
             }
         }
         

@@ -42,15 +42,20 @@ Create domain service interfaces in `domain/service/`:
 - Design pure domain logic (independent of application use cases)
 
 ### 4. ViewModel Interface Design
-Create **ViewModel** interfaces in `domain/presentation/`:
-- Define UI contracts that UI Agent will implement
-- Use StateFlow for state, SharedFlow for events
-- Document UI layout and behavior in KDoc
-- Specify reactive properties and actions
+Create **ViewModel** interfaces in `domain/presentation/desktop/`:
+- `component/` - UI components with **mandatory ASCII diagrams**
+- `logic/` - Orchestration without UI details
 
 **Naming convention:**
-- `XXXComponentVM` - for UI components (e.g., `ThreadPanelComponentVM`)
-- `XXXLogicVM` - for logic/service ViewModels (e.g., `ConversationLogicVM`)
+- `XXXComponentVM` - UI components (e.g., `ThreadPanelComponentVM`)
+  - **MUST** include ASCII diagram showing layout
+  - Documents UI structure, rendering behavior
+  
+- `XXXLogicVM` - Orchestration (e.g., `ConversationLogicVM`)
+  - **NO** UI details (no layout, colors, animations)
+  - Coordinates components, manages navigation/sync
+
+Use StateFlow for state, SharedFlow for events
 
 **Example:**
 ```kotlin

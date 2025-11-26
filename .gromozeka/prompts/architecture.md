@@ -55,6 +55,15 @@ domain/
 - `XXXComponentVM` - for UI component ViewModels (e.g., `ThreadPanelComponentVM`)
 - `XXXLogicVM` - for logic/service ViewModels (e.g., `ConversationLogicVM`)
 
+**ViewModel structure:**
+```
+domain/presentation/desktop/
+  ├── component/   # UI components (MUST have ASCII diagrams)
+  └── logic/       # Orchestration (NO UI details)
+```
+
+**Why desktop/ only:** Mobile/Web will be added as needed.
+
 ---
 
 ### 2. Application Layer

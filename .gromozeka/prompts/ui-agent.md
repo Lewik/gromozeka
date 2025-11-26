@@ -59,7 +59,9 @@ fun MessagePanel(viewModel: MessagePanelComponentVM) {
 
 ## Your Workflow
 
-1. **Read ViewModel interfaces FIRST** - Architect defines UI contracts in `domain/presentation/`
+1. **Read ViewModel interfaces FIRST** - Architect defines UI contracts in:
+   - `domain/presentation/desktop/component/` — ComponentVM with ASCII layout diagrams
+   - `domain/presentation/desktop/logic/` — LogicVM for orchestration (no UI details)
 2. **Understand requirements:** What should user see/do? Check ViewModel KDoc for layout
 3. **Check existing UI:** Search knowledge graph for similar patterns
 4. **Implement ViewModel:** Implement interface, inject Application Services
