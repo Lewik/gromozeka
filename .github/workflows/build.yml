@@ -119,6 +119,8 @@ jobs:
             find build/appimage -type f -name "Gromozeka-*.AppImage" -exec ls -la {} \; 2>/dev/null || echo "No AppImage files found"
           elif [ "${{ matrix.target-formats }}" = "Jar" ]; then
             find presentation/build/compose/jars -type f -name "*.jar" -exec ls -la {} \; 2>/dev/null || echo "No JAR files found"
+          elif [ "${{ matrix.target-formats }}" = "Msi" ]; then
+            find presentation/build/compose/binaries -type f -name "*.msi" -exec ls -la {} \; 2>/dev/null || echo "No MSI files found"
           else
             find presentation/build/compose/binaries -type f -name "*.dmg" -exec ls -la {} \; 2>/dev/null || echo "No DMG files found"
           fi
@@ -128,7 +130,7 @@ jobs:
         with:
           name: ${{ matrix.artifact-name }}-${{ env.VERSION }}
           path: |
-            ${{ matrix.target-formats == 'AppImage' && 'build/appimage/Gromozeka-*.AppImage' || matrix.target-formats == 'Jar' && 'presentation/build/compose/jars/*.jar' || 'presentation/build/compose/binaries/**/*.dmg' }}
+            ${{ matrix.target-formats == 'AppImage' && 'build/appimage/Gromozeka-*.AppImage' || matrix.target-formats == 'Jar' && 'presentation/build/compose/jars/*.jar' || matrix.target-formats == 'Msi' && 'presentation/build/compose/binaries/**/*.msi' || 'presentation/build/compose/binaries/**/*.dmg' }}
           retention-days: 30
 
   release:
