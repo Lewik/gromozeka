@@ -125,7 +125,12 @@ compose.desktop {
     application {
         mainClass = "com.gromozeka.presentation.MainKt"
         
-        // Platform-specific JVM arguments moved to platform sections below
+        // ONLY universal JVM arguments (work on ALL platforms)
+        // NOTE: Compose Desktop does NOT support platform-specific jvmArgs inside macOS/windows blocks!
+        // All jvmArgs defined here apply to ALL platforms (DMG, MSI, AppImage, etc.)
+        jvmArgs += listOf(
+            "-Dfile.encoding=UTF-8"
+        )
         
         nativeDistributions {
             targetFormats(
@@ -150,13 +155,9 @@ compose.desktop {
                 dmgPackageVersion = rootProject.version.toString()
                 bundleID = "com.gromozeka.app"
                 
-                // macOS-specific JVM arguments
-                jvmArgs += listOf(
-                    "-Xdock:icon=\$APP_DIR/../Resources/logos/logo-256x256.png",
-                    "-Xdock:name=Gromozeka",
-                    "-Dapple.awt.application.appearance=system",
-                    "-Djava.library.path=\$APP_DIR/native-libs"
-                )
+                // NOTE: Compose Desktop does NOT support jvmArgs inside platform blocks!
+                // macOS-specific appearance and Dock settings lost due to this limitation
+                // TODO: Investigate alternative approaches (custom launcher, runtime detection)
                 
                 infoPlist {
                     extraKeysRawXml = """
@@ -181,11 +182,8 @@ compose.desktop {
                 upgradeUuid = "1e5a8b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c"
                 console = true  // Enable console window for debugging
                 
-                // Windows-specific JVM arguments
-                jvmArgs += listOf(
-                    "-Djava.library.path=\$APP_DIR\\native-libs",
-                    "-Dfile.encoding=UTF-8"
-                )
+                // NOTE: Compose Desktop does NOT support jvmArgs inside platform blocks!
+                // Universal jvmArgs are defined at application {} level instead
             }
         }
     }
