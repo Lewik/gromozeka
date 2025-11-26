@@ -124,13 +124,8 @@ tasks.withType<Test> {
 compose.desktop {
     application {
         mainClass = "com.gromozeka.presentation.MainKt"
-        jvmArgs += listOf(
-            "-Xdock:icon=src/jvmMain/resources/logos/logo-256x256.png",
-            "-Xdock:name=Gromozeka",
-            "-Dapple.awt.application.appearance=system",
-            "-Djava.library.path=\$APP_DIR/native-libs",
-            "-Dgromozeka.project.root=${rootProject.projectDir.absolutePath}",
-        )
+        
+        // Platform-specific JVM arguments moved to platform sections below
         
         nativeDistributions {
             targetFormats(
@@ -155,6 +150,14 @@ compose.desktop {
                 dmgPackageVersion = rootProject.version.toString()
                 bundleID = "com.gromozeka.app"
                 
+                // macOS-specific JVM arguments
+                jvmArgs += listOf(
+                    "-Xdock:icon=\$APP_DIR/../Resources/logos/logo-256x256.png",
+                    "-Xdock:name=Gromozeka",
+                    "-Dapple.awt.application.appearance=system",
+                    "-Djava.library.path=\$APP_DIR/native-libs"
+                )
+                
                 infoPlist {
                     extraKeysRawXml = """
                         <key>NSMicrophoneUsageDescription</key>
@@ -176,6 +179,13 @@ compose.desktop {
                 perUserInstall = true
                 dirChooser = true
                 upgradeUuid = "1e5a8b2c-3d4e-5f6a-7b8c-9d0e1f2a3b4c"
+                console = true  // Enable console window for debugging
+                
+                // Windows-specific JVM arguments
+                jvmArgs += listOf(
+                    "-Djava.library.path=\$APP_DIR\\native-libs",
+                    "-Dfile.encoding=UTF-8"
+                )
             }
         }
     }
