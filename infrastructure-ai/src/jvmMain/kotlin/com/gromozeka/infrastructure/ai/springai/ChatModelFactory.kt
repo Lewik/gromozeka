@@ -17,7 +17,9 @@ import org.springframework.ai.ollama.OllamaChatModel
 import org.springframework.ai.ollama.api.OllamaApi
 import org.springframework.ai.ollama.api.OllamaChatOptions
 import org.springframework.ai.ollama.management.ModelManagementOptions
+import org.springframework.ai.tool.ToolCallback
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.context.ApplicationContext
 import org.springframework.retry.support.RetryTemplate
 import org.springframework.stereotype.Service
 import java.util.concurrent.ConcurrentHashMap
@@ -29,6 +31,7 @@ class ChatModelFactory(
     @Autowired(required = false) private val geminiClient: Client?,
     private val toolCallingManager: ToolCallingManager,
     private val settingsProvider: SettingsProvider,
+    private val applicationContext: ApplicationContext,
 ) : ChatModelProvider {
     private val log = KLoggers.logger(this)
 
@@ -39,6 +42,16 @@ class ChatModelFactory(
     )
 
     private val cache = ConcurrentHashMap<CacheKey, ChatModel>()
+
+    /**
+     * Получает все зарегистрированные ToolCallback бины из Spring контекста.
+     * Использует ту же стратегию, что и SpringContextToolCallbackResolver.
+     */
+    private fun getAllToolCallbacks(): List<ToolCallback> {
+        val toolCallbacks = applicationContext.getBeansOfType(ToolCallback::class.java).values.toList()
+        log.info("Retrieved ${toolCallbacks.size} ToolCallback beans from ApplicationContext: ${toolCallbacks.map { it.toolDefinition.name() }}")
+        return toolCallbacks
+    }
 
     override fun getChatModel(provider: AIProvider, modelName: String, projectPath: String?): ChatModel {
         val key = CacheKey(provider, modelName, projectPath)
@@ -109,12 +122,21 @@ class ChatModelFactory(
             AIProvider.CLAUDE_CODE -> {
                 val workingDir = projectPath ?: System.getProperty("user.dir")
                 val claudePath = ClaudePathDetector.detectClaudePath()
+                
+                // Get MCP config path from settings
+                val mcpConfigPath = java.io.File(settingsProvider.homeDirectory, "mcp-sse-config.json").absolutePath
+                log.info("Using MCP config: $mcpConfigPath")
 
                 val api = ClaudeCodeApi.builder()
                     .cliPath(claudePath)
                     .workingDirectory(workingDir)
                     .devMode(settingsProvider.mode == AppMode.DEV)
+                    .mcpConfigPath(mcpConfigPath)
                     .build()
+
+                // Получаем все зарегистрированные tool callbacks
+                val toolCallbacks = getAllToolCallbacks()
+                log.info("Creating ClaudeCodeChatModel with ${toolCallbacks.size} tool callbacks for model $modelName")
 
                 val options = ClaudeCodeChatOptions.builder()
                     .model(modelName)
@@ -125,6 +147,9 @@ class ChatModelFactory(
                     .workingDirectory(workingDir)
                     .internalToolExecutionEnabled(false)
                     .build()
+                
+                // Устанавливаем toolCallbacks через setter (Builder не имеет этого метода)
+                options.toolCallbacks = toolCallbacks
 
                 ClaudeCodeChatModel.builder()
                     .claudeCodeApi(api)

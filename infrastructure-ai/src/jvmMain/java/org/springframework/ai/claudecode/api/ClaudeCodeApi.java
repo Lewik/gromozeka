@@ -43,12 +43,14 @@ public class ClaudeCodeApi {
     private final String cliPath;
     private final String workingDirectory;
     private final boolean devMode;
+    private final String mcpConfigPath;
     private final ObjectMapper objectMapper;
 
-    private ClaudeCodeApi(String cliPath, String workingDirectory, boolean devMode) {
+    private ClaudeCodeApi(String cliPath, String workingDirectory, boolean devMode, String mcpConfigPath) {
         this.cliPath = cliPath;
         this.workingDirectory = workingDirectory;
         this.devMode = devMode;
+        this.mcpConfigPath = mcpConfigPath;
         this.objectMapper = new ObjectMapper();
     }
 
@@ -102,10 +104,18 @@ public class ClaudeCodeApi {
                 claudeArgs.add(model);
                 claudeArgs.add("-p");
                 
-                // Disable CLAUDE.md and other settings loading
-                // Empty string means don't load any settings (user, project, local)
-                claudeArgs.add("--setting-sources");
-                claudeArgs.add("\"\"");
+                // Load MCP config if provided, otherwise disable all settings
+                if (mcpConfigPath != null && !mcpConfigPath.isEmpty()) {
+                    logger.debug("Loading MCP config from: {}", mcpConfigPath);
+                    claudeArgs.add("--mcp-config");
+                    claudeArgs.add(quoteShellArg(mcpConfigPath));
+                } else {
+                    // Disable CLAUDE.md and other settings loading
+                    // Empty string means don't load any settings (user, project, local)
+                    logger.debug("No MCP config provided, disabling all settings");
+                    claudeArgs.add("--setting-sources");
+                    claudeArgs.add("\"\"");
+                }
 
                 // Join arguments into single command string
                 String claudeCommand = String.join(" ", claudeArgs);
@@ -515,6 +525,7 @@ public class ClaudeCodeApi {
         private String cliPath = "claude";
         private String workingDirectory = System.getProperty("user.dir");
         private boolean devMode = false;
+        private String mcpConfigPath = null;
 
         public Builder cliPath(String cliPath) {
             this.cliPath = cliPath;
@@ -531,10 +542,15 @@ public class ClaudeCodeApi {
             return this;
         }
 
+        public Builder mcpConfigPath(String mcpConfigPath) {
+            this.mcpConfigPath = mcpConfigPath;
+            return this;
+        }
+
         public ClaudeCodeApi build() {
             Assert.hasText(cliPath, "CLI path must not be empty");
             Assert.hasText(workingDirectory, "Working directory must not be empty");
-            return new ClaudeCodeApi(cliPath, workingDirectory, devMode);
+            return new ClaudeCodeApi(cliPath, workingDirectory, devMode, mcpConfigPath);
         }
     }
 }

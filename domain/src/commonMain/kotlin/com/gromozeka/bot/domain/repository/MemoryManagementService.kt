@@ -38,6 +38,8 @@ interface MemoryManagementService {
     /**
      * Adds a fact directly to the knowledge graph without LLM extraction.
      *
+     * **Tool exposure:** `add_memory_link`
+     *
      * Creates source and target entities (if needed) and relationship between them.
      * Uses MERGE semantics - updates existing entities on name collision.
      *
@@ -60,6 +62,8 @@ interface MemoryManagementService {
 
     /**
      * Retrieves detailed information about an entity.
+     *
+     * **Tool exposure:** `get_memory_object`
      *
      * Returns multi-line formatted text with:
      * - Entity name, type, summary, creation time
@@ -91,6 +95,8 @@ interface MemoryManagementService {
     /**
      * Marks a fact as invalid (soft delete with bi-temporal tracking).
      *
+     * **Tool exposure:** `invalidate_memory_link`
+     *
      * Sets invalidAt timestamp on matching relationship, preserving history.
      * Fact remains in database but filtered out from queries (WHERE invalid_at IS NULL).
      *
@@ -119,6 +125,8 @@ interface MemoryManagementService {
     /**
      * Updates entity summary and/or type.
      *
+     * **Tool exposure:** `update_memory_object`
+     *
      * Modifies existing entity properties in-place (not versioned).
      * At least one of [newSummary] or [newType] must be provided.
      *
@@ -137,6 +145,8 @@ interface MemoryManagementService {
 
     /**
      * ⚠️ PERMANENTLY deletes entity from knowledge graph (NO UNDO!)
+     *
+     * **Tool exposure:** `delete_memory_object`
      *
      * **DANGER: This is a hard delete** - entity and optionally relationships are destroyed.
      * No history preservation, no soft delete. Use with extreme caution.

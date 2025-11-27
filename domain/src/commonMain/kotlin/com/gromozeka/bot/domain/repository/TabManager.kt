@@ -35,6 +35,8 @@ interface TabManager {
     /**
      * Create new tab (active conversation session).
      * 
+     * **Tool exposure:** `create_agent` (MCP tool)
+     * 
      * Creates platform-specific Tab implementation and optionally:
      * - Creates new Conversation if conversationId is null
      * - Resumes existing Conversation if conversationId provided
@@ -66,6 +68,8 @@ interface TabManager {
     /**
      * Switch focus to tab by ID.
      * 
+     * **Tool exposure:** `switch_tab` (MCP tool)
+     * 
      * Changes focusState to FOCUSED for target tab, BACKGROUND for others.
      * Used by AI to control information flow - similar to human pointing at screen.
      * 
@@ -76,6 +80,8 @@ interface TabManager {
     
     /**
      * Send message to specific tab.
+     * 
+     * **Tool exposure:** `tell_agent` (MCP tool)
      * 
      * Appends message to tab's conversation with instructions for routing:
      * - Source.Agent(senderTabId) → identifies sender
@@ -96,8 +102,9 @@ interface TabManager {
     /**
      * List all active tabs.
      * 
+     * **Tool exposure:** `list_tabs` (MCP tool)
+     * 
      * Returns platform-agnostic information about all tabs.
-     * Used by MCP list_tabs tool to show available tabs.
      * 
      * @return list of tab information for all active tabs
      */

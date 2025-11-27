@@ -57,13 +57,31 @@ interface KnowledgeGraphService {
     /**
      * Extracts entities and relationships from text and saves to knowledge graph.
      *
-     * Uses LLM to extract entities, relationships, and generate embeddings.
-     * Performs entity deduplication to avoid creating duplicate nodes.
-     * This is a TRANSACTIONAL operation - creates all entities and relationships atomically.
+     * **Tool exposure:** `build_memory_from_text`
+     *
+     * ⚠️ **EXPENSIVE OPERATION - Use Sparingly:**
+     * - Makes MULTIPLE LLM requests (one per entity + relationships)
+     * - Expensive in tokens and time
+     * - Use ONLY for large, complex texts with many entities
+     * - For simple facts, use MemoryManagementService.addFactDirectly() instead (direct, no LLM parsing)
+     * - ALWAYS ask user permission before using this tool
+     *
+     * **When to use:**
+     * - ✅ Large documents with many interconnected concepts
+     * - ✅ Complex technical explanations requiring entity extraction
+     * - ❌ Simple facts like "X uses Y" (use addFactDirectly instead)
+     * - ❌ Single relationships (use addFactDirectly instead)
+     *
+     * **How it works:**
+     * - Uses LLM to extract entities, relationships, and generate embeddings
+     * - Performs entity deduplication to avoid creating duplicate nodes
+     * - This is a TRANSACTIONAL operation - creates all entities and relationships atomically
      *
      * @param content text content to extract from (conversation messages, documents, etc.)
      * @param previousMessages optional context from previous conversation
      * @return summary message with count of entities and relationships added
+     *
+     * @see com.gromozeka.bot.domain.repository.MemoryManagementService.addFactDirectly for simple facts
      */
     suspend fun extractAndSaveToGraph(
         content: String,
