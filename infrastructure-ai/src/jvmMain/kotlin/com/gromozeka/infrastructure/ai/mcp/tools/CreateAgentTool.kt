@@ -1,8 +1,8 @@
 package com.gromozeka.infrastructure.ai.mcp.tools
 
-import com.gromozeka.bot.domain.repository.TabManager
-import com.gromozeka.bot.domain.model.Tab
-import com.gromozeka.bot.domain.model.ConversationInitiator
+import com.gromozeka.domain.repository.TabManager
+import com.gromozeka.domain.model.Tab
+import com.gromozeka.domain.model.ConversationInitiator
 import com.gromozeka.domain.model.Agent
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.repository.AgentDomainService

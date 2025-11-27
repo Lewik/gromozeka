@@ -1,7 +1,7 @@
 package com.gromozeka.infrastructure.ai.mcp.tools
 
-import com.gromozeka.bot.domain.repository.TabManager
-import com.gromozeka.bot.domain.model.Tab
+import com.gromozeka.domain.repository.TabManager
+import com.gromozeka.domain.model.Tab
 import com.gromozeka.domain.model.Conversation
 import klog.KLoggers
 

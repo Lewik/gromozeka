@@ -1,7 +1,7 @@
 package com.gromozeka.infrastructure.ai.mcp.tools
 
-import com.gromozeka.bot.domain.repository.TabManager
-import com.gromozeka.bot.domain.model.Tab
+import com.gromozeka.domain.repository.TabManager
+import com.gromozeka.domain.model.Tab
 import io.modelcontextprotocol.kotlin.sdk.CallToolRequest
 import io.modelcontextprotocol.kotlin.sdk.CallToolResult
 import io.modelcontextprotocol.kotlin.sdk.TextContent

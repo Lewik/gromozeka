@@ -1,4 +1,4 @@
-package com.gromozeka.bot.domain.model
+package com.gromozeka.domain.model
 
 import com.gromozeka.domain.model.Conversation
 import kotlinx.serialization.Serializable

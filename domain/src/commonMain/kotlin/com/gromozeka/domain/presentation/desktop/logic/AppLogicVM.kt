@@ -1,6 +1,6 @@
 package com.gromozeka.domain.presentation.desktop.logic
 
-import com.gromozeka.bot.domain.model.ConversationInitiator
+import com.gromozeka.domain.model.ConversationInitiator
 import com.gromozeka.domain.model.Agent
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.presentation.desktop.component.TabComponentVM

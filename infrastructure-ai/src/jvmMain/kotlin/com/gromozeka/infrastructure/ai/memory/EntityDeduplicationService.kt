@@ -3,11 +3,11 @@ package com.gromozeka.infrastructure.ai.memory
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import com.gromozeka.infrastructure.ai.springai.ChatModelFactory
-import com.gromozeka.bot.domain.model.memory.EntityType
-import com.gromozeka.bot.domain.model.memory.EntityTypesConfig
+import com.gromozeka.domain.model.memory.EntityType
+import com.gromozeka.domain.model.memory.EntityTypesConfig
 import com.gromozeka.infrastructure.ai.memory.models.NodeResolutions
 import com.gromozeka.domain.model.AIProvider
-import com.gromozeka.bot.domain.repository.KnowledgeGraphStore
+import com.gromozeka.domain.repository.KnowledgeGraphStore
 import klog.KLoggers
 import kotlinx.coroutines.reactor.awaitSingle
 import kotlinx.serialization.json.Json

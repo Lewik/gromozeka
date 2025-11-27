@@ -1,7 +1,7 @@
-package com.gromozeka.bot.domain.repository
+package com.gromozeka.domain.repository
 
-import com.gromozeka.bot.domain.model.memory.MemoryLink
-import com.gromozeka.bot.domain.model.memory.MemoryObject
+import com.gromozeka.domain.model.memory.MemoryLink
+import com.gromozeka.domain.model.memory.MemoryObject
 
 /**
  * Repository for persisting and querying knowledge graph entities and relationships.

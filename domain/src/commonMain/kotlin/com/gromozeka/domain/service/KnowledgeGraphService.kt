@@ -1,7 +1,7 @@
 package com.gromozeka.domain.service
 
-import com.gromozeka.bot.domain.model.memory.MemoryObject
-import com.gromozeka.bot.domain.model.memory.MemoryLink
+import com.gromozeka.domain.model.memory.MemoryObject
+import com.gromozeka.domain.model.memory.MemoryLink
 
 /**
  * Service for knowledge graph operations.
@@ -81,7 +81,7 @@ interface KnowledgeGraphService {
      * @param previousMessages optional context from previous conversation
      * @return summary message with count of entities and relationships added
      *
-     * @see com.gromozeka.bot.domain.repository.MemoryManagementService.addFactDirectly for simple facts
+     * @see com.gromozeka.domain.repository.MemoryManagementService.addFactDirectly for simple facts
      */
     suspend fun extractAndSaveToGraph(
         content: String,

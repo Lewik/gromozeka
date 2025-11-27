@@ -1,8 +1,8 @@
 package com.gromozeka.infrastructure.ai.memory
 
-import com.gromozeka.bot.domain.model.memory.MemoryObject
-import com.gromozeka.bot.domain.model.memory.MemoryLink
-import com.gromozeka.bot.domain.repository.KnowledgeGraphStore
+import com.gromozeka.domain.model.memory.MemoryObject
+import com.gromozeka.domain.model.memory.MemoryLink
+import com.gromozeka.domain.repository.KnowledgeGraphStore
 import com.gromozeka.domain.service.KnowledgeGraphService
 import klog.KLoggers
 import kotlinx.coroutines.coroutineScope

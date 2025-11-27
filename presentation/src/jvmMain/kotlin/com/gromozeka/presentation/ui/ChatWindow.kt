@@ -27,7 +27,7 @@ import com.gromozeka.presentation.services.translation.TranslationService
 import com.gromozeka.domain.model.AppMode
 import com.gromozeka.presentation.model.Settings
 import com.gromozeka.presentation.ui.session.SessionScreen
-import com.gromozeka.bot.domain.model.ConversationInitiator
+import com.gromozeka.domain.model.ConversationInitiator
 import com.gromozeka.presentation.ui.viewmodel.AppViewModel
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.repository.ProjectDomainService

@@ -1,4 +1,4 @@
-package com.gromozeka.bot.domain.repository
+package com.gromozeka.domain.repository
 
 /**
  * Domain service for high-level knowledge graph management operations.

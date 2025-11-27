@@ -1,6 +1,6 @@
 package com.gromozeka.infrastructure.ai.memory
 
-import com.gromozeka.bot.domain.repository.KnowledgeGraphStore
+import com.gromozeka.domain.repository.KnowledgeGraphStore
 import java.security.MessageDigest
 import kotlin.math.min
 

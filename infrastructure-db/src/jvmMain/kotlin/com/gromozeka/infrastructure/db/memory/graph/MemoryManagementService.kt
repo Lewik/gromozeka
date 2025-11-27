@@ -1,6 +1,6 @@
 package com.gromozeka.infrastructure.db.memory.graph
 
-import com.gromozeka.bot.domain.repository.MemoryManagementService as IMemoryManagementService
+import com.gromozeka.domain.repository.MemoryManagementService as IMemoryManagementService
 import com.gromozeka.infrastructure.db.graph.Neo4jGraphStore
 import klog.KLoggers
 import kotlinx.datetime.Clock

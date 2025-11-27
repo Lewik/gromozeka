@@ -1,6 +1,6 @@
 package com.gromozeka.presentation.ui.state
 
-import com.gromozeka.bot.domain.model.ConversationInitiator
+import com.gromozeka.domain.model.ConversationInitiator
 import com.gromozeka.domain.model.Agent
 import com.gromozeka.domain.model.Conversation
 import kotlinx.serialization.Serializable

@@ -1,6 +1,6 @@
 package com.gromozeka.infrastructure.ai.memory
 
-import com.gromozeka.bot.domain.model.memory.EntityType
+import com.gromozeka.domain.model.memory.EntityType
 import kotlinx.datetime.Instant
 
 object MemoryExtractionPrompts {

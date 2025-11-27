@@ -1,7 +1,7 @@
-package com.gromozeka.bot.domain.repository
+package com.gromozeka.domain.repository
 
-import com.gromozeka.bot.domain.model.ConversationInitiator
-import com.gromozeka.bot.domain.model.Tab
+import com.gromozeka.domain.model.ConversationInitiator
+import com.gromozeka.domain.model.Tab
 import com.gromozeka.domain.model.Agent
 import com.gromozeka.domain.model.Conversation
 

@@ -1,4 +1,4 @@
-package com.gromozeka.bot.domain.model.memory
+package com.gromozeka.domain.model.memory
 
 import kotlinx.datetime.Instant
 

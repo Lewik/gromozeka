@@ -1,6 +1,6 @@
 package com.gromozeka.infrastructure.ai.tool.memory
 
-import com.gromozeka.bot.domain.repository.MemoryManagementService
+import com.gromozeka.domain.repository.MemoryManagementService
 import com.gromozeka.domain.tool.memory.DeleteMemoryObjectRequest
 import kotlinx.coroutines.runBlocking
 import org.slf4j.LoggerFactory

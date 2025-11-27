@@ -4,12 +4,12 @@ import com.gromozeka.infrastructure.ai.platform.ScreenCaptureController
 import com.gromozeka.application.service.ConversationEngineService
 import com.gromozeka.application.service.DefaultAgentProvider
 import com.gromozeka.application.service.MessageSquashService
-import com.gromozeka.bot.domain.repository.TabManager
-import com.gromozeka.bot.domain.model.Tab
+import com.gromozeka.domain.repository.TabManager
+import com.gromozeka.domain.model.Tab
 import com.gromozeka.presentation.services.SettingsService
 import com.gromozeka.presentation.services.SoundNotificationService
 import com.gromozeka.domain.model.AIProvider
-import com.gromozeka.bot.domain.model.ConversationInitiator
+import com.gromozeka.domain.model.ConversationInitiator
 import com.gromozeka.presentation.ui.state.UIState
 import com.gromozeka.domain.model.Agent
 import com.gromozeka.domain.model.Conversation

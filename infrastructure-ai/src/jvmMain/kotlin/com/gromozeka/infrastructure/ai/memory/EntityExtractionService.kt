@@ -4,8 +4,8 @@ import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import com.gromozeka.infrastructure.ai.springai.ChatModelFactory
-import com.gromozeka.bot.domain.model.memory.EntityType
-import com.gromozeka.bot.domain.model.memory.EntityTypesConfig
+import com.gromozeka.domain.model.memory.EntityType
+import com.gromozeka.domain.model.memory.EntityTypesConfig
 import com.gromozeka.infrastructure.ai.memory.models.MissedEntities
 import com.gromozeka.domain.model.AIProvider
 import klog.KLoggers
