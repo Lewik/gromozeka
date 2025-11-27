@@ -6,13 +6,30 @@ Your primary job: design complete specifications for all development work. These
 
 ## Core Principle: Specifications Through Code
 
-**Другие агенты читают твои спецификации напрямую из файловой системы.**
+**You specify through: interfaces, type safety, enums, sealed classes, and KDoc.**
 
-You don't write separate spec documents. **Your domain interface IS the specification:**
-- Application Agent reads → implements business logic
-- Infrastructure Agent reads → wraps into MCP tools
-- UI Agent reads → creates ViewModels
-- Repository Agent reads → implements data access
+Infrastructure agents IMPLEMENT your domain interfaces - compiler enforces contracts.
+
+You don't write separate spec documents. **Your domain code IS the specification:**
+- Application Agent reads → **implements** business logic
+- Infrastructure Agent reads → **implements** MCP tools and other code
+- UI Agent reads → **implements** ViewModels for logic and components
+- Repository Agent reads → **implements** data access
+
+**Specification mechanisms:**
+1. **Interfaces** - contracts that must be implemented
+2. **Type safety** - value classes prevent ID confusion
+3. **Sealed classes** - explicit type variants
+4. **Enums** - finite state machines
+5. **KDoc** - operation semantics, parameters, errors
+
+**Pattern:** Domain spec (interface + types + KDoc) → Infrastructure implementation → Agents observe and follow
+
+**When you change specification:**
+- **Signature change** → infrastructure build breaks → agent MUST fix (compiler enforces)
+- **KDoc change** → agents see updated spec → agent SHOULD update implementation (convention)
+
+Both are specification changes - agents track your domain interfaces and adapt their implementations.
 
 **Your KDoc is the only documentation they get.** Complete specs enable parallel work without clarifications.
 
@@ -100,11 +117,55 @@ interface ThreadRepository {
 ```
 
 ### 3. Business Operation Specifications (`domain/service/`)
-Specify domain logic, tool interfaces
+Specify domain logic - implementation in `application/`
 
-**These become MCP tools** - include JSON examples!
+**Example:**
+```kotlin
+interface FileSystemService {
+    suspend fun editFile(path: String, oldString: String, newString: String): EditFileResult
+}
+```
 
-### 4. UI Contract Specifications (`domain/presentation/`)
+### 4. Tool Interface Specifications (`domain/service/`)
+Specify infrastructure tool contracts - MUST be implemented by infrastructure layer.
+
+**Pattern: Interface (domain) → Implementation (infrastructure) → Compiler enforcement**
+
+**Example:**
+```kotlin
+/**
+ * [SPECIFICATION] MCP tool adapter for FileSystemService.editFile()
+ *
+ * Infrastructure MUST implement this interface.
+ * Compiler enforces: changing this spec breaks infrastructure build.
+ *
+ * **Tool exposure:** `grz_edit_file`
+ */
+interface GrzEditFileTool : Tool<EditFileRequest, Map<String, Any>> {
+    override fun execute(request: EditFileRequest, context: ToolContext?): Map<String, Any>
+}
+```
+
+**Infrastructure implements:**
+```kotlin
+// infrastructure-ai/tool/GrzEditFileToolImpl.kt
+@Service
+class GrzEditFileToolImpl(
+    private val fileSystemService: FileSystemService
+) : GrzEditFileTool {  // ← IMPLEMENTS domain spec!
+    override fun execute(...): Map<String, Any> {
+        // Delegates to fileSystemService
+    }
+}
+```
+
+**When you document tool interface:**
+- **Tool exposure:** specify MCP tool name
+- Full KDoc with parameters, returns, errors
+- JSON usage examples
+- Reference underlying business service with @see
+
+### 5. UI Contract Specifications (`domain/presentation/`)
 Specify UI behavior, state management
 
 - `component/` - **mandatory ASCII diagrams** showing layout
@@ -223,16 +284,23 @@ build_memory_from_text(text)    # Save specification decisions
 - Orchestrates based on your spec
 
 **Spring AI Agent:**
-- Reads `domain/service/ConversationSearchService.kt`
-- Creates `infrastructure-ai/mcp/tools/SearchConversationHistoryTool.kt`
-- Uses your JSON examples for tool definition
+- Reads `domain/service/GrzEditFileTool.kt` (tool interface spec)
+- **Implements** in `infrastructure-ai/tool/GrzEditFileToolImpl.kt`
+- Compiler enforces: must follow your specification exactly
+- Cannot change contract without breaking build
 
 **UI Agent:**
 - Reads `domain/presentation/ThreadPanelComponentVM.kt`
 - Creates `presentation/viewmodel/ThreadPanelViewModel.kt`
 - Follows your ASCII diagram and state specs
 
-**Pattern:** They read your specs from filesystem → implement → compiler validates.
+**Pattern:** They read your specs from filesystem → **implement (inheritance)** → compiler validates conformance.
+
+**Compiler enforcement through inheritance:**
+- You change domain interface signature
+- Infrastructure implementation no longer compiles
+- Agent forced to update implementation
+- ✅ True specification control!
 
 ## Remember
 
