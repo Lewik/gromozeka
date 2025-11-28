@@ -86,9 +86,14 @@ domain/
 **Agent:** Business Logic Agent
 
 **Responsibilities:**
-- Implement Use Cases and Business logic 
-- Coordinate multiple Repositories
-- Application-specific workflows
+- Implement Use Cases and Application logic
+- Services with business rules and decision-making
+- Coordination of repositories and domain services
+- Workflows with filtering, ranking, formatting
+- "Smart" operations (not just dumb technical IO)
+
+**Key principle:** If there's LOGIC (decisions, rules, workflows) → Application layer.
+If it's just technical code without decisions → Infrastructure.
 
 **What lives here:**
 ```
