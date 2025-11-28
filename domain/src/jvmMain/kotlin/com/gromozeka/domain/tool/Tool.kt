@@ -2,6 +2,25 @@ package com.gromozeka.domain.tool
 
 import org.springframework.ai.chat.model.ToolContext
 
+// TODO: TECHNICAL DEBT - ToolContext dependency in domain layer
+//
+// Current situation:
+// - Domain layer imports Spring AI's ToolContext (framework dependency)
+// - Violates Clean Architecture Dependency Rule (domain shouldn't depend on frameworks)
+//
+// Why it exists:
+// - Pragmatic trade-off: Reduces boilerplate adapter code
+// - ToolContext is essentially a data container (Map wrapper)
+// - Unlikely to change Spring AI framework in foreseeable future
+//
+// Ideally "clean" solution:
+// - Create domain/tool/ToolExecutionContext.kt interface
+// - Infrastructure provides SpringAIContextAdapter implementing it
+// - Adds abstraction layer but no practical benefit currently
+//
+// Decision: Keep as-is until framework change becomes necessary
+// Impact: Low (isolated to tool interfaces, doesn't leak into domain services)
+
 /**
  * Base interface for all Gromozeka tools.
  * 
@@ -170,21 +189,10 @@ import org.springframework.ai.chat.model.ToolContext
  * - **Examples** - JSON usage examples for LLMs
  * - **Related tools** - Alternatives or complementary tools
  * 
- * ## Evolution & Versioning
+ * ## Tool Evolution
  * 
- * **Adding parameters:**
- * - Add with default values (backwards compatible)
- * - Document in KDoc
- * 
- * **Changing behavior:**
- * - Update domain interface documentation
- * - Update infrastructure implementation
- * - Consider adding new tool instead of breaking changes
- * 
- * **Deprecating tools:**
- * - Mark interface as @Deprecated with migration path
- * - Keep implementation for backwards compatibility
- * - Add warning in description field
+ * Tools are internal API (no external consumers). **No backwards compatibility needed.**
+ * Change interface freely - compiler enforces infrastructure updates
  * 
  * @param TRequest Request parameters (data class with tool arguments)
  * @param TResponse Response type (typically Map<String, Any> for Spring AI JSON serialization)

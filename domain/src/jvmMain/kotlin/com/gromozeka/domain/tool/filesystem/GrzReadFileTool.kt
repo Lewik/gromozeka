@@ -157,11 +157,31 @@ data class ReadFileRequest(
  * 
  * ## Error Response
  * 
+ * **With file suggestions (when similar files found):**
+ * 
+ * Infrastructure uses FileSearchService to suggest similar files when exact path fails.
+ * Helps LLM recover from typos, case sensitivity issues, or path confusion.
+ * 
  * ```json
  * {
- *   "error": "File not found: src/Missing.kt"
+ *   "error": "File not found: src/Missing.kt",
+ *   "suggestions": [
+ *     "src/main/kotlin/Missing.kt",
+ *     "src/test/kotlin/missing.kt",
+ *     "app/src/MissingService.kt"
+ *   ]
  * }
  * ```
+ * 
+ * **Without suggestions (no similar files exist):**
+ * 
+ * ```json
+ * {
+ *   "error": "File not found: NonExistent.xyz"
+ * }
+ * ```
+ * 
+ * @see com.gromozeka.domain.service.FileSearchService For suggestion generation algorithm
  * 
  * # Error Cases
  * 

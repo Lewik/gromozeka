@@ -1,5 +1,6 @@
 package com.gromozeka.infrastructure.ai.tool
 
+import com.gromozeka.domain.service.FileSearchService
 import com.gromozeka.domain.tool.filesystem.GrzReadFileTool
 import com.gromozeka.domain.tool.filesystem.ReadFileRequest
 import org.slf4j.LoggerFactory
@@ -16,7 +17,9 @@ import java.util.Base64
  * @see com.gromozeka.domain.tool.filesystem.GrzReadFileTool Full specification
  */
 @Service
-class GrzReadFileToolImpl : GrzReadFileTool {
+class GrzReadFileToolImpl(
+    private val fileSearchService: FileSearchService
+) : GrzReadFileTool {
     
     private val logger = LoggerFactory.getLogger(GrzReadFileToolImpl::class.java)
     
@@ -28,7 +31,22 @@ class GrzReadFileToolImpl : GrzReadFileTool {
             val file = resolveFile(request.file_path, projectPath)
             
             when {
-                !file.exists() -> mapOf("error" to "File not found: ${request.file_path}")
+                !file.exists() -> {
+                    val suggestions = fileSearchService.findSimilarFiles(
+                        targetPath = request.file_path,
+                        projectPath = projectPath,
+                        limit = 5
+                    )
+                    
+                    if (suggestions.isNotEmpty()) {
+                        mapOf(
+                            "error" to "File not found: ${request.file_path}",
+                            "suggestions" to suggestions
+                        )
+                    } else {
+                        mapOf("error" to "File not found: ${request.file_path}")
+                    }
+                }
                 !file.isFile -> mapOf("error" to "Path is not a file: ${request.file_path}")
                 else -> {
                     val mimeType = detectMimeType(file)
