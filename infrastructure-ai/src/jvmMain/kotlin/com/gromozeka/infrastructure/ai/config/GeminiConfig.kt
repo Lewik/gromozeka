@@ -2,6 +2,8 @@ package com.gromozeka.infrastructure.ai.config
 
 import com.google.auth.oauth2.GoogleCredentials
 import com.google.genai.Client
+import com.google.gson.JsonParser
+import com.gromozeka.domain.service.SettingsProvider
 import org.springframework.ai.model.tool.ToolCallingManager
 import org.springframework.ai.tool.ToolCallback
 import org.springframework.ai.tool.resolution.ToolCallbackResolver
@@ -9,32 +11,42 @@ import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.ApplicationContext
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import java.io.File
 import java.io.FileInputStream
 
 
 @Configuration
 class GeminiConfig {
 
-    // DISABLED: Gemini requires google-credentials.json which is not available in production
-    // Uncomment when credentials are available for development
-    /*
     @Bean
     fun geminiClient(
-        @Value("\${spring.ai.google-genai.project-id}") projectId: String,
-        @Value("\${spring.ai.google-genai.location}") location: String,
-        @Value("\${spring.ai.google-genai.credentials-uri}") credentialsUri: String,
+        settingsProvider: SettingsProvider,
+        @Value("\${spring.ai.google.genai.location:us-central1}") location: String
     ): Client {
+        // Путь к credentials в домашней папке Gromozeka
+        val credentialsFile = File(settingsProvider.homeDirectory, "google-credentials.json")
+        require(credentialsFile.exists()) {
+            "Gemini credentials not found at: ${credentialsFile.absolutePath}"
+        }
+        
+        // Парсим credentials JSON для извлечения project-id
+        val credentialsJson = JsonParser.parseString(
+            credentialsFile.readText()
+        ).asJsonObject
+        val projectId = credentialsJson.get("project_id").asString
+        
+        // Создаем GoogleCredentials
         val credentials = GoogleCredentials.fromStream(
-            FileInputStream(credentialsUri.removePrefix("file:"))
+            FileInputStream(credentialsFile)
         ).createScoped("https://www.googleapis.com/auth/cloud-platform")
+        
         return Client.builder()
-            .project(projectId)
-            .location(location)
+            .project(projectId)        // из credentials.json
+            .location(location)        // из конфига (дефолт: us-central1)
             .vertexAI(true)
             .credentials(credentials)
             .build()
     }
-    */
 
     /**
      * Создает ToolCallingManager с lazy-загрузкой ToolCallback бинов из ApplicationContext.

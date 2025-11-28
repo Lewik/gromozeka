@@ -5,10 +5,8 @@ spring:
     location: classpath:banner.txt
   ai:
     google-genai:
-      project-id: totemic-stack-367712
-      location: us-central1
-      use-vertex-ai: true
-      credentials-uri: file:../google-credentials.json
+      # project-id извлекается из google-credentials.json
+      # location: us-central1  # опционально, дефолт us-central1
 
     ollama:
       base-url: http://localhost:11434
