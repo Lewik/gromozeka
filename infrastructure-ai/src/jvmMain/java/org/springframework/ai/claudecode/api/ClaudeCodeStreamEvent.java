@@ -38,7 +38,7 @@ public abstract class ClaudeCodeStreamEvent {
         private List<String> tools;
 
         @JsonProperty("mcp_servers")
-        private List<String> mcpServers;
+        private List<McpServerStatus> mcpServers;
 
         @JsonProperty("apiKeySource")
         private String apiKeySource;
@@ -46,11 +46,23 @@ public abstract class ClaudeCodeStreamEvent {
         public String subtype() { return subtype; }
         public String sessionId() { return sessionId; }
         public List<String> tools() { return tools; }
-        public List<String> mcpServers() { return mcpServers; }
+        public List<McpServerStatus> mcpServers() { return mcpServers; }
         public String apiKeySource() { return apiKeySource; }
 
         public boolean isSubscription() {
             return "none".equals(apiKeySource);
+        }
+
+        @JsonIgnoreProperties(ignoreUnknown = true)
+        public static class McpServerStatus {
+            @JsonProperty("name")
+            private String name;
+
+            @JsonProperty("status")
+            private String status;
+
+            public String name() { return name; }
+            public String status() { return status; }
         }
     }
 
