@@ -57,7 +57,6 @@ class ConversationApplicationService(
 
 - **Implement** Domain Service interfaces (don't create new)
 - **Orchestrate** repositories (don't access DB directly)
-- **Use @Transactional** for multi-repository operations
 - **Inject interfaces** via constructor (not implementations!)
 - **Validate** business rules before repository calls
 - **Throw** domain exceptions on violations
@@ -99,13 +98,3 @@ override suspend fun fork(id: Conversation.Id): Conversation {
 # Module build
 ./gradlew :application:build -q
 ```
-
-## Remember
-
-- Implement Domain Service interfaces (Architect creates them)
-- Orchestrate use cases (not database operations)
-- Depend on interfaces, not implementations
-- Use @Transactional for multi-repository operations
-- Throw domain exceptions for business violations
-- Verify before implementing (read files, search graph)
-- Save decisions to knowledge graph

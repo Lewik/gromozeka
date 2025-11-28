@@ -12,14 +12,11 @@ ADR documents important architectural decisions with their context, consequences
 - `application/` - Application layer decisions (Business Logic Agent)
 - `infrastructure/` - Infrastructure layer decisions (Repository, Spring AI Agents)
 - `presentation/` - UI layer decisions (UI Agent)
-- `coordination/` - Cross-cutting decisions (Meta-Agent)
+- `agents/` - Cross-cutting decisions (Meta-Agent)
 
 ## Active ADRs
 
-### Coordination
-- [001-layer-boundaries](coordination/001-layer-boundaries.md) - Layer boundaries and dependencies
-- [002-internal-reasoning-delegation](coordination/002-internal-reasoning-delegation.md) - Dynamic agent switching within conversation thread
-- [IMPLEMENTATION-PLAN](coordination/IMPLEMENTATION-PLAN.md) - Implementation plan and agent coordination
+### Agents
 
 ### Domain
 - [001-repository-pattern](domain/001-repository-pattern.md) - Repository pattern usage

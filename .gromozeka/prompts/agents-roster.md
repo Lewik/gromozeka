@@ -44,7 +44,3 @@ List of Gromozeka development agents. All agents work in parallel, each in their
 **Module:** Cross-cutting
 **Output:** Build artifacts, git tags, DMG/AppImage/MSI packages  
 **Key focus:** Quiet mode verification, version management, GitHub releases
-
-## Coordination Model
-
-Agents work independently within their layers, communicating through typed interfaces and comprehensive KDoc. See `project-agent-design-guide.md` for agent design patterns.

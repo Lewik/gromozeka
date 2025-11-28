@@ -16,8 +16,8 @@ This document defines how agents are structured, created, and organized in Gromo
 - **Prompts** - ordered list of prompt fragments that define behavior
 - **Type** - storage location (Builtin/Global/Project)
 
-### Prompt
-**Prompt** is a single reusable markdown fragment - a building block for agents.
+### Prompt-Fragment
+**Prompt-Fragment** is a single reusable markdown fragment - a building block for agents.
 
 **Key components:**
 - **Unique identifier** - hash of file path or UUID for inline
@@ -27,7 +27,7 @@ This document defines how agents are structured, created, and organized in Gromo
 
 One prompt can be reused across multiple agents. For example, "common-prompt.md" is included in all agents.
 
-### Storage Locations
+### Type (Builtin/Global/Project)
 
 **1. Builtin** - Shipped with Gromozeka
 - **Where:** Gromozeka resources directory
@@ -48,14 +48,13 @@ One prompt can be reused across multiple agents. For example, "common-prompt.md"
 - **What:** Project-specific agents tied to codebase
 - **Example:** Architect agent knowing project's Clean Architecture rules
 
-## Prompt File Structure
+## Prompt-Fragment File Structure
 
-### Naming Convention
 - **Builtin prompts:**
-  - `common-prompt.md` - Philosophy for ALL agents
+  - `common-prompt.md` - Common prompt for ALL agents содержащий корневую философию Gromozeka и необходимый минимум для работы агентов
   - `common-agent-architecture.md` - This document
-  - `meta-agent.md` - Specific to meta-agent role
-  - `default-agent.md` - Default assistant behavior
+  - `meta-agent.md` - Specific to meta-agent
+  - `default-agent.md` - Default agent without specific role
 
 - **Project prompts:**
   - `project-common-prompt.md` - Shared across project agents
@@ -69,14 +68,12 @@ Prompts are concatenated in order specified in agent JSON configuration:
 ```json
 "prompts": [
   "env",                               // Always first - environment context
-  "common-prompt.md",                  // Gromozeka philosophy
+  "common-prompt.md",                  // Gromozeka base
+  "agents-roster.md"                   // awareness of all agents
   "project-common-prompt.md",          // Project-wide rules
-  "project-agent-architecture.md",     // Project architecture
   "architect-agent.md"                 // Role-specific behavior
 ]
 ```
-
-**Order matters:** Later prompts can reference concepts from earlier ones.
 
 ## Agent Configuration Requirements
 
@@ -85,8 +82,8 @@ Prompts are concatenated in order specified in agent JSON configuration:
 **1. Environment Context**
 All agents MUST include `"env"` as first prompt. Without ENV context, agents lack awareness of project paths, platform and current date.
 
-**2. Common Philosophy**
-All agents SHOULD include common-prompt.md to maintain consistent Gromozeka philosophy.
+**2. Common Prompt**
+All agents SHOULD include common-prompt.md to work within Gromozeka.
 
 **3. Role Definition**
 Each agent MUST have at least one role-specific prompt defining its unique responsibilities.
@@ -97,12 +94,12 @@ Each agent MUST have at least one role-specific prompt defining its unique respo
 {
   "id": "agent-identifier",
   "name": "Human-readable name",
+  "description": "Brief agent description",
   "prompts": [
     "env",
     "path/to/prompt1.md",
     "path/to/prompt2.md"
   ],
-  "description": "Brief agent description",
   "createdAt": "ISO-8601 timestamp",
   "updatedAt": "ISO-8601 timestamp"
 }
@@ -116,8 +113,16 @@ Each agent should have a clear, focused area of expertise. Don't create Swiss-ar
 **Good:** Repository Agent handles data persistence only
 **Bad:** Full-stack Agent doing UI + DB + Business Logic
 
+### Dense, High-Signal Context
+- Every sentence adds value
+- No redundant instructions
+- Abstract examples with high information density
+- Concrete examples that clarify, not repeat
+- Avoid laundry lists of edge cases
+**Note:** Dense ≠ short. You can be both dense and detailed. Don't artificially constrain length - optimize for signal-to-noise ratio.
+
 ### Composability
-Prompts should be reusable building blocks. Extract common patterns into shared prompts.
+Prompt-fragments should be reusable building blocks. Extract common patterns into shared prompt-fragmentss.
 
 ### Progressive Enhancement
 Start with common base, add project-specific, then role-specific prompts.
@@ -131,7 +136,6 @@ Define what agent CAN and CANNOT do. Specify:
 - Read access paths
 - Write access paths
 - Forbidden operations
-- Available tools
 
 ## Agent Prompt Template
 
@@ -177,7 +181,7 @@ Define what agent CAN and CANNOT do. Specify:
 
 ### ADR Structure for Agent Decisions
 
-**Location:** `.gromozeka/adr/coordination/` for agent architecture decisions
+**Location:** `.gromozeka/adr/agents/` for agent architecture decisions
 
 **When to create ADR:**
 - Adding new agent type
@@ -211,11 +215,11 @@ Key decision: Separate from Business Logic Agent for clear layer separation.
 
 ## Quality Checklist for New Agents
 
-Before deploying new agent, verify:
+Before deploying a new agent, verify:
 
 - [ ] Has clear single responsibility
 - [ ] Includes `env` as first prompt
-- [ ] Uses common-prompt.md for philosophy
+- [ ] Uses common-prompt.md
 - [ ] Has well-defined scope (read/write/forbidden)
 - [ ] Follows naming conventions
 - [ ] JSON configuration is valid

@@ -85,16 +85,6 @@ interface ThreadRepository {
 }
 ```
 
-**Agent coordination via tell_agent is fine** for:
-- "Architect: I finished domain interfaces, you can start implementing"
-- "User needs performance optimization for message loading"
-- Questions when specification is genuinely unclear
-
-**Принципы Code-as-Contract:**
-- Domain интерфейсы = PRIMARY спецификация
-- KDoc = достаточная документация для имплементации
-- Компилятор = проверка контракта
-
 **Если KDoc неполный или противоречивый:**
 - НЕ угадывай, НЕ hallucinate
 - Спроси создателя интерфейса конкретно что неясно
@@ -141,20 +131,11 @@ find . -path "*/examples/*" -o -path "*/samples/*"
 ```
 
 **When to use .sources pattern:**
-- **Before implementing integration** - understand how dependency actually works
+- **PROACTIVELY Before implementing integration** - understand how dependency actually works
 - **When docs are unclear** - source code doesn't lie
 - **Debugging unexpected behavior** - see what really happens
 - **Choosing between approaches** - compare actual implementations
 - **Finding examples** - tests are the best documentation
-
-**Already available in .sources:**
-- `spring-ai/` - AI integrations, streaming, ChatModel
-- `exposed/` - SQL ORM, transaction patterns
-- `claude-code*/` - Claude Code SDK implementations
-- `qdrant-java-client/` - vector database client
-- `mcp-kotlin-sdk/`, `java-sdk/` - MCP implementations
-- `graphiti/`, `graphrag/` - graph processing
-- Run `ls .sources/` for complete list
 
 ## Knowledge Graph Integration
 
@@ -246,22 +227,6 @@ build_memory_from_text(
 
 After making changes, verify your module compiles. Fix ALL compilation errors before finishing. Your agent-specific prompt defines the build command for your module.
 
-## Project Structure Overview
-
-```
-domain/         - Interfaces, entities (Architect)
-application/    - Use cases, orchestration (Business Logic Agent)
-infrastructure/ - Implementations (Repositories, Spring AI agents)
-presentation/   - UI, ViewModels (UI Agent)
-```
-
-**Key modules:**
-- `:domain` - No dependencies, pure Kotlin
-- `:application` → `:domain`
-- `:infrastructure-db` → `:domain` (DB, vector, graph)
-- `:infrastructure-ai` → `:domain` (Spring AI, MCP)
-- `:presentation` → `:domain`, `:application`
-
 ## Repository Structure & Release Workflow
 
 **Directory structure:**
@@ -289,20 +254,9 @@ You work alongside other specialized agents:
 
 **Stay in your lane. Trust other agents to do their job.**
 
-Each agent can **work in parallel** because:
-- Domain defines contracts → everyone compiles against interfaces
-- Implementation happens independently in each layer
-- Integration verified through compilation
-
-Each agent can **focus deeply** because:
-- Architect doesn't debug SQL queries
-- Data Layer doesn't think about UI layouts
-- UI Agent doesn't worry about database schemas
 
 ## What You DON'T Do
 
 - Don't create tests (unless explicitly requested)
 - Don't create documentation files
 - Don't modify code outside your layer
-- Don't add comments for obvious code
-- Don't use emojis

@@ -2,7 +2,31 @@
 
 This document defines the Clean Architecture structure for Gromozeka project. All development agents must follow this architecture.
 
-## Overview
+Current architecture pursues two goals:
+ - Managing development through specifications in code
+ - Classic Clean Architecture
+
+
+## Managing development through specifications in code
+ - Architector-agent defines and maintains specifications for whole project. 
+ - This specifications described with Kotlin high-level abstractions (Interfaces, data classes, enums, etc.) and KDoc. 
+ - This allows architector to focus on the whole project, business logic and architecture details. 
+ - This allows architector to describe code with a small number of tokens but with enough details to understand it. 
+ - This allows other agents to deeply focus on their areas of responsibility, patterns, and implementation details without being distracted by what is outside their scope.
+ - Architector writes specifications.
+ - Other agents track current ':domain' changes using `git status` and implement them. They:
+   - read specifications
+   - what is new
+   - what was removed
+   - what was changed
+ - Other agents can verify their implementations against specifications using git history.
+
+**Possible specification mechanisms:**
+1. **Interfaces** - contracts that must be implemented
+2. **Type safety** - prevent confusion
+3. **Sealed classes** - explicit type variants
+4. **Enums** - finite state machines
+5. **KDoc** - operation semantics, parameters, errors
 
 Gromozeka follows Clean Architecture principles with clear layer separation and dependency rules.
 
@@ -14,53 +38,43 @@ Application    → Domain
 Presentation   → Domain + Application
 ```
 
-## Layers
+## Classic Clean Architecture Layers
 
 ### 1. Domain Layer
 
 **Module:** `:domain`
 **Agent:** Architect Agent
-**Spring:** NO (pure Kotlin)
+
+Use only kotlin and sdk-like libraries (like kotlinx-coroutines-core)
+Try to put all possible code into common module.
 
 **Responsibilities:**
-- Define Entities and Value Objects
-- Define Repository interfaces (for all data access)
-- Define Domain Service interfaces (for domain logic that doesn't fit entities)
-- Own complete application model
-
-**Important distinction:**
-- **Repository interfaces** (`domain/repository/`) - Data access abstraction (CRUD operations)
-- **Domain Service interfaces** (`domain/service/`) - Domain logic that spans multiple entities
-- Create Domain Services only when logic truly doesn't belong to one entity
+- Define all specifications to manage development 
+  - Entities and Value Objects
+  - Repository interfaces (for all data access)
+  - Domain Service interfaces
+  - ViewModel interfaces (UI contracts)
+  - All other interfaces, value objects, enums, sealed classes, etc to describe what to implement
+  - Own complete application model
 
 **What lives here:**
 ```
 domain/
   ├── model/           - Entities, Value Objects
   ├── repository/      - Repository interfaces (data access abstraction)
-  ├── service/         - Domain Service interfaces (domain logic spanning entities)
-  └── presentation/    - ViewModel interfaces (UI contracts)
+  ├── service/         - Domain Service interfaces (business logic)
+  └── presentation/    - UI contract specifications
+      ├── desktop/
+      │   ├── component/  - UI components (MUST have ASCII diagrams)
+      │   └── logic/      - Orchestration (NO UI details)
 ```
 
 **Dependencies:**
 - `kotlinx-coroutines-core` - for StateFlow/SharedFlow in ViewModel interfaces
 
-**Pattern:**
-- Entities as immutable data classes with nested value class IDs
-- Repository interfaces with suspend functions for async operations
-- ViewModel interfaces with StateFlow/SharedFlow for reactive UI
-- No framework annotations, pure Kotlin
-
 **ViewModel naming convention:**
 - `XXXComponentVM` - for UI component ViewModels (e.g., `ThreadPanelComponentVM`)
 - `XXXLogicVM` - for logic/service ViewModels (e.g., `ConversationLogicVM`)
-
-**ViewModel structure:**
-```
-domain/presentation/desktop/
-  ├── component/   # UI components (MUST have ASCII diagrams)
-  └── logic/       # Orchestration (NO UI details)
-```
 
 **Why desktop/ only:** Mobile/Web will be added as needed.
 
@@ -70,12 +84,10 @@ domain/presentation/desktop/
 
 **Module:** `:application`
 **Agent:** Business Logic Agent
-**Spring:** YES (`@Service`)
 
 **Responsibilities:**
-- Implement Use Cases (orchestration of domain logic)
+- Implement Use Cases and Business logic 
 - Coordinate multiple Repositories
-- Business logic that spans multiple entities
 - Application-specific workflows
 
 **What lives here:**
@@ -90,7 +102,6 @@ application/
 - Use `@Service` annotation for Spring DI
 - Inject Repository interfaces via constructor
 - Coordinate multiple repositories in use cases
-- Add `@Transactional` for multi-repository operations
 
 ---
 
@@ -105,6 +116,7 @@ Infrastructure implements Domain interfaces. Each subdomain has its own module.
 **Spring:** YES (`@Service`, `@Repository`)
 
 **Responsibilities:**
+- System code
 - Database access (Exposed, SQL)
 - Vector storage (Qdrant)
 - Knowledge graph (Neo4j)
@@ -120,7 +132,7 @@ infrastructure/db/
 
 **Three levels of abstraction:**
 1. **DDD Repository interface** (domain/repository/) - PUBLIC, what other layers see
-2. **DDD Repository implementation** (infrastructure/db/persistence/) - your code
+2. **DDD Repository implementation** (infrastructure/db/persistence/) - code
 3. **Spring Data Repository** (infrastructure/db/persistence/, internal) - ORM tool you use privately
 
 #### Infrastructure/AI Module
@@ -130,6 +142,7 @@ infrastructure/db/
 **Spring:** YES (`@Service`, `@Configuration`)
 
 **Responsibilities:**
+- System code
 - Spring AI integration
 - Claude Code CLI integration
 - MCP tools and servers
@@ -195,10 +208,8 @@ shared/
 ### What we USE:
 - **Repository Pattern** - abstraction over data persistence (`domain/repository/`)
 - **Domain Services** - business logic that doesn't fit entities (`domain/service/`)
-  - NOTE: Create only when logic truly doesn't belong to one entity
-  - Don't create service wrappers around simple repository calls
 - **Value Objects** - typed wrappers for primitives (Thread.Id, Message.Id)
-- **Immutable Entities** - data classes with `val` properties
+- **Entities** - data classes with .Id
 
 ### What we DON'T USE (yet):
 - **Aggregate Roots** - we don't enforce aggregate boundaries
@@ -210,7 +221,6 @@ Keep architecture pragmatic. Add complexity only when needed.
 
 ## DDD Repository vs Spring Data Repository
 
-**CRITICAL DISTINCTION:**
 
 **1. DDD Repository Pattern (Domain-Driven Design)**
 - **What:** Architectural pattern, domain abstraction
@@ -222,19 +232,6 @@ Keep architecture pragmatic. Add complexity only when needed.
 - **What:** ORM technology/library from Spring
 - **Where:** `infrastructure/db/persistence/` (PRIVATE/INTERNAL)
 - **Used by:** Repository Agent internally
-
-**How they relate:**
-```
-Domain Layer (PUBLIC):
-  interface ThreadRepository  ← DDD Repository Pattern
-     ↓
-Infrastructure Layer:
-  @Service
-  class ExposedThreadRepository : ThreadRepository  ← Your implementation
-     ↓ uses internally (PRIVATE)
-  @Repository
-  internal interface ThreadJpaRepository : JpaRepository<...>  ← Spring Data
-```
 
 ## Gradle Modules Structure
 
@@ -270,48 +267,11 @@ Infrastructure Layer:
 - `@SpringBootApplication` for Main.kt
 - `@Component` for ViewModels if using Spring DI
 
-## Dependency Injection
-
-**How it works:**
-
-1. Domain defines interfaces (no Spring)
-2. Infrastructure implements interfaces with `@Service`
-3. Application uses interfaces via constructor injection
-4. Spring automatically wires implementations
-
-**Pattern:**
-- Domain layer: Interface definitions (pure Kotlin)
-- Infrastructure layer: Implementations with `@Service`
-- Application layer: Constructor injection of interfaces
-- Spring autowiring: Finds implementation by interface type
-
-## Architecture Decision Records (ADR)
-
-Gromozeka uses ADR to document significant architectural decisions.
-
-**Location:** `.gromozeka/adr/`
-
-**Structure:**
-```
-.gromozeka/adr/
-  ├── template.md          - Standard ADR template
-  ├── README.md            - How to work with ADRs
-  ├── domain/              - Architect Agent decisions
-  ├── infrastructure/      - Repository/Spring AI Agent decisions
-  ├── presentation/        - UI Agent decisions
-  └── coordination/        - Meta-Agent, cross-cutting decisions
-```
-
-**Responsible agents:**
-- **Architect Agent** - Domain-level decisions
-- **Other agents** - Infrastructure/presentation decisions in their areas
-- **Meta-Agent** - Coordination and validation
-
 ## Error Handling Patterns
 
 ### 1. Nullable Return - Absence is Normal
 
-Use `T?` when absence of result is a valid, expected outcome.
+Use `T?` when absence of a result is a valid, expected outcome, when the `null` value has a particular meaning.
 
 ```kotlin
 interface EntityRepository {
@@ -321,7 +281,7 @@ interface EntityRepository {
 
 ### 2. Exceptions - Business Rule Violations
 
-Use exceptions when operation fails due to violated business rules or unexpected errors.
+Use exceptions when an operation fails due to violated business rules or unexpected errors.
 
 **Domain exceptions location:** `domain/model/` package
 
@@ -349,13 +309,3 @@ sealed interface CreateEntityResult {
 2. **Business rule violated?** → Exception
 3. **Multiple failure types?** → Result/Sealed class
 4. **Unexpected infrastructure error?** → Exception (let it propagate)
-
-## Key Architecture Principles
-
-1. **Domain is pure** - No dependencies, no framework code
-2. **Dependencies point inward** - Outer layers depend on inner, never reverse
-3. **Interfaces in Domain** - Implementations in Infrastructure
-4. **DDD Repository not Spring Data Repository** - Different concepts!
-5. **Spring in outer layers only** - Application and Infrastructure (NOT Domain)
-6. **Each module is independent** - Can be compiled separately
-7. **DI wiring is automatic** - Spring finds implementations by interface

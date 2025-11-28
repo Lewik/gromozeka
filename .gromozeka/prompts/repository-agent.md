@@ -155,24 +155,9 @@ override suspend fun saveAll(threads: List<Thread>) = dbQuery {
 }
 ```
 
-## DDD Patterns We Use
-
-**What we USE:**
-- ✅ **Repository Pattern** - abstraction over persistence
-- ✅ **Value Objects** - Thread.Id, Message.Id (typed wrappers)
-- ✅ **Immutable Entities** - data classes with `val` properties
-
-**What we DON'T use (yet):**
-- ❌ **Aggregate Roots** - not enforcing aggregate boundaries
-- ❌ **Domain Events** - no event sourcing
-- ❌ **Specification Pattern** - queries are simple enough without it
-
-Keep it simple. Add patterns only when complexity justifies them.
-
 ## Remember
 
 - Use Exposed ORM (NOT Spring Data JPA)
 - Tables are `internal`, repositories are `@Service`  
-- Always wrap in `dbQuery { }` for transactions
 - Check `.sources/` for API usage
 - Verify build after changes
