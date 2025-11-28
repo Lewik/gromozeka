@@ -109,13 +109,13 @@ public class ClaudeCodeApi {
                     logger.debug("Loading MCP config from: {}", mcpConfigPath);
                     claudeArgs.add("--mcp-config");
                     claudeArgs.add(quoteShellArg(mcpConfigPath));
-                } else {
-                    // Disable CLAUDE.md and other settings loading
-                    // Empty string means don't load any settings (user, project, local)
-                    logger.debug("No MCP config provided, disabling all settings");
-                    claudeArgs.add("--setting-sources");
-                    claudeArgs.add("\"\"");
                 }
+                
+                // Disable CLAUDE.md and other settings loading
+                // Empty string means don't load any settings (user, project, local)
+                logger.debug("No MCP config provided, disabling all settings");
+                claudeArgs.add("--setting-sources");
+                claudeArgs.add("\"\"");
 
                 // Join arguments into single command string
                 String claudeCommand = String.join(" ", claudeArgs);
