@@ -470,6 +470,11 @@ class ConversationEngineService(
 
     /**
      * Remove additionalContent (images) from ToolResponseMessage before saving to DB.
+     * 
+     * IMPORTANT: Must preserve JSON structure! Spring AI's GoogleGenAiChatModel.parseJsonToMap()
+     * expects valid JSON when sending FunctionResponse back to Gemini.
+     * 
+     * Previous bug: Extracted only "text" field, breaking JSON → Gemini didn't receive tool results.
      */
     private fun removeAdditionalContentFromToolResponse(message: ToolResponseMessage): ToolResponseMessage {
         val objectMapper = com.fasterxml.jackson.databind.ObjectMapper()
@@ -478,31 +483,38 @@ class ConversationEngineService(
             try {
                 val responseData = response.responseData()
 
-                val textOnly = when {
+                val cleanedData = when {
+                    // Plain text, not JSON - leave as is
                     !responseData.trim().startsWith("{") && !responseData.trim().startsWith("[") -> {
                         responseData
                     }
 
+                    // JSON array - keep only text items, but preserve JSON array structure
                     responseData.trim().startsWith("[") -> {
                         val jsonNode = objectMapper.readTree(responseData)
                         if (jsonNode.isArray) {
-                            jsonNode.firstOrNull { it.has("type") && it.get("type").asText() == "text" }
-                                ?.get("text")?.asText() ?: responseData
+                            val textItems = jsonNode.filter { 
+                                it.has("type") && it.get("type").asText() == "text" 
+                            }
+                            objectMapper.writeValueAsString(textItems)
                         } else {
                             responseData
                         }
                     }
 
+                    // JSON object - remove only additionalContent field, preserve full JSON structure
                     else -> {
                         val data = org.springframework.ai.model.ModelOptionsUtils.jsonToMap(responseData)
-                        data["text"]?.toString() ?: responseData
+                        val cleaned = data.toMutableMap()
+                        cleaned.remove("additionalContent")
+                        objectMapper.writeValueAsString(cleaned)
                     }
                 }
 
                 ToolResponseMessage.ToolResponse(
                     response.id(),
                     response.name(),
-                    textOnly
+                    cleanedData
                 )
             } catch (e: Exception) {
                 log.warn(e) { "Failed to parse tool response data for cleaning" }
