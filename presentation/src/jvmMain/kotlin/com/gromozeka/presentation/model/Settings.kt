@@ -26,7 +26,8 @@ data class Settings(
     val ollamaModel: String = "llama3.2",
     val ollamaBaseUrl: String = "http://localhost:11434",
     val geminiModel: String = "gemini-2.0-flash-exp",
-    val claudeModel: String? = "claude-sonnet-4-5",
+    val claudeModel: String = "claude-sonnet-4-5",
+    val openAiModel: String = "gpt-4o-mini",
     val includeCurrentTime: Boolean = true,
     val responseFormat: ResponseFormat = ResponseFormat.XML_INLINE,
     val autoApproveAllTools: Boolean = true, // Auto-approve all tool requests without showing dialogs (affects new sessions only)

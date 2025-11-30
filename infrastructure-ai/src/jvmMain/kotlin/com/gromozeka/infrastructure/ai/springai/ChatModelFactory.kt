@@ -4,6 +4,7 @@ import com.google.genai.Client
 import com.gromozeka.domain.model.AIProvider
 import com.gromozeka.domain.model.AppMode
 import com.gromozeka.domain.service.ChatModelProvider
+import com.gromozeka.domain.service.SettingsProvider
 import io.micrometer.observation.ObservationRegistry
 import klog.KLoggers
 import org.springframework.ai.chat.model.ChatModel
@@ -17,17 +18,20 @@ import org.springframework.ai.ollama.OllamaChatModel
 import org.springframework.ai.ollama.api.OllamaApi
 import org.springframework.ai.ollama.api.OllamaChatOptions
 import org.springframework.ai.ollama.management.ModelManagementOptions
+import org.springframework.ai.openai.OpenAiChatModel
+import org.springframework.ai.openai.OpenAiChatOptions
+import org.springframework.ai.openai.api.OpenAiApi
 import org.springframework.ai.tool.ToolCallback
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.context.ApplicationContext
 import org.springframework.retry.support.RetryTemplate
 import org.springframework.stereotype.Service
 import java.util.concurrent.ConcurrentHashMap
-import com.gromozeka.domain.service.SettingsProvider
 
 @Service
 class ChatModelFactory(
     @Autowired(required = false) private val ollamaApi: OllamaApi?,
+    @Autowired(required = false) private val openAiApi: OpenAiApi?,
     @Autowired(required = false) private val geminiClient: Client?,
     private val toolCallingManager: ToolCallingManager,
     private val settingsProvider: SettingsProvider,
@@ -59,9 +63,9 @@ class ChatModelFactory(
             createChatModel(provider, modelName, projectPath)
         }
     }
-    
+
     @Deprecated("Use getChatModel instead", ReplaceWith("getChatModel(provider, modelName, projectPath)"))
-    fun get(provider: AIProvider, modelName: String, projectPath: String?): ChatModel = 
+    fun get(provider: AIProvider, modelName: String, projectPath: String?): ChatModel =
         getChatModel(provider, modelName, projectPath)
 
     private fun createChatModel(
@@ -119,10 +123,28 @@ class ChatModelFactory(
                 )
             }
 
+            AIProvider.OPEN_AI -> {
+                OpenAiChatModel(
+                    openAiApi,
+                    OpenAiChatOptions
+                        .builder()
+//                        .model("gpt-4o-mini")
+                        .model("o4-mini")
+                        .temperature(0.7)
+//                        .maxTokens(16384)
+                        .maxCompletionTokens(131072)
+                        .build(),
+                    toolCallingManager,
+                    retryTemplate,
+                    observationRegistry,
+
+                    )
+            }
+
             AIProvider.CLAUDE_CODE -> {
                 val workingDir = projectPath ?: System.getProperty("user.dir")
                 val claudePath = ClaudePathDetector.detectClaudePath()
-                
+
                 // Get MCP config path from settings
                 val mcpConfigPath = java.io.File(settingsProvider.homeDirectory, "mcp-sse-config.json").absolutePath
                 log.info("Using MCP config: $mcpConfigPath")
@@ -147,7 +169,7 @@ class ChatModelFactory(
                     .workingDirectory(workingDir)
                     .internalToolExecutionEnabled(false)
                     .build()
-                
+
                 // Устанавливаем toolCallbacks через setter (Builder не имеет этого метода)
                 options.toolCallbacks = toolCallbacks
 

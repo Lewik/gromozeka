@@ -15,6 +15,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.gromozeka.domain.model.AIProvider
+import com.gromozeka.presentation.model.ResponseFormat
+import com.gromozeka.presentation.model.Settings
 import com.gromozeka.presentation.services.LogEncryptor
 import com.gromozeka.presentation.services.SettingsService
 import com.gromozeka.presentation.services.theming.AIThemeGenerator
@@ -22,9 +25,6 @@ import com.gromozeka.presentation.services.theming.ThemeService
 import com.gromozeka.presentation.services.theming.data.Theme
 import com.gromozeka.presentation.services.translation.TranslationService
 import com.gromozeka.presentation.services.translation.data.Translation
-import com.gromozeka.domain.model.AIProvider
-import com.gromozeka.presentation.model.ResponseFormat
-import com.gromozeka.presentation.model.Settings
 import klog.KLoggers
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -236,6 +236,15 @@ fun SettingsPanel(
 
                         // Provider-specific settings
                         when (settings.defaultAiProvider) {
+                            AIProvider.OPEN_AI -> {
+                                Text(
+                                    text = "OpenAI Settings",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.SemiBold,
+                                    modifier = Modifier.padding(vertical = 8.dp)
+                                )
+                            }
+
                             AIProvider.OLLAMA -> {
                                 Text(
                                     text = "Ollama Settings",

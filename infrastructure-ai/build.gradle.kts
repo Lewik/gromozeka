@@ -21,8 +21,7 @@ kotlin {
                 implementation(libs.spring.ai.anthropic)
                 implementation(libs.spring.ai.google.genai)
                 implementation(libs.spring.ai.ollama)
-                implementation(libs.spring.ai.starter.model.openai)
-                
+
                 // Reactor Kotlin extensions for Flux/Flow conversion
                 implementation(libs.reactor.kotlin.extensions)
                 

@@ -54,6 +54,7 @@ class EntityDeduplicationService(
             AIProvider.GEMINI -> geminiModel
             AIProvider.CLAUDE_CODE -> claudeModel
             AIProvider.OLLAMA -> ollamaModel
+            AIProvider.OPEN_AI -> TODO()
         },
         projectPath = null
     )

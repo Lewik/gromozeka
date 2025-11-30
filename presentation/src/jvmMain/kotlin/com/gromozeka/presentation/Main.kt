@@ -1,18 +1,19 @@
 package com.gromozeka.presentation
 
-import androidx.compose.runtime.*
 import androidx.compose.ui.window.application
-import kotlin.system.exitProcess
-import com.gromozeka.infrastructure.ai.platform.GlobalHotkeyController
-import com.gromozeka.presentation.services.*
 import com.gromozeka.application.service.TabPromptService
+import com.gromozeka.infrastructure.ai.platform.GlobalHotkeyController
 import com.gromozeka.infrastructure.ai.platform.ScreenCaptureController
+import com.gromozeka.presentation.services.*
 import com.gromozeka.presentation.services.theming.AIThemeGenerator
 import com.gromozeka.presentation.services.theming.ThemeService
 import com.gromozeka.presentation.services.translation.TranslationService
+import com.gromozeka.presentation.ui.ChatWindow
+import com.gromozeka.presentation.ui.ErrorDialog
+import com.gromozeka.presentation.ui.GromozekaTheme
+import com.gromozeka.presentation.ui.TranslationProvider
 import com.gromozeka.presentation.ui.state.UIState
 import com.gromozeka.presentation.ui.viewmodel.AppViewModel
-import com.gromozeka.presentation.ui.*
 import jakarta.annotation.PostConstruct
 import klog.KLoggers
 import kotlinx.coroutines.CoroutineScope
@@ -20,48 +21,10 @@ import kotlinx.coroutines.runBlocking
 import org.springframework.beans.factory.getBean
 import org.springframework.boot.WebApplicationType
 import org.springframework.boot.autoconfigure.SpringBootApplication
+import org.springframework.boot.autoconfigure.jdbc.DataSourceTransactionManagerAutoConfiguration
+import org.springframework.boot.autoconfigure.jdbc.JdbcTemplateAutoConfiguration
 import org.springframework.boot.builder.SpringApplicationBuilder
-import org.springframework.ai.openai.api.OpenAiApi
-import org.springframework.ai.openai.api.OpenAiAudioApi
-import org.springframework.ai.model.openai.autoconfigure.*
-import java.io.File
-
-/**
- * Format folder name to human readable format
- * Converts: kebab-case, snake_case, camelCase, PascalCase to "Capitalized Words"
- * Also handles parent folder in the format "Parent / Child"
- */
-fun formatProjectName(projectPath: String): String {
-    val projectFile = File(projectPath)
-    val projectName = projectFile.name.takeIf { it.isNotBlank() } ?: return "Unknown Project"
-    val parentName = projectFile.parentFile?.name?.takeIf { it.isNotBlank() }
-
-    fun formatFolderName(name: String): String {
-        return name
-            // Replace hyphens and underscores with spaces
-            .replace(Regex("[-_]"), " ")
-            // Split camelCase and PascalCase (insert space before uppercase letters)
-            .replace(Regex("(?<=[a-z])(?=[A-Z])"), " ")
-            // Split sequences of digits from letters
-            .replace(Regex("(?<=[a-zA-Z])(?=\\d)|(?<=\\d)(?=[a-zA-Z])"), " ")
-            // Split multiple words, normalize whitespace
-            .split(Regex("\\s+"))
-            .filter { it.isNotBlank() }
-            // Capitalize each word
-            .joinToString(" ") { word ->
-                word.lowercase().replaceFirstChar { it.uppercase() }
-            }
-    }
-
-    val formattedProject = formatFolderName(projectName)
-    val formattedParent = parentName?.let { formatFolderName(it) }
-
-    return if (formattedParent != null && formattedParent != formattedProject) {
-        "$formattedParent / $formattedProject"
-    } else {
-        formattedProject
-    }
-}
+import kotlin.system.exitProcess
 
 /**
  * Get display name for a tab based on custom name or agent name
@@ -236,7 +199,7 @@ data class AppComponents(
     val loadingViewModel: com.gromozeka.presentation.ui.viewmodel.LoadingViewModel,
     val tabPromptService: TabPromptService,
     val agentService: com.gromozeka.domain.repository.AgentDomainService,
-    val promptService: com.gromozeka.domain.repository.PromptDomainService
+    val promptService: com.gromozeka.domain.repository.PromptDomainService,
 )
 
 /**
@@ -267,14 +230,8 @@ private fun determineLogPath(modeEnv: String?): String {
         "com.gromozeka.infrastructure.ai"
     ],
     exclude = [
-        OpenAiEmbeddingAutoConfiguration::class,
-        OpenAiImageAutoConfiguration::class,
-        OpenAiChatAutoConfiguration::class,
-        OpenAiAudioTranscriptionAutoConfiguration::class,
-        OpenAiAudioSpeechAutoConfiguration::class,
-        OpenAiModerationAutoConfiguration::class,
-        org.springframework.boot.autoconfigure.jdbc.JdbcTemplateAutoConfiguration::class,
-        org.springframework.boot.autoconfigure.jdbc.DataSourceTransactionManagerAutoConfiguration::class,
+        JdbcTemplateAutoConfiguration::class,
+        DataSourceTransactionManagerAutoConfiguration::class,
     ]
 )
 class ChatApplication(

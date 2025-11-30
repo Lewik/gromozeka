@@ -1,20 +1,16 @@
 package com.gromozeka.presentation.ui.viewmodel
 
-import com.gromozeka.infrastructure.ai.platform.ScreenCaptureController
 import com.gromozeka.application.service.ConversationEngineService
 import com.gromozeka.application.service.DefaultAgentProvider
 import com.gromozeka.application.service.MessageSquashService
+import com.gromozeka.domain.model.*
+import com.gromozeka.domain.repository.ConversationDomainService
 import com.gromozeka.domain.repository.TabManager
-import com.gromozeka.domain.model.Tab
+import com.gromozeka.domain.repository.TokenUsageStatisticsRepository
+import com.gromozeka.infrastructure.ai.platform.ScreenCaptureController
 import com.gromozeka.presentation.services.SettingsService
 import com.gromozeka.presentation.services.SoundNotificationService
-import com.gromozeka.domain.model.AIProvider
-import com.gromozeka.domain.model.ConversationInitiator
 import com.gromozeka.presentation.ui.state.UIState
-import com.gromozeka.domain.model.Agent
-import com.gromozeka.domain.model.Conversation
-import com.gromozeka.domain.repository.TokenUsageStatisticsRepository
-import com.gromozeka.domain.repository.ConversationDomainService
 import klog.KLoggers
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.*
@@ -67,7 +63,8 @@ open class AppViewModel(
             val modelName = when (settings.defaultAiProvider) {
                 AIProvider.OLLAMA -> settings.ollamaModel
                 AIProvider.GEMINI -> settings.geminiModel
-                AIProvider.CLAUDE_CODE -> settings.claudeModel ?: "claude-sonnet-4-5"
+                AIProvider.CLAUDE_CODE -> settings.claudeModel
+                AIProvider.OPEN_AI -> settings.openAiModel
             }
 
             conversationService.create(
@@ -188,9 +185,9 @@ open class AppViewModel(
     fun findTabByTabId(tabId: Tab.Id): TabViewModel? {
         return tabs.value.find { it.uiState.value.tabId == tabId.value }
     }
-    
+
     // TabManager implementation
-    
+
     private suspend fun TabViewModel.toTabInfo(): TabManager.TabInfo {
         val uiState = this.uiState.first()
         return TabManager.TabInfo(
@@ -202,26 +199,26 @@ open class AppViewModel(
             parentTabId = uiState.parentTabId?.let { Tab.Id(it) }
         )
     }
-    
+
     override suspend fun switchToTab(tabId: Tab.Id): TabManager.TabInfo? {
         val tab = selectTab(tabId)
         return tab?.toTabInfo()
     }
-    
+
     override suspend fun sendMessageToTab(
         tabId: Tab.Id,
         message: String,
-        instructions: List<Conversation.Message.Instruction>
+        instructions: List<Conversation.Message.Instruction>,
     ) {
-        val tab = findTabByTabId(tabId) 
+        val tab = findTabByTabId(tabId)
             ?: throw IllegalArgumentException("Tab not found: ${tabId.value}")
         tab.sendMessageToSession(message, instructions)
     }
-    
+
     override suspend fun listTabs(): List<TabManager.TabInfo> {
         return tabs.first().map { it.toTabInfo() }
     }
-    
+
     override suspend fun findTabById(tabId: Tab.Id): TabManager.TabInfo? {
         return findTabByTabId(tabId)?.toTabInfo()
     }
@@ -241,7 +238,8 @@ open class AppViewModel(
                         val modelName = when (settings.defaultAiProvider) {
                             AIProvider.OLLAMA -> settings.ollamaModel
                             AIProvider.GEMINI -> settings.geminiModel
-                            AIProvider.CLAUDE_CODE -> settings.claudeModel ?: "claude-sonnet-4-5"
+                            AIProvider.CLAUDE_CODE -> settings.claudeModel
+                            AIProvider.OPEN_AI -> settings.openAiModel
                         }
 
                         conversationService.create(
@@ -298,7 +296,7 @@ open class AppViewModel(
 
     suspend fun rememberCurrentThread() {
         val current = currentTab.value ?: return
-        
+
         try {
             conversationEngineService.rememberCurrentThread(current.conversationId)
             log.info { "Remembered current thread for conversation: ${current.conversationId}" }
@@ -309,7 +307,7 @@ open class AppViewModel(
 
     suspend fun addToGraphCurrentThread() {
         val current = currentTab.value ?: return
-        
+
         try {
             conversationEngineService.addToGraphCurrentThread(current.conversationId)
             log.info { "Added current thread to knowledge graph for conversation: ${current.conversationId}" }
