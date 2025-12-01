@@ -15,6 +15,7 @@ import org.springframework.ai.chat.messages.UserMessage
 import org.springframework.ai.chat.prompt.Prompt
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
+import org.springframework.context.annotation.Lazy
 import org.springframework.stereotype.Service
 import java.util.*
 
@@ -22,6 +23,7 @@ import java.util.*
 @ConditionalOnProperty(name = ["knowledge-graph.enabled"], havingValue = "true", matchIfMissing = false)
 class EntityDeduplicationService(
     private val knowledgeGraphStore: KnowledgeGraphStore,
+    @Lazy
     private val chatModelFactory: ChatModelFactory,
     @Value("\${gromozeka.ai.provider:CLAUDE_CODE}")
     private val aiProvider: String,
@@ -29,6 +31,8 @@ class EntityDeduplicationService(
     private val geminiModel: String,
     @Value("\${gromozeka.ai.claude.model:claude-sonnet-4-5}")
     private val claudeModel: String,
+    @Value("\${gromozeka.ai.claude.model:sonnet}")
+    private val anthropicModel: String,
     @Value("\${gromozeka.ai.ollama.model:llama3}")
     private val ollamaModel: String
 ) {
@@ -55,6 +59,7 @@ class EntityDeduplicationService(
             AIProvider.CLAUDE_CODE -> claudeModel
             AIProvider.OLLAMA -> ollamaModel
             AIProvider.OPEN_AI -> TODO()
+            AIProvider.ANTHROPIC -> anthropicModel
         },
         projectPath = null
     )

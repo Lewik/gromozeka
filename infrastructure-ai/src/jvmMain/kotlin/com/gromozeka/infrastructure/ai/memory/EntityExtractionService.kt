@@ -3,11 +3,11 @@ package com.gromozeka.infrastructure.ai.memory
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
-import com.gromozeka.infrastructure.ai.springai.ChatModelFactory
+import com.gromozeka.domain.model.AIProvider
 import com.gromozeka.domain.model.memory.EntityType
 import com.gromozeka.domain.model.memory.EntityTypesConfig
 import com.gromozeka.infrastructure.ai.memory.models.MissedEntities
-import com.gromozeka.domain.model.AIProvider
+import com.gromozeka.infrastructure.ai.springai.ChatModelFactory
 import klog.KLoggers
 import kotlinx.coroutines.reactor.awaitSingle
 import kotlinx.serialization.json.Json
@@ -15,11 +15,13 @@ import org.springframework.ai.chat.messages.UserMessage
 import org.springframework.ai.chat.prompt.Prompt
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
+import org.springframework.context.annotation.Lazy
 import org.springframework.stereotype.Service
 
 @Service
 @ConditionalOnProperty(name = ["knowledge-graph.enabled"], havingValue = "true", matchIfMissing = false)
 class EntityExtractionService(
+    @Lazy
     private val chatModelFactory: ChatModelFactory,
     @Value("\${gromozeka.ai.provider:CLAUDE_CODE}")
     private val aiProvider: String,
@@ -27,8 +29,10 @@ class EntityExtractionService(
     private val geminiModel: String,
     @Value("\${gromozeka.ai.claude.model:claude-sonnet-4-5}")
     private val claudeModel: String,
+    @Value("\${gromozeka.ai.claude.model:sonnet}")
+    private val anthropicModel: String,
     @Value("\${gromozeka.ai.ollama.model:llama3}")
-    private val ollamaModel: String
+    private val ollamaModel: String,
 ) {
     private val log = KLoggers.logger(this)
     private val objectMapper = ObjectMapper()
@@ -54,13 +58,14 @@ class EntityExtractionService(
             AIProvider.CLAUDE_CODE -> claudeModel
             AIProvider.OLLAMA -> ollamaModel
             AIProvider.OPEN_AI -> TODO()
+            AIProvider.ANTHROPIC -> anthropicModel
         },
         projectPath = null
     )
 
     suspend fun extractEntities(
         content: String,
-        previousMessages: String
+        previousMessages: String,
     ): List<Pair<String, Int>> {
         log.debug { "Extracting entities from content (${content.length} chars) with reflexion (max iterations: $MAX_REFLEXION_ITERATIONS)" }
 
@@ -76,7 +81,7 @@ class EntityExtractionService(
                 previousMessages = previousMessages,
                 customPrompt = customPrompt
             )
-            
+
             log.info { "=== ENTITY EXTRACTION PROMPT (iteration $reflexionIteration) ===" }
             log.info { "Content length: ${content.length} chars" }
             log.info { "Full prompt:\n$prompt" }
@@ -102,7 +107,7 @@ class EntityExtractionService(
                 if (missedEntities.isNotEmpty()) {
                     entitiesMissed = true
                     customPrompt = "Make sure that the following entities are extracted:\n" +
-                        missedEntities.joinToString("\n") { "- $it" }
+                            missedEntities.joinToString("\n") { "- $it" }
                     log.info { "Reflexion detected ${missedEntities.size} missed entities: $missedEntities. Running extraction iteration ${reflexionIteration + 1}" }
                 } else {
                     entitiesMissed = false
@@ -120,7 +125,7 @@ class EntityExtractionService(
     suspend fun checkMissedEntities(
         content: String,
         previousMessages: String,
-        extractedEntityNames: List<String>
+        extractedEntityNames: List<String>,
     ): List<String> {
         if (extractedEntityNames.isEmpty()) {
             log.debug { "No entities extracted yet, skipping reflexion check" }
@@ -178,7 +183,7 @@ class EntityExtractionService(
         entityName: String,
         entityType: String,
         content: String,
-        existingSummary: String? = null
+        existingSummary: String? = null,
     ): String {
         log.debug { "${if (existingSummary != null) "Updating" else "Generating"} summary for entity: $entityName ($entityType)" }
 
@@ -204,7 +209,7 @@ class EntityExtractionService(
         log.info { "=== PARSING ENTITIES RESPONSE ===" }
         log.info { "Raw response length: ${response.length}" }
         log.info { "Raw response: $response" }
-        
+
         return try {
             var cleanResponse = response.trim()
             if (cleanResponse.startsWith("```json")) {
@@ -215,10 +220,10 @@ class EntityExtractionService(
             if (cleanResponse.endsWith("```")) {
                 cleanResponse = cleanResponse.removeSuffix("```").trim()
             }
-            
+
             val jsonStart = cleanResponse.indexOf("{")
             val jsonEnd = cleanResponse.lastIndexOf("}") + 1
-            
+
             if (jsonStart < 0 || jsonEnd <= jsonStart) {
                 log.warn { "No JSON found in entity extraction response: ${cleanResponse.take(100)}..." }
                 return emptyList()
@@ -226,10 +231,10 @@ class EntityExtractionService(
 
             val jsonStr = cleanResponse.substring(jsonStart, jsonEnd)
             log.debug { "Parsing entities JSON (${jsonStr.length} chars): ${jsonStr.take(300)}..." }
-            
+
             val json: JsonNode = objectMapper.readTree(jsonStr)
             val entities = json.get("extracted_entities")
-            
+
             if (entities == null) {
                 log.warn { "No 'extracted_entities' field in response JSON" }
                 return emptyList()

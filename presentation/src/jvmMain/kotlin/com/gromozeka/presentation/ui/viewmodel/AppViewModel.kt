@@ -65,6 +65,7 @@ open class AppViewModel(
                 AIProvider.GEMINI -> settings.geminiModel
                 AIProvider.CLAUDE_CODE -> settings.claudeModel
                 AIProvider.OPEN_AI -> settings.openAiModel
+                AIProvider.ANTHROPIC -> settings.anthropicModel
             }
 
             conversationService.create(
@@ -240,6 +241,7 @@ open class AppViewModel(
                             AIProvider.GEMINI -> settings.geminiModel
                             AIProvider.CLAUDE_CODE -> settings.claudeModel
                             AIProvider.OPEN_AI -> settings.openAiModel
+                            AIProvider.ANTHROPIC -> settings.anthropicModel
                         }
 
                         conversationService.create(

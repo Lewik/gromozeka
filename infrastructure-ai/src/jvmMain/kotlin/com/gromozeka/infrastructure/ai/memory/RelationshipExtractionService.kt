@@ -14,12 +14,14 @@ import org.springframework.ai.chat.prompt.Prompt
 import org.springframework.ai.embedding.EmbeddingModel
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
+import org.springframework.context.annotation.Lazy
 import org.springframework.stereotype.Service
 import java.util.*
 
 @Service
 @ConditionalOnProperty(name = ["knowledge-graph.enabled"], havingValue = "true", matchIfMissing = false)
 class RelationshipExtractionService(
+    @Lazy
     private val chatModelFactory: ChatModelFactory,
     private val embeddingModel: EmbeddingModel,
     @Value("\${gromozeka.ai.provider:CLAUDE_CODE}")
@@ -29,7 +31,9 @@ class RelationshipExtractionService(
     @Value("\${gromozeka.ai.claude.model:claude-sonnet-4-5}")
     private val claudeModel: String,
     @Value("\${gromozeka.ai.ollama.model:llama3}")
-    private val ollamaModel: String
+    private val ollamaModel: String,
+    @Value("\${gromozeka.ai.claude.model:sonnet}")
+    private val anthropicModel: String,
 ) {
     private val log = KLoggers.logger(this)
     private val objectMapper = ObjectMapper()
@@ -42,6 +46,7 @@ class RelationshipExtractionService(
             AIProvider.CLAUDE_CODE -> claudeModel
             AIProvider.OLLAMA -> ollamaModel
             AIProvider.OPEN_AI -> TODO()
+            AIProvider.ANTHROPIC -> anthropicModel
         },
         projectPath = null
     )

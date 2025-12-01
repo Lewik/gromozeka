@@ -4,9 +4,15 @@ import com.google.genai.Client
 import com.gromozeka.domain.model.AIProvider
 import com.gromozeka.domain.model.AppMode
 import com.gromozeka.domain.service.ChatModelProvider
+import com.gromozeka.domain.service.McpToolProvider
 import com.gromozeka.domain.service.SettingsProvider
 import io.micrometer.observation.ObservationRegistry
 import klog.KLoggers
+import org.springframework.ai.anthropic.AnthropicChatModel
+import org.springframework.ai.anthropic.AnthropicChatOptions
+import org.springframework.ai.anthropic.api.AnthropicApi
+import org.springframework.ai.anthropic.api.AnthropicCacheOptions
+import org.springframework.ai.anthropic.api.AnthropicCacheStrategy
 import org.springframework.ai.chat.model.ChatModel
 import org.springframework.ai.claudecode.ClaudeCodeChatModel
 import org.springframework.ai.claudecode.ClaudeCodeChatOptions
@@ -33,10 +39,15 @@ class ChatModelFactory(
     @Autowired(required = false) private val ollamaApi: OllamaApi?,
     @Autowired(required = false) private val openAiApi: OpenAiApi?,
     @Autowired(required = false) private val geminiClient: Client?,
+    @Autowired(required = false) private val anthropicApi: AnthropicApi?,
     private val toolCallingManager: ToolCallingManager,
     private val settingsProvider: SettingsProvider,
     private val applicationContext: ApplicationContext,
-) : ChatModelProvider {
+    private val toolCallbacks: List<ToolCallback>,
+    private val mcpToolProvider: McpToolProvider,
+
+
+    ) : ChatModelProvider {
     private val log = KLoggers.logger(this)
 
     private data class CacheKey(
@@ -74,7 +85,11 @@ class ChatModelFactory(
         projectPath: String?,
     ): ChatModel {
         val retryTemplate = RetryTemplate.builder().maxAttempts(3).build()
-        val observationRegistry = ObservationRegistry.create()
+        val observationRegistry = ObservationRegistry.NOOP
+        val allToolCallbacks = toolCallbacks + mcpToolProvider.getToolCallbacks()
+        val allToolNames = allToolCallbacks.map { it.toolDefinition.name() }.toSet()
+
+
 
         return when (provider) {
             AIProvider.OLLAMA -> {
@@ -87,7 +102,10 @@ class ChatModelFactory(
                     .numCtx(131072)
                     .numPredict(8192)
                     .temperature(0.7)
+                    .toolCallbacks(allToolCallbacks)
+                    .toolNames(allToolNames)
                     .internalToolExecutionEnabled(false)
+                    .toolContext(mapOf("projectPath" to projectPath))
                     .build()
 
                 OllamaChatModel(
@@ -112,6 +130,10 @@ class ChatModelFactory(
                     .maxOutputTokens(8192)
                     .thinkingBudget(8192)
                     .includeExtendedUsageMetadata(true)
+                    .toolCallbacks(allToolCallbacks)
+                    .toolNames(allToolNames)
+                    .internalToolExecutionEnabled(false)
+                    .toolContext(mapOf("projectPath" to projectPath))
                     .build()
 
                 GoogleGenAiGeminiChatModelWithWorkarounds(
@@ -133,12 +155,40 @@ class ChatModelFactory(
                         .temperature(0.7)
 //                        .maxTokens(16384)
                         .maxCompletionTokens(131072)
+                        .toolCallbacks(allToolCallbacks)
+                        .toolNames(allToolNames)
+                        .internalToolExecutionEnabled(false)
+                        .toolContext(mapOf("projectPath" to projectPath))
                         .build(),
                     toolCallingManager,
                     retryTemplate,
                     observationRegistry,
 
                     )
+            }
+
+            AIProvider.ANTHROPIC -> {
+                AnthropicChatModel(
+                    anthropicApi,
+                    AnthropicChatOptions
+                        .builder()
+                        .model("claude-sonnet-4-5-20250929")
+                        .temperature(0.7)
+                        .maxTokens(64000)
+                        .cacheOptions(
+                            AnthropicCacheOptions.builder()
+                                .strategy(AnthropicCacheStrategy.CONVERSATION_HISTORY)
+                                .build()
+                        )
+                        .toolCallbacks(allToolCallbacks)
+                        .toolNames(allToolNames)
+                        .internalToolExecutionEnabled(false)
+                        .toolContext(mapOf("projectPath" to projectPath))
+                        .build(),
+                    toolCallingManager,
+                    retryTemplate,
+                    observationRegistry
+                )
             }
 
             AIProvider.CLAUDE_CODE -> {

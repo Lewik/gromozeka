@@ -27,6 +27,7 @@ data class Settings(
     val ollamaBaseUrl: String = "http://localhost:11434",
     val geminiModel: String = "gemini-2.0-flash-exp",
     val claudeModel: String = "claude-sonnet-4-5",
+    val anthropicModel: String = "sonnet",
     val openAiModel: String = "gpt-4o-mini",
     val includeCurrentTime: Boolean = true,
     val responseFormat: ResponseFormat = ResponseFormat.XML_INLINE,

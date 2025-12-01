@@ -244,6 +244,14 @@ fun SettingsPanel(
                                     modifier = Modifier.padding(vertical = 8.dp)
                                 )
                             }
+                            AIProvider.ANTHROPIC -> {
+                                Text(
+                                    text = "Anthropic Settings",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.SemiBold,
+                                    modifier = Modifier.padding(vertical = 8.dp)
+                                )
+                            }
 
                             AIProvider.OLLAMA -> {
                                 Text(
