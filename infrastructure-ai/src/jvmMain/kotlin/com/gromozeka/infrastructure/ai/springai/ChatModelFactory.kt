@@ -164,7 +164,7 @@ class ChatModelFactory(
                     .model(modelName)
                     .temperature(0.7)
                     .maxTokens(8192)
-                    .thinkingBudgetTokens(8192)
+                    .thinkingBudgetTokens(0)
                     .cliPath(claudePath)
                     .workingDirectory(workingDir)
                     .internalToolExecutionEnabled(false)

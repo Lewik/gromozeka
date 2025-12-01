@@ -172,6 +172,30 @@ public class ClaudeCodeApi {
                         }
 
                         if (event instanceof ClaudeCodeStreamEvent.AssistantEvent assistantEvent) {
+                            // Check for API errors in assistant messages (fail fast)
+                            // Format: "API Error: <<status code>> <<json>>"
+                            var message = assistantEvent.message();
+                            if (message.stopReason() != null && !message.content().isEmpty()) {
+                                var firstBlock = message.content().get(0);
+                                if (firstBlock.text() != null && firstBlock.text().startsWith("API Error")) {
+                                    String errorText = firstBlock.text();
+                                    logger.error("Claude Code API Error: {}", errorText);
+                                    sink.error(new RuntimeException("Claude Code API Error: " + errorText));
+                                    return;
+                                }
+                            }
+
+                            // Log token usage including cache stats
+                            if (message.usage() != null) {
+                                var usage = message.usage();
+                                logger.info("TOKEN USAGE: input={}, output={}, cache_creation={}, cache_read={}, model={}",
+                                    usage.inputTokens(),
+                                    usage.outputTokens(),
+                                    usage.cacheCreationInputTokens() != null ? usage.cacheCreationInputTokens() : 0,
+                                    usage.cacheReadInputTokens() != null ? usage.cacheReadInputTokens() : 0,
+                                    message.model());
+                            }
+
                             // Emit each complete block immediately (thinking, text, tool_use)
                             // toChatResponse() will parse tool calls and clean XML automatically
                             AnthropicApi.ChatCompletionResponse response = convertAssistantEvent(assistantEvent);
@@ -273,6 +297,14 @@ public class ClaudeCodeApi {
             .collect(Collectors.toList());
 
         String json = objectMapper.writeValueAsString(messageList);
+
+        // Log history size and structure
+        int totalBlocks = messageList.stream()
+            .mapToInt(m -> ((List<?>) m.get("content")).size())
+            .sum();
+        logger.info("HISTORY: {} messages, {} content blocks, {} characters",
+            messageList.size(), totalBlocks, json.length());
+
         logger.debug("Writing messages to stdin: {} characters", json.length());
 
         // Debug logging: save JSON to file for inspection
