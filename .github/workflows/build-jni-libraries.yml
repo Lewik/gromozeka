@@ -1,0 +1,141 @@
+# Build Tree-sitter JNI native libraries for all platforms
+# 
+# Usage:
+#   1. GitHub UI: Actions → "Build JNI Libraries" → Run workflow
+#   2. CLI: gh workflow run build-jni-libraries.yml --ref main
+#   3. Download: gh run download --name jni-linux (etc.)
+#   4. Copy to: infrastructure-ai/src/jvmMain/resources/lib/
+#   5. Commit manually
+#
+# Platforms: Linux x64, macOS ARM64, macOS x64, Windows x64
+
+name: Build JNI Libraries
+
+on:
+  workflow_dispatch:
+    inputs:
+      platforms:
+        description: 'Platforms to build (comma-separated: linux,macos-arm,macos-intel,windows)'
+        required: false
+        default: 'linux,macos-arm,macos-intel,windows'
+
+jobs:
+  build:
+    name: Build ${{ matrix.platform-key }}
+    runs-on: ${{ matrix.os }}
+    
+    # Filter by input (if specified)
+    if: contains(github.event.inputs.platforms || 'linux,macos-arm,macos-intel,windows', matrix.platform-key)
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform-key: linux
+            os: ubuntu-latest
+            lib-path: lib/linux/x64
+            lib-name: libktreesitter-kotlin.so
+            
+          - platform-key: macos-arm
+            os: macos-latest
+            lib-path: lib/macos/aarch64
+            lib-name: libktreesitter-kotlin.dylib
+            
+          - platform-key: macos-intel
+            os: macos-13
+            lib-path: lib/macos/x64
+            lib-name: libktreesitter-kotlin.dylib
+            
+          - platform-key: windows
+            os: windows-latest
+            lib-path: lib/windows/x64
+            lib-name: ktreesitter-kotlin.dll
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      
+      - name: Setup JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+      
+      - name: Install build tools (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake gcc g++
+      
+      - name: Install build tools (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install cmake
+      
+      - name: Install build tools (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System'
+      
+      - name: Generate grammar files
+        run: ./gradlew :infrastructure-ai:generateGrammarFiles
+      
+      - name: Create tree-sitter-kotlin header
+        run: |
+          mkdir -p .sources/tree-sitter-kotlin/bindings/c
+          cat > .sources/tree-sitter-kotlin/bindings/c/tree-sitter-kotlin.h << 'EOF'
+          #ifndef TREE_SITTER_KOTLIN_H_
+          #define TREE_SITTER_KOTLIN_H_
+
+          typedef struct TSLanguage TSLanguage;
+
+          #ifdef __cplusplus
+          extern "C" {
+          #endif
+
+          const TSLanguage *tree_sitter_kotlin(void);
+
+          #ifdef __cplusplus
+          }
+          #endif
+
+          #endif // TREE_SITTER_KOTLIN_H_
+          EOF
+        shell: bash
+      
+      - name: Build JNI library
+        working-directory: infrastructure-ai/build/generated
+        run: |
+          cmake . -DCMAKE_BUILD_TYPE=Release
+          cmake --build . --config Release
+        shell: bash
+      
+      - name: Package library
+        run: |
+          mkdir -p target/${{ matrix.lib-path }}
+          if [ -f infrastructure-ai/build/generated/cmake-build/${{ matrix.lib-name }} ]; then
+            cp infrastructure-ai/build/generated/cmake-build/${{ matrix.lib-name }} target/${{ matrix.lib-path }}/
+          elif [ -f infrastructure-ai/build/generated/cmake-build/Release/${{ matrix.lib-name }} ]; then
+            cp infrastructure-ai/build/generated/cmake-build/Release/${{ matrix.lib-name }} target/${{ matrix.lib-path }}/
+          else
+            echo "ERROR: Library not found!"
+            find infrastructure-ai/build/generated/cmake-build -name "${{ matrix.lib-name }}" || true
+            exit 1
+          fi
+        shell: bash
+      
+      - name: Verify library
+        run: |
+          ls -lh target/${{ matrix.lib-path }}/${{ matrix.lib-name }}
+          file target/${{ matrix.lib-path }}/${{ matrix.lib-name }} || true
+        shell: bash
+      
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: jni-${{ matrix.platform-key }}
+          path: target/lib/**
+          retention-days: 7
+          if-no-files-found: error
