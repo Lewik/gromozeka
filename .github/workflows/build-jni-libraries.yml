@@ -3,29 +3,22 @@
 # Usage:
 #   1. GitHub UI: Actions → "Build JNI Libraries" → Run workflow
 #   2. CLI: gh workflow run build-jni-libraries.yml --ref main
-#   3. Download: gh run download --name jni-linux (etc.)
-#   4. Copy to: infrastructure-ai/src/jvmMain/resources/lib/
-#   5. Commit manually
+#   3. Wait ~15 minutes for all platforms to build
+#   4. Download: gh run download <run-id>
+#   5. Copy to: infrastructure-ai/src/jvmMain/resources/lib/
+#   6. Commit manually
 #
 # Platforms: Linux x64, macOS ARM64, macOS x64, Windows x64
 
 name: Build JNI Libraries
 
 on:
-  workflow_dispatch:
-    inputs:
-      platforms:
-        description: 'Platforms to build (comma-separated: linux,macos-arm,macos-intel,windows)'
-        required: false
-        default: 'linux,macos-arm,macos-intel,windows'
+  workflow_dispatch:  # Manual trigger only
 
 jobs:
   build:
     name: Build ${{ matrix.platform-key }}
     runs-on: ${{ matrix.os }}
-    
-    # Filter by input (if specified)
-    if: contains(github.event.inputs.platforms || 'linux,macos-arm,macos-intel,windows', matrix.platform-key)
     
     strategy:
       fail-fast: false
@@ -62,6 +55,9 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '21'
+      
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
       
       - name: Install build tools (Linux)
         if: runner.os == 'Linux'
