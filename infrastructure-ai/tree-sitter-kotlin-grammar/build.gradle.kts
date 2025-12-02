@@ -18,6 +18,26 @@ grammar {
     )
 }
 
+// Fix Windows path escaping in generated CMakeLists.txt
+val fixCMakePaths by tasks.registering {
+    dependsOn("generateGrammarFiles")
+    
+    doLast {
+        val cmakeFile = file("build/generated/CMakeLists.txt")
+        if (cmakeFile.exists()) {
+            val grammarDirAbsolute = grammarDir.absolutePath.replace("\\", "/")
+            val content = cmakeFile.readText()
+                .replace("../../../build/tree-sitter-kotlin", grammarDirAbsolute)
+            cmakeFile.writeText(content)
+            println("Fixed CMakeLists.txt paths for cross-platform compatibility")
+        }
+    }
+}
+
+tasks.named("generateGrammarFiles") {
+    finalizedBy(fixCMakePaths)
+}
+
 kotlin {
     jvmToolchain(21)
     
