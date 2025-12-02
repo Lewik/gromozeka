@@ -10,6 +10,7 @@ include(":domain")
 include(":application")
 include(":infrastructure-db")
 include(":infrastructure-ai")
+include(":infrastructure-ai:tree-sitter-kotlin-grammar")
 include(":presentation")
 
 // Настройка репозиториев для всех проектов

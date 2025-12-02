@@ -75,13 +75,19 @@ jobs:
         run: |
           choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System'
       
+      - name: Clone tree-sitter-kotlin grammar
+        run: |
+          mkdir -p infrastructure-ai/build
+          git clone https://github.com/fwcd/tree-sitter-kotlin.git infrastructure-ai/build/tree-sitter-kotlin
+        shell: bash
+      
       - name: Generate grammar files
-        run: ./gradlew :infrastructure-ai:generateGrammarFiles
+        run: ./gradlew :infrastructure-ai:tree-sitter-kotlin-grammar:generateGrammarFiles
       
       - name: Create tree-sitter-kotlin header
         run: |
-          mkdir -p .sources/tree-sitter-kotlin/bindings/c
-          cat > .sources/tree-sitter-kotlin/bindings/c/tree-sitter-kotlin.h << 'EOF'
+          mkdir -p infrastructure-ai/build/tree-sitter-kotlin/bindings/c
+          cat > infrastructure-ai/build/tree-sitter-kotlin/bindings/c/tree-sitter-kotlin.h << 'EOF'
           #ifndef TREE_SITTER_KOTLIN_H_
           #define TREE_SITTER_KOTLIN_H_
 
@@ -102,7 +108,7 @@ jobs:
         shell: bash
       
       - name: Build JNI library
-        working-directory: infrastructure-ai/build/generated
+        working-directory: infrastructure-ai/tree-sitter-kotlin-grammar/build/generated
         run: |
           cmake . -DCMAKE_BUILD_TYPE=Release
           cmake --build . --config Release
@@ -111,13 +117,13 @@ jobs:
       - name: Package library
         run: |
           mkdir -p target/${{ matrix.lib-path }}
-          if [ -f infrastructure-ai/build/generated/cmake-build/${{ matrix.lib-name }} ]; then
-            cp infrastructure-ai/build/generated/cmake-build/${{ matrix.lib-name }} target/${{ matrix.lib-path }}/
-          elif [ -f infrastructure-ai/build/generated/cmake-build/Release/${{ matrix.lib-name }} ]; then
-            cp infrastructure-ai/build/generated/cmake-build/Release/${{ matrix.lib-name }} target/${{ matrix.lib-path }}/
+          if [ -f infrastructure-ai/tree-sitter-kotlin-grammar/build/generated/${{ matrix.lib-name }} ]; then
+            cp infrastructure-ai/tree-sitter-kotlin-grammar/build/generated/${{ matrix.lib-name }} target/${{ matrix.lib-path }}/
+          elif [ -f infrastructure-ai/tree-sitter-kotlin-grammar/build/generated/Release/${{ matrix.lib-name }} ]; then
+            cp infrastructure-ai/tree-sitter-kotlin-grammar/build/generated/Release/${{ matrix.lib-name }} target/${{ matrix.lib-path }}/
           else
             echo "ERROR: Library not found!"
-            find infrastructure-ai/build/generated/cmake-build -name "${{ matrix.lib-name }}" || true
+            find infrastructure-ai/tree-sitter-kotlin-grammar/build/generated -name "${{ matrix.lib-name }}" || true
             exit 1
           fi
         shell: bash
