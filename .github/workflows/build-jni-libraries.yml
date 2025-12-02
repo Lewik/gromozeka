@@ -82,7 +82,7 @@ jobs:
         shell: bash
       
       - name: Generate grammar files
-        run: ./gradlew :infrastructure-ai:tree-sitter-kotlin-grammar:generateGrammarFiles
+        run: ./gradlew :infrastructure-ai:tree-sitter-kotlin-grammar:generateGrammarFiles --no-configuration-cache
       
       - name: Create tree-sitter-kotlin header
         run: |
