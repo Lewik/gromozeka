@@ -1,0 +1,8 @@
+{
+  "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "^0.1.55",
+    "@anthropic-ai/sdk": "^0.71.0",
+    "quicktype": "^23.2.6",
+    "ts-json-schema-generator": "^2.4.0"
+  }
+}
