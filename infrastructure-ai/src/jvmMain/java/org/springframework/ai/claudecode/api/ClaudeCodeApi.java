@@ -69,9 +69,13 @@ public class ClaudeCodeApi {
             long requestTimestamp = System.currentTimeMillis();
 
             try {
-                // Append tool descriptions to system prompt
+                // Append tool descriptions and conversation format note to system prompt
                 String toolDescriptions = buildToolDescriptions(toolCallbacks);
-                String enhancedSystemPrompt = systemPrompt + toolDescriptions;
+                String conversationFormatNote = "\n\n# Conversation Format\n\n" +
+                    "You will receive all conversation history as messages from me. Look at XML tags to understand who is author: " +
+                    "`<user><user>content</user></user>` for user messages " +
+                    "and `<user><assistant>content</assistant></user>` for your previous responses. Treat it as your own previous responses in the conversation.";
+                String enhancedSystemPrompt = systemPrompt + toolDescriptions + conversationFormatNote;
 
                 if (toolCallbacks != null && !toolCallbacks.isEmpty()) {
                     logger.debug("Added {} tool descriptions to system prompt ({} chars)",
@@ -303,7 +307,7 @@ public class ClaudeCodeApi {
             .map(this::convertMessageToMap)
             .collect(Collectors.toList());
 
-        // Build JSONL for stdin (original, no sanitization)
+        // Build JSONL for stdin (content already wrapped in XML tags by convertContentBlockToMap)
         StringBuilder jsonlBuilder = new StringBuilder();
         for (Map<String, Object> message : messageList) {
             String line = objectMapper.writeValueAsString(message);
@@ -320,33 +324,14 @@ public class ClaudeCodeApi {
         }
         String dumpJsonl = dumpJsonlBuilder.toString();
 
-        // Log history size and structure
-        int totalBlocks = messageList.stream()
-            .mapToInt(m -> ((List<?>) m.get("content")).size())
-            .sum();
-        logger.info("HISTORY: {} messages, {} content blocks, {} characters",
-            messageList.size(), totalBlocks, jsonl.length());
+        // Log history size
+        logger.info("HISTORY: {} messages, {} characters", messageList.size(), jsonl.length());
 
         // Save request dump
         Path dumpFile = Paths.get("logs/dumps/" + requestTimestamp + "-request.jsonl");
         Files.createDirectories(dumpFile.getParent());
         Files.writeString(dumpFile, dumpJsonl);
         logger.debug("Saved request dump to: {}", dumpFile.toAbsolutePath());
-
-
-        // Log message structure
-        String structure = messageList.stream()
-            .map(m -> {
-                String role = (String) m.get("role");
-                @SuppressWarnings("unchecked")
-                List<Map<String, Object>> content = (List<Map<String, Object>>) m.get("content");
-                String contentTypes = content.stream()
-                    .map(c -> (String) c.get("type"))
-                    .collect(Collectors.joining(","));
-                return role + "[" + contentTypes + "]";
-            })
-            .collect(Collectors.joining(" -> "));
-        logger.debug("Message structure: {}", structure);
 
         // Validate JSONL (each line should be valid JSON)
         try {
@@ -361,12 +346,12 @@ public class ClaudeCodeApi {
         }
 
         // Log preview
-        if (jsonl.length() > 1000) {
-            logger.debug("JSONL preview (first 500 chars): {}", jsonl.substring(0, 500));
-            logger.debug("JSONL preview (last 500 chars): {}", jsonl.substring(jsonl.length() - 500));
-        } else {
+//        if (jsonl.length() > 1000) {
+//            logger.debug("JSONL preview (first 500 chars): {}", jsonl.substring(0, 500));
+//            logger.debug("JSONL preview (last 500 chars): {}", jsonl.substring(jsonl.length() - 500));
+//        } else {
             logger.debug("Full JSONL: {}", jsonl);
-        }
+//        }
 
         try (BufferedWriter writer = new BufferedWriter(
                 new OutputStreamWriter(process.getOutputStream(), StandardCharsets.UTF_8))) {
@@ -376,78 +361,71 @@ public class ClaudeCodeApi {
     }
 
     private Map<String, Object> convertMessageToMap(AnthropicApi.AnthropicMessage message) {
-        Map<String, Object> map = new HashMap<>();
-        map.put("role", message.role().name().toLowerCase());
+        // CLI stream-json expects wrapper: {"type": "user", "message": {"role": "user", "content": "..."}}
+        Map<String, Object> wrapper = new HashMap<>();
+        wrapper.put("type", "user");
 
-        List<Map<String, Object>> contentList = message.content().stream()
-            .map(this::convertContentBlockToMap)
-            .collect(Collectors.toList());
-        map.put("content", contentList);
+        Map<String, Object> innerMessage = new HashMap<>();
+        innerMessage.put("role", "user");
 
-        return map;
+        String originalRole = message.role().name().toLowerCase();
+
+        // Build content string with XML wrapping
+        StringBuilder contentBuilder = new StringBuilder();
+        for (AnthropicApi.ContentBlock block : message.content()) {
+            String wrappedContent = wrapContentBlock(block, originalRole);
+            contentBuilder.append(wrappedContent);
+        }
+
+        innerMessage.put("content", contentBuilder.toString());
+        wrapper.put("message", innerMessage);
+
+        return wrapper;
     }
 
-    private Map<String, Object> convertContentBlockToMap(AnthropicApi.ContentBlock block) {
-        Map<String, Object> map = new HashMap<>();
-        map.put("type", block.type().name().toLowerCase());
+    private String wrapContentBlock(AnthropicApi.ContentBlock block, String role) {
+        String xmlTag = role.equals("assistant") ? "assistant" : "user";
 
-        // Handle TOOL_RESULT with structured content (images, etc)
+        if (block.type() == AnthropicApi.ContentBlock.Type.TEXT) {
+            return "<" + xmlTag + ">" + block.text() + "</" + xmlTag + ">";
+        }
+
+        if (block.type() == AnthropicApi.ContentBlock.Type.THINKING) {
+            return "<thinking role=\"" + xmlTag + "\">" + block.thinking() + "</thinking>";
+        }
+
+        if (block.type() == AnthropicApi.ContentBlock.Type.TOOL_USE) {
+            StringBuilder toolText = new StringBuilder();
+            toolText.append("<tool_use role=\"").append(xmlTag).append("\" name=\"").append(block.name()).append("\" id=\"").append(block.id()).append("\">");
+            try {
+                toolText.append("\n").append(objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(block.input()));
+            } catch (Exception e) {
+                toolText.append(block.input());
+            }
+            toolText.append("\n</tool_use>");
+            return toolText.toString();
+        }
+
         if (block.type() == AnthropicApi.ContentBlock.Type.TOOL_RESULT) {
-            map.put("tool_use_id", block.toolUseId());
+            StringBuilder resultText = new StringBuilder();
+            resultText.append("<tool_result role=\"").append(xmlTag).append("\" tool_use_id=\"").append(block.toolUseId()).append("\">");
 
             if (StringUtils.hasText(block.content())) {
                 try {
-                    // Parse JSON string into structured content array
                     Object parsedContent = objectMapper.readValue(block.content(), Object.class);
-                    map.put("content", parsedContent);
+                    resultText.append("\n").append(objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(parsedContent));
                 } catch (Exception e) {
-                    // Fallback - if not JSON, use as plain text
-                    logger.warn("Failed to parse tool_result content as JSON, using as text: {}", e.getMessage());
-                    map.put("content", block.content());
+                    resultText.append(block.content());
                 }
             }
-            return map;
+            resultText.append("\n</tool_result>");
+            return resultText.toString();
         }
 
-        // Handle IMAGE blocks with source
-        if (block.source() != null) {
-            Map<String, Object> source = new HashMap<>();
-            if (StringUtils.hasText(block.source().type())) {
-                source.put("type", block.source().type());
-            }
-            if (StringUtils.hasText(block.source().mediaType())) {
-                source.put("media_type", block.source().mediaType());
-            }
-            if (StringUtils.hasText(block.source().data())) {
-                source.put("data", block.source().data());
-            }
-            if (StringUtils.hasText(block.source().url())) {
-                source.put("url", block.source().url());
-            }
-            map.put("source", source);
-        }
-
-        if (StringUtils.hasText(block.text())) {
-            map.put("text", block.text());
-        }
-        if (block.input() != null) {
-            map.put("input", block.input());
-        }
-        if (StringUtils.hasText(block.id())) {
-            map.put("id", block.id());
-        }
-        if (StringUtils.hasText(block.name())) {
-            map.put("name", block.name());
-        }
-        // Serialize thinking and signature for Anthropic extended thinking
-        if (StringUtils.hasText(block.thinking())) {
-            map.put("thinking", block.thinking());
-        }
-        if (StringUtils.hasText(block.signature())) {
-            map.put("signature", block.signature());
-        }
-
-        return map;
+        // Fallback
+        return "<" + xmlTag + " block_type=\"" + block.type().name().toLowerCase() + "\">" +
+               (StringUtils.hasText(block.text()) ? block.text() : "") +
+               "</" + xmlTag + ">";
     }
 
     private Thread startStderrReader(Process process, StringBuilder stderrBuilder) {
@@ -565,12 +543,12 @@ public class ClaudeCodeApi {
 
                 if (sanitizedBlock.containsKey("text") && sanitizedBlock.get("text") instanceof String) {
                     String text = (String) sanitizedBlock.get("text");
-                    sanitizedBlock.put("text", "REMOVED(" + text.length() + ")");
+                    sanitizedBlock.put("text", truncateWithLength(text, 100));
                 }
 
                 if (sanitizedBlock.containsKey("thinking") && sanitizedBlock.get("thinking") instanceof String) {
                     String thinking = (String) sanitizedBlock.get("thinking");
-                    sanitizedBlock.put("thinking", "REMOVED(" + thinking.length() + ")");
+                    sanitizedBlock.put("thinking", truncateWithLength(thinking, 100));
                 }
 
                 sanitizedContent.add(sanitizedBlock);
@@ -600,12 +578,12 @@ public class ClaudeCodeApi {
 
                     if (sanitizedBlock.containsKey("text") && sanitizedBlock.get("text") instanceof String) {
                         String text = (String) sanitizedBlock.get("text");
-                        sanitizedBlock.put("text", "REMOVED(" + text.length() + ")");
+                        sanitizedBlock.put("text", truncateWithLength(text, 100));
                     }
 
                     if (sanitizedBlock.containsKey("thinking") && sanitizedBlock.get("thinking") instanceof String) {
                         String thinking = (String) sanitizedBlock.get("thinking");
-                        sanitizedBlock.put("thinking", "REMOVED(" + thinking.length() + ")");
+                        sanitizedBlock.put("thinking", truncateWithLength(thinking, 100));
                     }
 
                     sanitizedContent.add(sanitizedBlock);
@@ -620,10 +598,20 @@ public class ClaudeCodeApi {
         // Sanitize result event
         if (sanitized.containsKey("result") && sanitized.get("result") instanceof String) {
             String result = (String) sanitized.get("result");
-            sanitized.put("result", "REMOVED(" + result.length() + ")");
+            sanitized.put("result", truncateWithLength(result, 100));
         }
 
         return sanitized;
+    }
+
+    /**
+     * Truncates text to maxLength characters and appends "... REMOVED(totalLength)".
+     */
+    private String truncateWithLength(String text, int maxLength) {
+        if (text.length() <= maxLength) {
+            return text;
+        }
+        return text.substring(0, maxLength) + "... REMOVED(" + text.length() + ")";
     }
 
     /**
