@@ -64,7 +64,7 @@ class TabViewModel(
                         includeInMessage = true
                     )
                 ),
-                selectedByDefault = 1
+                selectedByDefault = 0
             ),
             MessageTagDefinition(
                 controls = listOf(
