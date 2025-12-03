@@ -7,11 +7,18 @@ import org.springframework.context.annotation.Configuration
 @Configuration
 class OpenAiConfig {
 
+    data class OpenAiSettings(
+        val apiKey: String = "dummy",
+        val baseUrl: String = ""
+    )
+
+    private val settings = OpenAiSettings()
+
     @Bean
-    fun openAiApi(
-    ): OpenAiApi {
+    fun openAiApi(): OpenAiApi {
         return OpenAiApi.builder()
-            .apiKey("")
+            .apiKey(settings.apiKey)
+            .baseUrl(settings.baseUrl)
             .build()
     }
 

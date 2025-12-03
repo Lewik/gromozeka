@@ -150,15 +150,9 @@ class ChatModelFactory(
                     openAiApi,
                     OpenAiChatOptions
                         .builder()
-//                        .model("gpt-4o-mini")
-                        .model("o4-mini")
+                        .model("deepseek-coder-v2-lite-instruct")
                         .temperature(0.7)
-//                        .maxTokens(16384)
-                        .maxCompletionTokens(131072)
-                        .toolCallbacks(allToolCallbacks)
-                        .toolNames(allToolNames)
-                        .internalToolExecutionEnabled(false)
-                        .toolContext(mapOf("projectPath" to projectPath))
+                        .maxCompletionTokens(8192)
                         .build(),
                     toolCallingManager,
                     retryTemplate,
