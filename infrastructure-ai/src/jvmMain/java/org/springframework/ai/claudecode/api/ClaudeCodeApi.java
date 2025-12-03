@@ -66,6 +66,7 @@ public class ClaudeCodeApi {
         return Flux.<AnthropicApi.ChatCompletionResponse>create(sink -> {
             Process process = null;
             File tempFile = null;
+            long requestTimestamp = System.currentTimeMillis();
 
             try {
                 // Append tool descriptions to system prompt
@@ -141,7 +142,7 @@ public class ClaudeCodeApi {
 
                 Process finalProcess = process;
 
-                writeMessagesToStdin(process, messages);
+                writeMessagesToStdin(process, messages, requestTimestamp);
 
                 BufferedReader reader = new BufferedReader(
                     new InputStreamReader(finalProcess.getInputStream(), StandardCharsets.UTF_8)
@@ -150,9 +151,11 @@ public class ClaudeCodeApi {
                 StringBuilder stderrBuilder = new StringBuilder();
                 Thread stderrThread = startStderrReader(finalProcess, stderrBuilder);
 
+                StringBuilder responseBuilder = new StringBuilder();
                 String line;
                 Double totalCost = null;
                 while ((line = reader.readLine()) != null) {
+                    responseBuilder.append(line).append("\n");
                     if (line.trim().isEmpty()) {
                         continue;
                     }
@@ -228,6 +231,10 @@ public class ClaudeCodeApi {
                 stderrThread.join(1000);
 
                 int exitCode = finalProcess.exitValue();
+
+                // Save response dump
+                saveResponseDump(requestTimestamp, responseBuilder.toString());
+
                 if (exitCode != 0) {
                     String stderr = stderrBuilder.toString();
                     logger.error("Claude Code process exited with code {}: {}", exitCode, stderr);
@@ -291,31 +298,41 @@ public class ClaudeCodeApi {
         return toolsSection.toString();
     }
 
-    private void writeMessagesToStdin(Process process, List<AnthropicApi.AnthropicMessage> messages) throws IOException {
+    private void writeMessagesToStdin(Process process, List<AnthropicApi.AnthropicMessage> messages, long requestTimestamp) throws IOException {
         List<Map<String, Object>> messageList = messages.stream()
             .map(this::convertMessageToMap)
             .collect(Collectors.toList());
 
-        String json = objectMapper.writeValueAsString(messageList);
+        // Build JSONL for stdin (original, no sanitization)
+        StringBuilder jsonlBuilder = new StringBuilder();
+        for (Map<String, Object> message : messageList) {
+            String line = objectMapper.writeValueAsString(message);
+            jsonlBuilder.append(line).append("\n");
+        }
+        String jsonl = jsonlBuilder.toString();
+
+        // Build JSONL for dump (sanitized + pretty-print)
+        StringBuilder dumpJsonlBuilder = new StringBuilder();
+        for (Map<String, Object> message : messageList) {
+            Map<String, Object> sanitizedMessage = sanitizeMessageForDump(message);
+            String prettyLine = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(sanitizedMessage);
+            dumpJsonlBuilder.append(prettyLine).append("\n");
+        }
+        String dumpJsonl = dumpJsonlBuilder.toString();
 
         // Log history size and structure
         int totalBlocks = messageList.stream()
             .mapToInt(m -> ((List<?>) m.get("content")).size())
             .sum();
         logger.info("HISTORY: {} messages, {} content blocks, {} characters",
-            messageList.size(), totalBlocks, json.length());
+            messageList.size(), totalBlocks, jsonl.length());
 
-        logger.debug("Writing messages to stdin: {} characters", json.length());
+        // Save request dump
+        Path dumpFile = Paths.get("logs/dumps/" + requestTimestamp + "-request.jsonl");
+        Files.createDirectories(dumpFile.getParent());
+        Files.writeString(dumpFile, dumpJsonl);
+        logger.debug("Saved request dump to: {}", dumpFile.toAbsolutePath());
 
-        // Debug logging: save JSON to file for inspection
-        try {
-            Path debugFile = Paths.get("logs/last-stdin.json");
-            Files.createDirectories(debugFile.getParent());
-            Files.writeString(debugFile, json);
-            logger.debug("Saved stdin JSON to: {}", debugFile.toAbsolutePath());
-        } catch (Exception e) {
-            logger.warn("Failed to save debug JSON: {}", e.getMessage());
-        }
 
         // Log message structure
         String structure = messageList.stream()
@@ -331,25 +348,29 @@ public class ClaudeCodeApi {
             .collect(Collectors.joining(" -> "));
         logger.debug("Message structure: {}", structure);
 
-        // Validate JSON
+        // Validate JSONL (each line should be valid JSON)
         try {
-            objectMapper.readTree(json);
-            logger.debug("JSON validation: OK");
+            for (String line : jsonl.split("\n")) {
+                if (!line.trim().isEmpty()) {
+                    objectMapper.readTree(line);
+                }
+            }
+            logger.debug("JSONL validation: OK");
         } catch (Exception e) {
-            logger.error("JSON validation FAILED: {}", e.getMessage());
+            logger.error("JSONL validation FAILED: {}", e.getMessage());
         }
 
         // Log preview
-        if (json.length() > 1000) {
-            logger.debug("JSON preview (first 500 chars): {}", json.substring(0, 500));
-            logger.debug("JSON preview (last 500 chars): {}", json.substring(json.length() - 500));
+        if (jsonl.length() > 1000) {
+            logger.debug("JSONL preview (first 500 chars): {}", jsonl.substring(0, 500));
+            logger.debug("JSONL preview (last 500 chars): {}", jsonl.substring(jsonl.length() - 500));
         } else {
-            logger.debug("Full JSON: {}", json);
+            logger.debug("Full JSONL: {}", jsonl);
         }
 
         try (BufferedWriter writer = new BufferedWriter(
                 new OutputStreamWriter(process.getOutputStream(), StandardCharsets.UTF_8))) {
-            writer.write(json);
+            writer.write(jsonl);
             writer.flush();
         }
     }
@@ -501,6 +522,108 @@ public class ClaudeCodeApi {
             );
             default -> new AnthropicApi.ContentBlock(block.text() != null ? block.text() : "");
         };
+    }
+
+    private void saveResponseDump(long requestTimestamp, String response) {
+        try {
+            // Sanitize and pretty-print response
+            StringBuilder sanitizedResponse = new StringBuilder();
+            for (String line : response.split("\n")) {
+                if (line.trim().isEmpty()) {
+                    continue;
+                }
+                try {
+                    Map<String, Object> event = objectMapper.readValue(line, new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {});
+                    Map<String, Object> sanitizedEvent = sanitizeEventForDump(event);
+                    String prettyLine = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(sanitizedEvent);
+                    sanitizedResponse.append(prettyLine).append("\n");
+                } catch (Exception e) {
+                    // If parsing fails, keep original line
+                    sanitizedResponse.append(line).append("\n");
+                }
+            }
+
+            Path dumpFile = Paths.get("logs/dumps/" + requestTimestamp + "-response.jsonl");
+            Files.createDirectories(dumpFile.getParent());
+            Files.writeString(dumpFile, sanitizedResponse.toString());
+            logger.debug("Saved response dump to: {}", dumpFile.toAbsolutePath());
+        } catch (Exception e) {
+            logger.warn("Failed to save response dump: {}", e.getMessage());
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> sanitizeMessageForDump(Map<String, Object> message) {
+        Map<String, Object> sanitized = new HashMap<>(message);
+
+        if (sanitized.containsKey("content")) {
+            List<Map<String, Object>> content = (List<Map<String, Object>>) sanitized.get("content");
+            List<Map<String, Object>> sanitizedContent = new ArrayList<>();
+
+            for (Map<String, Object> block : content) {
+                Map<String, Object> sanitizedBlock = new HashMap<>(block);
+
+                if (sanitizedBlock.containsKey("text") && sanitizedBlock.get("text") instanceof String) {
+                    String text = (String) sanitizedBlock.get("text");
+                    sanitizedBlock.put("text", "REMOVED(" + text.length() + ")");
+                }
+
+                if (sanitizedBlock.containsKey("thinking") && sanitizedBlock.get("thinking") instanceof String) {
+                    String thinking = (String) sanitizedBlock.get("thinking");
+                    sanitizedBlock.put("thinking", "REMOVED(" + thinking.length() + ")");
+                }
+
+                sanitizedContent.add(sanitizedBlock);
+            }
+
+            sanitized.put("content", sanitizedContent);
+        }
+
+        return sanitized;
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> sanitizeEventForDump(Map<String, Object> event) {
+        Map<String, Object> sanitized = new HashMap<>(event);
+
+        // Sanitize assistant message content
+        if (sanitized.containsKey("message")) {
+            Map<String, Object> message = (Map<String, Object>) sanitized.get("message");
+            Map<String, Object> sanitizedMessage = new HashMap<>(message);
+
+            if (sanitizedMessage.containsKey("content")) {
+                List<Map<String, Object>> content = (List<Map<String, Object>>) sanitizedMessage.get("content");
+                List<Map<String, Object>> sanitizedContent = new ArrayList<>();
+
+                for (Map<String, Object> block : content) {
+                    Map<String, Object> sanitizedBlock = new HashMap<>(block);
+
+                    if (sanitizedBlock.containsKey("text") && sanitizedBlock.get("text") instanceof String) {
+                        String text = (String) sanitizedBlock.get("text");
+                        sanitizedBlock.put("text", "REMOVED(" + text.length() + ")");
+                    }
+
+                    if (sanitizedBlock.containsKey("thinking") && sanitizedBlock.get("thinking") instanceof String) {
+                        String thinking = (String) sanitizedBlock.get("thinking");
+                        sanitizedBlock.put("thinking", "REMOVED(" + thinking.length() + ")");
+                    }
+
+                    sanitizedContent.add(sanitizedBlock);
+                }
+
+                sanitizedMessage.put("content", sanitizedContent);
+            }
+
+            sanitized.put("message", sanitizedMessage);
+        }
+
+        // Sanitize result event
+        if (sanitized.containsKey("result") && sanitized.get("result") instanceof String) {
+            String result = (String) sanitized.get("result");
+            sanitized.put("result", "REMOVED(" + result.length() + ")");
+        }
+
+        return sanitized;
     }
 
     /**
