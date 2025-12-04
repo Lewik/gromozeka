@@ -1,16 +1,15 @@
 package com.gromozeka.infrastructure.ai.springai
 
-import com.google.genai.Client
 import com.gromozeka.domain.model.AIProvider
 import com.gromozeka.domain.model.AppMode
 import com.gromozeka.domain.service.ChatModelProvider
 import com.gromozeka.domain.service.McpToolProvider
 import com.gromozeka.domain.service.SettingsProvider
+import com.gromozeka.infrastructure.ai.factory.AiApiFactory
 import io.micrometer.observation.ObservationRegistry
 import klog.KLoggers
 import org.springframework.ai.anthropic.AnthropicChatModel
 import org.springframework.ai.anthropic.AnthropicChatOptions
-import org.springframework.ai.anthropic.api.AnthropicApi
 import org.springframework.ai.anthropic.api.AnthropicCacheOptions
 import org.springframework.ai.anthropic.api.AnthropicCacheStrategy
 import org.springframework.ai.chat.model.ChatModel
@@ -19,16 +18,14 @@ import org.springframework.ai.claudecode.ClaudeCodeChatOptions
 import org.springframework.ai.claudecode.api.ClaudeCodeApi
 import org.springframework.ai.google.genai.GoogleGenAiChatOptions
 import org.springframework.ai.google.genai.GoogleGenAiGeminiChatModelWithWorkarounds
+import org.springframework.ai.model.tool.DefaultToolExecutionEligibilityPredicate
 import org.springframework.ai.model.tool.ToolCallingManager
 import org.springframework.ai.ollama.OllamaChatModel
-import org.springframework.ai.ollama.api.OllamaApi
 import org.springframework.ai.ollama.api.OllamaChatOptions
 import org.springframework.ai.ollama.management.ModelManagementOptions
 import org.springframework.ai.openai.OpenAiChatModel
 import org.springframework.ai.openai.OpenAiChatOptions
-import org.springframework.ai.openai.api.OpenAiApi
 import org.springframework.ai.tool.ToolCallback
-import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.context.ApplicationContext
 import org.springframework.retry.support.RetryTemplate
 import org.springframework.stereotype.Service
@@ -36,18 +33,13 @@ import java.util.concurrent.ConcurrentHashMap
 
 @Service
 class ChatModelFactory(
-    @Autowired(required = false) private val ollamaApi: OllamaApi?,
-    @Autowired(required = false) private val openAiApi: OpenAiApi?,
-    @Autowired(required = false) private val geminiClient: Client?,
-    @Autowired(required = false) private val anthropicApi: AnthropicApi?,
+    private val aiApiFactory: AiApiFactory,
     private val toolCallingManager: ToolCallingManager,
     private val settingsProvider: SettingsProvider,
     private val applicationContext: ApplicationContext,
     private val toolCallbacks: List<ToolCallback>,
     private val mcpToolProvider: McpToolProvider,
-
-
-    ) : ChatModelProvider {
+) : ChatModelProvider {
     private val log = KLoggers.logger(this)
 
     private data class CacheKey(
@@ -59,8 +51,8 @@ class ChatModelFactory(
     private val cache = ConcurrentHashMap<CacheKey, ChatModel>()
 
     /**
-     * Получает все зарегистрированные ToolCallback бины из Spring контекста.
-     * Использует ту же стратегию, что и SpringContextToolCallbackResolver.
+     * Retrieves all registered ToolCallback beans from Spring context.
+     * Uses the same strategy as SpringContextToolCallbackResolver.
      */
     private fun getAllToolCallbacks(): List<ToolCallback> {
         val toolCallbacks = applicationContext.getBeansOfType(ToolCallback::class.java).values.toList()
@@ -93,9 +85,7 @@ class ChatModelFactory(
 
         return when (provider) {
             AIProvider.OLLAMA -> {
-                requireNotNull(ollamaApi) {
-                    "Ollama not configured - ensure Ollama is installed and running at http://localhost:11434"
-                }
+                val ollamaApi = aiApiFactory.createOllamaApi()
 
                 val options = OllamaChatOptions.builder()
                     .model(modelName)
@@ -114,12 +104,13 @@ class ChatModelFactory(
                     toolCallingManager,
                     observationRegistry,
                     ModelManagementOptions.defaults(),
-                    org.springframework.ai.model.tool.DefaultToolExecutionEligibilityPredicate(),
+                    DefaultToolExecutionEligibilityPredicate(),
                     retryTemplate
                 )
             }
 
             AIProvider.GEMINI -> {
+                val geminiClient = aiApiFactory.createGeminiClient()
                 requireNotNull(geminiClient) {
                     "Gemini not configured - missing google-credentials.json file"
                 }
@@ -146,6 +137,8 @@ class ChatModelFactory(
             }
 
             AIProvider.OPEN_AI -> {
+                val openAiApi = aiApiFactory.createOpenAiApi()
+
                 OpenAiChatModel(
                     openAiApi,
                     OpenAiChatOptions
@@ -162,34 +155,49 @@ class ChatModelFactory(
             }
 
             AIProvider.ANTHROPIC -> {
-                AnthropicChatModel(
-                    anthropicApi,
-                    AnthropicChatOptions
-                        .builder()
-                        .model("claude-sonnet-4-5-20250929")
-                        .temperature(0.7)
-                        .maxTokens(64000)
-                        .cacheOptions(
-                            AnthropicCacheOptions.builder()
-                                .strategy(AnthropicCacheStrategy.CONVERSATION_HISTORY)
-                                .build()
-                        )
-                        .toolCallbacks(allToolCallbacks)
-                        .toolNames(allToolNames)
-                        .internalToolExecutionEnabled(false)
-                        .toolContext(mapOf("projectPath" to projectPath))
-                        .build(),
-                    toolCallingManager,
-                    retryTemplate,
-                    observationRegistry
-                )
+                val anthropicApi = aiApiFactory.createAnthropicApi()
+
+                val options = AnthropicChatOptions
+                    .builder()
+                    .model("claude-sonnet-4-5-20250929")
+                    .temperature(0.7)
+                    .maxTokens(64000)
+                    .cacheOptions(
+                        AnthropicCacheOptions.builder()
+                            .strategy(AnthropicCacheStrategy.CONVERSATION_HISTORY)
+                            .build()
+                    )
+                    .toolCallbacks(allToolCallbacks)
+                    .toolNames(allToolNames)
+                    .internalToolExecutionEnabled(false)
+                    .toolContext(mapOf("projectPath" to projectPath))
+                    .build()
+
+                // Use OAuth-compatible model when using OAuth tokens
+                if (settingsProvider.anthropicOAuthAccessToken != null) {
+                    log.info("Using OAuthCompatibleAnthropicChatModel for OAuth token support")
+                    org.springframework.ai.anthropic.OAuthCompatibleAnthropicChatModel(
+                        anthropicApi,
+                        options,
+                        toolCallingManager,
+                        retryTemplate,
+                        observationRegistry
+                    )
+                } else {
+                    AnthropicChatModel(
+                        anthropicApi,
+                        options,
+                        toolCallingManager,
+                        retryTemplate,
+                        observationRegistry
+                    )
+                }
             }
 
             AIProvider.CLAUDE_CODE -> {
                 val workingDir = projectPath ?: System.getProperty("user.dir")
                 val claudePath = ClaudePathDetector.detectClaudePath()
 
-                // Get MCP config path from settings
                 val mcpConfigPath = java.io.File(settingsProvider.homeDirectory, "mcp-sse-config.json").absolutePath
                 log.info("Using MCP config: $mcpConfigPath")
 
@@ -200,7 +208,6 @@ class ChatModelFactory(
                     .mcpConfigPath(mcpConfigPath)
                     .build()
 
-                // Получаем все зарегистрированные tool callbacks
                 val toolCallbacks = getAllToolCallbacks()
                 log.info("Creating ClaudeCodeChatModel with ${toolCallbacks.size} tool callbacks for model $modelName")
 
@@ -214,7 +221,6 @@ class ChatModelFactory(
                     .internalToolExecutionEnabled(false)
                     .build()
 
-                // Устанавливаем toolCallbacks через setter (Builder не имеет этого метода)
                 options.toolCallbacks = toolCallbacks
 
                 ClaudeCodeChatModel.builder()
