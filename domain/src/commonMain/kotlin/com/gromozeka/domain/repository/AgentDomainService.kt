@@ -36,16 +36,16 @@ interface AgentDomainService {
     ): Agent
 
     /**
-     * Assembles system prompt for agent.
+     * Assembles system prompts for agent.
      *
      * Convenience method that delegates to PromptDomainService.assembleSystemPrompt().
-     * Returns final system prompt ready for AI model.
+     * Returns a list of prompt contents (one per prompt) ready for AI model.
      *
-     * @param agent agent to assemble prompt for
+     * @param agent agent to assemble prompts for
      * @param projectPath optional project path for Dynamic prompts (e.g., Environment)
-     * @return assembled system prompt string
+     * @return list of prompt contents
      */
-    suspend fun assembleSystemPrompt(agent: Agent, projectPath: String): String
+    suspend fun assembleSystemPrompt(agent: Agent, projectPath: String): List<String>
 
     /**
      * Finds agent by unique identifier.

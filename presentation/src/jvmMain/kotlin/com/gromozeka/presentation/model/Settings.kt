@@ -37,7 +37,8 @@ data class Settings(
 
     // API Keys
     val openAiApiKey: String? = null,
-    
+    val anthropicApiKey: String? = null,
+
     // Built-in Tools API Keys
     val enableBraveSearch: Boolean = false,
     val braveApiKey: String? = null,

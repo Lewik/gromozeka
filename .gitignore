@@ -56,6 +56,9 @@ application-local.yaml
 **/*-secret.properties
 bot/src/jvmMain/resources/mcp-bup.json
 
+# Project-specific prompt overrides
+.gromozeka/prompts/common-prompt-prefix.md
+
 # Age encryption private keys
 developer_private.age
 **/developer_private.age

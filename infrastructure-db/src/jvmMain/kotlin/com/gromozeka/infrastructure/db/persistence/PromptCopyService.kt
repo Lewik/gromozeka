@@ -27,8 +27,8 @@ class PromptCopyService(
             return Result.failure(IllegalArgumentException("Prompt is not a builtin prompt"))
         }
 
-        // Extract filename from ID (ID = relative path like "prompts/shared-base.md")
-        val fileName = builtinPrompt.id.value.substringAfterLast("/")
+        // Extract filename from ID (ID = "builtin:shared-base.md")
+        val fileName = builtinPrompt.id.value.removePrefix("builtin:")
         val targetFile = File(promptsDir, fileName)
 
         return try {

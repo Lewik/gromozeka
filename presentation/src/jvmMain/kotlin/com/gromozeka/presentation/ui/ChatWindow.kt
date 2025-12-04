@@ -8,7 +8,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.focus.focusTarget
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.platform.LocalDensity
@@ -34,10 +33,10 @@ import com.gromozeka.domain.repository.ProjectDomainService
 import com.gromozeka.domain.repository.ConversationDomainService
 import com.gromozeka.domain.repository.AgentDomainService
 import com.gromozeka.domain.repository.PromptDomainService
+import com.gromozeka.infrastructure.ai.oauth.OAuthService
 import com.gromozeka.presentation.ui.agents.AgentConstructorScreen
 import klog.KLoggers
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import java.util.*
 import kotlinx.datetime.Clock
@@ -58,6 +57,8 @@ fun ApplicationScope.ChatWindow(
     aiThemeGenerator: AIThemeGenerator,
     logEncryptor: LogEncryptor,
     ollamaModelService: OllamaModelService,
+    OAuthService: OAuthService,
+    oauthConfigService: com.gromozeka.infrastructure.ai.oauth.OAuthConfigService,
     projectService: ProjectDomainService,
     conversationTreeService: ConversationDomainService,
     conversationSearchViewModel: com.gromozeka.presentation.ui.viewmodel.ConversationSearchViewModel,
@@ -464,6 +465,8 @@ fun ApplicationScope.ChatWindow(
                             logEncryptor = logEncryptor,
                             settingsService = settingsService,
                             ollamaModelService = ollamaModelService,
+                            oAuthService = OAuthService,
+                            oauthConfigService = oauthConfigService,
                             coroutineScope = coroutineScope,
                             onOpenTab = createNewSession,
                             onOpenTabWithMessage = createNewSessionWithMessage

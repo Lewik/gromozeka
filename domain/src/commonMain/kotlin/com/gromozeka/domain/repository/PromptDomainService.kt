@@ -15,22 +15,21 @@ import com.gromozeka.domain.model.Prompt
 interface PromptDomainService {
 
     /**
-     * Assembles system prompt from ordered list of prompts.
+     * Assembles system prompts from an ordered list of prompt IDs.
      *
-     * Loads prompts by IDs, joins content with separator.
-     * Result represents complete system prompt ready for agent use.
+     * Loads prompts by IDs and returns their content as separate strings.
+     * Each element in the result list represents one prompt's content.
+     * This allows sending multiple system messages to the model.
      *
      * @param promptIds ordered list of prompt IDs to assemble
-     * @param separator string to join prompts with
      * @param projectPath optional project path for Dynamic prompts (e.g., Environment)
-     * @return assembled system prompt string
+     * @return list of prompt contents (one per prompt)
      * @throws Prompt.NotFoundException if any referenced prompt doesn't exist
      */
     suspend fun assembleSystemPrompt(
         promptIds: List<Prompt.Id>,
-        separator: String = "\n\n---\n\n",
         projectPath: String
-    ): String
+    ): List<String>
 
     /**
      * Finds prompt by ID.

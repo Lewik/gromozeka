@@ -10,6 +10,7 @@ import io.micrometer.observation.ObservationRegistry
 import klog.KLoggers
 import org.springframework.ai.anthropic.AnthropicChatModel
 import org.springframework.ai.anthropic.AnthropicChatOptions
+import org.springframework.ai.anthropic.EnhancedAnthropicChatModel
 import org.springframework.ai.anthropic.api.AnthropicCacheOptions
 import org.springframework.ai.anthropic.api.AnthropicCacheStrategy
 import org.springframework.ai.chat.model.ChatModel
@@ -39,6 +40,7 @@ class ChatModelFactory(
     private val applicationContext: ApplicationContext,
     private val toolCallbacks: List<ToolCallback>,
     private val mcpToolProvider: McpToolProvider,
+    private val oauthConfigService: com.gromozeka.infrastructure.ai.oauth.OAuthConfigService,
 ) : ChatModelProvider {
     private val log = KLoggers.logger(this)
 
@@ -173,10 +175,11 @@ class ChatModelFactory(
                     .toolContext(mapOf("projectPath" to projectPath))
                     .build()
 
-                // Use OAuth-compatible model when using OAuth tokens
-                if (settingsProvider.anthropicOAuthAccessToken != null) {
-                    log.info("Using OAuthCompatibleAnthropicChatModel for OAuth token support")
-                    org.springframework.ai.anthropic.OAuthCompatibleAnthropicChatModel(
+                val oauthConfig = oauthConfigService.getConfig()
+
+                if (oauthConfig?.enabled == true && oauthConfig.accessToken != null) {
+                    log.info("Using enhanced Anthropic chat model with system array format")
+                    EnhancedAnthropicChatModel(
                         anthropicApi,
                         options,
                         toolCallingManager,

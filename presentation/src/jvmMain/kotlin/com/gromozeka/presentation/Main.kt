@@ -2,8 +2,15 @@ package com.gromozeka.presentation
 
 import androidx.compose.ui.window.application
 import com.gromozeka.application.service.TabPromptService
+import com.gromozeka.domain.repository.AgentDomainService
+import com.gromozeka.domain.repository.ConversationDomainService
+import com.gromozeka.domain.repository.ProjectDomainService
+import com.gromozeka.domain.repository.PromptDomainService
+import com.gromozeka.infrastructure.ai.oauth.OAuthConfigService
+import com.gromozeka.infrastructure.ai.oauth.OAuthService
 import com.gromozeka.infrastructure.ai.platform.GlobalHotkeyController
 import com.gromozeka.infrastructure.ai.platform.ScreenCaptureController
+import com.gromozeka.infrastructure.ai.service.OllamaModelService
 import com.gromozeka.presentation.services.*
 import com.gromozeka.presentation.services.theming.AIThemeGenerator
 import com.gromozeka.presentation.services.theming.ThemeService
@@ -14,6 +21,8 @@ import com.gromozeka.presentation.ui.GromozekaTheme
 import com.gromozeka.presentation.ui.TranslationProvider
 import com.gromozeka.presentation.ui.state.UIState
 import com.gromozeka.presentation.ui.viewmodel.AppViewModel
+import com.gromozeka.presentation.ui.viewmodel.ConversationSearchViewModel
+import com.gromozeka.presentation.ui.viewmodel.LoadingViewModel
 import jakarta.annotation.PostConstruct
 import klog.KLoggers
 import kotlinx.coroutines.CoroutineScope
@@ -124,6 +133,8 @@ fun main() {
             aiThemeGenerator = aiThemeGenerator,
             logEncryptor = logEncryptor,
             ollamaModelService = context.getBean(),
+            oAuthService = context.getBean(),
+            oauthConfigService = context.getBean(),
             projectService = context.getBean(),
             conversationService = context.getBean(),
             conversationSearchViewModel = context.getBean(),
@@ -165,6 +176,8 @@ fun main() {
                         appComponents.aiThemeGenerator,
                         appComponents.logEncryptor,
                         appComponents.ollamaModelService,
+                        appComponents.oAuthService,
+                        appComponents.oauthConfigService,
                         appComponents.projectService,
                         appComponents.conversationService,
                         appComponents.conversationSearchViewModel,
@@ -192,14 +205,16 @@ data class AppComponents(
     val themeService: ThemeService,
     val aiThemeGenerator: AIThemeGenerator,
     val logEncryptor: LogEncryptor,
-    val ollamaModelService: com.gromozeka.infrastructure.ai.service.OllamaModelService,
-    val projectService: com.gromozeka.domain.repository.ProjectDomainService,
-    val conversationService: com.gromozeka.domain.repository.ConversationDomainService,
-    val conversationSearchViewModel: com.gromozeka.presentation.ui.viewmodel.ConversationSearchViewModel,
-    val loadingViewModel: com.gromozeka.presentation.ui.viewmodel.LoadingViewModel,
+    val ollamaModelService: OllamaModelService,
+    val oAuthService: OAuthService,
+    val oauthConfigService: OAuthConfigService,
+    val projectService: ProjectDomainService,
+    val conversationService: ConversationDomainService,
+    val conversationSearchViewModel: ConversationSearchViewModel,
+    val loadingViewModel: LoadingViewModel,
     val tabPromptService: TabPromptService,
-    val agentService: com.gromozeka.domain.repository.AgentDomainService,
-    val promptService: com.gromozeka.domain.repository.PromptDomainService,
+    val agentService: AgentDomainService,
+    val promptService: PromptDomainService,
 )
 
 /**

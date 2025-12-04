@@ -66,7 +66,7 @@ class FileSystemAgentScanner {
         return scanProjectAgents(projectRoot.absolutePath)
     }
     
-    private fun findProjectRoot(): File? {
+    fun findProjectRoot(): File? {
         var current = File(System.getProperty("user.dir"))
         
         log.debug { "Searching for project root starting from: ${current.absolutePath}" }
@@ -105,14 +105,11 @@ class FileSystemAgentScanner {
                 val content = file.readText()
                 val dto = json.decodeFromString<AgentDTO>(content)
                 
-                // Generate ID and type from path
-                val relativePath = if (isGlobal) {
-                    "agents/${file.name}"
+                val id = if (isGlobal) {
+                    Agent.Id("global:${file.name}")
                 } else {
-                    ".gromozeka/agents/${file.name}"
+                    Agent.Id("project:${file.name}")
                 }
-                
-                val id = Agent.Id(relativePath)  // ID = relative path
                 val type = if (isGlobal) Agent.Type.Global else Agent.Type.Project
                 
                 val agent = Agent(
@@ -136,6 +133,82 @@ class FileSystemAgentScanner {
         val typeName = if (isGlobal) "GLOBAL" else "PROJECT"
         log.info { "Scanned ${agents.size} $typeName agents from ${directory.absolutePath}" }
         return agents
+    }
+
+    /**
+     * Loads a single agent by ID from filesystem.
+     * Supports global:filename and project:filename formats.
+     */
+    fun loadAgentById(id: Agent.Id, projectPath: String?): Agent? {
+        val idValue = id.value
+
+        return when {
+            idValue.startsWith("global:") -> {
+                val fileName = idValue.removePrefix("global:")
+                val gromozekaHome = System.getProperty("GROMOZEKA_HOME")
+                    ?: throw IllegalStateException("GROMOZEKA_HOME system property not set")
+
+                val file = File(gromozekaHome, "agents/$fileName")
+
+                if (!file.exists() || !file.isFile) {
+                    log.warn { "Global agent file not found: ${file.absolutePath}" }
+                    return null
+                }
+
+                try {
+                    val content = file.readText()
+                    val dto = json.decodeFromString<AgentDTO>(content)
+
+                    Agent(
+                        id = id,
+                        name = dto.name,
+                        prompts = dto.prompts.map { Prompt.Id(it) },
+                        description = dto.description,
+                        type = Agent.Type.Global,
+                        createdAt = dto.createdAt,
+                        updatedAt = dto.updatedAt
+                    )
+                } catch (e: Exception) {
+                    log.error(e) { "Failed to load global agent: ${file.absolutePath}" }
+                    null
+                }
+            }
+
+            idValue.startsWith("project:") -> {
+                if (projectPath == null) {
+                    log.warn { "Project path not provided for project agent: $idValue" }
+                    return null
+                }
+
+                val fileName = idValue.removePrefix("project:")
+                val file = File(projectPath, ".gromozeka/agents/$fileName")
+
+                if (!file.exists() || !file.isFile) {
+                    log.warn { "Project agent file not found: ${file.absolutePath}" }
+                    return null
+                }
+
+                try {
+                    val content = file.readText()
+                    val dto = json.decodeFromString<AgentDTO>(content)
+
+                    Agent(
+                        id = id,
+                        name = dto.name,
+                        prompts = dto.prompts.map { Prompt.Id(it) },
+                        description = dto.description,
+                        type = Agent.Type.Project,
+                        createdAt = dto.createdAt,
+                        updatedAt = dto.updatedAt
+                    )
+                } catch (e: Exception) {
+                    log.error(e) { "Failed to load project agent: ${file.absolutePath}" }
+                    null
+                }
+            }
+
+            else -> null
+        }
     }
 
 }

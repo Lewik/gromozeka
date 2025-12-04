@@ -43,9 +43,7 @@ class BuiltinAgentLoader {
                     
                     val dto = json.decodeFromString<AgentDTO>(content)
                     
-                    // Generate ID and type from path
-                    val resourcePath = "agents/$fileName"
-                    val id = Agent.Id(resourcePath)  // ID = relative path
+                    val id = Agent.Id("builtin:$fileName")
                     
                     val agent = Agent(
                         id = id,

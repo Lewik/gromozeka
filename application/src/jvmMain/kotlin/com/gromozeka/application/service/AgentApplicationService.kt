@@ -58,8 +58,8 @@ class AgentApplicationService(
         return agentRepository.save(agent)
     }
     
-    override suspend fun assembleSystemPrompt(agent: Agent, projectPath: String): String {
-        return promptDomainService.assembleSystemPrompt(agent.prompts, projectPath = projectPath)
+    override suspend fun assembleSystemPrompt(agent: Agent, projectPath: String): List<String> {
+        return promptDomainService.assembleSystemPrompt(agent.prompts, projectPath)
     }
 
     /**

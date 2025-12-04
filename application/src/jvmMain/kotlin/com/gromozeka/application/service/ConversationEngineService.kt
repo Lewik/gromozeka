@@ -138,10 +138,10 @@ class ConversationEngineService(
         // 5. Persist user message immediately
         conversationService.addMessage(conversationId, userMessage)
 
-        // 6. Build system prompt from agent prompts only (no auto-loading)
-        val systemPromptText = agentDomainService.assembleSystemPrompt(agent, projectPath)
-        val systemMessage = SystemMessage(systemPromptText)
-        log.debug { "Built system prompt: ${systemPromptText.length} chars from agent prompts" }
+        // 6. Build system prompts from agent prompts (returns list, one per prompt)
+        val systemPromptTexts = agentDomainService.assembleSystemPrompt(agent, projectPath)
+        val systemMessages = systemPromptTexts.map { SystemMessage(it) }
+        log.debug { "Built ${systemMessages.size} system messages from agent prompts" }
 
         // 7. Convert history to Spring AI format
         val springHistory = messageConversionService.convertHistoryToSpringAI(
@@ -149,9 +149,9 @@ class ConversationEngineService(
         )
         log.debug { "Converted ${springHistory.size} messages to Spring AI format" }
 
-        // 8. Prepend system message to conversation history
-        val fullHistory = listOf(systemMessage) + springHistory
-        log.debug { "Full history with system prompt: ${fullHistory.size} messages" }
+        // 8. Prepend system messages to conversation history
+        val fullHistory = systemMessages + springHistory
+        log.debug { "Full history with system prompts: ${fullHistory.size} messages" }
 
         // 9. Collect tools for user-controlled execution (passed in runtime options)
         val toolOptions = collectToolOptions(projectPath)
@@ -181,7 +181,7 @@ class ConversationEngineService(
             if (iterationCount > 1) {
                 val currentMessages = conversationService.loadCurrentMessages(conversationId)
                 val currentSpringHistory = messageConversionService.convertHistoryToSpringAI(currentMessages)
-                val fullHistory = listOf(systemMessage) + currentSpringHistory
+                val fullHistory = systemMessages + currentSpringHistory
                 currentPrompt = Prompt(fullHistory, toolOptions)
                 log.debug {
                     "Reloaded ${currentMessages.size} messages from DB for iteration $iterationCount " +
@@ -200,7 +200,7 @@ class ConversationEngineService(
 
             log.debug {
                 "Calling chatModel.stream(): messages=${currentPrompt.instructions.size}, " +
-                        "systemPrompt=${systemPromptText.length} chars, " +
+                        "systemMessages=${systemMessages.size} (${systemPromptTexts.sumOf { it.length }} chars total), " +
                         "model=${chatModel::class.simpleName}"
             }
             chatModel

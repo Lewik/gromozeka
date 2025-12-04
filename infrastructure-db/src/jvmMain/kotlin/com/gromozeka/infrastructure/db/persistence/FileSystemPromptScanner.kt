@@ -48,7 +48,7 @@ class FileSystemPromptScanner {
         return scanProjectPrompts(projectRoot.absolutePath)
     }
     
-    private fun findProjectRoot(): File? {
+    fun findProjectRoot(): File? {
         var current = File(System.getProperty("user.dir"))
         
         log.debug { "Searching for project root starting from: ${current.absolutePath}" }
@@ -98,13 +98,11 @@ class FileSystemPromptScanner {
                     .replace("-", " ")
                     .replaceFirstChar { it.uppercase() }
                 
-                val relativePath = if (isGlobal) {
-                    "prompts/${file.name}"
+                val id = if (isGlobal) {
+                    Prompt.Id("global:${file.absolutePath}")
                 } else {
-                    ".gromozeka/prompts/${file.name}"
+                    Prompt.Id("project:${file.name}")
                 }
-                
-                val id = Prompt.Id(relativePath)  // ID = relative path
                 val type = if (isGlobal) Prompt.Type.Global else Prompt.Type.Project
                 
                 Prompt(
@@ -124,6 +122,97 @@ class FileSystemPromptScanner {
         val typeName = if (isGlobal) "global" else "project"
         log.info { "Scanned ${prompts.size} $typeName prompts from ${directory.absolutePath}" }
         return prompts
+    }
+
+    /**
+     * Loads a single prompt by ID from filesystem.
+     * Supports global:path and project:filename formats.
+     */
+    fun loadPromptById(id: Prompt.Id, projectPath: String?): Prompt? {
+        val idValue = id.value
+
+        return when {
+            idValue.startsWith("global:") -> {
+                val path = idValue.removePrefix("global:")
+                val resolvedPath = resolveGlobalPath(path)
+                val file = File(resolvedPath)
+
+                if (!file.exists() || !file.isFile) {
+                    log.warn { "Global prompt file not found: $resolvedPath" }
+                    return null
+                }
+
+                try {
+                    val content = file.readText()
+                    val name = file.nameWithoutExtension
+                        .replace("-", " ")
+                        .replaceFirstChar { it.uppercase() }
+
+                    Prompt(
+                        id = id,
+                        name = name,
+                        content = content,
+                        type = Prompt.Type.Global,
+                        createdAt = Clock.System.now(),
+                        updatedAt = Clock.System.now()
+                    )
+                } catch (e: Exception) {
+                    log.error(e) { "Failed to load global prompt: $resolvedPath" }
+                    null
+                }
+            }
+
+            idValue.startsWith("project:") -> {
+                if (projectPath == null) {
+                    log.warn { "Project path not provided for project prompt: $idValue" }
+                    return null
+                }
+
+                val fileName = idValue.removePrefix("project:")
+                val file = File(projectPath, ".gromozeka/prompts/$fileName")
+
+                if (!file.exists() || !file.isFile) {
+                    log.warn { "Project prompt file not found: ${file.absolutePath}" }
+                    return null
+                }
+
+                try {
+                    val content = file.readText()
+                    val name = file.nameWithoutExtension
+                        .replace("-", " ")
+                        .replaceFirstChar { it.uppercase() }
+
+                    Prompt(
+                        id = id,
+                        name = name,
+                        content = content,
+                        type = Prompt.Type.Project,
+                        createdAt = Clock.System.now(),
+                        updatedAt = Clock.System.now()
+                    )
+                } catch (e: Exception) {
+                    log.error(e) { "Failed to load project prompt: ${file.absolutePath}" }
+                    null
+                }
+            }
+
+            else -> null
+        }
+    }
+
+    private fun resolveGlobalPath(path: String): String {
+        return when {
+            path.startsWith("~/") -> {
+                System.getProperty("user.home") + path.substring(1)
+            }
+            path.startsWith("/") -> path
+            else -> {
+                // Relative to GROMOZEKA_HOME
+                val gromozekaHome = System.getProperty("GROMOZEKA_HOME")
+                    ?: throw IllegalStateException("GROMOZEKA_HOME system property not set")
+                "$gromozekaHome/$path"
+            }
+        }
     }
 
 }

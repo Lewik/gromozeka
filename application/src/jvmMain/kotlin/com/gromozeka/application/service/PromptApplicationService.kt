@@ -19,45 +19,26 @@ class PromptApplicationService(
 
     override suspend fun assembleSystemPrompt(
         promptIds: List<Prompt.Id>,
-        separator: String,
         projectPath: String,
-    ): String {
-        val prompts = promptIds.map { id ->
+    ): List<String> {
+        return promptIds.map { id ->
             when {
                 id.value == "env" -> {
-                    // Generate environment info on the fly
-                    val envContent = systemPromptBuilder.buildEnvironmentInfo(projectPath)
-                    Prompt(
-                        id = id,
-                        name = "Environment Info",
-                        content = envContent,
-                        type = Prompt.Type.Environment,
-                        createdAt = Clock.System.now(),
-                        updatedAt = Clock.System.now()
-                    )
+                    systemPromptBuilder.buildEnvironmentInfo(projectPath)
                 }
 
-                else -> promptRepository.findById(id) ?: Prompt(
-                    id = id,
-                    name = "ERROR: ${id.value}",
-                    content = """
-                        
+                else -> {
+                    val prompt = promptRepository.findById(id)
+                    prompt?.content ?: """
                         ## ⚠️ CRITICAL ERROR: Required prompt not loaded
                         **Failed to load prompt:** ${id.value}
                         This prompt is required for agent to function correctly.
-                        
-                        **Action required:** YOU MUST inform the user about missing file.
-                        
-                    """.trimIndent(),
-                    type = Prompt.Type.Environment,
-                    createdAt = Clock.System.now(),
-                    updatedAt = Clock.System.now()
-                )
 
+                        **Action required:** YOU MUST inform the user about missing file.
+                    """.trimIndent()
+                }
             }
         }
-
-        return prompts.joinToString(separator) { it.content }
     }
 
     override suspend fun findById(id: Prompt.Id): Prompt? {

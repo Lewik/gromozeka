@@ -12,13 +12,13 @@ class ExposedAgentRepository(
 ) : AgentRepository {
 
     private var cachedBuiltinAgents: List<Agent> = emptyList()
-    private var cachedGlobalAgents: List<Agent> = emptyList()
-    
+
     // In-memory cache for inline agents (created dynamically via MCP)
     private val inlineAgentsCache = ConcurrentHashMap<Agent.Id, Agent>()
-    
-    // Lazy cache for PROJECT agents per project path
-    private val projectAgentsCache = ConcurrentHashMap<String, List<Agent>>()
+
+    private fun getProjectPath(): String? {
+        return fileSystemAgentScanner.findProjectRoot()?.absolutePath
+    }
 
     override suspend fun save(agent: Agent): Agent {
         return when (agent.type) {
@@ -37,26 +37,48 @@ class ExposedAgentRepository(
     }
 
     override suspend fun findById(id: Agent.Id): Agent? {
+        val idValue = id.value
+
         // Check inline cache first
         inlineAgentsCache[id]?.let { return it }
-        
-        // Check builtin and global
-        (cachedBuiltinAgents + cachedGlobalAgents).find { it.id == id }?.let { return it }
-        
-        // Check all project caches
-        projectAgentsCache.values.flatten().find { it.id == id }?.let { return it }
-        
+
+        // Handle builtin with project override
+        if (idValue.startsWith("builtin:")) {
+            val fileName = idValue.removePrefix("builtin:")
+            val projectPath = getProjectPath()
+
+            // Check for project override first
+            if (projectPath != null) {
+                val projectOverride = Agent.Id("project:$fileName")
+                fileSystemAgentScanner.loadAgentById(projectOverride, projectPath)?.let {
+                    return it
+                }
+            }
+
+            // Fall back to builtin
+            return cachedBuiltinAgents.find { it.id == id }
+        }
+
+        // For global and project agents, load from disk
+        if (idValue.startsWith("global:") || idValue.startsWith("project:")) {
+            val projectPath = getProjectPath()
+            return fileSystemAgentScanner.loadAgentById(id, projectPath)
+        }
+
         return null
     }
 
     override suspend fun findAll(projectPath: String?): List<Agent> {
-        val projectAgents = projectPath?.let { path ->
-            projectAgentsCache.getOrPut(path) {
-                fileSystemAgentScanner.scanProjectAgents(path)
-            }
-        } ?: emptyList()
-        
-        return (cachedBuiltinAgents + cachedGlobalAgents + projectAgents + inlineAgentsCache.values)
+        val effectiveProjectPath = projectPath ?: getProjectPath()
+
+        val globalAgents = fileSystemAgentScanner.scanGlobalAgents()
+        val projectAgents = if (effectiveProjectPath != null) {
+            fileSystemAgentScanner.scanProjectAgents(effectiveProjectPath)
+        } else {
+            emptyList()
+        }
+
+        return (cachedBuiltinAgents + globalAgents + projectAgents + inlineAgentsCache.values)
             .sortedBy { it.name }
     }
 
@@ -74,16 +96,11 @@ class ExposedAgentRepository(
     }
 
     override suspend fun count(): Int {
-        return cachedBuiltinAgents.size + 
-               cachedGlobalAgents.size + 
-               projectAgentsCache.values.flatten().size + 
-               inlineAgentsCache.size
+        return findAll(null).size
     }
-    
+
     @jakarta.annotation.PostConstruct
     fun initialize() {
         cachedBuiltinAgents = builtinAgentLoader.loadBuiltinAgents()
-        cachedGlobalAgents = fileSystemAgentScanner.scanGlobalAgents()
-        // PROJECT agents are loaded lazily in findAll(projectPath)
     }
 }

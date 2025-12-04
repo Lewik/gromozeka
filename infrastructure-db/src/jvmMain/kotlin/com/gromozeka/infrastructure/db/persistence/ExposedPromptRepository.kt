@@ -12,36 +12,70 @@ class ExposedPromptRepository(
 ) : PromptRepository {
 
     private var cachedBuiltinPrompts: List<Prompt> = emptyList()
-    private var cachedProjectPrompts: List<Prompt> = emptyList()
-    private var cachedGlobalPrompts: List<Prompt> = emptyList()
-    
+
     // In-memory cache for environment prompts (created dynamically via MCP)
     private val environmentPromptsCache = ConcurrentHashMap<Prompt.Id, Prompt>()
 
+    private fun getProjectPath(): String? {
+        return fileSystemPromptScanner.findProjectRoot()?.absolutePath
+    }
+
     override suspend fun findById(id: Prompt.Id): Prompt? {
+        val idValue = id.value
+
         // Check environment cache first
         environmentPromptsCache[id]?.let { return it }
-        
-        // Then check file-based prompts
-        return allPrompts().find { it.id == id }
+
+        // Handle builtin with project override
+        if (idValue.startsWith("builtin:")) {
+            val fileName = idValue.removePrefix("builtin:")
+            val projectPath = getProjectPath()
+
+            // Check for project override first
+            if (projectPath != null) {
+                val projectOverride = Prompt.Id("project:$fileName")
+                fileSystemPromptScanner.loadPromptById(projectOverride, projectPath)?.let {
+                    return it
+                }
+            }
+
+            // Fall back to builtin
+            return cachedBuiltinPrompts.find { it.id == id }
+        }
+
+        // For global and project prompts, load from disk
+        if (idValue.startsWith("global:") || idValue.startsWith("project:")) {
+            val projectPath = getProjectPath()
+            return fileSystemPromptScanner.loadPromptById(id, projectPath)
+        }
+
+        return null
     }
 
     override suspend fun findAll(): List<Prompt> {
-        return allPrompts().sortedBy { it.name }
+        val projectPath = getProjectPath()
+
+        val globalPrompts = fileSystemPromptScanner.scanGlobalPrompts()
+        val projectPrompts = if (projectPath != null) {
+            fileSystemPromptScanner.scanProjectPrompts(projectPath)
+        } else {
+            emptyList()
+        }
+
+        return (cachedBuiltinPrompts + globalPrompts + projectPrompts + environmentPromptsCache.values)
+            .sortedBy { it.name }
     }
 
     override suspend fun findByType(type: Prompt.Type): List<Prompt> {
-        return allPrompts().filter { it.type == type }.sortedBy { it.name }
+        return findAll().filter { it.type == type }
     }
 
     override suspend fun refresh() {
         cachedBuiltinPrompts = builtinPromptLoader.loadBuiltinPrompts()
-        cachedGlobalPrompts = fileSystemPromptScanner.scanGlobalPrompts()
-        cachedProjectPrompts = fileSystemPromptScanner.scanProjectPrompts()
     }
 
     override suspend fun count(): Int {
-        return allPrompts().size
+        return findAll().size
     }
     
     override suspend fun save(prompt: Prompt): Prompt {
@@ -59,15 +93,9 @@ class ExposedPromptRepository(
             }
         }
     }
-    
+
     @jakarta.annotation.PostConstruct
     fun initialize() {
         cachedBuiltinPrompts = builtinPromptLoader.loadBuiltinPrompts()
-        cachedGlobalPrompts = fileSystemPromptScanner.scanGlobalPrompts()
-        cachedProjectPrompts = fileSystemPromptScanner.scanProjectPrompts()
-    }
-
-    private fun allPrompts(): List<Prompt> {
-        return cachedBuiltinPrompts + cachedGlobalPrompts + cachedProjectPrompts + environmentPromptsCache.values
     }
 }

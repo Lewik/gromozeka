@@ -101,4 +101,13 @@ interface SettingsProvider {
      * Obtained from: https://jina.ai/reader/
      */
     val jinaApiKey: String?
+
+    val anthropicApiKey: String?
+        get() = null
+
+    val openAiApiKey: String?
+        get() = null
+
+    val ollamaBaseUrl: String
+        get() = "http://localhost:11434"
 }

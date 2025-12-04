@@ -26,8 +26,7 @@ class BuiltinPromptLoader {
                         .replace("-", " ")
                         .replaceFirstChar { it.uppercase() }
                     
-                    val resourcePath = "prompts/$fileName"
-                    val id = Prompt.Id(resourcePath)  // ID = relative path
+                    val id = Prompt.Id("builtin:$fileName")
                     
                     prompts.add(
                         Prompt(

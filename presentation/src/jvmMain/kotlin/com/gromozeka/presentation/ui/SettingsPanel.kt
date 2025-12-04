@@ -16,6 +16,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.gromozeka.domain.model.AIProvider
+import com.gromozeka.infrastructure.ai.oauth.OAuthConfigService
+import com.gromozeka.infrastructure.ai.oauth.OAuthService
+import com.gromozeka.infrastructure.ai.service.OllamaModelService
 import com.gromozeka.presentation.model.ResponseFormat
 import com.gromozeka.presentation.model.Settings
 import com.gromozeka.presentation.services.LogEncryptor
@@ -43,7 +46,9 @@ fun SettingsPanel(
     aiThemeGenerator: AIThemeGenerator,
     logEncryptor: LogEncryptor,
     settingsService: SettingsService,
-    ollamaModelService: com.gromozeka.infrastructure.ai.service.OllamaModelService,
+    ollamaModelService: OllamaModelService,
+    oAuthService: OAuthService,
+    oauthConfigService: OAuthConfigService,
     coroutineScope: CoroutineScope,
     onOpenTab: (String) -> Unit, // Callback to open new tab with project path
     onOpenTabWithMessage: ((String, String) -> Unit)? = null, // Callback to open new tab with initial message (uses default agent)
@@ -244,6 +249,7 @@ fun SettingsPanel(
                                     modifier = Modifier.padding(vertical = 8.dp)
                                 )
                             }
+
                             AIProvider.ANTHROPIC -> {
                                 Text(
                                     text = "Anthropic Settings",
@@ -461,6 +467,132 @@ fun SettingsPanel(
                                 onSettingsChange(settings.copy(openAiApiKey = it.ifBlank { null }))
                             }
                         )
+
+                        PasswordSettingItem(
+                            label = "Anthropic API Key",
+                            description = "API key from console.anthropic.com",
+                            value = settings.anthropicApiKey ?: "",
+                            onValueChange = {
+                                onSettingsChange(settings.copy(anthropicApiKey = it.ifBlank { null }))
+                            }
+                        )
+
+                        val oauthConfig = remember { mutableStateOf(oauthConfigService.getConfig()) }
+
+                        if (oauthConfig.value?.enabled == true) {
+                            var oauthCode by remember { mutableStateOf("") }
+                            var oauthVerifier by remember { mutableStateOf("") }
+                            var oauthInProgress by remember { mutableStateOf(false) }
+                            var oauthError by remember { mutableStateOf<String?>(null) }
+
+                            Column(modifier = Modifier.padding(start = 16.dp, top = 8.dp)) {
+                                if (oauthConfig.value?.accessToken == null) {
+                                    OutlinedButton(
+                                        onClick = {
+                                            coroutineScope.launch {
+                                                try {
+                                                    val authUrl = oAuthService.getAuthorizationUrl()
+                                                    oauthVerifier = authUrl.verifier
+
+                                                    val desktop = java.awt.Desktop.getDesktop()
+                                                    if (desktop.isSupported(java.awt.Desktop.Action.BROWSE)) {
+                                                        desktop.browse(java.net.URI(authUrl.url))
+                                                    }
+
+                                                    log.info("Authorization URL opened in browser")
+                                                } catch (e: Exception) {
+                                                    log.error(e) { "Failed to open authorization URL" }
+                                                    oauthError = "Failed to open browser: ${e.message}"
+                                                }
+                                            }
+                                        },
+                                        enabled = !oauthInProgress
+                                    ) {
+                                        Text("Authorize")
+                                    }
+
+                                    if (oauthVerifier.isNotEmpty()) {
+                                        Spacer(modifier = Modifier.height(8.dp))
+
+                                        OutlinedTextField(
+                                            value = oauthCode,
+                                            onValueChange = { oauthCode = it },
+                                            label = { Text("Authorization Code") },
+                                            placeholder = { Text("Paste code from browser here") },
+                                            singleLine = true,
+                                            modifier = Modifier.fillMaxWidth()
+                                        )
+
+                                        Spacer(modifier = Modifier.height(8.dp))
+
+                                        Button(
+                                            onClick = {
+                                                coroutineScope.launch {
+                                                    oauthInProgress = true
+                                                    oauthError = null
+                                                    try {
+                                                        oAuthService.exchangeCodeForTokens(
+                                                            oauthCode,
+                                                            oauthVerifier
+                                                        ).getOrThrow()
+
+                                                        oauthConfig.value = oauthConfigService.getConfig()
+                                                        oauthCode = ""
+                                                        oauthVerifier = ""
+                                                        log.info("OAuth authentication successful")
+                                                    } catch (e: Exception) {
+                                                        log.error(e) { "OAuth authentication failed" }
+                                                        oauthError = "Authentication failed: ${e.message}"
+                                                    } finally {
+                                                        oauthInProgress = false
+                                                    }
+                                                }
+                                            },
+                                            enabled = oauthCode.isNotBlank() && !oauthInProgress
+                                        ) {
+                                            if (oauthInProgress) {
+                                                CircularProgressIndicator(
+                                                    modifier = Modifier.size(16.dp),
+                                                    strokeWidth = 2.dp
+                                                )
+                                                Spacer(modifier = Modifier.width(8.dp))
+                                            }
+                                            Text("Complete Authorization")
+                                        }
+                                    }
+
+                                    if (oauthError != null) {
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        Text(
+                                            text = oauthError!!,
+                                            color = MaterialTheme.colorScheme.error,
+                                            style = MaterialTheme.typography.bodySmall
+                                        )
+                                    }
+                                } else {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = "✓ Authenticated",
+                                            color = MaterialTheme.colorScheme.primary,
+                                            style = MaterialTheme.typography.bodyMedium
+                                        )
+
+                                        OutlinedButton(
+                                            onClick = {
+                                                oauthConfigService.clearTokens()
+                                                oauthConfig.value = oauthConfigService.getConfig()
+                                            }
+                                        ) {
+                                            Text("Disconnect")
+                                        }
+                                    }
+                                }
+                            }
+                        }
 
                         // Brave Search
                         SwitchSettingItem(
