@@ -1,10 +1,10 @@
 package com.gromozeka.application.service
 
 import com.gromozeka.domain.model.Agent
-import com.gromozeka.domain.repository.AgentRepository
 import com.gromozeka.domain.repository.AgentDomainService
-import klog.KLoggers
+import com.gromozeka.domain.repository.AgentRepository
 import com.gromozeka.shared.uuid.uuid7
+import klog.KLoggers
 import kotlinx.datetime.Instant
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -16,7 +16,7 @@ import org.springframework.transaction.annotation.Transactional
  * Enforces business rules like preventing built-in agent deletion.
  *
  * Agents are reusable templates defining AI behavior through system prompts.
- * Each agent has specific role and can be used across multiple conversations.
+ * Each agent has a specific role and can be used across multiple conversations.
  */
 @Service
 class AgentApplicationService(
@@ -41,7 +41,7 @@ class AgentApplicationService(
         name: String,
         prompts: List<com.gromozeka.domain.model.Prompt.Id>,
         description: String?,
-        type: Agent.Type
+        type: Agent.Type,
     ): Agent {
         val now = Instant.fromEpochMilliseconds(System.currentTimeMillis())
 
@@ -57,7 +57,7 @@ class AgentApplicationService(
 
         return agentRepository.save(agent)
     }
-    
+
     override suspend fun assembleSystemPrompt(agent: Agent, projectPath: String): List<String> {
         return promptDomainService.assembleSystemPrompt(agent.prompts, projectPath)
     }
@@ -72,9 +72,9 @@ class AgentApplicationService(
         agentRepository.findById(id)
 
     /**
-     * Retrieves all agents including built-in and user-created.
+     * Retrieves all agents, including built-in and user-created.
      *
-     * @param projectPath path to current project (for loading PROJECT agents), null for global context
+     * @param projectPath path to the current project (for loading PROJECT agents), null for global context
      * @return list of all agents
      */
     override suspend fun findAll(projectPath: String?): List<Agent> =
@@ -95,7 +95,7 @@ class AgentApplicationService(
     override suspend fun update(
         id: Agent.Id,
         prompts: List<com.gromozeka.domain.model.Prompt.Id>?,
-        description: String?
+        description: String?,
     ): Agent? {
         val agent = agentRepository.findById(id) ?: return null
         val now = Instant.fromEpochMilliseconds(System.currentTimeMillis())

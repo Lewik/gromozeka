@@ -2,14 +2,11 @@ package com.gromozeka.application.service
 
 import com.gromozeka.domain.model.Conversation
 import klog.KLoggers
-import kotlinx.serialization.json.Json
 import org.springframework.ai.chat.messages.AssistantMessage
 import org.springframework.ai.chat.messages.Message
 import org.springframework.ai.chat.messages.ToolResponseMessage
 import org.springframework.ai.chat.messages.UserMessage
 import org.springframework.stereotype.Service
-import java.util.UUID
-import kotlinx.datetime.Clock
 
 /**
  * Service for converting messages between Conversation domain model
@@ -23,7 +20,6 @@ import kotlinx.datetime.Clock
 @Service
 class MessageConversionService {
     private val log = KLoggers.logger(this)
-    private val json = Json { ignoreUnknownKeys = true }
 
     /**
      * Convert Conversation.Message to Spring AI Message format.
@@ -38,27 +34,33 @@ class MessageConversionService {
     fun toSpringAI(message: Conversation.Message): Message? {
         return when (message.role) {
             Conversation.Message.Role.USER -> {
-                val text = message.content
-                    .filterIsInstance<Conversation.Message.ContentItem.UserMessage>()
-                    .joinToString(" ") { it.text }
+                val toolResults = message.content.filterIsInstance<Conversation.Message.ContentItem.ToolResult>()
 
-                if (text.isBlank()) {
-                    log.debug { "Skipping empty USER message" }
-                    null
+                if (toolResults.isNotEmpty()) {
+                    log.debug { "Converting ${toolResults.size} tool results from USER message to ToolResponseMessage" }
+                    buildToolResponseMessage(toolResults)
                 } else {
-                    // Restore instruction serialization logic (was in ClaudeChatToStreamConverter before Spring AI migration)
-                    val instructionsPrefix = message.instructions
-                        .joinToString("\n") { it.toXmlLine() }
+                    val text = message.content
+                        .filterIsInstance<Conversation.Message.ContentItem.UserMessage>()
+                        .joinToString(" ") { it.text }
 
-                    val fullText = if (instructionsPrefix.isNotEmpty()) {
-                        "$instructionsPrefix\n$text"
+                    if (text.isBlank()) {
+                        log.debug { "Skipping empty USER message" }
+                        null
                     } else {
-                        text
+                        val instructionsPrefix = message.instructions
+                            .joinToString("\n") { it.toXmlLine() }
+
+                        val fullText = if (instructionsPrefix.isNotEmpty()) {
+                            "$instructionsPrefix\n$text"
+                        } else {
+                            text
+                        }
+
+                        log.debug { "User message with ${message.instructions.size} instructions, full text length: ${fullText.length}" }
+
+                        UserMessage(fullText)
                     }
-
-                    log.debug { "User message with ${message.instructions.size} instructions, full text length: ${fullText.length}" }
-
-                    UserMessage(fullText)
                 }
             }
 
@@ -74,33 +76,19 @@ class MessageConversionService {
                     // Thinking blocks (must be separate messages per Anthropic requirements)
                     thinkingBlocks.isNotEmpty() -> {
                         val thinking = thinkingBlocks.first()
-                        log.debug { "Converting thinking block: signature=${thinking.signature.take(20)}..., text length=${thinking.thinking.length}" }
+                        log.debug { "Converting thinking block: signature=${thinking.signature?.take(20)}..., text length=${thinking.thinking.length}" }
+                        val props = mutableMapOf<String, Any>("thinking" to true)
+                        thinking.signature?.let { props["signature"] = it }
                         AssistantMessage.builder()
                             .content(thinking.thinking)
-                            .properties(mapOf(
-                                "thinking" to true,
-                                "signature" to thinking.signature
-                            ))
+                            .properties(props)
                             .build()
                     }
 
                     // Tool results message
                     toolResults.isNotEmpty() -> {
                         log.debug { "Converting ${toolResults.size} tool results to ToolResponseMessage" }
-                        ToolResponseMessage.builder()
-                            .responses(toolResults.map { tr ->
-                                val resultText = tr.result
-                                    .filterIsInstance<Conversation.Message.ContentItem.ToolResult.Data.Text>()
-                                    .joinToString(" ") { it.content }
-
-                                ToolResponseMessage.ToolResponse(
-                                    tr.toolUseId.value,
-                                    tr.toolName,
-                                    resultText
-                                )
-                            })
-                            .metadata(emptyMap())
-                            .build()
+                        buildToolResponseMessage(toolResults)
                     }
 
                     // Assistant message with tool calls
@@ -139,100 +127,23 @@ class MessageConversionService {
         }
     }
 
-    /**
-     * Convert Spring AI AssistantMessage to Conversation.Message.
-     *
-     * Handles both text content, tool calls, and thinking blocks.
-     */
-    fun fromSpringAI(message: AssistantMessage): Conversation.Message {
-        val content = mutableListOf<Conversation.Message.ContentItem>()
+    private fun buildToolResponseMessage(
+        toolResults: List<Conversation.Message.ContentItem.ToolResult>,
+    ): ToolResponseMessage {
+        return ToolResponseMessage.builder()
+            .responses(toolResults.map { tr ->
+                val resultText = tr.result
+                    .filterIsInstance<Conversation.Message.ContentItem.ToolResult.Data.Text>()
+                    .joinToString(" ") { it.content }
 
-        // Check if this is a thinking block (thinking blocks come as separate AssistantMessage with metadata)
-        val isThinking = message.metadata["thinking"] as? Boolean ?: false
-
-        if (isThinking) {
-            // This is a thinking block, not regular text
-            val signature = message.metadata["signature"] as? String ?: ""
-            val thinkingText = message.text ?: ""
-
-            log.debug { "Converting thinking block: signature='$signature', text length=${thinkingText.length}" }
-
-            content.add(
-                Conversation.Message.ContentItem.Thinking(
-                    signature = signature,
-                    thinking = thinkingText
+                ToolResponseMessage.ToolResponse(
+                    tr.toolUseId.value,
+                    tr.toolName,
+                    resultText
                 )
-            )
-        } else {
-            // Regular assistant message processing
-
-            // Add text content if present
-            val text = message.text
-            val hasToolCalls = !message.toolCalls.isNullOrEmpty()
-
-            if (!text.isNullOrBlank()) {
-                log.debug { "Assistant message text: '${text.take(100)}' (${text.length} chars, hasToolCalls=$hasToolCalls)" }
-                content.add(
-                    Conversation.Message.ContentItem.AssistantMessage(
-                        structured = Conversation.Message.StructuredText(
-                            fullText = text
-                        )
-                    )
-                )
-            }
-
-            // Add tool calls if present
-            message.toolCalls?.forEach { toolCall ->
-                log.debug { "Converting tool call: ${toolCall.name()} (${toolCall.id()})" }
-                content.add(
-                    Conversation.Message.ContentItem.ToolCall(
-                        id = Conversation.Message.ContentItem.ToolCall.Id(toolCall.id()),
-                        call = Conversation.Message.ContentItem.ToolCall.Data(
-                            name = toolCall.name(),
-                            input = json.parseToJsonElement(toolCall.arguments())
-                        )
-                    )
-                )
-            }
-        }
-
-        return Conversation.Message(
-            id = Conversation.Message.Id(UUID.randomUUID().toString()),
-            conversationId = Conversation.Id(""), // Will be set by caller
-            createdAt = Clock.System.now(),
-            role = Conversation.Message.Role.ASSISTANT,
-            content = content
-        )
-    }
-
-    /**
-     * Convert Spring AI ToolResponseMessage to Conversation.Message.
-     *
-     * Tool results are stored as ASSISTANT role messages with ToolResult content items.
-     */
-    fun fromSpringAI(message: ToolResponseMessage): Conversation.Message {
-        log.debug { "Converting ${message.responses.size} tool responses" }
-
-        val content = message.responses.map { response ->
-            Conversation.Message.ContentItem.ToolResult(
-                toolUseId = Conversation.Message.ContentItem.ToolCall.Id(response.id()),
-                toolName = response.name(),
-                result = listOf(
-                    Conversation.Message.ContentItem.ToolResult.Data.Text(
-                        content = response.responseData()
-                    )
-                ),
-                isError = false
-            )
-        }
-
-        return Conversation.Message(
-            id = Conversation.Message.Id(UUID.randomUUID().toString()),
-            conversationId = Conversation.Id(""), // Will be set by caller
-            createdAt = Clock.System.now(),
-            role = Conversation.Message.Role.ASSISTANT,
-            content = content
-        )
+            })
+            .metadata(emptyMap())
+            .build()
     }
 
     /**

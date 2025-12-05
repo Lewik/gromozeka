@@ -3,6 +3,8 @@ package com.gromozeka.application.service
 import com.gromozeka.domain.model.AIProvider
 import com.gromozeka.domain.model.Agent
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.Conversation.Message.BlockState
+import com.gromozeka.domain.model.Conversation.Message.ContentItem
 import com.gromozeka.domain.model.TokenUsageStatistics
 import com.gromozeka.domain.repository.AgentDomainService
 import com.gromozeka.domain.repository.ConversationDomainService
@@ -12,47 +14,41 @@ import com.gromozeka.domain.service.ChatModelProvider
 import com.gromozeka.domain.service.McpToolProvider
 import klog.KLoggers
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.reactive.asFlow
+import kotlinx.coroutines.withContext
 import kotlinx.datetime.Clock
-import org.springframework.ai.chat.messages.AssistantMessage
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
 import org.springframework.ai.chat.messages.SystemMessage
-import org.springframework.ai.chat.messages.ToolResponseMessage
+import org.springframework.ai.chat.model.ChatResponse
+import org.springframework.ai.chat.model.ToolContext
 import org.springframework.ai.chat.prompt.ChatOptions
 import org.springframework.ai.chat.prompt.Prompt
 import org.springframework.ai.google.genai.metadata.GoogleGenAiUsage
 import org.springframework.ai.model.tool.ToolCallingChatOptions
-import org.springframework.ai.model.tool.ToolCallingManager
 import org.springframework.stereotype.Service
 import java.util.*
 
 /**
- * Service for managing conversation with AI using User-Controlled Tool Execution.
+ * LLM-agnostic service for managing conversation with AI using User-Controlled Tool Execution.
  *
- * This service implements the user-controlled tool execution pattern from Spring AI,
- * which gives us full control over the tool execution lifecycle:
+ * Uses blocking call() instead of streaming for better provider compatibility.
+ * Tool execution loop:
  * 1. Call ChatModel with internalToolExecutionEnabled=false
- * 2. Check if response contains tool calls
- * 3. Approve tool calls (currently auto-approved)
- * 4. Execute tool calls via ToolCallingManager
- * 5. Send tool results back to model
- * 6. Repeat until no more tool calls
- *
- * This approach allows us to:
- * - See all intermediate tool_use and tool_result messages
- * - Persist them to the conversation tree
- * - Add UI approval in the future
- * - Have full visibility and control over tool execution
+ * 2. Check if the response contains tool calls
+ * 3. Execute tool calls in parallel
+ * 4. Send tool results back to the model
+ * 5. Repeat until no more tool calls
  */
 @Service
 class ConversationEngineService(
     private val chatModelProvider: ChatModelProvider,
-    private val systemPromptBuilder: SystemPromptBuilder,
     private val agentDomainService: AgentDomainService,
-    private val toolCallingManager: ToolCallingManager,
     private val toolApprovalService: ToolApprovalService,
+    private val parallelToolExecutor: ParallelToolExecutor,
     private val conversationService: ConversationDomainService,
     private val threadRepository: ThreadRepository,
     private val threadMessageRepository: com.gromozeka.domain.repository.ThreadMessageRepository,
@@ -96,440 +92,224 @@ class ConversationEngineService(
     }
 
     /**
-     * Stream messages in a conversation with user-controlled tool execution.
-     *
-     * This method implements the manual tool execution loop, giving us full control
-     * over when and how tools are executed.
+     * Send message and get response using blocking call().
+     * LLM-agnostic - works with all providers (Anthropic, OpenAI, Google, etc.)
      *
      * @param conversationId The conversation to append messages to
      * @param userMessage The user message to send
      * @param agent The agent to use for this conversation (provides system prompts)
-     * @return Flow of StreamUpdate events representing the conversation progress
+     * @return Flow of Message objects (assistant responses, tool results).
+     *         Flow completes when conversation turn is done.
      */
-    suspend fun streamMessage(
+    suspend fun sendMessage(
         conversationId: Conversation.Id,
         userMessage: Conversation.Message,
         agent: Agent,
-    ): Flow<StreamUpdate> = flow {
-        log.debug { "Starting user-controlled tool execution for conversation: $conversationId" }
-
-        // 1. Load conversation metadata
+    ): Flow<Conversation.Message> = flow {
         val conversation = conversationService.findById(conversationId)
             ?: throw IllegalStateException("Conversation not found: $conversationId")
-        log.debug { "Using AI provider: ${conversation.aiProvider}, model: ${conversation.modelName}" }
-
-        // 2. Get project path for working directory
         val projectPath = conversationService.getProjectPath(conversationId)
-        log.debug { "Using project path: $projectPath" }
-
-        // 3. Get ChatModel for this conversation's provider with user's model
-        val aiProvider = AIProvider.valueOf(conversation.aiProvider)
         val chatModel = chatModelProvider.getChatModel(
-            aiProvider,
+            AIProvider.valueOf(conversation.aiProvider),
             conversation.modelName,
             projectPath
         )
-        log.debug { "Loaded ChatModel: ${chatModel::class.simpleName}" }
-
-        // 4. Load conversation history
         val messages = conversationService.loadCurrentMessages(conversationId)
-        log.debug { "Loaded conversation with ${messages.size} messages" }
 
-        // 5. Persist user message immediately
         conversationService.addMessage(conversationId, userMessage)
 
-        // 6. Build system prompts from agent prompts (returns list, one per prompt)
-        val systemPromptTexts = agentDomainService.assembleSystemPrompt(agent, projectPath)
-        val systemMessages = systemPromptTexts.map { SystemMessage(it) }
-        log.debug { "Built ${systemMessages.size} system messages from agent prompts" }
+        val systemMessages = agentDomainService
+            .assembleSystemPrompt(agent, projectPath)
+            .map { SystemMessage(it) }
 
-        // 7. Convert history to Spring AI format
-        val springHistory = messageConversionService.convertHistoryToSpringAI(
-            messages + userMessage
-        )
-        log.debug { "Converted ${springHistory.size} messages to Spring AI format" }
-
-        // 8. Prepend system messages to conversation history
-        val fullHistory = systemMessages + springHistory
-        log.debug { "Full history with system prompts: ${fullHistory.size} messages" }
-
-        // 9. Collect tools for user-controlled execution (passed in runtime options)
+        val springHistory = messageConversionService.convertHistoryToSpringAI(messages + userMessage)
         val toolOptions = collectToolOptions(projectPath)
 
-        // 9a. Increment turn number for this user message
-        val turnNumber = threadRepository.incrementTurnNumber(conversation.currentThread)
-        log.debug { "Starting turn $turnNumber for conversation $conversationId" }
-
-        // 9b. Initialize token usage accumulator for all iterations in this turn
-        var accumulatedPromptTokens = 0
-        var accumulatedCompletionTokens = 0
-        var accumulatedThinkingTokens = 0
-        var accumulatedCacheCreationTokens = 0
-        var accumulatedCacheReadTokens = 0
-
-        var currentPrompt = Prompt(fullHistory, toolOptions)
+        var currentPrompt = Prompt(systemMessages + springHistory, toolOptions)
         var iterationCount = 0
-        //lowering this number lead to conversation stop in the middle
-        val maxIterations = 50
+        val maxIterations = 200
 
-        // 10. Tool execution loop - manually handle tool calls
         while (iterationCount < maxIterations) {
             iterationCount++
-            log.debug { "Tool execution iteration $iterationCount" }
 
-            // Reload conversation history from DB on iterations 2+ (single source of truth)
             if (iterationCount > 1) {
                 val currentMessages = conversationService.loadCurrentMessages(conversationId)
                 val currentSpringHistory = messageConversionService.convertHistoryToSpringAI(currentMessages)
-                val fullHistory = systemMessages + currentSpringHistory
-                currentPrompt = Prompt(fullHistory, toolOptions)
-                log.debug {
-                    "Reloaded ${currentMessages.size} messages from DB for iteration $iterationCount " +
-                            "(prompt history: ${fullHistory.size} messages)"
-                }
+                currentPrompt = Prompt(systemMessages + currentSpringHistory, toolOptions)
             }
 
-            // 5a. Manual aggregation of streaming chunks
-            val aggregatedTextBuilder = StringBuilder()
-            val aggregatedMetadata = mutableMapOf<String, Any>()
-            val aggregatedToolCalls = mutableListOf<AssistantMessage.ToolCall>()
-
-            val streamingMessageId = UUID.randomUUID().toString()
-
-            var lastChatResponse: org.springframework.ai.chat.model.ChatResponse? = null
-
-            log.debug {
-                "Calling chatModel.stream(): messages=${currentPrompt.instructions.size}, " +
-                        "systemMessages=${systemMessages.size} (${systemPromptTexts.sumOf { it.length }} chars total), " +
-                        "model=${chatModel::class.simpleName}"
-            }
-            chatModel
-                .stream(currentPrompt)
-                .asFlow()
-                .collect { chatResponse ->
-                    lastChatResponse = chatResponse
-
-                    // 5b. Emit each chunk immediately for real-time UI updates
-                    chatResponse.results.forEach { generation ->
-                        val assistantMessage = generation.output
-
-                        if (assistantMessage != null) {
-                            val isThinking = assistantMessage.metadata["thinking"] as? Boolean ?: false
-                            val hasText = !assistantMessage.text.isNullOrBlank()
-                            val hasToolCalls = !assistantMessage.toolCalls.isNullOrEmpty()
-
-                            if (isThinking) {
-                                val thinkingMessage = messageConversionService.fromSpringAI(assistantMessage)
-                                    .copy(conversationId = conversationId)
-                                if (thinkingMessage.content.isNotEmpty()) {
-                                    conversationService.addMessage(conversationId, thinkingMessage)
-                                    emit(StreamUpdate.Chunk(thinkingMessage))
-                                    log.debug { "Persisted and emitted thinking block: ${thinkingMessage.content.size} content items" }
-                                }
-                            } else if (hasText || hasToolCalls) {
-                                if (hasText) {
-                                    aggregatedTextBuilder.append(assistantMessage.text)
-                                }
-
-                                assistantMessage.metadata.let { metadata ->
-                                    aggregatedMetadata.putAll(metadata)
-                                }
-
-                                assistantMessage.toolCalls.let { toolCalls ->
-                                    aggregatedToolCalls.addAll(toolCalls)
-                                }
-                            }
-                        }
-                    }
+            val chatResponse: ChatResponse
+            try {
+                chatResponse = withContext(Dispatchers.IO) {
+                    chatModel.call(currentPrompt)
                 }
-
-            // 5c. Create aggregated final response from accumulated data
-            val aggregatedText = aggregatedTextBuilder.toString()
-            val finalChunk = if (aggregatedToolCalls.isNotEmpty() || aggregatedText.isNotBlank()) {
-                val aggregatedAssistantMessage = if (aggregatedToolCalls.isNotEmpty()) {
-                    AssistantMessage.builder()
-                        .content(aggregatedText.ifBlank { "" })
-                        .properties(aggregatedMetadata)
-                        .toolCalls(aggregatedToolCalls)
-                        .build()
-                } else {
-                    AssistantMessage.builder()
-                        .content(aggregatedText)
-                        .properties(aggregatedMetadata)
-                        .build()
-                }
-
-                lastChatResponse?.let { response ->
-                    org.springframework.ai.chat.model.ChatResponse(
-                        listOf(org.springframework.ai.chat.model.Generation(aggregatedAssistantMessage)),
-                        response.metadata
-                    )
-                }
-            } else {
-                lastChatResponse
+            } catch (e: Exception) {
+                log.error(e) { "Chat call error" }
+                val errorMessage = createErrorMessage(conversationId, e.message ?: "Unknown error")
+                emit(errorMessage)
+                conversationService.addMessage(conversationId, errorMessage)
+                break
             }
 
-            if (finalChunk == null) {
-                throw IllegalStateException("No response received from model")
-            }
-
-            log.debug { "Aggregated response: text length=${aggregatedText.length}, tool calls=${aggregatedToolCalls.size}" }
-
-            // Accumulate usage metadata for this iteration
-            finalChunk.metadata?.usage?.let { usage ->
-                accumulatedPromptTokens += usage.promptTokens ?: 0
-                accumulatedCompletionTokens += usage.completionTokens ?: 0
-
-                when (usage) {
-                    is GoogleGenAiUsage -> {
-                        accumulatedThinkingTokens += usage.thoughtsTokenCount ?: 0
-                        log.info {
-                            "Iteration $iterationCount usage: prompt=${usage.promptTokens}, completion=${usage.completionTokens}, " +
-                                    "total=${usage.totalTokens}, thoughts=${usage.thoughtsTokenCount}"
-                        }
-                    }
-
-                    else -> {
-                        log.info {
-                            "Iteration $iterationCount usage: prompt=${usage.promptTokens}, completion=${usage.completionTokens}, " +
-                                    "total=${usage.totalTokens}"
-                        }
+            chatResponse.metadata.usage?.let { usage ->
+                val turnNumber = threadRepository.incrementTurnNumber(conversation.currentThread)
+                coroutineScope.launch {
+                    try {
+                        tokenUsageStatisticsRepository.save(
+                            TokenUsageStatistics(
+                                id = TokenUsageStatistics.Id(UUID.randomUUID().toString()),
+                                threadId = conversation.currentThread,
+                                turnNumber = turnNumber,
+                                timestamp = Clock.System.now(),
+                                promptTokens = usage.promptTokens ?: 0,
+                                completionTokens = usage.completionTokens ?: 0,
+                                thinkingTokens = (usage as? GoogleGenAiUsage)?.thoughtsTokenCount ?: 0,
+                                cacheCreationTokens = 0,
+                                cacheReadTokens = 0,
+                                modelId = conversation.modelName
+                            )
+                        )
+                    } catch (e: Exception) {
+                        log.error(e) { "Failed to save token usage statistics for turn $turnNumber" }
                     }
                 }
             }
 
-            val finishReason = finalChunk.result.metadata?.finishReason
-            log.debug {
-                "Final chunk: ${finalChunk.results.size} results, " +
-                        "finish reason: $finishReason, " +
-                        "hasToolCalls: ${finalChunk.hasToolCalls()}"
+            val generation = chatResponse.results.firstOrNull()
+            if (generation == null) {
+                log.warn { "Empty response from chat model" }
+                break
             }
 
-            // 5d. Check if response contains tool calls
-            if (finalChunk.hasToolCalls()) {
-                log.debug { "Response contains tool calls, processing..." }
+            val allToolCalls = chatResponse.results.flatMap { it.output.toolCalls }
+            val hasToolCalls = chatResponse.hasToolCalls()
 
-                val assistantMessage = finalChunk.result.output as? AssistantMessage
-                    ?: throw IllegalStateException("Expected AssistantMessage with tool calls")
+            val assistantMessage = createAssistantMessageFromResponse(conversationId, chatResponse)
+            emit(assistantMessage)
+            conversationService.addMessage(conversationId, assistantMessage)
 
-                val toolCalls = assistantMessage.toolCalls ?: emptyList()
-                log.debug { "Found ${toolCalls.size} tool calls: ${toolCalls.map { it.name() }}" }
-
-                // 5e. Persist aggregated message with tool calls
-                val toolCallMessage = messageConversionService.fromSpringAI(assistantMessage)
-                    .copy(
-                        id = Conversation.Message.Id(streamingMessageId),
-                        conversationId = conversationId
-                    )
-                conversationService.addMessage(conversationId, toolCallMessage)
-                log.debug { "Persisted aggregated message with ${toolCalls.size} tool calls, id=$streamingMessageId" }
-
-                emit(StreamUpdate.Chunk(toolCallMessage))
-
-                // 5f. Approve tool calls
-                val approvalResult = toolApprovalService.approve(toolCalls)
-                log.debug { "Tool approval result: $approvalResult" }
-
+            if (hasToolCalls) {
+                val approvalResult = toolApprovalService.approve(allToolCalls)
                 if (approvalResult is ApprovalResult.Rejected) {
                     log.warn { "Tool calls rejected: ${approvalResult.reason}" }
-                    emit(
-                        StreamUpdate.Error(
-                            IllegalStateException("Tool calls rejected: ${approvalResult.reason}")
+                    val rejectedMessage = assistantMessage.copy(
+                        error = Conversation.Message.GenerationError(
+                            message = "Tool calls rejected: ${approvalResult.reason}",
+                            type = "rejected"
                         )
                     )
+                    emit(rejectedMessage)
                     break
                 }
 
-                // 5g. Execute tool calls via ToolCallingManager
-                log.debug { "Executing tool calls..." }
-                val toolExecutionResult = try {
-                    toolCallingManager.executeToolCalls(currentPrompt, finalChunk)
-                } catch (e: Exception) {
-                    log.error(e) { "Tool execution failed: ${e.message}" }
+                val toolContext = ToolContext(
+                    mapOf("projectPath" to projectPath)
+                )
+                val executionResult = parallelToolExecutor.executeParallel(
+                    toolCalls = allToolCalls,
+                    toolContext = toolContext,
+                    scope = coroutineScope
+                )
 
-                    val errorResponses = toolCalls.map { toolCall ->
-                        ToolResponseMessage.ToolResponse(
-                            toolCall.id(),
-                            toolCall.name(),
-                            "<tool_use_error>Error: ${e.message ?: e::class.simpleName}</tool_use_error>"
-                        )
-                    }
+                val toolResultMessage = Conversation.Message(
+                    id = Conversation.Message.Id(UUID.randomUUID().toString()),
+                    conversationId = conversationId,
+                    role = Conversation.Message.Role.USER,
+                    content = executionResult.results,
+                    createdAt = Clock.System.now()
+                )
+                emit(toolResultMessage)
+                conversationService.addMessage(conversationId, toolResultMessage)
 
-                    val errorToolResponseMessage = ToolResponseMessage.builder()
-                        .responses(errorResponses)
-                        .metadata(emptyMap())
-                        .build()
-
-                    val errorConversationMessage = messageConversionService.fromSpringAI(errorToolResponseMessage)
-                        .copy(conversationId = conversationId)
-                    emit(StreamUpdate.Chunk(errorConversationMessage))
-                    conversationService.addMessage(conversationId, errorConversationMessage)
-                    log.debug { "Emitted and persisted error tool result, continuing conversation" }
-
-                    val updatedHistory = currentPrompt.instructions + assistantMessage + errorToolResponseMessage
-                    currentPrompt = Prompt(updatedHistory, toolOptions)
-                    log.debug { "Updated prompt with error tool results, continuing loop" }
-
-                    continue
-                }
-
-                log.debug {
-                    "Tool execution completed, returnDirect: ${toolExecutionResult.returnDirect()}, " +
-                            "conversation history size: ${toolExecutionResult.conversationHistory().size}"
-                }
-
-                // 5h. Extract ONLY NEW tool result message
-                val newHistory = toolExecutionResult.conversationHistory()
-                val toolResponseMessage = newHistory.lastOrNull() as? ToolResponseMessage
-                    ?: throw IllegalStateException("Expected ToolResponseMessage as last message in history")
-
-                log.debug { "Persisting single ToolResponseMessage with ${toolResponseMessage.responses.size} tool responses" }
-
-                val cleanedToolResponseMessage = removeAdditionalContentFromToolResponse(toolResponseMessage)
-
-                val toolResultConversationMessage = messageConversionService.fromSpringAI(cleanedToolResponseMessage)
-                    .copy(conversationId = conversationId)
-                emit(StreamUpdate.Chunk(toolResultConversationMessage))
-                conversationService.addMessage(conversationId, toolResultConversationMessage)
-                log.debug { "Emitted and persisted tool result message (without additionalContent)" }
-
-                // 5i. Check if tool execution returned direct result
-                if (toolExecutionResult.returnDirect()) {
-                    log.debug { "Tool execution returned direct result, stopping loop" }
+                if (executionResult.returnDirect) {
                     break
                 }
-
-                // 5j. Update prompt with new conversation history and continue loop
-                currentPrompt = Prompt(toolExecutionResult.conversationHistory(), toolOptions)
-                log.debug { "Updated prompt with tool execution results, continuing loop" }
-
             } else {
-                // 6. Final response - no tool calls
-                log.debug { "No tool calls in response, finishReason: $finishReason" }
-
-                // 6a. Persist aggregated final message
-                val finalAssistantMessage = finalChunk.result.output as? AssistantMessage
-                if (finalAssistantMessage != null && !finalAssistantMessage.text.isNullOrBlank()) {
-                    val finalMessage = messageConversionService.fromSpringAI(finalAssistantMessage)
-                        .copy(
-                            id = Conversation.Message.Id(streamingMessageId),
-                            conversationId = conversationId
-                        )
-                    conversationService.addMessage(conversationId, finalMessage)
-                    log.debug { "Persisted aggregated final message: ${finalAssistantMessage.text.length} chars, id=$streamingMessageId" }
-
-                    emit(StreamUpdate.Chunk(finalMessage))
-                } else {
-                    log.debug { "No text content in final message, skipping persistence" }
-                }
-
-                if (finishReason == null) {
-                    log.warn { "Final chunk has null finishReason - unexpected, but continuing" }
-                }
-
                 break
             }
         }
 
         if (iterationCount >= maxIterations) {
-            log.error { "Tool execution loop exceeded maximum iterations ($maxIterations)" }
-            emit(
-                StreamUpdate.Error(
-                    IllegalStateException("Tool execution loop exceeded maximum iterations")
-                )
+            val errorMessage = createErrorMessage(
+                conversationId,
+                "Tool execution loop exceeded maximum iterations ($maxIterations)",
+                "max_iterations"
             )
-        }
-
-        log.debug { "Completed conversation turn in $iterationCount iterations" }
-
-        // Save accumulated token usage statistics for this turn
-        if (accumulatedPromptTokens > 0 || accumulatedCompletionTokens > 0) {
-            coroutineScope.launch {
-                try {
-                    tokenUsageStatisticsRepository.save(
-                        TokenUsageStatistics(
-                            id = TokenUsageStatistics.Id(UUID.randomUUID().toString()),
-                            threadId = conversation.currentThread,
-                            turnNumber = turnNumber,
-                            timestamp = Clock.System.now(),
-                            promptTokens = accumulatedPromptTokens,
-                            completionTokens = accumulatedCompletionTokens,
-                            thinkingTokens = accumulatedThinkingTokens,
-                            cacheCreationTokens = accumulatedCacheCreationTokens,
-                            cacheReadTokens = accumulatedCacheReadTokens,
-                            modelId = conversation.modelName
-                        )
-                    )
-                    log.info {
-                        "Saved turn $turnNumber statistics: prompt=$accumulatedPromptTokens, " +
-                                "completion=$accumulatedCompletionTokens, thinking=$accumulatedThinkingTokens, " +
-                                "total=${accumulatedPromptTokens + accumulatedCompletionTokens + accumulatedThinkingTokens}"
-                    }
-                } catch (e: Exception) {
-                    log.error(e) { "Failed to save token usage statistics for turn $turnNumber" }
-                }
-            }
+            emit(errorMessage)
         }
     }
 
-    /**
-     * Remove additionalContent (images) from ToolResponseMessage before saving to DB.
-     *
-     * IMPORTANT: Must preserve JSON structure! Spring AI's GoogleGenAiChatModel.parseJsonToMap()
-     * expects valid JSON when sending FunctionResponse back to Gemini.
-     *
-     * Previous bug: Extracted only "text" field, breaking JSON → Gemini didn't receive tool results.
-     */
-    private fun removeAdditionalContentFromToolResponse(message: ToolResponseMessage): ToolResponseMessage {
-        val objectMapper = com.fasterxml.jackson.databind.ObjectMapper()
+    private fun createAssistantMessageFromResponse(
+        conversationId: Conversation.Id,
+        chatResponse: ChatResponse,
+    ): Conversation.Message {
+        val content = mutableListOf<ContentItem>()
 
-        val cleanedResponses = message.responses.map { response ->
-            try {
-                val responseData = response.responseData()
+        chatResponse.results.forEach { generation ->
+            val assistantMsg = generation.output
 
-                val cleanedData = when {
-                    // Plain text, not JSON - leave as is
-                    !responseData.trim().startsWith("{") && !responseData.trim().startsWith("[") -> {
-                        responseData
-                    }
-
-                    // JSON array - keep only text items, but preserve JSON array structure
-                    responseData.trim().startsWith("[") -> {
-                        val jsonNode = objectMapper.readTree(responseData)
-                        if (jsonNode.isArray) {
-                            val textItems = jsonNode.filter {
-                                it.has("type") && it.get("type").asText() == "text"
-                            }
-                            objectMapper.writeValueAsString(textItems)
-                        } else {
-                            responseData
-                        }
-                    }
-
-                    // JSON object - remove only additionalContent field, preserve full JSON structure
-                    else -> {
-                        val data = org.springframework.ai.model.ModelOptionsUtils.jsonToMap(responseData)
-                        val cleaned = data.toMutableMap()
-                        cleaned.remove("additionalContent")
-                        objectMapper.writeValueAsString(cleaned)
-                    }
-                }
-
-                ToolResponseMessage.ToolResponse(
-                    response.id(),
-                    response.name(),
-                    cleanedData
+            if (!assistantMsg.text.isNullOrBlank()) {
+                content.add(
+                    ContentItem.AssistantMessage(
+                        structured = Conversation.Message.StructuredText(fullText = assistantMsg.text ?: ""),
+                        state = BlockState.COMPLETE
+                    )
                 )
-            } catch (e: Exception) {
-                log.warn(e) { "Failed to parse tool response data for cleaning" }
-                response
+            }
+
+            assistantMsg.toolCalls.forEach { toolCall ->
+                val input = try {
+                    Json.parseToJsonElement(toolCall.arguments())
+                } catch (e: Exception) {
+                    log.error(e) { "Failed to parse tool call arguments for ${toolCall.name()}: ${toolCall.arguments()}" }
+                    JsonObject(
+                        mapOf(
+                            "error" to kotlinx.serialization.json.JsonPrimitive("Parse error: ${e.message}"),
+                            "raw" to kotlinx.serialization.json.JsonPrimitive(toolCall.arguments())
+                        )
+                    )
+                }
+                content.add(
+                    ContentItem.ToolCall(
+                        id = ContentItem.ToolCall.Id(toolCall.id()),
+                        call = ContentItem.ToolCall.Data(
+                            name = toolCall.name(),
+                            input = input
+                        ),
+                        state = BlockState.COMPLETE
+                    )
+                )
             }
         }
 
-        return ToolResponseMessage.builder()
-            .responses(cleanedResponses)
-            .metadata(message.metadata)
-            .build()
+        return Conversation.Message(
+            id = Conversation.Message.Id(UUID.randomUUID().toString()),
+            conversationId = conversationId,
+            role = Conversation.Message.Role.ASSISTANT,
+            content = content,
+            createdAt = Clock.System.now()
+        )
+    }
+
+    private fun createErrorMessage(
+        conversationId: Conversation.Id,
+        message: String,
+        type: String = "error",
+    ): Conversation.Message {
+        return Conversation.Message(
+            id = Conversation.Message.Id(UUID.randomUUID().toString()),
+            conversationId = conversationId,
+            role = Conversation.Message.Role.SYSTEM,
+            content = listOf(
+                ContentItem.System(
+                    level = ContentItem.System.SystemLevel.ERROR,
+                    content = message,
+                    state = BlockState.COMPLETE
+                )
+            ),
+            createdAt = Clock.System.now(),
+            error = Conversation.Message.GenerationError(message = message, type = type)
+        )
     }
 
     /**
@@ -584,18 +364,10 @@ class ConversationEngineService(
     private fun extractGraphTextContent(message: Conversation.Message): String {
         return message.content.mapNotNull { contentItem ->
             when (contentItem) {
-                is Conversation.Message.ContentItem.UserMessage -> contentItem.text
-                is Conversation.Message.ContentItem.AssistantMessage -> contentItem.structured.fullText
+                is ContentItem.UserMessage -> contentItem.text
+                is ContentItem.AssistantMessage -> contentItem.structured.fullText
                 else -> null
             }
         }.joinToString("\\n")
-    }
-
-    /**
-     * Stream update events representing conversation progress.
-     */
-    sealed class StreamUpdate {
-        data class Chunk(val message: Conversation.Message) : StreamUpdate()
-        data class Error(val exception: Throwable) : StreamUpdate()
     }
 }

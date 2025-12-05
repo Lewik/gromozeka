@@ -8,34 +8,26 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.input.pointer.PointerButton
-import androidx.compose.ui.input.pointer.PointerIcon
-import androidx.compose.ui.input.pointer.isShiftPressed
-import androidx.compose.ui.input.pointer.pointerHoverIcon
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.isPrimaryPressed
+import androidx.compose.ui.input.pointer.isShiftPressed
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
+import com.gromozeka.domain.model.Conversation
 import com.gromozeka.presentation.model.Settings
-import com.gromozeka.presentation.ui.CompactButton
-import com.gromozeka.presentation.ui.CompactButtonDefaults
 import com.gromozeka.presentation.ui.GromozekaMarkdown
 import com.gromozeka.presentation.ui.LocalTranslation
-import com.gromozeka.presentation.ui.OptionalTooltip
 import com.gromozeka.shared.utils.jsonPrettyPrint
-import com.gromozeka.domain.model.Conversation
 
 @Composable
 fun MessageItem(
@@ -186,21 +178,21 @@ fun MessageItem(
                             if (down.changes.any { it.pressed && !it.previousPressed } && down.buttons.isPrimaryPressed) {
                                 val downPosition = down.changes.first().position
                                 val isShiftPressed = down.keyboardModifiers.isShiftPressed
-                                
+
                                 // Ждем release и проверяем, не было ли движения мыши (drag для text selection)
                                 var isDrag = false
                                 do {
                                     val event = awaitPointerEvent()
                                     val currentPosition = event.changes.first().position
                                     val distance = (currentPosition - downPosition).getDistance()
-                                    
+
                                     // Если мышь сдвинулась больше чем на 10 пикселей, это drag для text selection
                                     if (distance > 10f) {
                                         isDrag = true
                                         break
                                     }
                                 } while (event.changes.any { it.pressed })
-                                
+
                                 // Если мышь не двигалась, это клик для selection
                                 if (!isDrag) {
                                     down.changes.forEach { it.consume() }
@@ -229,222 +221,7 @@ fun MessageItem(
             ) {
                 message.content.forEach { content ->
                     when (content) {
-                    is Conversation.Message.ContentItem.UserMessage -> {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Column(
-                                modifier = Modifier.weight(1f),
-                                verticalArrangement = Arrangement.Center,
-                            ) {
-                                org.slf4j.LoggerFactory.getLogger("MessageItem").trace(
-                                    "Rendering UserMessage markdown | msg_id={} | content_length={} | preview={}",
-                                    message.id.value,
-                                    content.text.length,
-                                    content.text.take(100).replace("\n", "\\n")
-                                )
-                                GromozekaMarkdown(content = content.text)
-                            }
-                            DisableSelection {
-                                FlowRow(
-                                    modifier = Modifier.align(Alignment.Top),
-                                    maxItemsInEachRow = 4,
-                                    verticalArrangement = Arrangement.Top,
-                                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                ) {
-                                    message.instructions.forEach { instruction ->
-                                        TooltipArea(
-                                            tooltip = {
-                                                Surface(
-                                                    modifier = Modifier.shadow(4.dp),
-                                                    color = MaterialTheme.colorScheme.inverseOnSurface,
-                                                    shape = MaterialTheme.shapes.small
-                                                ) {
-                                                    Text(
-                                                        modifier = Modifier.padding(12.dp),
-                                                        text = instruction.description,
-                                                        style = MaterialTheme.typography.bodySmall,
-                                                        color = MaterialTheme.colorScheme.inverseSurface
-                                                    )
-                                                }
-                                            }
-                                        ) {
-                                            AssistChip(
-                                                onClick = {},
-                                                label = {
-                                                    Text(
-                                                        text = instruction.title,
-                                                        style = MaterialTheme.typography.labelSmall
-                                                    )
-                                                },
-                                                colors = AssistChipDefaults.assistChipColors(),
-                                            )
-                                        }
-                                    }
-                                    
-                                    // Chevron for collapse/expand
-                                    androidx.compose.material3.IconButton(
-                                        onClick = { onToggleCollapse(message.id) }
-                                    ) {
-                                        Icon(
-                                            if (isCollapsed) Icons.Default.ExpandMore else Icons.Default.ExpandLess,
-                                            contentDescription = if (isCollapsed) "Expand" else "Collapse",
-                                            tint = MaterialTheme.colorScheme.onSurface
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    is Conversation.Message.ContentItem.ToolCall -> {
-                        // Find corresponding result from entire chat history
-                        val correspondingResult = toolResultsMap[content.id.value]
-                        ToolCallItem(
-                            toolCall = content.call,
-                            toolResult = correspondingResult,
-                            projectPath = projectPath
-                        )
-                    }
-
-                    is Conversation.Message.ContentItem.ToolResult -> {
-                        // Don't render ToolResult separately - it's shown in ToolCallItem
-                    }
-
-                    is Conversation.Message.ContentItem.ImageItem -> {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Column(
-                                modifier = Modifier.weight(1f),
-                                verticalArrangement = Arrangement.Center,
-                            ) {
-                                when (val source = content.source) {
-                                    is Conversation.Message.ImageSource.Base64ImageSource -> {
-                                        // Base64 too long - show placeholder
-                                        Text(
-                                            LocalTranslation.current.imageDisplayText.format(
-                                                source.mediaType,
-                                                source.data.length
-                                            )
-                                        )
-                                    }
-
-                                    is Conversation.Message.ImageSource.UrlImageSource -> {
-                                        // URL can be shown in full
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                            Icon(Icons.Default.Image, contentDescription = "Image")
-                                            Spacer(modifier = Modifier.width(4.dp))
-                                            Text(source.url)
-                                        }
-                                    }
-
-                                    is Conversation.Message.ImageSource.FileImageSource -> {
-                                        // File ID can be shown in full
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                            Icon(Icons.Default.Image, contentDescription = "Image")
-                                            Spacer(modifier = Modifier.width(4.dp))
-                                            Text("File: ${source.fileId}")
-                                        }
-                                    }
-                                }
-                            }
-                            DisableSelection {
-                                FlowRow(
-                                    modifier = Modifier.align(Alignment.Top),
-                                    maxItemsInEachRow = 4,
-                                    verticalArrangement = Arrangement.Top,
-                                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                ) {
-                                    // Chevron for collapse/expand
-                                    Box(
-                                        modifier = Modifier.clickable { onToggleCollapse(message.id) }
-                                            .padding(8.dp)
-                                    ) {
-                                        Icon(
-                                            if (isCollapsed) Icons.Default.ExpandMore else Icons.Default.ExpandLess,
-                                            contentDescription = if (isCollapsed) "Expand" else "Collapse",
-                                            tint = MaterialTheme.colorScheme.onSurface
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    is Conversation.Message.ContentItem.Thinking -> {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Column(
-                                modifier = Modifier.weight(1f),
-                                verticalArrangement = Arrangement.Center,
-                            ) {
-                                org.slf4j.LoggerFactory.getLogger("MessageItem").trace(
-                                    "Rendering Thinking markdown | msg_id={} | content_length={} | preview={}",
-                                    message.id.value,
-                                    content.thinking.length,
-                                    content.thinking.take(100).replace("\n", "\\n")
-                                )
-                                GromozekaMarkdown(content = content.thinking)
-                            }
-                            DisableSelection {
-                                FlowRow(
-                                    modifier = Modifier.align(Alignment.Top),
-                                    maxItemsInEachRow = 4,
-                                    verticalArrangement = Arrangement.Top,
-                                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                ) {
-                                    // Chevron for collapse/expand
-                                    Box(
-                                        modifier = Modifier.clickable { onToggleCollapse(message.id) }
-                                            .padding(8.dp)
-                                    ) {
-                                        Icon(
-                                            if (isCollapsed) Icons.Default.ExpandMore else Icons.Default.ExpandLess,
-                                            contentDescription = if (isCollapsed) "Expand" else "Collapse",
-                                            tint = MaterialTheme.colorScheme.onSurface
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    is Conversation.Message.ContentItem.System -> {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Column(
-                                modifier = Modifier.weight(1f),
-                                verticalArrangement = Arrangement.Center,
-                            ) {
-                                Text(text = content.content)
-                            }
-                            DisableSelection {
-                                FlowRow(
-                                    modifier = Modifier.align(Alignment.Top),
-                                    maxItemsInEachRow = 4,
-                                    verticalArrangement = Arrangement.Top,
-                                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                ) {
-                                    // Chevron for collapse/expand
-                                    Box(
-                                        modifier = Modifier.clickable { onToggleCollapse(message.id) }
-                                            .padding(8.dp)
-                                    ) {
-                                        Icon(
-                                            if (isCollapsed) Icons.Default.ExpandMore else Icons.Default.ExpandLess,
-                                            contentDescription = if (isCollapsed) "Expand" else "Collapse",
-                                            tint = MaterialTheme.colorScheme.onSurface
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    is Conversation.Message.ContentItem.AssistantMessage -> {
-                        val text = content.structured.fullText.trim()
-                        if (text.isNotEmpty()) {
+                        is Conversation.Message.ContentItem.UserMessage -> {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
@@ -453,12 +230,264 @@ fun MessageItem(
                                     verticalArrangement = Arrangement.Center,
                                 ) {
                                     org.slf4j.LoggerFactory.getLogger("MessageItem").trace(
-                                        "Rendering AssistantMessage markdown | msg_id={} | content_length={} | preview={}",
+                                        "Rendering UserMessage markdown | msg_id={} | content_length={} | preview={}",
                                         message.id.value,
-                                        text.length,
-                                        text.take(100).replace("\n", "\\n")
+                                        content.text.length,
+                                        content.text.take(100).replace("\n", "\\n")
                                     )
-                                    GromozekaMarkdown(content = text)
+                                    GromozekaMarkdown(content = content.text)
+                                }
+                                DisableSelection {
+                                    FlowRow(
+                                        modifier = Modifier.align(Alignment.Top),
+                                        maxItemsInEachRow = 4,
+                                        verticalArrangement = Arrangement.Top,
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                    ) {
+                                        message.instructions.forEach { instruction ->
+                                            TooltipArea(
+                                                tooltip = {
+                                                    Surface(
+                                                        modifier = Modifier.shadow(4.dp),
+                                                        color = MaterialTheme.colorScheme.inverseOnSurface,
+                                                        shape = MaterialTheme.shapes.small
+                                                    ) {
+                                                        Text(
+                                                            modifier = Modifier.padding(12.dp),
+                                                            text = instruction.description,
+                                                            style = MaterialTheme.typography.bodySmall,
+                                                            color = MaterialTheme.colorScheme.inverseSurface
+                                                        )
+                                                    }
+                                                }
+                                            ) {
+                                                AssistChip(
+                                                    onClick = {},
+                                                    label = {
+                                                        Text(
+                                                            text = instruction.title,
+                                                            style = MaterialTheme.typography.labelSmall
+                                                        )
+                                                    },
+                                                    colors = AssistChipDefaults.assistChipColors(),
+                                                )
+                                            }
+                                        }
+
+                                        // Chevron for collapse/expand
+                                        androidx.compose.material3.IconButton(
+                                            onClick = { onToggleCollapse(message.id) }
+                                        ) {
+                                            Icon(
+                                                if (isCollapsed) Icons.Default.ExpandMore else Icons.Default.ExpandLess,
+                                                contentDescription = if (isCollapsed) "Expand" else "Collapse",
+                                                tint = MaterialTheme.colorScheme.onSurface
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        is Conversation.Message.ContentItem.ToolCall -> {
+                            // Find corresponding result from entire chat history
+                            val correspondingResult = toolResultsMap[content.id.value]
+                            ToolCallItem(
+                                toolCall = content.call,
+                                toolResult = correspondingResult,
+                                projectPath = projectPath
+                            )
+                        }
+
+                        is Conversation.Message.ContentItem.ToolResult -> {
+                            // Don't render ToolResult separately - it's shown in ToolCallItem
+                        }
+
+                        is Conversation.Message.ContentItem.ImageItem -> {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Column(
+                                    modifier = Modifier.weight(1f),
+                                    verticalArrangement = Arrangement.Center,
+                                ) {
+                                    when (val source = content.source) {
+                                        is Conversation.Message.ImageSource.Base64ImageSource -> {
+                                            // Base64 too long - show placeholder
+                                            Text(
+                                                LocalTranslation.current.imageDisplayText.format(
+                                                    source.mediaType,
+                                                    source.data.length
+                                                )
+                                            )
+                                        }
+
+                                        is Conversation.Message.ImageSource.UrlImageSource -> {
+                                            // URL can be shown in full
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                Icon(Icons.Default.Image, contentDescription = "Image")
+                                                Spacer(modifier = Modifier.width(4.dp))
+                                                Text(source.url)
+                                            }
+                                        }
+
+                                        is Conversation.Message.ImageSource.FileImageSource -> {
+                                            // File ID can be shown in full
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                Icon(Icons.Default.Image, contentDescription = "Image")
+                                                Spacer(modifier = Modifier.width(4.dp))
+                                                Text("File: ${source.fileId}")
+                                            }
+                                        }
+                                    }
+                                }
+                                DisableSelection {
+                                    FlowRow(
+                                        modifier = Modifier.align(Alignment.Top),
+                                        maxItemsInEachRow = 4,
+                                        verticalArrangement = Arrangement.Top,
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                    ) {
+                                        // Chevron for collapse/expand
+                                        Box(
+                                            modifier = Modifier.clickable { onToggleCollapse(message.id) }
+                                                .padding(8.dp)
+                                        ) {
+                                            Icon(
+                                                if (isCollapsed) Icons.Default.ExpandMore else Icons.Default.ExpandLess,
+                                                contentDescription = if (isCollapsed) "Expand" else "Collapse",
+                                                tint = MaterialTheme.colorScheme.onSurface
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        is Conversation.Message.ContentItem.Thinking -> {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Column(
+                                    modifier = Modifier.weight(1f),
+                                    verticalArrangement = Arrangement.Center,
+                                ) {
+                                    org.slf4j.LoggerFactory.getLogger("MessageItem").trace(
+                                        "Rendering Thinking markdown | msg_id={} | content_length={} | preview={}",
+                                        message.id.value,
+                                        content.thinking.length,
+                                        content.thinking.take(100).replace("\n", "\\n")
+                                    )
+                                    GromozekaMarkdown(content = content.thinking)
+                                }
+                                DisableSelection {
+                                    FlowRow(
+                                        modifier = Modifier.align(Alignment.Top),
+                                        maxItemsInEachRow = 4,
+                                        verticalArrangement = Arrangement.Top,
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                    ) {
+                                        // Chevron for collapse/expand
+                                        Box(
+                                            modifier = Modifier.clickable { onToggleCollapse(message.id) }
+                                                .padding(8.dp)
+                                        ) {
+                                            Icon(
+                                                if (isCollapsed) Icons.Default.ExpandMore else Icons.Default.ExpandLess,
+                                                contentDescription = if (isCollapsed) "Expand" else "Collapse",
+                                                tint = MaterialTheme.colorScheme.onSurface
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        is Conversation.Message.ContentItem.System -> {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Column(
+                                    modifier = Modifier.weight(1f),
+                                    verticalArrangement = Arrangement.Center,
+                                ) {
+                                    Text(text = content.content)
+                                }
+                                DisableSelection {
+                                    FlowRow(
+                                        modifier = Modifier.align(Alignment.Top),
+                                        maxItemsInEachRow = 4,
+                                        verticalArrangement = Arrangement.Top,
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                    ) {
+                                        // Chevron for collapse/expand
+                                        Box(
+                                            modifier = Modifier.clickable { onToggleCollapse(message.id) }
+                                                .padding(8.dp)
+                                        ) {
+                                            Icon(
+                                                if (isCollapsed) Icons.Default.ExpandMore else Icons.Default.ExpandLess,
+                                                contentDescription = if (isCollapsed) "Expand" else "Collapse",
+                                                tint = MaterialTheme.colorScheme.onSurface
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        is Conversation.Message.ContentItem.AssistantMessage -> {
+                            val text = content.structured.fullText.trim()
+                            if (text.isNotEmpty()) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Column(
+                                        modifier = Modifier.weight(1f),
+                                        verticalArrangement = Arrangement.Center,
+                                    ) {
+                                        org.slf4j.LoggerFactory.getLogger("MessageItem").trace(
+                                            "Rendering AssistantMessage markdown | msg_id={} | content_length={} | preview={}",
+                                            message.id.value,
+                                            text.length,
+                                            text.take(100).replace("\n", "\\n")
+                                        )
+                                        GromozekaMarkdown(content = text)
+                                    }
+                                    DisableSelection {
+                                        FlowRow(
+                                            modifier = Modifier.align(Alignment.Top),
+                                            maxItemsInEachRow = 4,
+                                            verticalArrangement = Arrangement.Top,
+                                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                        ) {
+                                            // Chevron for collapse/expand
+                                            Box(
+                                                modifier = Modifier.clickable { onToggleCollapse(message.id) }
+                                                    .padding(8.dp)
+                                            ) {
+                                                Icon(
+                                                    if (isCollapsed) Icons.Default.ExpandMore else Icons.Default.ExpandLess,
+                                                    contentDescription = if (isCollapsed) "Expand" else "Collapse",
+                                                    tint = MaterialTheme.colorScheme.onSurface
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        is Conversation.Message.ContentItem.UnknownJson -> {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Column(
+                                    modifier = Modifier.weight(1f),
+                                    verticalArrangement = Arrangement.Center,
+                                ) {
+                                    Text(text = jsonPrettyPrint(content.json))
+                                    Text(text = LocalTranslation.current.parseErrorText)
                                 }
                                 DisableSelection {
                                     FlowRow(
@@ -483,41 +512,30 @@ fun MessageItem(
                             }
                         }
                     }
-                    is Conversation.Message.ContentItem.UnknownJson -> {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Column(
-                                modifier = Modifier.weight(1f),
-                                verticalArrangement = Arrangement.Center,
-                            ) {
-                                Text(text = jsonPrettyPrint(content.json))
-                                Text(text = LocalTranslation.current.parseErrorText)
-                            }
-                            DisableSelection {
-                                FlowRow(
-                                    modifier = Modifier.align(Alignment.Top),
-                                    maxItemsInEachRow = 4,
-                                    verticalArrangement = Arrangement.Top,
-                                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                ) {
-                                    // Chevron for collapse/expand
-                                    Box(
-                                        modifier = Modifier.clickable { onToggleCollapse(message.id) }
-                                            .padding(8.dp)
-                                    ) {
-                                        Icon(
-                                            if (isCollapsed) Icons.Default.ExpandMore else Icons.Default.ExpandLess,
-                                            contentDescription = if (isCollapsed) "Expand" else "Collapse",
-                                            tint = MaterialTheme.colorScheme.onSurface
-                                        )
-                                    }
-                                }
-                            }
-                        }
+                }
+
+                // Show error if present
+                if (message.error != null) {
+                    val error = message.error!!
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(8.dp),
+                        verticalAlignment = Alignment.Top,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Warning,
+                            contentDescription = "Error",
+                            tint = MaterialTheme.colorScheme.error
+                        )
+                        Text(
+                            text = error.message,
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall
+                        )
                     }
                 }
-            }
             }
         }
     }

@@ -39,7 +39,7 @@ interface AgentDomainService {
      * Assembles system prompts for agent.
      *
      * Convenience method that delegates to PromptDomainService.assembleSystemPrompt().
-     * Returns a list of prompt contents (one per prompt) ready for AI model.
+     * Returns a list of prompt contents (one per prompt) ready for an AI model.
      *
      * @param agent agent to assemble prompts for
      * @param projectPath optional project path for Dynamic prompts (e.g., Environment)

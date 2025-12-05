@@ -278,40 +278,38 @@ class TabViewModel(
 
                 var lastMessage: Conversation.Message? = null
 
-                conversationEngineService.streamMessage(conversationId, userMessage, currentState.agent)
-                    .collect { update ->
-                        when (update) {
-                            is ConversationEngineService.StreamUpdate.Chunk -> {
-                                val messages = _allMessages.value.toMutableList()
+                conversationEngineService.sendMessage(conversationId, userMessage, currentState.agent)
+                    .collect { message ->
+                        val messages = _allMessages.value.toMutableList()
 
-                                val existingIndex = messages.indexOfFirst { it.id == update.message.id }
+                        val existingIndex = messages.indexOfFirst { it.id == message.id }
 
-                                if (existingIndex != -1) {
-                                    messages[existingIndex] = update.message
-                                    log.debug { "Updated existing message ${update.message.id}" }
+                        if (existingIndex != -1) {
+                            messages[existingIndex] = message
+                            log.debug { "Updated existing message ${message.id}" }
+                        } else {
+                            messages.add(message)
+                            log.debug { "Added new message ${message.id}" }
+                        }
+
+                        val hasThinking = message.content.any { it is Conversation.Message.ContentItem.Thinking }
+                        if (hasThinking) {
+                            _uiState.update { currentState ->
+                                if (message.id !in currentState.collapsedMessageIds) {
+                                    currentState.copy(collapsedMessageIds = currentState.collapsedMessageIds + message.id)
                                 } else {
-                                    messages.add(update.message)
-                                    log.debug { "Added new message ${update.message.id}" }
+                                    currentState
                                 }
-
-                                val hasThinking = update.message.content.any { it is Conversation.Message.ContentItem.Thinking }
-                                if (hasThinking) {
-                                    _uiState.update { currentState ->
-                                        if (update.message.id !in currentState.collapsedMessageIds) {
-                                            currentState.copy(collapsedMessageIds = currentState.collapsedMessageIds + update.message.id)
-                                        } else {
-                                            currentState
-                                        }
-                                    }
-                                }
-
-                                _allMessages.value = messages
-                                lastMessage = update.message
                             }
-                            is ConversationEngineService.StreamUpdate.Error -> {
-                                log.error(update.exception) { "Stream error" }
-                                soundNotificationService.playErrorSound()
-                            }
+                        }
+
+                        _allMessages.value = messages
+                        lastMessage = message
+
+                        if (message.error != null) {
+                            log.error { "Stream error: ${message.error}" }
+                            log.error { "Message with error: id=${message.id}, role=${message.role}, content.size=${message.content.size}" }
+                            soundNotificationService.playErrorSound()
                         }
                     }
 

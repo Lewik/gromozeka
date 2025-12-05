@@ -30,8 +30,8 @@ data class Conversation(
     val projectId: Project.Id,
     val displayName: String = "",
 
-    val aiProvider: String,
-    val modelName: String,
+    val aiProvider: String,  //TODO : make it type as AIProvider
+    val modelName: String, //TODO : shouldn't it be in agent? We should create some king of ProviderConnection (need to think)
 
     val currentThread: Thread.Id,
 
@@ -113,7 +113,21 @@ data class Conversation(
         val instructions: List<Instruction> = emptyList(),
 
         val createdAt: Instant,
+
+        val error: GenerationError? = null,
     ) {
+        /**
+         * Error that occurred during message generation.
+         *
+         * @property message human-readable error description
+         * @property type error category (e.g., "network", "api", "cancelled", "timeout")
+         */
+        @Serializable
+        data class GenerationError(
+            val message: String,
+            val type: String? = null,
+        )
+
         /**
          * Unique message identifier (UUIDv7).
          */
@@ -137,14 +151,31 @@ data class Conversation(
         }
 
         /**
+         * Block streaming state.
+         */
+        @Serializable
+        enum class BlockState {
+            /** Block is currently being streamed */
+            STREAMING,
+            /** Block streaming was interrupted by user */
+            INTERRUPTED,
+            /** Block streaming completed successfully */
+            COMPLETE
+        }
+
+        /**
          * Content item within message.
          *
          * Message can contain multiple content items of different types
          * (text, tool calls, tool results, images, thinking blocks, system notifications).
+         *
+         * @property state streaming state of this block
          */
         @Serializable
         @JsonClassDiscriminator("type")
         sealed class ContentItem {
+            abstract val state: BlockState
+
             /**
              * User text message.
              *
@@ -152,7 +183,10 @@ data class Conversation(
              */
             @Serializable
             @SerialName("Message")
-            data class UserMessage(val text: String) : ContentItem()
+            data class UserMessage(
+                val text: String,
+                override val state: BlockState = BlockState.COMPLETE
+            ) : ContentItem()
 
             /**
              * Tool invocation request from AI.
@@ -164,6 +198,7 @@ data class Conversation(
             data class ToolCall(
                 val id: Id,
                 val call: Data,
+                override val state: BlockState = BlockState.COMPLETE
             ) : ContentItem() {
                 /**
                  * Unique tool call identifier (UUIDv7).
@@ -199,6 +234,7 @@ data class Conversation(
                 val toolName: String,
                 val result: List<Data>,
                 val isError: Boolean = false,
+                override val state: BlockState = BlockState.COMPLETE
             ) : ContentItem() {
                 /**
                  * Tool result data item.
@@ -259,13 +295,14 @@ data class Conversation(
              * before providing final answer. Thinking blocks are cryptographically signed
              * to ensure authenticity and prevent tampering.
              *
-             * @property signature cryptographic signature from LLM (e.g., Claude signs thinking blocks)
              * @property thinking actual thinking content (step-by-step reasoning)
+             * @property signature cryptographic signature from LLM (null during streaming, set on block complete)
              */
             @Serializable
             data class Thinking(
-                val signature: String,
                 val thinking: String,
+                val signature: String? = null,
+                override val state: BlockState = BlockState.COMPLETE
             ) : ContentItem()
 
             /**
@@ -280,6 +317,7 @@ data class Conversation(
                 val level: SystemLevel,
                 val content: String,
                 val toolUseId: ToolCall.Id? = null,
+                override val state: BlockState = BlockState.COMPLETE
             ) : ContentItem() {
                 /**
                  * System notification severity level.
@@ -299,6 +337,7 @@ data class Conversation(
             @SerialName("IntermediateMessage")
             data class AssistantMessage(
                 val structured: StructuredText,
+                override val state: BlockState = BlockState.COMPLETE
             ) : ContentItem()
 
             /**
@@ -309,6 +348,7 @@ data class Conversation(
             @Serializable
             data class ImageItem(
                 val source: ImageSource,
+                override val state: BlockState = BlockState.COMPLETE
             ) : ContentItem()
 
             /**
@@ -319,6 +359,7 @@ data class Conversation(
             @Serializable
             data class UnknownJson(
                 val json: JsonElement,
+                override val state: BlockState = BlockState.COMPLETE
             ) : ContentItem()
         }
 
