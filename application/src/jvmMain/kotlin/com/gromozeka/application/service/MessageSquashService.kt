@@ -2,21 +2,28 @@ package com.gromozeka.application.service
 
 import com.gromozeka.domain.model.AIProvider
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.Prompt
 import com.gromozeka.domain.model.SquashType
 import com.gromozeka.domain.repository.ConversationDomainService
+import com.gromozeka.domain.repository.PromptDomainService
 import com.gromozeka.domain.service.ChatModelProvider
 import klog.KLoggers
 import kotlinx.coroutines.reactive.awaitSingle
+import org.springframework.ai.chat.messages.SystemMessage
 import org.springframework.ai.chat.messages.UserMessage
-import org.springframework.ai.chat.prompt.Prompt
+import org.springframework.ai.chat.prompt.Prompt as SpringPrompt
 import org.springframework.stereotype.Service
 
 @Service
 class MessageSquashService(
     private val chatModelProvider: ChatModelProvider,
     private val conversationService: ConversationDomainService,
-    private val messageConversionService: MessageConversionService
+    private val messageConversionService: MessageConversionService,
+    private val promptDomainService: PromptDomainService
 ) {
+    companion object {
+        private val COMMON_PROMPT_PREFIX_ID = Prompt.Id("builtin:common-prompt-prefix.md")
+    }
     private val log = KLoggers.logger(this)
 
     suspend fun squashWithAI(
@@ -50,20 +57,20 @@ class MessageSquashService(
             SquashType.CONCATENATE -> throw IllegalStateException("Should not reach here")
         }
 
+        val systemMessages = loadCommonPromptPrefix()
+            .takeIf { it.isNotBlank() }
+            ?.let { listOf(SystemMessage(it)) }
+            ?: emptyList()
+
         val springAIMessages = messageConversionService.convertHistoryToSpringAI(markedMessages)
         val commandMessage = UserMessage(commandPrompt)
 
-        val fullPrompt = springAIMessages + commandMessage
+        val fullPrompt = systemMessages + springAIMessages + commandMessage
 
-        log.debug { "Calling AI with ${fullPrompt.size} messages (${springAIMessages.size} history + 1 command)" }
+        log.debug { "Calling AI with ${fullPrompt.size} messages (${systemMessages.size} system + ${springAIMessages.size} history + 1 command)" }
 
         val chatModel = chatModelProvider.getChatModel(aiProvider, modelName, projectPath)
-        val result = chatModel.stream(Prompt(fullPrompt))
-            .collectList()
-            .awaitSingle()
-            .lastOrNull()
-            ?.result?.output?.text
-            ?: ""
+        val result = chatModel.call(SpringPrompt(fullPrompt)).result.output.text ?: ""
 
         log.info { "AI squash completed: result length=${result.length}" }
 
@@ -94,6 +101,10 @@ class MessageSquashService(
         }
 
         return message.copy(content = wrappedContent)
+    }
+
+    private suspend fun loadCommonPromptPrefix(): String {
+        return promptDomainService.findById(COMMON_PROMPT_PREFIX_ID)?.content ?: ""
     }
 
     private fun buildDistillPrompt(): String {
