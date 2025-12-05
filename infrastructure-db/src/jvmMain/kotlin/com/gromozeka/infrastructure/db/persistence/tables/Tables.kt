@@ -130,7 +130,7 @@ internal object TokenUsageStatisticsTable : Table("token_usage_statistics") {
     val cacheCreationTokens = integer("cache_creation_tokens").default(0)
     val cacheReadTokens = integer("cache_read_tokens").default(0)
     val thinkingTokens = integer("thinking_tokens").default(0)
-
+    val provider = varchar("provider", 50)
     val modelId = varchar("model_id", 100)
 
     override val primaryKey = PrimaryKey(id)

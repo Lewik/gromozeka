@@ -21,6 +21,7 @@ import kotlin.jvm.JvmInline
  * @property cacheCreationTokens tokens written to prompt cache (for repeated context)
  * @property cacheReadTokens tokens read from prompt cache (cost reduction)
  * @property thinkingTokens extended thinking tokens (Claude extended thinking mode)
+ * @property provider AI provider name (e.g., "ANTHROPIC", "GEMINI", "OPEN_AI")
  * @property modelId LLM model identifier (e.g., "claude-3-5-sonnet-20241022")
  */
 @Serializable
@@ -34,6 +35,7 @@ data class TokenUsageStatistics(
     val cacheCreationTokens: Int = 0,
     val cacheReadTokens: Int = 0,
     val thinkingTokens: Int = 0,
+    val provider: String,
     val modelId: String
 ) {
     /**
@@ -57,10 +59,12 @@ data class TokenUsageStatistics(
      * @property totalPromptTokens sum of all prompt tokens across all turns
      * @property totalCompletionTokens sum of all completion tokens across all turns
      * @property totalCacheReadTokens sum of all cache read tokens (cost savings)
+     * @property totalCacheCreationTokens sum of all cache creation tokens
      * @property totalThinkingTokens sum of all extended thinking tokens
      * @property lastCallTokens token count from most recent API call (null if no calls yet)
      * @property recentCalls list of recent statistics records for history display
      * @property currentContextSize estimated current context window usage in tokens
+     * @property provider AI provider used in most recent call (null if no calls yet)
      * @property modelId model used in most recent call (null if no calls yet)
      */
     @Serializable
@@ -68,10 +72,12 @@ data class TokenUsageStatistics(
         val totalPromptTokens: Int,
         val totalCompletionTokens: Int,
         val totalCacheReadTokens: Int,
+        val totalCacheCreationTokens: Int,
         val totalThinkingTokens: Int,
         val lastCallTokens: Int?,
         val recentCalls: List<TokenUsageStatistics>,
         val currentContextSize: Int? = null,
+        val provider: String? = null,
         val modelId: String? = null
     ) {
         /**

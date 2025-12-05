@@ -346,10 +346,22 @@ fun SessionScreen(
 
                                     val lines = mutableListOf<String>()
 
-                                    lines.add("Token Usage Statistics")
+                                    val contextWindow = stats.modelId?.let {
+                                        com.gromozeka.domain.model.ModelContextWindows.getContextWindow(it)
+                                    }
+                                    val currentContext = stats.currentContextSize
+
+                                    if (currentContext != null && contextWindow != null) {
+                                        val percentage = (currentContext.toFloat() / contextWindow * 100).toInt()
+                                        lines.add("Context Window: $percentage% (${currentContext.formatWithCommas()} / ${contextWindow.formatWithCommas()})")
+                                    } else if (currentContext != null) {
+                                        lines.add("Context Window: ${currentContext.formatWithCommas()} tokens")
+                                    }
+
+                                    lines.add("")
 
                                     val totalTokens = stats.totalPromptTokens + stats.totalCompletionTokens + stats.totalThinkingTokens
-                                    lines.add("Total: ${totalTokens.formatWithCommas()} tokens")
+                                    lines.add("Total usage: ${totalTokens.formatWithCommas()} tokens")
                                     lines.add("  Prompt:     ${stats.totalPromptTokens.formatWithCommas()}")
                                     lines.add("  Completion: ${stats.totalCompletionTokens.formatWithCommas()}")
                                     if (stats.totalThinkingTokens > 0) {
@@ -359,21 +371,8 @@ fun SessionScreen(
                                         lines.add("  Cache Read: ${stats.totalCacheReadTokens.formatWithCommas()}")
                                     }
 
-                                    val contextWindow = stats.modelId?.let {
-                                        com.gromozeka.domain.model.ModelContextWindows.getContextWindow(it)
-                                    }
-                                    val currentContext = stats.currentContextSize
-
-                                    if (currentContext != null) {
-                                        if (contextWindow != null) {
-                                            val percentage = (currentContext.toFloat() / contextWindow * 100).toInt()
-                                            lines.add("Context: ${currentContext.formatWithCommas()} / ${contextWindow.formatWithCommas()} ($percentage%)")
-                                        } else {
-                                            lines.add("Context: ${currentContext.formatWithCommas()} / unknown (n/a)")
-                                        }
-                                    }
-
                                     if (stats.recentCalls.isNotEmpty()) {
+                                        lines.add("")
                                         lines.add("Recent ${stats.recentCalls.size} Turns:")
 
                                         val hasThinking = stats.recentCalls.any { it.thinkingTokens > 0 }

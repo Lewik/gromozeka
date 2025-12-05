@@ -27,6 +27,7 @@ import org.springframework.ai.chat.model.ChatResponse
 import org.springframework.ai.chat.model.ToolContext
 import org.springframework.ai.chat.prompt.ChatOptions
 import org.springframework.ai.chat.prompt.Prompt
+import org.springframework.ai.anthropic.api.AnthropicApi
 import org.springframework.ai.google.genai.metadata.GoogleGenAiUsage
 import org.springframework.ai.model.tool.ToolCallingChatOptions
 import org.springframework.stereotype.Service
@@ -153,25 +154,39 @@ class ConversationEngineService(
 
             chatResponse.metadata.usage?.let { usage ->
                 val turnNumber = threadRepository.incrementTurnNumber(conversation.currentThread)
-                coroutineScope.launch {
-                    try {
-                        tokenUsageStatisticsRepository.save(
-                            TokenUsageStatistics(
-                                id = TokenUsageStatistics.Id(UUID.randomUUID().toString()),
-                                threadId = conversation.currentThread,
-                                turnNumber = turnNumber,
-                                timestamp = Clock.System.now(),
-                                promptTokens = usage.promptTokens ?: 0,
-                                completionTokens = usage.completionTokens ?: 0,
-                                thinkingTokens = (usage as? GoogleGenAiUsage)?.thoughtsTokenCount ?: 0,
-                                cacheCreationTokens = 0,
-                                cacheReadTokens = 0,
-                                modelId = conversation.modelName
-                            )
+                try {
+                    val nativeUsage = usage.getNativeUsage()
+
+                    val (cacheCreation, cacheRead) = when (nativeUsage) {
+                        is AnthropicApi.Usage -> Pair(
+                            nativeUsage.cacheCreationInputTokens() ?: 0,
+                            nativeUsage.cacheReadInputTokens() ?: 0
                         )
-                    } catch (e: Exception) {
-                        log.error(e) { "Failed to save token usage statistics for turn $turnNumber" }
+                        else -> Pair(0, 0)
                     }
+
+                    val thinkingTokens = when (usage) {
+                        is GoogleGenAiUsage -> usage.thoughtsTokenCount ?: 0
+                        else -> 0
+                    }
+
+                    tokenUsageStatisticsRepository.save(
+                        TokenUsageStatistics(
+                            id = TokenUsageStatistics.Id(UUID.randomUUID().toString()),
+                            threadId = conversation.currentThread,
+                            turnNumber = turnNumber,
+                            timestamp = Clock.System.now(),
+                            promptTokens = usage.promptTokens ?: 0,
+                            completionTokens = usage.completionTokens ?: 0,
+                            cacheCreationTokens = cacheCreation,
+                            cacheReadTokens = cacheRead,
+                            thinkingTokens = thinkingTokens,
+                            provider = conversation.aiProvider,
+                            modelId = conversation.modelName
+                        )
+                    )
+                } catch (e: Exception) {
+                    log.error(e) { "Failed to save token usage statistics for turn $turnNumber" }
                 }
             }
 

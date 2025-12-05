@@ -25,6 +25,7 @@ class ExposedTokenUsageStatisticsRepository : TokenUsageStatisticsRepository {
             it[cacheCreationTokens] = stats.cacheCreationTokens
             it[cacheReadTokens] = stats.cacheReadTokens
             it[thinkingTokens] = stats.thinkingTokens
+            it[provider] = stats.provider
             it[modelId] = stats.modelId
         }
         Unit
@@ -48,10 +49,12 @@ class ExposedTokenUsageStatisticsRepository : TokenUsageStatisticsRepository {
             totalPromptTokens = stats.sumOf { it.promptTokens },
             totalCompletionTokens = stats.sumOf { it.completionTokens },
             totalCacheReadTokens = stats.sumOf { it.cacheReadTokens },
+            totalCacheCreationTokens = stats.sumOf { it.cacheCreationTokens },
             totalThinkingTokens = stats.sumOf { it.thinkingTokens },
             lastCallTokens = lastCall?.totalTokens,
             recentCalls = recentCalls,
             currentContextSize = lastCall?.promptTokens,
+            provider = lastCall?.provider,
             modelId = lastCall?.modelId
         )
     }
@@ -77,6 +80,7 @@ class ExposedTokenUsageStatisticsRepository : TokenUsageStatisticsRepository {
         cacheCreationTokens = this[TokenUsageStatisticsTable.cacheCreationTokens],
         cacheReadTokens = this[TokenUsageStatisticsTable.cacheReadTokens],
         thinkingTokens = this[TokenUsageStatisticsTable.thinkingTokens],
+        provider = this[TokenUsageStatisticsTable.provider],
         modelId = this[TokenUsageStatisticsTable.modelId]
     )
 }
