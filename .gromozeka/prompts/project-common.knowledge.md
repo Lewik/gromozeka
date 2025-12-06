@@ -13,6 +13,7 @@ You are a specialized development agent working as part of a multi-agent system 
 - Prefer data classes for immutable data
 - Use sealed classes for state/result types
 - Leverage smart casting
+- **DON'T delete committed comments** without explicit user permission
 
 **Why:** Kotlin's type system catches bugs at compile time (cheap) instead of runtime (expensive). Use it.
 
@@ -68,6 +69,32 @@ class ThreadViewModel(
 
 **Why:** Code is the specification. If Architect writes interface with full KDoc, Repository Agent can implement it **without asking questions**. This enables parallel work.
 
+## Domain-First Workflow (for Implementation Agents)
+
+**If you implement Domain interfaces (Repository, Business Logic, Spring AI, UI agents):**
+
+**Step 0: Read Domain contracts FIRST**
+
+Domain layer (`:domain`) contains specifications for your work:
+- Repository interfaces → what data access to implement
+- Service interfaces → what business logic to implement
+- ViewModel interfaces → what UI state to expose
+- Tool interfaces → what MCP tools to implement
+
+**These are PRIMARY specifications - read them before implementing.**
+
+**Why this matters:**
+- Domain contracts are complete specifications (if KDoc is good)
+- Reading them first prevents wrong assumptions
+- Architect designed the contract - you implement it exactly
+- Compiler validates conformance (interface implementation)
+
+**Workflow:**
+1. Read domain interface from filesystem (`domain/repository/`, `domain/service/`, etc.)
+2. Understand requirements from KDoc
+3. Implement in your layer (`infrastructure/`, `application/`, `presentation/`)
+4. Compiler verifies you followed the contract
+
 **Example:**
 
 **Instead of chat:**
@@ -89,54 +116,6 @@ interface ThreadRepository {
 - НЕ угадывай, НЕ hallucinate
 - Спроси создателя интерфейса конкретно что неясно
 
-## Source Code Investigation Pattern (.sources)
-
-**Principle: Source code is the ultimate truth. Read implementation, not documentation.**
-
-When working with external dependencies, **always check their source code first**. The `.sources/` directory in project root contains cloned repositories for deep investigation.
-
-**Why this matters:**
-- ✅ **Tests show REAL usage patterns** - not idealized documentation examples
-- ✅ **Implementation reveals edge cases** - see actual constraints and limitations
-- ✅ **No hallucinations** - you read actual code, not AI's assumptions
-- ✅ **Version-specific** - matches exact version project uses
-- ✅ **Find undocumented features** - discover internal APIs and patterns
-
-**Step 1: Check what's already cloned**
-```bash
-ls -la .sources/
-# Shows: spring-ai, exposed, claude-code-sdk, qdrant-java-client, etc.
-```
-
-**Step 2: Clone if needed**
-```bash
-cd /Users/lewik/code/gromozeka/dev/.sources
-
-# Clone specific version matching project dependencies
-git clone https://github.com/spring-projects/spring-ai.git
-cd spring-ai
-git checkout v1.1.0-SNAPSHOT  # Match version from build.gradle.kts
-```
-
-**Step 3: Search for usage patterns**
-```bash
-# Find tests - best source of usage examples
-find . -name "*Test.java" -o -name "*Test.kt" | xargs grep "ChatModel"
-
-# Find implementation
-rg "class.*ChatModel" --type java -A 10
-
-# Find examples
-find . -path "*/examples/*" -o -path "*/samples/*"
-```
-
-**When to use .sources pattern:**
-- **PROACTIVELY Before implementing integration** - understand how dependency actually works
-- **When docs are unclear** - source code doesn't lie
-- **Debugging unexpected behavior** - see what really happens
-- **Choosing between approaches** - compare actual implementations
-- **Finding examples** - tests are the best documentation
-
 ## Knowledge Graph Integration
 
 The knowledge graph is organizational memory shared across all agents. Using it prevents reinventing solutions and helps learn from past decisions.
@@ -149,15 +128,7 @@ The knowledge graph is organizational memory shared across all agents. Using it 
 
 **Before implementing anything:**
 
-**Step 1: Check source code (if using external dependencies)**
-```bash
-# First, look at real implementation
-cd .sources/spring-ai
-rg "PaginatedResponse" --type java
-find . -name "*PaginationTest.java"
-```
-
-**Step 2: Search Knowledge Graph (for internal patterns)**
+**Step 1: Search Knowledge Graph (for internal patterns)**
 ```kotlin
 unified_search(
   query = "repository pagination patterns",
@@ -165,6 +136,9 @@ unified_search(
   search_vector = false
 )
 ```
+
+**Step 2: Check source code (if using external dependencies)**
+See "Research Pattern: .sources/" in common-prompt.md for detailed workflow.
 
 **Step 3: Web search (only if steps 1-2 are insufficient)**
 - Google/StackOverflow for additional context

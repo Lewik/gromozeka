@@ -1,10 +1,10 @@
 {
-  "id": "builtin:default-gromozeka.json",
+  "id": "builtin:default-gromozeka.agent.json",
   "name": "Gromozeka",
   "prompts": [
     "builtin:common-prompt-prefix.md",
-    "builtin:common-prompt.md",
-    "builtin:default-agent.md",
+    "builtin:common.identity.md",
+    "builtin:default.role.md",
     "env"
   ],
   "description": "Multi-armed AI assistant",

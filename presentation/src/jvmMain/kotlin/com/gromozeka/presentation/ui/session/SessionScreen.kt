@@ -128,9 +128,9 @@ fun SessionScreen(
                                 contentDescription = "Edit mode"
                             )
                         }
-                        
+
                         Spacer(modifier = Modifier.width(8.dp))
-                        
+
                         val selectionOptions = remember {
                             listOf(
                                 com.gromozeka.presentation.ui.ToggleButtonOption(Icons.Default.SelectAll, "Select/Deselect All"),
@@ -147,32 +147,32 @@ fun SessionScreen(
                                 if (uiState.selectedMessageIds.size == filteredHistory.size && filteredHistory.isNotEmpty()) {
                                     add(0)
                                 }
-                                
+
                                 val userMessages = filteredHistory.filter { it.role == Conversation.Message.Role.USER }
                                 if (userMessages.isNotEmpty() && userMessages.all { it.id in uiState.selectedMessageIds }) {
                                     add(1)
                                 }
-                                
+
                                 val assistantMessages = filteredHistory.filter { it.role == Conversation.Message.Role.ASSISTANT }
                                 if (assistantMessages.isNotEmpty() && assistantMessages.all { it.id in uiState.selectedMessageIds }) {
                                     add(2)
                                 }
-                                
-                                val thinkingMessages = filteredHistory.filter { message -> 
+
+                                val thinkingMessages = filteredHistory.filter { message ->
                                     message.content.any { it is Conversation.Message.ContentItem.Thinking }
                                 }
                                 if (thinkingMessages.isNotEmpty() && thinkingMessages.all { it.id in uiState.selectedMessageIds }) {
                                     add(3)
                                 }
-                                
-                                val toolMessages = filteredHistory.filter { message -> 
+
+                                val toolMessages = filteredHistory.filter { message ->
                                     message.content.any { it is Conversation.Message.ContentItem.ToolCall }
                                 }
                                 if (toolMessages.isNotEmpty() && toolMessages.all { it.id in uiState.selectedMessageIds }) {
                                     add(4)
                                 }
-                                
-                                val plainMessages = filteredHistory.filter { message -> 
+
+                                val plainMessages = filteredHistory.filter { message ->
                                     message.content.none { it is Conversation.Message.ContentItem.Thinking } &&
                                     message.content.none { it is Conversation.Message.ContentItem.ToolCall }
                                 }
@@ -200,7 +200,7 @@ fun SessionScreen(
 
                             Spacer(modifier = Modifier.width(8.dp))
                         }
-                        
+
                         // Action buttons (always visible in edit mode)
                         if (uiState.editMode) {
                             // Concat - disabled when 0 or 1 message selected
@@ -276,9 +276,9 @@ fun SessionScreen(
                                     Text("Delete")
                                 }
                             }
-                            
+
                             Spacer(modifier = Modifier.width(8.dp))
-                            
+
                             // Selected count
                             Text("Selected: ${uiState.selectedMessageIds.size}")
                         }
@@ -358,19 +358,6 @@ fun SessionScreen(
                                         lines.add("Context Window: ${currentContext.formatWithCommas()} tokens")
                                     }
 
-                                    lines.add("")
-
-                                    val totalTokens = stats.totalPromptTokens + stats.totalCompletionTokens + stats.totalThinkingTokens
-                                    lines.add("Total usage: ${totalTokens.formatWithCommas()} tokens")
-                                    lines.add("  Prompt:     ${stats.totalPromptTokens.formatWithCommas()}")
-                                    lines.add("  Completion: ${stats.totalCompletionTokens.formatWithCommas()}")
-                                    if (stats.totalThinkingTokens > 0) {
-                                        lines.add("  Thinking:   ${stats.totalThinkingTokens.formatWithCommas()}")
-                                    }
-                                    if (stats.totalCacheReadTokens > 0) {
-                                        lines.add("  Cache Read: ${stats.totalCacheReadTokens.formatWithCommas()}")
-                                    }
-
                                     if (stats.recentCalls.isNotEmpty()) {
                                         lines.add("")
                                         lines.add("Recent ${stats.recentCalls.size} Turns:")
@@ -396,12 +383,25 @@ fun SessionScreen(
                                                 lines.add("$turn  $prompt  $completion  $total")
                                             }
                                         }
+
+                                        // Add Total row
+                                        val totalTokens = stats.totalPromptTokens + stats.totalCompletionTokens + stats.totalThinkingTokens
+                                        val totalPrompt = stats.totalPromptTokens.formatWithCommas().padStart(7)
+                                        val totalCompletion = stats.totalCompletionTokens.formatWithCommas().padStart(6)
+                                        val totalSum = totalTokens.formatWithCommas().padStart(6)
+
+                                        if (hasThinking) {
+                                            val totalThinking = stats.totalThinkingTokens.formatWithCommas().padStart(6)
+                                            lines.add("Total  $totalPrompt  $totalCompletion  $totalThinking  $totalSum")
+                                        } else {
+                                            lines.add("Total  $totalPrompt  $totalCompletion  $totalSum")
+                                        }
                                     }
 
                                     val maxLength = lines.maxOfOrNull { it.length } ?: 0
                                     val separator = "-".repeat(maxLength)
 
-                                    append(lines[0] + "\n")
+                                    append(lines.getOrElse(0, { "" }) + "\n")
                                     append(separator + "\n")
                                     for (i in 1 until lines.size) {
                                         if (lines[i].startsWith("Recent")) {

@@ -1,0 +1,15 @@
+{
+  "id": "project:spring-ai.agent.json",
+  "name": "Spring AI агент",
+  "prompts": [
+    "builtin:common-prompt-prefix.md",
+    "builtin:common.identity.md",
+    "builtin:developer.role.md",
+    "project:project-common.knowledge.md",
+    "project:spring-ai.role.md",
+    "env"
+  ],
+  "description": "Spring AI integration",
+  "createdAt": "2025-11-22T19:11:52Z",
+  "updatedAt": "2025-12-06T00:00:00Z"
+}

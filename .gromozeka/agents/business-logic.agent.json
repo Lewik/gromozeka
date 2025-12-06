@@ -1,0 +1,15 @@
+{
+  "id": "project:business-logic.agent.json",
+  "name": "Агент бизнес логики",
+  "prompts": [
+    "builtin:common-prompt-prefix.md",
+    "builtin:common.identity.md",
+    "builtin:developer.role.md",
+    "project:project-common.knowledge.md",
+    "project:business-logic.role.md",
+    "env"
+  ],
+  "description": "Business logic implementation",
+  "createdAt": "2025-11-22T19:11:52Z",
+  "updatedAt": "2025-12-06T00:00:00Z"
+}

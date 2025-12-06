@@ -1,0 +1,83 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://gromozeka.dev/schemas/agent.json",
+  "title": "Gromozeka Agent Configuration",
+  "description": "Configuration schema for Gromozeka AI agents",
+  "type": "object",
+  "required": ["id", "name", "prompts"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique agent identifier with scope prefix",
+      "pattern": "^(builtin|global|project):.+\\.agent\\.json$",
+      "examples": [
+        "builtin:meta.agent.json",
+        "project:architect.agent.json"
+      ]
+    },
+    "name": {
+      "type": "string",
+      "description": "Human-readable agent name displayed in UI",
+      "minLength": 1,
+      "examples": [
+        "Architect",
+        "Meta Agent",
+        "Архитектор"
+      ]
+    },
+    "description": {
+      "type": "string",
+      "description": "Brief description of agent's purpose",
+      "examples": [
+        "Domain architect",
+        "Agent builder"
+      ]
+    },
+    "prompts": {
+      "type": "array",
+      "description": "Ordered list of prompts to load (concatenated in order)",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "description": "Prompt reference with scope prefix or 'env' for environment context",
+        "oneOf": [
+          {
+            "const": "env",
+            "description": "Environment context (platform, date, paths) - MUST be last"
+          },
+          {
+            "pattern": "^builtin:.+\\.(identity|role|knowledge)\\.md$",
+            "description": "Builtin prompt (shipped with Gromozeka)"
+          },
+          {
+            "pattern": "^builtin:.+\\.md$",
+            "description": "Other builtin prompt (reserved, prefix, etc.)"
+          },
+          {
+            "pattern": "^global:.+\\.(identity|role|knowledge)\\.md$",
+            "description": "Global user prompt (~/.gromozeka/)"
+          },
+          {
+            "pattern": "^project:.+\\.(identity|role|knowledge)\\.md$",
+            "description": "Project prompt (.gromozeka/)"
+          },
+          {
+            "pattern": "^project:.+\\.md$",
+            "description": "Other project prompt"
+          }
+        ]
+      }
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO-8601 timestamp when agent was created"
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO-8601 timestamp when agent was last updated"
+    }
+  },
+  "additionalProperties": false
+}

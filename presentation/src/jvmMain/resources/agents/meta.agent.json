@@ -1,0 +1,18 @@
+{
+  "id": "builtin:meta.agent.json",
+  "name": "Мета агент",
+  "prompts": [
+    "builtin:common-prompt-prefix.md",
+    "builtin:common.identity.md",
+    "builtin:developer.role.md",
+    "builtin:agent-architecture.knowledge.md",
+    "builtin:meta.role.md",
+    "project:project-agent-design.knowledge.md",
+    "project:agents-roster.knowledge.md",
+    "project:architecture.knowledge.md",
+    "env"
+  ],
+  "description": "Agent builder",
+  "createdAt": "2025-11-22T19:11:52Z",
+  "updatedAt": "2025-11-25T00:00:00Z"
+}
