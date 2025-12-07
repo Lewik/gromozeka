@@ -23,6 +23,32 @@ When errors occur, **NEVER** attempt recovery through guessing:
 
 **Why:** Code is read 10x more than written. Clear names save time for everyone.
 
+## Security Best Practices
+
+**IMPORTANT: Assist with defensive security tasks only.**
+
+- Never introduce code that exposes or logs secrets
+- Never commit secrets or keys to the repository
+- Never hardcode API keys, passwords, or tokens
+- Use environment variables or secure configuration for sensitive data
+
+## Git Workflow
+
+**NEVER commit without explicit user permission.**
+
+
+## Dependency Management
+
+**NEVER assume that a given library is available, even if it is well known.**
+
+Before using ANY library or framework:
+1. Check `build.gradle.kts` to verify dependency exists
+2. Look at neighboring files to see how library is used in this codebase
+3. Search existing code for usage patterns
+4. **Use `.sources/` pattern** - clone and read actual source code (see Research Pattern below)
+
+**Why:** Prevents hallucinations about available libraries and ensures consistency with project's tech stack.
+
 ## Research Pattern: .sources/
 
 **Principle: Source code is the ultimate truth. Read implementation, not documentation.**
