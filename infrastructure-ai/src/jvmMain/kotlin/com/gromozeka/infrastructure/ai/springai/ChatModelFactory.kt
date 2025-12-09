@@ -11,6 +11,7 @@ import klog.KLoggers
 import org.springframework.ai.anthropic.AnthropicChatModel
 import org.springframework.ai.anthropic.AnthropicChatOptions
 import org.springframework.ai.anthropic.EnhancedAnthropicChatModel
+import org.springframework.ai.anthropic.PromptCachingFixedAnthropicChatModel
 import org.springframework.ai.anthropic.api.AnthropicCacheOptions
 import org.springframework.ai.anthropic.api.AnthropicCacheStrategy
 import org.springframework.ai.chat.model.ChatModel
@@ -175,26 +176,14 @@ class ChatModelFactory(
                     .toolContext(mapOf("projectPath" to projectPath))
                     .build()
 
-                val oauthConfig = oauthConfigService.getConfig()
-
-                if (oauthConfig?.enabled == true && oauthConfig.accessToken != null) {
-                    log.info("Using enhanced Anthropic chat model with system array format")
-                    EnhancedAnthropicChatModel(
-                        anthropicApi,
-                        options,
-                        toolCallingManager,
-                        retryTemplate,
-                        observationRegistry
-                    )
-                } else {
-                    AnthropicChatModel(
-                        anthropicApi,
-                        options,
-                        toolCallingManager,
-                        retryTemplate,
-                        observationRegistry
-                    )
-                }
+                log.info("Using prompt caching fixed Anthropic chat model with improved cache strategy")
+                PromptCachingFixedAnthropicChatModel(
+                    anthropicApi,
+                    options,
+                    toolCallingManager,
+                    retryTemplate,
+                    observationRegistry
+                )
             }
 
             AIProvider.CLAUDE_CODE -> {
