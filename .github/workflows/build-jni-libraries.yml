@@ -8,7 +8,7 @@
 #   5. Copy to: infrastructure-ai/src/jvmMain/resources/lib/
 #   6. Commit manually
 #
-# Platforms: Linux x64, macOS ARM64, macOS x64 (Windows x64 disabled due to CMake path escaping bug)
+# Platforms: Linux x64, macOS ARM64 (macOS x64 and Windows x64 disabled)
 
 name: Build JNI Libraries
 
@@ -34,10 +34,11 @@ jobs:
             lib-path: lib/macos/aarch64
             lib-name: libktreesitter-kotlin.dylib
             
-          - platform-key: macos-intel
-            os: macos-13
-            lib-path: lib/macos/x64
-            lib-name: libktreesitter-kotlin.dylib
+          # macOS-13 runners are retired: https://github.com/actions/runner-images/issues/13046
+          # - platform-key: macos-intel
+          #   os: macos-13
+          #   lib-path: lib/macos/x64
+          #   lib-name: libktreesitter-kotlin.dylib
             
           # TODO: Fix CMake path escaping for Windows
           # - platform-key: windows
