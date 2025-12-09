@@ -66,16 +66,4 @@ interface ThreadRepository {
      * @throws IllegalStateException if thread doesn't exist
      */
     suspend fun updateTimestamp(id: Conversation.Thread.Id, updatedAt: Instant)
-
-    /**
-     * Increments thread's turn counter and returns new value.
-     *
-     * Turn number tracks conversation progress (user + assistant = 1 turn).
-     * This is a TRANSACTIONAL operation - read-modify-write must be atomic.
-     *
-     * @param id thread to update
-     * @return new turn number after increment
-     * @throws IllegalStateException if thread doesn't exist
-     */
-    suspend fun incrementTurnNumber(id: Conversation.Thread.Id): Int
 }

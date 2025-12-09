@@ -7,14 +7,18 @@ import kotlin.jvm.JvmInline
 /**
  * Token usage statistics for single LLM API call.
  *
- * Tracks token consumption per conversation turn for cost estimation
- * and context window monitoring. Supports prompt caching and extended thinking.
+ * Tracks token consumption per API call for cost estimation and context window monitoring.
+ * Supports prompt caching and extended thinking.
+ *
+ * Uses immutable thread + message snapshot to reliably track which messages were included
+ * in the API call. Since threads are immutable (edits create new threads), the combination
+ * of threadId + lastMessageId uniquely identifies the conversation state at API call time.
  *
  * This is an immutable value type - use copy() to create modified versions.
  *
  * @property id unique statistics record identifier (UUIDv7)
  * @property threadId conversation thread this call belongs to
- * @property turnNumber sequential turn number in thread (user + assistant = 1 turn)
+ * @property lastMessageId last message in thread when API call was made (identifies snapshot)
  * @property timestamp when API call was made
  * @property promptTokens tokens in prompt (user messages + system prompt + context)
  * @property completionTokens tokens in assistant response
@@ -28,7 +32,7 @@ import kotlin.jvm.JvmInline
 data class TokenUsageStatistics(
     val id: Id,
     val threadId: Conversation.Thread.Id,
-    val turnNumber: Int,
+    val lastMessageId: Conversation.Message.Id,
     val timestamp: Instant,
     val promptTokens: Int,
     val completionTokens: Int,
