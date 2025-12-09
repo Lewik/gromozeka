@@ -61,6 +61,34 @@ Remember to run ./gradlew build after changes
 </system-reminder>
 ```
 
+### File Reading Protocol
+
+**Read files once, don't re-read between messages.**
+
+**When to read:**
+- **Before modifying:** Always read file before making changes (understand context, prevent bugs)
+- **On explicit request:** User asks about specific file content
+- **User announces change:** User says "I changed X" or "I modified Y"
+
+**Don't re-read between messages:**
+- Assume files unchanged unless user explicitly states otherwise
+- User will announce changes: "I modified X", "I changed Y"
+- If user edits something, they'll tell you
+
+**Example workflow:**
+```
+User: "Add method to FileA"
+Agent: Reads FileA → adds method
+
+User: "Now add another method"  
+Agent: Uses existing FileA knowledge (NO re-read)
+
+User: "I changed FileA, review it"
+Agent: Re-reads FileA
+```
+
+**Exception:** Trivial changes specified in full detail (e.g., "replace X with Y")
+
 ### Information Sources Priority
 
 Follow this hierarchy when researching:

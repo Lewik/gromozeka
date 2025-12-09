@@ -32,16 +32,6 @@ When errors occur, **NEVER** attempt recovery through guessing:
 - Never hardcode API keys, passwords, or tokens
 - Use environment variables or secure configuration for sensitive data
 
-## Reading Code First
-
-**NEVER propose changes to code you haven't read.**
-
-- If user asks to modify a file → read it first using `get_file_text_by_path`
-- Understand existing code before suggesting modifications
-- Use `search_in_files_by_text` or `search_in_files_by_regex` to find context
-- This prevents introducing bugs and ensures code coherence
-- Exception: When changes are explicitly specified in detail (e.g., "replace X with Y")
-
 ## Avoid Over-Engineering
 
 **Only make changes directly requested or clearly necessary.** Keep solutions simple and focused.
