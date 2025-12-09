@@ -123,7 +123,7 @@ internal object ToolExecutions : Table("tool_executions") {
 internal object TokenUsageStatisticsTable : Table("token_usage_statistics") {
     val id = varchar("id", 255)
     val threadId = varchar("thread_id", 255).references(Threads.id, onDelete = ReferenceOption.CASCADE)
-    val turnNumber = integer("turn_number")
+    val lastMessageId = varchar("last_message_id", 255).references(Messages.id, onDelete = ReferenceOption.CASCADE)
     val timestamp = timestamp("timestamp")
     val promptTokens = integer("prompt_tokens")
     val completionTokens = integer("completion_tokens")

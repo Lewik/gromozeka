@@ -17,19 +17,22 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.datetime.Clock
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
+import org.springframework.ai.anthropic.AnthropicChatOptions
+import org.springframework.ai.anthropic.api.AnthropicApi
+import org.springframework.ai.anthropic.api.AnthropicCacheOptions
+import org.springframework.ai.anthropic.api.AnthropicCacheStrategy
 import org.springframework.ai.chat.messages.SystemMessage
 import org.springframework.ai.chat.model.ChatResponse
 import org.springframework.ai.chat.model.ToolContext
 import org.springframework.ai.chat.prompt.ChatOptions
 import org.springframework.ai.chat.prompt.Prompt
-import org.springframework.ai.anthropic.api.AnthropicApi
 import org.springframework.ai.google.genai.metadata.GoogleGenAiUsage
 import org.springframework.ai.model.tool.ToolCallingChatOptions
+import org.springframework.ai.openai.OpenAiChatOptions
 import org.springframework.stereotype.Service
 import java.util.*
 
@@ -67,7 +70,9 @@ class ConversationEngineService(
      * Collect all available tools for user-controlled tool execution.
      * Tools are passed in runtime options to ToolCallingManager.
      */
-    private fun collectToolOptions(projectPath: String?): ChatOptions {
+    private fun collectToolOptions(projectPath: String?, provider: AIProvider): ChatOptions {
+        log.debug { "collectToolOptions: provider=$provider" }
+        
         val allCallbacks = mutableListOf<org.springframework.ai.tool.ToolCallback>()
         val allNames = mutableSetOf<String>()
 
@@ -84,12 +89,43 @@ class ConversationEngineService(
 
         log.debug { "Total tools for runtime options: ${allCallbacks.size}" }
 
-        return ToolCallingChatOptions.builder()
-            .toolCallbacks(allCallbacks)
-            .toolNames(allNames)
-            .internalToolExecutionEnabled(false)
-            .toolContext(mapOf("projectPath" to projectPath))
-            .build()
+        // Use Anthropic-specific options for caching support
+        return when (provider) {
+            AIProvider.ANTHROPIC -> {
+                val cacheOptions = AnthropicCacheOptions.builder()
+                    .strategy(AnthropicCacheStrategy.CONVERSATION_HISTORY)
+                    .build()
+
+                log.info { "Creating AnthropicChatOptions with caching strategy: ${cacheOptions.strategy}" }
+
+                AnthropicChatOptions.builder()
+                    .toolCallbacks(allCallbacks)
+                    .toolNames(allNames)
+                    .internalToolExecutionEnabled(false)
+                    .toolContext(mapOf("projectPath" to projectPath))
+                    .cacheOptions(cacheOptions)
+                    .build()
+                    .also { log.debug { "AnthropicChatOptions created with ${allCallbacks.size} tools and cache enabled" } }
+            }
+            AIProvider.OPEN_AI -> {
+                log.debug { "Creating OpenAiChatOptions for provider=$provider" }
+                OpenAiChatOptions.builder()
+                    .toolCallbacks(allCallbacks)
+                    .toolNames(allNames)
+                    .internalToolExecutionEnabled(false)
+                    .toolContext(mapOf("projectPath" to projectPath))
+                    .build()
+            }
+            else -> {
+                log.debug { "Creating standard ToolCallingChatOptions for provider=$provider" }
+                ToolCallingChatOptions.builder()
+                    .toolCallbacks(allCallbacks)
+                    .toolNames(allNames)
+                    .internalToolExecutionEnabled(false)
+                    .toolContext(mapOf("projectPath" to projectPath))
+                    .build()
+            }
+        }
     }
 
     /**
@@ -110,8 +146,9 @@ class ConversationEngineService(
         val conversation = conversationService.findById(conversationId)
             ?: throw IllegalStateException("Conversation not found: $conversationId")
         val projectPath = conversationService.getProjectPath(conversationId)
+        val provider = AIProvider.valueOf(conversation.aiProvider)
         val chatModel = chatModelProvider.getChatModel(
-            AIProvider.valueOf(conversation.aiProvider),
+            provider,
             conversation.modelName,
             projectPath
         )
@@ -124,7 +161,7 @@ class ConversationEngineService(
             .map { SystemMessage(it) }
 
         val springHistory = messageConversionService.convertHistoryToSpringAI(messages + userMessage)
-        val toolOptions = collectToolOptions(projectPath)
+        val toolOptions = collectToolOptions(projectPath, provider)
 
         var currentPrompt = Prompt(systemMessages + springHistory, toolOptions)
         var iterationCount = 0
@@ -152,8 +189,19 @@ class ConversationEngineService(
                 break
             }
 
+            val generation = chatResponse.results.firstOrNull()
+            if (generation == null) {
+                log.warn { "Empty response from chat model" }
+                break
+            }
+
+            val allToolCalls = chatResponse.results.flatMap { it.output.toolCalls }
+            val hasToolCalls = chatResponse.hasToolCalls()
+
+            val assistantMessage = createAssistantMessageFromResponse(conversationId, chatResponse)
+
+            // Save usage statistics with reference to the assistant message
             chatResponse.metadata.usage?.let { usage ->
-                val turnNumber = threadRepository.incrementTurnNumber(conversation.currentThread)
                 try {
                     val nativeUsage = usage.getNativeUsage()
 
@@ -170,11 +218,18 @@ class ConversationEngineService(
                         else -> 0
                     }
 
+                    val totalInputTokens = (usage.promptTokens ?: 0) + cacheCreation + cacheRead
+                    log.info { 
+                        "Tokens: prompt=${usage.promptTokens} (new), cache_creation=$cacheCreation, cache_read=$cacheRead, " +
+                        "total_input=$totalInputTokens, completion=${usage.completionTokens}, " +
+                        "total=${totalInputTokens + (usage.completionTokens ?: 0)}"
+                    }
+
                     tokenUsageStatisticsRepository.save(
                         TokenUsageStatistics(
                             id = TokenUsageStatistics.Id(UUID.randomUUID().toString()),
                             threadId = conversation.currentThread,
-                            turnNumber = turnNumber,
+                            lastMessageId = assistantMessage.id,
                             timestamp = Clock.System.now(),
                             promptTokens = usage.promptTokens ?: 0,
                             completionTokens = usage.completionTokens ?: 0,
@@ -186,20 +241,10 @@ class ConversationEngineService(
                         )
                     )
                 } catch (e: Exception) {
-                    log.error(e) { "Failed to save token usage statistics for turn $turnNumber" }
+                    log.error(e) { "Failed to save token usage statistics" }
                 }
             }
 
-            val generation = chatResponse.results.firstOrNull()
-            if (generation == null) {
-                log.warn { "Empty response from chat model" }
-                break
-            }
-
-            val allToolCalls = chatResponse.results.flatMap { it.output.toolCalls }
-            val hasToolCalls = chatResponse.hasToolCalls()
-
-            val assistantMessage = createAssistantMessageFromResponse(conversationId, chatResponse)
             emit(assistantMessage)
             conversationService.addMessage(conversationId, assistantMessage)
 

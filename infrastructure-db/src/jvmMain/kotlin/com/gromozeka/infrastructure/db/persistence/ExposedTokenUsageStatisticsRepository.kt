@@ -18,7 +18,7 @@ class ExposedTokenUsageStatisticsRepository : TokenUsageStatisticsRepository {
         TokenUsageStatisticsTable.insert {
             it[id] = stats.id.value
             it[threadId] = stats.threadId.value
-            it[turnNumber] = stats.turnNumber
+            it[lastMessageId] = stats.lastMessageId.value
             it[timestamp] = stats.timestamp.toKotlin()
             it[promptTokens] = stats.promptTokens
             it[completionTokens] = stats.completionTokens
@@ -38,12 +38,18 @@ class ExposedTokenUsageStatisticsRepository : TokenUsageStatisticsRepository {
 
         val lastCall = TokenUsageStatisticsTable.selectAll()
             .where { TokenUsageStatisticsTable.threadId eq threadId.value }
-            .orderBy(TokenUsageStatisticsTable.turnNumber, SortOrder.DESC)
+            .orderBy(TokenUsageStatisticsTable.timestamp, SortOrder.DESC)
             .limit(1)
             .firstOrNull()
             ?.toTokenUsageStatistics()
 
         val recentCalls = getRecentCalls(threadId, 10)
+
+        // Calculate current context size: all tokens visible to model in last call
+        // = new prompt tokens + cached tokens (creation + read) + completion tokens
+        val lastCallContextSize = lastCall?.let { call ->
+            call.promptTokens + call.cacheCreationTokens + call.cacheReadTokens + call.completionTokens
+        }
 
         TokenUsageStatistics.ThreadTotals(
             totalPromptTokens = stats.sumOf { it.promptTokens },
@@ -53,7 +59,7 @@ class ExposedTokenUsageStatisticsRepository : TokenUsageStatisticsRepository {
             totalThinkingTokens = stats.sumOf { it.thinkingTokens },
             lastCallTokens = lastCall?.totalTokens,
             recentCalls = recentCalls,
-            currentContextSize = lastCall?.promptTokens,
+            currentContextSize = lastCallContextSize,
             provider = lastCall?.provider,
             modelId = lastCall?.modelId
         )
@@ -65,7 +71,7 @@ class ExposedTokenUsageStatisticsRepository : TokenUsageStatisticsRepository {
     ): List<TokenUsageStatistics> = dbQuery {
         TokenUsageStatisticsTable.selectAll()
             .where { TokenUsageStatisticsTable.threadId eq threadId.value }
-            .orderBy(TokenUsageStatisticsTable.turnNumber, SortOrder.DESC)
+            .orderBy(TokenUsageStatisticsTable.timestamp, SortOrder.DESC)
             .limit(limit)
             .map { it.toTokenUsageStatistics() }
     }
@@ -73,7 +79,7 @@ class ExposedTokenUsageStatisticsRepository : TokenUsageStatisticsRepository {
     private fun ResultRow.toTokenUsageStatistics() = TokenUsageStatistics(
         id = TokenUsageStatistics.Id(this[TokenUsageStatisticsTable.id]),
         threadId = Conversation.Thread.Id(this[TokenUsageStatisticsTable.threadId]),
-        turnNumber = this[TokenUsageStatisticsTable.turnNumber],
+        lastMessageId = Conversation.Message.Id(this[TokenUsageStatisticsTable.lastMessageId]),
         timestamp = this[TokenUsageStatisticsTable.timestamp].toKotlinx(),
         promptTokens = this[TokenUsageStatisticsTable.promptTokens],
         completionTokens = this[TokenUsageStatisticsTable.completionTokens],

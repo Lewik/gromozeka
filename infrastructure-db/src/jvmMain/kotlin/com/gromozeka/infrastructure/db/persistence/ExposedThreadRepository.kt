@@ -49,21 +49,6 @@ class ExposedThreadRepository : ThreadRepository {
         }
     }
 
-    override suspend fun incrementTurnNumber(id: Conversation.Thread.Id): Int = dbQuery {
-        val row = Threads.selectAll()
-            .where { Threads.id eq id.value }
-            .forUpdate()
-            .single()
-
-        val newTurn = row[Threads.lastTurnNumber] + 1
-
-        Threads.update({ Threads.id eq id.value }) {
-            it[lastTurnNumber] = newTurn
-        }
-
-        newTurn
-    }
-
     private fun ResultRow.toThread() = Conversation.Thread(
         id = Conversation.Thread.Id(this[Threads.id]),
         conversationId = Conversation.Id(this[Threads.conversationId]),
