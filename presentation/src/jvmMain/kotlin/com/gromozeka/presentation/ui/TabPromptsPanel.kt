@@ -51,7 +51,7 @@ fun TabPromptsPanel(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        "Tab Prompts",
+                        "Agent",
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold
                     )

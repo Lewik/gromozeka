@@ -197,7 +197,7 @@ Messages in your current thread may be from:
 ### How Thread Switching Works
 
 **Current mechanism (manual):**
-User explicitly switches agents via UI (TabSettingsPanel).
+User explicitly switches agents via UI (AgentPanel).
 
 **Future mechanism (automated via MCP):**
 Agents will be able to invoke MCP tool to switch thread to another specialist:

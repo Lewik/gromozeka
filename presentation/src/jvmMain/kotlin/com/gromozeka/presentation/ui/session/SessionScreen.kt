@@ -10,7 +10,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.MergeType
 import androidx.compose.material.icons.automirrored.filled.Subject
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -167,122 +169,6 @@ fun SessionScreen(
 
                         Spacer(modifier = Modifier.width(8.dp))
 
-                        // Token usage statistics
-                        tokenStats?.let { stats ->
-                            CompactButton(
-                                onClick = { },
-                                tooltipMonospace = true,
-                                tooltipNoWrap = true,
-                                tooltip = buildString {
-                                    fun Int.formatWithCommas(): String =
-                                        this.toString().reversed().chunked(3).joinToString(",").reversed()
-
-                                    val lines = mutableListOf<String>()
-
-                                    val contextWindow = stats.modelId?.let {
-                                        com.gromozeka.domain.model.ModelContextWindows.getContextWindow(it)
-                                    }
-                                    val currentContext = stats.currentContextSize
-
-                                    if (currentContext != null && contextWindow != null) {
-                                        val percentage = (currentContext.toFloat() / contextWindow * 100).toInt()
-                                        lines.add("Context Window: $percentage% (${currentContext.formatWithCommas()} / ${contextWindow.formatWithCommas()})")
-                                    } else if (currentContext != null) {
-                                        lines.add("Context Window: ${currentContext.formatWithCommas()} tokens")
-                                    }
-
-                                    if (stats.recentCalls.isNotEmpty()) {
-                                        lines.add("")
-                                        lines.add("Recent ${stats.recentCalls.size} Turns:")
-
-                                        val hasThinking = stats.recentCalls.any { it.thinkingTokens > 0 }
-
-                                        if (hasThinking) {
-                                            lines.add("Turn  Prompt  Compl  Think  Total")
-                                        } else {
-                                            lines.add("Turn  Prompt  Compl  Total")
-                                        }
-
-                                        stats.recentCalls.forEachIndexed { index, call ->
-                                            val turn = (index + 1).toString().padStart(4)
-                                            // Total input tokens = new prompt + cache creation + cache read
-                                            val totalInputTokens =
-                                                call.promptTokens + call.cacheCreationTokens + call.cacheReadTokens
-                                            val prompt = totalInputTokens.formatWithCommas().padStart(7)
-                                            val completion = call.completionTokens.formatWithCommas().padStart(6)
-                                            val total = (totalInputTokens + call.completionTokens).formatWithCommas()
-                                                .padStart(6)
-
-                                            if (hasThinking) {
-                                                val thinking = call.thinkingTokens.formatWithCommas().padStart(6)
-                                                lines.add("$turn  $prompt  $completion  $thinking  $total")
-                                            } else {
-                                                lines.add("$turn  $prompt  $completion  $total")
-                                            }
-                                        }
-
-                                        // Add Total row
-                                        // Total input = all prompt + cache creation + cache read
-                                        val totalInputTokens =
-                                            stats.totalPromptTokens + stats.totalCacheCreationTokens + stats.totalCacheReadTokens
-                                        val totalTokens =
-                                            totalInputTokens + stats.totalCompletionTokens + stats.totalThinkingTokens
-                                        val totalPrompt = totalInputTokens.formatWithCommas().padStart(7)
-                                        val totalCompletion = stats.totalCompletionTokens.formatWithCommas().padStart(6)
-                                        val totalSum = totalTokens.formatWithCommas().padStart(6)
-
-                                        if (hasThinking) {
-                                            val totalThinking = stats.totalThinkingTokens.formatWithCommas().padStart(6)
-                                            lines.add("Total  $totalPrompt  $totalCompletion  $totalThinking  $totalSum")
-                                        } else {
-                                            lines.add("Total  $totalPrompt  $totalCompletion  $totalSum")
-                                        }
-                                    }
-
-                                    val maxLength = lines.maxOfOrNull { it.length } ?: 0
-                                    val separator = "-".repeat(maxLength)
-
-                                    append(lines.getOrElse(0) { "" } + "\n")
-                                    append(separator + "\n")
-                                    for (i in 1 until lines.size) {
-                                        if (lines[i].startsWith("Recent")) {
-                                            append("\n" + lines[i] + "\n")
-                                            append(separator + "\n")
-                                        } else {
-                                            append(lines[i] + "\n")
-                                        }
-                                    }
-                                }
-                            ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(
-                                        Icons.Default.Assessment,
-                                        contentDescription = "Tokens"
-                                    )
-                                    Spacer(modifier = Modifier.width(4.dp))
-
-                                    val contextPercentage = stats.currentContextSize?.let { currentContext ->
-                                        stats.modelId?.let { modelId ->
-                                            com.gromozeka.domain.model.ModelContextWindows.getContextWindow(modelId)
-                                                ?.let { contextWindow ->
-                                                    (currentContext.toFloat() / contextWindow * 100).toInt()
-                                                }
-                                        }
-                                    }
-
-                                    if (contextPercentage != null) {
-                                        Text("$contextPercentage%")
-                                    } else {
-                                        val totalTokens =
-                                            stats.totalPromptTokens + stats.totalCompletionTokens + stats.totalThinkingTokens
-                                        Text("$totalTokens")
-                                    }
-                                }
-                            }
-
-                            Spacer(modifier = Modifier.width(8.dp))
-                        }
-
                         // Context extraction button
                         onExtractContexts?.let { extractCallback ->
                             CompactButton(
@@ -307,12 +193,37 @@ fun SessionScreen(
                             Spacer(modifier = Modifier.width(8.dp))
                         }
 
-                        // Tab Prompts button
+                        // Agent button
+                        val stats = tokenStats
+                        val contextPercentage = stats?.currentContextSize?.let { currentContext ->
+                            stats.modelId?.let { modelId ->
+                                com.gromozeka.domain.model.ModelContextWindows.getContextWindow(modelId)
+                                    ?.let { contextWindow ->
+                                        (currentContext.toFloat() / contextWindow * 100).toInt()
+                                    }
+                            }
+                        }
+                        
                         CompactButton(
                             onClick = { onShowPromptsPanelChange(true) },
-                            tooltip = "Tab Prompts"
+                            tooltip = "Agent",
+                            colors = if (contextPercentage != null && contextPercentage >= 70) {
+                                ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.tertiary
+                                )
+                            } else {
+                                ButtonDefaults.buttonColors()
+                            }
                         ) {
-                            Icon(Icons.Default.Description, contentDescription = "Tab Prompts")
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.Psychology, contentDescription = "Agent")
+
+                                // Show context window percentage if available
+                                contextPercentage?.let { percentage ->
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("$percentage%")
+                                }
+                            }
                         }
 
                         Spacer(modifier = Modifier.width(8.dp))

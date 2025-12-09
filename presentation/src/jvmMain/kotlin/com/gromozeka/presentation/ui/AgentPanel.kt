@@ -21,15 +21,16 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.gromozeka.domain.model.Agent
+import com.gromozeka.domain.model.TokenUsageStatistics
 import com.gromozeka.domain.repository.AgentDomainService
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import klog.KLoggers
 
-private val log = KLoggers.logger("TabSettingsPanel")
+private val log = KLoggers.logger("AgentPanel")
 
 @Composable
-fun TabSettingsPanel(
+fun AgentPanel(
     projectPath: String,
     isVisible: Boolean,
     currentAgent: Agent,
@@ -37,6 +38,7 @@ fun TabSettingsPanel(
     onClose: () -> Unit,
     agentService: AgentDomainService,
     coroutineScope: CoroutineScope,
+    tokenStats: TokenUsageStatistics.ThreadTotals?,
     modifier: Modifier = Modifier,
 ) {
     var agents by remember { mutableStateOf<List<Agent>>(emptyList()) }
@@ -49,7 +51,7 @@ fun TabSettingsPanel(
             error = null
             try {
                 val loadedAgents = agentService.findAll(projectPath)
-                
+
                 agents = loadedAgents.sortedWith(
                     compareBy<Agent> { agent ->
                         when (val type = agent.type) {
@@ -60,7 +62,7 @@ fun TabSettingsPanel(
                         }
                     }.thenBy { it.name }
                 )
-                
+
                 log.info { "Loaded ${agents.size} agents (PROJECT first)" }
             } catch (e: Exception) {
                 error = "Failed to load agents: ${e.message}"
@@ -93,7 +95,7 @@ fun TabSettingsPanel(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        "Tab Settings",
+                        "Agent",
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold
                     )
@@ -102,6 +104,14 @@ fun TabSettingsPanel(
                         Icon(Icons.Default.Close, contentDescription = "Close")
                     }
                 }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Token Statistics Table at the top
+                TokenStatisticsTable(
+                    tokenStats = tokenStats,
+                    modifier = Modifier.fillMaxWidth()
+                )
 
                 Spacer(modifier = Modifier.height(16.dp))
 
