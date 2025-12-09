@@ -1,6 +1,5 @@
 package com.gromozeka.presentation.ui.session
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -8,22 +7,23 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.selection.DisableSelection
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.MergeType
+import androidx.compose.material.icons.automirrored.filled.Subject
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.gromozeka.presentation.services.TTSQueueService
-import com.gromozeka.presentation.model.Settings
-import com.gromozeka.presentation.ui.CompactButton
-import com.gromozeka.presentation.ui.LocalTranslation
-import com.gromozeka.presentation.ui.viewmodel.TabViewModel
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.TtsTask
+import com.gromozeka.presentation.model.Settings
+import com.gromozeka.presentation.services.TTSQueueService
+import com.gromozeka.presentation.ui.CompactButton
+import com.gromozeka.presentation.ui.LocalTranslation
+import com.gromozeka.presentation.ui.ToggleButtonGroup
+import com.gromozeka.presentation.ui.viewmodel.TabViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
@@ -115,227 +115,60 @@ fun SessionScreen(
         SelectionContainer(modifier = Modifier.weight(1f)) {
             Column(modifier = Modifier.fillMaxSize()) {
                 DisableSelection {
+                    // Row 1: Navigation buttons (New, Fork, Restart) + Info buttons (Message count, Token stats, etc.)
                     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        // Edit mode toggle button
-                        CompactButton(
-                            onClick = { viewModel.toggleEditMode() },
-                            colors = if (uiState.editMode) ButtonDefaults.buttonColors() else ButtonDefaults.outlinedButtonColors(),
-                            border = if (!uiState.editMode) BorderStroke(1.dp, MaterialTheme.colorScheme.outline) else null,
-                            tooltip = if (uiState.editMode) "Exit edit mode" else "Enter edit mode"
-                        ) {
-                            Icon(
-                                Icons.Default.Edit,
-                                contentDescription = "Edit mode"
-                            )
+                        // Navigation buttons (left side)
+                        CompactButton(onClick = onNewSession) {
+                            Text(LocalTranslation.current.newSessionShort)
                         }
 
                         Spacer(modifier = Modifier.width(8.dp))
 
-                        val selectionOptions = remember {
-                            listOf(
-                                com.gromozeka.presentation.ui.ToggleButtonOption(Icons.Default.SelectAll, "Select/Deselect All"),
-                                com.gromozeka.presentation.ui.ToggleButtonOption(Icons.Default.Person, "User Messages"),
-                                com.gromozeka.presentation.ui.ToggleButtonOption(Icons.Default.DeveloperBoard, "Assistant Messages"),
-                                com.gromozeka.presentation.ui.ToggleButtonOption(Icons.Default.Psychology, "Thinking Blocks"),
-                                com.gromozeka.presentation.ui.ToggleButtonOption(Icons.Default.Build, "Tool Calls"),
-                                com.gromozeka.presentation.ui.ToggleButtonOption(Icons.Default.ChatBubbleOutline, "Plain Messages"),
-                            )
+                        CompactButton(onClick = onForkSession) {
+                            Text(LocalTranslation.current.forkButton)
                         }
 
-                        val selectedIndices = remember(filteredHistory, uiState.selectedMessageIds) {
-                            buildSet {
-                                if (uiState.selectedMessageIds.size == filteredHistory.size && filteredHistory.isNotEmpty()) {
-                                    add(0)
-                                }
+                        Spacer(modifier = Modifier.width(8.dp))
 
-                                val userMessages = filteredHistory.filter { it.role == Conversation.Message.Role.USER }
-                                if (userMessages.isNotEmpty() && userMessages.all { it.id in uiState.selectedMessageIds }) {
-                                    add(1)
-                                }
-
-                                val assistantMessages = filteredHistory.filter { it.role == Conversation.Message.Role.ASSISTANT }
-                                if (assistantMessages.isNotEmpty() && assistantMessages.all { it.id in uiState.selectedMessageIds }) {
-                                    add(2)
-                                }
-
-                                val thinkingMessages = filteredHistory.filter { message ->
-                                    message.content.any { it is Conversation.Message.ContentItem.Thinking }
-                                }
-                                if (thinkingMessages.isNotEmpty() && thinkingMessages.all { it.id in uiState.selectedMessageIds }) {
-                                    add(3)
-                                }
-
-                                val toolMessages = filteredHistory.filter { message ->
-                                    message.content.any { it is Conversation.Message.ContentItem.ToolCall }
-                                }
-                                if (toolMessages.isNotEmpty() && toolMessages.all { it.id in uiState.selectedMessageIds }) {
-                                    add(4)
-                                }
-
-                                val plainMessages = filteredHistory.filter { message ->
-                                    message.content.none { it is Conversation.Message.ContentItem.Thinking } &&
-                                    message.content.none { it is Conversation.Message.ContentItem.ToolCall }
-                                }
-                                if (plainMessages.isNotEmpty() && plainMessages.all { it.id in uiState.selectedMessageIds }) {
-                                    add(5)
-                                }
-                            }
-                        }
-
-                        if (uiState.editMode) {
-                            com.gromozeka.presentation.ui.ToggleButtonGroup(
-                                options = selectionOptions,
-                                selectedIndices = selectedIndices,
-                                onToggle = { index ->
-                                    when (index) {
-                                        0 -> viewModel.toggleSelectAll(filteredHistory.map { it.id }.toSet())
-                                        1 -> viewModel.toggleSelectUserMessages()
-                                        2 -> viewModel.toggleSelectAssistantMessages()
-                                        3 -> viewModel.toggleSelectThinkingMessages()
-                                        4 -> viewModel.toggleSelectToolMessages()
-                                        5 -> viewModel.toggleSelectPlainMessages()
-                                    }
-                                }
-                            )
-
-                            Spacer(modifier = Modifier.width(8.dp))
-                        }
-
-                        // Action buttons (always visible in edit mode)
-                        if (uiState.editMode) {
-                            // Concat - disabled when 0 or 1 message selected
-                            CompactButton(
-                                onClick = {
-                                    coroutineScope.launch {
-                                        viewModel.squashSelectedMessages()
-                                    }
-                                },
-                                enabled = uiState.selectedMessageIds.size >= 2,
-                                tooltip = "Concatenate messages (instant, no AI)"
-                            ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(Icons.Default.MergeType, contentDescription = "Concat")
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text("Concat")
-                                }
-                            }
-
-                            Spacer(modifier = Modifier.width(8.dp))
-
-                            // Distill - disabled when 0 messages selected
-                            CompactButton(
-                                onClick = {
-                                    coroutineScope.launch {
-                                        viewModel.distillSelectedMessages()
-                                    }
-                                },
-                                enabled = uiState.selectedMessageIds.size >= 1,
-                                tooltip = "Distill messages (AI context transfer)"
-                            ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(Icons.Default.Compress, contentDescription = "Distill")
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text("Distill")
-                                }
-                            }
-
-                            Spacer(modifier = Modifier.width(8.dp))
-
-                            // Summarize - disabled when 0 messages selected
-                            CompactButton(
-                                onClick = {
-                                    coroutineScope.launch {
-                                        viewModel.summarizeSelectedMessages()
-                                    }
-                                },
-                                enabled = uiState.selectedMessageIds.size >= 1,
-                                tooltip = "Summarize messages (AI history compression)"
-                            ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(Icons.Default.Subject, contentDescription = "Summarize")
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text("Summarize")
-                                }
-                            }
-
-                            Spacer(modifier = Modifier.width(8.dp))
-
-                            // Delete - disabled when 0 messages selected
-                            CompactButton(
-                                onClick = {
-                                    coroutineScope.launch {
-                                        viewModel.deleteSelectedMessages()
-                                    }
-                                },
-                                enabled = uiState.selectedMessageIds.size >= 1,
-                                tooltip = "Delete selected message(s)"
-                            ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(Icons.Default.Delete, contentDescription = "Delete")
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text("Delete")
-                                }
-                            }
-
-                            Spacer(modifier = Modifier.width(8.dp))
-
-                            // Selected count
-                            Text("Selected: ${uiState.selectedMessageIds.size}")
-                        }
-
-                        if (!uiState.editMode) {
-                            CompactButton(onClick = onNewSession) {
-                                Text(LocalTranslation.current.newSessionShort)
-                            }
-
-                            Spacer(modifier = Modifier.width(8.dp))
-
-                            CompactButton(onClick = onForkSession) {
-                                Text(LocalTranslation.current.forkButton)
-                            }
-
-                            Spacer(modifier = Modifier.width(8.dp))
-
-                            CompactButton(onClick = onRestartSession) {
-                                Text(LocalTranslation.current.restartButton)
-                            }
+                        CompactButton(onClick = onRestartSession) {
+                            Text(LocalTranslation.current.restartButton)
                         }
 
                         Spacer(modifier = Modifier.weight(1f))
 
-                        // Right-side buttons
-                        if (uiState.editMode) {
-                            // Exit edit mode button (replaces all other buttons in edit mode)
-                            CompactButton(
-                                onClick = { viewModel.toggleEditMode() },
-                                tooltip = "Exit edit mode"
-                            ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(Icons.Default.Close, contentDescription = "Exit edit mode")
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text("Exit Edit Mode")
-                                }
+//                        // Right-side buttons
+//                        if (uiState.editMode) {
+//                            // Exit edit mode button (replaces all other buttons in edit mode)
+//                            CompactButton(
+//                                onClick = { viewModel.toggleEditMode() },
+//                                tooltip = "Exit edit mode"
+//                            ) {
+//                                Row(verticalAlignment = Alignment.CenterVertically) {
+//                                    Icon(Icons.Default.Close, contentDescription = "Exit edit mode")
+//                                    Spacer(modifier = Modifier.width(4.dp))
+//                                    Text("Exit Edit Mode")
+//                                }
+//                            }
+//                        } else {
+                        // Message count
+                        CompactButton(
+                            onClick = { },
+                            tooltip = LocalTranslation.current.messageCountTooltip.format(filteredHistory.size)
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    Icons.Default.ChatBubbleOutline,
+                                    contentDescription = "Messages"
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("${filteredHistory.size}")
                             }
-                        } else {
-                            // Message count
-                            CompactButton(
-                                onClick = { },
-                                tooltip = LocalTranslation.current.messageCountTooltip.format(filteredHistory.size)
-                            ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(
-                                        Icons.Default.ChatBubbleOutline,
-                                        contentDescription = "Messages"
-                                    )
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text("${filteredHistory.size}")
-                                }
-                            }
+                        }
 
-                            Spacer(modifier = Modifier.width(8.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
 
-                            // Token usage statistics
-                            tokenStats?.let { stats ->
+                        // Token usage statistics
+                        tokenStats?.let { stats ->
                             CompactButton(
                                 onClick = { },
                                 tooltipMonospace = true,
@@ -373,10 +206,12 @@ fun SessionScreen(
                                         stats.recentCalls.forEachIndexed { index, call ->
                                             val turn = (index + 1).toString().padStart(4)
                                             // Total input tokens = new prompt + cache creation + cache read
-                                            val totalInputTokens = call.promptTokens + call.cacheCreationTokens + call.cacheReadTokens
+                                            val totalInputTokens =
+                                                call.promptTokens + call.cacheCreationTokens + call.cacheReadTokens
                                             val prompt = totalInputTokens.formatWithCommas().padStart(7)
                                             val completion = call.completionTokens.formatWithCommas().padStart(6)
-                                            val total = (totalInputTokens + call.completionTokens).formatWithCommas().padStart(6)
+                                            val total = (totalInputTokens + call.completionTokens).formatWithCommas()
+                                                .padStart(6)
 
                                             if (hasThinking) {
                                                 val thinking = call.thinkingTokens.formatWithCommas().padStart(6)
@@ -388,8 +223,10 @@ fun SessionScreen(
 
                                         // Add Total row
                                         // Total input = all prompt + cache creation + cache read
-                                        val totalInputTokens = stats.totalPromptTokens + stats.totalCacheCreationTokens + stats.totalCacheReadTokens
-                                        val totalTokens = totalInputTokens + stats.totalCompletionTokens + stats.totalThinkingTokens
+                                        val totalInputTokens =
+                                            stats.totalPromptTokens + stats.totalCacheCreationTokens + stats.totalCacheReadTokens
+                                        val totalTokens =
+                                            totalInputTokens + stats.totalCompletionTokens + stats.totalThinkingTokens
                                         val totalPrompt = totalInputTokens.formatWithCommas().padStart(7)
                                         val totalCompletion = stats.totalCompletionTokens.formatWithCommas().padStart(6)
                                         val totalSum = totalTokens.formatWithCommas().padStart(6)
@@ -405,7 +242,7 @@ fun SessionScreen(
                                     val maxLength = lines.maxOfOrNull { it.length } ?: 0
                                     val separator = "-".repeat(maxLength)
 
-                                    append(lines.getOrElse(0, { "" }) + "\n")
+                                    append(lines.getOrElse(0) { "" } + "\n")
                                     append(separator + "\n")
                                     for (i in 1 until lines.size) {
                                         if (lines[i].startsWith("Recent")) {
@@ -436,7 +273,8 @@ fun SessionScreen(
                                     if (contextPercentage != null) {
                                         Text("$contextPercentage%")
                                     } else {
-                                        val totalTokens = stats.totalPromptTokens + stats.totalCompletionTokens + stats.totalThinkingTokens
+                                        val totalTokens =
+                                            stats.totalPromptTokens + stats.totalCompletionTokens + stats.totalThinkingTokens
                                         Text("$totalTokens")
                                     }
                                 }
@@ -487,17 +325,184 @@ fun SessionScreen(
                             Icon(Icons.Default.Settings, contentDescription = LocalTranslation.current.settingsTooltip)
                         }
 
-                            // Close tab button (if onCloseTab callback is provided)
-                            onCloseTab?.let { closeCallback ->
-                                Spacer(modifier = Modifier.width(8.dp))
-                                CompactButton(
-                                    onClick = closeCallback,
-                                    tooltip = LocalTranslation.current.closeTabTooltip
-                                ) {
-                                    Icon(Icons.Default.Close, contentDescription = LocalTranslation.current.closeTabTooltip)
+                        // Close tab button (if onCloseTab callback is provided)
+                        onCloseTab?.let { closeCallback ->
+                            Spacer(modifier = Modifier.width(8.dp))
+                            CompactButton(
+                                onClick = closeCallback,
+                                tooltip = LocalTranslation.current.closeTabTooltip
+                            ) {
+                                Icon(Icons.Default.Close, contentDescription = LocalTranslation.current.closeTabTooltip)
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    // Row 2: Message editing tools (selection buttons + action buttons)
+                    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        // Selection buttons
+                        val selectionOptions = remember {
+                            listOf(
+                                com.gromozeka.presentation.ui.ToggleButtonOption(
+                                    Icons.Default.SelectAll,
+                                    "Select/Deselect All"
+                                ),
+                                com.gromozeka.presentation.ui.ToggleButtonOption(Icons.Default.Person, "User Messages"),
+                                com.gromozeka.presentation.ui.ToggleButtonOption(
+                                    Icons.Default.DeveloperBoard,
+                                    "Assistant Messages"
+                                ),
+                                com.gromozeka.presentation.ui.ToggleButtonOption(
+                                    Icons.Default.Psychology,
+                                    "Thinking Blocks"
+                                ),
+                                com.gromozeka.presentation.ui.ToggleButtonOption(Icons.Default.Build, "Tool Calls"),
+                                com.gromozeka.presentation.ui.ToggleButtonOption(
+                                    Icons.Default.ChatBubbleOutline,
+                                    "Plain Messages"
+                                ),
+                            )
+                        }
+
+                        val selectedIndices = remember(filteredHistory, uiState.selectedMessageIds) {
+                            buildSet {
+                                if (uiState.selectedMessageIds.size == filteredHistory.size && filteredHistory.isNotEmpty()) {
+                                    add(0)
+                                }
+
+                                val userMessages = filteredHistory.filter { it.role == Conversation.Message.Role.USER }
+                                if (userMessages.isNotEmpty() && userMessages.all { it.id in uiState.selectedMessageIds }) {
+                                    add(1)
+                                }
+
+                                val assistantMessages =
+                                    filteredHistory.filter { it.role == Conversation.Message.Role.ASSISTANT }
+                                if (assistantMessages.isNotEmpty() && assistantMessages.all { it.id in uiState.selectedMessageIds }) {
+                                    add(2)
+                                }
+
+                                val thinkingMessages = filteredHistory.filter { message ->
+                                    message.content.any { it is Conversation.Message.ContentItem.Thinking }
+                                }
+                                if (thinkingMessages.isNotEmpty() && thinkingMessages.all { it.id in uiState.selectedMessageIds }) {
+                                    add(3)
+                                }
+
+                                val toolMessages = filteredHistory.filter { message ->
+                                    message.content.any { it is Conversation.Message.ContentItem.ToolCall }
+                                }
+                                if (toolMessages.isNotEmpty() && toolMessages.all { it.id in uiState.selectedMessageIds }) {
+                                    add(4)
+                                }
+
+                                val plainMessages = filteredHistory.filter { message ->
+                                    message.content.none { it is Conversation.Message.ContentItem.Thinking } &&
+                                            message.content.none { it is Conversation.Message.ContentItem.ToolCall }
+                                }
+                                if (plainMessages.isNotEmpty() && plainMessages.all { it.id in uiState.selectedMessageIds }) {
+                                    add(5)
                                 }
                             }
                         }
+
+                        ToggleButtonGroup(
+                            options = selectionOptions,
+                            selectedIndices = selectedIndices,
+                            onToggle = { index ->
+                                when (index) {
+                                    0 -> viewModel.toggleSelectAll(filteredHistory.map { it.id }.toSet())
+                                    1 -> viewModel.toggleSelectUserMessages()
+                                    2 -> viewModel.toggleSelectAssistantMessages()
+                                    3 -> viewModel.toggleSelectThinkingMessages()
+                                    4 -> viewModel.toggleSelectToolMessages()
+                                    5 -> viewModel.toggleSelectPlainMessages()
+                                }
+                            }
+                        )
+
+                        Spacer(modifier = Modifier.width(8.dp))
+
+                        // Action buttons
+                        // Concat - disabled when 0 or 1 message selected
+                        CompactButton(
+                            onClick = {
+                                coroutineScope.launch {
+                                    viewModel.squashSelectedMessages()
+                                }
+                            },
+                            enabled = uiState.selectedMessageIds.size >= 2,
+                            tooltip = "Concatenate messages (instant, no AI)"
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.AutoMirrored.Filled.MergeType, contentDescription = "Concat")
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Concat")
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.width(8.dp))
+
+                        // Distill - disabled when 0 messages selected
+                        CompactButton(
+                            onClick = {
+                                coroutineScope.launch {
+                                    viewModel.distillSelectedMessages()
+                                }
+                            },
+                            enabled = uiState.selectedMessageIds.isNotEmpty(),
+                            tooltip = "Distill messages (AI context transfer)"
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.Compress, contentDescription = "Distill")
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Distill")
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.width(8.dp))
+
+                        // Summarize - disabled when 0 messages selected
+                        CompactButton(
+                            onClick = {
+                                coroutineScope.launch {
+                                    viewModel.summarizeSelectedMessages()
+                                }
+                            },
+                            enabled = uiState.selectedMessageIds.isNotEmpty(),
+                            tooltip = "Summarize messages (AI history compression)"
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.AutoMirrored.Filled.Subject, contentDescription = "Summarize")
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Summarize")
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.width(8.dp))
+
+                        // Delete - disabled when 0 messages selected
+                        CompactButton(
+                            onClick = {
+                                coroutineScope.launch {
+                                    viewModel.deleteSelectedMessages()
+                                }
+                            },
+                            enabled = uiState.selectedMessageIds.isNotEmpty(),
+                            tooltip = "Delete selected message(s)"
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.Delete, contentDescription = "Delete")
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Delete")
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.weight(1f))
+
+                        // Selected count (right side)
+                        Text("Selected: ${uiState.selectedMessageIds.size}")
+
                     }
                 }
 
@@ -637,29 +642,29 @@ fun SessionScreen(
                 }
             }
         }
-    }
 
-    // JSON Dialog at top level to avoid hierarchy issues
-    jsonToShow?.let { json ->
-        JsonDialog(
-            json = json,
-            onDismiss = { viewModel.jsonToShow = null }
-        )
-    }
+        // JSON Dialog at top level to avoid hierarchy issues
+        jsonToShow?.let { json ->
+            JsonDialog(
+                json = json,
+                onDismiss = { viewModel.jsonToShow = null }
+            )
+        }
 
-    // Edit message dialog at top level to avoid hierarchy issues
-    if (uiState.editingMessageId != null) {
-        EditMessageDialog(
-            messageText = uiState.editingMessageText,
-            onTextChange = { viewModel.updateEditingMessageText(it) },
-            onConfirm = {
-                coroutineScope.launch {
-                    viewModel.confirmEditMessage()
+        // Edit message dialog at top level to avoid hierarchy issues
+        if (uiState.editingMessageId != null) {
+            EditMessageDialog(
+                messageText = uiState.editingMessageText,
+                onTextChange = { viewModel.updateEditingMessageText(it) },
+                onConfirm = {
+                    coroutineScope.launch {
+                        viewModel.confirmEditMessage()
+                    }
+                },
+                onDismiss = {
+                    viewModel.cancelEditMessage()
                 }
-            },
-            onDismiss = {
-                viewModel.cancelEditMessage()
-            }
-        )
+            )
+        }
     }
 }
