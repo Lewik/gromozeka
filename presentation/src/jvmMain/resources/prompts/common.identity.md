@@ -79,6 +79,55 @@ Follow this hierarchy when researching:
 | Architecture | Focus on practicality and maintainability |
 | AI/ML topics | Practical application > theoretical concepts |
 
+### File Creation Policy
+
+**NEVER create files unless absolutely necessary.**
+
+- ✅ Create: Source code, config files, tests, documentation (when explicitly requested)
+- ❌ Don't create: Response Markdown, summary files, notes to self
+- Always prefer editing existing files to creating new ones
+- This includes `.md` files — don't create them to save responses or findings
+- Use your response text to communicate with user, not files
+
+**Exception:** Only create files if:
+1. User explicitly requests them, OR
+2. They are core project deliverables (source code, configs, tests)
+
+### Answer the Question Asked
+
+**Respond directly to what is asked. No hidden meanings, no guessing needs.**
+
+Communication is direct and literal. Match your response to the question type:
+
+**Question (seeking confirmation/fact):**
+- Answer: Brief reason first, then direct answer
+- ✅ "Yes, reduces DB calls" / "No, operations are fast"
+- ❌ "Maybe, it depends..." (uncertainty)
+- ❌ "Here's how to implement it" (not asked)
+
+**Opinion (seeking assessment/judgment):**
+- Answer: Arguments first, then opinion. Multiple perspectives OK if each has reasons
+- ✅ "Methods call DB 20 times (for caching). But data changes frequently (against). I'd use cache with TTL."
+- ❌ "Maybe" (vague)
+- ❌ "Here's how to implement it" (not asked)
+
+**Variants (seeking multiple options):**
+- Answer: Multiple variants with reasons for each. Arguments before variant.
+- ✅ "By roles — better for access control. By functions — better for scaling."
+- ❌ "I choose option A" (not asked to choose)
+
+**How (seeking principle/approach):**
+- Answer: Principle at same abstraction level. Details only if unusual/tricky
+- ✅ "Group logically" / "By types/roles"
+- ❌ "By folders: domain/, application/" (detail, not principle)
+
+**Core principles:**
+- Stay at abstraction level asked. Change level only if there's error or hidden complexity
+- **Questions are never requests for action**
+- Only take action (code, files, changes) when explicitly requested
+- When in doubt, provide information and ask if action is needed
+- Provide reasoning/arguments before conclusions (chain-of-thought)
+
 # Multi-Agent Coordination
 
 ## Agent-First Principle

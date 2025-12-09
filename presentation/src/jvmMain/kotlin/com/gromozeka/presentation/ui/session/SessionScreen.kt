@@ -370,11 +370,13 @@ fun SessionScreen(
                                             lines.add("Turn  Prompt  Compl  Total")
                                         }
 
-                                        stats.recentCalls.forEach { call ->
-                                            val turn = call.turnNumber.toString().padStart(4)
-                                            val prompt = call.promptTokens.formatWithCommas().padStart(7)
+                                        stats.recentCalls.forEachIndexed { index, call ->
+                                            val turn = (index + 1).toString().padStart(4)
+                                            // Total input tokens = new prompt + cache creation + cache read
+                                            val totalInputTokens = call.promptTokens + call.cacheCreationTokens + call.cacheReadTokens
+                                            val prompt = totalInputTokens.formatWithCommas().padStart(7)
                                             val completion = call.completionTokens.formatWithCommas().padStart(6)
-                                            val total = call.totalTokens.formatWithCommas().padStart(6)
+                                            val total = (totalInputTokens + call.completionTokens).formatWithCommas().padStart(6)
 
                                             if (hasThinking) {
                                                 val thinking = call.thinkingTokens.formatWithCommas().padStart(6)
@@ -385,8 +387,10 @@ fun SessionScreen(
                                         }
 
                                         // Add Total row
-                                        val totalTokens = stats.totalPromptTokens + stats.totalCompletionTokens + stats.totalThinkingTokens
-                                        val totalPrompt = stats.totalPromptTokens.formatWithCommas().padStart(7)
+                                        // Total input = all prompt + cache creation + cache read
+                                        val totalInputTokens = stats.totalPromptTokens + stats.totalCacheCreationTokens + stats.totalCacheReadTokens
+                                        val totalTokens = totalInputTokens + stats.totalCompletionTokens + stats.totalThinkingTokens
+                                        val totalPrompt = totalInputTokens.formatWithCommas().padStart(7)
                                         val totalCompletion = stats.totalCompletionTokens.formatWithCommas().padStart(6)
                                         val totalSum = totalTokens.formatWithCommas().padStart(6)
 
