@@ -8,7 +8,7 @@
 #   5. Copy to: infrastructure-ai/src/jvmMain/resources/lib/
 #   6. Commit manually
 #
-# Platforms: Linux x64, macOS ARM64, macOS x64, Windows x64
+# Platforms: Linux x64, macOS ARM64, macOS x64 (Windows x64 disabled due to CMake path escaping bug)
 
 name: Build JNI Libraries
 
@@ -39,10 +39,11 @@ jobs:
             lib-path: lib/macos/x64
             lib-name: libktreesitter-kotlin.dylib
             
-          - platform-key: windows
-            os: windows-latest
-            lib-path: lib/windows/x64
-            lib-name: ktreesitter-kotlin.dll
+          # TODO: Fix CMake path escaping for Windows
+          # - platform-key: windows
+          #   os: windows-latest
+          #   lib-path: lib/windows/x64
+          #   lib-name: ktreesitter-kotlin.dll
     
     steps:
       - name: Checkout repository
@@ -70,10 +71,11 @@ jobs:
         run: |
           brew install cmake
       
-      - name: Install build tools (Windows)
-        if: runner.os == 'Windows'
-        run: |
-          choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System'
+      # TODO: Re-enable when Windows CMake path bug is fixed
+      # - name: Install build tools (Windows)
+      #   if: runner.os == 'Windows'
+      #   run: |
+      #     choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System'
       
       - name: Clone tree-sitter-kotlin grammar
         run: |
