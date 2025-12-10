@@ -37,7 +37,8 @@ class ConversationApplicationService(
     private val threadRepo: ThreadRepository,
     private val messageRepo: MessageRepository,
     private val threadMessageRepo: ThreadMessageRepository,
-    private val projectService: ProjectDomainService
+    private val projectService: ProjectDomainService,
+    private val toolCallPairingService: ToolCallPairingService
 ) : ConversationDomainService {
     private val log = KLoggers.logger(this)
 
@@ -353,59 +354,6 @@ class ConversationApplicationService(
     }
 
     /**
-     * Deletes single message by creating new thread without it.
-     *
-     * Creates new thread containing all messages except deleted one,
-     * reindexes positions sequentially. Original thread preserved for history/undo.
-     *
-     * @param conversationId conversation containing message
-     * @param messageId message to delete
-     * @return updated conversation with new current thread
-     * @throws IllegalStateException if conversation doesn't exist
-     * @throws IllegalArgumentException if message not found in current thread
-     */
-    @Transactional
-    override suspend fun deleteMessage(
-        conversationId: Conversation.Id,
-        messageId: Conversation.Message.Id
-    ): Conversation? {
-        val conversation = conversationRepo.findById(conversationId)
-            ?: throw IllegalStateException("Conversation not found: $conversationId")
-
-        val currentThreadId = conversation.currentThread
-        val currentThread = threadRepo.findById(currentThreadId)!!
-        val messages = threadMessageRepo.getMessagesByThread(currentThreadId)
-        val links = threadMessageRepo.getByThread(currentThreadId)
-
-        val targetMessage = messages.find { it.id == messageId }
-            ?: throw IllegalArgumentException("Message $messageId not found in thread $currentThreadId")
-
-        val newThread = Conversation.Thread(
-            id = Conversation.Thread.Id(uuid7()),
-            conversationId = conversationId,
-            originalThread = currentThreadId,
-            createdAt = Clock.System.now(),
-            updatedAt = Clock.System.now()
-        )
-
-        threadRepo.save(newThread)
-
-        val newLinks = links
-            .filter { it.messageId != messageId }
-            .mapIndexed { index, link ->
-                link.copy(threadId = newThread.id, position = index)
-            }
-
-        threadMessageRepo.addBatch(newLinks)
-
-        conversationRepo.updateCurrentThread(conversationId, newThread.id)
-
-        log.debug("Deleted message $messageId, created new thread ${newThread.id}")
-
-        return conversationRepo.findById(conversationId)
-    }
-
-    /**
      * Deletes multiple messages by creating new thread without them.
      *
      * Creates new thread containing all messages except deleted ones,
@@ -439,6 +387,39 @@ class ConversationApplicationService(
             throw IllegalArgumentException("Some messages not found in thread $currentThreadId")
         }
 
+        // Build pairing map and find IDs in deleted messages
+        val pairingMap = toolCallPairingService.buildPairingMap(messages)
+        
+        // Collect ToolCall IDs from deleted messages that are paired (have ToolResult)
+        val deletingPairedToolCallIds = targetMessages
+            .flatMap { it.content }
+            .filterIsInstance<Conversation.Message.ContentItem.ToolCall>()
+            .filter { pairingMap[it.id]?.toolResult != null }
+            .map { it.id }
+            .toSet()
+        
+        // Collect ToolResult IDs from deleted messages that are paired (have ToolCall)
+        val deletingPairedToolResultIds = targetMessages
+            .flatMap { it.content }
+            .filterIsInstance<Conversation.Message.ContentItem.ToolResult>()
+            .filter { pairingMap[it.toolUseId]?.toolCall != null }
+            .map { it.toolUseId }
+            .toSet()
+        
+        // Find messages containing paired ToolCalls/ToolResults
+        val pairedMessageIds = messages
+            .filter { it.id !in messageIds }
+            .filter { message ->
+                message.content.any { content ->
+                    (content is Conversation.Message.ContentItem.ToolResult && content.toolUseId in deletingPairedToolCallIds) ||
+                    (content is Conversation.Message.ContentItem.ToolCall && content.id in deletingPairedToolResultIds)
+                }
+            }
+            .map { it.id }
+            .toSet()
+        
+        val allIdsToDelete = messageIds.toSet() + pairedMessageIds
+
         val newThread = Conversation.Thread(
             id = Conversation.Thread.Id(uuid7()),
             conversationId = conversationId,
@@ -450,7 +431,7 @@ class ConversationApplicationService(
         threadRepo.save(newThread)
 
         val newLinks = links
-            .filter { it.messageId !in messageIds }
+            .filter { it.messageId !in allIdsToDelete }
             .mapIndexed { index, link ->
                 link.copy(threadId = newThread.id, position = index)
             }
@@ -459,7 +440,7 @@ class ConversationApplicationService(
 
         conversationRepo.updateCurrentThread(conversationId, newThread.id)
 
-        log.debug("Deleted ${messageIds.size} message(s), created new thread ${newThread.id}")
+        log.debug("Deleted ${messageIds.size} message(s) + ${pairedMessageIds.size} paired, created new thread ${newThread.id}")
 
         return conversationRepo.findById(conversationId)
     }

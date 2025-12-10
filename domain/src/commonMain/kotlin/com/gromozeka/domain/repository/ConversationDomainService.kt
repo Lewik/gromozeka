@@ -169,28 +169,6 @@ interface ConversationDomainService {
     ): Conversation?
 
     /**
-     * Creates new thread without specified message.
-     *
-     * Immutable thread pattern: original thread preserved, new thread created.
-     *
-     * This is a COMPLEX TRANSACTIONAL operation:
-     * 1. Create new thread (originalThread = currentThread)
-     * 2. Copy thread-message links, filtering out target message
-     * 3. Reindex positions (close gaps)
-     * 4. Update conversation.currentThread
-     *
-     * @param conversationId conversation identifier
-     * @param messageId message to remove
-     * @return updated conversation with new current thread
-     * @throws IllegalStateException if conversation not found
-     * @throws IllegalArgumentException if message not found in current thread
-     */
-    suspend fun deleteMessage(
-        conversationId: Conversation.Id,
-        messageId: Conversation.Message.Id
-    ): Conversation?
-
-    /**
      * Creates new thread without specified messages (batch delete).
      *
      * Immutable thread pattern: original thread preserved, new thread created.

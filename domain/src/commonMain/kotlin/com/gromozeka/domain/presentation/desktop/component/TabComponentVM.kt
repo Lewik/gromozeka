@@ -324,15 +324,6 @@ interface TabComponentVM {
     suspend fun confirmEditMessage()
     
     /**
-     * Delete single message.
-     * This is a TRANSACTIONAL operation - removes message atomically.
-     * Reloads messages after deletion.
-     *
-     * @param messageId message to delete
-     */
-    suspend fun deleteMessage(messageId: Conversation.Message.Id)
-    
-    /**
      * Delete all selected messages.
      * This is a TRANSACTIONAL operation - removes all messages atomically.
      * Clears selection and reloads messages.

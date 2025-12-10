@@ -597,7 +597,7 @@ class TabViewModel(
 
     suspend fun deleteMessage(messageId: Conversation.Message.Id) {
         try {
-            conversationService.deleteMessage(conversationId, messageId)
+            conversationService.deleteMessages(conversationId, listOf(messageId))
             loadMessages()
             log.debug { "Message $messageId deleted successfully" }
         } catch (e: Exception) {

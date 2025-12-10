@@ -63,6 +63,7 @@ class ConversationEngineService(
     private val coroutineScope: CoroutineScope,
     private val vectorMemoryService: com.gromozeka.domain.service.VectorMemoryService,
     private val knowledgeGraphService: com.gromozeka.domain.service.KnowledgeGraphService?,
+    private val toolCallPairingService: ToolCallPairingService
 ) {
     private val log = KLoggers.logger(this)
 
@@ -156,11 +157,50 @@ class ConversationEngineService(
 
         conversationService.addMessage(conversationId, userMessage)
 
+        // Check for orphaned ToolCalls and add error ToolResults if needed
+        val updatedMessages = conversationService.loadCurrentMessages(conversationId)
+        val pairingMap = toolCallPairingService.buildPairingMap(updatedMessages)
+        
+        // Filter orphaned ToolCalls (no ToolResult)
+        val orphanedToolCalls = pairingMap.values
+            .filter { it.toolResult == null }
+            .mapNotNull { it.toolCall }
+        
+        if (orphanedToolCalls.isNotEmpty()) {
+            log.warn { "Found ${orphanedToolCalls.size} orphaned ToolCall(s), adding error ToolResults" }
+            
+            orphanedToolCalls.forEach { toolCall ->
+                val errorResultMessage = Conversation.Message(
+                    id = Conversation.Message.Id(UUID.randomUUID().toString()),
+                    conversationId = conversationId,
+                    role = Conversation.Message.Role.USER,
+                    content = listOf(
+                        ContentItem.ToolResult(
+                            toolUseId = toolCall.id,
+                            toolName = toolCall.call.name,
+                            result = listOf(
+                                ContentItem.ToolResult.Data.Text("Tool execution interrupted")
+                            ),
+                            isError = true,
+                            state = BlockState.COMPLETE
+                        )
+                    ),
+                    createdAt = Clock.System.now()
+                )
+                conversationService.addMessage(conversationId, errorResultMessage)
+            }
+        }
+
         val systemMessages = agentDomainService
             .assembleSystemPrompt(agent, projectPath)
             .map { SystemMessage(it) }
 
-        val springHistory = messageConversionService.convertHistoryToSpringAI(messages + userMessage)
+        val finalMessages = if (orphanedToolCalls.isNotEmpty()) {
+            conversationService.loadCurrentMessages(conversationId)
+        } else {
+            updatedMessages
+        }
+        val springHistory = messageConversionService.convertHistoryToSpringAI(finalMessages)
         val toolOptions = collectToolOptions(projectPath, provider)
 
         var currentPrompt = Prompt(systemMessages + springHistory, toolOptions)
