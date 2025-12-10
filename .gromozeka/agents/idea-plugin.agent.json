@@ -1,0 +1,15 @@
+{
+  "id": "project:idea-plugin.agent.json",
+  "name": "IDEA Plugin",
+  "prompts": [
+    "builtin:common-prompt-prefix.md",
+    "builtin:common.identity.md",
+    "builtin:developer.role.md",
+    "project:project-common.knowledge.md",
+    "project:idea-plugin.role.md",
+    "env"
+  ],
+  "description": "IntelliJ IDEA plugin developer",
+  "createdAt": "2025-12-10T00:00:00Z",
+  "updatedAt": "2025-12-10T00:00:00Z"
+}

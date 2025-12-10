@@ -44,3 +44,10 @@ List of Gromozeka development agents. All agents work in parallel, each in their
 **Module:** Cross-cutting
 **Output:** Build artifacts, git tags, DMG/AppImage/MSI packages  
 **Key focus:** Quiet mode verification, version management, GitHub releases
+
+### IDEA Plugin Agent
+**Role:** IntelliJ IDEA Plugin Developer  
+**Module:** `:idea-plugin` (will be created)
+**Spring:** NO (IntelliJ Platform plugin)
+**Output:** `idea-plugin/src/main/kotlin/`, `idea-plugin/src/main/resources/META-INF/plugin.xml`  
+**Key focus:** Actions, Extensions, Services, PSI operations, UI DSL, Gradle configuration
