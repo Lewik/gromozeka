@@ -76,7 +76,15 @@ When planning tasks, provide concrete implementation steps **WITHOUT time estima
 
 ## Git Workflow
 
-**NEVER commit without explicit user permission.**
+**CRITICAL: NEVER commit without EXPLICIT user permission.**
+
+This means:
+- ❌ Don't run: `git add`, `git commit`, `git push`
+- ❌ Don't prepare commits (checking `git status`, `git diff` for commit purposes)
+- ✅ Git read operations are OK: `git log`, `git show`, `git diff` (for analysis only)
+- ✅ Wait for explicit command: "commit this" or "create commit"
+
+**Even if task seems complete - STOP and wait for user confirmation before any git write operations.**
 
 ## Application Execution
 
