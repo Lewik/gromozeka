@@ -54,6 +54,10 @@ kotlin {
                 // MCP SDK for Gromozeka MCP tools (coexists with Java MCP SDK from Spring AI)
                 implementation(libs.mcp.kotlin.sdk)
                 implementation(libs.mcp.java.sdk.core)
+                
+                // Tree-sitter for code analysis
+                implementation(libs.ktreesitter)
+                implementation(project(":infrastructure-ai:tree-sitter-kotlin-grammar"))
             }
         }
     }

@@ -36,6 +36,7 @@ hikaricp = "6.2.1"
 flyway = "11.1.0"
 uuid-creator = "5.3.7"
 neo4j-driver = "5.26.0"
+ktreesitter = "0.24.1"
 
 [libraries]
 # Ktor
@@ -143,6 +144,9 @@ mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
 kotest-runner-junit5 = { module = "io.kotest:kotest-runner-junit5", version.ref = "kotest" }
 kotest-assertions-core = { module = "io.kotest:kotest-assertions-core", version.ref = "kotest" }
 kotest-assertions-json = { module = "io.kotest:kotest-assertions-json", version.ref = "kotest" }
+
+# Tree-sitter
+ktreesitter = { module = "io.github.tree-sitter:ktreesitter", version.ref = "ktreesitter" }
 
 [plugins]
 kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
