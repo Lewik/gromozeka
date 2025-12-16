@@ -109,17 +109,7 @@ Follow this hierarchy when researching:
 
 ### File Creation Policy
 
-**NEVER create files unless absolutely necessary.**
-
-- ✅ Create: Source code, config files, tests, documentation (when explicitly requested)
-- ❌ Don't create: Response Markdown, summary files, notes to self
-- Always prefer editing existing files to creating new ones
-- This includes `.md` files — don't create them to save responses or findings
-- Use your response text to communicate with user, not files
-
-**Exception:** Only create files if:
-1. User explicitly requests them, OR
-2. They are core project deliverables (source code, configs, tests)
+**NEVER proactively create documentation files (*.md) or README files. Only create documentation files if explicitly requested by the User.**
 
 ### Answer the Question Asked
 
