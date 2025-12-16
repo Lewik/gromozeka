@@ -10,12 +10,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.gromozeka.domain.model.Agent
+import com.gromozeka.domain.model.AgentDefinition
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AgentListItem(
-    agent: Agent,
+    agent: AgentDefinition,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
     modifier: Modifier = Modifier
@@ -43,7 +43,7 @@ fun AgentListItem(
                         )
                         
                         when (val type = agent.type) {
-                            is Agent.Type.Builtin -> {
+                            is AgentDefinition.Type.Builtin -> {
                                 Spacer(modifier = Modifier.width(8.dp))
                                 AssistChip(
                                     onClick = {},
@@ -51,7 +51,7 @@ fun AgentListItem(
                                     enabled = false
                                 )
                             }
-                            is Agent.Type.Global -> {
+                            is AgentDefinition.Type.Global -> {
                                 Spacer(modifier = Modifier.width(8.dp))
                                 AssistChip(
                                     onClick = {},
@@ -59,10 +59,10 @@ fun AgentListItem(
                                     enabled = false
                                 )
                             }
-                            is Agent.Type.Project -> {
+                            is AgentDefinition.Type.Project -> {
                                 // No chip for project agents
                             }
-                            is Agent.Type.Inline -> {
+                            is AgentDefinition.Type.Inline -> {
                                 Spacer(modifier = Modifier.width(8.dp))
                                 AssistChip(
                                     onClick = {},
@@ -91,7 +91,7 @@ fun AgentListItem(
                         )
                     }
                     
-                    if (agent.type !is Agent.Type.Builtin) {
+                    if (agent.type !is AgentDefinition.Type.Builtin) {
                         IconButton(onClick = onDelete) {
                             Icon(
                                 Icons.Default.Delete,

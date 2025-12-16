@@ -2,7 +2,7 @@ package com.gromozeka.domain.repository
 
 import com.gromozeka.domain.model.ConversationInitiator
 import com.gromozeka.domain.model.Tab
-import com.gromozeka.domain.model.Agent
+import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 
 /**
@@ -58,7 +58,7 @@ interface TabManager {
      */
     suspend fun createTab(
         projectPath: String,
-        agent: Agent? = null,
+        agent: AgentDefinition? = null,
         conversationId: Conversation.Id? = null,
         initialMessage: Conversation.Message? = null,
         setAsCurrent: Boolean = true,
@@ -129,7 +129,7 @@ interface TabManager {
     data class TabInfo(
         val tabId: Tab.Id,
         val conversationId: Conversation.Id,
-        val agentId: Agent.Id,
+        val agentId: AgentDefinition.Id,
         val projectPath: String,
         val isWaitingForResponse: Boolean,
         val parentTabId: Tab.Id?

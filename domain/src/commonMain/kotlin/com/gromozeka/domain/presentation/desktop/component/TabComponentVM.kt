@@ -1,6 +1,6 @@
 package com.gromozeka.domain.presentation.desktop.component
 
-import com.gromozeka.domain.model.Agent
+import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.TokenUsageStatistics
 import kotlinx.coroutines.flow.StateFlow
@@ -206,7 +206,7 @@ interface TabComponentVM {
      *
      * @param agent new agent to handle this conversation
      */
-    fun updateAgent(agent: Agent)
+    fun updateAgent(agent: AgentDefinition)
     
     /**
      * Update custom tab display name.
@@ -400,7 +400,7 @@ interface TabComponentVM {
         val customName: String?,
         val tabId: String,
         val parentTabId: String?,
-        val agent: Agent,
+        val agent: AgentDefinition,
         val editMode: Boolean,
         val selectedMessageIds: Set<Conversation.Message.Id>,
         val collapsedMessageIds: Set<Conversation.Message.Id>,

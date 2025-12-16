@@ -1,6 +1,6 @@
 package com.gromozeka.infrastructure.db.persistence
 
-import com.gromozeka.domain.model.Agent
+import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Prompt
 import klog.KLoggers
 import kotlinx.datetime.Instant
@@ -21,13 +21,16 @@ class BuiltinAgentLoader {
         val id: String,
         val name: String,
         val prompts: List<String>,
+        val aiProvider: String = "ANTHROPIC",
+        val modelName: String = "claude-3-5-sonnet-20241022",
+        val tools: List<String> = emptyList(),
         val description: String? = null,
         val createdAt: Instant,
         val updatedAt: Instant
     )
 
-    fun loadBuiltinAgents(): List<Agent> {
-        val agents = mutableListOf<Agent>()
+    fun loadBuiltinAgents(): List<AgentDefinition> {
+        val agents = mutableListOf<AgentDefinition>()
         
         try {
             val resources = resourceResolver.getResources("classpath:/agents/*.json")
@@ -43,14 +46,17 @@ class BuiltinAgentLoader {
                     
                     val dto = json.decodeFromString<AgentDTO>(content)
                     
-                    val id = Agent.Id("builtin:$fileName")
+                    val id = AgentDefinition.Id("builtin:$fileName")
                     
-                    val agent = Agent(
+                    val agent = AgentDefinition(
                         id = id,
                         name = dto.name,
                         prompts = dto.prompts.map { Prompt.Id(it) },
+                        aiProvider = dto.aiProvider,
+                        modelName = dto.modelName,
+                        tools = dto.tools,
                         description = dto.description,
-                        type = Agent.Type.Builtin,
+                        type = AgentDefinition.Type.Builtin,
                         createdAt = dto.createdAt,
                         updatedAt = dto.updatedAt
                     )

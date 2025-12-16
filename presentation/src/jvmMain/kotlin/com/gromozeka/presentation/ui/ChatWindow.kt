@@ -29,16 +29,16 @@ import com.gromozeka.presentation.ui.session.SessionScreen
 import com.gromozeka.domain.model.ConversationInitiator
 import com.gromozeka.presentation.ui.viewmodel.AppViewModel
 import com.gromozeka.domain.model.Conversation
-import com.gromozeka.domain.repository.ProjectDomainService
-import com.gromozeka.domain.repository.ConversationDomainService
-import com.gromozeka.domain.repository.AgentDomainService
-import com.gromozeka.domain.repository.PromptDomainService
+import com.gromozeka.domain.service.ProjectDomainService
+import com.gromozeka.domain.service.ConversationDomainService
+import com.gromozeka.domain.service.AgentDomainService
+import com.gromozeka.domain.service.PromptDomainService
 import com.gromozeka.infrastructure.ai.oauth.OAuthService
 import com.gromozeka.presentation.ui.agents.AgentConstructorScreen
+import com.gromozeka.shared.uuid.uuid7
 import klog.KLoggers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import java.util.*
 import kotlinx.datetime.Clock
 
 @Composable
@@ -124,7 +124,7 @@ fun ApplicationScope.ChatWindow(
             coroutineScope.launch {
                 try {
                     val chatMessage = Conversation.Message(
-                        id = Conversation.Message.Id(UUID.randomUUID().toString()),
+                        id = Conversation.Message.Id(uuid7()),
                         conversationId = Conversation.Id(""),
                         role = Conversation.Message.Role.USER,
                         content = listOf(Conversation.Message.ContentItem.UserMessage(initialMessage)),

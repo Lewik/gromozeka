@@ -1,6 +1,6 @@
-package com.gromozeka.domain.repository
+package com.gromozeka.domain.service
 
-import com.gromozeka.domain.model.Agent
+import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Prompt
 
 /**
@@ -11,7 +11,7 @@ import com.gromozeka.domain.model.Prompt
  * - Prompts and descriptions can be updated independently
  * - All agents use ordered list of prompts for behavior definition
  *
- * @see Agent for domain model
+ * @see AgentDefinition for domain model
  * @see AgentRepository for persistence operations
  */
 interface AgentDomainService {
@@ -32,8 +32,8 @@ interface AgentDomainService {
         name: String,
         prompts: List<Prompt.Id>,
         description: String? = null,
-        type: Agent.Type
-    ): Agent
+        type: AgentDefinition.Type
+    ): AgentDefinition
 
     /**
      * Assembles system prompts for agent.
@@ -45,7 +45,7 @@ interface AgentDomainService {
      * @param projectPath optional project path for Dynamic prompts (e.g., Environment)
      * @return list of prompt contents
      */
-    suspend fun assembleSystemPrompt(agent: Agent, projectPath: String): List<String>
+    suspend fun assembleSystemPrompt(agent: AgentDefinition, projectPath: String): List<String>
 
     /**
      * Finds agent by unique identifier.
@@ -53,7 +53,7 @@ interface AgentDomainService {
      * @param id agent identifier
      * @return agent if found, null otherwise
      */
-    suspend fun findById(id: Agent.Id): Agent?
+    suspend fun findById(id: AgentDefinition.Id): AgentDefinition?
 
     /**
      * Retrieves all agents in system.
@@ -63,7 +63,7 @@ interface AgentDomainService {
      * @param projectPath path to current project (for loading PROJECT agents), null for global context
      * @return all agents (builtin, global, project-specific, and inline)
      */
-    suspend fun findAll(projectPath: String? = null): List<Agent>
+    suspend fun findAll(projectPath: String? = null): List<AgentDefinition>
 
     /**
      * Updates agent prompts or description.
@@ -77,10 +77,10 @@ interface AgentDomainService {
      * @return updated agent, or null if agent not found
      */
     suspend fun update(
-        id: Agent.Id,
+        id: AgentDefinition.Id,
         prompts: List<Prompt.Id>? = null,
         description: String? = null
-    ): Agent?
+    ): AgentDefinition?
 
     /**
      * Deletes agent definition.
@@ -94,7 +94,7 @@ interface AgentDomainService {
      *
      * @param id agent to delete
      */
-    suspend fun delete(id: Agent.Id)
+    suspend fun delete(id: AgentDefinition.Id)
 
     /**
      * Counts total number of agents.

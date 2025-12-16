@@ -1,6 +1,6 @@
 package com.gromozeka.infrastructure.db.persistence
 
-import com.gromozeka.domain.model.Agent
+import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Prompt
 import klog.KLoggers
 import kotlinx.datetime.Instant
@@ -20,12 +20,15 @@ class FileSystemAgentScanner {
         val id: String,
         val name: String,
         val prompts: List<String>,
+        val aiProvider: String = "ANTHROPIC",
+        val modelName: String = "claude-3-5-sonnet-20241022",
+        val tools: List<String> = emptyList(),
         val description: String? = null,
         val createdAt: Instant,
         val updatedAt: Instant
     )
 
-    fun scanGlobalAgents(): List<Agent> {
+    fun scanGlobalAgents(): List<AgentDefinition> {
         val gromozekaHome = System.getProperty("GROMOZEKA_HOME") 
             ?: throw IllegalStateException("GROMOZEKA_HOME system property not set")
         
@@ -41,7 +44,7 @@ class FileSystemAgentScanner {
         return scanAgentsFromDirectory(agentsDir, isGlobal = true)
     }
     
-    fun scanProjectAgents(projectPath: String): List<Agent> {
+    fun scanProjectAgents(projectPath: String): List<AgentDefinition> {
         val agentsDir = File(projectPath, ".gromozeka/agents")
         
         log.info { "Scanning PROJECT agents from: ${agentsDir.absolutePath}" }
@@ -54,7 +57,7 @@ class FileSystemAgentScanner {
         return scanAgentsFromDirectory(agentsDir, isGlobal = false)
     }
     
-    fun scanProjectAgents(): List<Agent> {
+    fun scanProjectAgents(): List<AgentDefinition> {
         val projectRoot = findProjectRoot()
         
         if (projectRoot == null) {
@@ -91,7 +94,7 @@ class FileSystemAgentScanner {
     private fun scanAgentsFromDirectory(
         directory: File,
         isGlobal: Boolean
-    ): List<Agent> {
+    ): List<AgentDefinition> {
         val agentFiles = directory.listFiles { file -> 
             file.isFile && file.extension == "json"
         } ?: emptyArray()
@@ -106,16 +109,19 @@ class FileSystemAgentScanner {
                 val dto = json.decodeFromString<AgentDTO>(content)
                 
                 val id = if (isGlobal) {
-                    Agent.Id("global:${file.name}")
+                    AgentDefinition.Id("global:${file.name}")
                 } else {
-                    Agent.Id("project:${file.name}")
+                    AgentDefinition.Id("project:${file.name}")
                 }
-                val type = if (isGlobal) Agent.Type.Global else Agent.Type.Project
+                val type = if (isGlobal) AgentDefinition.Type.Global else AgentDefinition.Type.Project
                 
-                val agent = Agent(
+                val agent = AgentDefinition(
                     id = id,
                     name = dto.name,
                     prompts = dto.prompts.map { Prompt.Id(it) },
+                    aiProvider = dto.aiProvider,
+                    modelName = dto.modelName,
+                    tools = dto.tools,
                     description = dto.description,
                     type = type,
                     createdAt = dto.createdAt,
@@ -139,7 +145,7 @@ class FileSystemAgentScanner {
      * Loads a single agent by ID from filesystem.
      * Supports global:filename and project:filename formats.
      */
-    fun loadAgentById(id: Agent.Id, projectPath: String?): Agent? {
+    fun loadAgentById(id: AgentDefinition.Id, projectPath: String?): AgentDefinition? {
         val idValue = id.value
 
         return when {
@@ -159,12 +165,15 @@ class FileSystemAgentScanner {
                     val content = file.readText()
                     val dto = json.decodeFromString<AgentDTO>(content)
 
-                    Agent(
+                    AgentDefinition(
                         id = id,
                         name = dto.name,
                         prompts = dto.prompts.map { Prompt.Id(it) },
+                        aiProvider = dto.aiProvider,
+                        modelName = dto.modelName,
+                        tools = dto.tools,
                         description = dto.description,
-                        type = Agent.Type.Global,
+                        type = AgentDefinition.Type.Global,
                         createdAt = dto.createdAt,
                         updatedAt = dto.updatedAt
                     )
@@ -192,12 +201,15 @@ class FileSystemAgentScanner {
                     val content = file.readText()
                     val dto = json.decodeFromString<AgentDTO>(content)
 
-                    Agent(
+                    AgentDefinition(
                         id = id,
                         name = dto.name,
                         prompts = dto.prompts.map { Prompt.Id(it) },
+                        aiProvider = dto.aiProvider,
+                        modelName = dto.modelName,
+                        tools = dto.tools,
                         description = dto.description,
-                        type = Agent.Type.Project,
+                        type = AgentDefinition.Type.Project,
                         createdAt = dto.createdAt,
                         updatedAt = dto.updatedAt
                     )

@@ -4,8 +4,8 @@
 //import com.gromozeka.domain.model.AIProvider
 //import com.gromozeka.domain.model.Agent
 //import com.gromozeka.domain.model.Conversation
-//import com.gromozeka.domain.repository.AgentDomainService
-//import com.gromozeka.domain.repository.ConversationDomainService
+//import com.gromozeka.domain.service.AgentDomainService
+//import com.gromozeka.domain.service.ConversationDomainService
 //import com.gromozeka.domain.repository.ThreadMessageRepository
 //import com.gromozeka.domain.repository.ThreadRepository
 //import com.gromozeka.domain.repository.TokenUsageStatisticsRepository

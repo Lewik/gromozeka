@@ -60,5 +60,11 @@ kotlin {
                 implementation(project(":infrastructure-ai:tree-sitter-kotlin-grammar"))
             }
         }
+        
+        val jvmTest by getting {
+            dependencies {
+                implementation(kotlin("test"))
+            }
+        }
     }
 }

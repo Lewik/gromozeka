@@ -1,6 +1,6 @@
 package com.gromozeka.domain.repository
 
-import com.gromozeka.domain.model.Agent
+import com.gromozeka.domain.model.AgentDefinition
 
 /**
  * Repository for managing AI agent definitions.
@@ -8,7 +8,7 @@ import com.gromozeka.domain.model.Agent
  * Handles persistence of reusable agent role templates (e.g., "Code Reviewer", "Security Expert").
  * Each agent can be used in multiple conversation sessions.
  *
- * @see Agent for domain model
+ * @see AgentDefinition for domain model
  */
 interface AgentRepository {
 
@@ -23,7 +23,7 @@ interface AgentRepository {
      * @return saved agent (unchanged, for fluent API)
      * @throws IllegalArgumentException if agent.id is blank
      */
-    suspend fun save(agent: Agent): Agent
+    suspend fun save(agent: AgentDefinition): AgentDefinition
 
     /**
      * Finds agent by unique identifier.
@@ -31,7 +31,7 @@ interface AgentRepository {
      * @param id agent identifier
      * @return agent if found, null if doesn't exist
      */
-    suspend fun findById(id: Agent.Id): Agent?
+    suspend fun findById(id: AgentDefinition.Id): AgentDefinition?
 
     /**
      * Finds all agents, ordered by name (alphabetically).
@@ -42,7 +42,7 @@ interface AgentRepository {
      * @param projectPath path to current project (for loading PROJECT agents), null for global context
      * @return all agents in ascending alphabetical order
      */
-    suspend fun findAll(projectPath: String? = null): List<Agent>
+    suspend fun findAll(projectPath: String? = null): List<AgentDefinition>
 
     /**
      * Deletes agent permanently.
@@ -52,7 +52,7 @@ interface AgentRepository {
      *
      * @param id agent to delete
      */
-    suspend fun delete(id: Agent.Id)
+    suspend fun delete(id: AgentDefinition.Id)
 
     /**
      * Counts total number of agents.

@@ -13,9 +13,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.gromozeka.domain.repository.AgentDomainService
-import com.gromozeka.domain.repository.PromptDomainService
-import com.gromozeka.domain.model.Agent
+import com.gromozeka.domain.service.AgentDomainService
+import com.gromozeka.domain.service.PromptDomainService
+import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Prompt
 import com.gromozeka.presentation.ui.CompactButton
 import klog.KLoggers
@@ -34,16 +34,16 @@ fun AgentConstructorScreen(
 ) {
     var selectedTab by remember { mutableStateOf(0) } // 0 = Agents, 1 = Prompts
     
-    var agents by remember { mutableStateOf<List<Agent>>(emptyList()) }
+    var agents by remember { mutableStateOf<List<AgentDefinition>>(emptyList()) }
     var prompts by remember { mutableStateOf<List<Prompt>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
 
     // Agent dialogs
     var showAgentEditorDialog by remember { mutableStateOf(false) }
-    var editingAgent by remember { mutableStateOf<Agent?>(null) }
+    var editingAgent by remember { mutableStateOf<AgentDefinition?>(null) }
     var showAgentDeleteConfirmation by remember { mutableStateOf(false) }
-    var deletingAgent by remember { mutableStateOf<Agent?>(null) }
+    var deletingAgent by remember { mutableStateOf<AgentDefinition?>(null) }
 
     // Prompt dialogs
     var viewingPrompt by remember { mutableStateOf<Prompt?>(null) }
@@ -519,7 +519,7 @@ fun AgentConstructorScreen(
                                 name = name,
                                 prompts = selectedPrompts,
                                 description = description,
-                                type = Agent.Type.Inline
+                                type = AgentDefinition.Type.Inline
                             )
                             log.info { "Created new agent: $name" }
                         } else {

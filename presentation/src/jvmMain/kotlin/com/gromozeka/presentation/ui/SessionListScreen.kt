@@ -16,13 +16,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.gromozeka.domain.repository.ProjectDomainService
+import com.gromozeka.domain.service.ProjectDomainService
 import com.gromozeka.presentation.ui.viewmodel.AppViewModel
 import com.gromozeka.domain.model.ConversationInitiator
 import com.gromozeka.presentation.ui.viewmodel.ConversationSearchViewModel
 import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.Conversation
-import com.gromozeka.domain.repository.ConversationDomainService
+import com.gromozeka.domain.service.ConversationDomainService
 import klog.KLoggers
 import io.github.vinceglb.filekit.compose.rememberDirectoryPickerLauncher
 import kotlinx.coroutines.CoroutineScope

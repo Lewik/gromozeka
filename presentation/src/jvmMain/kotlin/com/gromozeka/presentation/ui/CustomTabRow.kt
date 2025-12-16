@@ -15,7 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.ui.unit.dp
-import com.gromozeka.domain.model.Agent
+import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.presentation.getTabDisplayName
 import com.gromozeka.presentation.ui.viewmodel.TabViewModel
 import kotlinx.coroutines.CoroutineScope
@@ -110,10 +110,10 @@ fun CustomTabRow(
                         ) {
                             Icon(
                                 imageVector = when (val type = tabUiState.agent.type) {
-                                    is Agent.Type.Project -> Icons.Default.Folder
-                                    is Agent.Type.Global -> Icons.Default.Home
-                                    is Agent.Type.Builtin -> Icons.Default.Lock
-                                    is Agent.Type.Inline -> Icons.Default.Description
+                                    is AgentDefinition.Type.Project -> Icons.Default.Folder
+                                    is AgentDefinition.Type.Global -> Icons.Default.Home
+                                    is AgentDefinition.Type.Builtin -> Icons.Default.Lock
+                                    is AgentDefinition.Type.Inline -> Icons.Default.Description
                                 },
                                 contentDescription = null,
                                 modifier = Modifier.size(16.dp)

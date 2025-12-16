@@ -1,6 +1,7 @@
 package com.gromozeka.application.service
 
 import com.gromozeka.domain.model.Conversation
+import klog.KLoggers
 import org.springframework.stereotype.Service
 
 /**
@@ -11,7 +12,8 @@ import org.springframework.stereotype.Service
  */
 @Service
 class ToolCallPairingService {
-    
+    private val log = KLoggers.logger(this)
+
     /**
      * Pair of ToolCall and its corresponding ToolResult.
      * 
@@ -20,9 +22,9 @@ class ToolCallPairingService {
      */
     data class ToolCallPair(
         val toolCall: Conversation.Message.ContentItem.ToolCall?,
-        val toolResult: Conversation.Message.ContentItem.ToolResult?
+        val toolResult: Conversation.Message.ContentItem.ToolResult?,
     )
-    
+
     /**
      * Build pairing map for all ToolCalls and ToolResults in messages.
      * 
@@ -40,7 +42,7 @@ class ToolCallPairingService {
      */
     fun buildPairingMap(messages: List<Conversation.Message>): Map<Conversation.Message.ContentItem.ToolCall.Id, ToolCallPair> {
         val pairingMap = mutableMapOf<Conversation.Message.ContentItem.ToolCall.Id, ToolCallPair>()
-        
+
         messages.forEach { msg ->
             msg.content.forEach { content ->
                 when (content) {
@@ -48,15 +50,18 @@ class ToolCallPairingService {
                         val pair = pairingMap.getOrPut(content.id) { ToolCallPair(null, null) }
                         pairingMap[content.id] = pair.copy(toolCall = content)
                     }
+
                     is Conversation.Message.ContentItem.ToolResult -> {
                         val pair = pairingMap.getOrPut(content.toolUseId) { ToolCallPair(null, null) }
                         pairingMap[content.toolUseId] = pair.copy(toolResult = content)
                     }
+
                     else -> return@forEach
                 }
             }
         }
-        
+
         return pairingMap
     }
+
 }

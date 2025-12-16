@@ -1,4 +1,4 @@
-package com.gromozeka.domain.repository
+package com.gromozeka.domain.service
 
 import com.gromozeka.domain.model.Project
 

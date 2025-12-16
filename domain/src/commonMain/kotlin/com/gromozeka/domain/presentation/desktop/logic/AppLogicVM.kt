@@ -1,7 +1,7 @@
 package com.gromozeka.domain.presentation.desktop.logic
 
 import com.gromozeka.domain.model.ConversationInitiator
-import com.gromozeka.domain.model.Agent
+import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.presentation.desktop.component.TabComponentVM
 import kotlinx.coroutines.flow.StateFlow
@@ -78,7 +78,7 @@ interface AppLogicVM {
      */
     suspend fun createTab(
         projectPath: String,
-        agent: Agent? = null,
+        agent: AgentDefinition? = null,
         conversationId: Conversation.Id? = null,
         initialMessage: Conversation.Message? = null,
         setAsCurrent: Boolean = true,
@@ -235,7 +235,7 @@ interface AppLogicVM {
             val customName: String?,
             val tabId: String,
             val parentTabId: String?,
-            val agent: Agent,
+            val agent: AgentDefinition,
             val initiator: ConversationInitiator,
             val editMode: Boolean,
             val selectedMessageIds: Set<Conversation.Message.Id>,

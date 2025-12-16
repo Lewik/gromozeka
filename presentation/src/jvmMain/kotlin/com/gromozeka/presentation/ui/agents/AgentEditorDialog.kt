@@ -14,12 +14,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
-import com.gromozeka.domain.model.Agent
+import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Prompt
 
 @Composable
 fun AgentEditorDialog(
-    agent: Agent? = null,
+    agent: AgentDefinition? = null,
     prompts: List<Prompt>,
     onSave: (name: String, selectedPrompts: List<Prompt.Id>, description: String?) -> Unit,
     onDismiss: () -> Unit

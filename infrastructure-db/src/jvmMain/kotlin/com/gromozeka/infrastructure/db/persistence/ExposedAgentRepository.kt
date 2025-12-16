@@ -1,6 +1,6 @@
 package com.gromozeka.infrastructure.db.persistence
 
-import com.gromozeka.domain.model.Agent
+import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.repository.AgentRepository
 import org.springframework.stereotype.Service
 import java.util.concurrent.ConcurrentHashMap
@@ -11,18 +11,18 @@ class ExposedAgentRepository(
     private val fileSystemAgentScanner: FileSystemAgentScanner
 ) : AgentRepository {
 
-    private var cachedBuiltinAgents: List<Agent> = emptyList()
+    private var cachedBuiltinAgents: List<AgentDefinition> = emptyList()
 
     // In-memory cache for inline agents (created dynamically via MCP)
-    private val inlineAgentsCache = ConcurrentHashMap<Agent.Id, Agent>()
+    private val inlineAgentsCache = ConcurrentHashMap<AgentDefinition.Id, AgentDefinition>()
 
     private fun getProjectPath(): String? {
         return fileSystemAgentScanner.findProjectRoot()?.absolutePath
     }
 
-    override suspend fun save(agent: Agent): Agent {
+    override suspend fun save(agent: AgentDefinition): AgentDefinition {
         return when (agent.type) {
-            is Agent.Type.Inline -> {
+            is AgentDefinition.Type.Inline -> {
                 // Store inline agents in memory cache
                 inlineAgentsCache[agent.id] = agent
                 agent
@@ -36,7 +36,7 @@ class ExposedAgentRepository(
         }
     }
 
-    override suspend fun findById(id: Agent.Id): Agent? {
+    override suspend fun findById(id: AgentDefinition.Id): AgentDefinition? {
         val idValue = id.value
 
         // Check inline cache first
@@ -49,7 +49,7 @@ class ExposedAgentRepository(
 
             // Check for project override first
             if (projectPath != null) {
-                val projectOverride = Agent.Id("project:$fileName")
+                val projectOverride = AgentDefinition.Id("project:$fileName")
                 fileSystemAgentScanner.loadAgentById(projectOverride, projectPath)?.let {
                     return it
                 }
@@ -68,7 +68,7 @@ class ExposedAgentRepository(
         return null
     }
 
-    override suspend fun findAll(projectPath: String?): List<Agent> {
+    override suspend fun findAll(projectPath: String?): List<AgentDefinition> {
         val effectiveProjectPath = projectPath ?: getProjectPath()
 
         val globalAgents = fileSystemAgentScanner.scanGlobalAgents()
@@ -82,7 +82,7 @@ class ExposedAgentRepository(
             .sortedBy { it.name }
     }
 
-    override suspend fun delete(id: Agent.Id) {
+    override suspend fun delete(id: AgentDefinition.Id) {
         // Check if it's an inline agent
         if (inlineAgentsCache.containsKey(id)) {
             inlineAgentsCache.remove(id)

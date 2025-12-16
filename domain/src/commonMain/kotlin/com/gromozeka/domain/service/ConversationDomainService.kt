@@ -1,4 +1,4 @@
-package com.gromozeka.domain.repository
+package com.gromozeka.domain.service
 
 import com.gromozeka.domain.model.Conversation
 
@@ -32,15 +32,13 @@ interface ConversationDomainService {
      *
      * @param projectPath filesystem path to project (creates if not exists)
      * @param displayName human-readable conversation title (default: empty)
-     * @param aiProvider AI provider identifier (e.g., "CLAUDE", "GEMINI")
-     * @param modelName model identifier (e.g., "claude-3-5-sonnet-20241022")
+     * @param agentDefinitionId agent definition to use for this conversation
      * @return created conversation with assigned IDs
      */
     suspend fun create(
         projectPath: String,
         displayName: String = "",
-        aiProvider: String,
-        modelName: String
+        agentDefinitionId: com.gromozeka.domain.model.AgentDefinition.Id
     ): Conversation
 
     /**

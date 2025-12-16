@@ -2,7 +2,7 @@ package com.gromozeka.application.service
 
 import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.repository.ProjectRepository
-import com.gromozeka.domain.repository.ProjectDomainService
+import com.gromozeka.domain.service.ProjectDomainService
 import klog.KLoggers
 import com.gromozeka.shared.uuid.uuid7
 import kotlinx.datetime.Instant

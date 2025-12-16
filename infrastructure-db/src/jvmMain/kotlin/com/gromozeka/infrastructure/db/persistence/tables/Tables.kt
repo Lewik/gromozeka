@@ -49,9 +49,8 @@ internal object Agents : Table("agents") {
 internal object Conversations : Table("conversations") {
     val id = varchar("id", 255)
     val projectId = varchar("project_id", 255).references(Projects.id, onDelete = ReferenceOption.CASCADE)
+    val agentDefinitionId = varchar("agent_definition_id", 255)
     val displayName = varchar("display_name", 255)
-    val aiProvider = varchar("ai_provider", 50)
-    val modelName = varchar("model_name", 100)
     val currentThreadId = varchar("current_thread_id", 255)
     val createdAt = timestamp("created_at")
     val updatedAt = timestamp("updated_at")

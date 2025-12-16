@@ -1,7 +1,7 @@
 package com.gromozeka.application.service
 
 import com.gromozeka.domain.model.Prompt
-import com.gromozeka.domain.repository.PromptDomainService
+import com.gromozeka.domain.service.PromptDomainService
 import com.gromozeka.domain.repository.PromptRepository
 import com.gromozeka.domain.service.PromptPersistenceService
 import com.gromozeka.domain.service.ImportedPromptsRegistry

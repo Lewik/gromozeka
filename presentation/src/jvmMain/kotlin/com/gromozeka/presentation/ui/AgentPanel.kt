@@ -20,9 +20,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.gromozeka.domain.model.Agent
+import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.TokenUsageStatistics
-import com.gromozeka.domain.repository.AgentDomainService
+import com.gromozeka.domain.service.AgentDomainService
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import klog.KLoggers
@@ -33,15 +33,15 @@ private val log = KLoggers.logger("AgentPanel")
 fun AgentPanel(
     projectPath: String,
     isVisible: Boolean,
-    currentAgent: Agent,
-    onAgentChange: (Agent) -> Unit,
+    currentAgent: AgentDefinition,
+    onAgentChange: (AgentDefinition) -> Unit,
     onClose: () -> Unit,
     agentService: AgentDomainService,
     coroutineScope: CoroutineScope,
     tokenStats: TokenUsageStatistics.ThreadTotals?,
     modifier: Modifier = Modifier,
 ) {
-    var agents by remember { mutableStateOf<List<Agent>>(emptyList()) }
+    var agents by remember { mutableStateOf<List<AgentDefinition>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
 
@@ -53,12 +53,12 @@ fun AgentPanel(
                 val loadedAgents = agentService.findAll(projectPath)
 
                 agents = loadedAgents.sortedWith(
-                    compareBy<Agent> { agent ->
+                    compareBy<AgentDefinition> { agent ->
                         when (val type = agent.type) {
-                            is Agent.Type.Project -> 0
-                            is Agent.Type.Global -> 1
-                            is Agent.Type.Builtin -> 2
-                            is Agent.Type.Inline -> 3
+                            is AgentDefinition.Type.Project -> 0
+                            is AgentDefinition.Type.Global -> 1
+                            is AgentDefinition.Type.Builtin -> 2
+                            is AgentDefinition.Type.Inline -> 3
                         }
                     }.thenBy { it.name }
                 )
@@ -176,7 +176,7 @@ fun AgentPanel(
 
 @Composable
 private fun AgentRadioItem(
-    agent: Agent,
+    agent: AgentDefinition,
     isSelected: Boolean,
     onClick: () -> Unit,
 ) {
@@ -211,16 +211,16 @@ private fun AgentRadioItem(
 
             Icon(
                 imageVector = when (val type = agent.type) {
-                    is Agent.Type.Project -> Icons.Default.Folder
-                    is Agent.Type.Global -> Icons.Default.Home
-                    is Agent.Type.Builtin -> Icons.Default.Lock
-                    is Agent.Type.Inline -> Icons.Default.Description
+                    is AgentDefinition.Type.Project -> Icons.Default.Folder
+                    is AgentDefinition.Type.Global -> Icons.Default.Home
+                    is AgentDefinition.Type.Builtin -> Icons.Default.Lock
+                    is AgentDefinition.Type.Inline -> Icons.Default.Description
                 },
                 contentDescription = when (val type = agent.type) {
-                    is Agent.Type.Project -> "Project"
-                    is Agent.Type.Global -> "Global"
-                    is Agent.Type.Builtin -> "Builtin"
-                    is Agent.Type.Inline -> "Inline"
+                    is AgentDefinition.Type.Project -> "Project"
+                    is AgentDefinition.Type.Global -> "Global"
+                    is AgentDefinition.Type.Builtin -> "Builtin"
+                    is AgentDefinition.Type.Inline -> "Inline"
                 },
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(20.dp)

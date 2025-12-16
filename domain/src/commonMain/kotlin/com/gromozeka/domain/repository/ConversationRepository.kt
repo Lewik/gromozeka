@@ -81,4 +81,17 @@ interface ConversationRepository {
      * @throws IllegalStateException if conversation doesn't exist
      */
     suspend fun updateDisplayName(id: Conversation.Id, displayName: String)
+    
+    /**
+     * Updates conversation's agent definition.
+     *
+     * This operation is NOT transactional - caller must handle transaction boundaries.
+     *
+     * Side effect: Updates conversation.updatedAt to current timestamp.
+     *
+     * @param id conversation to update
+     * @param agentDefinitionId new agent definition ID
+     * @throws IllegalStateException if conversation doesn't exist
+     */
+    suspend fun updateAgentDefinition(id: Conversation.Id, agentDefinitionId: com.gromozeka.domain.model.AgentDefinition.Id)
 }

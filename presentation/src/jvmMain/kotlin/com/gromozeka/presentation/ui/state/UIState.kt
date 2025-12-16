@@ -1,7 +1,7 @@
 package com.gromozeka.presentation.ui.state
 
 import com.gromozeka.domain.model.ConversationInitiator
-import com.gromozeka.domain.model.Agent
+import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import kotlinx.serialization.Serializable
 
@@ -33,7 +33,7 @@ data class UIState(
         val customName: String? = null,
         val tabId: String,
         val parentTabId: String? = null,
-        val agent: Agent,
+        val agent: AgentDefinition,
         val initiator: ConversationInitiator = ConversationInitiator.User,
         val customPrompts: List<String> = emptyList(),
 

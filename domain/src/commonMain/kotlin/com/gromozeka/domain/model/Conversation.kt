@@ -10,16 +10,17 @@ import kotlinx.serialization.json.JsonElement
  * Conversation containing threads and messages.
  *
  * Conversation is the top-level organizational unit for AI interaction.
- * Each conversation belongs to a project and uses specific AI provider/model.
- * Conversation contains multiple threads (append-only message sequences).
+ * Each conversation belongs to a project and contains multiple threads (versions).
+ * 
+ * AI provider/model configuration is in AgentDefinition - switching agent switches the model.
+ * Conversation tracks which agent definition is currently used.
  *
  * This is an immutable value type - use copy() to create modified versions.
  *
  * @property id unique conversation identifier (UUIDv7)
  * @property projectId project this conversation belongs to
+ * @property agentDefinitionId agent definition used for this conversation
  * @property displayName human-readable conversation title (can be blank)
- * @property aiProvider AI provider identifier (e.g., "CLAUDE", "GEMINI", "OPENAI")
- * @property modelName model identifier (e.g., "claude-3-5-sonnet-20241022")
  * @property currentThread currently active thread ID (conversation can switch threads)
  * @property createdAt timestamp when conversation was created
  * @property updatedAt timestamp of last modification
@@ -28,13 +29,9 @@ import kotlinx.serialization.json.JsonElement
 data class Conversation(
     val id: Id,
     val projectId: Project.Id,
+    val agentDefinitionId: AgentDefinition.Id,
     val displayName: String = "",
-
-    val aiProvider: String,  //TODO : make it type as AIProvider
-    val modelName: String, //TODO : shouldn't it be in agent? We should create some king of ProviderConnection (need to think)
-
     val currentThread: Thread.Id,
-
     val createdAt: Instant,
     val updatedAt: Instant,
 ) {

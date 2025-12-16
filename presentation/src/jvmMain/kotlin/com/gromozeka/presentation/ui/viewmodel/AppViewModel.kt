@@ -4,25 +4,26 @@ import com.gromozeka.application.service.ConversationEngineService
 import com.gromozeka.application.service.DefaultAgentProvider
 import com.gromozeka.application.service.MessageSquashService
 import com.gromozeka.domain.model.*
-import com.gromozeka.domain.repository.ConversationDomainService
+import com.gromozeka.domain.service.ConversationDomainService
 import com.gromozeka.domain.repository.TabManager
 import com.gromozeka.domain.repository.TokenUsageStatisticsRepository
 import com.gromozeka.infrastructure.ai.platform.ScreenCaptureController
 import com.gromozeka.presentation.services.SettingsService
 import com.gromozeka.presentation.services.SoundNotificationService
 import com.gromozeka.presentation.ui.state.UIState
+import com.gromozeka.shared.uuid.uuid7
 import klog.KLoggers
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import java.util.*
 
 open class AppViewModel(
     private val conversationEngineService: ConversationEngineService,
     private val conversationService: ConversationDomainService,
     private val messageSquashService: MessageSquashService,
     private val soundNotificationService: SoundNotificationService,
+    private val agentDomainService: com.gromozeka.domain.service.AgentDomainService,
     private val settingsService: SettingsService,
     private val scope: CoroutineScope,
     private val screenCaptureController: ScreenCaptureController,
@@ -44,34 +45,23 @@ open class AppViewModel(
 
     override suspend fun createTab(
         projectPath: String,
-        agent: Agent?,
+        agent: AgentDefinition?,
         conversationId: Conversation.Id?,
         initialMessage: Conversation.Message?,
         setAsCurrent: Boolean,
         initiator: ConversationInitiator,
     ): Int = mutex.withLock {
 
-        val tabId = Tab.Id(UUID.randomUUID().toString())
+        val tabId = Tab.Id(uuid7())
 
         val tabAgent = agent ?: defaultAgentProvider.getDefault()
 
         val conversation = if (conversationId != null) {
             conversationService.findById(conversationId) ?: error("Conversation not found: $conversationId")
         } else {
-            val settings = settingsService.settings
-            val aiProvider = settings.defaultAiProvider.name
-            val modelName = when (settings.defaultAiProvider) {
-                AIProvider.OLLAMA -> settings.ollamaModel
-                AIProvider.GEMINI -> settings.geminiModel
-                AIProvider.CLAUDE_CODE -> settings.claudeModel
-                AIProvider.OPEN_AI -> settings.openAiModel
-                AIProvider.ANTHROPIC -> settings.anthropicModel
-            }
-
             conversationService.create(
                 projectPath = projectPath,
-                aiProvider = aiProvider,
-                modelName = modelName
+                agentDefinitionId = tabAgent.id
             )
         }
 
@@ -96,6 +86,7 @@ open class AppViewModel(
             conversationService = conversationService,
             messageSquashService = messageSquashService,
             soundNotificationService = soundNotificationService,
+            agentDomainService = agentDomainService,
             settingsFlow = settingsService.settingsFlow,
             scope = scope,
             initialTabUiState = initialTabUiState,
@@ -234,20 +225,11 @@ open class AppViewModel(
                 val conversation = conversationService.findById(tabUiState.conversationId)
                     ?: run {
                         log.warn("Conversation not found for tab, creating new conversation")
-                        val settings = settingsService.settings
-                        val aiProvider = settings.defaultAiProvider.name
-                        val modelName = when (settings.defaultAiProvider) {
-                            AIProvider.OLLAMA -> settings.ollamaModel
-                            AIProvider.GEMINI -> settings.geminiModel
-                            AIProvider.CLAUDE_CODE -> settings.claudeModel
-                            AIProvider.OPEN_AI -> settings.openAiModel
-                            AIProvider.ANTHROPIC -> settings.anthropicModel
-                        }
-
+                        val defaultAgent = defaultAgentProvider.getDefault()
+                        
                         conversationService.create(
                             projectPath = tabUiState.projectPath,
-                            aiProvider = aiProvider,
-                            modelName = modelName
+                            agentDefinitionId = defaultAgent.id
                         )
                     }
 
@@ -258,6 +240,7 @@ open class AppViewModel(
                     conversationService = conversationService,
                     messageSquashService = messageSquashService,
                     soundNotificationService = soundNotificationService,
+                    agentDomainService = agentDomainService,
                     settingsFlow = settingsService.settingsFlow,
                     scope = scope,
                     initialTabUiState = tabUiState,

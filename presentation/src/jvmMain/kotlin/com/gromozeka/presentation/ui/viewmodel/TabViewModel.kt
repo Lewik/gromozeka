@@ -11,19 +11,19 @@ import com.gromozeka.domain.model.AIProvider
 import com.gromozeka.presentation.model.Settings
 import com.gromozeka.presentation.ui.state.UIState
 import com.gromozeka.presentation.utils.ChatMessageSoundDetector
-import com.gromozeka.domain.model.Agent
+import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.MessageTagDefinition
 import com.gromozeka.domain.model.SquashType
 import com.gromozeka.domain.model.TokenUsageStatistics
 import com.gromozeka.domain.repository.TokenUsageStatisticsRepository
-import com.gromozeka.domain.repository.ConversationDomainService
+import com.gromozeka.domain.service.ConversationDomainService
+import com.gromozeka.shared.uuid.uuid7
 import klog.KLoggers
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
-import java.util.UUID
 
 class TabViewModel(
     val conversationId: Conversation.Id,
@@ -32,6 +32,7 @@ class TabViewModel(
     private val conversationService: ConversationDomainService,
     private val messageSquashService: MessageSquashService,
     private val soundNotificationService: SoundNotificationService,
+    private val agentDomainService: com.gromozeka.domain.service.AgentDomainService,
     private val settingsFlow: StateFlow<Settings>,
     private val scope: CoroutineScope,
     initialTabUiState: UIState.Tab,
@@ -232,7 +233,7 @@ class TabViewModel(
         }
     }
 
-    fun updateAgent(agent: Agent) {
+    fun updateAgent(agent: AgentDefinition) {
         _uiState.update { currentState ->
             currentState.copy(agent = agent)
         }
@@ -260,7 +261,7 @@ class TabViewModel(
         val instructions = activeTagsData + additionalInstructions
 
         val userMessage = Conversation.Message(
-            id = Conversation.Message.Id(UUID.randomUUID().toString()),
+            id = Conversation.Message.Id(uuid7()),
             conversationId = conversationId,
             role = Conversation.Message.Role.USER,
             content = listOf(Conversation.Message.ContentItem.UserMessage(message)),
@@ -663,8 +664,11 @@ class TabViewModel(
             val conversation = conversationService.findById(conversationId)
                 ?: throw IllegalStateException("Conversation not found: $conversationId")
 
-            val aiProvider = AIProvider.valueOf(conversation.aiProvider)
-            val modelName = conversation.modelName
+            val agentDefinition = agentDomainService.findById(conversation.agentDefinitionId)
+                ?: throw IllegalStateException("Agent definition not found: ${conversation.agentDefinitionId}")
+                
+            val aiProvider = AIProvider.valueOf(agentDefinition.aiProvider)
+            val modelName = agentDefinition.modelName
 
             log.info { "Starting AI squash: type=$squashType, provider=$aiProvider, model=$modelName" }
 

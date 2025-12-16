@@ -3,9 +3,9 @@ package com.gromozeka.infrastructure.ai.mcp.tools
 import com.gromozeka.domain.repository.TabManager
 import com.gromozeka.domain.model.Tab
 import com.gromozeka.domain.model.ConversationInitiator
-import com.gromozeka.domain.model.Agent
+import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
-import com.gromozeka.domain.repository.AgentDomainService
+import com.gromozeka.domain.service.AgentDomainService
 import io.modelcontextprotocol.kotlin.sdk.CallToolRequest
 import io.modelcontextprotocol.kotlin.sdk.CallToolResult
 import io.modelcontextprotocol.kotlin.sdk.TextContent
@@ -16,14 +16,14 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.put
 import org.springframework.stereotype.Service
-import java.util.*
+import com.gromozeka.shared.uuid.uuid7
 import kotlinx.datetime.Clock
 
 @Service
 class CreateAgentTool(
     private val tabManager: TabManager,
     private val agentService: AgentDomainService,
-    private val promptService: com.gromozeka.domain.repository.PromptDomainService,
+    private val promptService: com.gromozeka.domain.service.PromptDomainService,
 ) : GromozekaMcpTool {
 
     @Serializable
@@ -95,11 +95,11 @@ class CreateAgentTool(
                 name = input.agent_name,
                 prompts = listOf(inlinePrompt.id),
                 description = "Created via MCP from parent tab: ${input.parent_tab_id}",
-                type = Agent.Type.Inline
+                type = AgentDefinition.Type.Inline
             )
         } else {
             agentService.findAll()
-                .firstOrNull { it.type is Agent.Type.Builtin && it.name == "Gromozeka" }
+                .firstOrNull { it.type is AgentDefinition.Type.Builtin && it.name == "Gromozeka" }
                 ?: error("Default agent 'Gromozeka' not found")
         }
 
@@ -117,7 +117,7 @@ class CreateAgentTool(
         }
 
         val chatMessage = Conversation.Message(
-            id = Conversation.Message.Id(UUID.randomUUID().toString()),
+            id = Conversation.Message.Id(uuid7()),
             conversationId = Conversation.Id(""), // Will be set when conversation is created
             role = Conversation.Message.Role.USER,
             content = listOf(Conversation.Message.ContentItem.UserMessage(baseMessageText)),

@@ -21,7 +21,7 @@ import com.gromozeka.presentation.ui.viewmodel.AppViewModel
 import com.gromozeka.presentation.ui.viewmodel.ConversationSearchViewModel
 import com.gromozeka.shared.audio.AudioRecorder
 import com.gromozeka.domain.repository.TokenUsageStatisticsRepository
-import com.gromozeka.domain.repository.ConversationDomainService
+import com.gromozeka.domain.service.ConversationDomainService
 import com.gromozeka.infrastructure.ai.springai.SttService
 import com.gromozeka.infrastructure.ai.springai.TtsService
 import io.ktor.client.*
@@ -81,6 +81,7 @@ class Config {
         conversationService: ConversationDomainService,
         messageSquashService: MessageSquashService,
         soundNotificationService: SoundNotificationService,
+        agentDomainService: com.gromozeka.domain.service.AgentDomainService,
         settingsService: SettingsService,
         @Qualifier("coroutineScope") scope: CoroutineScope,
         screenCaptureController: ScreenCaptureController,
@@ -91,6 +92,7 @@ class Config {
         conversationService,
         messageSquashService,
         soundNotificationService,
+        agentDomainService,
         settingsService,
         scope,
         screenCaptureController,

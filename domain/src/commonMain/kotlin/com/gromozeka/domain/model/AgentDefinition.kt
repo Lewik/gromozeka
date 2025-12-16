@@ -4,29 +4,42 @@ import kotlinx.datetime.Instant
 import kotlinx.serialization.Serializable
 
 /**
- * AI agent definition with behavior configuration.
+ * Agent definition - reusable configuration template for AI agent behavior.
  *
- * Agent represents a reusable role template (e.g., "Code Reviewer", "Security Expert").
- * Multiple conversation sessions can use the same agent definition.
+ * AgentDefinition is a data class representing agent configuration that can be:
+ * - Stored as files (builtin, global, project-specific)
+ * - Created dynamically (inline)
+ * - Reused across multiple conversations
  *
- * Agent behavior defined through ordered list of prompts that are assembled
- * into final system prompt via PromptDomainService.assembleSystemPrompt().
+ * Definition includes:
+ * - Behavior (prompts, tools)
+ * - AI configuration (provider, model)
+ * - Metadata (name, description, type)
+ *
+ * Running agent instances (application.actor.Agent) use this definition
+ * and can switch between definitions during conversation.
  *
  * This is an immutable value type - use copy() to create modified versions.
  *
  * @property id unique agent identifier (hash of file path or generated for inline)
  * @property name agent role name displayed in UI (e.g., "Code Reviewer", "Researcher")
  * @property prompts ordered list of prompt IDs defining agent behavior
+ * @property aiProvider AI provider identifier (e.g., "ANTHROPIC", "OPENAI", "GEMINI")
+ * @property modelName model identifier (e.g., "claude-3-5-sonnet-20241022", "gpt-4")
+ * @property tools list of available tool names for this agent
  * @property description optional human-readable explanation of agent's purpose
  * @property type agent location type with file path (or inline for dynamic agents)
  * @property createdAt timestamp when agent was created (immutable)
  * @property updatedAt timestamp of last modification (name, prompts, or description change)
  */
 @Serializable
-data class Agent(
+data class AgentDefinition(
     val id: Id,
     val name: String,
     val prompts: List<Prompt.Id>,
+    val aiProvider: String, // TODO: make it AIProvider enum
+    val modelName: String,
+    val tools: List<String> = emptyList(), // tool names to resolve via ToolRegistry
     val description: String? = null,
     val type: Type,
     val createdAt: Instant,

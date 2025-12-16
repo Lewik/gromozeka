@@ -2,10 +2,10 @@ package com.gromozeka.presentation
 
 import androidx.compose.ui.window.application
 import com.gromozeka.application.service.TabPromptService
-import com.gromozeka.domain.repository.AgentDomainService
-import com.gromozeka.domain.repository.ConversationDomainService
-import com.gromozeka.domain.repository.ProjectDomainService
-import com.gromozeka.domain.repository.PromptDomainService
+import com.gromozeka.domain.service.AgentDomainService
+import com.gromozeka.domain.service.ConversationDomainService
+import com.gromozeka.domain.service.ProjectDomainService
+import com.gromozeka.domain.service.PromptDomainService
 import com.gromozeka.infrastructure.ai.oauth.OAuthConfigService
 import com.gromozeka.infrastructure.ai.oauth.OAuthService
 import com.gromozeka.infrastructure.ai.platform.GlobalHotkeyController

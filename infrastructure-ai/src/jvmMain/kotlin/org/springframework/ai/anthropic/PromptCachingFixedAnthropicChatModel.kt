@@ -74,8 +74,6 @@ class PromptCachingFixedAnthropicChatModel(
      * - This saves breakpoints and correctly implements CONVERSATION_HISTORY caching
      */
     override fun createRequest(prompt: Prompt, stream: Boolean): ChatCompletionRequest {
-        log.debug { "=== PromptCachingFixedAnthropicChatModel.createRequest() START ===" }
-
         val promptWithoutCache = Prompt(
             prompt.instructions,
             AnthropicChatOptions
@@ -83,50 +81,39 @@ class PromptCachingFixedAnthropicChatModel(
                 .also { it.cacheOptions = AnthropicCacheOptions.DISABLED }
         )
         val baseRequest = super.createRequest(promptWithoutCache, stream)
-        log.debug { "baseRequest created with ${baseRequest.messages()?.size} messages (cache disabled for super call)" }
 
         val cacheOptions = (prompt.options as? AnthropicChatOptions)?.cacheOptions
             ?: AnthropicCacheOptions.DISABLED
         val cacheEligibilityResolver = CacheEligibilityResolver.from(cacheOptions)
-
-        log.debug { "CacheEligibilityResolver created, strategy=${cacheOptions.strategy}, cachingEnabled=${cacheEligibilityResolver.isCachingEnabled}" }
 
         return if (
             cacheEligibilityResolver.isCachingEnabled
             && !baseRequest.messages().isNullOrEmpty()
             && cacheOptions.strategy == AnthropicCacheStrategy.CONVERSATION_HISTORY
         ) {
-            log.debug { "Applying fixed cache control to messages, system, and tools" }
+            log.debug { "Applying cache control: ${baseRequest.messages()?.size} messages, ${(baseRequest.system() as? List<*>)?.size ?: 0} system blocks, ${baseRequest.tools()?.size ?: 0} tools" }
 
             val systemPrompts = baseRequest.system() as? List<ContentBlock>
-
             val fixedSystem = systemPrompts?.let {
-                log.debug { "Processing ${systemPrompts.size} system blocks" }
                 applySystemCacheControl(systemPrompts, cacheEligibilityResolver)
             }
 
-            // Apply cache control to tools
             val fixedTools = baseRequest.tools()?.let { tools ->
-                log.debug { "Processing ${tools.size} tools" }
                 applyToolsCacheControl(tools, cacheEligibilityResolver)
             }
 
-            // Apply cache control to message blocks
             val fixedMessages = applyCacheControl(
                 baseRequest.messages(),
                 cacheEligibilityResolver
             )
-            log.debug { "Fixed cache control applied, system/tools/messages processed" }
+
             ChatCompletionRequest
                 .from(baseRequest)
                 .system(fixedSystem)
                 .tools(fixedTools)
                 .messages(fixedMessages)
                 .build()
-                .also { log.debug { "=== PromptCachingFixedAnthropicChatModel.createRequest() END ===" } }
         } else {
-            log.debug { "Cache disabled or strategy not CONVERSATION_HISTORY, returning baseRequest as-is" }
-            log.debug { "=== PromptCachingFixedAnthropicChatModel.createRequest() END ===" }
             baseRequest
         }
     }
@@ -139,37 +126,22 @@ class PromptCachingFixedAnthropicChatModel(
         tools: List<Tool>,
         cacheEligibilityResolver: CacheEligibilityResolver,
     ): List<Tool> {
-        log.debug { "applyToolsCacheControl: processing ${tools.size} tools" }
-
         if (tools.isEmpty()) {
             return tools
         }
 
         // Apply cache control to the last tool
-        val fixedTools = tools
-            .mapIndexed { i, tool ->
-                if (i == tools.lastIndex) {
-                    log.debug { "Applying cache control to last tool (index $i)" }
-                    val basisForLength = JsonParser.toJson(tool)
-                    log.debug { "Tool basis length: ${basisForLength.length}" }
-                    val cacheControl = cacheEligibilityResolver.resolveToolCacheControl()
-
-                    cacheControl?.let {
-                        log.debug { "Cache control resolved for tool: $it, calling useCacheBlock()" }
-                        cacheEligibilityResolver.useCacheBlock()
-                        tool.withCacheControl(it)
-                    } ?: run {
-                        log.debug { "Cache control returned null for tool, keeping as-is" }
-                        tool
-                    }
-                } else {
-                    log.debug { "Tool $i is not last, removing cache control" }
-                    tool.withoutCacheControl()
-                }
+        return tools.mapIndexed { i, tool ->
+            if (i == tools.lastIndex) {
+                val cacheControl = cacheEligibilityResolver.resolveToolCacheControl()
+                cacheControl?.let {
+                    cacheEligibilityResolver.useCacheBlock()
+                    tool.withCacheControl(it)
+                } ?: tool
+            } else {
+                tool.withoutCacheControl()
             }
-
-        log.debug { "applyToolsCacheControl: completed, ${fixedTools.size} tools processed" }
-        return fixedTools
+        }
     }
 
     /**
@@ -194,37 +166,23 @@ class PromptCachingFixedAnthropicChatModel(
         systemBlocks: List<ContentBlock>,
         cacheEligibilityResolver: CacheEligibilityResolver,
     ): List<ContentBlock> {
-        log.debug { "applySystemCacheControl: processing ${systemBlocks.size} system blocks" }
-
         if (systemBlocks.isEmpty()) {
             return systemBlocks
         }
 
         // Apply cache control to the last system block
-        val fixedBlocks = systemBlocks
-            .mapIndexed { i, block ->
-                if (i == systemBlocks.lastIndex) {
-                    log.debug { "Applying cache control to last system block (index $i)" }
-                    val basisForLength = block.getBasisForLength()
-                    log.debug { "System block basis length: ${basisForLength.length}" }
-                    val cacheControl = cacheEligibilityResolver.resolve(MessageType.SYSTEM, basisForLength)
-
-                    cacheControl?.let {
-                        log.debug { "Cache control resolved for system block: $it, calling useCacheBlock()" }
-                        cacheEligibilityResolver.useCacheBlock()
-                        ContentBlock.from(block).cacheControl(it).build()
-                    } ?: run {
-                        log.debug { "Cache control returned null for system block, keeping as-is" }
-                        block
-                    }
-                } else {
-                    log.debug { "System block $i is not last, removing cache control" }
-                    ContentBlock.from(block).cacheControl(null).build()
-                }
+        return systemBlocks.mapIndexed { i, block ->
+            if (i == systemBlocks.lastIndex) {
+                val basisForLength = block.getBasisForLength()
+                val cacheControl = cacheEligibilityResolver.resolve(MessageType.SYSTEM, basisForLength)
+                cacheControl?.let {
+                    cacheEligibilityResolver.useCacheBlock()
+                    ContentBlock.from(block).cacheControl(it).build()
+                } ?: block
+            } else {
+                ContentBlock.from(block).cacheControl(null).build()
             }
-
-        log.debug { "applySystemCacheControl: completed, ${fixedBlocks.size} system blocks processed" }
-        return fixedBlocks
+        }
     }
 
     /**
@@ -236,33 +194,18 @@ class PromptCachingFixedAnthropicChatModel(
         messages: List<AnthropicMessage>,
         cacheEligibilityResolver: CacheEligibilityResolver,
     ): List<AnthropicMessage> {
-        log.debug { "applyFixedCacheControl: processing ${messages.size} messages" }
-
-        val lastMessageWithContent = messages
-            .lastOrNull { it.content?.isNotEmpty() == true }
-            ?: return messages.also { log.debug { "No message with content found, returning as-is" } }
+        val lastMessageWithContent = messages.lastOrNull { it.content?.isNotEmpty() == true }
+            ?: return messages
 
         val lastThreadMessageIndex = messages.indexOf(lastMessageWithContent)
-        log.debug { "Last message with content at index $lastThreadMessageIndex (role=${lastMessageWithContent.role})" }
 
         // Rebuild messages with cache control applied only to the last block
-        val fixedMessages = messages
-            .mapIndexed { i, msg ->
-                when {
-                    i == lastThreadMessageIndex -> {
-                        log.debug { "Applying cache control to message at index $i (role=${msg.role})" }
-                        msg.withCacheControlOnLastBlock(cacheEligibilityResolver)
-                    }
-
-                    else -> {
-                        log.debug { "Removing cache control from message at index $i (role=${msg.role})" }
-                        msg.withoutCacheControl()
-                    }
-                }
+        return messages.mapIndexed { i, msg ->
+            when {
+                i == lastThreadMessageIndex -> msg.withCacheControlOnLastBlock(cacheEligibilityResolver)
+                else -> msg.withoutCacheControl()
             }
-
-        log.debug { "applyFixedCacheControl: completed, ${fixedMessages.size} messages processed" }
-        return fixedMessages
+        }
     }
 
     /**
@@ -271,30 +214,19 @@ class PromptCachingFixedAnthropicChatModel(
     private fun AnthropicMessage.withCacheControlOnLastBlock(
         resolver: CacheEligibilityResolver,
     ): AnthropicMessage {
-        log.debug { "withCacheControlOnLastBlock: processing message with ${content?.size ?: 0} content blocks" }
-
         val fixedContent = content?.mapIndexed { j, block ->
             if (j == content!!.lastIndex) {
-                log.debug { "Processing last content block (index $j)" }
                 val basisForLength = block.getBasisForLength()
-                log.debug { "Content basis length: ${basisForLength.length}" }
                 val cacheControl = resolver.resolve(MessageType.USER, basisForLength)
-
                 cacheControl?.let {
-                    log.debug { "Cache control resolved: $it, calling useCacheBlock()" }
                     resolver.useCacheBlock()
                     ContentBlock.from(block).cacheControl(it).build()
-                } ?: run {
-                    log.debug { "Cache control returned null, block unchanged" }
-                    block
-                }
+                } ?: block
             } else {
-                log.debug { "Content block $j is not last, keeping as-is" }
                 block
             }
         } ?: emptyList()
 
-        log.debug { "withCacheControlOnLastBlock: completed" }
         return AnthropicMessage(fixedContent, role)
     }
 

@@ -1,7 +1,7 @@
 package com.gromozeka.application.service
 
-import com.gromozeka.domain.model.Agent
-import com.gromozeka.domain.repository.AgentDomainService
+import com.gromozeka.domain.model.AgentDefinition
+import com.gromozeka.domain.service.AgentDomainService
 import com.gromozeka.domain.repository.AgentRepository
 import com.gromozeka.shared.uuid.uuid7
 import klog.KLoggers
@@ -21,7 +21,7 @@ import org.springframework.transaction.annotation.Transactional
 @Service
 class AgentApplicationService(
     private val agentRepository: AgentRepository,
-    private val promptDomainService: com.gromozeka.domain.repository.PromptDomainService,
+    private val promptDomainService: com.gromozeka.domain.service.PromptDomainService,
 ) : AgentDomainService {
     private val log = KLoggers.logger(this)
 
@@ -41,14 +41,17 @@ class AgentApplicationService(
         name: String,
         prompts: List<com.gromozeka.domain.model.Prompt.Id>,
         description: String?,
-        type: Agent.Type,
-    ): Agent {
+        type: AgentDefinition.Type,
+    ): AgentDefinition {
         val now = Instant.fromEpochMilliseconds(System.currentTimeMillis())
 
-        val agent = Agent(
-            id = Agent.Id(uuid7()),
+        val agent = AgentDefinition(
+            id = AgentDefinition.Id(uuid7()),
             name = name,
             prompts = prompts,
+            aiProvider = "ANTHROPIC",  // TODO: make configurable
+            modelName = "claude-3-5-sonnet-20241022",  // TODO: make configurable
+            tools = emptyList(),  // TODO: make configurable
             description = description,
             type = type,
             createdAt = now,
@@ -58,7 +61,7 @@ class AgentApplicationService(
         return agentRepository.save(agent)
     }
 
-    override suspend fun assembleSystemPrompt(agent: Agent, projectPath: String): List<String> {
+    override suspend fun assembleSystemPrompt(agent: AgentDefinition, projectPath: String): List<String> {
         return promptDomainService.assembleSystemPrompt(agent.prompts, projectPath)
     }
 
@@ -68,7 +71,7 @@ class AgentApplicationService(
      * @param id agent identifier
      * @return agent if found, null otherwise
      */
-    override suspend fun findById(id: Agent.Id): Agent? =
+    override suspend fun findById(id: AgentDefinition.Id): AgentDefinition? =
         agentRepository.findById(id)
 
     /**
@@ -77,7 +80,7 @@ class AgentApplicationService(
      * @param projectPath path to the current project (for loading PROJECT agents), null for global context
      * @return list of all agents
      */
-    override suspend fun findAll(projectPath: String?): List<Agent> =
+    override suspend fun findAll(projectPath: String?): List<AgentDefinition> =
         agentRepository.findAll(projectPath)
 
     /**
@@ -93,10 +96,10 @@ class AgentApplicationService(
      */
     @Transactional
     override suspend fun update(
-        id: Agent.Id,
+        id: AgentDefinition.Id,
         prompts: List<com.gromozeka.domain.model.Prompt.Id>?,
         description: String?,
-    ): Agent? {
+    ): AgentDefinition? {
         val agent = agentRepository.findById(id) ?: return null
         val now = Instant.fromEpochMilliseconds(System.currentTimeMillis())
 
@@ -118,9 +121,9 @@ class AgentApplicationService(
      * @param id agent identifier
      */
     @Transactional
-    override suspend fun delete(id: Agent.Id) {
+    override suspend fun delete(id: AgentDefinition.Id) {
         val agent = agentRepository.findById(id)
-        if (agent?.type is Agent.Type.Builtin) {
+        if (agent?.type is AgentDefinition.Type.Builtin) {
             log.warn("Cannot delete builtin agent: ${agent.name}")
             return
         }

@@ -3,8 +3,8 @@ package com.gromozeka.application.service
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.repository.ConversationRepository
-import com.gromozeka.domain.repository.ConversationDomainService
-import com.gromozeka.domain.repository.ProjectDomainService
+import com.gromozeka.domain.service.ConversationDomainService
+import com.gromozeka.domain.service.ProjectDomainService
 import klog.KLoggers
 import com.gromozeka.domain.repository.MessageRepository
 import com.gromozeka.domain.repository.ThreadMessageRepository
@@ -50,16 +50,14 @@ class ConversationApplicationService(
      *
      * @param projectPath absolute file system path to project directory
      * @param displayName optional conversation title (empty uses auto-generated name)
-     * @param aiProvider AI provider identifier (default: "OLLAMA")
-     * @param modelName model identifier (default: "llama3.2")
+     * @param agentDefinitionId agent definition to use for this conversation
      * @return created conversation with new thread
      */
     @Transactional
     override suspend fun create(
         projectPath: String,
         displayName: String,
-        aiProvider: String,
-        modelName: String
+        agentDefinitionId: com.gromozeka.domain.model.AgentDefinition.Id
     ): Conversation {
         val project = projectService.getOrCreate(projectPath)
         val now = Clock.System.now()
@@ -79,9 +77,8 @@ class ConversationApplicationService(
         val conversation = Conversation(
             id = conversationId,
             projectId = project.id,
+            agentDefinitionId = agentDefinitionId,
             displayName = displayName,
-            aiProvider = aiProvider,
-            modelName = modelName,
             currentThread = initialThread.id,
             createdAt = now,
             updatedAt = now,
@@ -189,9 +186,8 @@ class ConversationApplicationService(
         val newConversation = Conversation(
             id = newConversationId,
             projectId = sourceConversation.projectId,
+            agentDefinitionId = sourceConversation.agentDefinitionId,
             displayName = sourceConversation.displayName + " (fork)",
-            aiProvider = sourceConversation.aiProvider,
-            modelName = sourceConversation.modelName,
             currentThread = newThread.id,
             createdAt = now,
             updatedAt = now,
@@ -387,32 +383,34 @@ class ConversationApplicationService(
             throw IllegalArgumentException("Some messages not found in thread $currentThreadId")
         }
 
-        // Build pairing map and find IDs in deleted messages
+        // Build pairing map to identify paired ToolCalls/ToolResults
         val pairingMap = toolCallPairingService.buildPairingMap(messages)
         
-        // Collect ToolCall IDs from deleted messages that are paired (have ToolResult)
-        val deletingPairedToolCallIds = targetMessages
+        // Collect all ToolCall IDs from deleted messages (both from ToolCall and ToolResult content)
+        // These are IDs of tool calls that will be removed from thread
+        val deletingToolCallIds = targetMessages
             .flatMap { it.content }
-            .filterIsInstance<Conversation.Message.ContentItem.ToolCall>()
-            .filter { pairingMap[it.id]?.toolResult != null }
-            .map { it.id }
+            .flatMap { content ->
+                when (content) {
+                    is Conversation.Message.ContentItem.ToolCall -> 
+                        if (pairingMap[content.id]?.toolResult != null) listOf(content.id) else emptyList()
+                    is Conversation.Message.ContentItem.ToolResult -> 
+                        if (pairingMap[content.toolUseId]?.toolCall != null) listOf(content.toolUseId) else emptyList()
+                    else -> emptyList()
+                }
+            }
             .toSet()
         
-        // Collect ToolResult IDs from deleted messages that are paired (have ToolCall)
-        val deletingPairedToolResultIds = targetMessages
-            .flatMap { it.content }
-            .filterIsInstance<Conversation.Message.ContentItem.ToolResult>()
-            .filter { pairingMap[it.toolUseId]?.toolCall != null }
-            .map { it.toolUseId }
-            .toSet()
-        
-        // Find messages containing paired ToolCalls/ToolResults
+        // Find messages containing the paired ToolCalls/ToolResults that must also be deleted
         val pairedMessageIds = messages
             .filter { it.id !in messageIds }
             .filter { message ->
                 message.content.any { content ->
-                    (content is Conversation.Message.ContentItem.ToolResult && content.toolUseId in deletingPairedToolCallIds) ||
-                    (content is Conversation.Message.ContentItem.ToolCall && content.id in deletingPairedToolResultIds)
+                    when (content) {
+                        is Conversation.Message.ContentItem.ToolResult -> content.toolUseId in deletingToolCallIds
+                        is Conversation.Message.ContentItem.ToolCall -> content.id in deletingToolCallIds
+                        else -> false
+                    }
                 }
             }
             .map { it.id }

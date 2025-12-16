@@ -1,13 +1,13 @@
 package com.gromozeka.application.service
 
 import com.gromozeka.domain.model.AIProvider
-import com.gromozeka.domain.model.Agent
+import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.Conversation.Message.BlockState
 import com.gromozeka.domain.model.Conversation.Message.ContentItem
 import com.gromozeka.domain.model.TokenUsageStatistics
-import com.gromozeka.domain.repository.AgentDomainService
-import com.gromozeka.domain.repository.ConversationDomainService
+import com.gromozeka.domain.service.AgentDomainService
+import com.gromozeka.domain.service.ConversationDomainService
 import com.gromozeka.domain.repository.ThreadRepository
 import com.gromozeka.domain.repository.TokenUsageStatisticsRepository
 import com.gromozeka.domain.service.ChatModelProvider
@@ -34,7 +34,7 @@ import org.springframework.ai.google.genai.metadata.GoogleGenAiUsage
 import org.springframework.ai.model.tool.ToolCallingChatOptions
 import org.springframework.ai.openai.OpenAiChatOptions
 import org.springframework.stereotype.Service
-import java.util.*
+import com.gromozeka.shared.uuid.uuid7
 
 /**
  * LLM-agnostic service for managing conversation with AI using User-Controlled Tool Execution.
@@ -63,7 +63,8 @@ class ConversationEngineService(
     private val coroutineScope: CoroutineScope,
     private val vectorMemoryService: com.gromozeka.domain.service.VectorMemoryService,
     private val knowledgeGraphService: com.gromozeka.domain.service.KnowledgeGraphService?,
-    private val toolCallPairingService: ToolCallPairingService
+    private val toolCallPairingService: ToolCallPairingService,
+    private val toolCallSequenceFixerService: ToolCallSequenceFixerService
 ) {
     private val log = KLoggers.logger(this)
 
@@ -142,52 +143,29 @@ class ConversationEngineService(
     suspend fun sendMessage(
         conversationId: Conversation.Id,
         userMessage: Conversation.Message,
-        agent: Agent,
+        agent: AgentDefinition,
     ): Flow<Conversation.Message> = flow {
         val conversation = conversationService.findById(conversationId)
             ?: throw IllegalStateException("Conversation not found: $conversationId")
         val projectPath = conversationService.getProjectPath(conversationId)
-        val provider = AIProvider.valueOf(conversation.aiProvider)
+        val provider = AIProvider.valueOf(agent.aiProvider)
         val chatModel = chatModelProvider.getChatModel(
             provider,
-            conversation.modelName,
+            agent.modelName,
             projectPath
         )
-        val messages = conversationService.loadCurrentMessages(conversationId)
-
+        // Add user message
         conversationService.addMessage(conversationId, userMessage)
-
-        // Check for orphaned ToolCalls and add error ToolResults if needed
-        val updatedMessages = conversationService.loadCurrentMessages(conversationId)
-        val pairingMap = toolCallPairingService.buildPairingMap(updatedMessages)
         
-        // Filter orphaned ToolCalls (no ToolResult)
-        val orphanedToolCalls = pairingMap.values
-            .filter { it.toolResult == null }
-            .mapNotNull { it.toolCall }
+        // Fix non-sequential ToolCall/ToolResult pairs AFTER adding user message
+        // This ensures ToolResult appears IMMEDIATELY after ToolCall (Anthropic API requirement)
+        val fixResult = toolCallSequenceFixerService.fixNonSequentialPairs(conversationId)
         
-        if (orphanedToolCalls.isNotEmpty()) {
-            log.warn { "Found ${orphanedToolCalls.size} orphaned ToolCall(s), adding error ToolResults" }
-            
-            orphanedToolCalls.forEach { toolCall ->
-                val errorResultMessage = Conversation.Message(
-                    id = Conversation.Message.Id(UUID.randomUUID().toString()),
-                    conversationId = conversationId,
-                    role = Conversation.Message.Role.USER,
-                    content = listOf(
-                        ContentItem.ToolResult(
-                            toolUseId = toolCall.id,
-                            toolName = toolCall.call.name,
-                            result = listOf(
-                                ContentItem.ToolResult.Data.Text("Tool execution interrupted")
-                            ),
-                            isError = true,
-                            state = BlockState.COMPLETE
-                        )
-                    ),
-                    createdAt = Clock.System.now()
-                )
-                conversationService.addMessage(conversationId, errorResultMessage)
+        if (fixResult.fixed) {
+            log.info { 
+                "Fixed non-sequential ToolCall/ToolResult pairs: " +
+                "added ${fixResult.addedResults} error results, " +
+                "converted ${fixResult.convertedResults} orphaned results" 
             }
         }
 
@@ -195,11 +173,7 @@ class ConversationEngineService(
             .assembleSystemPrompt(agent, projectPath)
             .map { SystemMessage(it) }
 
-        val finalMessages = if (orphanedToolCalls.isNotEmpty()) {
-            conversationService.loadCurrentMessages(conversationId)
-        } else {
-            updatedMessages
-        }
+        val finalMessages = conversationService.loadCurrentMessages(conversationId)
         val springHistory = messageConversionService.convertHistoryToSpringAI(finalMessages)
         val toolOptions = collectToolOptions(projectPath, provider)
 
@@ -267,7 +241,7 @@ class ConversationEngineService(
 
                     tokenUsageStatisticsRepository.save(
                         TokenUsageStatistics(
-                            id = TokenUsageStatistics.Id(UUID.randomUUID().toString()),
+                            id = TokenUsageStatistics.Id(uuid7()),
                             threadId = conversation.currentThread,
                             lastMessageId = assistantMessage.id,
                             timestamp = Clock.System.now(),
@@ -276,8 +250,8 @@ class ConversationEngineService(
                             cacheCreationTokens = cacheCreation,
                             cacheReadTokens = cacheRead,
                             thinkingTokens = thinkingTokens,
-                            provider = conversation.aiProvider,
-                            modelId = conversation.modelName
+                            provider = agent.aiProvider,
+                            modelId = agent.modelName
                         )
                     )
                 } catch (e: Exception) {
@@ -312,7 +286,7 @@ class ConversationEngineService(
                 )
 
                 val toolResultMessage = Conversation.Message(
-                    id = Conversation.Message.Id(UUID.randomUUID().toString()),
+                    id = Conversation.Message.Id(uuid7()),
                     conversationId = conversationId,
                     role = Conversation.Message.Role.USER,
                     content = executionResult.results,
@@ -383,7 +357,7 @@ class ConversationEngineService(
         }
 
         return Conversation.Message(
-            id = Conversation.Message.Id(UUID.randomUUID().toString()),
+            id = Conversation.Message.Id(uuid7()),
             conversationId = conversationId,
             role = Conversation.Message.Role.ASSISTANT,
             content = content,
@@ -397,7 +371,7 @@ class ConversationEngineService(
         type: String = "error",
     ): Conversation.Message {
         return Conversation.Message(
-            id = Conversation.Message.Id(UUID.randomUUID().toString()),
+            id = Conversation.Message.Id(uuid7()),
             conversationId = conversationId,
             role = Conversation.Message.Role.SYSTEM,
             content = listOf(
