@@ -1,6 +1,7 @@
 package com.gromozeka.application.service
 
 import com.gromozeka.domain.model.AgentDefinition
+import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.service.AgentDomainService
 import com.gromozeka.domain.repository.AgentRepository
 import com.gromozeka.shared.uuid.uuid7
@@ -61,8 +62,8 @@ class AgentApplicationService(
         return agentRepository.save(agent)
     }
 
-    override suspend fun assembleSystemPrompt(agent: AgentDefinition, projectPath: String): List<String> {
-        return promptDomainService.assembleSystemPrompt(agent.prompts, projectPath)
+    override suspend fun assembleSystemPrompt(agent: AgentDefinition, project: Project): List<String> {
+        return promptDomainService.assembleSystemPrompt(agent.prompts, project)
     }
 
     /**

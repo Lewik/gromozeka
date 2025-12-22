@@ -1,6 +1,7 @@
 package com.gromozeka.domain.service
 
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.Project
 
 /**
  * Domain service for conversation lifecycle management.
@@ -50,12 +51,12 @@ interface ConversationDomainService {
     suspend fun findById(id: Conversation.Id): Conversation?
 
     /**
-     * Retrieves project path for conversation.
+     * Retrieves project for conversation.
      *
      * @param conversationId conversation identifier
-     * @return project filesystem path, or null if conversation or project not found
+     * @return project, or throws if conversation or project not found
      */
-    suspend fun getProjectPath(conversationId: Conversation.Id): String
+    suspend fun getProject(conversationId: Conversation.Id): Project
 
     /**
      * Retrieves all conversations in project.

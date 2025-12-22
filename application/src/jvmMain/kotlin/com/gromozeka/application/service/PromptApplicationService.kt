@@ -1,5 +1,6 @@
 package com.gromozeka.application.service
 
+import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.Prompt
 import com.gromozeka.domain.service.PromptDomainService
 import com.gromozeka.domain.repository.PromptRepository
@@ -19,19 +20,20 @@ class PromptApplicationService(
 
     override suspend fun assembleSystemPrompt(
         promptIds: List<Prompt.Id>,
-        projectPath: String,
+        project: Project,
     ): List<String> {
         return promptIds.map { id ->
             when {
                 id.value == "env" -> {
-                    systemPromptBuilder.buildEnvironmentInfo(projectPath)
+                    systemPromptBuilder.buildEnvironmentInfo(project.path)
                 }
 
                 else -> {
-                    val prompt = promptRepository.findById(id)
+                    val prompt = promptRepository.findById(id, project)
                     prompt?.content ?: """
                         ## ⚠️ CRITICAL ERROR: Required prompt not loaded
                         **Failed to load prompt:** ${id.value}
+                        **Project:** ${project.displayName()} (${project.path})
                         This prompt is required for agent to function correctly.
 
                         **Action required:** YOU MUST inform the user about missing file.
@@ -42,7 +44,10 @@ class PromptApplicationService(
     }
 
     override suspend fun findById(id: Prompt.Id): Prompt? {
-        return promptRepository.findById(id)
+        throw UnsupportedOperationException(
+            "findById without project context is not supported. " +
+            "Use assembleSystemPrompt with project context instead."
+        )
     }
 
     override suspend fun findAll(): List<Prompt> {
@@ -70,8 +75,8 @@ class PromptApplicationService(
     }
 
     override suspend fun copyBuiltinPromptToUser(id: Prompt.Id): Result<Unit> {
-        val prompt = promptRepository.findById(id)
-            ?: return Result.failure(IllegalArgumentException("Prompt not found: ${id.value}"))
+        val prompt = promptRepository.findBuiltinById(id)
+            ?: return Result.failure(IllegalArgumentException("Builtin prompt not found: ${id.value}"))
 
         return promptPersistenceService.copyBuiltinToUser(prompt)
     }

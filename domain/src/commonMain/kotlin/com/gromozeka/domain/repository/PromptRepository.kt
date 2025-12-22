@@ -18,14 +18,25 @@ import com.gromozeka.domain.model.Prompt
 interface PromptRepository {
 
     /**
+     * Finds builtin prompt by unique identifier.
+     *
+     * Only works for builtin: prompts (no project context needed).
+     *
+     * @param id builtin prompt identifier (must start with "builtin:")
+     * @return prompt if found, null otherwise
+     */
+    suspend fun findBuiltinById(id: Prompt.Id): Prompt?
+
+    /**
      * Finds prompt by unique identifier.
      *
      * Searches across all sources (builtin, file, remote).
      *
      * @param id prompt identifier
+     * @param project project context (required for project: prompts)
      * @return prompt if found, null otherwise
      */
-    suspend fun findById(id: Prompt.Id): Prompt?
+    suspend fun findById(id: Prompt.Id, project: com.gromozeka.domain.model.Project): Prompt?
 
     /**
      * Finds all available prompts from all sources.

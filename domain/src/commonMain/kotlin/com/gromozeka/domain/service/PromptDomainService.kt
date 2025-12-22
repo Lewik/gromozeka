@@ -22,13 +22,13 @@ interface PromptDomainService {
      * This allows sending multiple system messages to the model.
      *
      * @param promptIds ordered list of prompt IDs to assemble
-     * @param projectPath optional project path for Dynamic prompts (e.g., Environment)
+     * @param project project context (required for project: prompts and environment info)
      * @return list of prompt contents (one per prompt)
      * @throws Prompt.NotFoundException if any referenced prompt doesn't exist
      */
     suspend fun assembleSystemPrompt(
         promptIds: List<Prompt.Id>,
-        projectPath: String
+        project: com.gromozeka.domain.model.Project
     ): List<String>
 
     /**

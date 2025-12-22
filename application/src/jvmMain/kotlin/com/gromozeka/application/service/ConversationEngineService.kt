@@ -147,12 +147,12 @@ class ConversationEngineService(
     ): Flow<Conversation.Message> = flow {
         val conversation = conversationService.findById(conversationId)
             ?: throw IllegalStateException("Conversation not found: $conversationId")
-        val projectPath = conversationService.getProjectPath(conversationId)
+        val project = conversationService.getProject(conversationId)
         val provider = AIProvider.valueOf(agent.aiProvider)
         val chatModel = chatModelProvider.getChatModel(
             provider,
             agent.modelName,
-            projectPath
+            project.path
         )
         // Add user message
         conversationService.addMessage(conversationId, userMessage)
@@ -170,12 +170,12 @@ class ConversationEngineService(
         }
 
         val systemMessages = agentDomainService
-            .assembleSystemPrompt(agent, projectPath)
+            .assembleSystemPrompt(agent, project)
             .map { SystemMessage(it) }
 
         val finalMessages = conversationService.loadCurrentMessages(conversationId)
         val springHistory = messageConversionService.convertHistoryToSpringAI(finalMessages)
-        val toolOptions = collectToolOptions(projectPath, provider)
+        val toolOptions = collectToolOptions(project.path, provider)
 
         var currentPrompt = Prompt(systemMessages + springHistory, toolOptions)
         var iterationCount = 0
@@ -277,7 +277,7 @@ class ConversationEngineService(
                 }
 
                 val toolContext = ToolContext(
-                    mapOf("projectPath" to projectPath)
+                    mapOf("projectPath" to project.path)
                 )
                 val executionResult = parallelToolExecutor.executeParallel(
                     toolCalls = allToolCalls,

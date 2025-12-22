@@ -104,10 +104,11 @@ class ConversationApplicationService(
      * @param conversationId conversation to query
      * @return project path
      */
-    override suspend fun getProjectPath(conversationId: Conversation.Id): String {
-        val conversation = findById(conversationId)!!
-        val project = projectService.findById(conversation.projectId)!!
-        return project.path
+    override suspend fun getProject(conversationId: Conversation.Id): Project {
+        val conversation = findById(conversationId)
+            ?: throw IllegalStateException("Conversation not found: $conversationId")
+        return projectService.findById(conversation.projectId)
+            ?: throw IllegalStateException("Project not found: ${conversation.projectId}")
     }
 
     /**

@@ -513,16 +513,16 @@ class ConversationEngine(
             
             // Get projectPath from conversation.projectId
             val project = projectRepository.findById(conversation.projectId)
-            val projectPath = project?.path
+                ?: throw IllegalStateException("Project not found: ${conversation.projectId}")
             
             val provider = AIProvider.valueOf(definition.aiProvider)
-            val model = chatModelProvider.getChatModel(provider, definition.modelName, projectPath)
+            val model = chatModelProvider.getChatModel(provider, definition.modelName, project.path)
             
             // Assemble system prompts from agent definition
-            val systemPrompts = agentDomainService.assembleSystemPrompt(definition, projectPath ?: "")
+            val systemPrompts = agentDomainService.assembleSystemPrompt(definition, project)
             val systemMessages = systemPrompts.map { SystemMessage(it) }
             
-            val toolOptions = collectToolOptions(projectPath, provider, definition)
+            val toolOptions = collectToolOptions(project.path, provider, definition)
             
             var iteration = 0
             
@@ -578,7 +578,7 @@ class ConversationEngine(
                 }
                 
                 // Execute tools
-                val toolContext = ToolContext(mapOf("projectPath" to projectPath))
+                val toolContext = ToolContext(mapOf("projectPath" to project.path))
                 val executionResult = parallelToolExecutor.executeParallel(
                     toolCalls = allToolCalls,
                     toolContext = toolContext,

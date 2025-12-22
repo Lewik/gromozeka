@@ -1,5 +1,6 @@
 package com.gromozeka.infrastructure.db.persistence
 
+import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.Prompt
 import com.gromozeka.domain.repository.PromptRepository
 import org.springframework.stereotype.Service
@@ -16,11 +17,21 @@ class ExposedPromptRepository(
     // In-memory cache for environment prompts (created dynamically via MCP)
     private val environmentPromptsCache = ConcurrentHashMap<Prompt.Id, Prompt>()
 
-    private fun getProjectPath(): String? {
-        return fileSystemPromptScanner.findProjectRoot()?.absolutePath
+    override suspend fun findBuiltinById(id: Prompt.Id): Prompt? {
+        val idValue = id.value
+        
+        // Check environment cache first
+        environmentPromptsCache[id]?.let { return it }
+        
+        // Only works for builtin
+        if (idValue.startsWith("builtin:")) {
+            return cachedBuiltinPrompts.find { it.id == id }
+        }
+        
+        return null
     }
 
-    override suspend fun findById(id: Prompt.Id): Prompt? {
+    override suspend fun findById(id: Prompt.Id, project: Project): Prompt? {
         val idValue = id.value
 
         // Check environment cache first
@@ -29,14 +40,11 @@ class ExposedPromptRepository(
         // Handle builtin with project override
         if (idValue.startsWith("builtin:")) {
             val fileName = idValue.removePrefix("builtin:")
-            val projectPath = getProjectPath()
 
             // Check for project override first
-            if (projectPath != null) {
-                val projectOverride = Prompt.Id("project:$fileName")
-                fileSystemPromptScanner.loadPromptById(projectOverride, projectPath)?.let {
-                    return it
-                }
+            val projectOverride = Prompt.Id("project:$fileName")
+            fileSystemPromptScanner.loadPromptById(projectOverride, project.path)?.let {
+                return it
             }
 
             // Fall back to builtin
@@ -45,24 +53,21 @@ class ExposedPromptRepository(
 
         // For global and project prompts, load from disk
         if (idValue.startsWith("global:") || idValue.startsWith("project:")) {
-            val projectPath = getProjectPath()
-            return fileSystemPromptScanner.loadPromptById(id, projectPath)
+            return fileSystemPromptScanner.loadPromptById(id, project.path)
         }
 
         return null
     }
 
     override suspend fun findAll(): List<Prompt> {
-        val projectPath = getProjectPath()
-
         val globalPrompts = fileSystemPromptScanner.scanGlobalPrompts()
-        val projectPrompts = if (projectPath != null) {
-            fileSystemPromptScanner.scanProjectPrompts(projectPath)
-        } else {
-            emptyList()
-        }
+        
+        // Note: Project prompts are NOT included in findAll() 
+        // because we don't have project context here.
+        // Project prompts are loaded explicitly via findById(id, projectPath)
+        // when assembling system prompts for specific project.
 
-        return (cachedBuiltinPrompts + globalPrompts + projectPrompts + environmentPromptsCache.values)
+        return (cachedBuiltinPrompts + globalPrompts + environmentPromptsCache.values)
             .sortedBy { it.name }
     }
 

@@ -35,53 +35,7 @@ class FileSystemPromptScanner {
 
         return scanPromptsFromDirectory(promptsDir, isGlobal = false)
     }
-    
-    fun scanProjectPrompts(): List<Prompt> {
-        val projectRoot = findProjectRoot()
-        
-        if (projectRoot == null) {
-            log.warn { "Could not find project root with .gromozeka directory" }
-            return emptyList()
-        }
-        
-        log.info { "Found project root: ${projectRoot.absolutePath}" }
-        return scanProjectPrompts(projectRoot.absolutePath)
-    }
-    
-    fun findProjectRoot(): File? {
-        var current = File(System.getProperty("user.dir"))
-        
-        log.debug { "Searching for project root starting from: ${current.absolutePath}" }
-        
-        while (current != null) {
-            val gromozekaDir = File(current, ".gromozeka")
-            
-            // Skip runtime data directories (dev-data, beta-data, etc.)
-            if (current.name.contains("data") || current.parentFile?.name?.contains("data") == true) {
-                log.debug { "Skipping data directory: ${current.absolutePath}" }
-                current = current.parentFile
-                continue
-            }
-            
-            log.debug { "Checking: ${current.absolutePath} -> .gromozeka exists: ${gromozekaDir.exists()}" }
-            
-            if (gromozekaDir.exists() && gromozekaDir.isDirectory) {
-                // Check if it's a project directory (has prompts/ or agents/ subdirs)
-                val hasPrompts = File(gromozekaDir, "prompts").exists()
-                val hasAgents = File(gromozekaDir, "agents").exists()
-                
-                if (hasPrompts || hasAgents) {
-                    log.info { "Found .gromozeka directory with prompts/agents at: ${current.absolutePath}" }
-                    return current
-                }
-            }
-            
-            current = current.parentFile
-        }
-        
-        log.warn { "Could not find .gromozeka directory in any parent directories" }
-        return null
-    }
+
     
     private fun scanPromptsFromDirectory(
         directory: File,

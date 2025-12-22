@@ -1,6 +1,7 @@
 package com.gromozeka.domain.service
 
 import com.gromozeka.domain.model.AgentDefinition
+import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.Prompt
 
 /**
@@ -42,10 +43,10 @@ interface AgentDomainService {
      * Returns a list of prompt contents (one per prompt) ready for an AI model.
      *
      * @param agent agent to assemble prompts for
-     * @param projectPath optional project path for Dynamic prompts (e.g., Environment)
+     * @param project project context (required)
      * @return list of prompt contents
      */
-    suspend fun assembleSystemPrompt(agent: AgentDefinition, projectPath: String): List<String>
+    suspend fun assembleSystemPrompt(agent: AgentDefinition, project: Project): List<String>
 
     /**
      * Finds agent by unique identifier.
