@@ -30,7 +30,10 @@ data class ServerConfig(
     val timeout: Int? = null,
 
     @JsonProperty("disabled")
-    val disabled: Boolean = false
+    val disabled: Boolean = false,
+
+    @JsonProperty("excludedTools")
+    val excludedTools: List<String>? = null
 ) {
     val transportType: TransportType
         get() = when {

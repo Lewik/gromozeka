@@ -80,3 +80,7 @@ release-assets/
 release-notes.md
 
 /google-credentials.json
+
+# Serena LSP integration
+serena-cache/
+.sources/

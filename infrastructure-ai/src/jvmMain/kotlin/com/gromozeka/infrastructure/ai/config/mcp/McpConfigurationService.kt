@@ -228,9 +228,23 @@ class McpConfigurationService(
 
             for (wrapper in mcpClients) {
                 try {
-                    val tools = wrapper.listTools()
+                    val allTools = wrapper.listTools()
+                    
+                    // Get excluded tools for this server
+                    val serverConfig = cachedConfig?.mcpServers?.get(wrapper.name)
+                    val excludedTools = serverConfig?.excludedTools ?: emptyList()
+                    
+                    // Filter out excluded tools
+                    val tools = if (excludedTools.isNotEmpty()) {
+                        val filtered = allTools.filterNot { it.name in excludedTools }
+                        log.info { "MCP Server '${wrapper.name}': excluded ${allTools.size - filtered.size} tools (${excludedTools.joinToString(", ")})" }
+                        filtered
+                    } else {
+                        allTools
+                    }
+                    
                     log.info { "=".repeat(80) }
-                    log.info { "MCP Server: ${wrapper.name} - ${tools.size} tools" }
+                    log.info { "MCP Server: ${wrapper.name} - ${tools.size} tools (${allTools.size} total, ${allTools.size - tools.size} excluded)" }
                     log.info { "=".repeat(80) }
 
                     tools.forEach { tool ->

@@ -25,6 +25,21 @@ Named after the multi-armed character from "The Mystery of the Third Planet". Cu
 
 **Note**: All AI capabilities (tool calling, file operations, web search, etc.) are provided by Claude Code CLI itself. Gromozeka wraps Claude Code CLI to add voice interaction.
 
+### 🧠 Serena Integration (LSP-powered Code Analysis)
+- **Semantic code understanding**: IDE-like symbol navigation via Language Server Protocol
+- **40+ languages supported**: Kotlin, Java, TypeScript, Python, Rust, Go, C++, and more
+- **Symbol-based operations**: Find symbols, navigate references, rename across codebase
+- **Multi-project support**: Work with multiple codebases, switch projects dynamically
+- **Docker-isolated**: Clean separation from Gromozeka codebase
+- **MCP integration**: Works alongside Gromozeka's tools via Model Context Protocol
+
+Quick start:
+```bash
+docker-compose -f presentation/src/jvmMain/resources/docker-compose.yml up -d serena
+# Then in Claude: "Activate project /workspace/gromozeka"
+```
+See [docs/serena-cheatsheet.md](docs/serena-cheatsheet.md) for usage reference.
+
 ## 🚀 Getting Started
 
 ### Prerequisites
