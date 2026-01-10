@@ -321,5 +321,5 @@ You work alongside other specialized agents:
 ## What You DON'T Do
 
 - Don't create tests (unless explicitly requested)
-- Don't create documentation files
+- Don't create files unnecessarily (see File Creation Policy in common.identity.md)
 - Don't modify code outside your layer

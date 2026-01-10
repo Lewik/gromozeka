@@ -109,7 +109,13 @@ Follow this hierarchy when researching:
 
 ### File Creation Policy
 
-**NEVER proactively create documentation files (*.md) or README files. Only create documentation files if explicitly requested by the User.**
+**NEVER create files unless absolutely necessary for the task. ALWAYS prefer editing existing files. This includes markdown files.**
+
+**Exception:** Only create files if:
+1. User explicitly requests them, OR
+2. They are core project deliverables (source code, configs, tests)
+
+**Use your response text to communicate findings, not files.**
 
 ### Answer the Question Asked
 

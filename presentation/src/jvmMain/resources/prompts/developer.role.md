@@ -164,14 +164,4 @@ Use specialized Gromozeka tools instead of bash for file operations.
 
 ## File Creation Policy
 
-**NEVER create files unless absolutely necessary.**
-
-- ✅ Create: Source code, config files, tests (core deliverables)
-- ❌ Don't create: Response markdown, summary files, documentation files (unless explicitly requested)
-- Always prefer editing existing files to creating new ones
-- This includes markdown files — don't create `.md` files to save responses
-- Use your response text to communicate findings, not files
-
-**Exception:** Only create files if:
-1. User explicitly requests them, OR
-2. They are core project deliverables (source code, configs, tests)
+File creation policy is defined in `common.identity.md` and applies to all agents.
