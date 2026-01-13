@@ -37,6 +37,7 @@ flyway = "11.1.0"
 uuid-creator = "5.3.7"
 neo4j-driver = "5.26.0"
 ktreesitter = "0.24.1"
+lsp4j = "0.23.1"
 
 [libraries]
 # Ktor
@@ -147,6 +148,9 @@ kotest-assertions-json = { module = "io.kotest:kotest-assertions-json", version.
 
 # Tree-sitter
 ktreesitter = { module = "io.github.tree-sitter:ktreesitter", version.ref = "ktreesitter" }
+
+# LSP4J (Language Server Protocol for Java)
+lsp4j = { module = "org.eclipse.lsp4j:org.eclipse.lsp4j", version.ref = "lsp4j" }
 
 [plugins]
 kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }

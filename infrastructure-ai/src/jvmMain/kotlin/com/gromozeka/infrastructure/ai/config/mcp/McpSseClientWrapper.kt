@@ -48,10 +48,25 @@ data class McpSseClientWrapper(
     }
 
     override suspend fun callTool(toolName: String, arguments: Map<String, Any>): String {
+        val startTime = System.currentTimeMillis()
+        log.info { "[MCP] Calling tool '$toolName' on server '$name' (timeout: 20s)" }
+        
         val request = McpSchema.CallToolRequest(toolName, arguments)
-        val result = client.callTool(request).awaitSingleOrNull()
+        val result = try {
+            client.callTool(request)
+                .timeout(Duration.ofSeconds(20))
+                .awaitSingleOrNull()
+        } catch (e: Exception) {
+            val duration = System.currentTimeMillis() - startTime
+            log.error(e) { "[MCP] Tool '$toolName' failed after ${duration}ms: ${e.message}" }
+            throw IllegalStateException("MCP tool '$toolName' failed after ${duration}ms", e)
+        }
+        
+        val duration = System.currentTimeMillis() - startTime
+        log.info { "[MCP] Tool '$toolName' completed in ${duration}ms" }
 
         if (result == null) {
+            log.warn { "[MCP] Tool '$toolName' returned null result" }
             return "Tool returned no result"
         }
 

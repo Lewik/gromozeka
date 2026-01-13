@@ -62,6 +62,7 @@ fun SessionScreen(
     // Memory
     onRememberThread: (() -> Unit)? = null,
     onAddToGraph: (() -> Unit)? = null,
+    onIndexDomain: (() -> Unit)? = null,
 
     // Dev mode
     isDev: Boolean = false,
@@ -534,6 +535,24 @@ fun SessionScreen(
                                 Icon(
                                     Icons.Default.AccountTree,
                                     contentDescription = "Add to Graph"
+                                )
+                            }
+                        }
+
+                        // Index Domain button (if graph storage is enabled and callback provided)
+                        onIndexDomain?.let { indexDomainCallback ->
+                            Spacer(modifier = Modifier.width(8.dp))
+                            CompactButton(
+                                onClick = {
+                                    coroutineScope.launch {
+                                        indexDomainCallback()
+                                    }
+                                },
+                                tooltip = "Index domain layer to knowledge graph"
+                            ) {
+                                Icon(
+                                    Icons.Default.Schema,
+                                    contentDescription = "Index Domain"
                                 )
                             }
                         }

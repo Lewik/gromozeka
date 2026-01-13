@@ -22,6 +22,7 @@ import com.gromozeka.presentation.ui.viewmodel.ConversationSearchViewModel
 import com.gromozeka.shared.audio.AudioRecorder
 import com.gromozeka.domain.repository.TokenUsageStatisticsRepository
 import com.gromozeka.domain.service.ConversationDomainService
+import com.gromozeka.domain.tool.codebase.IndexDomainToGraphTool
 import com.gromozeka.infrastructure.ai.springai.SttService
 import com.gromozeka.infrastructure.ai.springai.TtsService
 import io.ktor.client.*
@@ -87,6 +88,7 @@ class Config {
         screenCaptureController: ScreenCaptureController,
         defaultAgentProvider: DefaultAgentProvider,
         tokenUsageStatisticsRepository: TokenUsageStatisticsRepository,
+        indexDomainToGraphTool: IndexDomainToGraphTool,
     ) = AppViewModel(
         conversationEngineService,
         conversationService,
@@ -98,6 +100,7 @@ class Config {
         screenCaptureController,
         defaultAgentProvider,
         tokenUsageStatisticsRepository,
+        indexDomainToGraphTool,
     )
 
     @Bean

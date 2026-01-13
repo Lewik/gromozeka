@@ -58,6 +58,9 @@ kotlin {
                 // Tree-sitter for code analysis
                 implementation(libs.ktreesitter)
                 implementation(project(":infrastructure-ai:tree-sitter-kotlin-grammar"))
+
+                // LSP4J for Language Server Protocol integration
+                implementation(libs.lsp4j)
             }
         }
         

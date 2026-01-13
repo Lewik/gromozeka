@@ -222,6 +222,16 @@ class McpConfigurationService(
         return cachedConfig?.mcpServers ?: emptyMap()
     }
 
+    /**
+     * Gets MCP client wrapper by server name.
+     * 
+     * @param serverName name of MCP server (e.g., "selene", "brave-search")
+     * @return MCP client wrapper or null if not found
+     */
+    fun getMcpClient(serverName: String): McpWrapperInterface? {
+        return mcpClients.find { it.name.equals(serverName, ignoreCase = true) }
+    }
+
     override fun getToolCallbacks(): List<ToolCallback> {
         return runBlocking {
             val callbacks = mutableListOf<ToolCallback>()
@@ -339,9 +349,24 @@ data class McpClientWrapper(
     }
 
     override suspend fun callTool(toolName: String, arguments: Map<String, Any>): String {
-        val result = client.callTool(toolName, arguments)
+        val startTime = System.currentTimeMillis()
+        log.info { "[MCP] Calling tool '$toolName' on server '$name' (timeout: 20s)" }
+        
+        val result = try {
+            withTimeout(40_000) { // 20 seconds
+                client.callTool(toolName, arguments)
+            }
+        } catch (e: Exception) {
+            val duration = System.currentTimeMillis() - startTime
+            log.error(e) { "[MCP] Tool '$toolName' failed after ${duration}ms: ${e.message}" }
+            throw IllegalStateException("MCP tool '$toolName' failed after ${duration}ms", e)
+        }
+        
+        val duration = System.currentTimeMillis() - startTime
+        log.info { "[MCP] Tool '$toolName' completed in ${duration}ms" }
 
         if (result == null) {
+            log.warn { "[MCP] Tool '$toolName' returned null result" }
             return "Tool returned no result"
         }
 

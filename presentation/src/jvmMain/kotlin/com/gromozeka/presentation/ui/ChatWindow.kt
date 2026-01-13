@@ -397,6 +397,19 @@ fun ApplicationScope.ChatWindow(
                                                                 }
                                                             } else null,
 
+                                                            onIndexDomain = if (currentSettings.graphStorageEnabled) {
+                                                                {
+                                                                    coroutineScope.launch {
+                                                                        try {
+                                                                            appViewModel.indexDomainToGraph()
+                                                                            log.info("Index domain triggered")
+                                                                        } catch (e: Exception) {
+                                                                            log.warn(e) { "Index domain failed: ${e.message}" }
+                                                                        }
+                                                                    }
+                                                                }
+                                                            } else null,
+
                                                             onShowPromptsPanelChange = { showPromptsPanel = it },
 
                                                             isDev = settingsService.mode == AppMode.DEV,
