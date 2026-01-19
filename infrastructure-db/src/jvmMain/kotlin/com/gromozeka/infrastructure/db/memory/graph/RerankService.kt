@@ -12,9 +12,13 @@ import kotlin.system.measureTimeMillis
 
 @Service
 class RerankService(
-    private val httpClient: HttpClient
+    private val httpClient: HttpClient,
+    private val rerankerProcessManager: RerankerProcessManager?
 ) {
     private val log = KLoggers.logger(this)
+
+    val isAvailable: Boolean
+        get() = rerankerProcessManager?.isAvailable ?: false
 
     suspend fun rerank(
         query: String,
@@ -25,26 +29,39 @@ class RerankService(
             return emptyList()
         }
 
-        log.debug { "Reranking ${documents.size} documents for query: '${query.take(50)}...'" }
-
-        val response: RerankResponse
-        val timeMs = measureTimeMillis {
-            response = httpClient.post("http://localhost:7997/rerank") {
-                contentType(ContentType.Application.Json)
-                setBody(
-                    RerankRequest(
-                        query = query,
-                        documents = documents,
-                        returnDocuments = false,
-                        topN = topN
-                    )
-                )
-            }.body<RerankResponse>()
+        if (!isAvailable) {
+            log.debug { "Reranker not available, returning documents in original order" }
+            return documents.indices.map { idx ->
+                RerankResult(index = idx, relevanceScore = 1.0f - (idx * 0.01f))
+            }
         }
 
-        log.info { "Reranking completed in ${timeMs}ms for ${documents.size} docs, ${response.usage?.totalTokens ?: 0} tokens" }
+        log.debug { "Reranking ${documents.size} documents for query: '${query.take(50)}...'" }
 
-        return response.results.sortedByDescending { it.relevanceScore }
+        return try {
+            val response: RerankResponse
+            val timeMs = measureTimeMillis {
+                response = httpClient.post("http://localhost:7997/rerank") {
+                    contentType(ContentType.Application.Json)
+                    setBody(
+                        RerankRequest(
+                            query = query,
+                            documents = documents,
+                            returnDocuments = false,
+                            topN = topN
+                        )
+                    )
+                }.body<RerankResponse>()
+            }
+
+            log.info { "Reranking completed in ${timeMs}ms for ${documents.size} docs, ${response.usage?.totalTokens ?: 0} tokens" }
+            response.results.sortedByDescending { it.relevanceScore }
+        } catch (e: Exception) {
+            log.warn(e) { "Reranking failed, returning documents in original order: ${e.message}" }
+            documents.indices.map { idx ->
+                RerankResult(index = idx, relevanceScore = 1.0f - (idx * 0.01f))
+            }
+        }
     }
 
     suspend fun rerankAndFilter(

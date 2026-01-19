@@ -25,15 +25,26 @@ class RerankerProcessManager(
     private var process: Process? = null
     private val port: Int = URI(rerankerUrl).port.takeIf { it > 0 } ?: 7997
 
+    @Volatile
+    private var _isAvailable: Boolean = false
+    val isAvailable: Boolean get() = _isAvailable
+
     @PostConstruct
     fun startIfNeeded() {
         if (isRerankerAvailable()) {
             log.info { "Reranker already available at $rerankerUrl" }
+            _isAvailable = true
             return
         }
 
         log.info { "Reranker not available, starting process..." }
-        startReranker()
+        try {
+            startReranker()
+            _isAvailable = true
+        } catch (e: Exception) {
+            log.error(e) { "Failed to start reranker: ${e.message}. Reranking will be disabled." }
+            _isAvailable = false
+        }
     }
 
     @PreDestroy
@@ -92,29 +103,35 @@ class RerankerProcessManager(
 
         log.info { "Creating Python $pythonVersion venv at ${venvDir.absolutePath} using uv" }
 
-        val venvResult = ProcessBuilder("uv", "venv", "--python", pythonVersion, venvDir.absolutePath)
-            .inheritIO()
+        val venvProcess = ProcessBuilder("uv", "venv", "--python", pythonVersion, venvDir.absolutePath)
+            .redirectErrorStream(true)
             .start()
-            .waitFor()
+
+        val venvOutput = venvProcess.inputStream.bufferedReader().readText()
+        val venvResult = venvProcess.waitFor()
 
         if (venvResult != 0) {
+            log.error { "uv venv output:\n$venvOutput" }
             throw RuntimeException("Failed to create venv with uv (exit code: $venvResult)")
         }
 
         val pythonPath = File(venvDir, "bin/python").absolutePath
         log.info { "Installing infinity-emb..." }
 
-        val pipResult = ProcessBuilder(
+        val pipProcess = ProcessBuilder(
             "uv", "pip", "install", "--python", pythonPath,
             "infinity-emb[torch,server]==0.0.70",
             "typer==0.9.0",
             "click==8.1.7"
         )
-            .inheritIO()
+            .redirectErrorStream(true)
             .start()
-            .waitFor()
+
+        val pipOutput = pipProcess.inputStream.bufferedReader().readText()
+        val pipResult = pipProcess.waitFor()
 
         if (pipResult != 0) {
+            log.error { "uv pip install output:\n$pipOutput" }
             throw RuntimeException("Failed to install infinity-emb (exit code: $pipResult)")
         }
 
