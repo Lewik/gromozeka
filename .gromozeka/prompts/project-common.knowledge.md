@@ -80,34 +80,24 @@ class ThreadViewModel(
 
 **If you implement Domain interfaces (Repository, Business Logic, Spring AI, UI agents):**
 
-**Step 0: Read Domain contracts FIRST**
+**Step 0: Search Domain contracts FIRST**
 
-Domain layer (`:domain`) contains specifications for your work:
+Domain layer (`:domain`) is **fully indexed in Knowledge Graph** with vectorized KDoc:
 - Repository interfaces → what data access to implement
 - Service interfaces → what business logic to implement
 - ViewModel interfaces → what UI state to expose
 - Tool interfaces → what MCP tools to implement
 
-**These are PRIMARY specifications - read them before implementing.**
+**These are PRIMARY specifications.**
 
-**Why this matters:**
-- Domain contracts are complete specifications (if KDoc is good)
-- Reading them first prevents wrong assumptions
-- Architect designed the contract - you implement it exactly
-- Compiler validates conformance (interface implementation)
+**Gromozeka-specific workflow:**
+1. **Search** domain specs: `unified_search("thread repository", scopes=["code_specs:interface"])`
+2. **Understand** requirements from KDoc in search results
+3. **Read file** if need full details: `grz_read_file("domain/repository/ThreadRepository.kt")`
+4. **Implement** in your layer (`infrastructure/`, `application/`, `presentation/`)
+5. **Compiler verifies** contract conformance
 
-**Workflow:**
-1. Read domain interface from filesystem (`domain/repository/`, `domain/service/`, etc.)
-2. Understand requirements from KDoc
-3. Implement in your layer (`infrastructure/`, `application/`, `presentation/`)
-4. Compiler verifies you followed the contract
-
-**Example:**
-
-**Instead of chat:**
-> "Repository Agent, please implement a method that finds thread by ID and returns Thread or null if not found"
-
-**Use code:**
+**Code-as-Contract example:**
 ```kotlin
 interface ThreadRepository {
     /**
@@ -119,69 +109,37 @@ interface ThreadRepository {
 }
 ```
 
-**Если KDoc неполный или противоречивый:**
-- НЕ угадывай, НЕ hallucinate
-- Спроси создателя интерфейса конкретно что неясно
+Implementation agent reads this interface → implements → compiler validates.
+
+**If KDoc incomplete or contradictory:**
+- Don't guess, don't hallucinate
+- Ask interface creator specifically what's unclear
 
 ## Knowledge Graph Integration
 
-The knowledge graph is organizational memory shared across all agents. Using it prevents reinventing solutions and helps learn from past decisions.
+**Gromozeka-specific: Domain code is fully indexed.**
 
-**Why this matters:**
-- Searching graph before implementing saves 100-1000 tokens (no need to rediscover solutions)
-- Past mistakes are documented - avoid repeating expensive refactoring
-- Proven patterns emerge from successful implementations
-- Other agents benefit from your experience
+All domain classes, interfaces, methods with vectorized KDoc are searchable via `unified_search`.
 
-**Before implementing anything:**
+**Gromozeka research workflow:**
 
-**Step 1: Search Knowledge Graph (for internal patterns)**
+1. **Search Knowledge Graph** - domain code + past decisions
+2. **Check `.sources/`** - external dependency source code
+3. **Web search** - only if steps 1-2 insufficient
+
+**After implementing - save decisions:**
+
 ```kotlin
-unified_search(
-  query = "repository pagination patterns",
-  search_graph = true,
-  search_vector = false
-)
-```
-
-**Step 2: Check source code (if using external dependencies)**
-See "Research Pattern: .sources/" in common-prompt.md for detailed workflow.
-
-**Step 3: Web search (only if steps 1-2 are insufficient)**
-- Google/StackOverflow for additional context
-- Official documentation for API details
-
-This three-step approach ensures you work with facts, not assumptions.
-
-**After implementing:**
-
-Save your decisions to knowledge graph. Choose the right tool:
-
-**Option 1: `add_memory_link` - When you know exactly what to save**
-```kotlin
+// Simple fact
 add_memory_link(
   from = "ThreadRepository",
   relation = "uses",
-  to = "UUIDv7",
-  summary = "Repository for conversation threads"
+  to = "UUIDv7"
 )
+
+// Complex knowledge (use sparingly - multiple LLM calls)
+build_memory_from_text(content = "...")
 ```
-
-**Option 2: `build_memory_from_text` - When extracting from complex text**
-```kotlin
-build_memory_from_text(
-  content = """
-  Implemented ThreadRepository using Exposed ORM with Neo4j vector integration.
-
-  Key decisions:
-  1. Separate Thread and Message tables
-     - Rationale: Threads can have 1000+ messages, loading all at once would be slow
-     - Impact: More efficient pagination, independent lifecycle
-  """
-)
-```
-
-**Remember:** Knowledge graph is how agents learn from each other. Searching before implementing and saving after is not optional - it's how we avoid wasting context on already-solved problems.
 
 ## Agent Thread Switching
 

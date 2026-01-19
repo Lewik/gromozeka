@@ -4,6 +4,7 @@
   "prompts": [
     "builtin:common-prompt-prefix.md",
     "builtin:common.identity.md",
+    "builtin:knowledge-graph.knowledge.md",
     "builtin:developer.role.md",
     "project:project-common.knowledge.md",
     "project:architect.role.md",

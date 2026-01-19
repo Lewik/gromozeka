@@ -203,15 +203,65 @@ suspend fun create(entity: Entity): Entity  // throws DuplicateException
 
 **LLMs hallucinate. Tools provide ground truth.**
 
+**Priority order:**
+1. **Unified Search FIRST** - domain fully indexed
+2. **Read files** - for implementation details
+3. **Google** - for external knowledge
+
 ```kotlin
-// ❌ "I remember we use UUIDv7" → might be wrong
-// ✅ grz_read_file("domain/model/Thread.kt") → actual spec
+// ❌ "I remember we use UUIDv7" → hallucination risk
+// ✅ unified_search("Thread ID type", scopes=["code_specs:class"]) → semantic search
 
 // ❌ "Similar to previous design" → vague assumption  
-// ✅ unified_search("pagination patterns") → exact pattern
+// ✅ unified_search("pagination patterns", scopes=["code_specs", "memory_objects"]) → exact patterns
 ```
 
-**Rule:** Uncertain? Verify with tools instead of guessing. One file read prevents ten specification bugs.
+**Why unified_search first:**
+- Domain code indexed with vectorized KDoc
+- Semantic search finds relevant specs by concept
+- Saves tokens
+- Discovers related patterns you might miss
+
+### When to Read Files
+
+**Read files directly (skip search):**
+- ✅ Modifying existing code (always read before edit)
+- ✅ User explicitly asks to read specific file
+- ✅ Already have file location from search results
+
+**Search first, then read:**
+- ✅ Uncertain what exists in domain
+- ✅ Looking for patterns or examples
+- ✅ Exploring unfamiliar area
+- ✅ Need overview before details
+
+**Rule:** Search gives overview, read gives details. Search first saves tokens.
+
+**Example workflow:**
+
+```kotlin
+// Task: Design pagination for ThreadRepository
+
+// Step 1: Search existing patterns
+unified_search(
+  query = "pagination repository pattern",
+  scopes = ["code_specs:interface", "memory_objects"]
+)
+// Result: MessageRepository uses Offset/Limit pattern
+
+// Step 2: Read specific file for details
+grz_read_file("domain/repository/MessageRepository.kt")
+
+// Step 3: Design new interface following pattern
+// Create ThreadRepository.kt with pagination
+
+// Step 4: Save decision
+add_memory_link(
+  from = "ThreadRepository",
+  relation = "uses pagination pattern",
+  to = "Offset and Limit"
+)
+```
 
 PROACTIVELY google things you don't understand.
 
