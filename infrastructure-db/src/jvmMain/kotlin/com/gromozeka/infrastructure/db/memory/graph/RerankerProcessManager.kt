@@ -154,7 +154,7 @@ class RerankerProcessManager(
         log.info { "Installing remaining dependencies..." }
         val depsProcess = ProcessBuilder(
             "uv", "pip", "install", "--python", pythonPath,
-            "fastapi>=0.100", "uvicorn>=0.23", "orjson>=3.9",
+            "fastapi>=0.100", "uvicorn[standard]>=0.23", "orjson>=3.9",
             "prometheus-fastapi-instrumentator>=6.1", "pydantic>=2.4",
             "torch>=2.0", "sentence-transformers>=2.2", "numpy<2",
             "huggingface-hub>=0.20", "rich>=13"
