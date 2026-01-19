@@ -116,10 +116,28 @@ class RerankerProcessManager(
         }
 
         val pythonPath = File(venvDir, "bin/python").absolutePath
-        log.info { "Installing infinity-emb..." }
 
+        log.info { "Installing typer and click (pinned versions)..." }
+        val pinProcess = ProcessBuilder(
+            "uv", "pip", "install", "--python", pythonPath,
+            "typer==0.9.0",
+            "click==8.1.7"
+        )
+            .redirectErrorStream(true)
+            .start()
+
+        val pinOutput = pinProcess.inputStream.bufferedReader().readText()
+        val pinResult = pinProcess.waitFor()
+
+        if (pinResult != 0) {
+            log.error { "uv pip install (pinned) output:\n$pinOutput" }
+            throw RuntimeException("Failed to install pinned dependencies (exit code: $pinResult)")
+        }
+
+        log.info { "Installing infinity-emb..." }
         val pipProcess = ProcessBuilder(
             "uv", "pip", "install", "--python", pythonPath,
+            "--no-deps",
             "infinity-emb[torch,server]==0.0.70"
         )
             .redirectErrorStream(true)
@@ -131,6 +149,25 @@ class RerankerProcessManager(
         if (pipResult != 0) {
             log.error { "uv pip install output:\n$pipOutput" }
             throw RuntimeException("Failed to install infinity-emb (exit code: $pipResult)")
+        }
+
+        log.info { "Installing remaining dependencies..." }
+        val depsProcess = ProcessBuilder(
+            "uv", "pip", "install", "--python", pythonPath,
+            "fastapi>=0.100", "uvicorn>=0.23", "orjson>=3.9",
+            "prometheus-fastapi-instrumentator>=6.1", "pydantic>=2.4",
+            "torch>=2.0", "sentence-transformers>=2.2", "numpy<2",
+            "huggingface-hub>=0.20", "rich>=13"
+        )
+            .redirectErrorStream(true)
+            .start()
+
+        val depsOutput = depsProcess.inputStream.bufferedReader().readText()
+        val depsResult = depsProcess.waitFor()
+
+        if (depsResult != 0) {
+            log.error { "uv pip install (deps) output:\n$depsOutput" }
+            throw RuntimeException("Failed to install dependencies (exit code: $depsResult)")
         }
 
         log.info { "infinity-emb installed successfully" }
