@@ -120,9 +120,7 @@ class RerankerProcessManager(
 
         val pipProcess = ProcessBuilder(
             "uv", "pip", "install", "--python", pythonPath,
-            "infinity-emb[torch,server]==0.0.70",
-            "typer==0.9.0",
-            "click==8.1.7"
+            "infinity-emb[torch,server]==0.0.70"
         )
             .redirectErrorStream(true)
             .start()

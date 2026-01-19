@@ -45,9 +45,7 @@ if [ ! -f "$VENV_DIR/bin/infinity_emb" ]; then
 
     echo "Installing infinity-emb..."
     uv pip install --python "$VENV_DIR/bin/python" \
-        "infinity-emb[torch,server]==0.0.70" \
-        "typer==0.9.0" \
-        "click==8.1.7"
+        "infinity-emb[torch,server]==0.0.70"
     echo "Installation complete."
 fi
 
