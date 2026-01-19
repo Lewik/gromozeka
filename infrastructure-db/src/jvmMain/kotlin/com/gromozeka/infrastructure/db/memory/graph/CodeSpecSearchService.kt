@@ -7,14 +7,13 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
-import kotlinx.datetime.Instant
 import org.springframework.ai.embedding.EmbeddingModel
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.stereotype.Service
 
 @Service
 @ConditionalOnProperty(name = ["knowledge-graph.enabled"], havingValue = "true", matchIfMissing = false)
-class GraphSearchService(
+class CodeSpecSearchService(
     private val neo4jGraphStore: Neo4jGraphStore,
     private val embeddingModel: EmbeddingModel,
     private val rerankService: RerankService
@@ -26,17 +25,24 @@ class GraphSearchService(
         query: String,
         limit: Int = 5,
         useReranking: Boolean = false,
-        asOf: Instant? = null
+        symbolKinds: Set<String>? = null
     ): Map<String, Any> = coroutineScope {
         val candidateLimit = if (useReranking) maxOf(limit * 5, 50) else limit
 
         val results = listOf(
             async { bm25Search(query, candidateLimit) },
-            async { vectorSimilaritySearch(query, candidateLimit) },
-            async { graphTraversal(query, candidateLimit, asOf) }
+            async { vectorSimilaritySearch(query, candidateLimit) }
         ).awaitAll()
 
-        val candidates = results.flatten().distinctBy { it["uuid"] }
+        var candidates = results.flatten().distinctBy { it["uuid"] }
+
+        if (!symbolKinds.isNullOrEmpty()) {
+            val normalizedKinds = symbolKinds.map { it.lowercase() }.toSet()
+            candidates = candidates.filter { result ->
+                val kind = (result["symbol_kind"] as? String)?.lowercase() ?: ""
+                kind in normalizedKinds
+            }
+        }
 
         val finalResults = if (useReranking && candidates.isNotEmpty()) {
             val documents = candidates.map { result ->
@@ -64,75 +70,37 @@ class GraphSearchService(
         return try {
             val results = neo4jGraphStore.executeQuery(
                 """
-                CALL db.index.fulltext.queryNodes('memory_object_index', ${'$'}query)
+                CALL db.index.fulltext.queryNodes('code_spec_index', ${'$'}query)
                 YIELD node, score
                 WHERE node.group_id = ${'$'}groupId
-                RETURN node.uuid AS uuid, node.name AS name, node.summary AS summary, score
+                RETURN node.uuid AS uuid,
+                       node.name AS name,
+                       node.summary AS summary,
+                       node.file_path AS file_path,
+                       node.start_line AS start_line,
+                       node.end_line AS end_line,
+                       node.symbol_kind AS symbol_kind,
+                       score
+                ORDER BY score DESC
                 LIMIT ${'$'}limit
                 """.trimIndent(),
                 mapOf("query" to query, "groupId" to groupId, "limit" to limit)
             )
 
             results.map { record ->
-                mapOf(
+                mapOf<String, Any>(
                     "uuid" to (record["uuid"] as? String ?: ""),
                     "name" to (record["name"] as? String ?: ""),
                     "summary" to (record["summary"] as? String ?: ""),
+                    "file_path" to (record["file_path"] as? String ?: ""),
+                    "start_line" to ((record["start_line"] as? Number)?.toInt() ?: 0),
+                    "end_line" to ((record["end_line"] as? Number)?.toInt() ?: 0),
+                    "symbol_kind" to (record["symbol_kind"] as? String ?: ""),
                     "score" to (record["score"] as? Double ?: 0.0)
                 )
             }
         } catch (e: Exception) {
-            log.warn(e) { "BM25 search failed: ${e.message}" }
-            emptyList()
-        }
-    }
-
-    suspend fun graphTraversal(query: String, limit: Int, asOf: Instant? = null): List<Map<String, Any>> {
-        return try {
-            val temporalFilter = if (asOf != null) {
-                """
-                AND ALL(rel IN r WHERE
-                    datetime(rel.valid_at) <= datetime(${'$'}asOf)
-                    AND (rel.invalid_at IS NULL OR datetime(rel.invalid_at) > datetime(${'$'}asOf))
-                )
-                """.trimIndent()
-            } else {
-                ""
-            }
-
-            val params = mutableMapOf<String, Any>(
-                "query" to query,
-                "groupId" to groupId,
-                "limit" to limit
-            )
-            if (asOf != null) {
-                params["asOf"] = asOf.toString()
-            }
-
-            val results = neo4jGraphStore.executeQuery(
-                """
-                MATCH (n:MemoryObject)-[r:LINKS_TO*1..2]-(connected:MemoryObject)
-                WHERE n.group_id = ${'$'}groupId
-                  AND connected.group_id = ${'$'}groupId
-                  AND (n.name CONTAINS ${'$'}query OR connected.name CONTAINS ${'$'}query)
-                  $temporalFilter
-                RETURN DISTINCT connected.uuid AS uuid,
-                       connected.name AS name,
-                       connected.summary AS summary
-                LIMIT ${'$'}limit
-                """.trimIndent(),
-                params
-            )
-
-            results.map { record ->
-                mapOf(
-                    "uuid" to (record["uuid"] as? String ?: ""),
-                    "name" to (record["name"] as? String ?: ""),
-                    "summary" to (record["summary"] as? String ?: "")
-                )
-            }
-        } catch (e: Exception) {
-            log.warn(e) { "Graph traversal failed: ${e.message}" }
+            log.warn(e) { "CodeSpec BM25 search failed: ${e.message}" }
             emptyList()
         }
     }
@@ -157,7 +125,7 @@ class GraphSearchService(
         return try {
             val results = neo4jGraphStore.executeQuery(
                 """
-                MATCH (n:MemoryObject)
+                MATCH (n:CodeSpec)
                 WHERE n.group_id = ${'$'}groupId
                   AND n.embedding IS NOT NULL
                 WITH n, vector.similarity.cosine(n.embedding, ${'$'}queryEmbedding) AS score
@@ -165,6 +133,10 @@ class GraphSearchService(
                 RETURN n.uuid AS uuid,
                        n.name AS name,
                        n.summary AS summary,
+                       n.file_path AS file_path,
+                       n.start_line AS start_line,
+                       n.end_line AS end_line,
+                       n.symbol_kind AS symbol_kind,
                        score
                 ORDER BY score DESC
                 LIMIT ${'$'}limit
@@ -178,15 +150,19 @@ class GraphSearchService(
             )
 
             results.map { record ->
-                mapOf(
+                mapOf<String, Any>(
                     "uuid" to (record["uuid"] as? String ?: ""),
                     "name" to (record["name"] as? String ?: ""),
                     "summary" to (record["summary"] as? String ?: ""),
+                    "file_path" to (record["file_path"] as? String ?: ""),
+                    "start_line" to ((record["start_line"] as? Number)?.toInt() ?: 0),
+                    "end_line" to ((record["end_line"] as? Number)?.toInt() ?: 0),
+                    "symbol_kind" to (record["symbol_kind"] as? String ?: ""),
                     "score" to (record["score"] as? Double ?: 0.0)
                 )
             }
         } catch (e: Exception) {
-            log.warn(e) { "Vector similarity search (exhaustive) failed: ${e.message}" }
+            log.warn(e) { "CodeSpec vector similarity search (exhaustive) failed: ${e.message}" }
             emptyList()
         }
     }
@@ -199,13 +175,17 @@ class GraphSearchService(
         return try {
             val results = neo4jGraphStore.executeQuery(
                 """
-                CALL db.index.vector.queryNodes('memory_object_vector', ${'$'}limit, ${'$'}queryEmbedding)
+                CALL db.index.vector.queryNodes('code_spec_vector', ${'$'}limit, ${'$'}queryEmbedding)
                 YIELD node, score
                 WHERE node.group_id = ${'$'}groupId
                   AND score > ${'$'}minScore
                 RETURN node.uuid AS uuid,
                        node.name AS name,
                        node.summary AS summary,
+                       node.file_path AS file_path,
+                       node.start_line AS start_line,
+                       node.end_line AS end_line,
+                       node.symbol_kind AS symbol_kind,
                        score
                 ORDER BY score DESC
                 """.trimIndent(),
@@ -218,15 +198,19 @@ class GraphSearchService(
             )
 
             results.map { record ->
-                mapOf(
+                mapOf<String, Any>(
                     "uuid" to (record["uuid"] as? String ?: ""),
                     "name" to (record["name"] as? String ?: ""),
                     "summary" to (record["summary"] as? String ?: ""),
+                    "file_path" to (record["file_path"] as? String ?: ""),
+                    "start_line" to ((record["start_line"] as? Number)?.toInt() ?: 0),
+                    "end_line" to ((record["end_line"] as? Number)?.toInt() ?: 0),
+                    "symbol_kind" to (record["symbol_kind"] as? String ?: ""),
                     "score" to (record["score"] as? Double ?: 0.0)
                 )
             }
         } catch (e: Exception) {
-            log.warn(e) { "Vector similarity search (indexed) failed: ${e.message}" }
+            log.warn(e) { "CodeSpec vector similarity search (indexed) failed: ${e.message}" }
             emptyList()
         }
     }

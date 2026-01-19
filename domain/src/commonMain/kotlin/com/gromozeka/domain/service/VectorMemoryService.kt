@@ -4,7 +4,7 @@ package com.gromozeka.domain.service
  * Service for vector-based memory operations.
  *
  * Provides semantic search and storage for conversation messages using vector embeddings.
- * Infrastructure layer implements this using Qdrant or other vector databases.
+ * Infrastructure layer implements this using Neo4j vector index.
  *
  * Vector memory enables semantic similarity search across conversation history.
  */

@@ -257,7 +257,6 @@ data class AddMemoryLinkRequest(
  * add_memory_link("Gromozeka", "uses", "Spring Framework")
  * add_memory_link("Gromozeka", "uses", "Spring AI")
  * add_memory_link("Gromozeka", "uses", "Neo4j")
- * add_memory_link("Gromozeka", "uses", "Qdrant")
  * ```
  * 
  * Result: Complete technology stack documented

@@ -2,28 +2,25 @@ package com.gromozeka.infrastructure.db.memory
 
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.repository.ThreadMessageRepository
-import com.gromozeka.infrastructure.db.vector.QdrantVectorStore
+import com.gromozeka.infrastructure.db.memory.graph.ConversationMessageGraphService
+import kotlinx.datetime.Clock
 import klog.KLoggers
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import org.springframework.ai.document.Document
+import org.springframework.ai.embedding.EmbeddingModel
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.stereotype.Service
 
 @Service
 @ConditionalOnProperty(name = ["gromozeka.vector.enabled"], havingValue = "true", matchIfMissing = true)
 class VectorMemoryService(
-    private val qdrantVectorStore: QdrantVectorStore?,
+    private val conversationMessageGraphService: ConversationMessageGraphService,
+    private val embeddingModel: EmbeddingModel,
     private val threadMessageRepository: ThreadMessageRepository
 ) : com.gromozeka.domain.service.VectorMemoryService {
     private val log = KLoggers.logger(this)
 
     override suspend fun rememberThread(threadId: String) = withContext(Dispatchers.IO) {
-        if (!isMemoryAvailable()) {
-            log.debug { "Vector storage disabled or unavailable, skipping rememberThread" }
-            return@withContext
-        }
-
         try {
             val threadMessages = threadMessageRepository.getMessagesByThread(
                 Conversation.Thread.Id(threadId)
@@ -33,18 +30,27 @@ class VectorMemoryService(
                 !hasThinking(message)
             }
 
-            val documents = threadMessages.map { message ->
-                Document(
-                    message.id.value,
-                    extractTextContent(message),
-                    mapOf("threadId" to threadId)
+            if (threadMessages.isEmpty()) {
+                log.debug { "No messages to remember for thread $threadId" }
+                return@withContext
+            }
+
+            val messageNodes = threadMessages.map { message ->
+                val content = extractTextContent(message)
+                val embedding = embeddingModel.embed(content).toList()
+
+                ConversationMessageGraphService.ConversationMessageNode(
+                    id = message.id.value,
+                    content = content,
+                    threadId = threadId,
+                    role = message.role.name,
+                    embedding = embedding,
+                    createdAt = Clock.System.now().toString()
                 )
             }
-            
-            if (documents.isNotEmpty()) {
-                qdrantVectorStore?.add(documents)
-                log.info { "Remembered ${documents.size} messages for thread $threadId" }
-            }
+
+            conversationMessageGraphService.saveMessages(messageNodes)
+            log.info { "Remembered ${messageNodes.size} messages for thread $threadId" }
         } catch (e: Exception) {
             log.error(e) { "Failed to remember thread $threadId: ${e.message}" }
         }
@@ -55,21 +61,20 @@ class VectorMemoryService(
         threadId: String?,
         limit: Int
     ): List<com.gromozeka.domain.service.VectorMemoryService.Memory> = withContext(Dispatchers.IO) {
-        if (!isMemoryAvailable()) {
-            log.debug { "Vector storage disabled or unavailable, skipping recall" }
-            return@withContext emptyList()
-        }
-
         try {
-            val filterExpression = threadId?.let { "threadId == '$it'" }
-            val results = qdrantVectorStore?.search(query, limit, filterExpression) ?: emptyList()
+            val queryEmbedding = embeddingModel.embed(query).toList()
+            val results = conversationMessageGraphService.vectorSearch(
+                queryEmbedding = queryEmbedding,
+                threadId = threadId,
+                limit = limit
+            )
 
-            results.map { doc ->
+            results.map { result ->
                 com.gromozeka.domain.service.VectorMemoryService.Memory(
-                    content = doc.formattedContent,
-                    messageId = doc.id,
-                    threadId = doc.metadata["threadId"] as? String ?: "",
-                    score = doc.metadata["distance"] as? Double ?: 1.0
+                    content = result.content,
+                    messageId = result.id,
+                    threadId = result.threadId,
+                    score = result.score
                 )
             }
         } catch (e: Exception) {
@@ -79,13 +84,8 @@ class VectorMemoryService(
     }
 
     override suspend fun forgetMessage(messageId: String) = withContext(Dispatchers.IO) {
-        if (!isMemoryAvailable()) {
-            log.debug { "Vector storage disabled or unavailable, skipping forgetMessage" }
-            return@withContext
-        }
-
         try {
-            qdrantVectorStore?.delete(listOf(messageId))
+            conversationMessageGraphService.deleteMessage(messageId)
             log.debug { "Forgot message $messageId" }
         } catch (e: Exception) {
             log.error(e) { "Failed to forget message $messageId: ${e.message}" }
@@ -108,9 +108,5 @@ class VectorMemoryService(
 
     private fun hasThinking(message: Conversation.Message): Boolean {
         return message.content.any { it is Conversation.Message.ContentItem.Thinking }
-    }
-
-    private fun isMemoryAvailable(): Boolean {
-        return qdrantVectorStore != null
     }
 }

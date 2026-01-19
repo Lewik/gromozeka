@@ -85,7 +85,7 @@ data class GetMemoryObjectRequest(
  * ```json
  * {
  *   "type": "text",
- *   "text": "📋 Entity: Gromozeka\n\n**Type:** Technology\n\n**Summary:**\nMulti-agent AI assistant with hybrid memory architecture\n\n**Created:** 2025-11-20T14:30:00Z\n\n**Outgoing Relationships (5):**\n- written in → Kotlin (created: 2025-11-20T14:30:00Z)\n- uses → Spring AI (created: 2025-11-20T14:31:00Z)\n- uses → Neo4j (created: 2025-11-20T14:31:00Z)\n- uses → Qdrant (created: 2025-11-20T14:31:00Z)\n- follows → Clean Architecture (created: 2025-11-21T09:00:00Z)\n\n**Incoming Relationships (2):**\n- Architect Agent → created → Gromozeka (created: 2025-11-20T14:30:00Z)\n- Repository Agent → contributes to → Gromozeka (created: 2025-11-21T10:15:00Z)\n\n**Related Entities:** Kotlin, Spring AI, Neo4j, Qdrant, Clean Architecture, Architect Agent, Repository Agent"
+ *   "text": "📋 Entity: Gromozeka\n\n**Type:** Technology\n\n**Summary:**\nMulti-agent AI assistant with hybrid memory architecture\n\n**Created:** 2025-11-20T14:30:00Z\n\n**Outgoing Relationships (4):**\n- written in → Kotlin (created: 2025-11-20T14:30:00Z)\n- uses → Spring AI (created: 2025-11-20T14:31:00Z)\n- uses → Neo4j (created: 2025-11-20T14:31:00Z)\n- follows → Clean Architecture (created: 2025-11-21T09:00:00Z)\n\n**Incoming Relationships (2):**\n- Architect Agent → created → Gromozeka (created: 2025-11-20T14:30:00Z)\n- Repository Agent → contributes to → Gromozeka (created: 2025-11-21T10:15:00Z)\n\n**Related Entities:** Kotlin, Spring AI, Neo4j, Clean Architecture, Architect Agent, Repository Agent"
  * }
  * ```
  * 

@@ -95,9 +95,9 @@ data class BuildMemoryFromTextRequest(
  * 
  * **Examples:**
  * ```
- * "Gromozeka is a multi-agent AI assistant written in Kotlin. 
- * It uses Spring AI for LLM integration, Neo4j for knowledge graph storage,
- * and Qdrant for vector search. The architecture follows Clean Architecture
+ * "Gromozeka is a multi-agent AI assistant written in Kotlin.
+ * It uses Spring AI for LLM integration, and Neo4j for knowledge graph storage
+ * and vector search. The architecture follows Clean Architecture
  * principles with domain, application, and infrastructure layers."
  * ```
  * 
@@ -124,7 +124,7 @@ data class BuildMemoryFromTextRequest(
  * ```json
  * {
  *   "type": "text",
- *   "text": "✅ Extracted and saved to knowledge graph:\n\nEntities created (5):\n- Gromozeka (Technology): Multi-agent AI assistant\n- Kotlin (Programming Language): JVM language\n- Spring AI (Framework): LLM integration framework\n- Neo4j (Database): Graph database\n- Qdrant (Database): Vector search engine\n\nRelationships created (4):\n- Gromozeka -[written in]-> Kotlin\n- Gromozeka -[uses]-> Spring AI\n- Gromozeka -[uses]-> Neo4j\n- Gromozeka -[uses]-> Qdrant\n\nProcessing time: 3.2s\nTokens used: ~1500"
+ *   "text": "✅ Extracted and saved to knowledge graph:\n\nEntities created (4):\n- Gromozeka (Technology): Multi-agent AI assistant\n- Kotlin (Programming Language): JVM language\n- Spring AI (Framework): LLM integration framework\n- Neo4j (Database): Graph database and vector store\n\nRelationships created (3):\n- Gromozeka -[written in]-> Kotlin\n- Gromozeka -[uses]-> Spring AI\n- Gromozeka -[uses]-> Neo4j\n\nProcessing time: 3.2s\nTokens used: ~1500"
  * }
  * ```
  * 
@@ -164,12 +164,12 @@ data class BuildMemoryFromTextRequest(
  * {
  *   "tool": "build_memory_from_text",
  *   "parameters": {
- *     "content": "Gromozeka is a multi-agent AI assistant built with Kotlin and Spring AI. It features a hybrid memory architecture combining Neo4j for knowledge graphs and Qdrant for vector search. The system uses Clean Architecture with separate domain, application, and infrastructure layers. Development follows DDD principles with domain-driven specifications."
+ *     "content": "Gromozeka is a multi-agent AI assistant built with Kotlin and Spring AI. It features a hybrid memory architecture using Neo4j for both knowledge graphs and vector search. The system uses Clean Architecture with separate domain, application, and infrastructure layers. Development follows DDD principles with domain-driven specifications."
  *   }
  * }
  * ```
- * 
- * **Result:** Extracts 6+ entities (Gromozeka, Kotlin, Spring AI, Neo4j, Qdrant, Clean Architecture) and 8+ relationships
+ *
+ * **Result:** Extracts 6+ entities (Gromozeka, Kotlin, Spring AI, Neo4j, Clean Architecture, DDD) and 8+ relationships
  * 
  * ## Example 2: Index Meeting Notes
  * 

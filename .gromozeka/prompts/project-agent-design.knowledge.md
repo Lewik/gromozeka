@@ -76,8 +76,7 @@ Before implementing, agent queries graph:
 
 **Data:**
 - Exposed (SQL ORM)
-- Neo4j (knowledge graph)
-- Qdrant (vector store)
+- Neo4j (knowledge graph and vector store)
 
 **AI:**
 - Claude Code CLI (custom integration)

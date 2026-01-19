@@ -63,7 +63,6 @@ spring-ai-vertex-ai-gemini = { module = "org.springframework.ai:spring-ai-vertex
 spring-ai-google-genai = { module = "org.springframework.ai:spring-ai-google-genai", version.ref = "spring-ai" }
 spring-ai-ollama = { module = "org.springframework.ai:spring-ai-ollama", version.ref = "spring-ai" }
 spring-ai-starter-mcp-client = { module = "org.springframework.ai:spring-ai-starter-mcp-client", version.ref = "spring-ai" }
-spring-ai-qdrant-store = { module = "org.springframework.ai:spring-ai-qdrant-store", version.ref = "spring-ai" }
 spring-boot-starter = { module = "org.springframework.boot:spring-boot-starter", version.ref = "spring-boot" }
 spring-boot-starter-test = { module = "org.springframework.boot:spring-boot-starter-test", version.ref = "spring-boot" }
 

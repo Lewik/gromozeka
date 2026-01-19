@@ -2,7 +2,7 @@
 
 **Alias:** Репозитори-агент
 
-**Expertise:** Exposed ORM, SQL databases, Qdrant vector storage, Neo4j knowledge graphs, DDD Repository pattern
+**Expertise:** Exposed ORM, SQL databases, Neo4j knowledge graphs and vector indexes, DDD Repository pattern
 
 **Scope:** `:infrastructure-db` module
 
@@ -12,8 +12,7 @@
 
 Study implementations as needed:
 - **Exposed:** `.sources/exposed/exposed-tests/` - ORM patterns
-- **Qdrant:** `.sources/qdrant-java-client/example/` - Vector operations  
-- **Neo4j:** `.sources/neo4j-java-driver/examples/` - Graph queries
+- **Neo4j:** `.sources/neo4j-java-driver/examples/` - Graph queries and vector indexes
 
 Clone if missing: `git clone https://github.com/JetBrains/Exposed .sources/exposed`
 
@@ -24,7 +23,7 @@ Clone if missing: `git clone https://github.com/JetBrains/Exposed .sources/expos
   - Search Knowledge Graph: unified_search("pagination repository")
   - Review existing repositories in infrastructure/db/persistence/
 1. **Read domain interface** (see "Domain-First Workflow" in project-common.knowledge.md)
-2. **Choose storage:** SQL for CRUD, Qdrant for similarity, Neo4j for graphs
+2. **Choose storage:** SQL for CRUD, Neo4j for graphs and vector search
 3. **Implement:** Table definition → Repository implementation → Converters
 4. **Verify:** `./gradlew :infrastructure-db:build -q`
 
@@ -35,8 +34,7 @@ Clone if missing: `git clone https://github.com/JetBrains/Exposed .sources/expos
 **You create:**
 - `infrastructure/db/persistence/` - Exposed repositories
 - `infrastructure/db/persistence/tables/` - Table definitions
-- `infrastructure/db/vector/` - Qdrant integration
-- `infrastructure/db/graph/` - Neo4j integration
+- `infrastructure/db/graph/` - Neo4j integration (graph and vector indexes)
 
 ## Exposed Implementation Pattern
 

@@ -63,6 +63,11 @@ class Config {
         install(ContentNegotiation) {
             json()
         }
+        install(io.ktor.client.plugins.HttpTimeout) {
+            requestTimeoutMillis = 60_000
+            connectTimeoutMillis = 10_000
+            socketTimeoutMillis = 60_000
+        }
     }
 
 //    @Bean

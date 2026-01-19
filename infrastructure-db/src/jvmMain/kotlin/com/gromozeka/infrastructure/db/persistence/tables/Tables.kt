@@ -134,3 +134,12 @@ internal object TokenUsageStatisticsTable : Table("token_usage_statistics") {
 
     override val primaryKey = PrimaryKey(id)
 }
+
+internal object EmbeddingCache : Table("embedding_cache") {
+    val textHash = varchar("text_hash", 64)
+    val embeddingVector = text("embedding_vector")
+    val model = varchar("model", 100)
+    val createdAt = timestamp("created_at")
+
+    override val primaryKey = PrimaryKey(textHash)
+}

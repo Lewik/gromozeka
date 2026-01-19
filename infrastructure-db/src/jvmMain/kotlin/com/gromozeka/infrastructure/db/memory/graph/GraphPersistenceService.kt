@@ -100,9 +100,29 @@ class GraphPersistenceService(
         }
 
         try {
+            neo4jGraphStore.executeQuery(
+                """
+                CREATE FULLTEXT INDEX code_spec_index IF NOT EXISTS
+                FOR (n:CodeSpec) ON EACH [n.name, n.summary]
+                """.trimIndent()
+            )
+            log.info { "Fulltext index 'code_spec_index' created successfully" }
+        } catch (e: Exception) {
+            log.error(e) { "Failed to create CodeSpec fulltext index: ${e.message}" }
+            throw e
+        }
+
+        try {
             createVectorIndex()
         } catch (e: Exception) {
             log.error(e) { "Failed to create vector index: ${e.message}" }
+            throw e
+        }
+
+        try {
+            createCodeSpecVectorIndex()
+        } catch (e: Exception) {
+            log.error(e) { "Failed to create CodeSpec vector index: ${e.message}" }
             throw e
         }
     }
@@ -128,6 +148,31 @@ class GraphPersistenceService(
             log.info { "Vector index 'memory_object_vector' created successfully (M=32, ef_construction=200)" }
         } catch (e: Exception) {
             log.error(e) { "Failed to create vector index: ${e.message}" }
+            throw e
+        }
+    }
+
+    suspend fun createCodeSpecVectorIndex() {
+        log.info { "Creating vector index 'code_spec_vector' for CodeSpec embeddings..." }
+
+        try {
+            neo4jGraphStore.executeQuery(
+                """
+                CREATE VECTOR INDEX code_spec_vector IF NOT EXISTS
+                FOR (n:CodeSpec) ON (n.embedding)
+                OPTIONS {
+                    indexConfig: {
+                        `vector.dimensions`: 3072,
+                        `vector.similarity_function`: 'cosine',
+                        `vector.hnsw.m`: 32,
+                        `vector.hnsw.ef_construction`: 200
+                    }
+                }
+                """.trimIndent()
+            )
+            log.info { "Vector index 'code_spec_vector' created successfully (M=32, ef_construction=200)" }
+        } catch (e: Exception) {
+            log.error(e) { "Failed to create CodeSpec vector index: ${e.message}" }
             throw e
         }
     }

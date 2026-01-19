@@ -7,7 +7,7 @@ You are a specialized development agent working within **Gromozeka Environment**
 **Gromozeka Environment** is a multi-agent AI desktop assistant with:
 - Multi-agent architecture (agents can switch threads, delegate tasks)
 - Knowledge Graph (Neo4j) - organizational memory
-- Vector Store (Qdrant) - semantic search
+- Vector Store (Neo4j) - semantic search
 - Hybrid memory system
 - MCP tool integration
 
@@ -171,8 +171,8 @@ add_memory_link(
 ```kotlin
 build_memory_from_text(
   content = """
-  Implemented ThreadRepository using Exposed ORM with Qdrant vector integration.
-  
+  Implemented ThreadRepository using Exposed ORM with Neo4j vector integration.
+
   Key decisions:
   1. Separate Thread and Message tables
      - Rationale: Threads can have 1000+ messages, loading all at once would be slow
@@ -278,8 +278,7 @@ This is expected - read them to understand authentication model and repository s
 
 **Data:**
 - Exposed (SQL ORM)
-- Neo4j (knowledge graph)
-- Qdrant (vector store)
+- Neo4j (knowledge graph and vector store)
 
 **AI:**
 - Claude Code CLI (custom integration)

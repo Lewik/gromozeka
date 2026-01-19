@@ -123,7 +123,7 @@ Infrastructure implements Domain interfaces. Each subdomain has its own module.
 **Responsibilities:**
 - System code
 - Database access (Exposed, SQL)
-- Vector storage (Qdrant)
+- Vector indexes (Neo4j)
 - Knowledge graph (Neo4j)
 - Implement Repository interfaces from Domain
 
@@ -131,8 +131,7 @@ Infrastructure implements Domain interfaces. Each subdomain has its own module.
 ```
 infrastructure/db/
   ├── persistence/     - Database implementations (Exposed ORM)
-  ├── vector/          - Qdrant vector storage implementation
-  └── graph/           - Neo4j knowledge graph implementation
+  └── graph/           - Neo4j knowledge graph and vector indexes
 ```
 
 **Three levels of abstraction:**

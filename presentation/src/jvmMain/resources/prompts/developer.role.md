@@ -120,7 +120,7 @@ When working with external dependencies, **always check their source code first*
 **Step 1: Check what's already cloned**
 ```bash
 ls -la .sources/
-# Shows: spring-ai, exposed, claude-code-sdk, qdrant-java-client, etc.
+# Shows: spring-ai, exposed, claude-code-sdk, neo4j-java-driver, etc.
 ```
 
 **Step 2: Clone if needed**

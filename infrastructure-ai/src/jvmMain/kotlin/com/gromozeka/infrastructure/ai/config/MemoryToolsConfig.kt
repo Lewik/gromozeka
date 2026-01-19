@@ -2,6 +2,7 @@ package com.gromozeka.infrastructure.ai.config
 
 import com.gromozeka.domain.tool.memory.*
 import com.gromozeka.infrastructure.ai.tool.memory.*
+import com.gromozeka.infrastructure.ai.tool.memory.UnifiedSearchTool
 import org.springframework.ai.chat.model.ToolContext
 import org.springframework.ai.tool.ToolCallback
 import org.springframework.ai.tool.function.FunctionToolCallback
@@ -83,12 +84,24 @@ class MemoryToolsConfig {
     @Bean
     fun deleteMemoryObjectToolCallback(tool: com.gromozeka.infrastructure.ai.tool.memory.DeleteMemoryObjectTool): ToolCallback {
         val function = object : BiFunction<DeleteMemoryObjectRequest, ToolContext?, Map<String, Any>> {
-            override fun apply(request: DeleteMemoryObjectRequest, context: ToolContext?) = 
+            override fun apply(request: DeleteMemoryObjectRequest, context: ToolContext?) =
                 tool.execute(request, context)
         }
         return FunctionToolCallback.builder(tool.name, function)
             .description(tool.description)
             .inputType(object : ParameterizedTypeReference<DeleteMemoryObjectRequest>() {})
+            .build()
+    }
+
+    @Bean
+    fun unifiedSearchToolCallback(tool: UnifiedSearchTool): ToolCallback {
+        val function = object : BiFunction<UnifiedSearchRequest, ToolContext?, Map<String, Any>> {
+            override fun apply(request: UnifiedSearchRequest, context: ToolContext?) =
+                tool.execute(request, context)
+        }
+        return FunctionToolCallback.builder(tool.name, function)
+            .description(tool.description)
+            .inputType(object : ParameterizedTypeReference<UnifiedSearchRequest>() {})
             .build()
     }
 }

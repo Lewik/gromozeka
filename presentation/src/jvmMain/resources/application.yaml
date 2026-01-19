@@ -14,3 +14,11 @@ spring:
 # Knowledge Graph Configuration
 knowledge-graph:
   enabled: true
+
+# Reranker Configuration
+reranker:
+  auto-start: true
+  url: http://localhost:7997
+  model: mixedbread-ai/mxbai-rerank-xsmall-v1
+  python-version: "3.12"
+  startup-timeout-seconds: 120

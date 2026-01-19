@@ -14,7 +14,7 @@ kotlin {
         val jvmMain by getting {
             dependencies {
                 implementation(project(":domain"))  // Transitively provides :shared
-                
+
                 // SQL + Exposed
                 implementation(libs.sqlite.jdbc)
                 implementation(libs.exposed.core)
@@ -24,10 +24,7 @@ kotlin {
                 implementation(libs.exposed.migration.core)
                 implementation(libs.exposed.migration.jdbc)
                 implementation(libs.flyway.core)
-                
-                // Vector Store
-                implementation(libs.spring.ai.qdrant.store)
-                
+
                 // Knowledge Graph
                 implementation(libs.neo4j.driver)
                 

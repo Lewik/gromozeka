@@ -209,7 +209,7 @@ data class UpdateMemoryObjectRequest(
  *   "tool": "update_memory_object",
  *   "parameters": {
  *     "name": "ThreadRepository",
- *     "newSummary": "Repository for conversation thread persistence using Exposed ORM with Qdrant vector integration",
+ *     "newSummary": "Repository for conversation thread persistence using Exposed ORM with Neo4j vector integration",
  *     "newType": "Code"
  *   }
  * }

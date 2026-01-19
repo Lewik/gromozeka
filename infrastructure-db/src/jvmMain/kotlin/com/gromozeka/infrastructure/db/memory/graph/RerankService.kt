@@ -4,43 +4,45 @@ import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.request.*
 import io.ktor.http.*
+import klog.KLoggers
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
 import org.springframework.stereotype.Service
+import kotlin.system.measureTimeMillis
 
 @Service
 class RerankService(
     private val httpClient: HttpClient
 ) {
-    private val json = Json { ignoreUnknownKeys = true }
+    private val log = KLoggers.logger(this)
 
     suspend fun rerank(
         query: String,
         documents: List<String>,
-        topK: Int? = null
+        topN: Int? = null
     ): List<RerankResult> {
         if (documents.isEmpty()) {
             return emptyList()
         }
 
-        val response = try {
-            httpClient.post("http://localhost:7997/rerank") {
+        log.debug { "Reranking ${documents.size} documents for query: '${query.take(50)}...'" }
+
+        val response: RerankResponse
+        val timeMs = measureTimeMillis {
+            response = httpClient.post("http://localhost:7997/rerank") {
                 contentType(ContentType.Application.Json)
                 setBody(
                     RerankRequest(
                         query = query,
                         documents = documents,
                         returnDocuments = false,
-                        topK = topK
+                        topN = topN
                     )
                 )
             }.body<RerankResponse>()
-        } catch (e: Exception) {
-            return documents.indices.map { idx ->
-                RerankResult(index = idx, relevanceScore = 0f)
-            }
         }
+
+        log.info { "Reranking completed in ${timeMs}ms for ${documents.size} docs, ${response.usage?.totalTokens ?: 0} tokens" }
 
         return response.results.sortedByDescending { it.relevanceScore }
     }
@@ -48,10 +50,10 @@ class RerankService(
     suspend fun rerankAndFilter(
         query: String,
         documents: List<String>,
-        topK: Int,
+        topN: Int,
         minScore: Float = 0.0f
     ): List<Int> {
-        val results = rerank(query, documents, topK)
+        val results = rerank(query, documents, topN)
         return results
             .filter { it.relevanceScore >= minScore }
             .map { it.index }
@@ -64,25 +66,33 @@ data class RerankRequest(
     val documents: List<String>,
     @SerialName("return_documents")
     val returnDocuments: Boolean = false,
-    @SerialName("top_k")
-    val topK: Int? = null
+    @SerialName("top_n")
+    val topN: Int? = null
 )
 
 @Serializable
 data class RerankResponse(
     val results: List<RerankResult>,
-    val usage: RerankUsage? = null
+    val usage: RerankUsage? = null,
+    val model: String? = null,
+    val id: String? = null,
+    val created: Long? = null,
+    @SerialName("object")
+    val objectType: String? = null
 )
 
 @Serializable
 data class RerankResult(
     val index: Int,
     @SerialName("relevance_score")
-    val relevanceScore: Float
+    val relevanceScore: Float,
+    val document: String? = null
 )
 
 @Serializable
 data class RerankUsage(
+    @SerialName("prompt_tokens")
+    val promptTokens: Int,
     @SerialName("total_tokens")
     val totalTokens: Int
 )

@@ -173,8 +173,8 @@ ${if (existingSummary != null) {
 
 ✅ GOOD (project-specific):
 - For "Kotlin": "Primary language in Gromozeka for bot and shared modules."
-- For "PostgreSQL": "Main storage backend alongside Qdrant and Neo4j in hybrid architecture."
-- For "ThreadRepository": "DDD Repository interface abstracting thread persistence. Hides PostgreSQL, Qdrant, Neo4j storage."
+- For "SQLite": "Main storage backend for relational data alongside Neo4j in hybrid architecture."
+- For "ThreadRepository": "DDD Repository interface abstracting thread persistence. Hides SQLite and Neo4j storage."
 - For "Pragmatic DDD": "DDD approach used in Gromozeka without fanaticism. Balances standard patterns with practical needs."
 
 ❌ BAD (general knowledge):
