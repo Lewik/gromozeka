@@ -19,7 +19,7 @@ import com.gromozeka.domain.model.memory.MemoryObject
  * All operations are scoped by groupId in [MemoryObject] and [MemoryLink].
  * Queries should filter by group_id to maintain tenant isolation.
  */
-interface KnowledgeGraphStore {
+interface KnowledgeGraphRepository {
 
     /**
      * Persists entity nodes to the graph.

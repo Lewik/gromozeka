@@ -3,21 +3,40 @@ package com.gromozeka.domain.repository
 import com.gromozeka.domain.model.Project
 
 /**
- * Repository for managing project entities.
+ * [SPECIFICATION] Repository for managing project entities.
  *
- * Project represents a filesystem directory associated with conversations.
- * Projects track usage frequency (lastUsedAt) and user preferences (favorite, archived).
+ * ## Storage Architecture
+ *
+ * Implementation stores Project data across three databases:
+ * - **SQL**: id, path, timestamps (source of truth for queries, indexing)
+ * - **JSON** (.gromozeka/project.json): name, description, domain_patterns (versioned in Git)
+ * - **Neo4j**: denormalized copy (project_id, name) for code spec filtering
+ *
+ * Repository abstracts this split - clients work with unified Project entity.
+ * All three storage backends kept in sync automatically on save().
+ *
+ * ## Implementation Pattern
+ *
+ * Recommended: Composite Repository Pattern
+ * - ProjectSqlRepository - SQL operations
+ * - ProjectJsonRepository - JSON file operations
+ * - ProjectNeo4jRepository - Neo4j graph operations
+ * - CompositeProjectRepository - coordinates all three
  *
  * @see Project for domain model
  */
 interface ProjectRepository {
 
     /**
-     * Saves project to persistent storage.
+     * Saves project to all storage backends.
      *
-     * Creates new project if ID doesn't exist, updates existing otherwise.
-     * Project ID must be set before calling (use uuid7() for time-based ordering).
-     * This is a transactional operation.
+     * Writes to:
+     * 1. SQL database (id, path, timestamps)
+     * 2. JSON file .gromozeka/project.json (name, description, domain_patterns)
+     * 3. Neo4j graph (denormalized project_id, name for code spec filtering)
+     *
+     * Uses upsert semantics: creates if doesn't exist, updates if exists.
+     * This is a transactional operation - all three succeed or all fail.
      *
      * @param project project to save with all fields populated
      * @return saved project (unchanged, for fluent API)
@@ -28,6 +47,9 @@ interface ProjectRepository {
     /**
      * Finds project by unique identifier.
      *
+     * Reads from SQL + JSON, assembles complete Project entity.
+     * Neo4j not queried (contains denormalized copy only).
+     *
      * @param id project identifier
      * @return project if found, null if doesn't exist
      */
@@ -37,6 +59,7 @@ interface ProjectRepository {
      * Finds project by filesystem path.
      *
      * Path must be exact match (absolute path).
+     * Reads from SQL + JSON.
      *
      * @param path absolute filesystem path
      * @return project if found, null if no project with this path exists
@@ -47,7 +70,7 @@ interface ProjectRepository {
      * Finds all projects, ordered by last used (most recent first).
      *
      * Returns empty list if no projects exist.
-     * Includes archived and favorite projects.
+     * Reads from SQL + JSON for each project.
      *
      * @return all projects in descending lastUsedAt order
      */
@@ -56,36 +79,18 @@ interface ProjectRepository {
     /**
      * Finds recently used projects, ordered by last used (most recent first).
      *
-     * TODO: Should filter out archived projects (archived = false), but currently returns all projects.
-     *       Implementation needs WHERE clause: Projects.archived eq false
-     *
      * @param limit maximum number of projects to return
-     * @return recent projects up to specified limit (currently includes archived)
+     * @return recent projects up to specified limit
      */
     suspend fun findRecent(limit: Int): List<Project>
 
     /**
-     * Finds favorite projects, ordered by last used (most recent first).
+     * Deletes project from all storage backends.
      *
-     * Returns only projects marked as favorite (favorite = true).
-     *
-     * @return favorite projects in descending lastUsedAt order
-     */
-    suspend fun findFavorites(): List<Project>
-
-    /**
-     * Searches projects by name or description (fuzzy match).
-     *
-     * Search is case-insensitive and matches substrings in name or description.
-     * Results ordered by last used (most recent first).
-     *
-     * @param query search query (non-empty)
-     * @return matching projects ordered by lastUsedAt descending
-     */
-    suspend fun search(query: String): List<Project>
-
-    /**
-     * Deletes project permanently.
+     * Removes from:
+     * 1. SQL database
+     * 2. Neo4j graph
+     * Note: JSON file (.gromozeka/project.json) remains in filesystem.
      *
      * Deletion fails if project has associated conversations.
      * This is a transactional operation.
@@ -98,17 +103,10 @@ interface ProjectRepository {
     /**
      * Checks if project exists by ID.
      *
+     * Queries SQL database only.
+     *
      * @param id project identifier
      * @return true if project exists, false otherwise
      */
     suspend fun exists(id: Project.Id): Boolean
-
-    /**
-     * Counts total number of projects.
-     *
-     * Includes archived and favorite projects.
-     *
-     * @return total project count
-     */
-    suspend fun count(): Int
 }

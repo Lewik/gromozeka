@@ -2,7 +2,7 @@ package com.gromozeka.infrastructure.ai.tool.codebase
 
 import com.gromozeka.domain.model.memory.MemoryLink
 import com.gromozeka.domain.model.memory.MemoryObject
-import com.gromozeka.domain.repository.KnowledgeGraphStore
+import com.gromozeka.domain.repository.KnowledgeGraphRepository
 import com.gromozeka.domain.tool.codebase.IndexDomainToGraphRequest
 import com.gromozeka.domain.tool.codebase.IndexDomainToGraphTool
 import klog.KLoggers
@@ -38,9 +38,10 @@ import java.util.*
 @Service
 class IndexDomainToGraphToolImpl(
     private val lspClientService: com.gromozeka.infrastructure.ai.service.lsp.LspClientService,
-    private val knowledgeGraphStore: KnowledgeGraphStore,
+    private val knowledgeGraphRepository: KnowledgeGraphRepository,
     private val embeddingModel: EmbeddingModel,
-    private val projectRepository: com.gromozeka.domain.repository.ProjectRepository
+    private val projectRepository: com.gromozeka.domain.repository.ProjectRepository,
+    private val projectConfigRepository: com.gromozeka.domain.repository.ProjectConfigRepository
 ) : IndexDomainToGraphTool {
 
     private val log = KLoggers.logger(this)
@@ -65,26 +66,30 @@ class IndexDomainToGraphToolImpl(
                 val project = projectRepository.findById(com.gromozeka.domain.model.Project.Id(request.project_id))
                     ?: error("Project not found: ${request.project_id}")
                 
-                knowledgeGraphStore.syncProject(project)
+                knowledgeGraphRepository.syncProject(project)
                 log.info { "Project entity synced: ${project.name}" }
 
                 // 2. Delete stale code specs for THIS project only
                 log.info { "Deleting stale code specs for project: ${request.project_id}" }
-                val deletedCount = knowledgeGraphStore.deleteCodeSpecsByProject(request.project_id)
+                val deletedCount = knowledgeGraphRepository.deleteCodeSpecsByProject(request.project_id)
                 log.info { "Deleted $deletedCount stale code specs" }
 
-                // 3. File discovery
-                val files = discoverFiles(request.project_path, request.source_patterns)
+                // 3. Read domain patterns from .gromozeka/project.json
+                val domainPatterns = projectConfigRepository.getDomainPatterns(request.project_path)
+                log.info { "Domain patterns from config: ${domainPatterns.joinToString()}" }
+
+                // 4. File discovery
+                val files = discoverFiles(request.project_path, domainPatterns)
                 log.info { "Found ${files.size} files to index" }
                 
                 if (files.isEmpty()) {
                     return@runBlocking mapOf(
-                        "error" to "No source files found matching patterns: ${request.source_patterns}",
+                        "error" to "No source files found matching patterns: $domainPatterns",
                         "project_path" to request.project_path
                     )
                 }
                 
-                // 4. Symbol extraction + entity creation
+                // 5. Symbol extraction + entity creation
                 val indexedAt = Clock.System.now()
                 val result = extractSymbolsAndCreateGraph(
                     projectPath = request.project_path,
@@ -96,15 +101,15 @@ class IndexDomainToGraphToolImpl(
                 log.info { "Extracted ${result.entities.size} entities and ${result.relationships.size} relationships" }
                 log.info { "Found ${result.inheritanceInfo.size} types with inheritance" }
 
-                // 5. Save to graph (with MERGE - idempotent)
+                // 6. Save to graph (with MERGE - idempotent)
                 saveToGraphWithMerge(result.entities, result.relationships)
 
-                // 6. Create inheritance relationships (IMPLEMENTS/EXTENDS)
+                // 7. Create inheritance relationships (IMPLEMENTS/EXTENDS)
                 val inheritanceCreated = createInheritanceRelationships(result.entities, result.inheritanceInfo, result.typeIsInterface)
 
                 val duration = System.currentTimeMillis() - startTime
 
-                // 7. Build breakdown
+                // 8. Build breakdown
                 val breakdown = buildBreakdown(result.entities)
 
                 log.info { "✓ Indexing complete: ${result.entities.size} entities, ${result.relationships.size + inheritanceCreated} relationships, ${duration}ms" }
@@ -530,7 +535,7 @@ class IndexDomainToGraphToolImpl(
                 """.trimIndent()
 
                 try {
-                    knowledgeGraphStore.executeQuery(
+                    knowledgeGraphRepository.executeQuery(
                         cypher,
                         mapOf(
                             "sourceUuid" to info.entityUuid,
@@ -819,7 +824,7 @@ class IndexDomainToGraphToolImpl(
                 val sourceSet = entity.attributes["source_set"] as String
                 val packageName = entity.attributes["package"] as String
 
-                val result = knowledgeGraphStore.executeQuery(
+                val result = knowledgeGraphRepository.executeQuery(
                     """
                     MERGE (n:CodeSpec:File {
                         file_path: ${'$'}file_path,
@@ -906,7 +911,7 @@ class IndexDomainToGraphToolImpl(
                     RETURN n.uuid as uuid
                     """.trimIndent()
 
-                val result = knowledgeGraphStore.executeQuery(
+                val result = knowledgeGraphRepository.executeQuery(
                     cypher,
                     buildMap<String, Any> {
                         put("name", entity.name)
@@ -1032,7 +1037,7 @@ class IndexDomainToGraphToolImpl(
                 }
 
                 if (cypher != null) {
-                    knowledgeGraphStore.executeQuery(cypher, params)
+                    knowledgeGraphRepository.executeQuery(cypher, params)
                 }
             } catch (e: Exception) {
                 log.warn(e) { "Failed to create relationship ${link.relationType}: ${e.message}" }

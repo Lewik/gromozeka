@@ -2,15 +2,15 @@ package com.gromozeka.infrastructure.db.graph
 
 import com.gromozeka.domain.model.memory.MemoryLink
 import com.gromozeka.domain.model.memory.MemoryObject
-import com.gromozeka.domain.repository.KnowledgeGraphStore
+import com.gromozeka.domain.repository.KnowledgeGraphRepository
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.stereotype.Service
 
 @Service
 @ConditionalOnProperty(name = ["knowledge-graph.enabled"], havingValue = "true", matchIfMissing = false)
-class Neo4jKnowledgeGraphStore(
+class Neo4jKnowledgeGraphRepository(
     private val neo4jGraphStore: Neo4jGraphStore
-) : KnowledgeGraphStore {
+) : KnowledgeGraphRepository {
 
     override suspend fun saveEntities(entities: List<MemoryObject>) {
         entities.forEach { node ->
@@ -122,14 +122,11 @@ class Neo4jKnowledgeGraphStore(
             RETURN p.uuid as uuid
         """.trimIndent()
 
-        val displayName = project.name.takeIf { it.isNotBlank() } 
-            ?: project.path.substringAfterLast('/')
-        
         neo4jGraphStore.executeQuery(
             query,
             mapOf(
                 "projectId" to project.id.value,
-                "name" to displayName,
+                "name" to project.name,
                 "groupId" to "dev-user" // TODO: Get from context
             )
         )

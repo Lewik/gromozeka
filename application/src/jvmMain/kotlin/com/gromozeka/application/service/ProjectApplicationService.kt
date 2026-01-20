@@ -12,12 +12,15 @@ import org.springframework.transaction.annotation.Transactional
 /**
  * Application service for project management.
  *
- * Handles project lifecycle including automatic creation on first use,
- * favorite toggling, and last-used timestamp tracking.
+ * Handles project lifecycle including automatic creation on first use
+ * and last-used timestamp tracking.
  *
  * Projects organize conversations by workspace/codebase and map to
  * file system directories. Service ensures projects exist before
  * creating dependent entities (conversations, contexts).
+ *
+ * Configuration (name, description, domain_patterns) read from
+ * .gromozeka/project.json via ProjectRepository.
  */
 @Service
 class ProjectApplicationService(
@@ -75,38 +78,6 @@ class ProjectApplicationService(
      */
     override suspend fun findRecent(limit: Int): List<Project> =
         projectRepository.findRecent(limit)
-
-    /**
-     * Retrieves all favorite projects.
-     *
-     * @return list of favorite projects
-     */
-    override suspend fun findFavorites(): List<Project> =
-        projectRepository.findFavorites()
-
-    /**
-     * Searches projects by name, path, or description.
-     *
-     * @param query search text
-     * @return list of matching projects
-     */
-    override suspend fun search(query: String): List<Project> =
-        projectRepository.search(query)
-
-    /**
-     * Toggles project favorite status.
-     *
-     * Flips favorite flag: true → false, false → true.
-     *
-     * @param id project identifier
-     * @return updated project if exists, null otherwise
-     */
-    @Transactional
-    override suspend fun toggleFavorite(id: Project.Id): Project? {
-        val project = projectRepository.findById(id) ?: return null
-        val updated = project.copy(favorite = !project.favorite)
-        return projectRepository.save(updated)
-    }
 
     /**
      * Updates project's last-used timestamp to current time.

@@ -7,7 +7,7 @@ import com.gromozeka.domain.model.memory.EntityType
 import com.gromozeka.domain.model.memory.EntityTypesConfig
 import com.gromozeka.infrastructure.ai.memory.models.NodeResolutions
 import com.gromozeka.domain.model.AIProvider
-import com.gromozeka.domain.repository.KnowledgeGraphStore
+import com.gromozeka.domain.repository.KnowledgeGraphRepository
 import klog.KLoggers
 import kotlinx.coroutines.reactor.awaitSingle
 import kotlinx.serialization.json.Json
@@ -22,7 +22,7 @@ import java.util.*
 @Service
 @ConditionalOnProperty(name = ["knowledge-graph.enabled"], havingValue = "true", matchIfMissing = false)
 class EntityDeduplicationService(
-    private val knowledgeGraphStore: KnowledgeGraphStore,
+    private val knowledgeGraphRepository: KnowledgeGraphRepository,
     @Lazy
     private val chatModelFactory: ChatModelFactory,
     @Value("\${gromozeka.ai.provider:CLAUDE_CODE}")
@@ -78,7 +78,7 @@ class EntityDeduplicationService(
 
         val extractedNames = extractedEntities.map { it.first }
         val candidates = DedupHelpers.collectCandidates(
-            knowledgeGraphStore = knowledgeGraphStore,
+            knowledgeGraphRepository = knowledgeGraphRepository,
             groupId = groupId,
             extractedNames = extractedNames
         )

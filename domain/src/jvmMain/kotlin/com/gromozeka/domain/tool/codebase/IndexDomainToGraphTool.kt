@@ -8,12 +8,10 @@ import org.springframework.ai.chat.model.ToolContext
  *
  * @property project_path Absolute path to project root directory
  * @property project_id Domain Project.Id for linking code specs to project (required for project-scoped indexing)
- * @property source_patterns File patterns to scan (e.g., ["domain/src/**/*.kt"])
  */
 data class IndexDomainToGraphRequest(
     val project_path: String,
     val project_id: String,
-    val source_patterns: List<String> = listOf("domain/src/**/*.kt")
 )
 
 /**
@@ -101,19 +99,27 @@ data class IndexDomainToGraphRequest(
  * **Examples:**
  * - `"01234567-89ab-cdef-0123-456789abcdef"` - UUIDv7 from Project.Id
  *
- * ## source_patterns: List<String> (optional, default: ["domain/src/**/*.kt"])
+ * # Source Patterns
  *
- * Glob patterns for source files to index.
+ * Domain patterns are read from `.gromozeka/project.json` in project directory.
+ * Tool does NOT accept source_patterns parameter - configuration is project-specific.
  *
- * **Default behavior:**
- * - Scans only `domain/src/` directory
- * - Kotlin files only (`*.kt`)
- * - Recursive search (`**`)
+ * **Configuration file:** `.gromozeka/project.json`
+ * ```json
+ * {
+ *   "name": "My Project",
+ *   "description": "Project description",
+ *   "domain_patterns": [
+ *     "domain/src/**/*.kt",
+ *     "core/src/**/*.kt"
+ *   ]
+ * }
+ * ```
  *
- * **Extensibility:**
- * - Future: `["domain/src/**/*.kt", "domain/src/**/*.java"]`
- * - Future: `["src/**/*.py"]` for Python projects
- * - Current: Only Kotlin supported
+ * **Default patterns (if file doesn't exist):**
+ * - `["domain/src/**/*.kt"]`
+ *
+ * **Implementation reads patterns via ProjectConfigRepository.getDomainPatterns()**
  *
  * # Returns
  *
@@ -163,7 +169,7 @@ data class IndexDomainToGraphRequest(
  * | Error | Reason | Solution |
  * |-------|--------|----------|
  * | Project not found | Path doesn't exist | Check project_path spelling |
- * | No source files found | Patterns don't match any files | Verify source_patterns |
+ * | No source files found | Patterns don't match any files | Check domain_patterns in .gromozeka/project.json |
  * | Serena not available | MCP server not running | Start Serena MCP server |
  * | LSP parsing failed | Syntax errors in code | Fix compilation errors first |
  * | Graph write failed | Neo4j connection error | Check Neo4j status |
@@ -597,7 +603,7 @@ data class IndexDomainToGraphRequest(
  *
  * This tool uses:
  * @see com.gromozeka.domain.service.KnowledgeGraphService For graph operations
- * @see com.gromozeka.domain.repository.KnowledgeGraphStore For graph persistence
+ * @see com.gromozeka.domain.repository.KnowledgeGraphRepository For graph persistence
  */
 interface IndexDomainToGraphTool : Tool<IndexDomainToGraphRequest, Map<String, Any>> {
 

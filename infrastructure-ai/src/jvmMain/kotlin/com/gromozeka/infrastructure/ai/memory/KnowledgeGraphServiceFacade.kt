@@ -2,7 +2,7 @@ package com.gromozeka.infrastructure.ai.memory
 
 import com.gromozeka.domain.model.memory.MemoryObject
 import com.gromozeka.domain.model.memory.MemoryLink
-import com.gromozeka.domain.repository.KnowledgeGraphStore
+import com.gromozeka.domain.repository.KnowledgeGraphRepository
 import com.gromozeka.domain.service.KnowledgeGraphService
 import klog.KLoggers
 import kotlinx.coroutines.coroutineScope
@@ -16,7 +16,7 @@ import java.util.*
 @Service
 @ConditionalOnProperty(name = ["knowledge-graph.enabled"], havingValue = "true", matchIfMissing = false)
 class KnowledgeGraphServiceFacade(
-    private val knowledgeGraphStore: KnowledgeGraphStore,
+    private val knowledgeGraphRepository: KnowledgeGraphRepository,
     private val entityExtractionService: EntityExtractionService,
     private val relationshipExtractionService: RelationshipExtractionService,
     private val entityDeduplicationService: EntityDeduplicationService,
@@ -26,17 +26,17 @@ class KnowledgeGraphServiceFacade(
     private val groupId = "dev-user"
 
     override suspend fun saveMemoryObject(memoryObject: MemoryObject): MemoryObject {
-        knowledgeGraphStore.saveToGraph(listOf(memoryObject), emptyList())
+        knowledgeGraphRepository.saveToGraph(listOf(memoryObject), emptyList())
         return memoryObject
     }
     
     override suspend fun saveMemoryLink(link: MemoryLink): MemoryLink {
-        knowledgeGraphStore.saveToGraph(emptyList(), listOf(link))
+        knowledgeGraphRepository.saveToGraph(emptyList(), listOf(link))
         return link
     }
     
     override suspend fun findMemoryObject(name: String): MemoryObject? {
-        val results = knowledgeGraphStore.executeQuery(
+        val results = knowledgeGraphRepository.executeQuery(
             """
             MATCH (n:MemoryObject {name: ${'$'}name, group_id: ${'$'}groupId})
             RETURN n.uuid as uuid, n.name as name, n.embedding as embedding, 
@@ -64,7 +64,7 @@ class KnowledgeGraphServiceFacade(
         // Simple search implementation - can be enhanced with vector similarity
         val embedding = embeddingModel.embed(query)
         
-        val objectResults = knowledgeGraphStore.executeQuery(
+        val objectResults = knowledgeGraphRepository.executeQuery(
             """
             MATCH (n:MemoryObject {group_id: ${'$'}groupId})
             RETURN n.uuid as uuid, n.name as name, n.embedding as embedding,
@@ -155,7 +155,7 @@ class KnowledgeGraphServiceFacade(
             emptyList()
         }
 
-        knowledgeGraphStore.saveToGraph(entityNodes, relationships)
+        knowledgeGraphRepository.saveToGraph(entityNodes, relationships)
 
         val result = "Added ${entityNodes.size} entities and ${relationships.size} relationships to knowledge graph"
         log.info { result }
@@ -164,7 +164,7 @@ class KnowledgeGraphServiceFacade(
 
     private suspend fun fetchExistingSummary(uuid: String): String? {
         return try {
-            val results = knowledgeGraphStore.executeQuery(
+            val results = knowledgeGraphRepository.executeQuery(
                 """
                 MATCH (n:MemoryObject {uuid: ${'$'}uuid, group_id: ${'$'}groupId})
                 RETURN n.summary as summary

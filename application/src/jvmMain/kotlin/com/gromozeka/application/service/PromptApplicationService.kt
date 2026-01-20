@@ -33,7 +33,7 @@ class PromptApplicationService(
                     prompt?.content ?: """
                         ## ⚠️ CRITICAL ERROR: Required prompt not loaded
                         **Failed to load prompt:** ${id.value}
-                        **Project:** ${project.displayName()} (${project.path})
+                        **Project:** ${project.name} (${project.path})
                         This prompt is required for agent to function correctly.
 
                         **Action required:** YOU MUST inform the user about missing file.

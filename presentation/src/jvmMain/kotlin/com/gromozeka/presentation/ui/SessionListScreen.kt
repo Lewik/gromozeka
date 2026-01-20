@@ -37,7 +37,7 @@ private data class ProjectGroup(
     val formattedTime: String,
 ) {
     val projectPath get() = project.path
-    val projectName get() = project.displayName()
+    val projectName get() = project.name
 }
 
 @Composable

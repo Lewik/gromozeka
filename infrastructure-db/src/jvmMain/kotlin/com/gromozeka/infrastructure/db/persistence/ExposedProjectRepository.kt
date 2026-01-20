@@ -1,23 +1,28 @@
 package com.gromozeka.infrastructure.db.persistence
 
-import com.gromozeka.infrastructure.db.persistence.tables.Projects
 import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.repository.ProjectRepository
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
-
+import com.gromozeka.domain.repository.ProjectConfigRepository
+import com.gromozeka.infrastructure.db.persistence.tables.Projects
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.eq
-import org.jetbrains.exposed.v1.core.like
-import org.jetbrains.exposed.v1.core.or
 import org.jetbrains.exposed.v1.jdbc.*
-import kotlinx.datetime.Instant
 import org.springframework.stereotype.Service
 
+/**
+ * SQL-based implementation of ProjectRepository.
+ * 
+ * Stores minimal metadata in SQL (id, path, timestamps).
+ * Delegates name/description/domain_patterns to ProjectConfigRepository (JSON files).
+ * 
+ * This is NOT a complete implementation - requires coordination with:
+ * - ProjectConfigRepository (JSON file storage)
+ * - Neo4j repository (denormalized project data for code spec filtering)
+ */
 @Service
 class ExposedProjectRepository(
-    private val json: Json
+    private val projectConfigRepository: ProjectConfigRepository
 ) : ProjectRepository {
 
     override suspend fun save(project: Project): Project = dbQuery {
@@ -26,24 +31,20 @@ class ExposedProjectRepository(
         if (exists) {
             Projects.update({ Projects.id eq project.id.value }) {
                 it[path] = project.path
-                it[name] = project.name
-                it[description] = project.description
-                it[favorite] = project.favorite
-                it[archived] = project.archived
                 it[lastUsedAt] = project.lastUsedAt.toKotlin()
             }
         } else {
             Projects.insert {
                 it[id] = project.id.value
                 it[path] = project.path
-                it[name] = project.name
-                it[description] = project.description
-                it[favorite] = project.favorite
-                it[archived] = project.archived
                 it[createdAt] = project.createdAt.toKotlin()
                 it[lastUsedAt] = project.lastUsedAt.toKotlin()
             }
         }
+        
+        // TODO: Write to JSON file via ProjectConfigRepository
+        // TODO: Write to Neo4j for denormalized project data
+        
         project
     }
 
@@ -64,30 +65,14 @@ class ExposedProjectRepository(
     }
 
     override suspend fun findRecent(limit: Int): List<Project> = dbQuery {
-        // TODO: Add filter to exclude archived projects: .where { Projects.archived eq false }
-        //       Currently returns all projects including archived, which contradicts typical "recent" semantics
         Projects.selectAll()
             .orderBy(Projects.lastUsedAt, SortOrder.DESC)
             .limit(limit)
             .map { it.toProject() }
     }
 
-    override suspend fun findFavorites(): List<Project> = dbQuery {
-        Projects.selectAll().where { Projects.favorite eq true }
-            .orderBy(Projects.lastUsedAt, SortOrder.DESC)
-            .map { it.toProject() }
-    }
-
-    override suspend fun search(query: String): List<Project> = dbQuery {
-        val pattern = "%$query%"
-        Projects.selectAll().where {
-            (Projects.name like pattern) or (Projects.description like pattern)
-        }
-        .orderBy(Projects.lastUsedAt, SortOrder.DESC)
-        .map { it.toProject() }
-    }
-
     override suspend fun delete(id: Project.Id): Unit = dbQuery {
+        // TODO: Also delete from Neo4j
         Projects.deleteWhere { Projects.id eq id.value }
     }
 
@@ -95,18 +80,20 @@ class ExposedProjectRepository(
         Projects.selectAll().where { Projects.id eq id.value }.count() > 0
     }
 
-    override suspend fun count(): Int = dbQuery {
-        Projects.selectAll().count().toInt()
+    private suspend fun ResultRow.toProject(): Project {
+        val path = this[Projects.path]
+        
+        // Read name and description from JSON file
+        val name = projectConfigRepository.getProjectName(path)
+        val description = projectConfigRepository.getProjectDescription(path)
+        
+        return Project(
+            id = Project.Id(this[Projects.id]),
+            path = path,
+            name = name,
+            description = description,
+            createdAt = this[Projects.createdAt].toKotlinx(),
+            lastUsedAt = this[Projects.lastUsedAt].toKotlinx()
+        )
     }
-
-    private fun ResultRow.toProject() = Project(
-        id = Project.Id(this[Projects.id]),
-        path = this[Projects.path],
-        name = this[Projects.name],
-        description = this[Projects.description],
-        favorite = this[Projects.favorite],
-        archived = this[Projects.archived],
-        createdAt = this[Projects.createdAt].toKotlinx(),
-        lastUsedAt = this[Projects.lastUsedAt].toKotlinx()
-    )
 }

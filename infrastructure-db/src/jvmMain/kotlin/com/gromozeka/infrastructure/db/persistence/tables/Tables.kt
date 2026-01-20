@@ -9,10 +9,6 @@ import kotlinx.datetime.Instant
 internal object Projects : Table("projects") {
     val id = varchar("id", 255)
     val path = varchar("path", 500)
-    val name = varchar("name", 255)
-    val description = text("description").nullable()
-    val favorite = bool("favorite")
-    val archived = bool("archived")
     val createdAt = timestamp("created_at")
     val lastUsedAt = timestamp("last_used_at")
 

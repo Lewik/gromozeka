@@ -1,0 +1,7 @@
+{
+  "name": "Gromozeka Development",
+  "description": "Multi-agent AI desktop assistant with knowledge graph and hybrid memory system",
+  "domain_patterns": [
+    "domain/src/**/*.kt"
+  ]
+}

@@ -1,6 +1,6 @@
 package com.gromozeka.infrastructure.ai.memory
 
-import com.gromozeka.domain.repository.KnowledgeGraphStore
+import com.gromozeka.domain.repository.KnowledgeGraphRepository
 import java.security.MessageDigest
 import kotlin.math.min
 
@@ -94,7 +94,7 @@ object DedupHelpers {
     }
 
     suspend fun collectCandidates(
-        knowledgeGraphStore: KnowledgeGraphStore,
+        knowledgeGraphRepository: KnowledgeGraphRepository,
         groupId: String,
         extractedNames: List<String>
     ): List<EntityCandidate> {
@@ -103,7 +103,7 @@ object DedupHelpers {
         for (name in extractedNames) {
             val normalized = normalize(name)
 
-            val results = knowledgeGraphStore.executeQuery(
+            val results = knowledgeGraphRepository.executeQuery(
                 """
                 CALL db.index.fulltext.queryNodes('memory_object_index', ${'$'}query)
                 YIELD node, score
