@@ -91,7 +91,7 @@ Domain layer (`:domain`) is **fully indexed in Knowledge Graph** with vectorized
 **These are PRIMARY specifications.**
 
 **Gromozeka-specific workflow:**
-1. **Search** domain specs: `unified_search("thread repository", scopes=["code_specs:interface"])`
+1. **Search** domain specs: `unified_search("thread repository", entityTypes=["code_specs:interface"])`
 2. **Understand** requirements from KDoc in search results
 3. **Read file** if need full details: `grz_read_file("domain/repository/ThreadRepository.kt")`
 4. **Implement** in your layer (`infrastructure/`, `application/`, `presentation/`)

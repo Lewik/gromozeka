@@ -33,20 +33,21 @@ class UnifiedSearchTool(
             return errorResponse("Knowledge graph is not enabled. Enable it in configuration.")
         }
 
-        val scopes = request.scopes.toSet()
-        if (scopes.isEmpty()) {
-            return errorResponse("No scopes specified. Use: memory_objects, conversation_messages, code_specs, code_specs:class, etc.")
+        val entityTypeScopes = request.entityTypes.toSet()
+        if (entityTypeScopes.isEmpty()) {
+            return errorResponse("No entity types specified. Use: memory_objects, conversation_messages, code_specs, code_specs:class, etc.")
         }
 
         val entityTypes = buildSet {
-            if (SearchScope.hasMemoryObjects(scopes)) add(EntityType.MEMORY_OBJECTS)
-            if (SearchScope.hasConversationMessages(scopes)) add(EntityType.CONVERSATION_MESSAGES)
-            if (SearchScope.hasCodeSpecs(scopes)) add(EntityType.CODE_SPECS)
+            if (SearchScope.hasMemoryObjects(entityTypeScopes)) add(EntityType.MEMORY_OBJECTS)
+            if (SearchScope.hasConversationMessages(entityTypeScopes)) add(EntityType.CONVERSATION_MESSAGES)
+            if (SearchScope.hasCodeSpecs(entityTypeScopes)) add(EntityType.CODE_SPECS)
         }
 
-        val symbolKinds = SearchScope.extractSymbolKinds(scopes)
+        val symbolKinds = SearchScope.extractSymbolKinds(entityTypeScopes)
 
         return try {
+            // TODO: Pass projectIds when UnifiedSearchService supports it (Repository Agent task)
             val results = runBlocking {
                 unifiedSearchService.unifiedSearch(
                     query = request.query,
@@ -55,13 +56,14 @@ class UnifiedSearchTool(
                     limit = request.limit ?: 5,
                     useReranking = request.useReranking ?: true,
                     symbolKinds = symbolKinds
+                    // projectIds = request.projectIds // TODO: Uncomment when infrastructure-db supports it
                 )
             }
 
             logger.debug("Unified search for '${request.query}' returned ${results.size} results")
 
             if (results.isEmpty()) {
-                val scopeNames = scopes.joinToString { it.toJson() }
+                val scopeNames = entityTypeScopes.joinToString { it.toJson() }
                 return mapOf(
                     "type" to "text",
                     "text" to "No results found for '${request.query}' in [$scopeNames]"

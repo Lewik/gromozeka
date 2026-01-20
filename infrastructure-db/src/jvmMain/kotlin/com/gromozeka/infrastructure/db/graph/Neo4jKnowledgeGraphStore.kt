@@ -111,6 +111,69 @@ class Neo4jKnowledgeGraphStore(
         return neo4jGraphStore.executeQuery(cypher, params)
     }
 
+    override suspend fun syncProject(project: com.gromozeka.domain.model.Project) {
+        val query = """
+            MERGE (p:MemoryObject:Project {project_id: ${'$'}projectId})
+            SET p.uuid = COALESCE(p.uuid, randomUUID()),
+                p.name = ${'$'}name,
+                p.group_id = ${'$'}groupId,
+                p.labels = ['Project'],
+                p.created_at = COALESCE(p.created_at, datetime())
+            RETURN p.uuid as uuid
+        """.trimIndent()
+
+        val displayName = project.name.takeIf { it.isNotBlank() } 
+            ?: project.path.substringAfterLast('/')
+        
+        neo4jGraphStore.executeQuery(
+            query,
+            mapOf(
+                "projectId" to project.id.value,
+                "name" to displayName,
+                "groupId" to "dev-user" // TODO: Get from context
+            )
+        )
+    }
+
+    override suspend fun deleteCodeSpecsByProject(projectId: String): Int {
+        val query = """
+            MATCH (spec)-[:BELONGS_TO_PROJECT]->(p:Project {project_id: ${'$'}projectId})
+            WHERE spec:DomainInterface OR spec:DomainClass OR spec:DomainFunction 
+               OR spec:DomainProperty OR spec:DomainConstructor OR spec:DomainEnum
+            DETACH DELETE spec
+            RETURN count(spec) as deletedCount
+        """.trimIndent()
+
+        val results = neo4jGraphStore.executeQuery(
+            query,
+            mapOf("projectId" to projectId)
+        )
+
+        return results.firstOrNull()?.get("deletedCount")?.let {
+            when (it) {
+                is Long -> it.toInt()
+                is Int -> it
+                else -> 0
+            }
+        } ?: 0
+    }
+
+    override suspend fun findProjectEntity(projectId: String): MemoryObject? {
+        val results = neo4jGraphStore.executeQuery(
+            """
+            MATCH (p:Project {project_id: ${'$'}projectId})
+            RETURN p
+            """.trimIndent(),
+            mapOf("projectId" to projectId)
+        )
+
+        return results.firstOrNull()?.let { row ->
+            @Suppress("UNCHECKED_CAST")
+            val nodeData = row["p"] as? Map<String, Any> ?: return null
+            parseMemoryObject(nodeData)
+        }
+    }
+
     private fun parseMemoryObject(data: Map<String, Any>): MemoryObject? {
         return try {
             MemoryObject(

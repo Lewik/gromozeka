@@ -7,19 +7,21 @@ import org.springframework.ai.chat.model.ToolContext
  * Request parameters for unified_search tool.
  *
  * @property query The search query (required)
- * @property scopes List of search scopes - sources and symbol types to search
+ * @property entityTypes List of entity types - sources and symbol types to search
  * @property limit Maximum number of results to return (default: 5)
  * @property threadId Optional thread ID to filter conversation messages
  * @property useReranking Whether to apply cross-source reranking (default: true)
+ * @property projectIds Optional list of project IDs to filter code specs (null = current project only)
  *
- * @see SearchScope for valid scope values
+ * @see SearchScope for valid entity type values
  */
 data class UnifiedSearchRequest(
     val query: String,
-    val scopes: List<SearchScope>,
+    val entityTypes: List<SearchScope>,
     val limit: Int? = null,
     val threadId: String? = null,
-    val useReranking: Boolean? = null
+    val useReranking: Boolean? = null,
+    val projectIds: List<String>? = null
 )
 
 /**
@@ -119,17 +121,24 @@ data class UnifiedSearchRequest(
  *
  * ## entityTypes: List<String> (required)
  *
- * Which sources to search. Must contain at least one valid type.
+ * Which entity types to search. Must contain at least one valid type.
  *
  * **Valid values:**
  * - `"memory_objects"` - Knowledge graph entities
- * - `"code_specs"` - Code symbols
  * - `"conversation_messages"` - Chat history
+ * - `"code_specs"` - All code symbols (shortcut)
+ * - `"code_specs:class"` - Only classes
+ * - `"code_specs:interface"` - Only interfaces
+ * - `"code_specs:enum"` - Only enums
+ * - `"code_specs:method"` - Only methods/functions
+ * - `"code_specs:property"` - Only properties/fields
+ * - `"code_specs:constructor"` - Only constructors
  *
  * **Examples:**
  * - `["memory_objects"]` - Only facts
- * - `["code_specs"]` - Only code
- * - `["memory_objects", "code_specs"]` - Facts and code
+ * - `["code_specs"]` - All code symbols
+ * - `["code_specs:class", "code_specs:interface"]` - Only type definitions
+ * - `["memory_objects", "code_specs"]` - Facts and all code
  * - `["memory_objects", "code_specs", "conversation_messages"]` - Everything
  *
  * ## limit: Int (optional, default: 5)
@@ -189,6 +198,28 @@ data class UnifiedSearchRequest(
  * - Find only classes: `symbolKinds: ["Class", "Interface", "Enum"]`
  * - Find only methods: `symbolKinds: ["Method"]`
  * - Find data structures: `symbolKinds: ["Property", "Field"]`
+ *
+ * ## projectIds: List<String>? (optional, default: current project only)
+ *
+ * Filter CODE_SPECS results by project. Only applies when searching code_specs.
+ *
+ * **Default behavior (null):**
+ * - Searches code specs from current project only
+ * - Current project determined from tool context (current tab's project)
+ * - Prevents cross-project code spec pollution
+ *
+ * **Explicit project filtering:**
+ * - `["project-id-1"]` - Search only specific project
+ * - `["project-id-1", "project-id-2"]` - Search multiple projects
+ * - `[]` (empty list) - Search ALL projects (not recommended, returns mixed results)
+ *
+ * **Use cases:**
+ * - Default (null): Search current project code → `projectIds: null`
+ * - Compare code across projects → `projectIds: ["gromozeka-dev", "gromozeka-prod"]`
+ * - Global code search → `projectIds: []` (use sparingly)
+ *
+ * **Note:** Memory objects (facts, concepts) are NOT filtered by project.
+ * They remain global and searchable across all projects.
  *
  * # Returns
  *
@@ -300,6 +331,41 @@ data class UnifiedSearchRequest(
  *
  * **Result:** Returns facts, code, and discussions - ranked by relevance
  *
+ * ## Example 5: Search Specific Project Code
+ *
+ * **Use case:** Agent needs to find code in specific project (not current)
+ *
+ * ```json
+ * {
+ *   "tool": "unified_search",
+ *   "parameters": {
+ *     "query": "repository pattern",
+ *     "entityTypes": ["code_specs"],
+ *     "projectIds": ["fedcba98-7654-3210-fedc-ba9876543210"]
+ *   }
+ * }
+ * ```
+ *
+ * **Result:** Returns code specs only from specified project
+ *
+ * ## Example 6: Compare Code Across Projects
+ *
+ * **Use case:** Agent compares implementations between dev and prod
+ *
+ * ```json
+ * {
+ *   "tool": "unified_search",
+ *   "parameters": {
+ *     "query": "authentication service",
+ *     "entityTypes": ["code_specs"],
+ *     "projectIds": ["gromozeka-dev", "gromozeka-prod"],
+ *     "limit": 10
+ *   }
+ * }
+ * ```
+ *
+ * **Result:** Returns authentication code from both projects for comparison
+ *
  * # Common Patterns
  *
  * ## Pattern: Code Discovery
@@ -362,7 +428,7 @@ interface UnifiedSearchTool : Tool<UnifiedSearchRequest, Map<String, Any>> {
         get() = """
             Semantic search across knowledge graph, code, and conversation history.
 
-            **Scopes (what to search):**
+            **Entity Types (what to search):**
             - `memory_objects` - Facts, concepts, technologies in knowledge graph
             - `conversation_messages` - Past conversation messages
             - `code_specs` - All code symbols (shortcut)
@@ -375,7 +441,7 @@ interface UnifiedSearchTool : Tool<UnifiedSearchRequest, Map<String, Any>> {
 
             **Parameters:**
             - query: Search query - natural language ("how authentication works") or exact names ("ThreadRepository")
-            - scopes: List of scopes to search (required)
+            - entityTypes: List of entity types to search (required)
             - limit: Max results (default: 5)
             - threadId: Filter conversations by thread (optional)
             - useReranking: Cross-source relevance ranking (default: true)
@@ -383,13 +449,13 @@ interface UnifiedSearchTool : Tool<UnifiedSearchRequest, Map<String, Any>> {
             **Examples:**
             ```json
             // Find only classes and interfaces
-            {"query": "Repository", "scopes": ["code_specs:class", "code_specs:interface"]}
+            {"query": "Repository", "entityTypes": ["code_specs:class", "code_specs:interface"]}
 
             // Search facts and all code
-            {"query": "Spring AI", "scopes": ["memory_objects", "code_specs"]}
+            {"query": "Spring AI", "entityTypes": ["memory_objects", "code_specs"]}
 
             // Search everything
-            {"query": "vector search", "scopes": ["memory_objects", "code_specs", "conversation_messages"]}
+            {"query": "vector search", "entityTypes": ["memory_objects", "code_specs", "conversation_messages"]}
             ```
 
             **What is Reranking:**

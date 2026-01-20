@@ -7,10 +7,12 @@ import org.springframework.ai.chat.model.ToolContext
  * Request parameters for index_domain_to_graph tool.
  *
  * @property project_path Absolute path to project root directory
+ * @property project_id Domain Project.Id for linking code specs to project (required for project-scoped indexing)
  * @property source_patterns File patterns to scan (e.g., ["domain/src/**/*.kt"])
  */
 data class IndexDomainToGraphRequest(
     val project_path: String,
+    val project_id: String,
     val source_patterns: List<String> = listOf("domain/src/**/*.kt")
 )
 
@@ -78,6 +80,26 @@ data class IndexDomainToGraphRequest(
  * **Validation:**
  * - Must be existing directory
  * - Must contain source files matching patterns
+ *
+ * ## project_id: String (required)
+ *
+ * Domain Project.Id for linking code specs to project.
+ *
+ * **Purpose:**
+ * - Enables project-scoped code specs in knowledge graph
+ * - Code specs from different projects don't interfere
+ * - Allows searching code specs within specific project context
+ *
+ * **Source:**
+ * - Must match Project.Id from domain model
+ * - Obtained from current project context (e.g., current tab's project)
+ *
+ * **Graph structure:**
+ * - Creates `(:Project)` node in graph if doesn't exist
+ * - Links code specs via `(:CodeSpec)-[:BELONGS_TO_PROJECT]->(:Project)`
+ *
+ * **Examples:**
+ * - `"01234567-89ab-cdef-0123-456789abcdef"` - UUIDv7 from Project.Id
  *
  * ## source_patterns: List<String> (optional, default: ["domain/src/**/*.kt"])
  *
@@ -291,7 +313,28 @@ data class IndexDomainToGraphRequest(
  *
  * # Implementation Flow
  *
- * ## Step 1: Project Activation
+ * ## Step 1: Sync Project to Neo4j
+ *
+ * ```kotlin
+ * // Get Project from SQL (source of truth)
+ * val project = projectRepository.findById(Project.Id(request.project_id))
+ *   ?: error("Project not found: ${request.project_id}")
+ *
+ * // Sync to knowledge graph (denormalized copy for search)
+ * knowledgeGraphStore.syncProject(project)
+ * // Creates/updates: (:Project {project_id, name, group_id})
+ * ```
+ *
+ * ## Step 2: Delete Stale Code Specs
+ *
+ * ```kotlin
+ * // Remove old code specs for this project before re-indexing
+ * // Prevents duplicates and removes deleted symbols
+ * val deletedCount = knowledgeGraphStore.deleteCodeSpecsByProject(request.project_id)
+ * log.info("Deleted $deletedCount stale code specs for project ${request.project_id}")
+ * ```
+ *
+ * ## Step 3: Project Activation (LSP)
  *
  * ```kotlin
  * // Check if project already active in Serena
@@ -305,7 +348,7 @@ data class IndexDomainToGraphRequest(
  * }
  * ```
  *
- * ## Step 2: File Discovery
+ * ## Step 4: File Discovery
  *
  * ```kotlin
  * // Find files matching patterns
@@ -322,7 +365,7 @@ data class IndexDomainToGraphRequest(
  * }
  * ```
  *
- * ## Step 3: Symbol Extraction (per file)
+ * ## Step 5: Symbol Extraction (per file)
  *
  * ```kotlin
  * for (file in files) {
@@ -339,7 +382,7 @@ data class IndexDomainToGraphRequest(
  * }
  * ```
  *
- * ## Step 4: Entity Creation
+ * ## Step 6: Entity Creation
  *
  * ```kotlin
  * fun extractSymbol(symbol: LspSymbol, file: File) {
@@ -373,7 +416,7 @@ data class IndexDomainToGraphRequest(
  * }
  * ```
  *
- * ## Step 5: Relationship Creation
+ * ## Step 7: Relationship Creation
  *
  * ```kotlin
  * fun createRelationships(symbol: LspSymbol, entity: MemoryObject) {
@@ -409,10 +452,18 @@ data class IndexDomainToGraphRequest(
  *     description = "located in file",
  *     relationType = "LOCATED_IN_FILE"
  *   ))
+ *   
+ *   // BELONGS_TO_PROJECT for all code specs
+ *   relationships.add(MemoryLink(
+ *     from = entity.name,
+ *     to = request.project_id, // Link to Project entity
+ *     description = "belongs to project",
+ *     relationType = "BELONGS_TO_PROJECT"
+ *   ))
  * }
  * ```
  *
- * ## Step 6: Batch Graph Insert
+ * ## Step 8: Batch Graph Insert
  *
  * ```kotlin
  * // Save all entities and relationships in single transaction
@@ -430,12 +481,13 @@ data class IndexDomainToGraphRequest(
  * {
  *   "tool": "index_domain_to_graph",
  *   "parameters": {
- *     "project_path": "/Users/lewik/code/gromozeka/dev"
+ *     "project_path": "/Users/lewik/code/gromozeka/dev",
+ *     "project_id": "01234567-89ab-cdef-0123-456789abcdef"
  *   }
  * }
  * ```
  *
- * **Result:** Domain layer indexed with default patterns
+ * **Result:** Domain layer indexed with default patterns, linked to project
  *
  * ## Example 2: Index Custom Patterns
  *
@@ -444,6 +496,7 @@ data class IndexDomainToGraphRequest(
  *   "tool": "index_domain_to_graph",
  *   "parameters": {
  *     "project_path": "/Users/dev/my-project",
+ *     "project_id": "fedcba98-7654-3210-fedc-ba9876543210",
  *     "source_patterns": [
  *       "core/src/**/*.kt",
  *       "api/src/**/*.kt"
@@ -452,7 +505,7 @@ data class IndexDomainToGraphRequest(
  * }
  * ```
  *
- * **Result:** Multiple directories indexed
+ * **Result:** Multiple directories indexed, linked to project
  *
  * ## Example 3: Re-index After Refactoring
  *
@@ -460,12 +513,13 @@ data class IndexDomainToGraphRequest(
  * {
  *   "tool": "index_domain_to_graph",
  *   "parameters": {
- *     "project_path": "/Users/lewik/code/gromozeka/dev"
+ *     "project_path": "/Users/lewik/code/gromozeka/dev",
+ *     "project_id": "01234567-89ab-cdef-0123-456789abcdef"
  *   }
  * }
  * ```
  *
- * **Result:** Graph updated with new structure (old entities remain for history)
+ * **Result:** Old code specs for this project deleted, new structure indexed (project-scoped, no duplicates)
  *
  * # Semantic Search Examples
  *
@@ -508,24 +562,25 @@ data class IndexDomainToGraphRequest(
  * - No partial graph state
  *
  * **Idempotency:**
- * - NOT idempotent (creates duplicate entities on re-run)
- * - Recommendation: Clear old entities first or use MERGE logic
- * - Future: Add `clear_before_index` parameter
+ * - **Idempotent per project** - deletes old code specs before indexing
+ * - Re-running for same project replaces code specs (no duplicates)
+ * - Different projects don't interfere with each other
+ * - Project entity updated (MERGE by project_id)
  *
  * # Limitations
  *
- * **Current (v1):**
+ * **Current (v2 - Project-Scoped):**
  * - Kotlin only (hardcoded file discovery)
- * - No incremental updates (full re-index)
- * - No duplicate detection (creates duplicates on re-run)
+ * - No incremental updates (full re-index per project)
+ * - Deletes ALL code specs for project (even if files unchanged)
  * - No cross-module relationships (domain-only)
  *
  * **Future improvements:**
  * - Multi-language support (Java, Python, TypeScript)
- * - Incremental indexing (track file changes)
- * - Duplicate detection (MERGE by name + file path)
+ * - Incremental indexing (track file changes, update only modified symbols)
  * - Cross-module relationships (domain → infrastructure)
  * - Parallel processing (faster embedding generation)
+ * - Cross-project code search (search code specs across multiple projects)
  *
  * # Related Tools
  *

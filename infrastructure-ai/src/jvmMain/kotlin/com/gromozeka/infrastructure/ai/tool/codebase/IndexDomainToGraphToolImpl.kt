@@ -39,7 +39,8 @@ import java.util.*
 class IndexDomainToGraphToolImpl(
     private val lspClientService: com.gromozeka.infrastructure.ai.service.lsp.LspClientService,
     private val knowledgeGraphStore: KnowledgeGraphStore,
-    private val embeddingModel: EmbeddingModel
+    private val embeddingModel: EmbeddingModel,
+    private val projectRepository: com.gromozeka.domain.repository.ProjectRepository
 ) : IndexDomainToGraphTool {
 
     private val log = KLoggers.logger(this)
@@ -59,12 +60,20 @@ class IndexDomainToGraphToolImpl(
             runBlocking(Dispatchers.IO) {
                 log.info { "Starting domain indexing for: ${request.project_path}" }
 
-                // Wipe only CodeSpec entities (keeps other entity types)
-                log.info { "Wiping CodeSpec entities..." }
-                knowledgeGraphStore.executeQuery("MATCH (n:CodeSpec) DETACH DELETE n", emptyMap())
-                log.info { "CodeSpec entities wiped" }
+                // 1. Sync Project to Neo4j
+                log.info { "Syncing Project entity for project_id: ${request.project_id}" }
+                val project = projectRepository.findById(com.gromozeka.domain.model.Project.Id(request.project_id))
+                    ?: error("Project not found: ${request.project_id}")
+                
+                knowledgeGraphStore.syncProject(project)
+                log.info { "Project entity synced: ${project.name}" }
 
-                // 1. File discovery
+                // 2. Delete stale code specs for THIS project only
+                log.info { "Deleting stale code specs for project: ${request.project_id}" }
+                val deletedCount = knowledgeGraphStore.deleteCodeSpecsByProject(request.project_id)
+                log.info { "Deleted $deletedCount stale code specs" }
+
+                // 3. File discovery
                 val files = discoverFiles(request.project_path, request.source_patterns)
                 log.info { "Found ${files.size} files to index" }
                 
@@ -75,10 +84,11 @@ class IndexDomainToGraphToolImpl(
                     )
                 }
                 
-                // 2. Symbol extraction + entity creation
+                // 4. Symbol extraction + entity creation
                 val indexedAt = Clock.System.now()
                 val result = extractSymbolsAndCreateGraph(
                     projectPath = request.project_path,
+                    projectId = request.project_id,
                     files = files,
                     indexedAt = indexedAt
                 )
@@ -86,27 +96,23 @@ class IndexDomainToGraphToolImpl(
                 log.info { "Extracted ${result.entities.size} entities and ${result.relationships.size} relationships" }
                 log.info { "Found ${result.inheritanceInfo.size} types with inheritance" }
 
-                // 3. Save to graph (with MERGE - idempotent)
+                // 5. Save to graph (with MERGE - idempotent)
                 saveToGraphWithMerge(result.entities, result.relationships)
 
-                // 4. Create inheritance relationships (IMPLEMENTS/EXTENDS)
+                // 6. Create inheritance relationships (IMPLEMENTS/EXTENDS)
                 val inheritanceCreated = createInheritanceRelationships(result.entities, result.inheritanceInfo, result.typeIsInterface)
-
-                // 5. Cleanup stale entities
-                val deletedCount = cleanupStaleEntities(
-                    projectPath = request.project_path,
-                    indexedAt = indexedAt
-                )
 
                 val duration = System.currentTimeMillis() - startTime
 
-                // 6. Build breakdown
+                // 7. Build breakdown
                 val breakdown = buildBreakdown(result.entities)
 
                 log.info { "✓ Indexing complete: ${result.entities.size} entities, ${result.relationships.size + inheritanceCreated} relationships, ${duration}ms" }
 
                 mapOf(
                     "success" to true,
+                    "project_id" to request.project_id,
+                    "project_name" to project.name,
                     "files_total" to files.size,
                     "files_processed" to result.successCount,
                     "files_failed" to result.failureCount,
@@ -177,6 +183,7 @@ class IndexDomainToGraphToolImpl(
     
     private suspend fun extractSymbolsAndCreateGraph(
         projectPath: String,
+        projectId: String,
         files: List<Path>,
         indexedAt: Instant
     ): IndexingResult {
@@ -226,6 +233,7 @@ class IndexDomainToGraphToolImpl(
                         symbol = symbol,
                         filePath = filePath,
                         fileContent = fileContent,
+                        projectId = projectId,
                         indexedAt = indexedAt,
                         entities = entities,
                         relationships = relationships,
@@ -255,6 +263,7 @@ class IndexDomainToGraphToolImpl(
         symbol: org.eclipse.lsp4j.DocumentSymbol,
         filePath: String,
         fileContent: String,
+        projectId: String,
         indexedAt: Instant,
         entities: MutableList<MemoryObject>,
         relationships: MutableList<MemoryLink>,
@@ -312,7 +321,7 @@ class IndexDomainToGraphToolImpl(
             // Process children recursively and collect their UUIDs
             val childUuids = mutableMapOf<String, String>()
             symbol.children?.forEach { child ->
-                val childUuid = processSymbol(child, filePath, fileContent, indexedAt, entities, relationships, fileUuids, inheritanceInfo, typeIsInterface, lspClient, isTopLevel = false)
+                val childUuid = processSymbol(child, filePath, fileContent, projectId, indexedAt, entities, relationships, fileUuids, inheritanceInfo, typeIsInterface, lspClient, isTopLevel = false)
                 if (childUuid != null) {
                     childUuids[child.name] = childUuid
                 }
@@ -323,6 +332,7 @@ class IndexDomainToGraphToolImpl(
                 symbol = symbol,
                 entityUuid = entity.uuid,
                 filePath = filePath,
+                projectId = projectId,
                 childUuids = childUuids,
                 fileUuids = fileUuids,
                 isTopLevel = isTopLevel
@@ -665,12 +675,28 @@ class IndexDomainToGraphToolImpl(
         symbol: org.eclipse.lsp4j.DocumentSymbol,
         entityUuid: String,
         filePath: String,
+        projectId: String,
         childUuids: Map<String, String>,
         fileUuids: Map<String, String>,
         isTopLevel: Boolean
     ): List<MemoryLink> {
         val links = mutableListOf<MemoryLink>()
         val now = Clock.System.now()
+
+        // BELONGS_TO_PROJECT - all code specs belong to project
+        links.add(MemoryLink(
+            uuid = UUID.randomUUID().toString(),
+            sourceNodeUuid = entityUuid,
+            targetNodeUuid = projectId, // Link to Project entity by project_id
+            relationType = "BELONGS_TO_PROJECT",
+            description = "belongs to project",
+            embedding = null,
+            validAt = now,
+            invalidAt = null,
+            createdAt = now,
+            sources = emptyList(),
+            groupId = groupId
+        ))
 
         // LOCATED_IN_FILE - only for top-level symbols (classes, top-level functions)
         // Nested symbols (methods, properties) are connected through their parent
@@ -985,6 +1011,20 @@ class IndexDomainToGraphToolImpl(
                         RETURN r.uuid as uuid
                         """.trimIndent()
 
+                    "BELONGS_TO_PROJECT" -> """
+                        MATCH (source:CodeSpec {uuid: ${'$'}sourceUuid})
+                        MATCH (target:Project {project_id: ${'$'}targetUuid})
+                        MERGE (source)-[r:BELONGS_TO_PROJECT {
+                            uuid: ${'$'}uuid,
+                            group_id: ${'$'}groupId
+                        }]->(target)
+                        ON CREATE SET
+                            r.description = ${'$'}description,
+                            r.created_at = datetime(${'$'}createdAt),
+                            r.valid_at = datetime(${'$'}validAt)
+                        RETURN r.uuid as uuid
+                        """.trimIndent()
+
                     else -> {
                         log.warn { "Unknown relationship type: ${link.relationType}" }
                         null
@@ -1000,34 +1040,7 @@ class IndexDomainToGraphToolImpl(
         }
     }
     
-    private suspend fun cleanupStaleEntities(
-        projectPath: String,
-        indexedAt: Instant
-    ): Int {
-        log.info { "Cleaning up stale entities..." }
-        
-        val result = knowledgeGraphStore.executeQuery(
-            """
-            MATCH (n:CodeSpec)
-            WHERE n.group_id = ${'$'}groupId
-              AND n.file_path STARTS WITH ${'$'}projectPath
-              AND (n.indexed_at IS NULL OR datetime(n.indexed_at) < datetime(${'$'}indexedAt))
-            DETACH DELETE n
-            RETURN count(n) as deleted
-            """.trimIndent(),
-            mapOf(
-                "groupId" to groupId,
-                "projectPath" to projectPath,
-                "indexedAt" to indexedAt.toString()
-            )
-        )
-        
-        val deletedCount = (result.firstOrNull()?.get("deleted") as? Number)?.toInt() ?: 0
-        log.info { "Deleted $deletedCount stale entities" }
-        
-        return deletedCount
-    }
-    
+
     private fun buildBreakdown(entities: List<MemoryObject>): Map<String, Int> {
         return mapOf(
             "interfaces" to entities.count { "DomainInterface" in it.labels },

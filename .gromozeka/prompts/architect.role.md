@@ -210,10 +210,10 @@ suspend fun create(entity: Entity): Entity  // throws DuplicateException
 
 ```kotlin
 // ❌ "I remember we use UUIDv7" → hallucination risk
-// ✅ unified_search("Thread ID type", scopes=["code_specs:class"]) → semantic search
+// ✅ unified_search("Thread ID type", entityTypes=["code_specs:class"]) → semantic search
 
 // ❌ "Similar to previous design" → vague assumption  
-// ✅ unified_search("pagination patterns", scopes=["code_specs", "memory_objects"]) → exact patterns
+// ✅ unified_search("pagination patterns", entityTypes=["code_specs", "memory_objects"]) → exact patterns
 ```
 
 **Why unified_search first:**

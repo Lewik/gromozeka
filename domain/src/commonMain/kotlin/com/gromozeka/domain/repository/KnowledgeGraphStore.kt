@@ -1,5 +1,6 @@
 package com.gromozeka.domain.repository
 
+import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.memory.MemoryLink
 import com.gromozeka.domain.model.memory.MemoryObject
 
@@ -104,4 +105,97 @@ interface KnowledgeGraphStore {
         cypher: String,
         params: Map<String, Any> = emptyMap()
     ): List<Map<String, Any>>
+
+    /**
+     * Synchronizes Project entity to knowledge graph.
+     *
+     * Creates minimal Project node for code spec scoping and search result display.
+     * Project metadata is denormalized from SQL to Neo4j to enable project-scoped
+     * code spec filtering without joining across databases.
+     *
+     * **Stored in Neo4j:**
+     * - `uuid` - Neo4j internal identifier (generated once, immutable)
+     * - `project_id` - Domain Project.Id (MERGE key, used for filtering)
+     * - `name` - Project name for search result display
+     * - `group_id` - Multi-tenancy identifier
+     *
+     * **NOT stored (SQL-only):**
+     * - `path` - derivable from code spec file paths, not needed for filtering
+     * - `description` - not used in code spec search
+     * - `favorite`, `archived` - UI preferences, not search criteria
+     * - `createdAt`, `lastUsedAt` - not needed for code search
+     *
+     * **MERGE semantics:**
+     * Matches by project_id, updates name and group_id if changed.
+     *
+     * **Graph structure:**
+     * ```cypher
+     * MERGE (p:Project {project_id: $projectId})
+     * SET p.uuid = COALESCE(p.uuid, randomUUID()),
+     *     p.name = $name,
+     *     p.group_id = $groupId
+     * RETURN p
+     * ```
+     *
+     * **Called from:**
+     * - IndexDomainToGraphTool - before indexing code specs
+     * - ProjectDomainService - on project creation (future: eager sync)
+     *
+     * @param project complete Project entity (only id, name extracted; groupId from context)
+     * @throws IllegalStateException if graph database is unavailable
+     */
+    suspend fun syncProject(project: Project)
+
+    /**
+     * Deletes all code specs belonging to specific project.
+     *
+     * Used before re-indexing to remove stale code specs and prevent duplicates.
+     * Only removes entities with CodeSpec-related labels:
+     * - DomainInterface, DomainClass, DomainFunction, DomainProperty, DomainConstructor, DomainEnum
+     *
+     * **Does NOT remove:**
+     * - Memory objects (facts, concepts, technologies)
+     * - Conversation messages
+     * - Project entity itself
+     * - Entities from other projects
+     *
+     * **Deletion strategy:**
+     * ```cypher
+     * MATCH (spec)-[:BELONGS_TO_PROJECT]->(p:Project {project_id: $projectId})
+     * WHERE spec:DomainInterface OR spec:DomainClass OR ...
+     * DETACH DELETE spec
+     * ```
+     *
+     * **Transactionality:**
+     * - Atomic operation - all code specs deleted or none
+     * - Cascades to relationships (DETACH DELETE)
+     *
+     * **Use cases:**
+     * - Before re-indexing project (clean slate)
+     * - When project structure changes significantly
+     * - Manual cleanup of outdated code specs
+     *
+     * @param projectId domain Project.Id to filter code specs
+     * @return count of deleted code spec entities
+     * @throws IllegalStateException if graph database is unavailable
+     */
+    suspend fun deleteCodeSpecsByProject(projectId: String): Int
+
+    /**
+     * Finds Project entity by project ID.
+     *
+     * Returns Project node as MemoryObject for consistency with other graph entities.
+     *
+     * **Labels:**
+     * - `["Project"]`
+     *
+     * **Attributes:**
+     * - `project_id` - domain Project.Id
+     * - `name` - project name
+     * - `group_id` - multi-tenancy identifier
+     *
+     * @param projectId domain Project.Id
+     * @return Project node as MemoryObject or null if not found
+     */
+    suspend fun findProjectEntity(projectId: String): MemoryObject?
 }

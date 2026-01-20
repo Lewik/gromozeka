@@ -308,8 +308,14 @@ open class AppViewModel(
         val current = currentTab.value ?: return
 
         try {
+            val conversation = conversationService.findById(current.conversationId)
+                ?: error("Conversation not found: ${current.conversationId}")
+            
             val result = indexDomainToGraphTool.execute(
-                IndexDomainToGraphRequest(project_path = current.projectPath),
+                IndexDomainToGraphRequest(
+                    project_path = current.projectPath,
+                    project_id = conversation.projectId.value
+                ),
                 context = null
             )
             log.info { "Indexed domain to graph: $result" }
