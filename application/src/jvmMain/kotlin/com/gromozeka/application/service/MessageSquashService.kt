@@ -9,8 +9,10 @@ import com.gromozeka.domain.service.PromptDomainService
 import com.gromozeka.domain.service.ChatModelProvider
 import com.gromozeka.domain.service.MessageSquashService as MessageSquashServiceSpec
 import com.gromozeka.domain.service.AgentDomainService
+import com.gromozeka.domain.repository.ProjectRepository
 import klog.KLoggers
-import kotlinx.coroutines.reactive.awaitSingle
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.springframework.ai.chat.messages.SystemMessage
 import org.springframework.ai.chat.messages.UserMessage
 import org.springframework.ai.chat.prompt.Prompt as SpringPrompt
@@ -22,7 +24,8 @@ class MessageSquashService(
     private val conversationService: ConversationDomainService,
     private val messageConversionService: MessageConversionService,
     private val promptDomainService: PromptDomainService,
-    private val agentDomainService: AgentDomainService
+    private val agentDomainService: AgentDomainService,
+    private val projectRepository: ProjectRepository
 ) : MessageSquashServiceSpec {
     companion object {
         private val COMMON_PROMPT_PREFIX_ID = Prompt.Id("builtin:common-prompt-prefix.md")
@@ -166,7 +169,7 @@ class MessageSquashService(
             SquashType.CONCATENATE -> throw IllegalStateException("Should not reach here")
         }
 
-        val systemMessages = loadCommonPromptPrefix()
+        val systemMessages = loadCommonPromptPrefix(conversationId)
             .takeIf { it.isNotBlank() }
             ?.let { listOf(SystemMessage(it)) }
             ?: emptyList()
@@ -179,7 +182,10 @@ class MessageSquashService(
         log.debug { "Calling AI with ${fullPrompt.size} messages (${systemMessages.size} system + ${springAIMessages.size} history + 1 command)" }
 
         val chatModel = chatModelProvider.getChatModel(aiProvider, modelName, projectPath)
-        val result = chatModel.call(SpringPrompt(fullPrompt)).result.output.text ?: ""
+        val chatResponse = withContext(Dispatchers.IO) {
+            chatModel.call(SpringPrompt(fullPrompt))
+        }
+        val result = chatResponse.result.output.text ?: ""
 
         log.info { "AI squash completed: result length=${result.length}" }
 
@@ -212,8 +218,15 @@ class MessageSquashService(
         return message.copy(content = wrappedContent)
     }
 
-    private suspend fun loadCommonPromptPrefix(): String {
-        return promptDomainService.findById(COMMON_PROMPT_PREFIX_ID)?.content ?: ""
+    private suspend fun loadCommonPromptPrefix(conversationId: Conversation.Id): String {
+        val conversation = conversationService.findById(conversationId) ?: return ""
+        val project = projectRepository.findById(conversation.projectId) ?: return ""
+        
+        val prompts = promptDomainService.assembleSystemPrompt(
+            listOf(COMMON_PROMPT_PREFIX_ID),
+            project
+        )
+        return prompts.firstOrNull() ?: ""
     }
 
     private fun buildDistillPrompt(): String {
