@@ -60,14 +60,21 @@ class GraphSearchService(
         )
     }
 
-    suspend fun bm25Search(query: String, limit: Int): List<Map<String, Any>> {
+    suspend fun bm25Search(query: String, limit: Int): List<Map<String, Any?>> {
         return try {
             val results = neo4jGraphStore.executeQuery(
                 """
                 CALL db.index.fulltext.queryNodes('memory_object_index', ${'$'}query)
                 YIELD node, score
                 WHERE node.group_id = ${'$'}groupId
-                RETURN node.uuid AS uuid, node.name AS name, node.summary AS summary, score
+                RETURN node.uuid AS uuid, 
+                       node.name AS name, 
+                       node.summary AS summary, 
+                       node.type AS type,
+                       node.created_at AS createdAt,
+                       node.valid_at AS validAt,
+                       node.invalid_at AS invalidAt,
+                       score
                 LIMIT ${'$'}limit
                 """.trimIndent(),
                 mapOf("query" to query, "groupId" to groupId, "limit" to limit)
@@ -78,6 +85,10 @@ class GraphSearchService(
                     "uuid" to (record["uuid"] as? String ?: ""),
                     "name" to (record["name"] as? String ?: ""),
                     "summary" to (record["summary"] as? String ?: ""),
+                    "type" to (record["type"] as? String ?: ""),
+                    "createdAt" to record["createdAt"],
+                    "validAt" to record["validAt"],
+                    "invalidAt" to record["invalidAt"],
                     "score" to (record["score"] as? Double ?: 0.0)
                 )
             }
@@ -87,7 +98,7 @@ class GraphSearchService(
         }
     }
 
-    suspend fun graphTraversal(query: String, limit: Int, asOf: Instant? = null): List<Map<String, Any>> {
+    suspend fun graphTraversal(query: String, limit: Int, asOf: Instant? = null): List<Map<String, Any?>> {
         return try {
             val temporalFilter = if (asOf != null) {
                 """
@@ -118,7 +129,11 @@ class GraphSearchService(
                   $temporalFilter
                 RETURN DISTINCT connected.uuid AS uuid,
                        connected.name AS name,
-                       connected.summary AS summary
+                       connected.summary AS summary,
+                       connected.type AS type,
+                       connected.created_at AS createdAt,
+                       connected.valid_at AS validAt,
+                       connected.invalid_at AS invalidAt
                 LIMIT ${'$'}limit
                 """.trimIndent(),
                 params
@@ -128,7 +143,11 @@ class GraphSearchService(
                 mapOf(
                     "uuid" to (record["uuid"] as? String ?: ""),
                     "name" to (record["name"] as? String ?: ""),
-                    "summary" to (record["summary"] as? String ?: "")
+                    "summary" to (record["summary"] as? String ?: ""),
+                    "type" to (record["type"] as? String ?: ""),
+                    "createdAt" to record["createdAt"],
+                    "validAt" to record["validAt"],
+                    "invalidAt" to record["invalidAt"]
                 )
             }
         } catch (e: Exception) {
@@ -141,7 +160,7 @@ class GraphSearchService(
         query: String,
         limit: Int,
         minScore: Double = 0.5
-    ): List<Map<String, Any>> {
+    ): List<Map<String, Any?>> {
         val queryEmbedding = withContext(Dispatchers.IO) {
             embeddingModel.embed(query).toList()
         }
@@ -153,7 +172,7 @@ class GraphSearchService(
         queryEmbedding: List<Float>,
         limit: Int,
         minScore: Double
-    ): List<Map<String, Any>> {
+    ): List<Map<String, Any?>> {
         return try {
             val results = neo4jGraphStore.executeQuery(
                 """
@@ -165,6 +184,10 @@ class GraphSearchService(
                 RETURN n.uuid AS uuid,
                        n.name AS name,
                        n.summary AS summary,
+                       n.type AS type,
+                       n.created_at AS createdAt,
+                       n.valid_at AS validAt,
+                       n.invalid_at AS invalidAt,
                        score
                 ORDER BY score DESC
                 LIMIT ${'$'}limit
@@ -182,6 +205,10 @@ class GraphSearchService(
                     "uuid" to (record["uuid"] as? String ?: ""),
                     "name" to (record["name"] as? String ?: ""),
                     "summary" to (record["summary"] as? String ?: ""),
+                    "type" to (record["type"] as? String ?: ""),
+                    "createdAt" to record["createdAt"],
+                    "validAt" to record["validAt"],
+                    "invalidAt" to record["invalidAt"],
                     "score" to (record["score"] as? Double ?: 0.0)
                 )
             }
@@ -195,7 +222,7 @@ class GraphSearchService(
         queryEmbedding: List<Float>,
         limit: Int,
         minScore: Double
-    ): List<Map<String, Any>> {
+    ): List<Map<String, Any?>> {
         return try {
             val results = neo4jGraphStore.executeQuery(
                 """
@@ -206,6 +233,10 @@ class GraphSearchService(
                 RETURN node.uuid AS uuid,
                        node.name AS name,
                        node.summary AS summary,
+                       node.type AS type,
+                       node.created_at AS createdAt,
+                       node.valid_at AS validAt,
+                       node.invalid_at AS invalidAt,
                        score
                 ORDER BY score DESC
                 """.trimIndent(),
@@ -222,6 +253,10 @@ class GraphSearchService(
                     "uuid" to (record["uuid"] as? String ?: ""),
                     "name" to (record["name"] as? String ?: ""),
                     "summary" to (record["summary"] as? String ?: ""),
+                    "type" to (record["type"] as? String ?: ""),
+                    "createdAt" to record["createdAt"],
+                    "validAt" to record["validAt"],
+                    "invalidAt" to record["invalidAt"],
                     "score" to (record["score"] as? Double ?: 0.0)
                 )
             }

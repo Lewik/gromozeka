@@ -19,22 +19,25 @@ class ConversationMessageGraphService(
             messages.forEach { message ->
                 val query = """
                     MERGE (m:ConversationMessage {id: ${'$'}id})
-                    SET m.content = ${'$'}content,
+                    SET m.conversationId = ${'$'}conversationId,
                         m.threadId = ${'$'}threadId,
+                        m.projectId = ${'$'}projectId,
                         m.role = ${'$'}role,
+                        m.content = ${'$'}content,
                         m.embedding = ${'$'}embedding,
-                        m.createdAt = datetime(${'$'}createdAt)
+                        m.createdAt = datetime()
                 """.trimIndent()
 
                 neo4jGraphStore.executeQuery(
                     query,
                     mapOf(
                         "id" to message.id,
-                        "content" to message.content,
+                        "conversationId" to message.conversationId,
                         "threadId" to message.threadId,
+                        "projectId" to message.projectId,
                         "role" to message.role,
-                        "embedding" to message.embedding,
-                        "createdAt" to message.createdAt
+                        "content" to message.content,
+                        "embedding" to message.embedding
                     )
                 )
             }
@@ -84,38 +87,14 @@ class ConversationMessageGraphService(
         log.debug { "Deleted message $messageId from Neo4j" }
     }
 
-    suspend fun initializeVectorIndex() {
-        log.info { "Creating vector index 'conversation_message_vector' for ConversationMessage embeddings..." }
-
-        try {
-            neo4jGraphStore.executeQuery(
-                """
-                CREATE VECTOR INDEX conversation_message_vector IF NOT EXISTS
-                FOR (m:ConversationMessage) ON (m.embedding)
-                OPTIONS {
-                    indexConfig: {
-                        `vector.dimensions`: 3072,
-                        `vector.similarity_function`: 'cosine',
-                        `vector.hnsw.m`: 32,
-                        `vector.hnsw.ef_construction`: 200
-                    }
-                }
-                """.trimIndent()
-            )
-            log.info { "Vector index 'conversation_message_vector' created successfully" }
-        } catch (e: Exception) {
-            log.error(e) { "Failed to create vector index: ${e.message}" }
-            throw e
-        }
-    }
-
     data class ConversationMessageNode(
         val id: String,
-        val content: String,
+        val conversationId: String,
         val threadId: String,
+        val projectId: String,
         val role: String,
-        val embedding: List<Float>,
-        val createdAt: String
+        val content: String,
+        val embedding: List<Float>
     )
 
     data class MessageSearchResult(

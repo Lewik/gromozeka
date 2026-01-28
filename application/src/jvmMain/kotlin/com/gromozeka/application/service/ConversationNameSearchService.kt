@@ -9,8 +9,14 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.springframework.stereotype.Service
 
+/**
+ * Service for searching conversations by name.
+ * 
+ * Searches across conversation display names and project names.
+ * Used by UI for conversation finder/switcher.
+ */
 @Service
-class ConversationSearchService(
+class ConversationNameSearchService(
     private val conversationTreeRepository: ConversationRepository,
     private val projectRepository: ProjectRepository,
 ) {

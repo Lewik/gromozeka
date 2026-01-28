@@ -1,14 +1,17 @@
 package com.gromozeka.infrastructure.ai.tool.memory
 
+import com.gromozeka.domain.model.EntityType
+import com.gromozeka.domain.model.SearchResultMetadata
+import com.gromozeka.domain.model.UnifiedSearchResult
 import com.gromozeka.domain.tool.memory.SearchScope
 import com.gromozeka.domain.tool.memory.UnifiedSearchRequest
-import com.gromozeka.infrastructure.db.memory.EntityType
-import com.gromozeka.infrastructure.db.memory.UnifiedSearchResult
 import com.gromozeka.infrastructure.db.memory.UnifiedSearchService
 import kotlinx.coroutines.runBlocking
+import kotlinx.datetime.Instant
 import org.slf4j.LoggerFactory
 import org.springframework.ai.chat.model.ToolContext
 import org.springframework.stereotype.Service
+import kotlin.time.Duration.Companion.hours
 
 /**
  * Infrastructure implementation of UnifiedSearchTool.
@@ -47,16 +50,23 @@ class UnifiedSearchTool(
         val symbolKinds = SearchScope.extractSymbolKinds(entityTypeScopes)
 
         return try {
-            // TODO: Pass projectIds when UnifiedSearchService supports it (Repository Agent task)
+            val searchMode = parseSearchMode(request.searchMode)
+            
+            // Treat empty strings as null (LLM cannot omit parameters if they're in schema)
             val results = runBlocking {
                 unifiedSearchService.unifiedSearch(
                     query = request.query,
                     entityTypes = entityTypes,
-                    threadId = request.threadId,
+                    searchMode = searchMode,
+                    threadId = request.threadId?.takeIf { it.isNotBlank() },
+                    conversationIds = request.conversationIds?.filter { it.isNotBlank() }?.takeIf { it.isNotEmpty() },
+                    roles = request.roles?.filter { it.isNotBlank() }?.takeIf { it.isNotEmpty() },
+                    dateFrom = request.dateFrom?.takeIf { it.isNotBlank() }?.let { kotlinx.datetime.Instant.parse(it) },
+                    dateTo = request.dateTo?.takeIf { it.isNotBlank() }?.let { kotlinx.datetime.Instant.parse(it) },
+                    projectIds = request.projectIds?.filter { it.isNotBlank() }?.takeIf { it.isNotEmpty() },
                     limit = request.limit ?: 5,
                     useReranking = request.useReranking ?: true,
                     symbolKinds = symbolKinds
-                    // projectIds = request.projectIds // TODO: Uncomment when infrastructure-db supports it
                 )
             }
 
@@ -94,44 +104,43 @@ class UnifiedSearchTool(
 
             val score = String.format("%.2f", result.score)
 
-            when (result.source) {
-                EntityType.MEMORY_OBJECTS -> {
-                    val name = result.metadata["name"] ?: "Unknown"
-                    sb.appendLine("[$typeLabel] $name (score: $score)")
+            when (val meta = result.metadata) {
+                is SearchResultMetadata.MemoryObject -> {
+                    val temporal = formatTemporal(meta.createdAt, meta.validAt, meta.invalidAt)
+                    sb.appendLine("[$typeLabel] ${meta.objectId} (score: $score)$temporal")
                     sb.appendLine("  ${result.content}")
+                    if (meta.objectType.isNotBlank()) {
+                        sb.appendLine("  Type: ${meta.objectType}")
+                    }
                 }
 
-                EntityType.CODE_SPECS -> {
-                    val name = result.metadata["name"] ?: "Unknown"
-                    val filePath = result.metadata["file_path"]
-                    val startLine = result.metadata["start_line"]
-                    val symbolKind = result.metadata["symbol_kind"]
+                is SearchResultMetadata.CodeSpec -> {
+                    val temporal = meta.lastModified?.let { formatAge(it) } ?: ""
+                    sb.appendLine("[$typeLabel] ${meta.symbolName} (score: $score)$temporal")
 
-                    sb.appendLine("[$typeLabel] $name (score: $score)")
-
-                    val summary = result.metadata["summary"]
-                        ?: result.content.substringAfter(": ").substringBefore(" (")
-                    if (summary.isNotBlank() && summary != name) {
+                    val summary = result.content.substringAfter(": ", "").substringBefore(" (", "")
+                    if (summary.isNotBlank() && summary != meta.symbolName) {
                         sb.appendLine("  $summary")
                     }
 
-                    if (!filePath.isNullOrBlank()) {
-                        val location = if (!startLine.isNullOrBlank()) "$filePath:$startLine" else filePath
-                        val kindInfo = if (!symbolKind.isNullOrBlank()) " [$symbolKind]" else ""
+                    if (meta.filePath.isNotBlank()) {
+                        val location = if (meta.lineNumber > 0) "${meta.filePath}:${meta.lineNumber}" else meta.filePath
+                        val kindInfo = if (meta.symbolKind.isNotBlank()) " [${meta.symbolKind}]" else ""
                         sb.appendLine("  File: $location$kindInfo")
                     }
                 }
 
-                EntityType.CONVERSATION_MESSAGES -> {
-                    sb.appendLine("[$typeLabel] (score: $score)")
+                is SearchResultMetadata.ConversationMessage -> {
+                    val temporal = formatAge(meta.createdAt)
+                    sb.appendLine("[$typeLabel] [${meta.role.name}] (score: $score)$temporal")
                     val contentPreview = result.content.take(200).let {
                         if (result.content.length > 200) "$it..." else it
                     }
                     sb.appendLine("  \"$contentPreview\"")
-                    val threadId = result.metadata["threadId"]
-                    if (!threadId.isNullOrBlank()) {
-                        sb.appendLine("  Thread: $threadId")
-                    }
+                    
+                    sb.appendLine("  Conversation: ${meta.conversationId}")
+                    sb.appendLine("  Thread: ${meta.threadId}")
+                    sb.appendLine("  Message: ${meta.messageId}")
                 }
             }
             sb.appendLine()
@@ -144,4 +153,59 @@ class UnifiedSearchTool(
         "type" to "text",
         "text" to "Error: $message"
     )
+
+    private fun parseSearchMode(mode: String?): com.gromozeka.domain.model.SearchMode {
+        return when (mode?.uppercase()) {
+            "KEYWORD" -> com.gromozeka.domain.model.SearchMode.KEYWORD
+            "SEMANTIC" -> com.gromozeka.domain.model.SearchMode.SEMANTIC
+            "HYBRID", null -> com.gromozeka.domain.model.SearchMode.HYBRID
+            else -> {
+                logger.warn("Unknown search mode '$mode', defaulting to HYBRID")
+                com.gromozeka.domain.model.SearchMode.HYBRID
+            }
+        }
+    }
+    
+    /**
+     * Format age of timestamp as human-readable relative time.
+     * Returns empty string for DISTANT_PAST (null values from DB).
+     */
+    private fun formatAge(timestamp: Instant): String {
+        if (timestamp == Instant.DISTANT_PAST) return ""
+        
+        val now = kotlinx.datetime.Clock.System.now()
+        val duration = now - timestamp
+        
+        return when {
+            duration.inWholeMinutes < 1 -> " [just now]"
+            duration.inWholeMinutes < 60 -> " [${duration.inWholeMinutes}m ago]"
+            duration.inWholeHours < 24 -> " [${duration.inWholeHours}h ago]"
+            duration.inWholeDays < 7 -> " [${duration.inWholeDays}d ago]"
+            duration.inWholeDays < 30 -> " [${duration.inWholeDays / 7}w ago]"
+            duration.inWholeDays < 365 -> " [${duration.inWholeDays / 30}mo ago]"
+            else -> " [${duration.inWholeDays / 365}y ago]"
+        }
+    }
+    
+    /**
+     * Format bi-temporal metadata for memory objects.
+     * Shows creation time, validity period, and invalidation status.
+     */
+    private fun formatTemporal(createdAt: Instant, validAt: Instant?, invalidAt: Instant?): String {
+        val parts = mutableListOf<String>()
+        
+        // Age
+        if (createdAt != Instant.DISTANT_PAST) {
+            parts.add(formatAge(createdAt).trim('[', ']'))
+        }
+        
+        // Validity status
+        if (invalidAt != null && invalidAt != Instant.DISTANT_PAST) {
+            parts.add("INVALIDATED")
+        } else if (validAt != null && validAt != Instant.DISTANT_PAST && validAt > kotlinx.datetime.Clock.System.now()) {
+            parts.add("FUTURE")
+        }
+        
+        return if (parts.isNotEmpty()) " [${parts.joinToString(", ")}]" else ""
+    }
 }

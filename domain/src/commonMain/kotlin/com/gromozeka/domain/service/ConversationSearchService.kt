@@ -1,16 +1,93 @@
 package com.gromozeka.domain.service
 
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.Project
 import kotlinx.datetime.Instant
 
 /**
- * Service for searching across conversation history.
+ * [SPECIFICATION] Search across conversation message history.
  *
  * Provides unified interface for finding messages across all conversations using
  * multiple search strategies (keyword, semantic, hybrid). Results include full context
  * (message, thread, conversation) and relevance scoring.
  *
- * Infrastructure layer implements this using SQL full-text search and vector similarity.
+ * ## Implementation Strategy
+ *
+ * **Infrastructure layer implements this using:**
+ * - Neo4j fulltext index for KEYWORD search (BM25 ranking)
+ * - Neo4j vector index for SEMANTIC search (cosine similarity)
+ * - Weighted score combination for HYBRID search
+ *
+ * **Vectorization:**
+ * - Only USER and ASSISTANT text messages vectorized
+ * - Tool calls, tool results, thinking blocks NOT vectorized
+ * - Uses OpenAI text-embedding-3-large (3072 dimensions)
+ *
+ * **Storage:**
+ * - Messages stored as ConversationMessage nodes in Neo4j
+ * - Properties: id, content, threadId, role, embedding, createdAt
+ * - Indexes: vector index (HNSW), fulltext index (BM25)
+ *
+ * ## Search Modes
+ *
+ * **KEYWORD:**
+ * - Fulltext search via Neo4j BM25 index
+ * - Fast (50-100ms), precise word matching
+ * - Good for: exact terms, code snippets, error messages
+ *
+ * **SEMANTIC:**
+ * - Vector similarity via Neo4j HNSW index
+ * - Slower (100-200ms), understands meaning
+ * - Good for: natural language, conceptual queries
+ *
+ * **HYBRID:**
+ * - Combines KEYWORD + SEMANTIC with weighted scoring
+ * - Slowest (150-300ms), best overall results
+ * - Good for: general-purpose search, exploratory queries
+ *
+ * ## Filtering
+ *
+ * All filters are optional and combinable:
+ * - **projectIds** - filter by projects (null = all projects)
+ * - **conversationIds** - filter by conversations (null = all conversations)
+ * - **threadIds** - filter by threads (null = all threads)
+ * - **roles** - filter by message roles (null = all roles)
+ * - **dateFrom/dateTo** - filter by creation timestamp (null = no bounds)
+ *
+ * ## Result Structure
+ *
+ * Each result includes:
+ * - **message** - full Message entity with all content
+ * - **thread** - Thread entity containing message
+ * - **conversation** - Conversation entity containing thread
+ * - **score** - relevance score (0.0 to 1.0, higher = more relevant)
+ * - **highlights** - text snippets showing where query matched (KEYWORD mode only)
+ * - **matchType** - how result was found (KEYWORD, SEMANTIC, or HYBRID)
+ *
+ * ## Usage Example
+ *
+ * ```kotlin
+ * // Search for messages about "authentication" in last week
+ * val results = conversationSearchService.search(
+ *     SearchCriteria(
+ *         query = "authentication implementation",
+ *         mode = SearchMode.HYBRID,
+ *         dateFrom = Clock.System.now() - 7.days,
+ *         roles = listOf(Role.USER, Role.ASSISTANT),
+ *         limit = 20
+ *     )
+ * )
+ *
+ * // Browse recent messages in specific project
+ * val recent = conversationSearchService.search(
+ *     SearchCriteria(
+ *         query = "",
+ *         mode = SearchMode.KEYWORD,
+ *         projectIds = listOf(projectId),
+ *         limit = 50
+ *     )
+ * )
+ * ```
  *
  * @see SearchCriteria for search parameters
  * @see SearchResult for result structure
@@ -21,11 +98,19 @@ interface ConversationSearchService {
      * Searches for messages matching criteria.
      *
      * Supports three search modes:
-     * - KEYWORD: Exact/partial text matching via SQL (fast, precise)
-     * - SEMANTIC: Vector similarity search (understands meaning, slower)
+     * - KEYWORD: Fulltext matching via Neo4j BM25 index (fast, precise)
+     * - SEMANTIC: Vector similarity via Neo4j HNSW index (understands meaning, slower)
      * - HYBRID: Combines both with weighted scoring (best results, slowest)
      *
-     * Results ordered by relevance score (descending). Empty query returns recent messages.
+     * Results ordered by relevance score (descending).
+     * Empty query with KEYWORD mode returns recent messages (ordered by createdAt DESC).
+     *
+     * **Performance:**
+     * - KEYWORD: 50-100ms
+     * - SEMANTIC: 100-200ms
+     * - HYBRID: 150-300ms
+     *
+     * **Transactionality:** Read-only, no side effects
      *
      * @param criteria search parameters (query, filters, pagination)
      * @return paginated search results with metadata
@@ -37,8 +122,9 @@ interface ConversationSearchService {
      *
      * Flexible filtering across multiple dimensions. All filters are optional and combinable.
      *
-     * @property query search query text (required for KEYWORD/SEMANTIC, optional for browsing)
+     * @property query search query text (required for SEMANTIC/HYBRID, optional for KEYWORD browsing)
      * @property mode search strategy (KEYWORD, SEMANTIC, or HYBRID)
+     * @property projectIds filter by specific projects (null = all projects)
      * @property conversationIds filter by specific conversations (null = all conversations)
      * @property threadIds filter by specific threads (null = all threads)
      * @property roles filter by message roles (null = all roles)
@@ -51,6 +137,7 @@ interface ConversationSearchService {
         val query: String = "",
         val mode: SearchMode = SearchMode.HYBRID,
 
+        val projectIds: List<Project.Id>? = null,
         val conversationIds: List<Conversation.Id>? = null,
         val threadIds: List<Conversation.Thread.Id>? = null,
         val roles: List<Conversation.Message.Role>? = null,

@@ -1,6 +1,7 @@
 package com.gromozeka.infrastructure.db.memory
 
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.repository.ConversationRepository
 import com.gromozeka.domain.repository.ThreadMessageRepository
 import com.gromozeka.infrastructure.db.memory.graph.ConversationMessageGraphService
 import kotlinx.datetime.Clock
@@ -16,7 +17,8 @@ import org.springframework.stereotype.Service
 class VectorMemoryService(
     private val conversationMessageGraphService: ConversationMessageGraphService,
     private val embeddingModel: EmbeddingModel,
-    private val threadMessageRepository: ThreadMessageRepository
+    private val threadMessageRepository: ThreadMessageRepository,
+    private val conversationRepository: ConversationRepository
 ) : com.gromozeka.domain.service.VectorMemoryService {
     private val log = KLoggers.logger(this)
 
@@ -35,18 +37,39 @@ class VectorMemoryService(
                 return@withContext
             }
 
-            val messageNodes = threadMessages.map { message ->
+            // Get projectId from first message's conversation
+            val firstMessage = threadMessages.first()
+            val conversation = conversationRepository.findById(firstMessage.conversationId)
+            if (conversation == null) {
+                log.error { "Conversation not found for message ${firstMessage.id.value}" }
+                return@withContext
+            }
+
+            val messageNodes = threadMessages.mapNotNull { message ->
                 val content = extractTextContent(message)
+                
+                // Skip messages with no text content (OpenAI Embeddings API doesn't accept empty strings)
+                if (content.isBlank()) {
+                    log.debug { "Skipping message ${message.id.value} - no text content to embed" }
+                    return@mapNotNull null
+                }
+                
                 val embedding = embeddingModel.embed(content).toList()
 
                 ConversationMessageGraphService.ConversationMessageNode(
                     id = message.id.value,
-                    content = content,
+                    conversationId = message.conversationId.value,
                     threadId = threadId,
+                    projectId = conversation.projectId.value,
                     role = message.role.name,
-                    embedding = embedding,
-                    createdAt = Clock.System.now().toString()
+                    content = content,
+                    embedding = embedding
                 )
+            }
+
+            if (messageNodes.isEmpty()) {
+                log.debug { "No messages with text content to remember for thread $threadId" }
+                return@withContext
             }
 
             conversationMessageGraphService.saveMessages(messageNodes)

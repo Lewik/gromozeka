@@ -46,6 +46,7 @@ import com.gromozeka.shared.uuid.uuid7
  * 3. Execute tool calls in parallel
  * 4. Send tool results back to the model
  * 5. Repeat until no more tool calls
+ * 6. Auto-remember thread to vector memory if enabled (after final response)
  */
 @Service
 class ConversationEngineService(
@@ -64,7 +65,8 @@ class ConversationEngineService(
     private val vectorMemoryService: com.gromozeka.domain.service.VectorMemoryService,
     private val knowledgeGraphService: com.gromozeka.domain.service.KnowledgeGraphService?,
     private val toolCallPairingService: ToolCallPairingService,
-    private val toolCallSequenceFixerService: ToolCallSequenceFixerService
+    private val toolCallSequenceFixerService: ToolCallSequenceFixerService,
+    private val settingsProvider: com.gromozeka.domain.service.SettingsProvider
 ) {
     private val log = KLoggers.logger(this)
 
@@ -133,6 +135,10 @@ class ConversationEngineService(
     /**
      * Send message and get response using blocking call().
      * LLM-agnostic - works with all providers (Anthropic, OpenAI, Google, etc.)
+     *
+     * Automatically remembers thread to vector memory after final response if:
+     * - settings.autoRememberThreads is enabled
+     * - settings.vectorStorageEnabled is enabled
      *
      * @param conversationId The conversation to append messages to
      * @param userMessage The user message to send
@@ -299,6 +305,15 @@ class ConversationEngineService(
                     break
                 }
             } else {
+                // Final message (no tool calls) - auto-remember thread if enabled
+                if (settingsProvider.autoRememberThreads && settingsProvider.vectorStorageEnabled) {
+                    try {
+                        vectorMemoryService.rememberThread(conversation.currentThread.value)
+                        log.debug { "Auto-remembered thread ${conversation.currentThread}" }
+                    } catch (e: Exception) {
+                        log.warn(e) { "Auto-remember thread failed: ${e.message}" }
+                    }
+                }
                 break
             }
         }
