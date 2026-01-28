@@ -115,6 +115,8 @@ Follow this hierarchy when researching:
 1. User explicitly requests them, OR
 2. They are core project deliverables (source code, configs, tests)
 
+**NEVER create summary/recap files to communicate what you did.**
+
 **Use your response text to communicate findings, not files.**
 
 ### Answer the Question Asked
