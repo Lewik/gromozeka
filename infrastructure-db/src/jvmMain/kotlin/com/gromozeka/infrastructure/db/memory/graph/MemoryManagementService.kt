@@ -179,13 +179,14 @@ class MemoryManagementService(
         val labels = entity["labels"] as? List<*> ?: emptyList<String>()
         val createdAt = entity["createdAt"]?.toString() ?: ""
 
+        val now = Clock.System.now()
         val outgoingResult = neo4jGraphStore.executeQuery(
             """
             MATCH (n:MemoryObject {uuid: ${'$'}uuid})-[r:LINKS_TO]->(target:MemoryObject)
-            WHERE r.invalid_at IS NULL
+            WHERE datetime(r.invalid_at) > datetime(${'$'}asOf)
             RETURN r.description as relation, target.name as targetName
             """.trimIndent(),
-            mapOf("uuid" to uuid)
+            mapOf("uuid" to uuid, "asOf" to now.toString())
         )
 
         val outgoing = outgoingResult.map { record ->
@@ -195,10 +196,10 @@ class MemoryManagementService(
         val incomingResult = neo4jGraphStore.executeQuery(
             """
             MATCH (source:MemoryObject)-[r:LINKS_TO]->(n:MemoryObject {uuid: ${'$'}uuid})
-            WHERE r.invalid_at IS NULL
+            WHERE datetime(r.invalid_at) > datetime(${'$'}asOf)
             RETURN source.name as sourceName, r.description as relation
             """.trimIndent(),
-            mapOf("uuid" to uuid)
+            mapOf("uuid" to uuid, "asOf" to now.toString())
         )
 
         val incoming = incomingResult.map { record ->
@@ -240,7 +241,7 @@ class MemoryManagementService(
             MATCH (source:MemoryObject {name: ${'$'}fromName, group_id: ${'$'}groupId})
                   -[r:LINKS_TO {description: ${'$'}description}]->
                   (target:MemoryObject {name: ${'$'}toName, group_id: ${'$'}groupId})
-            WHERE r.invalid_at IS NULL
+            WHERE datetime(r.invalid_at) > datetime(${'$'}now)
             SET r.invalid_at = datetime(${'$'}invalidAt)
             RETURN count(r) as count
             """.trimIndent(),
@@ -249,6 +250,7 @@ class MemoryManagementService(
                 "toName" to to,
                 "description" to relation,
                 "groupId" to groupId,
+                "now" to invalidAt.toString(),
                 "invalidAt" to invalidAt.toString()
             )
         )

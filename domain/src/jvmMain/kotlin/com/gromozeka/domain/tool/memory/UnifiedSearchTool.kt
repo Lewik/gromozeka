@@ -20,6 +20,7 @@ import org.springframework.ai.chat.model.ToolContext
  * @property roles Optional list of message roles to filter conversation messages (USER, ASSISTANT, SYSTEM) (null/empty = no filter)
  * @property dateFrom Optional start date to filter conversation messages (ISO 8601 format, null/empty/blank = no filter)
  * @property dateTo Optional end date to filter conversation messages (ISO 8601 format, null/empty/blank = no filter)
+ * @property asOf Optional point-in-time for memory objects temporal query (ISO 8601 format, null/empty/blank = now)
  *
  * @see SearchScope for valid entity type values
  */
@@ -34,7 +35,8 @@ data class UnifiedSearchRequest(
     val conversationIds: List<String>? = null,
     val roles: List<String>? = null,
     val dateFrom: String? = null,
-    val dateTo: String? = null
+    val dateTo: String? = null,
+    val asOf: String? = null
 )
 
 /**
@@ -378,6 +380,44 @@ data class UnifiedSearchRequest(
  * }
  * ```
  * Searches messages within Jan 15-20, 2024 range.
+ *
+ * ## asOf: String? (optional)
+ *
+ * Point-in-time query for memory_objects (knowledge graph entities). Only applies when searching memory_objects.
+ * Returns entities that were valid at specified timestamp according to bi-temporal model.
+ *
+ * **Format:** ISO 8601 timestamp (e.g., `"2024-01-20T12:00:00Z"`)
+ *
+ * **Examples:**
+ * - `null`, `""` (empty), or omit - Current time (default, returns currently valid entities)
+ * - `"2024-01-20T12:00:00Z"` - Returns entities valid on Jan 20, 2024 at noon
+ * - `"2023-01-01T00:00:00Z"` - Historical state: what was valid on Jan 1, 2023
+ *
+ * **Bi-temporal filtering:**
+ * ```cypher
+ * WHERE datetime(entity.valid_at) <= datetime($asOf)
+ *   AND datetime(entity.invalid_at) > datetime($asOf)
+ * ```
+ *
+ * **Use cases:**
+ * - Historical queries: "What technologies were we using in 2023?"
+ * - Audit trail: "What facts were valid when decision X was made?"
+ * - Temporal reasoning: "Show me obsolete concepts (invalidated before now)"
+ * - Compare states: Query same entity at different timestamps
+ *
+ * **Examples:**
+ * ```json
+ * // Current state (default)
+ * {"query": "PostgreSQL", "entityTypes": ["memory_objects"], "asOf": null}
+ *
+ * // Historical state
+ * {"query": "database", "entityTypes": ["memory_objects"], "asOf": "2023-06-01T00:00:00Z"}
+ *
+ * // Obsolete concepts (set asOf to past, entities with invalidAt < asOf won't appear)
+ * {"query": "Phlogiston", "entityTypes": ["memory_objects"], "asOf": "1800-01-01T00:00:00Z"}
+ * ```
+ *
+ * **Note:** Does NOT affect conversation_messages or code_specs. Use `dateFrom`/`dateTo` for conversation temporal filtering.
  *
  * # Returns
  *

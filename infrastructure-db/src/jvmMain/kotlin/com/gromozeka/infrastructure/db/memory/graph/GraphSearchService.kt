@@ -26,13 +26,13 @@ class GraphSearchService(
         query: String,
         limit: Int = 5,
         useReranking: Boolean = false,
-        asOf: Instant? = null
+        asOf: Instant = kotlinx.datetime.Clock.System.now()
     ): Map<String, Any> = coroutineScope {
         val candidateLimit = if (useReranking) maxOf(limit * 5, 50) else limit
 
         val results = listOf(
-            async { bm25Search(query, candidateLimit) },
-            async { vectorSimilaritySearch(query, candidateLimit) },
+            async { bm25Search(query, candidateLimit, asOf) },
+            async { vectorSimilaritySearch(query, candidateLimit, asOf = asOf) },
             async { graphTraversal(query, candidateLimit, asOf) }
         ).awaitAll()
 
@@ -60,13 +60,15 @@ class GraphSearchService(
         )
     }
 
-    suspend fun bm25Search(query: String, limit: Int): List<Map<String, Any?>> {
+    suspend fun bm25Search(query: String, limit: Int, asOf: Instant = kotlinx.datetime.Clock.System.now()): List<Map<String, Any?>> {
         return try {
             val results = neo4jGraphStore.executeQuery(
                 """
                 CALL db.index.fulltext.queryNodes('memory_object_index', ${'$'}query)
                 YIELD node, score
                 WHERE node.group_id = ${'$'}groupId
+                  AND datetime(node.valid_at) <= datetime(${'$'}asOf)
+                  AND datetime(node.invalid_at) > datetime(${'$'}asOf)
                 RETURN node.uuid AS uuid, 
                        node.name AS name, 
                        node.summary AS summary, 
@@ -77,7 +79,7 @@ class GraphSearchService(
                        score
                 LIMIT ${'$'}limit
                 """.trimIndent(),
-                mapOf("query" to query, "groupId" to groupId, "limit" to limit)
+                mapOf("query" to query, "groupId" to groupId, "limit" to limit, "asOf" to asOf.toString())
             )
 
             results.map { record ->
@@ -98,35 +100,22 @@ class GraphSearchService(
         }
     }
 
-    suspend fun graphTraversal(query: String, limit: Int, asOf: Instant? = null): List<Map<String, Any?>> {
+    suspend fun graphTraversal(query: String, limit: Int, asOf: Instant = kotlinx.datetime.Clock.System.now()): List<Map<String, Any?>> {
         return try {
-            val temporalFilter = if (asOf != null) {
-                """
-                AND ALL(rel IN r WHERE
-                    datetime(rel.valid_at) <= datetime(${'$'}asOf)
-                    AND (rel.invalid_at IS NULL OR datetime(rel.invalid_at) > datetime(${'$'}asOf))
-                )
-                """.trimIndent()
-            } else {
-                ""
-            }
-
-            val params = mutableMapOf<String, Any>(
-                "query" to query,
-                "groupId" to groupId,
-                "limit" to limit
-            )
-            if (asOf != null) {
-                params["asOf"] = asOf.toString()
-            }
-
             val results = neo4jGraphStore.executeQuery(
                 """
                 MATCH (n:MemoryObject)-[r:LINKS_TO*1..2]-(connected:MemoryObject)
                 WHERE n.group_id = ${'$'}groupId
                   AND connected.group_id = ${'$'}groupId
                   AND (n.name CONTAINS ${'$'}query OR connected.name CONTAINS ${'$'}query)
-                  $temporalFilter
+                  AND ALL(rel IN r WHERE
+                      datetime(rel.valid_at) <= datetime(${'$'}asOf)
+                      AND datetime(rel.invalid_at) > datetime(${'$'}asOf)
+                  )
+                  AND datetime(n.valid_at) <= datetime(${'$'}asOf)
+                  AND datetime(n.invalid_at) > datetime(${'$'}asOf)
+                  AND datetime(connected.valid_at) <= datetime(${'$'}asOf)
+                  AND datetime(connected.invalid_at) > datetime(${'$'}asOf)
                 RETURN DISTINCT connected.uuid AS uuid,
                        connected.name AS name,
                        connected.summary AS summary,
@@ -136,7 +125,12 @@ class GraphSearchService(
                        connected.invalid_at AS invalidAt
                 LIMIT ${'$'}limit
                 """.trimIndent(),
-                params
+                mapOf(
+                    "query" to query,
+                    "groupId" to groupId,
+                    "limit" to limit,
+                    "asOf" to asOf.toString()
+                )
             )
 
             results.map { record ->
@@ -159,19 +153,21 @@ class GraphSearchService(
     suspend fun vectorSimilaritySearch(
         query: String,
         limit: Int,
-        minScore: Double = 0.5
+        minScore: Double = 0.5,
+        asOf: Instant = kotlinx.datetime.Clock.System.now()
     ): List<Map<String, Any?>> {
         val queryEmbedding = withContext(Dispatchers.IO) {
             embeddingModel.embed(query).toList()
         }
 
-        return vectorSimilaritySearchIndexed(queryEmbedding, limit, minScore)
+        return vectorSimilaritySearchIndexed(queryEmbedding, limit, minScore, asOf)
     }
 
     suspend fun vectorSimilaritySearchExhaustive(
         queryEmbedding: List<Float>,
         limit: Int,
-        minScore: Double
+        minScore: Double,
+        asOf: Instant = kotlinx.datetime.Clock.System.now()
     ): List<Map<String, Any?>> {
         return try {
             val results = neo4jGraphStore.executeQuery(
@@ -179,6 +175,8 @@ class GraphSearchService(
                 MATCH (n:MemoryObject)
                 WHERE n.group_id = ${'$'}groupId
                   AND n.embedding IS NOT NULL
+                  AND datetime(n.valid_at) <= datetime(${'$'}asOf)
+                  AND datetime(n.invalid_at) > datetime(${'$'}asOf)
                 WITH n, vector.similarity.cosine(n.embedding, ${'$'}queryEmbedding) AS score
                 WHERE score > ${'$'}minScore
                 RETURN n.uuid AS uuid,
@@ -196,7 +194,8 @@ class GraphSearchService(
                     "queryEmbedding" to queryEmbedding,
                     "groupId" to groupId,
                     "limit" to limit,
-                    "minScore" to minScore
+                    "minScore" to minScore,
+                    "asOf" to asOf.toString()
                 )
             )
 
@@ -221,7 +220,8 @@ class GraphSearchService(
     suspend fun vectorSimilaritySearchIndexed(
         queryEmbedding: List<Float>,
         limit: Int,
-        minScore: Double
+        minScore: Double,
+        asOf: Instant = kotlinx.datetime.Clock.System.now()
     ): List<Map<String, Any?>> {
         return try {
             val results = neo4jGraphStore.executeQuery(
@@ -230,6 +230,8 @@ class GraphSearchService(
                 YIELD node, score
                 WHERE node.group_id = ${'$'}groupId
                   AND score > ${'$'}minScore
+                  AND datetime(node.valid_at) <= datetime(${'$'}asOf)
+                  AND datetime(node.invalid_at) > datetime(${'$'}asOf)
                 RETURN node.uuid AS uuid,
                        node.name AS name,
                        node.summary AS summary,
@@ -244,7 +246,8 @@ class GraphSearchService(
                     "queryEmbedding" to queryEmbedding,
                     "groupId" to groupId,
                     "limit" to limit,
-                    "minScore" to minScore
+                    "minScore" to minScore,
+                    "asOf" to asOf.toString()
                 )
             )
 

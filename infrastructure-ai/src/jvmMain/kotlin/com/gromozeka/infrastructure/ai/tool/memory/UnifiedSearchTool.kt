@@ -63,6 +63,7 @@ class UnifiedSearchTool(
                     roles = request.roles?.filter { it.isNotBlank() }?.takeIf { it.isNotEmpty() },
                     dateFrom = request.dateFrom?.takeIf { it.isNotBlank() }?.let { kotlinx.datetime.Instant.parse(it) },
                     dateTo = request.dateTo?.takeIf { it.isNotBlank() }?.let { kotlinx.datetime.Instant.parse(it) },
+                    asOf = request.asOf?.takeIf { it.isNotBlank() }?.let { kotlinx.datetime.Instant.parse(it) },
                     projectIds = request.projectIds?.filter { it.isNotBlank() }?.takeIf { it.isNotEmpty() },
                     limit = request.limit ?: 5,
                     useReranking = request.useReranking ?: true,

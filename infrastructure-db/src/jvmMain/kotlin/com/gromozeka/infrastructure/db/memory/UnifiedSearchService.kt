@@ -223,13 +223,14 @@ class UnifiedSearchService(
         limit: Int,
         asOf: Instant?
     ): List<UnifiedSearchResult> {
+        val effectiveAsOf = asOf ?: kotlinx.datetime.Clock.System.now()
         val graphResults = when (searchMode) {
             SearchMode.KEYWORD -> {
-                val results = graphSearchService!!.bm25Search(query, limit)
+                val results = graphSearchService!!.bm25Search(query, limit, effectiveAsOf)
                 mapOf("results" to results)
             }
             SearchMode.SEMANTIC -> {
-                val results = graphSearchService!!.vectorSimilaritySearch(query, limit)
+                val results = graphSearchService!!.vectorSimilaritySearch(query, limit, asOf = effectiveAsOf)
                 mapOf("results" to results)
             }
             SearchMode.HYBRID -> {
@@ -237,7 +238,7 @@ class UnifiedSearchService(
                     query = query,
                     limit = limit,
                     useReranking = false,
-                    asOf = asOf
+                    asOf = effectiveAsOf
                 )
             }
         }
