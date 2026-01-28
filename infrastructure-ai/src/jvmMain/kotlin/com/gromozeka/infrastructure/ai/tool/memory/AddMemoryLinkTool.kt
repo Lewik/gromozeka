@@ -28,7 +28,9 @@ class AddMemoryLinkTool(
                     from = request.from,
                     relation = request.relation,
                     to = request.to,
-                    summary = request.summary
+                    summary = request.summary,
+                    validAt = request.validAt,
+                    invalidAt = request.invalidAt
                 )
             }
 

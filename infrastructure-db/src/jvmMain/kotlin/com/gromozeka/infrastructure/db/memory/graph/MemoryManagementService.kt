@@ -4,6 +4,7 @@ import com.gromozeka.domain.repository.MemoryManagementService as IMemoryManagem
 import com.gromozeka.infrastructure.db.graph.Neo4jGraphStore
 import klog.KLoggers
 import kotlinx.datetime.Clock
+import kotlinx.datetime.Instant
 import org.springframework.ai.embedding.EmbeddingModel
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.stereotype.Service
@@ -22,11 +23,36 @@ class MemoryManagementService(
         from: String,
         relation: String,
         to: String,
-        summary: String?
+        summary: String?,
+        validAt: String?,
+        invalidAt: String?
     ): String {
-        val referenceTime = Clock.System.now()
+        val referenceTime = Clock.System.now()  // Transaction-time
+        
+        // Parse temporal fields with explicit semantics
+        val validTime = when (validAt?.lowercase()) {
+            "always" -> com.gromozeka.domain.model.memory.TemporalConstants.ALWAYS_VALID_FROM
+            "now" -> referenceTime
+            null -> throw IllegalArgumentException("validAt is required (use 'always', 'now', or ISO 8601 timestamp)")
+            else -> try {
+                Instant.parse(validAt)
+            } catch (e: Exception) {
+                throw IllegalArgumentException("Invalid validAt format: '$validAt'. Use 'always', 'now', or ISO 8601 timestamp", e)
+            }
+        }
+        
+        val invalidTime = when (invalidAt?.lowercase()) {
+            "always" -> com.gromozeka.domain.model.memory.TemporalConstants.STILL_VALID
+            "now" -> referenceTime
+            null -> throw IllegalArgumentException("invalidAt is required (use 'always', 'now', or ISO 8601 timestamp)")
+            else -> try {
+                Instant.parse(invalidAt)
+            } catch (e: Exception) {
+                throw IllegalArgumentException("Invalid invalidAt format: '$invalidAt'. Use 'always', 'now', or ISO 8601 timestamp", e)
+            }
+        }
 
-        log.info { "Adding fact directly: $from -[$relation]-> $to" }
+        log.info { "Adding fact directly: $from -[$relation]-> $to (valid: $validTime, invalid: $invalidTime)" }
 
         val fromEmbedding = embeddingModel.embed(from)
         val toEmbedding = embeddingModel.embed(to)
@@ -50,7 +76,9 @@ class MemoryManagementService(
                 n.embedding = ${'$'}embedding,
                 n.summary = ${'$'}summary,
                 n.labels = ${'$'}labels,
-                n.created_at = datetime(${'$'}createdAt)
+                n.created_at = datetime(${'$'}createdAt),
+                n.valid_at = datetime(${'$'}validAt),
+                n.invalid_at = datetime(${'$'}invalidAt)
             ON MATCH SET
                 n.embedding = ${'$'}embedding,
                 n.summary = CASE WHEN ${'$'}summary <> '' THEN ${'$'}summary ELSE n.summary END
@@ -63,7 +91,9 @@ class MemoryManagementService(
                 "embedding" to fromEmbedding.toList(),
                 "summary" to fromSummary,
                 "labels" to listOf(fromType),
-                "createdAt" to referenceTime.toString()
+                "createdAt" to referenceTime.toString(),
+                "validAt" to com.gromozeka.domain.model.memory.TemporalConstants.ALWAYS_VALID_FROM.toString(),
+                "invalidAt" to com.gromozeka.domain.model.memory.TemporalConstants.STILL_VALID.toString()
             )
         )
 
@@ -75,7 +105,9 @@ class MemoryManagementService(
                 n.embedding = ${'$'}embedding,
                 n.summary = ${'$'}summary,
                 n.labels = ${'$'}labels,
-                n.created_at = datetime(${'$'}createdAt)
+                n.created_at = datetime(${'$'}createdAt),
+                n.valid_at = datetime(${'$'}validAt),
+                n.invalid_at = datetime(${'$'}invalidAt)
             ON MATCH SET
                 n.embedding = ${'$'}embedding
             RETURN n.uuid as uuid
@@ -87,7 +119,9 @@ class MemoryManagementService(
                 "embedding" to toEmbedding.toList(),
                 "summary" to toSummary,
                 "labels" to listOf(toType),
-                "createdAt" to referenceTime.toString()
+                "createdAt" to referenceTime.toString(),
+                "validAt" to com.gromozeka.domain.model.memory.TemporalConstants.ALWAYS_VALID_FROM.toString(),
+                "invalidAt" to com.gromozeka.domain.model.memory.TemporalConstants.STILL_VALID.toString()
             )
         )
 
@@ -104,7 +138,7 @@ class MemoryManagementService(
                 r.description_embedding = ${'$'}embedding,
                 r.episodes = [],
                 r.valid_at = datetime(${'$'}validAt),
-                r.invalid_at = null,
+                r.invalid_at = datetime(${'$'}invalidAt),
                 r.created_at = datetime(${'$'}createdAt)
             RETURN r.uuid as uuid
             """.trimIndent(),
@@ -115,7 +149,8 @@ class MemoryManagementService(
                 "edgeUuid" to edgeUuid,
                 "description" to relation,
                 "embedding" to relationEmbedding.toList(),
-                "validAt" to referenceTime.toString(),
+                "validAt" to validTime.toString(),
+                "invalidAt" to invalidTime.toString(),
                 "createdAt" to referenceTime.toString()
             )
         )

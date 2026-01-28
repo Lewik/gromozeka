@@ -181,14 +181,14 @@ class RelationshipExtractionService(
         }
     }
 
-    private fun parseInstant(dateStr: String?): Instant? {
-        if (dateStr.isNullOrBlank()) return null
+    private fun parseInstant(dateStr: String?): Instant {
+        if (dateStr.isNullOrBlank()) return com.gromozeka.domain.model.memory.TemporalConstants.ALWAYS_VALID_FROM
         
         return try {
             Instant.parse(dateStr)
         } catch (e: Exception) {
             log.warn { "Failed to parse datetime '$dateStr': ${e.message}" }
-            null
+            com.gromozeka.domain.model.memory.TemporalConstants.ALWAYS_VALID_FROM
         }
     }
 }

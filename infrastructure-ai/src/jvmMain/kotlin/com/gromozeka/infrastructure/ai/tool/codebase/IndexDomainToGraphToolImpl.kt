@@ -697,7 +697,7 @@ class IndexDomainToGraphToolImpl(
             description = "belongs to project",
             embedding = null,
             validAt = now,
-            invalidAt = null,
+            invalidAt = com.gromozeka.domain.model.memory.TemporalConstants.STILL_VALID,
             createdAt = now,
             sources = emptyList(),
             groupId = groupId
@@ -716,7 +716,7 @@ class IndexDomainToGraphToolImpl(
                     description = "located in file",
                     embedding = null,
                     validAt = now,
-                    invalidAt = null,
+                    invalidAt = com.gromozeka.domain.model.memory.TemporalConstants.STILL_VALID,
                     createdAt = now,
                     sources = emptyList(),
                     groupId = groupId,
@@ -741,7 +741,7 @@ class IndexDomainToGraphToolImpl(
                         description = "defines method",
                         embedding = null,
                         validAt = now,
-                        invalidAt = null,
+                        invalidAt = com.gromozeka.domain.model.memory.TemporalConstants.STILL_VALID,
                         createdAt = now,
                         sources = emptyList(),
                         groupId = groupId
@@ -763,7 +763,7 @@ class IndexDomainToGraphToolImpl(
                         description = "has property",
                         embedding = null,
                         validAt = now,
-                        invalidAt = null,
+                        invalidAt = com.gromozeka.domain.model.memory.TemporalConstants.STILL_VALID,
                         createdAt = now,
                         sources = emptyList(),
                         groupId = groupId
@@ -787,7 +787,7 @@ class IndexDomainToGraphToolImpl(
                         description = "contains nested class",
                         embedding = null,
                         validAt = now,
-                        invalidAt = null,
+                        invalidAt = com.gromozeka.domain.model.memory.TemporalConstants.STILL_VALID,
                         createdAt = now,
                         sources = emptyList(),
                         groupId = groupId
