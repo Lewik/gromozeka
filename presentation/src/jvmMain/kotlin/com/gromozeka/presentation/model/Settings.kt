@@ -32,6 +32,7 @@ data class Settings(
     val includeCurrentTime: Boolean = true,
     val responseFormat: ResponseFormat = ResponseFormat.XML_INLINE,
     val autoApproveAllTools: Boolean = true, // Auto-approve all tool requests without showing dialogs (affects new sessions only)
+    val autoRememberThreads: Boolean = true, // Auto-remember threads to vector memory after each assistant response
     val vectorStorageEnabled: Boolean = false,
     val graphStorageEnabled: Boolean = true,
 

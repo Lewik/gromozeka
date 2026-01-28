@@ -110,4 +110,23 @@ interface SettingsProvider {
 
     val ollamaBaseUrl: String
         get() = "http://localhost:11434"
+
+    /**
+     * Enable vector storage for conversation messages.
+     *
+     * When true, conversation messages are stored in Neo4j vector database for semantic search.
+     * Enables conversation search via unified_search tool.
+     */
+    val vectorStorageEnabled: Boolean
+        get() = true
+
+    /**
+     * Auto-remember threads to vector memory after each assistant response.
+     *
+     * When true, automatically calls VectorMemoryService.rememberThread() after final assistant message.
+     * Only applies when [vectorStorageEnabled] is true.
+     * Enables incremental conversation indexing without manual intervention.
+     */
+    val autoRememberThreads: Boolean
+        get() = true
 }

@@ -153,23 +153,6 @@ fun SessionScreen(
 //                                }
 //                            }
 //                        } else {
-                        // Message count
-                        CompactButton(
-                            onClick = { },
-                            tooltip = LocalTranslation.current.messageCountTooltip.format(filteredHistory.size)
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(
-                                    Icons.Default.ChatBubbleOutline,
-                                    contentDescription = "Messages"
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text("${filteredHistory.size}")
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.width(8.dp))
-
                         // Context extraction button
                         onExtractContexts?.let { extractCallback ->
                             CompactButton(
@@ -503,6 +486,21 @@ fun SessionScreen(
                                 Icons.Default.CameraAlt,
                                 contentDescription = LocalTranslation.current.screenshotTooltip
                             )
+                        }
+
+                        // Message count
+                        CompactButton(
+                            onClick = { },
+                            tooltip = LocalTranslation.current.messageCountTooltip.format(filteredHistory.size)
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    Icons.Default.ChatBubbleOutline,
+                                    contentDescription = "Messages"
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("${filteredHistory.size}")
+                            }
                         }
 
                         // Remember button (if memory is enabled and callback provided)

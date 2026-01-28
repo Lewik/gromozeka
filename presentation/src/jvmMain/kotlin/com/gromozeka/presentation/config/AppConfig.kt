@@ -6,7 +6,7 @@ import com.gromozeka.infrastructure.ai.platform.SystemAudioController
 import com.gromozeka.presentation.services.SettingsService
 import com.gromozeka.presentation.services.WindowStateService
 import com.gromozeka.application.service.ConversationEngineService
-import com.gromozeka.application.service.ConversationSearchService
+import com.gromozeka.application.service.ConversationNameSearchService
 import com.gromozeka.application.service.DefaultAgentProvider
 import com.gromozeka.application.service.MessageSquashService
 import com.gromozeka.infrastructure.ai.service.OllamaModelService
@@ -110,7 +110,7 @@ class Config {
 
     @Bean
     fun conversationSearchViewModel(
-        conversationSearchService: ConversationSearchService,
+        conversationSearchService: ConversationNameSearchService,
         @Qualifier("coroutineScope") scope: CoroutineScope,
     ) = ConversationSearchViewModel(conversationSearchService, scope)
 

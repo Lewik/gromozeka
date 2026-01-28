@@ -455,6 +455,28 @@ fun SettingsPanel(
                             value = settings.autoApproveAllTools,
                             onValueChange = { onSettingsChange(settings.copy(autoApproveAllTools = it)) }
                         )
+
+                        SwitchSettingItem(
+                            label = "Enable Vector Storage",
+                            description = "Store conversation messages in vector database for semantic search",
+                            value = settings.vectorStorageEnabled,
+                            onValueChange = { onSettingsChange(settings.copy(vectorStorageEnabled = it)) }
+                        )
+
+                        SwitchSettingItem(
+                            label = "Auto-remember threads",
+                            description = "Automatically save conversations to vector memory after each assistant response",
+                            value = settings.autoRememberThreads,
+                            onValueChange = { onSettingsChange(settings.copy(autoRememberThreads = it)) },
+                            enabled = settings.vectorStorageEnabled
+                        )
+
+                        SwitchSettingItem(
+                            label = "Enable Knowledge Graph",
+                            description = "Extract entities and relationships from conversations into knowledge graph",
+                            value = settings.graphStorageEnabled,
+                            onValueChange = { onSettingsChange(settings.copy(graphStorageEnabled = it)) }
+                        )
                     }
 
                     // API Keys

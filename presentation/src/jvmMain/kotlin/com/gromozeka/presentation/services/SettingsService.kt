@@ -57,6 +57,8 @@ class SettingsService : SettingsProvider {
     override val anthropicApiKey: String? get() = settings.anthropicApiKey
     override val openAiApiKey: String? get() = settings.openAiApiKey
     override val ollamaBaseUrl: String get() = settings.ollamaBaseUrl
+    override val vectorStorageEnabled: Boolean get() = settings.vectorStorageEnabled
+    override val autoRememberThreads: Boolean get() = settings.autoRememberThreads
 
     /**
      * Initialize the service automatically after Spring bean creation

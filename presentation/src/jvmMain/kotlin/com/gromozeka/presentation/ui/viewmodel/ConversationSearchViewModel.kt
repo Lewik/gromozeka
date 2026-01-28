@@ -1,6 +1,6 @@
 package com.gromozeka.presentation.ui.viewmodel
 
-import com.gromozeka.application.service.ConversationSearchService
+import com.gromozeka.application.service.ConversationNameSearchService
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.Project
 import klog.KLoggers
@@ -13,7 +13,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 class ConversationSearchViewModel(
-    private val conversationSearchService: ConversationSearchService,
+    private val conversationSearchService: ConversationNameSearchService,
     private val scope: CoroutineScope,
 ) {
     private val log = KLoggers.logger(this)
