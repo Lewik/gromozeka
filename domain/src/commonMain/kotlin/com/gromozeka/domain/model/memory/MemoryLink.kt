@@ -33,8 +33,8 @@ import kotlinx.datetime.Instant
  * @property relationType relationship type label (currently unused - [description] used instead)
  * @property description human-readable relationship description (e.g., "written in", "uses", "created by")
  * @property embedding vector representation of description for semantic search (3072 dimensions, nullable if not yet embedded)
- * @property validAt when this fact became valid in reality (valid-time start, nullable = unknown/always valid)
- * @property invalidAt when this fact became invalid/outdated (valid-time end, nullable = currently valid, set for soft delete)
+ * @property validAt when this fact became valid in reality (valid-time start, defaults to ALWAYS_VALID_FROM)
+ * @property invalidAt when this fact became invalid/outdated (valid-time end, defaults to STILL_VALID for currently valid facts)
  * @property createdAt when this relationship was created in database (transaction-time, immutable)
  * @property sources episodic context sources where this relationship was mentioned (conversation IDs, document references, etc.)
  * @property groupId multi-tenancy identifier (must match entity groupId)
@@ -47,8 +47,8 @@ data class MemoryLink(
     val relationType: String,
     val description: String,
     val embedding: List<Float>?,
-    val validAt: Instant?,
-    val invalidAt: Instant?,
+    val validAt: Instant = TemporalConstants.ALWAYS_VALID_FROM,
+    val invalidAt: Instant = TemporalConstants.STILL_VALID,
     val createdAt: Instant,
     val sources: List<String>,
     val groupId: String,

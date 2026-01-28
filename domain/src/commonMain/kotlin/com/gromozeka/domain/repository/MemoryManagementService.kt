@@ -45,10 +45,32 @@ interface MemoryManagementService {
      *
      * This is a TRANSACTIONAL operation - entities and relationship created atomically.
      *
+     * ## Temporal Semantics
+     *
+     * **validAt values:**
+     * - `"always"` → fact was always valid (DISTANT_PAST sentinel)
+     * - `"now"` → fact valid from current moment (Clock.System.now())
+     * - ISO 8601 timestamp → fact valid from specific date
+     * - `null` → ERROR (explicit value required)
+     *
+     * **invalidAt values:**
+     * - `"always"` → fact valid forever (DISTANT_FUTURE sentinel)
+     * - `"now"` → fact becomes invalid now (Clock.System.now())
+     * - ISO 8601 timestamp → fact valid until specific date
+     * - `null` → ERROR (explicit value required)
+     *
+     * **Examples:**
+     * - Timeless concept: `validAt="always", invalidAt="always"`
+     * - Current fact: `validAt="now", invalidAt="always"`
+     * - Historical fact: `validAt="2020-01-01T00:00:00Z", invalidAt="always"`
+     * - Limited period: `validAt="2020-01-01", invalidAt="2023-01-01"`
+     *
      * @param from source entity name (e.g., "Gromozeka")
      * @param relation relationship description (e.g., "written in", "uses")
      * @param to target entity name (e.g., "Kotlin")
      * @param summary optional summary for source entity (updates existing if provided)
+     * @param validAt when fact became valid ("always", "now", or ISO 8601 - REQUIRED)
+     * @param invalidAt when fact became invalid ("always", "now", or ISO 8601 - REQUIRED)
      * @return human-readable success message with created fact, or error message if failed
      *
      * @see invalidateFact for removing/updating facts
@@ -57,7 +79,9 @@ interface MemoryManagementService {
         from: String,
         relation: String,
         to: String,
-        summary: String? = null
+        summary: String? = null,
+        validAt: String? = null,
+        invalidAt: String? = null
     ): String
 
     /**

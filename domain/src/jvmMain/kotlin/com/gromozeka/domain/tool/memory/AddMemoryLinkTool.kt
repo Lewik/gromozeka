@@ -10,12 +10,16 @@ import org.springframework.ai.chat.model.ToolContext
  * @property relation Relationship type (e.g., "written in", "uses", "created by")
  * @property to Target entity name (e.g., "Kotlin", "Spring Framework")
  * @property summary Optional summary for source entity (only set if entity doesn't exist)
+ * @property validAt When fact became valid: "always" (timeless), "now" (current moment), or ISO 8601 timestamp (REQUIRED)
+ * @property invalidAt When fact became invalid: "always" (forever), "now" (invalidate now), or ISO 8601 timestamp (REQUIRED)
  */
 data class AddMemoryLinkRequest(
     val from: String,
     val relation: String,
     val to: String,
-    val summary: String? = null
+    val summary: String? = null,
+    val validAt: String? = null,
+    val invalidAt: String? = null
 )
 
 /**
