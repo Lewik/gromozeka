@@ -343,30 +343,37 @@ class UnifiedSearchService(
     
     /**
      * Parse Neo4j DateTime to kotlinx.datetime.Instant.
-     * Returns DISTANT_PAST for null or unparseable values.
+     * 
+     * Returns ALWAYS_VALID_FROM sentinel for null or unparseable values.
+     * This ensures temporal queries treat unparseable dates as "always valid from beginning of time".
      */
     private fun parseNeo4jDateTime(value: Any?): Instant {
+        val fallback = com.gromozeka.domain.model.memory.TemporalConstants.ALWAYS_VALID_FROM
+        
         return when (value) {
-            null -> Instant.DISTANT_PAST  // Use DISTANT_PAST for null values
+            null -> {
+                log.debug { "Null datetime value, using ALWAYS_VALID_FROM sentinel" }
+                fallback
+            }
             is java.time.ZonedDateTime -> {
                 try {
                     Instant.fromEpochMilliseconds(value.toInstant().toEpochMilli())
                 } catch (e: Exception) {
-                    log.warn(e) { "Failed to parse ZonedDateTime: $value" }
-                    Instant.DISTANT_PAST
+                    log.warn(e) { "Failed to parse ZonedDateTime: $value, using fallback" }
+                    fallback
                 }
             }
             is String -> {
                 try {
                     Instant.parse(value)
                 } catch (e: Exception) {
-                    log.warn(e) { "Failed to parse DateTime string: $value" }
-                    Instant.DISTANT_PAST
+                    log.warn(e) { "Failed to parse DateTime string: $value, using fallback" }
+                    fallback
                 }
             }
             else -> {
-                log.warn { "Unexpected DateTime type: ${value.javaClass}, value: $value" }
-                Instant.DISTANT_PAST
+                log.warn { "Unexpected DateTime type: ${value.javaClass}, value: $value, using fallback" }
+                fallback
             }
         }
     }

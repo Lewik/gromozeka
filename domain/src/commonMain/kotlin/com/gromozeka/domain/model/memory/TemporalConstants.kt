@@ -22,6 +22,12 @@ import kotlinx.datetime.Instant
  * - Teradata: `9999-12-31` as max date
  * - Graphiti (Zep AI): Uses sentinel values for temporal fields
  *
+ * **Why realistic dates (0001/9999) instead of Kotlin's DISTANT_PAST/DISTANT_FUTURE:**
+ * - Neo4j datetime() function supports years 0001-9999 reliably
+ * - Kotlin's DISTANT_PAST (year -292275055) causes Neo4j parsing errors
+ * - Standard range for temporal databases (PostgreSQL, Oracle, SQL Server)
+ * - Sufficient for all practical purposes (covers all human history and far future)
+ *
  * ## Usage
  *
  * ```kotlin
@@ -61,12 +67,17 @@ object TemporalConstants {
      * Use when entity/relationship has no start date and should be considered
      * valid from the beginning of recorded history.
      *
-     * **Value:** `-292275055-05-16T16:47:04.192Z` (Kotlin's Instant.DISTANT_PAST)
+     * **Value:** `0001-01-01T00:00:00Z` (Year 1, start of Common Era)
      *
      * **Semantics:**
      * - Entity/relationship existed before we started tracking
      * - Timeless concept (e.g., "Kotlin", "Mathematics")
      * - No specific creation date in real world
+     *
+     * **Why Year 1:**
+     * - Neo4j datetime() function reliably supports years 0001-9999
+     * - Standard minimum for temporal databases (PostgreSQL, Oracle)
+     * - Covers all recorded human history
      *
      * **Example:**
      * ```kotlin
@@ -76,7 +87,7 @@ object TemporalConstants {
      * )
      * ```
      */
-    val ALWAYS_VALID_FROM: Instant = Instant.DISTANT_PAST
+    val ALWAYS_VALID_FROM: Instant = Instant.parse("0001-01-01T00:00:00Z")
 
     /**
      * Sentinel value for "still valid" (end of time).
@@ -84,12 +95,17 @@ object TemporalConstants {
      * Use when entity/relationship has not been invalidated yet and should be
      * considered valid indefinitely into the future.
      *
-     * **Value:** `+292278994-08-17T07:12:55.807Z` (Kotlin's Instant.DISTANT_FUTURE)
+     * **Value:** `9999-12-31T23:59:59Z` (Year 9999, practical infinity)
      *
      * **Semantics:**
      * - Entity/relationship is currently valid
      * - Not yet invalidated/deprecated/obsolete
      * - No known end date
+     *
+     * **Why Year 9999:**
+     * - Neo4j datetime() function reliably supports years 0001-9999
+     * - Standard maximum for temporal databases (PostgreSQL, Oracle, Teradata)
+     * - Far enough in future for all practical purposes (8000 years from now)
      *
      * **Example:**
      * ```kotlin
@@ -100,5 +116,5 @@ object TemporalConstants {
      * )
      * ```
      */
-    val STILL_VALID: Instant = Instant.DISTANT_FUTURE
+    val STILL_VALID: Instant = Instant.parse("9999-12-31T23:59:59Z")
 }

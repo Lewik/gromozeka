@@ -194,16 +194,21 @@ class UnifiedSearchTool(
      */
     private fun formatTemporal(createdAt: Instant, validAt: Instant?, invalidAt: Instant?): String {
         val parts = mutableListOf<String>()
+        val now = kotlinx.datetime.Clock.System.now()
+        val alwaysValidFrom = com.gromozeka.domain.model.memory.TemporalConstants.ALWAYS_VALID_FROM
+        val stillValid = com.gromozeka.domain.model.memory.TemporalConstants.STILL_VALID
         
-        // Age
-        if (createdAt != Instant.DISTANT_PAST) {
+        // Age (only show if not sentinel)
+        if (createdAt != alwaysValidFrom) {
             parts.add(formatAge(createdAt).trim('[', ']'))
         }
         
         // Validity status
-        if (invalidAt != null && invalidAt != Instant.DISTANT_PAST) {
+        if (invalidAt != null && invalidAt != stillValid && invalidAt <= now) {
+            // Invalidated: invalidAt is not sentinel AND in the past
             parts.add("INVALIDATED")
-        } else if (validAt != null && validAt != Instant.DISTANT_PAST && validAt > kotlinx.datetime.Clock.System.now()) {
+        } else if (validAt != null && validAt != alwaysValidFrom && validAt > now) {
+            // Future: validAt is not sentinel AND in the future
             parts.add("FUTURE")
         }
         
