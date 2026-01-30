@@ -16,13 +16,14 @@
 
 // 1. Update MemoryObject nodes
 MATCH (n:MemoryObject)
-WHERE n.valid_at IS NOT NULL OR n.invalid_at IS NOT NULL
 WITH n,
      CASE 
+       WHEN n.valid_at IS NULL THEN datetime('0001-01-01T00:00:00Z')
        WHEN datetime(n.valid_at).year < 1 THEN datetime('0001-01-01T00:00:00Z')
        ELSE n.valid_at
      END AS new_valid_at,
      CASE
+       WHEN n.invalid_at IS NULL THEN datetime('9999-12-31T23:59:59Z')
        WHEN datetime(n.invalid_at).year > 9999 THEN datetime('9999-12-31T23:59:59Z')
        ELSE n.invalid_at
      END AS new_invalid_at
@@ -32,13 +33,14 @@ RETURN count(n) AS updated_nodes;
 
 // 2. Update LINKS_TO relationships
 MATCH ()-[r:LINKS_TO]->()
-WHERE r.valid_at IS NOT NULL OR r.invalid_at IS NOT NULL
 WITH r,
      CASE 
+       WHEN r.valid_at IS NULL THEN datetime('0001-01-01T00:00:00Z')
        WHEN datetime(r.valid_at).year < 1 THEN datetime('0001-01-01T00:00:00Z')
        ELSE r.valid_at
      END AS new_valid_at,
      CASE
+       WHEN r.invalid_at IS NULL THEN datetime('9999-12-31T23:59:59Z')
        WHEN datetime(r.invalid_at).year > 9999 THEN datetime('9999-12-31T23:59:59Z')
        ELSE r.invalid_at
      END AS new_invalid_at
