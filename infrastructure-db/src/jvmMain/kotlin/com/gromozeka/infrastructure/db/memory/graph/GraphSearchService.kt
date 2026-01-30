@@ -62,6 +62,9 @@ class GraphSearchService(
 
     suspend fun bm25Search(query: String, limit: Int, asOf: Instant = kotlinx.datetime.Clock.System.now()): List<Map<String, Any?>> {
         return try {
+            // Add wildcard for partial matching (e.g., "TestProject" matches "TestProject_Alpha")
+            val wildcardQuery = if (query.endsWith("*")) query else "$query*"
+            
             val results = neo4jGraphStore.executeQuery(
                 """
                 CALL db.index.fulltext.queryNodes('memory_object_index', ${'$'}query)
@@ -79,7 +82,7 @@ class GraphSearchService(
                        score
                 LIMIT ${'$'}limit
                 """.trimIndent(),
-                mapOf("query" to query, "groupId" to groupId, "limit" to limit, "asOf" to asOf.toString())
+                mapOf("query" to wildcardQuery, "groupId" to groupId, "limit" to limit, "asOf" to asOf.toString())
             )
 
             results.map { record ->

@@ -92,8 +92,8 @@ class MemoryManagementService(
                 "summary" to fromSummary,
                 "labels" to listOf(fromType),
                 "createdAt" to referenceTime.toString(),
-                "validAt" to com.gromozeka.domain.model.memory.TemporalConstants.ALWAYS_VALID_FROM.toString(),
-                "invalidAt" to com.gromozeka.domain.model.memory.TemporalConstants.STILL_VALID.toString()
+                "validAt" to validTime.toString(),
+                "invalidAt" to invalidTime.toString()
             )
         )
 
@@ -120,8 +120,8 @@ class MemoryManagementService(
                 "summary" to toSummary,
                 "labels" to listOf(toType),
                 "createdAt" to referenceTime.toString(),
-                "validAt" to com.gromozeka.domain.model.memory.TemporalConstants.ALWAYS_VALID_FROM.toString(),
-                "invalidAt" to com.gromozeka.domain.model.memory.TemporalConstants.STILL_VALID.toString()
+                "validAt" to validTime.toString(),
+                "invalidAt" to invalidTime.toString()
             )
         )
 
