@@ -571,6 +571,7 @@ class IndexDomainToGraphToolImpl(
         return MemoryObject(
             uuid = UUID.randomUUID().toString(),
             name = fileName,
+            normalizedName = fileName.trim().lowercase(),
             summary = "Kotlin source file: $fileName ($lineCount lines)",
             labels = listOf("CodeSpec", "File"),
             embedding = emptyList(),
@@ -645,6 +646,7 @@ class IndexDomainToGraphToolImpl(
         return MemoryObject(
             uuid = UUID.randomUUID().toString(),
             name = symbol.name,
+            normalizedName = symbol.name.trim().lowercase(),
             summary = summary,
             labels = listOf("CodeSpec", symbolType),
             embedding = embedding.toList(),

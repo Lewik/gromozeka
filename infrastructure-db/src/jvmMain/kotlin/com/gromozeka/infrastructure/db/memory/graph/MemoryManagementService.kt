@@ -54,6 +54,10 @@ class MemoryManagementService(
 
         log.info { "Adding fact directly: $from -[$relation]-> $to (valid: $validTime, invalid: $invalidTime)" }
 
+        // Normalize names to prevent duplicates from case/whitespace variations
+        val fromNormalized = from.trim().lowercase()
+        val toNormalized = to.trim().lowercase()
+
         val fromEmbedding = embeddingModel.embed(from)
         val toEmbedding = embeddingModel.embed(to)
         val relationEmbedding = embeddingModel.embed(relation)
@@ -68,67 +72,79 @@ class MemoryManagementService(
         val fromSummary = summary ?: ""
         val toSummary = ""
 
+        // Nodes are timeless concepts - always use default temporal values
+        val nodeValidAt = com.gromozeka.domain.model.memory.TemporalConstants.ALWAYS_VALID_FROM
+        val nodeInvalidAt = com.gromozeka.domain.model.memory.TemporalConstants.STILL_VALID
+
         neo4jGraphStore.executeQuery(
             """
-            MERGE (n:MemoryObject {name: ${'$'}name, group_id: ${'$'}groupId})
+            MERGE (n:MemoryObject {normalized_name: ${'$'}normalizedName, group_id: ${'$'}groupId})
             ON CREATE SET
                 n.uuid = ${'$'}uuid,
+                n.name = ${'$'}name,
+                n.normalized_name = ${'$'}normalizedName,
                 n.embedding = ${'$'}embedding,
                 n.summary = ${'$'}summary,
                 n.labels = ${'$'}labels,
                 n.created_at = datetime(${'$'}createdAt),
-                n.valid_at = datetime(${'$'}validAt),
-                n.invalid_at = datetime(${'$'}invalidAt)
+                n.valid_at = datetime(${'$'}nodeValidAt),
+                n.invalid_at = datetime(${'$'}nodeInvalidAt)
             ON MATCH SET
+                n.name = ${'$'}name,
                 n.embedding = ${'$'}embedding,
                 n.summary = CASE WHEN ${'$'}summary <> '' THEN ${'$'}summary ELSE n.summary END
             RETURN n.uuid as uuid
             """.trimIndent(),
             mapOf(
                 "name" to from,
+                "normalizedName" to fromNormalized,
                 "groupId" to groupId,
                 "uuid" to fromUuid,
                 "embedding" to fromEmbedding.toList(),
                 "summary" to fromSummary,
                 "labels" to listOf(fromType),
                 "createdAt" to referenceTime.toString(),
-                "validAt" to validTime.toString(),
-                "invalidAt" to invalidTime.toString()
+                "nodeValidAt" to nodeValidAt.toString(),
+                "nodeInvalidAt" to nodeInvalidAt.toString()
             )
         )
 
         neo4jGraphStore.executeQuery(
             """
-            MERGE (n:MemoryObject {name: ${'$'}name, group_id: ${'$'}groupId})
+            MERGE (n:MemoryObject {normalized_name: ${'$'}normalizedName, group_id: ${'$'}groupId})
             ON CREATE SET
                 n.uuid = ${'$'}uuid,
+                n.name = ${'$'}name,
+                n.normalized_name = ${'$'}normalizedName,
                 n.embedding = ${'$'}embedding,
                 n.summary = ${'$'}summary,
                 n.labels = ${'$'}labels,
                 n.created_at = datetime(${'$'}createdAt),
-                n.valid_at = datetime(${'$'}validAt),
-                n.invalid_at = datetime(${'$'}invalidAt)
+                n.valid_at = datetime(${'$'}nodeValidAt),
+                n.invalid_at = datetime(${'$'}nodeInvalidAt)
             ON MATCH SET
+                n.name = ${'$'}name,
                 n.embedding = ${'$'}embedding
             RETURN n.uuid as uuid
             """.trimIndent(),
             mapOf(
                 "name" to to,
+                "normalizedName" to toNormalized,
                 "groupId" to groupId,
                 "uuid" to toUuid,
                 "embedding" to toEmbedding.toList(),
                 "summary" to toSummary,
                 "labels" to listOf(toType),
                 "createdAt" to referenceTime.toString(),
-                "validAt" to validTime.toString(),
-                "invalidAt" to invalidTime.toString()
+                "nodeValidAt" to nodeValidAt.toString(),
+                "nodeInvalidAt" to nodeInvalidAt.toString()
             )
         )
 
         neo4jGraphStore.executeQuery(
             """
-            MATCH (source:MemoryObject {name: ${'$'}fromName, group_id: ${'$'}groupId})
-            MATCH (target:MemoryObject {name: ${'$'}toName, group_id: ${'$'}groupId})
+            MATCH (source:MemoryObject {normalized_name: ${'$'}fromNormalized, group_id: ${'$'}groupId})
+            MATCH (target:MemoryObject {normalized_name: ${'$'}toNormalized, group_id: ${'$'}groupId})
             MERGE (source)-[r:LINKS_TO {
                 uuid: ${'$'}edgeUuid,
                 group_id: ${'$'}groupId
@@ -143,8 +159,8 @@ class MemoryManagementService(
             RETURN r.uuid as uuid
             """.trimIndent(),
             mapOf(
-                "fromName" to from,
-                "toName" to to,
+                "fromNormalized" to fromNormalized,
+                "toNormalized" to toNormalized,
                 "groupId" to groupId,
                 "edgeUuid" to edgeUuid,
                 "description" to relation,
@@ -161,12 +177,14 @@ class MemoryManagementService(
     override suspend fun getEntityDetails(name: String): String {
         log.info { "Getting entity details for: $name" }
 
+        val normalizedName = name.trim().lowercase()
+
         val entityResult = neo4jGraphStore.executeQuery(
             """
-            MATCH (n:MemoryObject {name: ${'$'}name, group_id: ${'$'}groupId})
-            RETURN n.uuid as uuid, n.summary as summary, n.labels as labels, n.created_at as createdAt
+            MATCH (n:MemoryObject {normalized_name: ${'$'}normalizedName, group_id: ${'$'}groupId})
+            RETURN n.uuid as uuid, n.name as name, n.summary as summary, n.labels as labels, n.created_at as createdAt
             """.trimIndent(),
-            mapOf("name" to name, "groupId" to groupId)
+            mapOf("normalizedName" to normalizedName, "groupId" to groupId)
         )
 
         if (entityResult.isEmpty()) {
@@ -175,6 +193,7 @@ class MemoryManagementService(
 
         val entity = entityResult.first()
         val uuid = entity["uuid"] as? String ?: ""
+        val displayName = entity["name"] as? String ?: name  // Use stored display name
         val summary = entity["summary"] as? String ?: ""
         val labels = entity["labels"] as? List<*> ?: emptyList<String>()
         val createdAt = entity["createdAt"]?.toString() ?: ""
@@ -207,7 +226,7 @@ class MemoryManagementService(
         }
 
         return buildString {
-            appendLine("Entity: $name")
+            appendLine("Entity: $displayName")
             appendLine("Type: ${labels.firstOrNull() ?: "Unknown"}")
             appendLine("Summary: $summary")
             appendLine("Created: $createdAt")
@@ -236,18 +255,21 @@ class MemoryManagementService(
 
         log.info { "Invalidating fact: $from -[$relation]-> $to" }
 
+        val fromNormalized = from.trim().lowercase()
+        val toNormalized = to.trim().lowercase()
+
         val result = neo4jGraphStore.executeQuery(
             """
-            MATCH (source:MemoryObject {name: ${'$'}fromName, group_id: ${'$'}groupId})
+            MATCH (source:MemoryObject {normalized_name: ${'$'}fromNormalized, group_id: ${'$'}groupId})
                   -[r:LINKS_TO {description: ${'$'}description}]->
-                  (target:MemoryObject {name: ${'$'}toName, group_id: ${'$'}groupId})
+                  (target:MemoryObject {normalized_name: ${'$'}toNormalized, group_id: ${'$'}groupId})
             WHERE datetime(r.invalid_at) > datetime(${'$'}now)
             SET r.invalid_at = datetime(${'$'}invalidAt)
             RETURN count(r) as count
             """.trimIndent(),
             mapOf(
-                "fromName" to from,
-                "toName" to to,
+                "fromNormalized" to fromNormalized,
+                "toNormalized" to toNormalized,
                 "description" to relation,
                 "groupId" to groupId,
                 "now" to invalidAt.toString(),
@@ -271,9 +293,11 @@ class MemoryManagementService(
     ): String {
         log.info { "Updating entity: $name (summary: ${newSummary != null}, type: ${newType != null})" }
 
+        val normalizedName = name.trim().lowercase()
+
         val setClauses = mutableListOf<String>()
         val params = mutableMapOf<String, Any>(
-            "name" to name,
+            "normalizedName" to normalizedName,
             "groupId" to groupId
         )
 
@@ -293,7 +317,7 @@ class MemoryManagementService(
 
         val result = neo4jGraphStore.executeQuery(
             """
-            MATCH (n:MemoryObject {name: ${'$'}name, group_id: ${'$'}groupId})
+            MATCH (n:MemoryObject {normalized_name: ${'$'}normalizedName, group_id: ${'$'}groupId})
             SET ${setClauses.joinToString(", ")}
             RETURN count(n) as count
             """.trimIndent(),
@@ -318,13 +342,15 @@ class MemoryManagementService(
     ): String {
         log.warn { "⚠️ HARD DELETE requested for entity: $name (cascade: $cascade)" }
 
+        val normalizedName = name.trim().lowercase()
+
         val countResult = neo4jGraphStore.executeQuery(
             """
-            MATCH (n:MemoryObject {name: ${'$'}name, group_id: ${'$'}groupId})
+            MATCH (n:MemoryObject {normalized_name: ${'$'}normalizedName, group_id: ${'$'}groupId})
             OPTIONAL MATCH (n)-[r:LINKS_TO]-()
             RETURN count(DISTINCT n) as nodeCount, count(DISTINCT r) as edgeCount
             """.trimIndent(),
-            mapOf("name" to name, "groupId" to groupId)
+            mapOf("normalizedName" to normalizedName, "groupId" to groupId)
         )
 
         if (countResult.isEmpty()) {
@@ -342,21 +368,21 @@ class MemoryManagementService(
         if (cascade && edgeCount > 0) {
             neo4jGraphStore.executeQuery(
                 """
-                MATCH (n:MemoryObject {name: ${'$'}name, group_id: ${'$'}groupId})
+                MATCH (n:MemoryObject {normalized_name: ${'$'}normalizedName, group_id: ${'$'}groupId})
                 MATCH (n)-[r:LINKS_TO]-()
                 DELETE r
                 """.trimIndent(),
-                mapOf("name" to name, "groupId" to groupId)
+                mapOf("normalizedName" to normalizedName, "groupId" to groupId)
             )
             log.warn { "Deleted $edgeCount relationship(s) for entity: $name" }
         }
 
         neo4jGraphStore.executeQuery(
             """
-            MATCH (n:MemoryObject {name: ${'$'}name, group_id: ${'$'}groupId})
+            MATCH (n:MemoryObject {normalized_name: ${'$'}normalizedName, group_id: ${'$'}groupId})
             DELETE n
             """.trimIndent(),
-            mapOf("name" to name, "groupId" to groupId)
+            mapOf("normalizedName" to normalizedName, "groupId" to groupId)
         )
 
         log.warn { "⚠️ HARD DELETED entity: $name" }

@@ -173,9 +173,11 @@ class Neo4jKnowledgeGraphRepository(
 
     private fun parseMemoryObject(data: Map<String, Any>): MemoryObject? {
         return try {
+            val name = data["name"] as? String ?: return null
             MemoryObject(
                 uuid = data["uuid"] as? String ?: return null,
-                name = data["name"] as? String ?: return null,
+                name = name,
+                normalizedName = data["normalized_name"] as? String ?: name.trim().lowercase(),
                 embedding = (data["embedding"] as? List<*>)?.mapNotNull { it as? Float },
                 summary = data["summary"] as? String ?: "",
                 groupId = data["group_id"] as? String ?: "",

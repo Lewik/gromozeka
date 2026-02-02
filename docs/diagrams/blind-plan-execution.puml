@@ -1,0 +1,49 @@
+@startuml
+title Blind Plan Execution (Context Isolation)
+
+actor User
+participant LLM
+
+User -> LLM : Task: "Solve complex problem X"
+
+LLM -> User : Plan:\n1. Do A\n2. Do B\n3. Do C
+
+note right of User
+User extracts plan
+and removes it from
+context
+end note
+
+====
+
+User -> LLM : [Context: Task only]\nExecute step 1: Do A
+
+note right of LLM
+LLM doesn't see:
+- Full plan
+- Final answer
+- Other steps
+end note
+
+LLM -> User : Result of step 1
+
+====
+
+User -> LLM : [Context: Task + Result1]\nExecute step 2: Do B
+
+LLM -> User : Result of step 2
+
+====
+
+User -> LLM : [Context: Task + Result1 + Result2]\nExecute step 3: Do C
+
+LLM -> User : Final answer: Y
+
+note right of User
+Benefit: LLM cannot
+"fit" reasoning to 
+pre-decided answer
+(honest reasoning)
+end note
+
+@enduml

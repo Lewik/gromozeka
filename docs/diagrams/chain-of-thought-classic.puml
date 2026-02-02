@@ -1,0 +1,27 @@
+@startuml
+title Classic Chain of Thoughts (CoT)
+
+actor User
+participant LLM
+
+User -> LLM : Task: "Solve complex problem X"
+
+note right of LLM
+LLM generates:
+1. Plan (steps 1-5)
+2. Step 1 reasoning
+3. Step 2 reasoning
+4. Step 3 reasoning
+5. Final answer
+**All in one response**
+end note
+
+LLM -> User : Plan:\n1. Do A\n2. Do B\n3. Do C\n\nStep 1: ...\nStep 2: ...\nStep 3: ...\n\nAnswer: Y
+
+note right of User
+Problem: LLM can "fit" 
+reasoning to pre-decided 
+answer (answer-first bias)
+end note
+
+@enduml

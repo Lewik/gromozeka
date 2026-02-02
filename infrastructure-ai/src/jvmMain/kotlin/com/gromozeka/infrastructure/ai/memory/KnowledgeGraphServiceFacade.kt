@@ -48,9 +48,11 @@ class KnowledgeGraphServiceFacade(
         )
         
         return results.firstOrNull()?.let { record ->
+            val name = record["name"] as String
             MemoryObject(
                 uuid = record["uuid"] as String,
-                name = record["name"] as String,
+                name = name,
+                normalizedName = record["normalized_name"] as? String ?: name.trim().lowercase(),
                 embedding = (record["embedding"] as? List<*>)?.mapNotNull { (it as? Number)?.toFloat() } ?: emptyList(),
                 summary = record["summary"] as? String ?: "",
                 groupId = record["groupId"] as String,
@@ -76,9 +78,11 @@ class KnowledgeGraphServiceFacade(
         )
         
         val objects = objectResults.map { record ->
+            val name = record["name"] as String
             MemoryObject(
                 uuid = record["uuid"] as String,
-                name = record["name"] as String,
+                name = name,
+                normalizedName = record["normalized_name"] as? String ?: name.trim().lowercase(),
                 embedding = (record["embedding"] as? List<*>)?.mapNotNull { (it as? Number)?.toFloat() } ?: emptyList(),
                 summary = record["summary"] as? String ?: "",
                 groupId = record["groupId"] as String,
@@ -136,9 +140,11 @@ class KnowledgeGraphServiceFacade(
                     existingSummary
                 )
 
+                val entityName = entity.first
                 add(MemoryObject(
                     uuid = uuid,
-                    name = entity.first,
+                    name = entityName,
+                    normalizedName = entityName.trim().lowercase(),
                     embedding = embedding.toList(),
                     summary = summary,
                     groupId = groupId,

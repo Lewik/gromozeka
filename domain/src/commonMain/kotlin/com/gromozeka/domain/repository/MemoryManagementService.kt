@@ -47,30 +47,39 @@ interface MemoryManagementService {
      *
      * ## Temporal Semantics
      *
-     * **validAt values:**
-     * - `"always"` → fact was always valid (DISTANT_PAST sentinel)
-     * - `"now"` → fact valid from current moment (Clock.System.now())
-     * - ISO 8601 timestamp → fact valid from specific date
+     * **IMPORTANT:** Temporal parameters apply ONLY to the relationship, NOT to entities.
+     * - **Entities (nodes):** Always created with `validAt=ALWAYS_VALID_FROM, invalidAt=STILL_VALID`
+     *   (entities are timeless concepts like "Kotlin", "TestProject_Beta")
+     * - **Relationship (edge):** Gets temporal parameters from method arguments
+     *   (relationships are facts with validity periods like "uses PostgreSQL from 2020 to 2023")
+     *
+     * **validAt values (for relationship):**
+     * - `"always"` → relationship was always valid (ALWAYS_VALID_FROM sentinel)
+     * - `"now"` → relationship valid from current moment (Clock.System.now())
+     * - ISO 8601 timestamp → relationship valid from specific date
      * - `null` → ERROR (explicit value required)
      *
-     * **invalidAt values:**
-     * - `"always"` → fact valid forever (DISTANT_FUTURE sentinel)
-     * - `"now"` → fact becomes invalid now (Clock.System.now())
-     * - ISO 8601 timestamp → fact valid until specific date
+     * **invalidAt values (for relationship):**
+     * - `"always"` → relationship valid forever (STILL_VALID sentinel)
+     * - `"now"` → relationship becomes invalid now (Clock.System.now())
+     * - ISO 8601 timestamp → relationship valid until specific date
      * - `null` → ERROR (explicit value required)
      *
      * **Examples:**
-     * - Timeless concept: `validAt="always", invalidAt="always"`
+     * - Timeless fact: `validAt="always", invalidAt="always"`
      * - Current fact: `validAt="now", invalidAt="always"`
      * - Historical fact: `validAt="2020-01-01T00:00:00Z", invalidAt="always"`
      * - Limited period: `validAt="2020-01-01", invalidAt="2023-01-01"`
+     *
+     * **Note:** For temporal entities (e.g., "COVID-19 pandemic" valid 2020-2023),
+     * use a dedicated tool (not yet implemented).
      *
      * @param from source entity name (e.g., "Gromozeka")
      * @param relation relationship description (e.g., "written in", "uses")
      * @param to target entity name (e.g., "Kotlin")
      * @param summary optional summary for source entity (updates existing if provided)
-     * @param validAt when fact became valid ("always", "now", or ISO 8601 - REQUIRED)
-     * @param invalidAt when fact became invalid ("always", "now", or ISO 8601 - REQUIRED)
+     * @param validAt when RELATIONSHIP became valid ("always", "now", or ISO 8601 - REQUIRED)
+     * @param invalidAt when RELATIONSHIP became invalid ("always", "now", or ISO 8601 - REQUIRED)
      * @return human-readable success message with created fact, or error message if failed
      *
      * @see invalidateFact for removing/updating facts

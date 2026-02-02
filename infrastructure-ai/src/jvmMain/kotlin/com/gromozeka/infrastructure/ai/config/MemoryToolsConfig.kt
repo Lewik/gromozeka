@@ -21,17 +21,19 @@ import java.util.function.BiFunction
 @ConditionalOnProperty(name = ["knowledge-graph.enabled"], havingValue = "true", matchIfMissing = false)
 class MemoryToolsConfig {
 
-    @Bean
-    fun buildMemoryFromTextToolCallback(tool: com.gromozeka.infrastructure.ai.tool.memory.BuildMemoryFromTextTool): ToolCallback {
-        val function = object : BiFunction<BuildMemoryFromTextRequest, ToolContext?, Map<String, Any>> {
-            override fun apply(request: BuildMemoryFromTextRequest, context: ToolContext?) = 
-                tool.execute(request, context)
-        }
-        return FunctionToolCallback.builder(tool.name, function)
-            .description(tool.description)
-            .inputType(object : ParameterizedTypeReference<BuildMemoryFromTextRequest>() {})
-            .build()
-    }
+    // DISABLED: build_memory_from_text will be reimplemented with different approach
+    // Use add_memory_link for now
+    // @Bean
+    // fun buildMemoryFromTextToolCallback(tool: com.gromozeka.infrastructure.ai.tool.memory.BuildMemoryFromTextTool): ToolCallback {
+    //     val function = object : BiFunction<BuildMemoryFromTextRequest, ToolContext?, Map<String, Any>> {
+    //         override fun apply(request: BuildMemoryFromTextRequest, context: ToolContext?) = 
+    //             tool.execute(request, context)
+    //     }
+    //     return FunctionToolCallback.builder(tool.name, function)
+    //         .description(tool.description)
+    //         .inputType(object : ParameterizedTypeReference<BuildMemoryFromTextRequest>() {})
+    //         .build()
+    // }
 
     @Bean
     fun addMemoryLinkToolCallback(tool: com.gromozeka.infrastructure.ai.tool.memory.AddMemoryLinkTool): ToolCallback {

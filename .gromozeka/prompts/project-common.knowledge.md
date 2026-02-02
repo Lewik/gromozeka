@@ -130,15 +130,17 @@ All domain classes, interfaces, methods with vectorized KDoc are searchable via 
 **After implementing - save decisions:**
 
 ```kotlin
-// Simple fact
+// Simple fact - use this for all knowledge storage
 add_memory_link(
   from = "ThreadRepository",
   relation = "uses",
-  to = "UUIDv7"
+  to = "UUIDv7",
+  validAt = "now",
+  invalidAt = "always"
 )
 
-// Complex knowledge (use sparingly - multiple LLM calls)
-build_memory_from_text(content = "...")
+// Note: build_memory_from_text is DISABLED (being reimplemented)
+// Use add_memory_link for now
 ```
 
 ## Agent Thread Switching

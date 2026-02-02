@@ -25,6 +25,7 @@ class GraphPersistenceService(
                 val query = """
                     MERGE (n:MemoryObject {uuid: ${'$'}uuid})
                     SET n.name = ${'$'}name,
+                        n.normalized_name = ${'$'}normalizedName,
                         n.embedding = ${'$'}embedding,
                         n.summary = ${'$'}summary,
                         n.group_id = ${'$'}groupId,
@@ -37,6 +38,7 @@ class GraphPersistenceService(
                     mapOf(
                         "uuid" to node.uuid,
                         "name" to node.name,
+                        "normalizedName" to node.normalizedName,
                         "embedding" to node.embedding,
                         "summary" to node.summary,
                         "groupId" to node.groupId,

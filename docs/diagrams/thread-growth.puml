@@ -1,0 +1,61 @@
+@startuml
+title Thread Growth - Full History Sent Each Time
+
+actor User
+participant AI
+
+User -> AI : [User: "Hi"]
+AI -> User : Hello!
+
+note right of User
+Thread state:
+[User: "Hi"]
+[AI: "Hello!"]
+end note
+
+====
+
+User -> AI : [User: "Hi"]\n[AI: "Hello!"]\n[User: "Help me"]
+AI -> User : Sure, what do you need?
+
+note right of User
+Thread state:
+[User: "Hi"]
+[AI: "Hello!"]
+[User: "Help me"]
+[AI: "Sure, what do you need?"]
+end note
+
+====
+
+User -> AI : [User: "Hi"]\n[AI: "Hello!"]\n[User: "Help me"]\n[AI: "Sure, what do you need?"]\n[User: "Show code"]
+AI -> User : Here's the code...
+
+note right of User
+Thread state:
+[User: "Hi"]
+[AI: "Hello!"]
+[User: "Help me"]
+[AI: "Sure, what do you need?"]
+[User: "Show code"]
+[AI: "Here's the code..."]
+end note
+
+====
+
+User -> AI : [User: "Hi"]\n[AI: "Hello!"]\n[User: "Help me"]\n[AI: "Sure, what do you need?"]\n[User: "Show code"]\n[AI: "Here's the code..."]\n[User: "Thanks!"]
+AI -> User : You're welcome!
+
+note right of User
+Thread state:
+[User: "Hi"]
+[AI: "Hello!"]
+[User: "Help me"]
+[AI: "Sure, what do you need?"]
+[User: "Show code"]
+[AI: "Here's the code..."]
+[User: "Thanks!"]
+[AI: "You're welcome!"]
+end note
+
+@enduml
