@@ -126,14 +126,21 @@ class TabViewModel(
             val messages = conversationService.loadCurrentMessages(conversationId)
             _allMessages.value = messages
             
-            val thinkingMessageIds = messages
-                .filter { message -> message.content.any { it is Conversation.Message.ContentItem.Thinking } }
-                .map { it.id }
-                .toSet()
+            // Collapse Thinking blocks by default
+            val collapsedItems = mutableMapOf<Conversation.Message.Id, Set<Int>>()
+            messages.forEach { message ->
+                val thinkingIndices = message.content.mapIndexedNotNull { index, item ->
+                    if (item is Conversation.Message.ContentItem.Thinking) index else null
+                }.toSet()
+                
+                if (thinkingIndices.isNotEmpty()) {
+                    collapsedItems[message.id] = thinkingIndices
+                }
+            }
             
-            if (thinkingMessageIds.isNotEmpty()) {
+            if (collapsedItems.isNotEmpty()) {
                 _uiState.update { currentState ->
-                    currentState.copy(collapsedMessageIds = currentState.collapsedMessageIds + thinkingMessageIds)
+                    currentState.copy(collapsedContentItems = currentState.collapsedContentItems + collapsedItems)
                 }
             }
             
@@ -293,11 +300,19 @@ class TabViewModel(
                             log.debug { "Added new message ${message.id}" }
                         }
 
-                        val hasThinking = message.content.any { it is Conversation.Message.ContentItem.Thinking }
-                        if (hasThinking) {
+                        // Collapse Thinking blocks by default in new messages
+                        val thinkingIndices = message.content.mapIndexedNotNull { index, item ->
+                            if (item is Conversation.Message.ContentItem.Thinking) index else null
+                        }.toSet()
+                        
+                        if (thinkingIndices.isNotEmpty()) {
                             _uiState.update { currentState ->
-                                if (message.id !in currentState.collapsedMessageIds) {
-                                    currentState.copy(collapsedMessageIds = currentState.collapsedMessageIds + message.id)
+                                val currentCollapsed = currentState.collapsedContentItems[message.id] ?: emptySet()
+                                if (currentCollapsed.isEmpty()) {
+                                    // Only auto-collapse if no manual state exists
+                                    currentState.copy(
+                                        collapsedContentItems = currentState.collapsedContentItems + (message.id to thinkingIndices)
+                                    )
                                 } else {
                                     currentState
                                 }
@@ -419,15 +434,22 @@ class TabViewModel(
         }
     }
 
-    fun toggleMessageCollapse(messageId: Conversation.Message.Id) {
+    fun toggleContentItemCollapse(messageId: Conversation.Message.Id, contentItemIndex: Int) {
         _uiState.update { currentState ->
-            val collapsedIds = currentState.collapsedMessageIds
-            val newCollapsedIds = if (messageId in collapsedIds) {
-                collapsedIds - messageId
+            val currentCollapsed = currentState.collapsedContentItems[messageId] ?: emptySet()
+            val newCollapsed = if (contentItemIndex in currentCollapsed) {
+                currentCollapsed - contentItemIndex
             } else {
-                collapsedIds + messageId
+                currentCollapsed + contentItemIndex
             }
-            currentState.copy(collapsedMessageIds = newCollapsedIds)
+            
+            val newCollapsedContentItems = if (newCollapsed.isEmpty()) {
+                currentState.collapsedContentItems - messageId
+            } else {
+                currentState.collapsedContentItems + (messageId to newCollapsed)
+            }
+            
+            currentState.copy(collapsedContentItems = newCollapsedContentItems)
         }
     }
 

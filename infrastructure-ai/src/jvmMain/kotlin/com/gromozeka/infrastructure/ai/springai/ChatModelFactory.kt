@@ -160,11 +160,18 @@ class ChatModelFactory(
             AIProvider.ANTHROPIC -> {
                 val anthropicApi = aiApiFactory.createAnthropicApi()
 
+                val thinkingBudget = 10000
                 val options = AnthropicChatOptions
                     .builder()
                     .model("claude-sonnet-4-5-20250929")
-                    .temperature(0.7)
+                    // NOTE: temperature is NOT compatible with thinking mode
+                    // Using top_p instead (allowed range: 0.95-1.0 when thinking enabled)
+                    .topP(0.95)
                     .maxTokens(64000)
+                    .thinking(
+                        org.springframework.ai.anthropic.api.AnthropicApi.ThinkingType.ENABLED,
+                        thinkingBudget
+                    )
                     .cacheOptions(
                         AnthropicCacheOptions.builder()
                             .strategy(AnthropicCacheStrategy.CONVERSATION_HISTORY)
@@ -177,6 +184,9 @@ class ChatModelFactory(
                     .build()
 
                 log.info("Using prompt caching fixed Anthropic chat model with improved cache strategy")
+                log.info("Extended thinking ENABLED: budget_tokens=$thinkingBudget (min 1024, recommended 10k-32k)")
+                log.info("Using top_p=0.95 (temperature NOT compatible with thinking mode)")
+                log.info("Thinking will appear as separate content blocks before text responses")
                 PromptCachingFixedAnthropicChatModel(
                     anthropicApi,
                     options,

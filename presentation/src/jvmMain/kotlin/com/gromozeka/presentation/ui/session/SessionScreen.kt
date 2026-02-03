@@ -427,12 +427,12 @@ fun SessionScreen(
                             toolResultsMap = toolResultsMap,
                             projectPath = viewModel.projectPath,
                             isSelected = message.id in uiState.selectedMessageIds,
-                            isCollapsed = message.id in uiState.collapsedMessageIds,
+                            collapsedContentItems = uiState.collapsedContentItems[message.id] ?: emptySet(),
                             onToggleSelection = { messageId, isShiftPressed ->
                                 viewModel.toggleMessageSelectionRange(messageId, isShiftPressed)
                             },
-                            onToggleCollapse = { messageId ->
-                                viewModel.toggleMessageCollapse(messageId)
+                            onToggleContentItemCollapse = { messageId, contentItemIndex ->
+                                viewModel.toggleContentItemCollapse(messageId, contentItemIndex)
                             },
                             onShowJson = { json -> viewModel.jsonToShow = json },
                             onSpeakRequest = { text, tone ->

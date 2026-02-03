@@ -201,6 +201,7 @@ class ConversationEngineService(
                 chatResponse = withContext(Dispatchers.IO) {
                     chatModel.call(currentPrompt)
                 }
+                log.info { "ChatResponse received: ${chatResponse.results.size} results, stopReason=${chatResponse.results.firstOrNull()?.metadata?.finishReason}" }
             } catch (e: Exception) {
                 log.error(e) { "Chat call error" }
                 val errorMessage = createErrorMessage(conversationId, e.message ?: "Unknown error")
@@ -233,16 +234,23 @@ class ConversationEngineService(
                         else -> Pair(0, 0)
                     }
 
-                    val thinkingTokens = when (usage) {
-                        is GoogleGenAiUsage -> usage.thoughtsTokenCount ?: 0
+                    val thinkingTokens = when (nativeUsage) {
+                        is AnthropicApi.Usage -> nativeUsage.outputTokens()?.minus(usage.completionTokens ?: 0) ?: 0
+                        is GoogleGenAiUsage -> nativeUsage.thoughtsTokenCount ?: 0
                         else -> 0
                     }
 
                     val totalInputTokens = (usage.promptTokens ?: 0) + cacheCreation + cacheRead
+                    val totalOutputTokens = (usage.completionTokens ?: 0) + thinkingTokens
+                    
                     log.info { 
                         "Tokens: prompt=${usage.promptTokens} (new), cache_creation=$cacheCreation, cache_read=$cacheRead, " +
-                        "total_input=$totalInputTokens, completion=${usage.completionTokens}, " +
-                        "total=${totalInputTokens + (usage.completionTokens ?: 0)}"
+                        "total_input=$totalInputTokens, completion=${usage.completionTokens}, thinking=$thinkingTokens, " +
+                        "total_output=$totalOutputTokens, total=${totalInputTokens + totalOutputTokens}"
+                    }
+                    
+                    if (thinkingTokens > 0) {
+                        log.info { "Extended thinking was used: $thinkingTokens thinking tokens generated" }
                     }
 
                     tokenUsageStatisticsRepository.save(
@@ -333,17 +341,47 @@ class ConversationEngineService(
         chatResponse: ChatResponse,
     ): Conversation.Message {
         val content = mutableListOf<ContentItem>()
+        
+        log.info { "Processing ${chatResponse.results.size} generations from ChatResponse" }
 
-        chatResponse.results.forEach { generation ->
+        chatResponse.results.forEachIndexed { index, generation ->
             val assistantMsg = generation.output
-
-            if (!assistantMsg.text.isNullOrBlank()) {
+            
+            // Check if this is a thinking block (Spring AI sets "signature" metadata for thinking)
+            val metadata = assistantMsg.metadata
+            val signature = metadata["signature"] as? String
+            val isThinking = signature != null || metadata.containsKey("thinking")
+            
+            log.info { 
+                "Generation[$index]: isThinking=$isThinking, " +
+                "hasText=${!assistantMsg.text.isNullOrBlank()}, " +
+                "textLength=${assistantMsg.text?.length ?: 0}, " +
+                "toolCallsCount=${assistantMsg.toolCalls.size}, " +
+                "metadata_keys=${metadata.keys}"
+            }
+            
+            if (isThinking) {
+                val thinkingText = assistantMsg.text ?: ""
+                log.info { "THINKING BLOCK DETECTED: signature=${signature?.take(20)}..., text_length=${thinkingText.length}" }
+                log.debug { "Thinking content preview: ${thinkingText.take(200)}..." }
+                
+                content.add(
+                    ContentItem.Thinking(
+                        thinking = thinkingText,
+                        signature = signature,
+                        state = BlockState.COMPLETE
+                    )
+                )
+            } else if (!assistantMsg.text.isNullOrBlank()) {
+                log.info { "TEXT BLOCK DETECTED: text_length=${assistantMsg.text!!.length}" }
                 content.add(
                     ContentItem.AssistantMessage(
                         structured = Conversation.Message.StructuredText(fullText = assistantMsg.text ?: ""),
                         state = BlockState.COMPLETE
                     )
                 )
+            } else {
+                log.warn { "Generation[$index]: SKIPPED - no thinking, no text, no tool calls" }
             }
 
             assistantMsg.toolCalls.forEach { toolCall ->
@@ -370,6 +408,8 @@ class ConversationEngineService(
                 )
             }
         }
+        
+        log.info { "Created message with ${content.size} content items: ${content.map { it::class.simpleName }}" }
 
         return Conversation.Message(
             id = Conversation.Message.Id(uuid7()),
