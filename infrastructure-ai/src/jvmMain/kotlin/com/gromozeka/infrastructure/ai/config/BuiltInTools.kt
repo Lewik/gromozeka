@@ -234,6 +234,22 @@ class BuiltInTools {
     }
 
     @Bean
+    fun getAllPlansToolCallback(getAllPlansTool: com.gromozeka.infrastructure.ai.mcp.tools.plan.GetAllPlansTool): ToolCallback {
+        val function = object : BiFunction<com.gromozeka.infrastructure.ai.mcp.tools.plan.GetAllPlansTool.Input, ToolContext?, Map<String, Any>> {
+            override fun apply(request: com.gromozeka.infrastructure.ai.mcp.tools.plan.GetAllPlansTool.Input, context: ToolContext?): Map<String, Any> {
+                return runBlocking {
+                    getAllPlansTool.execute(request.includeTemplates)
+                }
+            }
+        }
+
+        return FunctionToolCallback.builder("get_all_plans", function)
+            .description("Get all plans without filtering")
+            .inputType(object : ParameterizedTypeReference<com.gromozeka.infrastructure.ai.mcp.tools.plan.GetAllPlansTool.Input>() {})
+            .build()
+    }
+
+    @Bean
     fun searchPlansToolCallback(searchPlansTool: SearchPlansTool): ToolCallback {
         val function = object : BiFunction<SearchPlansTool.Input, ToolContext?, Map<String, Any>> {
             override fun apply(request: SearchPlansTool.Input, context: ToolContext?): Map<String, Any> {

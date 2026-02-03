@@ -81,6 +81,42 @@ interface GetPlanTool {
 }
 
 /**
+ * [MCP TOOL] Get all plans.
+ *
+ * Tool name: `get_all_plans`
+ *
+ * Returns all plans without filtering.
+ *
+ * Example:
+ * ```json
+ * {
+ *   "includeTemplates": true
+ * }
+ * ```
+ *
+ * Returns:
+ * ```json
+ * {
+ *   "plans": [
+ *     {
+ *       "planId": "uuid",
+ *       "name": "...",
+ *       "description": "...",
+ *       "isTemplate": false,
+ *       "createdAt": "..."
+ *     }
+ *   ],
+ *   "count": 10
+ * }
+ * ```
+ */
+interface GetAllPlansTool {
+    suspend fun execute(
+        includeTemplates: Boolean = true
+    ): Map<String, Any>
+}
+
+/**
  * [MCP TOOL] Search plans.
  *
  * Tool name: `search_plans`
