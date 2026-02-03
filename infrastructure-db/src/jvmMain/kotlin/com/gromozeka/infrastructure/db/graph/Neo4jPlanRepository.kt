@@ -182,32 +182,66 @@ class Neo4jPlanRepository(
         // Clone steps with new IDs, preserving tree structure
         val oldToNewIdMap = mutableMapOf<PlanStep.Id, PlanStep.Id>()
 
-        // First pass: create all steps with new IDs (no parent relationships yet)
+        // Generate new IDs for all steps
         sourceSteps.forEach { sourceStep ->
             val newStepId = PlanStep.Id.generate()
             oldToNewIdMap[sourceStep.id] = newStepId
         }
 
-        // Second pass: create steps with updated parent IDs
+        // Create all step nodes (without parent relationships yet)
         sourceSteps.forEach { sourceStep ->
             val newStepId = oldToNewIdMap[sourceStep.id]!!
             val newParentId = sourceStep.parentId?.let { oldToNewIdMap[it] }
 
-            val newStep = when (sourceStep) {
+            // Generate embedding
+            val embedding = embeddingModel.embed(sourceStep.getTextForVectorization()).toList()
+
+            // Build step properties using the same method as addStep
+            val clonedStep = when (sourceStep) {
                 is PlanStep.Text -> PlanStep.Text(
                     id = newStepId,
                     planId = newPlan.id,
                     parentId = newParentId,
-                    status = StepStatus.PENDING, // Reset to PENDING
+                    status = StepStatus.PENDING,
                     instruction = sourceStep.instruction,
-                    result = null // Clear result
+                    result = null // Clear result for cloned step
                 )
             }
+            
+            val stepProperties = buildStepProperties(clonedStep, embedding)
 
-            addStep(newStep)
+            // Create step node and link to plan
+            val createStepQuery = """
+                MATCH (p:Plan {id: ${'$'}planId})
+                CREATE (s:PlanStep)
+                SET s = ${'$'}props
+                CREATE (p)-[:HAS_STEP]->(s)
+            """.trimIndent()
+
+            neo4jGraphStore.executeQuery(
+                createStepQuery,
+                mapOf("planId" to newPlan.id.value, "props" to stepProperties)
+            )
         }
 
-        log.debug { "Successfully cloned plan: sourceId=$sourceId -> newId=${newPlan.id}" }
+        // Create parent relationships after all steps are created
+        sourceSteps.forEach { sourceStep ->
+            sourceStep.parentId?.let { oldParentId ->
+                val newStepId = oldToNewIdMap[sourceStep.id]!!
+                val newParentId = oldToNewIdMap[oldParentId]!!
+
+                neo4jGraphStore.executeQuery(
+                    """
+                    MATCH (child:PlanStep {id: ${'$'}childId})
+                    MATCH (parent:PlanStep {id: ${'$'}parentId})
+                    CREATE (child)-[:PARENT_STEP]->(parent)
+                    """.trimIndent(),
+                    mapOf("childId" to newStepId.value, "parentId" to newParentId.value)
+                )
+            }
+        }
+
+        log.debug { "Successfully cloned plan: sourceId=$sourceId -> newId=${newPlan.id}, steps=${sourceSteps.size}" }
         return newPlan
     }
 
