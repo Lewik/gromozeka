@@ -19,6 +19,7 @@ import com.gromozeka.presentation.services.theming.ThemeService
 import com.gromozeka.presentation.services.translation.TranslationService
 import com.gromozeka.presentation.ui.viewmodel.AppViewModel
 import com.gromozeka.presentation.ui.viewmodel.ConversationSearchViewModel
+import com.gromozeka.presentation.ui.viewmodel.PlanPanelViewModel
 import com.gromozeka.shared.audio.AudioRecorder
 import com.gromozeka.domain.repository.TokenUsageStatisticsRepository
 import com.gromozeka.domain.service.ConversationDomainService
@@ -151,5 +152,11 @@ class Config {
     @Bean
     fun ollamaModelService() = OllamaModelService()
 
+    @Bean
+    fun planPanelViewModel(
+        planManagementService: com.gromozeka.domain.service.plan.PlanManagementService,
+        planEventBus: com.gromozeka.domain.service.plan.PlanEventBus,
+        @Qualifier("coroutineScope") scope: CoroutineScope
+    ) = PlanPanelViewModel(planManagementService, planEventBus, scope)
 
 }

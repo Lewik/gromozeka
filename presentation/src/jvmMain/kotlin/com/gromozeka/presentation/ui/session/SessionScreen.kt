@@ -52,6 +52,7 @@ fun SessionScreen(
 
     // Tab Settings Panel
     onShowPromptsPanelChange: (Boolean) -> Unit,
+    onShowPlansPanelChange: (Boolean) -> Unit,
 
     // Context extraction
     onExtractContexts: (() -> Unit)? = null,
@@ -208,6 +209,16 @@ fun SessionScreen(
                                     Text("$percentage%")
                                 }
                             }
+                        }
+
+                        Spacer(modifier = Modifier.width(8.dp))
+
+                        // Plans button
+                        CompactButton(
+                            onClick = { onShowPlansPanelChange(true) },
+                            tooltip = "Plans"
+                        ) {
+                            Icon(Icons.Default.Checklist, contentDescription = "Plans")
                         }
 
                         Spacer(modifier = Modifier.width(8.dp))

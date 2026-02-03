@@ -3,9 +3,11 @@ package com.gromozeka.infrastructure.ai.config
 import com.gromozeka.infrastructure.ai.tool.*
 import com.gromozeka.infrastructure.ai.tool.codebase.IndexDomainToGraphToolImpl
 import com.gromozeka.infrastructure.ai.tool.lsp.*
+import com.gromozeka.infrastructure.ai.mcp.tools.plan.*
 import com.gromozeka.domain.tool.filesystem.*
 import com.gromozeka.domain.tool.codebase.IndexDomainToGraphRequest
 import com.gromozeka.domain.tool.lsp.*
+import kotlinx.coroutines.runBlocking
 import org.slf4j.LoggerFactory
 import org.springframework.ai.chat.model.ToolContext
 import org.springframework.ai.tool.ToolCallback
@@ -162,6 +164,168 @@ class BuiltInTools {
         return FunctionToolCallback.builder(lspGetDocumentSymbolsTool.name, function)
             .description(lspGetDocumentSymbolsTool.description)
             .inputType(object : ParameterizedTypeReference<LspGetDocumentSymbolsRequest>() {})
+            .build()
+    }
+
+    // ============ Plan Management Tools ============
+
+    @Bean
+    fun createPlanToolCallback(createPlanTool: CreatePlanTool): ToolCallback {
+        val function = object : BiFunction<CreatePlanTool.Input, ToolContext?, Map<String, Any>> {
+            override fun apply(request: CreatePlanTool.Input, context: ToolContext?): Map<String, Any> {
+                return runBlocking {
+                    createPlanTool.execute(request.name, request.description, request.isTemplate)
+                }
+            }
+        }
+
+        return FunctionToolCallback.builder("create_plan", function)
+            .description("Create new plan with name and description")
+            .inputType(object : ParameterizedTypeReference<CreatePlanTool.Input>() {})
+            .build()
+    }
+
+    @Bean
+    fun updatePlanToolCallback(updatePlanTool: UpdatePlanTool): ToolCallback {
+        val function = object : BiFunction<UpdatePlanTool.Input, ToolContext?, Map<String, Any>> {
+            override fun apply(request: UpdatePlanTool.Input, context: ToolContext?): Map<String, Any> {
+                return runBlocking {
+                    updatePlanTool.execute(request.planId, request.name, request.description, request.isTemplate)
+                }
+            }
+        }
+
+        return FunctionToolCallback.builder("update_plan", function)
+            .description("Update existing plan")
+            .inputType(object : ParameterizedTypeReference<UpdatePlanTool.Input>() {})
+            .build()
+    }
+
+    @Bean
+    fun deletePlanToolCallback(deletePlanTool: DeletePlanTool): ToolCallback {
+        val function = object : BiFunction<DeletePlanTool.Input, ToolContext?, Map<String, Any>> {
+            override fun apply(request: DeletePlanTool.Input, context: ToolContext?): Map<String, Any> {
+                return runBlocking {
+                    deletePlanTool.execute(request.planId)
+                }
+            }
+        }
+
+        return FunctionToolCallback.builder("delete_plan", function)
+            .description("Delete plan with all its steps")
+            .inputType(object : ParameterizedTypeReference<DeletePlanTool.Input>() {})
+            .build()
+    }
+
+    @Bean
+    fun getPlanToolCallback(getPlanTool: GetPlanTool): ToolCallback {
+        val function = object : BiFunction<GetPlanTool.Input, ToolContext?, Map<String, Any>> {
+            override fun apply(request: GetPlanTool.Input, context: ToolContext?): Map<String, Any> {
+                return runBlocking {
+                    getPlanTool.execute(request.planId)
+                }
+            }
+        }
+
+        return FunctionToolCallback.builder("get_plan", function)
+            .description("Get plan with all its steps")
+            .inputType(object : ParameterizedTypeReference<GetPlanTool.Input>() {})
+            .build()
+    }
+
+    @Bean
+    fun searchPlansToolCallback(searchPlansTool: SearchPlansTool): ToolCallback {
+        val function = object : BiFunction<SearchPlansTool.Input, ToolContext?, Map<String, Any>> {
+            override fun apply(request: SearchPlansTool.Input, context: ToolContext?): Map<String, Any> {
+                return runBlocking {
+                    searchPlansTool.execute(request.query, request.limit)
+                }
+            }
+        }
+
+        return FunctionToolCallback.builder("search_plans", function)
+            .description("Search plans by query using semantic and keyword search")
+            .inputType(object : ParameterizedTypeReference<SearchPlansTool.Input>() {})
+            .build()
+    }
+
+    @Bean
+    fun clonePlanToolCallback(clonePlanTool: ClonePlanTool): ToolCallback {
+        val function = object : BiFunction<ClonePlanTool.Input, ToolContext?, Map<String, Any>> {
+            override fun apply(request: ClonePlanTool.Input, context: ToolContext?): Map<String, Any> {
+                return runBlocking {
+                    clonePlanTool.execute(request.planId, request.newName)
+                }
+            }
+        }
+
+        return FunctionToolCallback.builder("clone_plan", function)
+            .description("Clone existing plan with all steps")
+            .inputType(object : ParameterizedTypeReference<ClonePlanTool.Input>() {})
+            .build()
+    }
+
+    @Bean
+    fun addTextStepToolCallback(addTextStepTool: AddTextStepTool): ToolCallback {
+        val function = object : BiFunction<AddTextStepTool.Input, ToolContext?, Map<String, Any>> {
+            override fun apply(request: AddTextStepTool.Input, context: ToolContext?): Map<String, Any> {
+                return runBlocking {
+                    addTextStepTool.execute(request.planId, request.instruction, request.parentId)
+                }
+            }
+        }
+
+        return FunctionToolCallback.builder("add_text_step", function)
+            .description("Add text step to plan")
+            .inputType(object : ParameterizedTypeReference<AddTextStepTool.Input>() {})
+            .build()
+    }
+
+    @Bean
+    fun updateStepToolCallback(updateStepTool: UpdateStepTool): ToolCallback {
+        val function = object : BiFunction<UpdateStepTool.Input, ToolContext?, Map<String, Any>> {
+            override fun apply(request: UpdateStepTool.Input, context: ToolContext?): Map<String, Any> {
+                return runBlocking {
+                    updateStepTool.execute(request.stepId, request.instruction, request.result, request.status, request.parentId)
+                }
+            }
+        }
+
+        return FunctionToolCallback.builder("update_step", function)
+            .description("Update existing step")
+            .inputType(object : ParameterizedTypeReference<UpdateStepTool.Input>() {})
+            .build()
+    }
+
+    @Bean
+    fun deleteStepToolCallback(deleteStepTool: DeleteStepTool): ToolCallback {
+        val function = object : BiFunction<DeleteStepTool.Input, ToolContext?, Map<String, Any>> {
+            override fun apply(request: DeleteStepTool.Input, context: ToolContext?): Map<String, Any> {
+                return runBlocking {
+                    deleteStepTool.execute(request.stepId)
+                }
+            }
+        }
+
+        return FunctionToolCallback.builder("delete_step", function)
+            .description("Delete step from plan")
+            .inputType(object : ParameterizedTypeReference<DeleteStepTool.Input>() {})
+            .build()
+    }
+
+    @Bean
+    fun updateStepStatusToolCallback(updateStepStatusTool: UpdateStepStatusTool): ToolCallback {
+        val function = object : BiFunction<UpdateStepStatusTool.Input, ToolContext?, Map<String, Any>> {
+            override fun apply(request: UpdateStepStatusTool.Input, context: ToolContext?): Map<String, Any> {
+                return runBlocking {
+                    updateStepStatusTool.execute(request.stepId, request.status)
+                }
+            }
+        }
+
+        return FunctionToolCallback.builder("update_step_status", function)
+            .description("Update step status (PENDING, DONE, SKIPPED)")
+            .inputType(object : ParameterizedTypeReference<UpdateStepStatusTool.Input>() {})
             .build()
     }
 }
