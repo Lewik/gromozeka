@@ -81,6 +81,16 @@ fun SessionScreen(
     val userInput = uiState.userInput
     val jsonToShow = viewModel.jsonToShow
     val tokenStats by viewModel.tokenStats.collectAsState()
+    
+    // Context percentage calculation (used by Agent button and Send button)
+    val contextPercentage = tokenStats?.currentContextSize?.let { currentContext ->
+        tokenStats?.modelId?.let { modelId ->
+            com.gromozeka.domain.model.ModelContextWindows.getContextWindow(modelId)
+                ?.let { contextWindow ->
+                    (currentContext.toFloat() / contextWindow * 100).toInt()
+                }
+        }
+    }
 
     // Message sending function using ViewModel
     val onSendMessage: (String) -> Unit = { message ->
@@ -179,25 +189,21 @@ fun SessionScreen(
                         }
 
                         // Agent button
-                        val stats = tokenStats
-                        val contextPercentage = stats?.currentContextSize?.let { currentContext ->
-                            stats.modelId?.let { modelId ->
-                                com.gromozeka.domain.model.ModelContextWindows.getContextWindow(modelId)
-                                    ?.let { contextWindow ->
-                                        (currentContext.toFloat() / contextWindow * 100).toInt()
-                                    }
-                            }
-                        }
-                        
                         CompactButton(
                             onClick = { onShowPromptsPanelChange(true) },
-                            tooltip = "Agent",
-                            colors = if (contextPercentage != null && contextPercentage >= 70) {
-                                ButtonDefaults.buttonColors(
+                            tooltip = when {
+                                contextPercentage != null && contextPercentage >= 90 -> "Agent (критическое заполнение контекста $contextPercentage%)"
+                                contextPercentage != null && contextPercentage >= 75 -> "Agent (контекст заполнен на $contextPercentage%)"
+                                else -> "Agent"
+                            },
+                            colors = when {
+                                contextPercentage != null && contextPercentage >= 90 -> ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.error
+                                )
+                                contextPercentage != null && contextPercentage >= 75 -> ButtonDefaults.buttonColors(
                                     containerColor = MaterialTheme.colorScheme.tertiary
                                 )
-                            } else {
-                                ButtonDefaults.buttonColors()
+                                else -> ButtonDefaults.buttonColors()
                             }
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -466,7 +472,8 @@ fun SessionScreen(
                         coroutineScope = coroutineScope,
                         modifierWithPushToTalk = modifierWithPushToTalk,
                         isRecording = isRecording,
-                        showPttButton = settings.enableStt
+                        showPttButton = settings.enableStt,
+                        contextPercentage = contextPercentage
                     )
 
                     // Message Tags and Screenshot button

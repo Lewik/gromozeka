@@ -28,6 +28,7 @@ fun MessageInput(
     modifierWithPushToTalk: Modifier,
     isRecording: Boolean,
     showPttButton: Boolean,
+    contextPercentage: Int? = null,
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -79,15 +80,23 @@ fun MessageInput(
                     }
                 },
                 modifier = Modifier.fillMaxHeight(),
-                tooltip = if (isWaitingForResponse && pendingMessagesCount > 0) {
-                    "Отправляется... ($pendingMessagesCount в очереди)"
-                } else if (isWaitingForResponse) {
-                    LocalTranslation.current.sendingMessageTooltip
-                } else {
-                    LocalTranslation.current.sendMessageTooltip
+                tooltip = when {
+                    isWaitingForResponse && pendingMessagesCount > 0 -> "Отправляется... ($pendingMessagesCount в очереди)"
+                    isWaitingForResponse -> LocalTranslation.current.sendingMessageTooltip
+                    contextPercentage != null && contextPercentage >= 90 -> "${LocalTranslation.current.sendMessageTooltip} (критическое заполнение $contextPercentage%)"
+                    contextPercentage != null && contextPercentage >= 75 -> "${LocalTranslation.current.sendMessageTooltip} (контекст заполнен на $contextPercentage%)"
+                    else -> LocalTranslation.current.sendMessageTooltip
                 }
             ) {
-                Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Send")
+                Icon(
+                    Icons.AutoMirrored.Filled.Send,
+                    contentDescription = "Send",
+                    tint = when {
+                        contextPercentage != null && contextPercentage >= 90 -> MaterialTheme.colorScheme.error
+                        contextPercentage != null && contextPercentage >= 75 -> MaterialTheme.colorScheme.tertiary
+                        else -> LocalContentColor.current
+                    }
+                )
             }
         }
 
