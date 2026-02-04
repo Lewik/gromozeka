@@ -219,74 +219,86 @@ class ConversationEngineService(
             val allToolCalls = chatResponse.results.flatMap { it.output.toolCalls }
             val hasToolCalls = chatResponse.hasToolCalls()
 
-            val assistantMessage = createAssistantMessageFromResponse(conversationId, chatResponse)
+            val assistantMessages = createAssistantMessagesFromResponse(conversationId, chatResponse)
 
-            // Save usage statistics with reference to the assistant message
-            chatResponse.metadata.usage?.let { usage ->
-                try {
-                    val nativeUsage = usage.getNativeUsage()
+            // Save usage statistics with reference to the last assistant message
+            val lastAssistantMessage = assistantMessages.lastOrNull()
+            if (lastAssistantMessage != null) {
+                chatResponse.metadata.usage?.let { usage ->
+                    try {
+                        val nativeUsage = usage.getNativeUsage()
 
-                    val (cacheCreation, cacheRead) = when (nativeUsage) {
-                        is AnthropicApi.Usage -> Pair(
-                            nativeUsage.cacheCreationInputTokens() ?: 0,
-                            nativeUsage.cacheReadInputTokens() ?: 0
+                        val (cacheCreation, cacheRead) = when (nativeUsage) {
+                            is AnthropicApi.Usage -> Pair(
+                                nativeUsage.cacheCreationInputTokens() ?: 0,
+                                nativeUsage.cacheReadInputTokens() ?: 0
+                            )
+                            else -> Pair(0, 0)
+                        }
+
+                        val thinkingTokens = when (nativeUsage) {
+                            is AnthropicApi.Usage -> nativeUsage.outputTokens()?.minus(usage.completionTokens ?: 0) ?: 0
+                            is GoogleGenAiUsage -> nativeUsage.thoughtsTokenCount ?: 0
+                            else -> 0
+                        }
+
+                        val totalInputTokens = (usage.promptTokens ?: 0) + cacheCreation + cacheRead
+                        val totalOutputTokens = (usage.completionTokens ?: 0) + thinkingTokens
+                        
+                        log.info { 
+                            "Tokens: prompt=${usage.promptTokens} (new), cache_creation=$cacheCreation, cache_read=$cacheRead, " +
+                            "total_input=$totalInputTokens, completion=${usage.completionTokens}, thinking=$thinkingTokens, " +
+                            "total_output=$totalOutputTokens, total=${totalInputTokens + totalOutputTokens}"
+                        }
+                        
+                        if (thinkingTokens > 0) {
+                            log.info { "Extended thinking was used: $thinkingTokens thinking tokens generated" }
+                        }
+
+                        tokenUsageStatisticsRepository.save(
+                            TokenUsageStatistics(
+                                id = TokenUsageStatistics.Id(uuid7()),
+                                threadId = conversation.currentThread,
+                                lastMessageId = lastAssistantMessage.id,
+                                timestamp = Clock.System.now(),
+                                promptTokens = usage.promptTokens ?: 0,
+                                completionTokens = usage.completionTokens ?: 0,
+                                cacheCreationTokens = cacheCreation,
+                                cacheReadTokens = cacheRead,
+                                thinkingTokens = thinkingTokens,
+                                provider = agent.aiProvider,
+                                modelId = agent.modelName
+                            )
                         )
-                        else -> Pair(0, 0)
+                    } catch (e: Exception) {
+                        log.error(e) { "Failed to save token usage statistics" }
                     }
-
-                    val thinkingTokens = when (nativeUsage) {
-                        is AnthropicApi.Usage -> nativeUsage.outputTokens()?.minus(usage.completionTokens ?: 0) ?: 0
-                        is GoogleGenAiUsage -> nativeUsage.thoughtsTokenCount ?: 0
-                        else -> 0
-                    }
-
-                    val totalInputTokens = (usage.promptTokens ?: 0) + cacheCreation + cacheRead
-                    val totalOutputTokens = (usage.completionTokens ?: 0) + thinkingTokens
-                    
-                    log.info { 
-                        "Tokens: prompt=${usage.promptTokens} (new), cache_creation=$cacheCreation, cache_read=$cacheRead, " +
-                        "total_input=$totalInputTokens, completion=${usage.completionTokens}, thinking=$thinkingTokens, " +
-                        "total_output=$totalOutputTokens, total=${totalInputTokens + totalOutputTokens}"
-                    }
-                    
-                    if (thinkingTokens > 0) {
-                        log.info { "Extended thinking was used: $thinkingTokens thinking tokens generated" }
-                    }
-
-                    tokenUsageStatisticsRepository.save(
-                        TokenUsageStatistics(
-                            id = TokenUsageStatistics.Id(uuid7()),
-                            threadId = conversation.currentThread,
-                            lastMessageId = assistantMessage.id,
-                            timestamp = Clock.System.now(),
-                            promptTokens = usage.promptTokens ?: 0,
-                            completionTokens = usage.completionTokens ?: 0,
-                            cacheCreationTokens = cacheCreation,
-                            cacheReadTokens = cacheRead,
-                            thinkingTokens = thinkingTokens,
-                            provider = agent.aiProvider,
-                            modelId = agent.modelName
-                        )
-                    )
-                } catch (e: Exception) {
-                    log.error(e) { "Failed to save token usage statistics" }
                 }
             }
 
-            emit(assistantMessage)
-            conversationService.addMessage(conversationId, assistantMessage)
+            // Emit and save all assistant messages (thinking, tool calls, text - as separate messages)
+            assistantMessages.forEach { message ->
+                emit(message)
+                conversationService.addMessage(conversationId, message)
+            }
 
             if (hasToolCalls) {
                 val approvalResult = toolApprovalService.approve(allToolCalls)
                 if (approvalResult is ApprovalResult.Rejected) {
                     log.warn { "Tool calls rejected: ${approvalResult.reason}" }
-                    val rejectedMessage = assistantMessage.copy(
-                        error = Conversation.Message.GenerationError(
-                            message = "Tool calls rejected: ${approvalResult.reason}",
-                            type = "rejected"
+                    // Find the message containing tool calls
+                    val messageWithToolCalls = assistantMessages.lastOrNull { msg ->
+                        msg.content.any { it is ContentItem.ToolCall }
+                    }
+                    if (messageWithToolCalls != null) {
+                        val rejectedMessage = messageWithToolCalls.copy(
+                            error = Conversation.Message.GenerationError(
+                                message = "Tool calls rejected: ${approvalResult.reason}",
+                                type = "rejected"
+                            )
                         )
-                    )
-                    emit(rejectedMessage)
+                        emit(rejectedMessage)
+                    }
                     break
                 }
 
@@ -336,16 +348,17 @@ class ConversationEngineService(
         }
     }
 
-    private fun createAssistantMessageFromResponse(
+    private fun createAssistantMessagesFromResponse(
         conversationId: Conversation.Id,
         chatResponse: ChatResponse,
-    ): Conversation.Message {
-        val content = mutableListOf<ContentItem>()
+    ): List<Conversation.Message> {
+        val messages = mutableListOf<Conversation.Message>()
         
         log.info { "Processing ${chatResponse.results.size} generations from ChatResponse" }
 
         chatResponse.results.forEachIndexed { index, generation ->
             val assistantMsg = generation.output
+            val content = mutableListOf<ContentItem>()
             
             // Check if this is a thinking block (Spring AI sets "signature" metadata for thinking)
             val metadata = assistantMsg.metadata
@@ -380,8 +393,6 @@ class ConversationEngineService(
                         state = BlockState.COMPLETE
                     )
                 )
-            } else {
-                log.warn { "Generation[$index]: SKIPPED - no thinking, no text, no tool calls" }
             }
 
             assistantMsg.toolCalls.forEach { toolCall ->
@@ -407,17 +418,26 @@ class ConversationEngineService(
                     )
                 )
             }
+            
+            // Create separate message for each generation (Anthropic requires separate messages)
+            if (content.isNotEmpty()) {
+                val message = Conversation.Message(
+                    id = Conversation.Message.Id(uuid7()),
+                    conversationId = conversationId,
+                    role = Conversation.Message.Role.ASSISTANT,
+                    content = content,
+                    createdAt = Clock.System.now()
+                )
+                messages.add(message)
+                log.info { "Created message with ${content.size} content items: ${content.map { it::class.simpleName }}" }
+            } else {
+                log.warn { "Generation[$index]: SKIPPED - no content to add" }
+            }
         }
         
-        log.info { "Created message with ${content.size} content items: ${content.map { it::class.simpleName }}" }
+        log.info { "Created ${messages.size} separate messages from ${chatResponse.results.size} generations" }
 
-        return Conversation.Message(
-            id = Conversation.Message.Id(uuid7()),
-            conversationId = conversationId,
-            role = Conversation.Message.Role.ASSISTANT,
-            content = content,
-            createdAt = Clock.System.now()
-        )
+        return messages
     }
 
     private fun createErrorMessage(
