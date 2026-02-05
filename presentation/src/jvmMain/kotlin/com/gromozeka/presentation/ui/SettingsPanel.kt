@@ -411,8 +411,8 @@ fun SettingsPanel(
                                 TextFieldSettingItem(
                                     label = "Claude Model",
                                     description = "Model name (e.g., claude-sonnet-4-5, claude-opus-4)",
-                                    value = settings.claudeModel ?: "claude-sonnet-4-5",
-                                    placeholder = "claude-sonnet-4-5",
+                                    value = settings.claudeModel,
+                                    placeholder = "claude-haiku-4-5",
                                     onValueChange = {
                                         onSettingsChange(settings.copy(claudeModel = it))
                                     }
