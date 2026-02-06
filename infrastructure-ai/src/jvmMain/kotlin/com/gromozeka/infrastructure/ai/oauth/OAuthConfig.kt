@@ -12,6 +12,8 @@ data class OAuthConfig(
     val tokenUrl: String,
     val scope: String,
     val betaHeaders: String,
+    val toolPrefix: String,
+    val userAgent: String,
     val accessToken: String?,
     val refreshToken: String?,
     val expiresAt: Long?
