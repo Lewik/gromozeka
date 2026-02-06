@@ -29,9 +29,9 @@ class EntityDeduplicationService(
     private val aiProvider: String,
     @Value("\${gromozeka.ai.gemini.model:gemini-2.0-flash-thinking-exp-01-21}")
     private val geminiModel: String,
-    @Value("\${gromozeka.ai.claude.model:claude-haiku-4-5}")
+    @Value("\${gromozeka.ai.claude.model:claude-sonnet-4-5}")
     private val claudeModel: String,
-    @Value("\${gromozeka.ai.anthropic.model:haiku}")
+    @Value("\${gromozeka.ai.anthropic.model:sonnet}")
     private val anthropicModel: String,
     @Value("\${gromozeka.ai.ollama.model:llama3}")
     private val ollamaModel: String

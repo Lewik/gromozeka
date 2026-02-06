@@ -527,7 +527,7 @@ public class ClaudeCodeChatModel implements ChatModel {
     public static final class Builder {
         private ClaudeCodeApi claudeCodeApi;
         private ClaudeCodeChatOptions defaultOptions = ClaudeCodeChatOptions.builder()
-            .model("claude-haiku-4-5")
+            .model("claude-sonnet-4-5")
             .maxTokens(8192)
             .temperature(0.7)
             .internalToolExecutionEnabled(false)

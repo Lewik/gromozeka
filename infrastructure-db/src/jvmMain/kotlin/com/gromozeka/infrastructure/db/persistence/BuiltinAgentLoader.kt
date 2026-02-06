@@ -22,7 +22,7 @@ class BuiltinAgentLoader {
         val name: String,
         val prompts: List<String>,
         val aiProvider: String = "ANTHROPIC",
-        val modelName: String = "claude-haiku-4-5-20251001",
+        val modelName: String = "claude-sonnet-4-5-20250929",
         val tools: List<String> = emptyList(),
         val description: String? = null,
         val createdAt: Instant,

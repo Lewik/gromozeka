@@ -51,7 +51,7 @@ class AgentApplicationService(
             name = name,
             prompts = prompts,
             aiProvider = "ANTHROPIC",  // TODO: make configurable
-            modelName = "claude-haiku-4-5-20251001",  // TODO: make configurable
+            modelName = "claude-sonnet-4-5-20250929",  // TODO: make configurable
             tools = emptyList(),  // TODO: make configurable
             description = description,
             type = type,
