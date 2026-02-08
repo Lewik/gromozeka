@@ -542,6 +542,7 @@ class ConversationEngine(
                 val currentPrompt = Prompt(systemMessages + springHistory, toolOptions)
                 
                 // Call LLM
+                log.info { "Calling LLM: model=$modelName, provider=$provider, iteration=$iteration" }
                 val chatResponse: ChatResponse = try {
                     withContext(Dispatchers.IO) {
                         model.call(currentPrompt)
