@@ -198,6 +198,7 @@ class ConversationEngineService(
 
             val chatResponse: ChatResponse
             try {
+                log.info { "Calling LLM: model=${agent.modelName}, provider=$provider, iteration=$iterationCount" }
                 chatResponse = withContext(Dispatchers.IO) {
                     chatModel.call(currentPrompt)
                 }
