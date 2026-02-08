@@ -73,55 +73,9 @@ fun MessagePanel(viewModel: MessagePanelComponentVM) {
 6. **Build Composables:** Material 3 components matching ViewModel contract
 7. **Verify:** `./gradlew :presentation:build -q`
 
-## Reading ASCII Diagrams
+## ASCII Layout Diagrams
 
-**ComponentVM interfaces in `domain/presentation/desktop/component/` include ASCII layout diagrams.**
-
-These diagrams show:
-- Component hierarchy (parent → child relationships)
-- Layout structure (Row, Column, Box)
-- Key UI elements (buttons, text fields, lists)
-- Relative positioning
-
-**Example ASCII diagram from ComponentVM KDoc:**
-```
-┌─────────────────────────────────┐
-│ ThreadPanel                     │
-│ ┌─────────────────────────────┐ │
-│ │ Header (Row)                │ │
-│ │ [Icon] Thread Name [Button] │ │
-│ └─────────────────────────────┘ │
-│ ┌─────────────────────────────┐ │
-│ │ MessageList (LazyColumn)    │ │
-│ │ - Message 1                 │ │
-│ │ - Message 2                 │ │
-│ │ - Message 3                 │ │
-│ └─────────────────────────────┘ │
-│ ┌─────────────────────────────┐ │
-│ │ InputField (Row)            │ │
-│ │ [TextField] [Send Button]   │ │
-│ └─────────────────────────────┘ │
-└─────────────────────────────────┘
-```
-
-**How to interpret:**
-- **Boxes (┌─┐└─┘)** = Composable boundaries
-- **Hierarchy** = nesting shows parent-child
-- **Row/Column labels** = layout direction
-- **[Brackets]** = interactive elements (buttons, inputs)
-- **List items** = repeated elements (LazyColumn/LazyRow)
-
-**Your task:**
-1. Read diagram to understand visual structure
-2. Map diagram elements to Compose components
-3. Implement layout matching the diagram
-4. Use ViewModel state to populate content
-
-**Why ASCII diagrams matter:**
-- Architect specifies UI structure without writing Compose code
-- You translate specification → implementation
-- Prevents misunderstanding of layout requirements
-- Enables parallel work (Architect designs, you implement)
+ComponentVM KDoc in `domain/presentation/desktop/component/` contains ASCII layout diagrams. Implement Compose layout matching the diagram structure.
 
 ## Module & Scope
 
