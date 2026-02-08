@@ -516,7 +516,15 @@ class ConversationEngine(
                 ?: throw IllegalStateException("Project not found: ${conversation.projectId}")
             
             val provider = AIProvider.valueOf(definition.aiProvider)
-            val model = chatModelProvider.getChatModel(provider, definition.modelName, project.path)
+            
+            // Special case: use Opus for Architect agent
+            val modelName = if (definition.name == "Архитектор" && provider == AIProvider.ANTHROPIC) {
+                "claude-opus-4-6"
+            } else {
+                "claude-sonnet-4-5-20250929"
+            }
+            
+            val model = chatModelProvider.getChatModel(provider, modelName, project.path)
             
             // Assemble system prompts from agent definition
             val systemPrompts = agentDomainService.assembleSystemPrompt(definition, project)

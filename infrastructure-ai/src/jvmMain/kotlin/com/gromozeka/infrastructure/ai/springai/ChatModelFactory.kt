@@ -163,7 +163,7 @@ class ChatModelFactory(
                 val thinkingBudget = 10000
                 val options = AnthropicChatOptions
                     .builder()
-                    .model("claude-sonnet-4-5-20250929")
+                    .model(modelName)
                     // NOTE: temperature is NOT compatible with thinking mode
                     // Using top_p instead (allowed range: 0.95-1.0 when thinking enabled)
                     .topP(0.95)
