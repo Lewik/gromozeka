@@ -66,7 +66,6 @@ fun ApplicationScope.ChatWindow(
     tabPromptService: TabPromptService,
     agentService: AgentDomainService,
     promptService: PromptDomainService,
-    planPanelViewModel: com.gromozeka.presentation.ui.viewmodel.PlanPanelViewModel,
 ) {
     val log = KLoggers.logger("ChatWindow")
     val coroutineScope = rememberCoroutineScope()
@@ -84,7 +83,6 @@ fun ApplicationScope.ChatWindow(
     val currentTab by appViewModel.currentTab.collectAsState()
     var showSettingsPanel by remember { mutableStateOf(false) }
     var showPromptsPanel by remember { mutableStateOf(true) }
-    var showPlansPanel by remember { mutableStateOf(false) }
     var refreshTrigger by remember { mutableStateOf(0) }
 
     var renameDialogOpen by remember { mutableStateOf(false) }
@@ -413,7 +411,6 @@ fun ApplicationScope.ChatWindow(
                                                             } else null,
 
                                                             onShowPromptsPanelChange = { showPromptsPanel = it },
-                                                            onShowPlansPanelChange = { showPlansPanel = it },
 
                                                             isDev = settingsService.mode == AppMode.DEV,
                                                         )
@@ -495,13 +492,6 @@ fun ApplicationScope.ChatWindow(
                                 coroutineScope = coroutineScope,
                                 onOpenTab = createNewSession,
                                 onOpenTabWithMessage = createNewSessionWithMessage
-                            )
-                            
-                            // Plans Panel
-                            com.gromozeka.presentation.ui.plan.PlanPanelComponent(
-                                viewModel = planPanelViewModel,
-                                isVisible = showPlansPanel,
-                                onClose = { showPlansPanel = false }
                             )
                         }
                     }

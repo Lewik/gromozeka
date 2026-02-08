@@ -141,8 +141,7 @@ fun main() {
             loadingViewModel = context.getBean(),
             tabPromptService = context.getBean(),
             agentService = context.getBean(),
-            promptService = context.getBean(),
-            planPanelViewModel = context.getBean()
+            promptService = context.getBean()
         )
 
     } catch (e: Throwable) {
@@ -185,8 +184,7 @@ fun main() {
                         appComponents.loadingViewModel,
                         appComponents.tabPromptService,
                         appComponents.agentService,
-                        appComponents.promptService,
-                        appComponents.planPanelViewModel
+                        appComponents.promptService
                     )
                 }
             }
@@ -217,7 +215,6 @@ data class AppComponents(
     val tabPromptService: TabPromptService,
     val agentService: AgentDomainService,
     val promptService: PromptDomainService,
-    val planPanelViewModel: com.gromozeka.presentation.ui.viewmodel.PlanPanelViewModel,
 )
 
 /**
