@@ -155,9 +155,17 @@ class ConversationEngineService(
             ?: throw IllegalStateException("Conversation not found: $conversationId")
         val project = conversationService.getProject(conversationId)
         val provider = AIProvider.valueOf(agent.aiProvider)
+        
+        // Special case: use Opus for Architect agent
+        val modelName = if (agent.name == "Архитектор" && provider == AIProvider.ANTHROPIC) {
+            "claude-opus-4-6"
+        } else {
+            agent.modelName
+        }
+        
         val chatModel = chatModelProvider.getChatModel(
             provider,
-            agent.modelName,
+            modelName,
             project.path
         )
         // Add user message
@@ -198,7 +206,7 @@ class ConversationEngineService(
 
             val chatResponse: ChatResponse
             try {
-                log.info { "Calling LLM: model=${agent.modelName}, provider=$provider, iteration=$iterationCount" }
+                log.info { "Calling LLM: model=$modelName, provider=$provider, iteration=$iterationCount" }
                 chatResponse = withContext(Dispatchers.IO) {
                     chatModel.call(currentPrompt)
                 }
