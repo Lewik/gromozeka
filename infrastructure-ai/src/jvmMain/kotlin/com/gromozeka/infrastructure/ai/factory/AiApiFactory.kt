@@ -51,12 +51,13 @@ class AiApiFactory(
                 log.info("Creating Anthropic API with Bearer token authentication")
 
                 val restClientBuilder = RestClient.builder()
-                    .requestInterceptor(
-                        com.gromozeka.infrastructure.ai.oauth.AnthropicOAuthRequestInterceptor(
-                            toolPrefix = currentConfig.toolPrefix,
-                            userAgent = currentConfig.userAgent
-                        )
-                    )
+                    // DISABLED: OAuth tool prefix workaround
+//                    .requestInterceptor(
+//                        com.gromozeka.infrastructure.ai.oauth.AnthropicOAuthRequestInterceptor(
+//                            toolPrefix = currentConfig.toolPrefix,
+//                            userAgent = currentConfig.userAgent
+//                        )
+//                    )
                     .requestInterceptor { request, body, execution ->
                         request.headers.remove("x-api-key")
                         request.headers.set("Authorization", "Bearer ${currentConfig.accessToken}")
@@ -64,12 +65,13 @@ class AiApiFactory(
                     }
 
                 val webClientBuilder = WebClient.builder()
-                    .filter(
-                        com.gromozeka.infrastructure.ai.oauth.AnthropicOAuthWebClientFilter(
-                            toolPrefix = currentConfig.toolPrefix,
-                            userAgent = currentConfig.userAgent
-                        )
-                    )
+                    // DISABLED: OAuth tool prefix workaround
+//                    .filter(
+//                        com.gromozeka.infrastructure.ai.oauth.AnthropicOAuthWebClientFilter(
+//                            toolPrefix = currentConfig.toolPrefix,
+//                            userAgent = currentConfig.userAgent
+//                        )
+//                    )
                     .filter { request, next ->
                         val newRequest = ClientRequest.from(request)
                             .headers { headers ->
