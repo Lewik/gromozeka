@@ -24,7 +24,7 @@ data class ToolExecutionResult(
  */
 @Service
 class ParallelToolExecutor(
-    private val toolCallbacks: List<ToolCallback>,
+    private val applicationContext: org.springframework.context.ApplicationContext,
     private val mcpToolProvider: com.gromozeka.domain.service.McpToolProvider,
     private val toolApprovalService: ToolApprovalService,
 ) {
@@ -63,15 +63,23 @@ class ParallelToolExecutor(
         return ToolExecutionResult(results, returnDirect)
     }
 
+    /**
+     * Build callback map dynamically from ApplicationContext.
+     * 
+     * Uses getBeansOfType() to pick up ALL ToolCallback beans including those
+     * registered after initial Spring context creation (via registerSingleton):
+     * - ToolsRegistrationConfig: Tool<*,*> beans (grz_*, stride, memory, web, lsp tools)
+     * - InternalMcpToolsRegistrar: GromozekaMcpTool beans (create_agent, tell_agent, etc.)
+     */
     private fun buildCallbackMap(): Map<String, ToolCallback> {
         val map = mutableMapOf<String, ToolCallback>()
 
-        // Built-in tools
-        toolCallbacks.forEach { callback ->
+        // All registered ToolCallback beans (built-in + internal MCP tools)
+        applicationContext.getBeansOfType(ToolCallback::class.java).values.forEach { callback ->
             map[callback.toolDefinition.name()] = callback
         }
 
-        // MCP tools
+        // External MCP tools from MCP servers
         mcpToolProvider.getToolCallbacks().forEach { callback ->
             map[callback.toolDefinition.name()] = callback
         }

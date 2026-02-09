@@ -112,12 +112,31 @@ class TabViewModel(
     private val _tokenStats = MutableStateFlow<TokenUsageStatistics.ThreadTotals?>(null)
     val tokenStats: StateFlow<TokenUsageStatistics.ThreadTotals?> = _tokenStats.asStateFlow()
 
+    private val _strideEnabled = MutableStateFlow(false)
+    val strideEnabled: StateFlow<Boolean> = _strideEnabled.asStateFlow()
+
     init {
         _uiState.update { it.copy(isWaitingForResponse = false) }
 
         scope.launch {
             loadMessages()
             loadTokenStats()
+            loadStrideEnabled()
+        }
+    }
+
+    private suspend fun loadStrideEnabled() {
+        try {
+            val conversation = conversationService.findById(conversationId)
+            if (conversation != null) {
+                _strideEnabled.value = conversation.strideEnabled
+                _uiState.update { it.copy(strideEnabled = conversation.strideEnabled) }
+                log.debug { "Loaded Stride Engine state for conversation $conversationId: ${conversation.strideEnabled}" }
+            } else {
+                log.warn { "Conversation not found: $conversationId" }
+            }
+        } catch (e: Exception) {
+            log.error(e) { "Failed to load Stride Engine state for conversation $conversationId" }
         }
     }
 
@@ -243,6 +262,26 @@ class TabViewModel(
     fun updateAgent(agent: AgentDefinition) {
         _uiState.update { currentState ->
             currentState.copy(agent = agent)
+        }
+    }
+
+    suspend fun toggleStrideMode() {
+        try {
+            val currentValue = _strideEnabled.value
+            val newValue = !currentValue
+            
+            // Update conversation in repository
+            val updatedConversation = conversationService.updateStrideEnabled(conversationId, newValue)
+            
+            if (updatedConversation != null) {
+                _strideEnabled.value = newValue
+                _uiState.update { it.copy(strideEnabled = newValue) }
+                log.info { "Stride Engine ${if (newValue) "enabled" else "disabled"} for conversation $conversationId" }
+            } else {
+                log.error { "Failed to update Stride Engine state: conversation not found" }
+            }
+        } catch (e: Exception) {
+            log.error(e) { "Failed to toggle Stride Engine for conversation $conversationId" }
         }
     }
 

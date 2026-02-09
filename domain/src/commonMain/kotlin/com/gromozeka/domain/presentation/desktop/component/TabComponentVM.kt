@@ -11,7 +11,7 @@ import kotlinx.coroutines.flow.StateFlow
  * ## UI Layout (Conversation Tab)
  * ```
  * ┌─────────────────────────────────────────────────────────────────┐
- * │ Tab Header: [Project Name] | Agent: [Name] | Tokens: 1.2K       │
+ * │ Tab Header: [Project Name] | Agent: [Name] | [🎯 Stride] | 1.2K │
  * ├─────────────────────────────────────────────────────────────────┤
  * │                                                                 │ ↑
  * │  ┌──────────────────────────────────────────────────────────┐  │ │
@@ -120,6 +120,7 @@ import kotlinx.coroutines.flow.StateFlow
  * @property allMessages All messages in conversation (unfiltered)
  * @property filteredMessages Messages after applying display filters
  * @property isWaitingForResponse Whether AI is currently generating response
+ * @property strideEnabled Whether Stride Engine is active for this conversation (semantic decomposition + step execution)
  * @property tokenStats Token usage statistics (input/output/total tokens)
  * @property toolResultsMap Map of tool call IDs to their results (for lookup)
  * @property availableMessageTags All available message tag definitions
@@ -135,6 +136,7 @@ interface TabComponentVM {
     val allMessages: StateFlow<List<Conversation.Message>>
     val filteredMessages: StateFlow<List<Conversation.Message>>
     val isWaitingForResponse: StateFlow<Boolean>
+    val strideEnabled: StateFlow<Boolean>
     val tokenStats: StateFlow<TokenUsageStatistics.ThreadTotals?>
     val toolResultsMap: StateFlow<Map<String, Conversation.Message.ContentItem.ToolResult>>
     val availableMessageTags: List<MessageTagDefinition>
@@ -215,6 +217,36 @@ interface TabComponentVM {
      * @param customName new custom name (null = use default)
      */
     fun updateCustomName(customName: String?)
+    
+    // Actions - Stride Engine
+    /**
+     * Toggle Stride Engine activation for this conversation.
+     *
+     * When strideEnabled = true:
+     * - First LLM call in next sendMessage MUST use tool_choice = REQUIRED("plan_steps")
+     * - User message decomposed into semantic steps via plan_steps tool
+     * - Execution follows plan step-by-step (ReAct or passthrough per step type)
+     * - LLM calls step_complete, step_failed, ask_user, notify tools to control flow
+     *
+     * When strideEnabled = false:
+     * - Normal conversation mode (direct LLM response)
+     * - No semantic decomposition or step tracking
+     *
+     * State transition behavior:
+     * - Can toggle at any time (no execution state checks)
+     * - Enabling mid-conversation: Stride activates on NEXT user message
+     * - Disabling mid-execution: current plan completes naturally (not aborted)
+     * - Toggle persisted immediately to repository (updateStrideEnabled)
+     *
+     * UI presentation:
+     * - Toggle switch in tab header or settings panel
+     * - Label: "Stride Mode" or "Strider" (short form)
+     * - Tooltip: "Break messages into steps for systematic execution"
+     * - Visual indicator when enabled (badge, color change)
+     *
+     * This is a TRANSACTIONAL operation - updates conversation.strideEnabled in repository.
+     */
+    suspend fun toggleStrideMode()
     
     // Actions - Edit Mode & Selection
     /**
@@ -385,6 +417,7 @@ interface TabComponentVM {
      * @property tabId stable tab identifier for MCP
      * @property parentTabId ID of tab that spawned this tab (null if user-created)
      * @property agent agent handling this conversation
+     * @property strideEnabled whether Stride Engine is active (semantic decomposition + step execution)
      * @property editMode whether bulk editing UI is visible
      * @property selectedMessageIds IDs of messages selected for bulk operations
      * @property collapsedMessageIds IDs of messages with collapsed thinking blocks
@@ -401,6 +434,7 @@ interface TabComponentVM {
         val tabId: String,
         val parentTabId: String?,
         val agent: AgentDefinition,
+        val strideEnabled: Boolean,
         val editMode: Boolean,
         val selectedMessageIds: Set<Conversation.Message.Id>,
         val collapsedMessageIds: Set<Conversation.Message.Id>,

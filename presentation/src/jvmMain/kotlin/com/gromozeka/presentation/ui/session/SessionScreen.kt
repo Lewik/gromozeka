@@ -13,6 +13,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -80,6 +81,7 @@ fun SessionScreen(
     val userInput = uiState.userInput
     val jsonToShow = viewModel.jsonToShow
     val tokenStats by viewModel.tokenStats.collectAsState()
+    val strideEnabled by viewModel.strideEnabled.collectAsState()
     
     // Context percentage calculation (used by Agent button and Send button)
     val contextPercentage = tokenStats?.currentContextSize?.let { currentContext ->
@@ -214,6 +216,29 @@ fun SessionScreen(
                                     Text("$percentage%")
                                 }
                             }
+                        }
+
+                        Spacer(modifier = Modifier.width(8.dp))
+
+                        // Stride Engine toggle
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(horizontal = 8.dp)
+                        ) {
+                            Text(
+                                text = "🎯 Stride",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = if (strideEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Switch(
+                                checked = strideEnabled,
+                                onCheckedChange = {
+                                    coroutineScope.launch {
+                                        viewModel.toggleStrideMode()
+                                    }
+                                }
+                            )
                         }
 
                         Spacer(modifier = Modifier.width(8.dp))

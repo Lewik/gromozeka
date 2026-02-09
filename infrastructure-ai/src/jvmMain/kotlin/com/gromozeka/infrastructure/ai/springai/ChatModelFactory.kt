@@ -81,9 +81,15 @@ class ChatModelFactory(
     ): ChatModel {
         val retryTemplate = RetryTemplate.builder().maxAttempts(3).build()
         val observationRegistry = ObservationRegistry.NOOP
-        val allToolCallbacks = toolCallbacks + mcpToolProvider.getToolCallbacks()
+        
+        // Get tools dynamically from ApplicationContext instead of constructor injection
+        // This ensures we get ALL registered tools including those registered after ChatModelFactory creation
+        val allRegisteredToolCallbacks = applicationContext.getBeansOfType(ToolCallback::class.java).values.toList()
+        val allToolCallbacks = allRegisteredToolCallbacks + mcpToolProvider.getToolCallbacks()
         val allToolNames = allToolCallbacks.map { it.toolDefinition.name() }.toSet()
-
+        
+        log.info("ChatModelFactory.createChatModel: provider=$provider, total tools=${allToolCallbacks.size}")
+        log.info("ChatModelFactory.createChatModel: tool names=${allToolNames.sorted()}")
 
 
         return when (provider) {
@@ -168,10 +174,11 @@ class ChatModelFactory(
                     // Using top_p instead (allowed range: 0.95-1.0 when thinking enabled)
                     .topP(0.95)
                     .maxTokens(64000)
-                    .thinking(
-                        org.springframework.ai.anthropic.api.AnthropicApi.ThinkingType.ENABLED,
-                        thinkingBudget
-                    )
+                    //TODO thinking should be enabled except tool_choice:any
+//                    .thinking(
+//                        org.springframework.ai.anthropic.api.AnthropicApi.ThinkingType.ENABLED,
+//                        thinkingBudget
+//                    )
                     .cacheOptions(
                         AnthropicCacheOptions.builder()
                             .strategy(AnthropicCacheStrategy.CONVERSATION_HISTORY)

@@ -48,6 +48,7 @@ internal object Conversations : Table("conversations") {
     val agentDefinitionId = varchar("agent_definition_id", 255)
     val displayName = varchar("display_name", 255)
     val currentThreadId = varchar("current_thread_id", 255)
+    val strideEnabled = bool("stride_enabled").default(false)
     val createdAt = timestamp("created_at")
     val updatedAt = timestamp("updated_at")
 

@@ -518,6 +518,8 @@ fun AgentConstructorScreen(
                             agentService.createAgent(
                                 name = name,
                                 prompts = selectedPrompts,
+                                aiProvider = "CLAUDE_CODE", // Default provider
+                                modelName = "claude-sonnet-4", // Default model
                                 description = description,
                                 type = AgentDefinition.Type.Inline
                             )

@@ -22,6 +22,7 @@ import kotlinx.serialization.json.JsonElement
  * @property agentDefinitionId agent definition used for this conversation
  * @property displayName human-readable conversation title (can be blank)
  * @property currentThread currently active thread ID (conversation can switch threads)
+ * @property strideEnabled when true, Stride Engine is active (semantic decomposition + step-by-step execution)
  * @property createdAt timestamp when conversation was created
  * @property updatedAt timestamp of last modification
  */
@@ -32,6 +33,7 @@ data class Conversation(
     val agentDefinitionId: AgentDefinition.Id,
     val displayName: String = "",
     val currentThread: Thread.Id,
+    val strideEnabled: Boolean = false,
     val createdAt: Instant,
     val updatedAt: Instant,
 ) {
@@ -518,7 +520,7 @@ data class Conversation(
                 val targetTabId: String
             ) : Instruction() {
                 override val title = "Response Expected"
-                override val description = "Use mcp__gromozeka__tell_agent with target_tab_id: $targetTabId"
+                override val description = "Use tell_agent with target_tab_id: $targetTabId"
                 override fun serializeContent() = "response_expected:$targetTabId"
                 override fun toXmlLine() = "<instruction>response_expected:${title}:${description}</instruction>"
             }

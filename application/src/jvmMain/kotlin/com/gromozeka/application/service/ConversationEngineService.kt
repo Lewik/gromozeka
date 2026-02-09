@@ -58,7 +58,7 @@ class ConversationEngineService(
     private val threadRepository: ThreadRepository,
     private val threadMessageRepository: com.gromozeka.domain.repository.ThreadMessageRepository,
     private val messageConversionService: MessageConversionService,
-    private val toolCallbacks: List<org.springframework.ai.tool.ToolCallback>,
+    private val applicationContext: org.springframework.context.ApplicationContext,
     private val mcpToolProvider: McpToolProvider,
     private val tokenUsageStatisticsRepository: TokenUsageStatisticsRepository,
     private val coroutineScope: CoroutineScope,
@@ -73,6 +73,9 @@ class ConversationEngineService(
     /**
      * Collect all available tools for user-controlled tool execution.
      * Tools are passed in runtime options to ToolCallingManager.
+     * 
+     * Uses dynamic lookup through ApplicationContext to ensure all registered tools are included,
+     * including those registered after ConversationEngineService construction (Stride tools, internal MCP tools).
      */
     private fun collectToolOptions(projectPath: String?, provider: AIProvider): ChatOptions {
         log.debug { "collectToolOptions: provider=$provider" }
@@ -80,18 +83,22 @@ class ConversationEngineService(
         val allCallbacks = mutableListOf<org.springframework.ai.tool.ToolCallback>()
         val allNames = mutableSetOf<String>()
 
-        // Built-in @Bean tools
-        allCallbacks.addAll(toolCallbacks)
-        allNames.addAll(toolCallbacks.map { it.toolDefinition.name() })
-        log.debug { "Built-in @Bean tools: ${toolCallbacks.size}" }
+        // Get ALL registered ToolCallback beans dynamically from ApplicationContext
+        // This includes: built-in tools, Stride tools, internal MCP tools
+        // (registered via @Bean methods, ToolsRegistrationConfig, InternalMcpToolsRegistrar)
+        val registeredCallbacks = applicationContext.getBeansOfType(org.springframework.ai.tool.ToolCallback::class.java).values.toList()
+        allCallbacks.addAll(registeredCallbacks)
+        allNames.addAll(registeredCallbacks.map { it.toolDefinition.name() })
+        log.info { "Registered ToolCallback beans: ${registeredCallbacks.size}" }
 
-        // MCP tools
+        // External MCP tools from MCP servers
         val mcpCallbacks = mcpToolProvider.getToolCallbacks()
         allCallbacks.addAll(mcpCallbacks)
         allNames.addAll(mcpCallbacks.map { it.toolDefinition.name() })
-        log.debug { "MCP tools: ${mcpCallbacks.size}" }
+        log.info { "External MCP tools: ${mcpCallbacks.size}" }
 
-        log.debug { "Total tools for runtime options: ${allCallbacks.size}" }
+        log.info { "Total tools for runtime options: ${allCallbacks.size}" }
+        log.info { "Tool names: ${allNames.sorted()}" }
 
         // Use Anthropic-specific options for caching support
         return when (provider) {
@@ -189,20 +196,39 @@ class ConversationEngineService(
 
         val finalMessages = conversationService.loadCurrentMessages(conversationId)
         val springHistory = messageConversionService.convertHistoryToSpringAI(finalMessages)
-        val toolOptions = collectToolOptions(project.path, provider)
+        val baseToolOptions = collectToolOptions(project.path, provider)
 
-        var currentPrompt = Prompt(systemMessages + springHistory, toolOptions)
         var iterationCount = 0
         val maxIterations = 200
 
         while (iterationCount < maxIterations) {
             iterationCount++
 
-            if (iterationCount > 1) {
-                val currentMessages = conversationService.loadCurrentMessages(conversationId)
-                val currentSpringHistory = messageConversionService.convertHistoryToSpringAI(currentMessages)
-                currentPrompt = Prompt(systemMessages + currentSpringHistory, toolOptions)
+            // Stride Engine: force plan_steps tool on first iteration when enabled
+            val toolOptions = if (conversation.strideEnabled && iterationCount == 1) {
+                log.info { "Stride Engine: forcing plan_steps tool for first iteration" }
+                when (baseToolOptions) {
+                    is AnthropicChatOptions -> {
+                        // Create copy to avoid mutating baseToolOptions
+                        baseToolOptions.copy().apply {
+                            toolChoice = AnthropicApi.ToolChoiceTool("plan_steps")
+                        }
+                    }
+                    is OpenAiChatOptions -> {
+                        // OpenAI uses toolChoice string: "required" with specific tool in toolCallbacks
+                        // For now, just log warning - OpenAI stride support needs separate implementation
+                        log.warn { "Stride Engine: OpenAI provider not yet supported for forced tool choice" }
+                        baseToolOptions
+                    }
+                    else -> baseToolOptions
+                }
+            } else {
+                baseToolOptions
             }
+
+            val currentMessages = if (iterationCount == 1) finalMessages else conversationService.loadCurrentMessages(conversationId)
+            val currentSpringHistory = messageConversionService.convertHistoryToSpringAI(currentMessages)
+            val currentPrompt = Prompt(systemMessages + currentSpringHistory, toolOptions)
 
             val chatResponse: ChatResponse
             try {
@@ -312,7 +338,12 @@ class ConversationEngineService(
                 }
 
                 val toolContext = ToolContext(
-                    mapOf("projectPath" to project.path)
+                    mapOf(
+                        "projectPath" to project.path,
+                        "conversationId" to conversationId.value,
+                        "aiProvider" to provider.name,
+                        "modelName" to modelName
+                    )
                 )
                 val executionResult = parallelToolExecutor.executeParallel(
                     toolCalls = allToolCalls,

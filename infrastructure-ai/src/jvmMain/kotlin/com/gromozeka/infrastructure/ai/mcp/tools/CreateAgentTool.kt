@@ -35,6 +35,8 @@ class CreateAgentTool(
         val agent_name: String,
         val agent_prompt: String? = null,
         val expects_response: Boolean = false,
+        val ai_provider: String = "ANTHROPIC",
+        val model_name: String = "claude-3-5-sonnet-20241022",
     )
 
     override val definition = Tool(
@@ -72,6 +74,16 @@ class CreateAgentTool(
                     put("description", "Whether parent agent expects a response back from the created agent (default: false)")
                     put("default", false)
                 })
+                put("ai_provider", buildJsonObject {
+                    put("type", "string")
+                    put("description", "AI provider identifier (e.g., 'ANTHROPIC', 'OPENAI', 'GEMINI')")
+                    put("default", "ANTHROPIC")
+                })
+                put("model_name", buildJsonObject {
+                    put("type", "string")
+                    put("description", "Model identifier (e.g., 'claude-3-5-sonnet-20241022', 'gpt-4')")
+                    put("default", "claude-3-5-sonnet-20241022")
+                })
             },
             required = listOf(
                 "project_path",
@@ -94,6 +106,8 @@ class CreateAgentTool(
             agentService.createAgent(
                 name = input.agent_name,
                 prompts = listOf(inlinePrompt.id),
+                aiProvider = input.ai_provider,
+                modelName = input.model_name,
                 description = "Created via MCP from parent tab: ${input.parent_tab_id}",
                 type = AgentDefinition.Type.Inline
             )

@@ -33,6 +33,9 @@ class AgentApplicationService(
      *
      * @param name agent role or display name (e.g., "Code Reviewer")
      * @param prompts ordered list of prompt IDs defining agent behavior
+     * @param aiProvider AI provider identifier (e.g., "ANTHROPIC", "OPENAI", "GEMINI")
+     * @param modelName model identifier (e.g., "claude-3-5-sonnet-20241022", "gpt-4")
+     * @param tools list of tool names available to this agent
      * @param description optional human-readable description of capabilities
      * @param type agent scope type (builtin, global, or project-specific)
      * @return created agent
@@ -41,6 +44,9 @@ class AgentApplicationService(
     override suspend fun createAgent(
         name: String,
         prompts: List<com.gromozeka.domain.model.Prompt.Id>,
+        aiProvider: String,
+        modelName: String,
+        tools: List<String>,
         description: String?,
         type: AgentDefinition.Type,
     ): AgentDefinition {
@@ -50,9 +56,9 @@ class AgentApplicationService(
             id = AgentDefinition.Id(uuid7()),
             name = name,
             prompts = prompts,
-            aiProvider = "ANTHROPIC",  // TODO: make configurable
-            modelName = "claude-sonnet-4-5-20250929",  // TODO: make configurable
-            tools = emptyList(),  // TODO: make configurable
+            aiProvider = aiProvider,
+            modelName = modelName,
+            tools = tools,
             description = description,
             type = type,
             createdAt = now,

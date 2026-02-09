@@ -94,4 +94,31 @@ interface ConversationRepository {
      * @throws IllegalStateException if conversation doesn't exist
      */
     suspend fun updateAgentDefinition(id: Conversation.Id, agentDefinitionId: com.gromozeka.domain.model.AgentDefinition.Id)
+
+    /**
+     * Updates Stride Engine activation state.
+     *
+     * When strideEnabled = true:
+     * - First LLM call in sendMessage MUST use tool_choice = REQUIRED("plan_steps")
+     * - User message is decomposed into semantic steps via plan_steps tool
+     * - Execution follows plan via step-by-step ReAct/passthrough
+     *
+     * When strideEnabled = false:
+     * - Normal conversation mode (direct LLM response)
+     * - No semantic decomposition or step tracking
+     *
+     * State transition constraints:
+     * - Can toggle at any time (no execution state checks)
+     * - Enabling mid-conversation starts Stride on NEXT user message
+     * - Disabling mid-execution does NOT abort current plan (plan completes naturally)
+     *
+     * This operation is NOT transactional - caller must handle transaction boundaries.
+     *
+     * Side effect: Updates conversation.updatedAt to current timestamp.
+     *
+     * @param id conversation to update
+     * @param enabled true to activate Stride Engine, false for normal mode
+     * @throws IllegalStateException if conversation doesn't exist
+     */
+    suspend fun updateStrideEnabled(id: Conversation.Id, enabled: Boolean)
 }

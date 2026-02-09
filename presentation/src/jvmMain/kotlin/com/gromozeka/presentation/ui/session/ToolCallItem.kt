@@ -145,7 +145,7 @@ private fun buildDetailedParameters(toolName: String, input: JsonElement, projec
                 val to = json["to"]?.jsonPrimitive?.content ?: ""
                 "$from → $relation → $to"
             }
-            "mcp__gromozeka__create_agent" -> {
+            "create_agent" -> {
                 val agentName = json["agent_name"]?.jsonPrimitive?.content ?: ""
                 val agentProjectPath = json["project_path"]?.jsonPrimitive?.content ?: ""
                 val initialMessage = json["initial_message"]?.jsonPrimitive?.content
@@ -156,7 +156,7 @@ private fun buildDetailedParameters(toolName: String, input: JsonElement, projec
                     initialMessage?.let { append("\nInitial message: ${it.take(100)}${if (it.length > 100) "..." else ""}") }
                 }
             }
-            "mcp__gromozeka__tell_agent" -> {
+            "tell_agent" -> {
                 val message = json["message"]?.jsonPrimitive?.content ?: ""
                 val targetTabId = json["target_tab_id"]?.jsonPrimitive?.content
                 
@@ -165,19 +165,19 @@ private fun buildDetailedParameters(toolName: String, input: JsonElement, projec
                     append("Message: $message")
                 }
             }
-            "mcp__gromozeka__switch_tab" -> {
+            "switch_tab" -> {
                 val tabId = json["tab_id"]?.jsonPrimitive?.content ?: ""
                 "Tab ID: $tabId"
             }
-            "mcp__gromozeka__list_contexts" -> {
+            "list_contexts" -> {
                 val contextProjectPath = json["project_path"]?.jsonPrimitive?.content
                 contextProjectPath?.let { "Project: ${formatPath(it, projectPath)}" } ?: "All contexts"
             }
-            "mcp__gromozeka__delete_context" -> {
+            "delete_context" -> {
                 val contextName = json["context_name"]?.jsonPrimitive?.content ?: ""
                 "Context: $contextName"
             }
-            "mcp__gromozeka__save_contexts" -> {
+            "save_contexts" -> {
                 "Saving extracted contexts"
             }
             else -> json.toString()
@@ -202,15 +202,15 @@ private fun getToolDisplayName(toolName: String): String = when (toolName) {
     "update_memory_object" -> "Update Memory Object"
     "invalidate_memory_link" -> "Invalidate Memory Link"
     "delete_memory_object" -> "Delete Memory Object"
-    "mcp__gromozeka__create_agent" -> "Create Agent"
-    "mcp__gromozeka__tell_agent" -> "Tell Agent"
-    "mcp__gromozeka__switch_tab" -> "Switch Tab"
-    "mcp__gromozeka__list_tabs" -> "List Tabs"
-    "mcp__gromozeka__list_contexts" -> "List Contexts"
-    "mcp__gromozeka__extract_contexts" -> "Extract Contexts"
-    "mcp__gromozeka__save_contexts" -> "Save Contexts"
-    "mcp__gromozeka__delete_context" -> "Delete Context"
-    "mcp__gromozeka__hello_world" -> "Test"
+    "create_agent" -> "Create Agent"
+    "tell_agent" -> "Tell Agent"
+    "switch_tab" -> "Switch Tab"
+    "list_tabs" -> "List Tabs"
+    "list_contexts" -> "List Contexts"
+    "extract_contexts" -> "Extract Contexts"
+    "save_contexts" -> "Save Contexts"
+    "delete_context" -> "Delete Context"
+    "hello_world" -> "Test"
     else -> toolName
 }
 
@@ -229,15 +229,15 @@ private fun getToolIcon(toolName: String): ImageVector = when (toolName) {
     "update_memory_object" -> Icons.Default.Psychology
     "invalidate_memory_link" -> Icons.Default.Psychology
     "delete_memory_object" -> Icons.Default.Psychology
-    "mcp__gromozeka__create_agent" -> Icons.Default.DeveloperBoard
-    "mcp__gromozeka__tell_agent" -> Icons.Default.DeveloperBoard
-    "mcp__gromozeka__switch_tab" -> Icons.Default.Tab
-    "mcp__gromozeka__list_tabs" -> Icons.Default.ViewList
-    "mcp__gromozeka__list_contexts" -> Icons.Default.ListAlt
-    "mcp__gromozeka__extract_contexts" -> Icons.Default.AutoFixHigh
-    "mcp__gromozeka__save_contexts" -> Icons.Default.Save
-    "mcp__gromozeka__delete_context" -> Icons.Default.DeleteOutline
-    "mcp__gromozeka__hello_world" -> Icons.Default.BugReport
+    "create_agent" -> Icons.Default.DeveloperBoard
+    "tell_agent" -> Icons.Default.DeveloperBoard
+    "switch_tab" -> Icons.Default.Tab
+    "list_tabs" -> Icons.Default.ViewList
+    "list_contexts" -> Icons.Default.ListAlt
+    "extract_contexts" -> Icons.Default.AutoFixHigh
+    "save_contexts" -> Icons.Default.Save
+    "delete_context" -> Icons.Default.DeleteOutline
+    "hello_world" -> Icons.Default.BugReport
     else -> Icons.Default.Build
 }
 
@@ -255,8 +255,8 @@ private fun getToolSecondaryIcon(toolName: String): ImageVector? = when (toolNam
     "update_memory_object" -> Icons.Default.ArrowBack
     "invalidate_memory_link" -> Icons.Default.LinkOff
     "delete_memory_object" -> Icons.Default.Close
-    "mcp__gromozeka__create_agent" -> Icons.Default.Add
-    "mcp__gromozeka__tell_agent" -> Icons.Default.ArrowBack
+    "create_agent" -> Icons.Default.Add
+    "tell_agent" -> Icons.Default.ArrowBack
     else -> null
 }
 
@@ -363,26 +363,26 @@ private fun extractKeyParameters(toolName: String, input: JsonElement, projectPa
                 val to = json["to"]?.jsonPrimitive?.content ?: ""
                 "$from → $relation → $to"
             }
-            "mcp__gromozeka__create_agent" -> {
+            "create_agent" -> {
                 val agentName = json["agent_name"]?.jsonPrimitive?.content ?: ""
                 val projectPath = json["project_path"]?.jsonPrimitive?.content ?: ""
                 "$agentName (${projectPath.substringAfterLast('/')})"
             }
-            "mcp__gromozeka__tell_agent" -> {
+            "tell_agent" -> {
                 val message = json["message"]?.jsonPrimitive?.content ?: ""
                 if (message.length > 50) message.take(47) + "..." else message
             }
-            "mcp__gromozeka__switch_tab" -> {
+            "switch_tab" -> {
                 val tabId = json["tab_id"]?.jsonPrimitive?.content ?: ""
                 "Tab #${tabId.take(8)}"
             }
-            "mcp__gromozeka__list_contexts" -> {
+            "list_contexts" -> {
                 json["project_path"]?.jsonPrimitive?.content?.substringAfterLast('/') ?: "all"
             }
-            "mcp__gromozeka__delete_context" -> {
+            "delete_context" -> {
                 json["context_name"]?.jsonPrimitive?.content ?: ""
             }
-            "mcp__gromozeka__save_contexts" -> {
+            "save_contexts" -> {
                 "XML contexts"
             }
             else -> ""

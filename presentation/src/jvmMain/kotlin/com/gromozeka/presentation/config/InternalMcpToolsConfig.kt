@@ -90,7 +90,7 @@ class InternalMcpToolsRegistrar(
                 }
 
                 return object : ToolDefinition {
-                    override fun name(): String = "mcp__gromozeka__${mcpTool.definition.name}"
+                    override fun name(): String = mcpTool.definition.name
                     override fun description(): String = mcpTool.definition.description ?: ""
                     override fun inputSchema(): String = inputSchemaJson
                 }
