@@ -223,10 +223,10 @@ interface TabComponentVM {
      * Toggle Stride Engine activation for this conversation.
      *
      * When strideEnabled = true:
-     * - First LLM call in next sendMessage MUST use tool_choice = REQUIRED("plan_steps")
-     * - User message decomposed into semantic steps via plan_steps tool
-     * - Execution follows plan step-by-step (ReAct or passthrough per step type)
-     * - LLM calls step_complete, step_failed, ask_user, notify tools to control flow
+     * - First LLM call in next sendMessage MUST use tool_choice = REQUIRED("create_plan")
+     * - User message decomposed into semantic steps via create_plan tool
+     * - Execution follows plan step-by-step
+     * - LLM calls step_complete, update_plan, request_user_input, notify tools to control flow
      *
      * When strideEnabled = false:
      * - Normal conversation mode (direct LLM response)

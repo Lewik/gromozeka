@@ -5,6 +5,7 @@ import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.Conversation.Message.BlockState
 import com.gromozeka.domain.model.Conversation.Message.ContentItem
+import com.gromozeka.domain.model.Plan
 import com.gromozeka.domain.model.TokenUsageStatistics
 import com.gromozeka.domain.service.AgentDomainService
 import com.gromozeka.domain.service.ConversationDomainService
@@ -66,7 +67,9 @@ class ConversationEngineService(
     private val knowledgeGraphService: com.gromozeka.domain.service.KnowledgeGraphService?,
     private val toolCallPairingService: ToolCallPairingService,
     private val toolCallSequenceFixerService: ToolCallSequenceFixerService,
-    private val settingsProvider: com.gromozeka.domain.service.SettingsProvider
+    private val settingsProvider: com.gromozeka.domain.service.SettingsProvider,
+    private val strideEngineService: com.gromozeka.domain.service.StrideEngineService,
+    private val planRepository: com.gromozeka.domain.repository.PlanRepository
 ) {
     private val log = KLoggers.logger(this)
 
@@ -200,34 +203,131 @@ class ConversationEngineService(
 
         var iterationCount = 0
         val maxIterations = 200
+        val maxStrideIterations = 50 // Separate limit for Stride mode to prevent infinite loops
 
         while (iterationCount < maxIterations) {
             iterationCount++
 
-            // Stride Engine: force plan_steps tool on first iteration when enabled
-            val toolOptions = if (conversation.strideEnabled && iterationCount == 1) {
-                log.info { "Stride Engine: forcing plan_steps tool for first iteration" }
-                when (baseToolOptions) {
-                    is AnthropicChatOptions -> {
-                        // Create copy to avoid mutating baseToolOptions
-                        baseToolOptions.copy().apply {
-                            toolChoice = AnthropicApi.ToolChoiceTool("plan_steps")
+            // Stride Engine: Domain-Driven State Machine
+            // Check active plan state BEFORE each LLM call to determine tool_choice
+            val activePlan = if (conversation.strideEnabled) {
+                strideEngineService.findActivePlan(conversationId)
+            } else {
+                null
+            }
+
+            // Stride Engine: Force tool execution based on plan state (not iteration count)
+            // Three states: PLANNING (no plans yet), STEPPING (active plan), NORMAL (plan completed)
+            val hasCompletedPlans = if (conversation.strideEnabled && activePlan == null) {
+                planRepository.findByConversationId(conversationId).isNotEmpty()
+            } else false
+
+            val toolOptions = when {
+                // Plan completed → normal mode (LLM decides, no forced tools)
+                conversation.strideEnabled && activePlan == null && hasCompletedPlans -> {
+                    log.info { "Stride Engine: plan completed, switching to normal mode" }
+                    baseToolOptions
+                }
+
+                // No plans at all → force create_plan tool
+                conversation.strideEnabled && activePlan == null -> {
+                    log.info { "Stride Engine: PLANNING state - forcing create_plan tool" }
+                    when (baseToolOptions) {
+                        is AnthropicChatOptions -> {
+                            baseToolOptions.copy().apply {
+                                toolChoice = AnthropicApi.ToolChoiceTool("create_plan")
+                            }
+                        }
+                        is OpenAiChatOptions -> {
+                            // OpenAI: tool_choice = "required" forces ANY tool, not specific one
+                            // Need to filter toolCallbacks to only create_plan
+                            log.warn { "Stride Engine: OpenAI forced tool choice not yet fully supported" }
+                            baseToolOptions.copy().apply {
+                                // This forces ANY tool, not specifically create_plan
+                                // TODO: Filter toolCallbacks to only include create_plan
+                            }
+                        }
+                        else -> {
+                            log.warn { "Stride Engine: Provider ${provider} may not support forced tool choice" }
+                            baseToolOptions
                         }
                     }
-                    is OpenAiChatOptions -> {
-                        // OpenAI uses toolChoice string: "required" with specific tool in toolCallbacks
-                        // For now, just log warning - OpenAI stride support needs separate implementation
-                        log.warn { "Stride Engine: OpenAI provider not yet supported for forced tool choice" }
-                        baseToolOptions
-                    }
-                    else -> baseToolOptions
                 }
-            } else {
-                baseToolOptions
+                
+                // Plan active → force ANY tool (keep stepping until plan completes)
+                conversation.strideEnabled && activePlan != null -> {
+                    log.info { "Stride Engine: STEPPING state - plan ${activePlan.id} active, forcing tool execution" }
+                    
+                    // Check iteration limit for Stride mode
+                    if (iterationCount > maxStrideIterations) {
+                        log.error { "Stride Engine: max iterations ($maxStrideIterations) exceeded with active plan ${activePlan.id}" }
+                        try {
+                            planRepository.updateStatus(activePlan.id, Plan.Status.FAILED)
+                            log.info { "Stride Engine: marked plan ${activePlan.id} as FAILED due to max iterations" }
+                        } catch (e: Exception) {
+                            log.error(e) { "Failed to mark plan as failed: ${e.message}" }
+                        }
+                        break
+                    }
+                    
+                    when (baseToolOptions) {
+                        is AnthropicChatOptions -> {
+                            baseToolOptions.copy().apply {
+                                toolChoice = AnthropicApi.ToolChoiceAny() // Force ANY tool
+                            }
+                        }
+                        is OpenAiChatOptions -> {
+                            baseToolOptions.copy().apply {
+                                // OpenAI: tool_choice = "required" forces tool execution
+                                // Spring AI doesn't expose this directly, using toolChoice field
+                                // TODO: Verify OpenAI compatibility
+                            }
+                        }
+                        else -> {
+                            log.warn { "Stride Engine: Provider ${provider} may not support forced ANY tool choice" }
+                            baseToolOptions
+                        }
+                    }
+                }
+                
+                // Normal mode (no Stride) → auto (LLM decides)
+                else -> baseToolOptions
             }
 
             val currentMessages = if (iterationCount == 1) finalMessages else conversationService.loadCurrentMessages(conversationId)
-            val currentSpringHistory = messageConversionService.convertHistoryToSpringAI(currentMessages)
+            
+            // Stride Engine: Add PLANNING instruction to last USER message (only if no plans exist yet)
+            val messagesWithStrideInstruction = if (conversation.strideEnabled && activePlan == null && !hasCompletedPlans && iterationCount == 1) {
+                log.info { "Stride Engine: Adding PLANNING instruction to user message" }
+                
+                // Find last USER message
+                val lastUserMessageIndex = currentMessages.indexOfLast { it.role == Conversation.Message.Role.USER }
+                
+                if (lastUserMessageIndex >= 0) {
+                    val lastUserMessage = currentMessages[lastUserMessageIndex]
+                    val planningInstruction = Conversation.Message.Instruction.UserInstruction(
+                        id = "stride_planning",
+                        title = "Stride Planning",
+                        description = "Create execution plan by calling create_plan tool"
+                    )
+                    
+                    // Add instruction to message
+                    val modifiedMessage = lastUserMessage.copy(
+                        instructions = lastUserMessage.instructions + planningInstruction
+                    )
+                    
+                    // Replace in list
+                    currentMessages.toMutableList().apply {
+                        set(lastUserMessageIndex, modifiedMessage)
+                    }
+                } else {
+                    currentMessages
+                }
+            } else {
+                currentMessages
+            }
+            
+            val currentSpringHistory = messageConversionService.convertHistoryToSpringAI(messagesWithStrideInstruction)
             val currentPrompt = Prompt(systemMessages + currentSpringHistory, toolOptions)
 
             val chatResponse: ChatResponse
@@ -253,6 +353,32 @@ class ConversationEngineService(
 
             val allToolCalls = chatResponse.results.flatMap { it.output.toolCalls }
             val hasToolCalls = chatResponse.hasToolCalls()
+
+            // Stride Engine: Violation Detection
+            // If plan is ACTIVE but LLM didn't call any tools → protocol violation
+            if (!hasToolCalls && activePlan != null) {
+                log.error { 
+                    "STRIDE VIOLATION: Plan ${activePlan.id} is ACTIVE but LLM response contains no tool calls. " +
+                    "This violates Stride Engine protocol (tool_choice should force tool execution). " +
+                    "Marking plan as FAILED."
+                }
+                try {
+                    planRepository.updateStatus(activePlan.id, Plan.Status.FAILED)
+                    
+                    // Emit error message to user
+                    val violationMessage = createErrorMessage(
+                        conversationId,
+                        "Stride Engine protocol violation: Plan execution interrupted unexpectedly. " +
+                        "The AI model stopped executing steps without properly completing the plan.",
+                        "stride_violation"
+                    )
+                    emit(violationMessage)
+                    conversationService.addMessage(conversationId, violationMessage)
+                } catch (e: Exception) {
+                    log.error(e) { "Failed to handle Stride violation: ${e.message}" }
+                }
+                break
+            }
 
             val assistantMessages = createAssistantMessagesFromResponse(conversationId, chatResponse)
 
@@ -337,10 +463,12 @@ class ConversationEngineService(
                     break
                 }
 
+                // Use activePlan from loop scope (already fetched at iteration start)
                 val toolContext = ToolContext(
                     mapOf(
                         "projectPath" to project.path,
                         "conversationId" to conversationId.value,
+                        "planId" to activePlan?.id?.value,
                         "aiProvider" to provider.name,
                         "modelName" to modelName
                     )
@@ -436,6 +564,9 @@ class ConversationEngineService(
             }
 
             assistantMsg.toolCalls.forEach { toolCall ->
+                // Log tool call from LLM for debugging
+                log.info { "LLM tool call: ${toolCall.name()}, arguments: ${toolCall.arguments()}" }
+                
                 val input = try {
                     Json.parseToJsonElement(toolCall.arguments())
                 } catch (e: Exception) {

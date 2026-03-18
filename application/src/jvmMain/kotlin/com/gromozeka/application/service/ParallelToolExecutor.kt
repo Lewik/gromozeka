@@ -124,10 +124,11 @@ class ParallelToolExecutor(
                 )
 
             // Validate JSON arguments before execution
+            val arguments = toolCall.arguments()
             try {
-                kotlinx.serialization.json.Json.parseToJsonElement(toolCall.arguments())
+                kotlinx.serialization.json.Json.parseToJsonElement(arguments)
             } catch (e: Exception) {
-                log.error(e) { "Invalid JSON arguments for $toolName: ${toolCall.arguments()}" }
+                log.error(e) { "Invalid JSON arguments for $toolName: $arguments" }
                 return ContentItem.ToolResult(
                     toolUseId = toolId,
                     toolName = toolName,
@@ -138,9 +139,17 @@ class ParallelToolExecutor(
                 )
             }
 
+            // Log tool call arguments for debugging
+            log.info { "Executing tool: $toolName with arguments: $arguments" }
+
             // Execute on IO dispatcher (blocking call)
             val result = withContext(Dispatchers.IO) {
-                callback.call(toolCall.arguments(), toolContext)
+                try {
+                    callback.call(arguments, toolContext)
+                } catch (e: Exception) {
+                    log.error(e) { "Tool execution error for $toolName with arguments: $arguments" }
+                    throw e
+                }
             }
 
             log.debug { "Tool $toolName completed successfully" }

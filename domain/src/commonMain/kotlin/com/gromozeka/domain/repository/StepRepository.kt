@@ -49,7 +49,7 @@ interface StepRepository {
      * Adds dependency relationship between steps.
      *
      * Creates (from)-[:DEPENDS_ON]->(to) relationship.
-     * Used for execution ordering and cascading invalidation.
+     * Used for execution ordering.
      *
      * This is a transactional operation.
      *
@@ -117,28 +117,10 @@ interface StepRepository {
     suspend fun findDependentSteps(stepId: Step.Id): List<Step>
 
     /**
-     * Finds all transitive dependents (cascading invalidation).
-     *
-     * Traverses DEPENDS_ON relationships recursively to find entire dependency chain.
-     * Returns all steps that directly or indirectly depend on given step.
-     *
-     * Example:
-     * ```
-     * A → B → C
-     *   → D
-     * ```
-     * findTransitiveDependents(A) returns [B, C, D]
-     *
-     * @param stepId step identifier
-     * @return list of all transitive dependents (empty if none)
-     */
-    suspend fun findTransitiveDependents(stepId: Step.Id): List<Step>
-
-    /**
      * Updates step status.
      *
      * Updates status and sets completedAt if transitioning to terminal state
-     * (COMPLETED, FAILED, INVALIDATED).
+     * (COMPLETED, FAILED).
      *
      * This is a transactional operation.
      *
@@ -151,13 +133,13 @@ interface StepRepository {
     /**
      * Updates step result.
      *
-     * Stores execution result summary (brief, for graph queries).
+     * Stores execution result.
      * Full execution trace is in Messages (separate from graph).
      *
      * This is a transactional operation.
      *
      * @param id step identifier
-     * @param result execution result summary
+     * @param result execution result
      * @throws StepNotFoundException if step not found
      */
     suspend fun updateResult(id: Step.Id, result: String)
@@ -171,9 +153,26 @@ interface StepRepository {
      *
      * @param id step identifier
      * @param status final status (COMPLETED or FAILED)
-     * @param result execution result summary
+     * @param result execution result
      * @throws StepNotFoundException if step not found
      * @throws IllegalArgumentException if status is not terminal
      */
     suspend fun complete(id: Step.Id, status: Step.Status, result: String)
+
+    /**
+     * Updates multiple steps in batch.
+     *
+     * Efficient for update_plan operations where LLM modifies multiple steps.
+     *
+     * Only PENDING and IN_PROGRESS steps can be modified.
+     * COMPLETED and FAILED steps are immutable.
+     *
+     * This is a transactional operation.
+     *
+     * @param steps updated steps
+     * @return updated steps
+     * @throws StepNotFoundException if any step not found
+     * @throws IllegalStateException if trying to modify COMPLETED/FAILED step
+     */
+    suspend fun updateBatch(steps: List<Step>): List<Step>
 }

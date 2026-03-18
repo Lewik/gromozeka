@@ -49,9 +49,9 @@ import org.springframework.ai.chat.model.ToolContext
  * - "Gathering context: reading 3 related files"
  *
  * **Do NOT call if:**
- * - Need user decision → use `ask_user`
+ * - Need user decision → use `request_user_input`
  * - Step completed → use `step_complete`
- * - Step failed → use `step_failed`
+ * - Step failed → use `step_complete` with status="fail"
  * - Message is critical error
  *
  * # Parameters
@@ -106,7 +106,7 @@ import org.springframework.ai.chat.model.ToolContext
  * - Step execution continues without interruption
  *
  * **State preservation:**
- * - Step.status remains unchanged (typically EXECUTING)
+ * - Step.status remains unchanged (typically IN_PROGRESS)
  * - No Neo4j state modification occurs
  * - Tool call completes synchronously
  *
@@ -135,7 +135,7 @@ import org.springframework.ai.chat.model.ToolContext
  * **Verification:**
  * - Verification status is communicated
  * - Success/warning levels indicate outcome
- * - Critical issues escalate to ask_user
+ * - Critical issues escalate to request_user_input
  */
 interface NotifyTool : Tool<NotifyRequest, NotifyResponse> {
     override val name: String get() = "notify"

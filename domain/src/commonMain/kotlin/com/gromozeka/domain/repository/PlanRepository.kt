@@ -16,7 +16,7 @@ interface PlanRepository {
     /**
      * Creates new execution plan.
      *
-     * Creates (Plan) node in Neo4j with initial status EXECUTING.
+     * Creates (Plan) node in Neo4j with initial status ACTIVE.
      *
      * This is a transactional operation.
      *
@@ -45,14 +45,18 @@ interface PlanRepository {
     suspend fun findByConversationId(conversationId: Conversation.Id): List<Plan>
 
     /**
-     * Finds currently executing plan for conversation.
+     * Finds all active plans for conversation.
      *
-     * Returns most recent plan with status EXECUTING.
+     * Filters by status ACTIVE in database. Returns all matches
+     * ordered by createdAt descending (newest first).
+     *
+     * Normally at most one active plan should exist per conversation.
+     * Multiple results indicate data corruption — caller should guard against this.
      *
      * @param conversationId conversation identifier
-     * @return executing plan if found, null if no executing plans
+     * @return list of active plans (empty if none)
      */
-    suspend fun findExecutingPlan(conversationId: Conversation.Id): Plan?
+    suspend fun findActivePlans(conversationId: Conversation.Id): List<Plan>
 
     /**
      * Updates plan status.

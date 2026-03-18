@@ -99,9 +99,9 @@ interface ConversationRepository {
      * Updates Stride Engine activation state.
      *
      * When strideEnabled = true:
-     * - First LLM call in sendMessage MUST use tool_choice = REQUIRED("plan_steps")
-     * - User message is decomposed into semantic steps via plan_steps tool
-     * - Execution follows plan via step-by-step ReAct/passthrough
+     * - First LLM call in sendMessage MUST use tool_choice = REQUIRED("create_plan")
+     * - User message is decomposed into semantic steps via create_plan tool
+     * - Execution follows plan via step-by-step execution
      *
      * When strideEnabled = false:
      * - Normal conversation mode (direct LLM response)

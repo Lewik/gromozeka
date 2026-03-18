@@ -24,7 +24,6 @@ class Neo4jStepRepository(
                 type: ${'$'}type,
                 certainty: ${'$'}certainty,
                 entities: ${'$'}entities,
-                meta: ${'$'}meta,
                 position: ${'$'}position,
                 status: ${'$'}status,
                 result: ${'$'}result,
@@ -44,7 +43,6 @@ class Neo4jStepRepository(
                 "type" to step.type.name,
                 "certainty" to step.certainty,
                 "entities" to step.entities,
-                "meta" to json.encodeToString(kotlinx.serialization.json.JsonElement.serializer(), step.meta),
                 "position" to step.position,
                 "status" to step.status.name,
                 "result" to (step.result ?: org.neo4j.driver.Values.NULL),
@@ -69,7 +67,6 @@ class Neo4jStepRepository(
                 type: stepData.type,
                 certainty: stepData.certainty,
                 entities: stepData.entities,
-                meta: stepData.meta,
                 position: stepData.position,
                 status: stepData.status,
                 result: stepData.result,
@@ -87,7 +84,6 @@ class Neo4jStepRepository(
                 "type" to step.type.name,
                 "certainty" to step.certainty,
                 "entities" to step.entities,
-                "meta" to json.encodeToString(kotlinx.serialization.json.JsonElement.serializer(), step.meta),
                 "position" to step.position,
                 "status" to step.status.name,
                 "result" to step.result,
@@ -187,18 +183,8 @@ class Neo4jStepRepository(
         return results.mapNotNull { parseStep(it) }
     }
 
-    override suspend fun findTransitiveDependents(stepId: Step.Id): List<Step> {
-        val query = """
-            MATCH (s:Step {id: ${'$'}stepId})<-[:DEPENDS_ON*]-(dep:Step)
-            RETURN DISTINCT dep AS s
-        """.trimIndent()
-
-        val results = neo4jGraphStore.executeQuery(query, mapOf("stepId" to stepId.value))
-        return results.mapNotNull { parseStep(it) }
-    }
-
     override suspend fun updateStatus(id: Step.Id, status: Step.Status) {
-        val completedAt = if (status in setOf(Step.Status.COMPLETED, Step.Status.FAILED, Step.Status.INVALIDATED)) {
+        val completedAt = if (status in setOf(Step.Status.COMPLETED, Step.Status.FAILED)) {
             Clock.System.now()
         } else {
             null
@@ -260,6 +246,50 @@ class Neo4jStepRepository(
         )
     }
 
+    override suspend fun updateBatch(steps: List<Step>): List<Step> {
+        if (steps.isEmpty()) return emptyList()
+
+        // Verify all steps are modifiable (PENDING or IN_PROGRESS)
+        val immutableSteps = steps.filter { 
+            it.status !in setOf(Step.Status.PENDING, Step.Status.IN_PROGRESS) 
+        }
+        if (immutableSteps.isNotEmpty()) {
+            throw IllegalStateException(
+                "Cannot modify COMPLETED/FAILED steps: ${immutableSteps.map { it.id.value }}"
+            )
+        }
+
+        val query = """
+            UNWIND ${'$'}steps AS stepData
+            MATCH (s:Step {id: stepData.id})
+            SET s.text = stepData.text,
+                s.type = stepData.type,
+                s.certainty = stepData.certainty,
+                s.entities = stepData.entities,
+                s.position = stepData.position,
+                s.status = stepData.status,
+                s.result = stepData.result
+            RETURN s
+        """.trimIndent()
+
+        val stepsData = steps.map { step ->
+            mapOf(
+                "id" to step.id.value,
+                "text" to step.text,
+                "type" to step.type.name,
+                "certainty" to step.certainty,
+                "entities" to step.entities,
+                "position" to step.position,
+                "status" to step.status.name,
+                "result" to step.result
+            )
+        }
+
+        neo4jGraphStore.executeQuery(query, mapOf("steps" to stepsData))
+
+        return steps
+    }
+
     private fun parseStep(result: Map<String, Any>): Step? {
         @Suppress("UNCHECKED_CAST")
         val data = when (val node = result["s"]) {
@@ -275,10 +305,6 @@ class Neo4jStepRepository(
             type = Step.Type.valueOf(data["type"]?.toString() ?: return null),
             certainty = (data["certainty"] as? Number)?.toFloat() ?: 0f,
             entities = (data["entities"] as? List<*>)?.mapNotNull { it?.toString() } ?: emptyList(),
-            meta = json.decodeFromString(
-                kotlinx.serialization.json.JsonElement.serializer(),
-                data["meta"]?.toString() ?: "{}"
-            ),
             position = (data["position"] as? Number)?.toInt() ?: 0,
             status = Step.Status.valueOf(data["status"]?.toString() ?: return null),
             result = data["result"]?.toString(),

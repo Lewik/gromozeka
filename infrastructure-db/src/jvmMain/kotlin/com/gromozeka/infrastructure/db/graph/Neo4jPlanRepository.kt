@@ -63,19 +63,18 @@ class Neo4jPlanRepository(
         return results.mapNotNull { parsePlan(it) }
     }
 
-    override suspend fun findExecutingPlan(conversationId: Conversation.Id): Plan? {
+    override suspend fun findActivePlans(conversationId: Conversation.Id): List<Plan> {
         val query = """
-            MATCH (p:Plan {conversationId: ${'$'}conversationId, status: 'EXECUTING'})
+            MATCH (p:Plan {conversationId: ${'$'}conversationId, status: 'ACTIVE'})
             RETURN p
             ORDER BY p.createdAt DESC
-            LIMIT 1
         """.trimIndent()
 
         val results = neo4jGraphStore.executeQuery(
             query,
             mapOf("conversationId" to conversationId.value)
         )
-        return results.firstOrNull()?.let { parsePlan(it) }
+        return results.mapNotNull { parsePlan(it) }
     }
 
     override suspend fun updateStatus(id: Plan.Id, status: Plan.Status) {

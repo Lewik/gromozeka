@@ -3,58 +3,57 @@ package com.gromozeka.domain.service
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.Plan
 import com.gromozeka.domain.model.Step
+import kotlinx.serialization.Serializable
 
 /**
- * Domain service for Stride Engine orchestration.
+ * Domain service for Stride Engine coordination.
  *
- * Orchestrates execution plan lifecycle:
- * - Plan creation from step definitions
- * - Step execution routing (ReAct vs passthrough)
- * - Status management and transitions
- * - Cascading invalidation
+ * # Purpose
  *
- * Business Logic Agent implements this to coordinate:
- * - PlanRepository (graph storage)
- * - StepRepository (graph storage)
- * - ConversationDomainService (message/thread management)
- * - LLM calls (for ReAct execution)
+ * Coordinates Plan and Step entities for tool implementations.
+ * This is NOT an orchestrator (which manages flow) — it's a data coordinator
+ * (which prepares results for tools).
  *
- * # Relationship to Conversation Execution
- *
- * This service orchestrates Stride Engine execution within the standard
- * LLM interaction loop provided by conversation engine.
- *
- * ## Execution Constraints
- *
- * **Tool call enforcement:**
- * - First LLM call when strideEnabled=true MUST use plan_steps (tool_choice=REQUIRED)
- * - Subsequent calls have unrestricted tool choice
- * - Execution continues while LLM produces tool calls
- * - Execution terminates when LLM response contains no tool calls
- *
- * ## Service Responsibilities
+ * # Responsibilities
  *
  * **Plan lifecycle:**
  * - Create Plan from step definitions (via createPlan)
- * - Track Plan execution status
- * - Manage Step transitions (PENDING → EXECUTING → COMPLETED/FAILED)
+ * - Select next executable step based on dependencies
+ * - Update plan state
  *
- * **Dependency management:**
- * - Enforce step execution order via depends_on relationships
- * - Perform cascading invalidation on step failure
- * - Return next executable step based on dependency graph
+ * **Step management:**
+ * - Complete step (success or failure)
+ * - Update step state
+ * - Validate and apply plan modifications
  *
- * **State coordination:**
- * - Update Neo4j graph state
- * - Provide execution context to LLM via tool responses
- * - Maintain execution invariants (no cycles, valid transitions)
+ * **Tool result formation:**
+ * - Generate instruction text based on step type and certainty
+ * - Format unified tool_result structure
+ * - Provide runtime step representation
  *
- * ## Design Invariants
+ * # What This Service Does NOT Do
  *
- * - Service operates synchronously with LLM calls (no background processing)
- * - State changes are immediately persisted to Neo4j
- * - Tool responses guide LLM behavior (declarative control)
- * - No workflow engine or state machine required
+ * - Does NOT manage execution flow (LLM does via tool calls)
+ * - Does NOT enforce tool_choice (ConversationEngineService does)
+ * - Does NOT make LLM calls (tools do)
+ * - Does NOT track state machine (app tracks via plan status)
+ *
+ * # Architecture
+ *
+ * ```
+ * Tool (infrastructure-ai)
+ *   → StrideEngineService (application layer implementation)
+ *     → PlanRepository + StepRepository (infrastructure-db)
+ * ```
+ *
+ * Domain defines interface, application implements, infrastructure uses.
+ *
+ * # Design Invariants
+ *
+ * - Service operates synchronously (no background processing)
+ * - State changes immediately persisted to Neo4j
+ * - Methods are transactional
+ * - No side effects beyond Neo4j updates
  *
  * This is a domain service - pure business logic, no infrastructure concerns.
  */
@@ -62,184 +61,183 @@ interface StrideEngineService {
     /**
      * Creates execution plan from step definitions.
      *
-     * Called when plan_steps tool returns step array.
+     * Called when create_plan tool is invoked.
      *
      * Workflow:
-     * 1. Create Plan entity (status = EXECUTING)
+     * 1. Create Plan entity (status = ACTIVE)
      * 2. Create Step entities (status = PENDING)
-     * 3. Create DEPENDS_ON relationships from step.depends_on
-     * 4. Perform topological sort to validate no cycles
-     * 5. Store in Neo4j
+     * 3. Create DEPENDS_ON relationships from step.dependsOn
+     * 4. Validate no cycles in dependency graph
+     * 5. Select first step (first PENDING with no dependencies)
+     * 6. Mark first step as IN_PROGRESS
+     * 7. Store in Neo4j
+     * 8. Generate instruction for first step
+     * 9. Return tool_result structure
      *
      * This is a transactional operation.
      *
      * @param conversationId conversation this plan belongs to
-     * @param stepDefinitions array from plan_steps tool
-     * @return created plan with all steps
+     * @param stepInputs array from create_plan tool
+     * @return tool_result structure (planId, steps, currentStepId, instruction)
      * @throws CyclicDependencyException if dependencies form cycle
      * @throws InvalidStepDefinitionException if step data is invalid
      */
     suspend fun createPlan(
         conversationId: Conversation.Id,
-        stepDefinitions: List<StepDefinition>
-    ): Plan
+        stepInputs: List<StepInput>
+    ): PlanResult
 
     /**
-     * Finds next step to execute.
+     * Completes current step (success or failure).
      *
-     * Returns first PENDING step where all DEPENDS_ON steps are COMPLETED.
-     * Returns null if no executable steps (waiting for dependencies or all done).
-     *
-     * @param planId plan identifier
-     * @return next step to execute, null if none available
-     */
-    suspend fun getNextStep(planId: Plan.Id): Step?
-
-    /**
-     * Starts step execution.
-     *
-     * Updates step status to EXECUTING.
-     * Called before ReAct loop or passthrough execution.
-     *
-     * This is a transactional operation.
-     *
-     * @param stepId step identifier
-     * @throws StepNotFoundException if step not found
-     * @throws InvalidStepStateException if step is not PENDING
-     */
-    suspend fun startStep(stepId: Step.Id)
-
-    /**
-     * Completes step successfully.
-     *
-     * Updates step status to COMPLETED, stores result, sets completedAt.
      * Called when step_complete tool is invoked.
      *
-     * This is a transactional operation.
+     * Workflow for success:
+     * 1. Update Step: status = COMPLETED, result = provided, completedAt = now
+     * 2. Find next PENDING step with satisfied dependencies
+     * 3. If next exists: mark as IN_PROGRESS, generate instruction, return
+     * 4. If no next: mark Plan as COMPLETED, generate summary instruction, return
      *
-     * @param stepId step identifier
-     * @param result execution result summary
-     * @throws StepNotFoundException if step not found
-     * @throws InvalidStepStateException if step is not EXECUTING
-     */
-    suspend fun completeStep(stepId: Step.Id, result: String)
-
-    /**
-     * Marks step as failed.
-     *
-     * Updates step status to FAILED, stores error, sets completedAt.
-     * Called when step_failed tool is invoked.
-     *
-     * Triggers cascading invalidation of dependent steps.
+     * Workflow for failure:
+     * 1. Update Step: status = FAILED, result = error, completedAt = now
+     * 2. Update Plan: status = FAILED, completedAt = now
+     * 3. Generate explanation instruction
+     * 4. Return tool_result structure
      *
      * This is a transactional operation.
      *
-     * @param stepId step identifier
-     * @param error failure reason
-     * @return list of invalidated dependent steps (for ask_user notification)
-     * @throws StepNotFoundException if step not found
-     * @throws InvalidStepStateException if step is not EXECUTING
+     * @param planId plan identifier
+     * @param status "success" or "fail"
+     * @param result execution result or error description
+     * @return tool_result structure (planId, steps, currentStepId, instruction)
+     * @throws PlanNotFoundException if plan not found
+     * @throws InvalidPlanStateException if plan not ACTIVE
      */
-    suspend fun failStep(stepId: Step.Id, error: String): List<Step>
+    suspend fun completeStep(
+        planId: Plan.Id,
+        status: String,
+        result: String
+    ): PlanResult
 
     /**
-     * Invalidates step due to dependency failure.
+     * Updates plan by modifying steps.
      *
-     * Updates step status to INVALIDATED, sets completedAt.
-     * Used for cascading invalidation when dependency fails.
+     * Called when update_plan tool is invoked.
      *
-     * This is a transactional operation.
-     *
-     * @param stepId step identifier
-     * @throws StepNotFoundException if step not found
-     */
-    suspend fun invalidateStep(stepId: Step.Id)
-
-    /**
-     * Performs cascading invalidation.
-     *
-     * When step fails or is invalidated, all transitive dependents are invalidated.
-     * Returns list of invalidated steps for user notification.
+     * Validation rules:
+     * - Cannot modify COMPLETED or FAILED steps
+     * - Can modify PENDING and IN_PROGRESS steps
+     * - Can add new PENDING steps
+     * - Can remove PENDING steps (if no dependents)
+     * - Cannot create cycles in dependencies
      *
      * Workflow:
-     * 1. Find all transitive dependents via DEPENDS_ON graph traversal
-     * 2. Mark each as INVALIDATED
-     * 3. Return list for ask_user tool
-     *
-     * This is a transactional operation.
-     *
-     * @param stepId failed/invalidated step
-     * @return list of steps that were invalidated (empty if no dependents)
-     */
-    suspend fun cascadeInvalidation(stepId: Step.Id): List<Step>
-
-    /**
-     * Completes plan execution.
-     *
-     * Updates plan status based on step outcomes:
-     * - All steps COMPLETED → COMPLETED
-     * - Any step FAILED → FAILED
-     * - User cancelled → CANCELLED
-     *
-     * Sets completedAt timestamp.
+     * 1. Validate: no modifications to COMPLETED/FAILED steps
+     * 2. Detect changes: added, removed, modified steps
+     * 3. Update Neo4j: modify/add/remove steps and dependencies
+     * 4. Generate instruction for current step
+     * 5. Return tool_result structure
      *
      * This is a transactional operation.
      *
      * @param planId plan identifier
-     * @param status final status (COMPLETED, FAILED, or CANCELLED)
+     * @param stepInputs updated step definitions
+     * @return tool_result structure or error
      * @throws PlanNotFoundException if plan not found
-     * @throws InvalidPlanStateException if plan is not EXECUTING
+     * @throws InvalidPlanStateException if plan not ACTIVE
+     * @throws ValidationException if modification invalid
      */
-    suspend fun completePlan(planId: Plan.Id, status: Plan.Status)
+    suspend fun updatePlan(
+        planId: Plan.Id,
+        stepInputs: List<StepInput>
+    ): UpdatePlanResult
 
     /**
-     * Checks if plan has more steps to execute.
+     * Generates instruction text for LLM based on step type and certainty.
      *
-     * Returns true if there are PENDING steps with satisfied dependencies.
-     * Returns false if all steps are in terminal states.
+     * Instruction templates by type:
+     * - command: "Execute task: '{text}'. Gather context, use tools, complete..."
+     * - query: "Answer question: '{text}'. Research topic, gather information..."
+     * - inform: "User states: '{text}'. Related issues? Consequences?..."
+     * - correct: "User corrects: '{text}'. What depended on old fact?..."
+     * - evaluate: "User opines: '{text}'. Do you agree? Arguments?..."
+     * - commit: "User commits: '{text}'. Record. Dependencies?..."
+     * - condition: "User sets condition: '{text}'. Is it satisfied?..."
      *
-     * @param planId plan identifier
-     * @return true if plan can continue execution, false if finished
+     * If certainty < 1.0, adds modifier:
+     * "Confidence in this statement is low ({certainty}). Gather additional
+     * context, make decision autonomously. Don't ask user — decide yourself."
+     *
+     * @param step step to generate instruction for
+     * @return instruction text for LLM
      */
-    suspend fun hasMoreSteps(planId: Plan.Id): Boolean
+    fun generateInstruction(step: Step): String
 
     /**
-     * Gets plan execution summary.
+     * Finds currently active plan for conversation.
      *
-     * Returns plan with all steps and current status.
-     * Used for UI display and checkpoint validation.
-     *
-     * @param planId plan identifier
-     * @return plan summary
-     * @throws PlanNotFoundException if plan not found
+     * @param conversationId conversation identifier
+     * @return active plan if exists, null otherwise
      */
-    suspend fun getPlanSummary(planId: Plan.Id): PlanSummary
+    suspend fun findActivePlan(conversationId: Conversation.Id): Plan?
 }
 
 /**
- * Step definition from plan_steps tool.
+ * Step input from create_plan or update_plan tool.
  *
- * JSON structure returned by LLM when decomposing user message.
+ * Pure domain type - uses kotlinx.serialization types.
+ * Infrastructure layer (infrastructure-ai) converts this to/from Jackson DTOs.
  */
-data class StepDefinition(
+@Serializable
+data class StepInput(
     val text: String,
     val type: Step.Type,
     val certainty: Float,
     val entities: List<String>,
-    val dependsOn: List<Int>,  // Indices of steps this step depends on
-    val meta: Map<String, Any> = emptyMap()
+    val dependsOn: List<Int>
 )
 
 /**
- * Plan execution summary.
- *
- * Aggregate view of plan with all steps for UI and checkpoints.
+ * Unified tool_result structure for create_plan, step_complete tools.
+ * 
+ * Pure domain type - infrastructure layer converts to Jackson DTOs.
  */
-data class PlanSummary(
-    val plan: Plan,
-    val steps: List<Step>,
-    val currentStep: Step?,
-    val completedSteps: Int,
-    val totalSteps: Int,
-    val invalidatedSteps: List<Step>
+@Serializable
+data class PlanResult(
+    val planId: String,
+    val steps: List<StepRuntime>,
+    val currentStepId: Int?,
+    val instruction: String
+)
+
+/**
+ * Tool_result structure for update_plan (can be success or error).
+ * 
+ * Pure domain type - infrastructure layer converts to Jackson DTOs.
+ */
+@Serializable
+data class UpdatePlanResult(
+    val ok: Boolean,
+    val error: String? = null,
+    val planId: String? = null,
+    val steps: List<StepRuntime>? = null,
+    val currentStepId: Int? = null,
+    val instruction: String? = null
+)
+
+/**
+ * Step runtime representation (full state including execution progress).
+ * 
+ * Pure domain type - infrastructure layer converts to Jackson DTOs.
+ */
+@Serializable
+data class StepRuntime(
+    val id: Int,
+    val text: String,
+    val type: String,
+    val status: String,
+    val result: String?,
+    val certainty: Float,
+    val entities: List<String>,
+    val dependsOn: List<Int>
 )

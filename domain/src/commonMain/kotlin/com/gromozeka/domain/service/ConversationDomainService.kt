@@ -95,9 +95,9 @@ interface ConversationDomainService {
      * Updates Stride Engine activation state for conversation.
      *
      * When strideEnabled = true:
-     * - First LLM call in sendMessage MUST use tool_choice = REQUIRED("plan_steps")
-     * - User message decomposed into semantic steps via plan_steps tool
-     * - Execution follows plan step-by-step (ReAct or passthrough per step type)
+     * - First LLM call in sendMessage MUST use tool_choice = REQUIRED("create_plan")
+     * - User message decomposed into semantic steps via create_plan tool
+     * - Execution follows plan step-by-step
      *
      * When strideEnabled = false:
      * - Normal conversation mode (direct LLM response)

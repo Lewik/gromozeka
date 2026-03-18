@@ -155,7 +155,7 @@ class ConversationApplicationService(
      * Updates Stride Engine activation state.
      *
      * Enables/disables semantic decomposition and step-by-step execution.
-     * When enabled, first LLM call enforces plan_steps tool (tool_choice=REQUIRED).
+     * When enabled, first LLM call enforces create_plan tool (tool_choice=REQUIRED).
      *
      * @param conversationId conversation identifier
      * @param enabled true to activate Stride Engine, false for normal mode
