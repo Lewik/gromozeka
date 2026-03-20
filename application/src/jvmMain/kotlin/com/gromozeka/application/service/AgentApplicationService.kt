@@ -34,7 +34,7 @@ class AgentApplicationService(
      * @param name agent role or display name (e.g., "Code Reviewer")
      * @param prompts ordered list of prompt IDs defining agent behavior
      * @param aiProvider AI provider identifier (e.g., "ANTHROPIC", "OPENAI", "GEMINI")
-     * @param modelName model identifier (e.g., "claude-3-5-sonnet-20241022", "gpt-4")
+     * @param modelName model identifier (e.g., "claude-sonnet-4-6", "gpt-4")
      * @param tools list of tool names available to this agent
      * @param description optional human-readable description of capabilities
      * @param type agent scope type (builtin, global, or project-specific)

@@ -2,6 +2,8 @@ package com.gromozeka.infrastructure.ai.factory
 
 import com.google.genai.Client
 import com.gromozeka.domain.service.SettingsProvider
+import com.gromozeka.infrastructure.ai.anthropic.AdaptiveThinkingInterceptor
+import com.gromozeka.infrastructure.ai.anthropic.AdaptiveThinkingWebClientFilter
 import com.gromozeka.infrastructure.ai.oauth.OAuthService
 import com.gromozeka.infrastructure.ai.oauth.OAuthConfigService
 import klog.KLoggers
@@ -51,13 +53,7 @@ class AiApiFactory(
                 log.info("Creating Anthropic API with Bearer token authentication")
 
                 val restClientBuilder = RestClient.builder()
-                    // DISABLED: OAuth tool prefix workaround
-//                    .requestInterceptor(
-//                        com.gromozeka.infrastructure.ai.oauth.AnthropicOAuthRequestInterceptor(
-//                            toolPrefix = currentConfig.toolPrefix,
-//                            userAgent = currentConfig.userAgent
-//                        )
-//                    )
+                    .requestInterceptor(AdaptiveThinkingInterceptor())
                     .requestInterceptor { request, body, execution ->
                         request.headers.remove("x-api-key")
                         request.headers.set("Authorization", "Bearer ${currentConfig.accessToken}")
@@ -65,13 +61,7 @@ class AiApiFactory(
                     }
 
                 val webClientBuilder = WebClient.builder()
-                    // DISABLED: OAuth tool prefix workaround
-//                    .filter(
-//                        com.gromozeka.infrastructure.ai.oauth.AnthropicOAuthWebClientFilter(
-//                            toolPrefix = currentConfig.toolPrefix,
-//                            userAgent = currentConfig.userAgent
-//                        )
-//                    )
+                    .filter(AdaptiveThinkingWebClientFilter())
                     .filter { request, next ->
                         val newRequest = ClientRequest.from(request)
                             .headers { headers ->
@@ -94,6 +84,14 @@ class AiApiFactory(
                 log.info("Creating Anthropic API with API Key authentication")
                 AnthropicApi.builder()
                     .apiKey(settingsProvider.anthropicApiKey)
+                    .restClientBuilder(
+                        RestClient.builder()
+                            .requestInterceptor(AdaptiveThinkingInterceptor())
+                    )
+                    .webClientBuilder(
+                        WebClient.builder()
+                            .filter(AdaptiveThinkingWebClientFilter())
+                    )
                     .build()
             }
 

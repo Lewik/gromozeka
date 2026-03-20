@@ -22,11 +22,26 @@ class BuiltinAgentLoader {
         val name: String,
         val prompts: List<String>,
         val aiProvider: String = "ANTHROPIC",
-        val modelName: String = "claude-sonnet-4-5-20250929",
+        val modelName: String = "claude-sonnet-4-6",
+        val maxTokens: Int? = null,
+        val thinking: ThinkingConfigDTO? = null,
+        val outputConfig: OutputConfigDTO? = null,
         val tools: List<String> = emptyList(),
         val description: String? = null,
         val createdAt: Instant,
         val updatedAt: Instant
+    )
+
+    @Serializable
+    private data class ThinkingConfigDTO(
+        val type: String = "adaptive",
+        val budgetTokens: Int? = null,
+        val display: String = "full"
+    )
+
+    @Serializable
+    private data class OutputConfigDTO(
+        val effort: String = "high"
     )
 
     fun loadBuiltinAgents(): List<AgentDefinition> {
@@ -54,6 +69,17 @@ class BuiltinAgentLoader {
                         prompts = dto.prompts.map { Prompt.Id(it) },
                         aiProvider = dto.aiProvider,
                         modelName = dto.modelName,
+                        maxTokens = dto.maxTokens ?: getDefaultMaxTokens(dto.modelName),
+                        thinking = dto.thinking?.let {
+                            AgentDefinition.ThinkingConfig(
+                                type = it.type,
+                                budgetTokens = it.budgetTokens,
+                                display = it.display
+                            )
+                        } ?: getDefaultThinking(dto.modelName),
+                        outputConfig = dto.outputConfig?.let {
+                            AgentDefinition.OutputConfig(effort = it.effort)
+                        } ?: getDefaultOutputConfig(dto.modelName),
                         tools = dto.tools,
                         description = dto.description,
                         type = AgentDefinition.Type.Builtin,
@@ -74,6 +100,34 @@ class BuiltinAgentLoader {
         }
 
         return agents
+    }
+
+    private fun getDefaultMaxTokens(modelName: String): Int? {
+        return when {
+            modelName.contains("opus-4-6") -> 128_000
+            modelName.contains("sonnet-4-6") -> 64_000
+            else -> null
+        }
+    }
+
+    private fun getDefaultThinking(modelName: String): AgentDefinition.ThinkingConfig? {
+        return when {
+            modelName.contains("claude") && modelName.contains("4-6") -> 
+                AgentDefinition.ThinkingConfig(type = "adaptive", display = "full")
+            modelName.contains("claude") -> 
+                AgentDefinition.ThinkingConfig(type = "enabled", budgetTokens = 16_000, display = "full")
+            else -> null
+        }
+    }
+
+    private fun getDefaultOutputConfig(modelName: String): AgentDefinition.OutputConfig? {
+        return when {
+            modelName.contains("opus-4-6") -> 
+                AgentDefinition.OutputConfig(effort = "max")
+            modelName.contains("sonnet-4-6") || modelName.contains("claude-4") -> 
+                AgentDefinition.OutputConfig(effort = "high")
+            else -> null
+        }
     }
 
 }

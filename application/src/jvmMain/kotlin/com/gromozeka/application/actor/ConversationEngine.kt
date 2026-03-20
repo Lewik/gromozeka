@@ -516,13 +516,9 @@ class ConversationEngine(
                 ?: throw IllegalStateException("Project not found: ${conversation.projectId}")
             
             val provider = AIProvider.valueOf(definition.aiProvider)
+            val modelName = definition.modelName
             
-            // Special case: use Opus for Architect agent
-            val modelName = if (definition.name == "Архитектор" && provider == AIProvider.ANTHROPIC) {
-                "claude-opus-4-6"
-            } else {
-                "claude-sonnet-4-5-20250929"
-            }
+            log.info { "Agent config: name=${definition.name}, modelName=$modelName, provider=$provider, maxTokens=${definition.maxTokens}, thinking=${definition.thinking}, outputConfig=${definition.outputConfig}" }
             
             val model = chatModelProvider.getChatModel(provider, modelName, project.path)
             
@@ -655,13 +651,62 @@ class ConversationEngine(
                     .strategy(AnthropicCacheStrategy.CONVERSATION_HISTORY)
                     .build()
                 
-                AnthropicChatOptions.builder()
+                val builder = AnthropicChatOptions.builder()
                     .toolCallbacks(toolsToUse)
                     .toolNames(toolNames)
                     .internalToolExecutionEnabled(false)
                     .toolContext(mapOf("projectPath" to projectPath))
                     .cacheOptions(cacheOptions)
-                    .build()
+                
+                // Apply maxTokens from agent definition
+                definition.maxTokens?.let { builder.maxTokens(it) }
+                
+                // Apply thinking configuration from agent definition
+                definition.thinking?.let { thinkingConfig ->
+                    when (thinkingConfig.type) {
+                        "adaptive" -> {
+                            // Spring AI 1.1.x doesn't support adaptive thinking natively.
+                            // We set ENABLED as a placeholder — AdaptiveThinkingInterceptor
+                            // will replace it with {"type":"adaptive"} in the actual HTTP request.
+                            val budgetTokens = thinkingConfig.budgetTokens 
+                                ?: (definition.maxTokens?.let { it / 2 } ?: 16_000)
+                            builder.thinking(
+                                org.springframework.ai.anthropic.api.AnthropicApi.ThinkingType.ENABLED,
+                                budgetTokens
+                            )
+                        }
+                        "enabled" -> {
+                            val budgetTokens = thinkingConfig.budgetTokens 
+                                ?: (definition.maxTokens?.let { it / 2 } ?: 16_000)
+                            builder.thinking(
+                                org.springframework.ai.anthropic.api.AnthropicApi.ThinkingType.ENABLED,
+                                budgetTokens
+                            )
+                        }
+                        "disabled" -> {
+                            builder.thinking(
+                                org.springframework.ai.anthropic.api.AnthropicApi.ThinkingType.DISABLED,
+                                null
+                            )
+                        }
+                    }
+                }
+                
+                // Pass thinking type and effort to AdaptiveThinkingInterceptor via HTTP headers.
+                // The interceptor reads these, removes them from the request, and patches
+                // the JSON body with proper Anthropic API fields.
+                val httpHeaders = mutableMapOf<String, String>()
+                definition.thinking?.let { thinkingConfig ->
+                    httpHeaders["X-Gromozeka-Thinking-Type"] = thinkingConfig.type
+                }
+                definition.outputConfig?.let { outputConfig ->
+                    httpHeaders["X-Gromozeka-Effort"] = outputConfig.effort
+                }
+                if (httpHeaders.isNotEmpty()) {
+                    builder.httpHeaders(httpHeaders)
+                }
+                
+                builder.build()
             }
             AIProvider.OPEN_AI -> {
                 OpenAiChatOptions.builder()

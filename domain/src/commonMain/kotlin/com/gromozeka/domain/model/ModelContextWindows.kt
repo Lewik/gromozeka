@@ -17,16 +17,23 @@ package com.gromozeka.domain.model
  */
 object ModelContextWindows {
     private val windows = mapOf(
-        // Claude - full names
+        // Claude 4.6 - latest with 1M context
+        "claude-opus-4-6" to 1_000_000,
+        "claude-sonnet-4-6" to 1_000_000,
+        
+        // Claude 4.5 - full names
+        "claude-sonnet-4-5-20250929" to 200_000,
+        "claude-haiku-4-5-20251001" to 200_000,
+        
+        // Claude 3.x - full names
         "claude-3-5-sonnet-20241022" to 200_000,
         "claude-3-5-haiku-20241022" to 200_000,
         "claude-3-opus-20240229" to 200_000,
-        "claude-sonnet-4-5-20250929" to 200_000,
 
-        // Claude - short names
+        // Claude - short names (4.6 models)
         "claude-sonnet-4-5" to 200_000,
-        "sonnet" to 200_000,
-        "opus" to 200_000,
+        "sonnet" to 1_000_000,
+        "opus" to 1_000_000,
         "haiku" to 200_000,
 
         // Gemini

@@ -80,8 +80,8 @@ class ConversationEngineService(
      * Uses dynamic lookup through ApplicationContext to ensure all registered tools are included,
      * including those registered after ConversationEngineService construction (Stride tools, internal MCP tools).
      */
-    private fun collectToolOptions(projectPath: String?, provider: AIProvider): ChatOptions {
-        log.debug { "collectToolOptions: provider=$provider" }
+    private fun collectToolOptions(projectPath: String?, provider: AIProvider, agent: AgentDefinition): ChatOptions {
+        log.debug { "collectToolOptions: provider=$provider, agent=${agent.name}" }
         
         val allCallbacks = mutableListOf<org.springframework.ai.tool.ToolCallback>()
         val allNames = mutableSetOf<String>()
@@ -112,14 +112,50 @@ class ConversationEngineService(
 
                 log.info { "Creating AnthropicChatOptions with caching strategy: ${cacheOptions.strategy}" }
 
-                AnthropicChatOptions.builder()
+                val builder = AnthropicChatOptions.builder()
                     .toolCallbacks(allCallbacks)
                     .toolNames(allNames)
                     .internalToolExecutionEnabled(false)
                     .toolContext(mapOf("projectPath" to projectPath))
                     .cacheOptions(cacheOptions)
-                    .build()
-                    .also { log.debug { "AnthropicChatOptions created with ${allCallbacks.size} tools and cache enabled" } }
+
+                // Apply maxTokens from agent definition
+                agent.maxTokens?.let { builder.maxTokens(it) }
+
+                // Apply thinking configuration from agent definition
+                agent.thinking?.let { thinkingConfig ->
+                    when (thinkingConfig.type) {
+                        "adaptive", "enabled" -> {
+                            val budgetTokens = thinkingConfig.budgetTokens
+                                ?: (agent.maxTokens?.let { it / 2 } ?: 16_000)
+                            builder.thinking(
+                                org.springframework.ai.anthropic.api.AnthropicApi.ThinkingType.ENABLED,
+                                budgetTokens
+                            )
+                        }
+                        "disabled" -> {
+                            builder.thinking(
+                                org.springframework.ai.anthropic.api.AnthropicApi.ThinkingType.DISABLED,
+                                null
+                            )
+                        }
+                    }
+                }
+
+                // Pass thinking type and effort to AdaptiveThinkingInterceptor via HTTP headers
+                val httpHeaders = mutableMapOf<String, String>()
+                agent.thinking?.let { thinkingConfig ->
+                    httpHeaders["X-Gromozeka-Thinking-Type"] = thinkingConfig.type
+                }
+                agent.outputConfig?.let { outputConfig ->
+                    httpHeaders["X-Gromozeka-Effort"] = outputConfig.effort
+                }
+                if (httpHeaders.isNotEmpty()) {
+                    builder.httpHeaders(httpHeaders)
+                }
+
+                builder.build()
+                    .also { log.debug { "AnthropicChatOptions created with ${allCallbacks.size} tools, cache enabled, thinking=${agent.thinking}, effort=${agent.outputConfig}" } }
             }
             AIProvider.OPEN_AI -> {
                 log.debug { "Creating OpenAiChatOptions for provider=$provider" }
@@ -166,12 +202,8 @@ class ConversationEngineService(
         val project = conversationService.getProject(conversationId)
         val provider = AIProvider.valueOf(agent.aiProvider)
         
-        // Special case: use Opus for Architect agent
-        val modelName = if (agent.name == "Архитектор" && provider == AIProvider.ANTHROPIC) {
-            "claude-opus-4-6"
-        } else {
-            agent.modelName
-        }
+        val modelName = agent.modelName
+        log.info { "Agent config: name=${agent.name}, modelName=$modelName, provider=$provider, maxTokens=${agent.maxTokens}, thinking=${agent.thinking}, outputConfig=${agent.outputConfig}" }
         
         val chatModel = chatModelProvider.getChatModel(
             provider,
@@ -199,7 +231,7 @@ class ConversationEngineService(
 
         val finalMessages = conversationService.loadCurrentMessages(conversationId)
         val springHistory = messageConversionService.convertHistoryToSpringAI(finalMessages)
-        val baseToolOptions = collectToolOptions(project.path, provider)
+        val baseToolOptions = collectToolOptions(project.path, provider, agent)
 
         var iterationCount = 0
         val maxIterations = 200

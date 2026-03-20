@@ -36,7 +36,7 @@ class CreateAgentTool(
         val agent_prompt: String? = null,
         val expects_response: Boolean = false,
         val ai_provider: String = "ANTHROPIC",
-        val model_name: String = "claude-3-5-sonnet-20241022",
+        val model_name: String = "claude-sonnet-4-6",
     )
 
     override val definition = Tool(
@@ -81,8 +81,8 @@ class CreateAgentTool(
                 })
                 put("model_name", buildJsonObject {
                     put("type", "string")
-                    put("description", "Model identifier (e.g., 'claude-3-5-sonnet-20241022', 'gpt-4')")
-                    put("default", "claude-3-5-sonnet-20241022")
+                    put("description", "Model identifier (e.g., 'claude-sonnet-4-6', 'gpt-4')")
+                    put("default", "claude-sonnet-4-6")
                 })
             },
             required = listOf(

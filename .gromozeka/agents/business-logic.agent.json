@@ -10,7 +10,17 @@
     "project:business-logic.role.md",
     "env"
   ],
+  "aiProvider": "ANTHROPIC",
+  "modelName": "claude-sonnet-4-6",
+  "maxTokens": 64000,
+  "thinking": {
+    "type": "adaptive",
+    "display": "full"
+  },
+  "outputConfig": {
+    "effort": "high"
+  },
   "description": "Business logic implementation",
   "createdAt": "2025-11-22T19:11:52Z",
-  "updatedAt": "2025-12-06T00:00:00Z"
+  "updatedAt": "2026-03-18T00:00:00Z"
 }

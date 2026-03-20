@@ -25,7 +25,10 @@ import kotlinx.serialization.Serializable
  * @property name agent role name displayed in UI (e.g., "Code Reviewer", "Researcher")
  * @property prompts ordered list of prompt IDs defining agent behavior
  * @property aiProvider AI provider identifier (e.g., "ANTHROPIC", "OPENAI", "GEMINI")
- * @property modelName model identifier (e.g., "claude-3-5-sonnet-20241022", "gpt-4")
+ * @property modelName model identifier (e.g., "claude-opus-4-6", "gpt-4")
+ * @property maxTokens maximum output tokens (null = use SDK default). For Opus 4.6: 128000, Sonnet 4.6: 64000
+ * @property thinking extended thinking configuration (Anthropic models only)
+ * @property outputConfig output configuration including effort level (Anthropic models only)
  * @property tools list of available tool names for this agent
  * @property description optional human-readable explanation of agent's purpose
  * @property type agent location type with file path (or inline for dynamic agents)
@@ -39,6 +42,9 @@ data class AgentDefinition(
     val prompts: List<Prompt.Id>,
     val aiProvider: String, // TODO: make it AIProvider enum
     val modelName: String,
+    val maxTokens: Int? = null,
+    val thinking: ThinkingConfig? = null,
+    val outputConfig: OutputConfig? = null,
     val tools: List<String> = emptyList(), // tool names to resolve via ToolRegistry
     val description: String? = null,
     val type: Type,
@@ -91,4 +97,28 @@ data class AgentDefinition(
         @Serializable
         object Inline : Type()
     }
+
+    /**
+     * Extended thinking configuration for Anthropic models.
+     * 
+     * @property type thinking mode: "adaptive" (recommended for Opus/Sonnet 4.6), "enabled" (manual budget), "disabled"
+     * @property budgetTokens thinking token budget (only for type="enabled", deprecated on Opus/Sonnet 4.6)
+     * @property display how thinking is displayed: "full" (complete thinking), "summarized" (brief summary), "omitted" (no text, signature only)
+     */
+    @Serializable
+    data class ThinkingConfig(
+        val type: String = "adaptive", // "adaptive", "enabled", "disabled"
+        val budgetTokens: Int? = null,
+        val display: String = "full" // "full", "summarized", "omitted"
+    )
+
+    /**
+     * Output configuration for Anthropic models.
+     * 
+     * @property effort thinking effort level (only for adaptive thinking): "max" (Opus 4.6 only), "high" (default), "medium", "low"
+     */
+    @Serializable
+    data class OutputConfig(
+        val effort: String = "high" // "max", "high", "medium", "low"
+    )
 }
