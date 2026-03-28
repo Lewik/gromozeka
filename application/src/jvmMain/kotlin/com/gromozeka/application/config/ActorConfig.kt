@@ -1,7 +1,6 @@
 package com.gromozeka.application.config
 
 import com.gromozeka.application.actor.ConversationSupervisor
-import com.gromozeka.application.service.MessageConversionService
 import com.gromozeka.application.service.ParallelToolExecutor
 import com.gromozeka.domain.service.AgentDomainService
 import com.gromozeka.domain.repository.ConversationRepository
@@ -9,15 +8,14 @@ import com.gromozeka.domain.repository.MessageRepository
 import com.gromozeka.domain.repository.ProjectRepository
 import com.gromozeka.domain.repository.ThreadMessageRepository
 import com.gromozeka.domain.repository.ThreadRepository
-import com.gromozeka.domain.service.ChatModelProvider
-import com.gromozeka.domain.service.McpToolProvider
+import com.gromozeka.domain.service.AiRuntimeProvider
+import com.gromozeka.domain.service.AiToolProvider
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
-import org.springframework.ai.tool.ToolCallback
 
 /**
  * Spring configuration for actor-based components.
@@ -39,12 +37,10 @@ class ActorConfig {
         threadRepository: ThreadRepository,
         threadMessageRepository: ThreadMessageRepository,
         projectRepository: ProjectRepository,
-        chatModelProvider: ChatModelProvider,
+        aiRuntimeProvider: AiRuntimeProvider,
         agentDomainService: AgentDomainService,
         parallelToolExecutor: ParallelToolExecutor,
-        messageConversionService: MessageConversionService,
-        toolCallbacks: List<ToolCallback>,
-        mcpToolProvider: McpToolProvider
+        aiToolProvider: AiToolProvider
     ): ConversationSupervisor {
         val supervisor = ConversationSupervisor(
             scope = scope,
@@ -53,12 +49,10 @@ class ActorConfig {
             threadRepository = threadRepository,
             threadMessageRepository = threadMessageRepository,
             projectRepository = projectRepository,
-            chatModelProvider = chatModelProvider,
+            aiRuntimeProvider = aiRuntimeProvider,
             agentDomainService = agentDomainService,
             parallelToolExecutor = parallelToolExecutor,
-            messageConversionService = messageConversionService,
-            toolCallbacks = toolCallbacks,
-            mcpToolProvider = mcpToolProvider,
+            aiToolProvider = aiToolProvider,
             maxIterations = 200
         )
         

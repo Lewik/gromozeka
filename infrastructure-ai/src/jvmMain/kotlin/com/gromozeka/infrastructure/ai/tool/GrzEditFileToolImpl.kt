@@ -3,7 +3,7 @@ package com.gromozeka.infrastructure.ai.tool
 import com.gromozeka.domain.tool.filesystem.GrzEditFileTool
 import com.gromozeka.domain.tool.filesystem.EditFileRequest
 import org.slf4j.LoggerFactory
-import org.springframework.ai.chat.model.ToolContext
+import com.gromozeka.domain.tool.ToolExecutionContext
 import org.springframework.stereotype.Service
 import java.io.File
 
@@ -19,7 +19,7 @@ class GrzEditFileToolImpl : GrzEditFileTool {
     
     private val logger = LoggerFactory.getLogger(GrzEditFileToolImpl::class.java)
     
-    override fun execute(request: EditFileRequest, context: ToolContext?): Map<String, Any> {
+    override fun execute(request: EditFileRequest, context: ToolExecutionContext?): Map<String, Any> {
         return try {
             val projectPath = context?.getContext()?.get("projectPath") as? String
                 ?: error("Project path is required in tool context - this is a bug!")

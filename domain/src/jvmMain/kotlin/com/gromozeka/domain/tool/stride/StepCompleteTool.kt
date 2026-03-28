@@ -3,7 +3,7 @@ package com.gromozeka.domain.tool.stride
 import com.gromozeka.domain.service.StepRuntime
 import com.gromozeka.domain.tool.Tool
 import kotlinx.serialization.Serializable
-import org.springframework.ai.chat.model.ToolContext
+import com.gromozeka.domain.tool.ToolExecutionContext
 
 /**
  * Domain specification for step completion tool.
@@ -194,7 +194,7 @@ interface StepCompleteTool : Tool<StepCompleteRequest, StepCompleteResponse> {
     override val description: String get() = "Mark current step as completed (success or failure)"
     override val requestType: Class<StepCompleteRequest> get() = StepCompleteRequest::class.java
 
-    override fun execute(request: StepCompleteRequest, context: ToolContext?): StepCompleteResponse
+    override fun execute(request: StepCompleteRequest, context: ToolExecutionContext?): StepCompleteResponse
 }
 
 @Serializable

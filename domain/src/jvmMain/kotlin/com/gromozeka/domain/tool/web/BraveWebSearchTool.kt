@@ -1,7 +1,7 @@
 package com.gromozeka.domain.tool.web
 
 import com.gromozeka.domain.tool.Tool
-import org.springframework.ai.chat.model.ToolContext
+import com.gromozeka.domain.tool.ToolExecutionContext
 
 /**
  * Request parameters for brave_web_search tool.
@@ -391,5 +391,5 @@ interface BraveWebSearchTool : Tool<BraveWebSearchRequest, Map<String, Any>> {
     override val requestType: Class<BraveWebSearchRequest>
         get() = BraveWebSearchRequest::class.java
     
-    override fun execute(request: BraveWebSearchRequest, context: ToolContext?): Map<String, Any>
+    override fun execute(request: BraveWebSearchRequest, context: ToolExecutionContext?): Map<String, Any>
 }

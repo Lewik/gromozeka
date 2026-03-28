@@ -1,7 +1,7 @@
 package com.gromozeka.domain.tool.web
 
 import com.gromozeka.domain.tool.Tool
-import org.springframework.ai.chat.model.ToolContext
+import com.gromozeka.domain.tool.ToolExecutionContext
 
 /**
  * Request parameters for jina_read_url tool.
@@ -418,5 +418,5 @@ interface JinaReadUrlTool : Tool<JinaReadUrlRequest, Map<String, Any>> {
     override val requestType: Class<JinaReadUrlRequest>
         get() = JinaReadUrlRequest::class.java
     
-    override fun execute(request: JinaReadUrlRequest, context: ToolContext?): Map<String, Any>
+    override fun execute(request: JinaReadUrlRequest, context: ToolExecutionContext?): Map<String, Any>
 }

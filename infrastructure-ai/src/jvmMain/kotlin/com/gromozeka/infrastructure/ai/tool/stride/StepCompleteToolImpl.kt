@@ -7,7 +7,7 @@ import com.gromozeka.domain.tool.stride.StepCompleteResponse
 import com.gromozeka.domain.tool.stride.StepCompleteTool
 import kotlinx.coroutines.runBlocking
 import org.slf4j.LoggerFactory
-import org.springframework.ai.chat.model.ToolContext
+import com.gromozeka.domain.tool.ToolExecutionContext
 import org.springframework.stereotype.Service
 
 /**
@@ -25,17 +25,17 @@ class StepCompleteToolImpl(
     
     private val logger = LoggerFactory.getLogger(StepCompleteToolImpl::class.java)
     
-    override fun execute(request: StepCompleteRequest, context: ToolContext?): StepCompleteResponse {
+    override fun execute(request: StepCompleteRequest, context: ToolExecutionContext?): StepCompleteResponse {
         logger.debug("StepCompleteTool called: status=${request.status}, result=${request.result.take(100)}")
         
-        // Get planId from ToolContext
+        // Get planId from ToolExecutionContext
         val contextMap = context?.getContext()
-            ?: throw IllegalArgumentException("ToolContext is required for step_complete tool")
+            ?: throw IllegalArgumentException("ToolExecutionContext is required for step_complete tool")
         
         val planId = contextMap["planId"] as? String
             ?: throw IllegalArgumentException(
-                "planId not found in ToolContext. " +
-                "ConversationEngine must provide planId in ToolContext when plan is active."
+                "planId not found in ToolExecutionContext. " +
+                "ConversationEngine must provide planId in ToolExecutionContext when plan is active."
             )
         
         // Validate status parameter

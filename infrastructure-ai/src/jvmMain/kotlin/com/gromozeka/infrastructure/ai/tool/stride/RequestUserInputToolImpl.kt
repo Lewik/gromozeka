@@ -2,7 +2,7 @@ package com.gromozeka.infrastructure.ai.tool.stride
 
 import com.gromozeka.domain.tool.stride.*
 import org.slf4j.LoggerFactory
-import org.springframework.ai.chat.model.ToolContext
+import com.gromozeka.domain.tool.ToolExecutionContext
 import org.springframework.stereotype.Service
 
 /**
@@ -20,7 +20,7 @@ class RequestUserInputToolImpl : RequestUserInputTool {
     
     private val logger = LoggerFactory.getLogger(RequestUserInputToolImpl::class.java)
     
-    override fun execute(request: RequestUserInputRequest, context: ToolContext?): RequestUserInputResponse {
+    override fun execute(request: RequestUserInputRequest, context: ToolExecutionContext?): RequestUserInputResponse {
         logger.info("User input requested (reason: ${request.reason}): ${request.question}")
         
         // Validate reason parameter

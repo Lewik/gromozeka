@@ -1,11 +1,11 @@
 package com.gromozeka.application.service
 
 import com.gromozeka.domain.model.Conversation.Message.ContentItem
+import com.gromozeka.domain.service.AiToolProvider
+import com.gromozeka.domain.tool.AiToolCallback
 import klog.KLoggers
 import kotlinx.coroutines.*
-import org.springframework.ai.chat.messages.AssistantMessage
-import org.springframework.ai.chat.model.ToolContext
-import org.springframework.ai.tool.ToolCallback
+import com.gromozeka.domain.tool.ToolExecutionContext
 import org.springframework.stereotype.Service
 
 /**
@@ -24,8 +24,7 @@ data class ToolExecutionResult(
  */
 @Service
 class ParallelToolExecutor(
-    private val applicationContext: org.springframework.context.ApplicationContext,
-    private val mcpToolProvider: com.gromozeka.domain.service.McpToolProvider,
+    private val aiToolProvider: AiToolProvider,
     private val toolApprovalService: ToolApprovalService,
 ) {
     private val log = KLoggers.logger(this)
@@ -33,14 +32,14 @@ class ParallelToolExecutor(
     /**
      * Execute multiple tool calls in parallel.
      *
-     * @param toolCalls Spring AI tool calls from the model
+     * @param toolCalls tool calls requested by the model
      * @param toolContext Context to pass to tools (e.g., projectPath)
      * @param scope Coroutine scope for async execution
      * @return ToolExecutionResult with results and returnDirect flag
      */
     suspend fun executeParallel(
-        toolCalls: List<AssistantMessage.ToolCall>,
-        toolContext: ToolContext,
+        toolCalls: List<ContentItem.ToolCall>,
+        toolContext: ToolExecutionContext,
         scope: CoroutineScope,
     ): ToolExecutionResult {
         if (toolCalls.isEmpty()) return ToolExecutionResult(emptyList(), false)
@@ -57,45 +56,28 @@ class ParallelToolExecutor(
 
         // Check if all executed tools have returnDirect=true
         val returnDirect = toolCalls.all { toolCall ->
-            callbackMap[toolCall.name()]?.toolMetadata?.returnDirect() == true
+            callbackMap[toolCall.call.name]?.metadata?.returnDirect == true
         }
 
         return ToolExecutionResult(results, returnDirect)
     }
 
     /**
-     * Build callback map dynamically from ApplicationContext.
-     * 
-     * Uses getBeansOfType() to pick up ALL ToolCallback beans including those
-     * registered after initial Spring context creation (via registerSingleton):
-     * - ToolsRegistrationConfig: Tool<*,*> beans (grz_*, stride, memory, web, lsp tools)
-     * - InternalMcpToolsRegistrar: GromozekaMcpTool beans (create_agent, tell_agent, etc.)
+     * Build callback map dynamically from the aggregated AI tool provider.
      */
-    private fun buildCallbackMap(): Map<String, ToolCallback> {
-        val map = mutableMapOf<String, ToolCallback>()
-
-        // All registered ToolCallback beans (built-in + internal MCP tools)
-        applicationContext.getBeansOfType(ToolCallback::class.java).values.forEach { callback ->
-            map[callback.toolDefinition.name()] = callback
-        }
-
-        // External MCP tools from MCP servers
-        mcpToolProvider.getToolCallbacks().forEach { callback ->
-            map[callback.toolDefinition.name()] = callback
-        }
-
-        return map
+    private fun buildCallbackMap(): Map<String, AiToolCallback> {
+        return aiToolProvider.getTools().associateBy { it.definition.name }
     }
 
     private suspend fun executeSingleTool(
-        toolCall: AssistantMessage.ToolCall,
-        callbackMap: Map<String, ToolCallback>,
-        toolContext: ToolContext,
+        toolCall: ContentItem.ToolCall,
+        callbackMap: Map<String, AiToolCallback>,
+        toolContext: ToolExecutionContext,
     ): ContentItem.ToolResult {
-        val toolId = ContentItem.ToolCall.Id(toolCall.id())
-        val toolName = toolCall.name()
+        val toolId = toolCall.id
+        val toolName = toolCall.call.name
 
-        log.debug { "Executing tool: $toolName (${toolCall.id()})" }
+        log.debug { "Executing tool: $toolName (${toolCall.id.value})" }
 
         try {
             // Check approval
@@ -124,7 +106,7 @@ class ParallelToolExecutor(
                 )
 
             // Validate JSON arguments before execution
-            val arguments = toolCall.arguments()
+            val arguments = toolCall.call.input.toString()
             try {
                 kotlinx.serialization.json.Json.parseToJsonElement(arguments)
             } catch (e: Exception) {

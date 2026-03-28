@@ -4,7 +4,7 @@ import com.gromozeka.domain.service.StepInput
 import com.gromozeka.domain.service.StepRuntime
 import com.gromozeka.domain.tool.Tool
 import kotlinx.serialization.Serializable
-import org.springframework.ai.chat.model.ToolContext
+import com.gromozeka.domain.tool.ToolExecutionContext
 
 /**
  * Domain specification for plan modification tool.
@@ -244,7 +244,7 @@ interface UpdatePlanTool : Tool<UpdatePlanRequest, UpdatePlanResponse> {
     override val description: String get() = "Modify execution plan (add/remove/change steps)"
     override val requestType: Class<UpdatePlanRequest> get() = UpdatePlanRequest::class.java
 
-    override fun execute(request: UpdatePlanRequest, context: ToolContext?): UpdatePlanResponse
+    override fun execute(request: UpdatePlanRequest, context: ToolExecutionContext?): UpdatePlanResponse
 }
 
 /**

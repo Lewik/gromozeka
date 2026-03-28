@@ -162,7 +162,7 @@ interface FileSearchService {
      *     private val fileSearchService: FileSearchService
      * ) : GrzReadFileTool {
      *     
-     *     override fun execute(request: ReadFileRequest, context: ToolContext?): Map<String, Any> {
+     *     override fun execute(request: ReadFileRequest, context: ToolExecutionContext?): Map<String, Any> {
      *         val projectPath = context?.getContext()?.get("projectPath") as String
      *         val file = resolveFile(request.file_path, projectPath)
      *         

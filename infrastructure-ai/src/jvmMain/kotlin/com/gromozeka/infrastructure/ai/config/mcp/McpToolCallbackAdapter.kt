@@ -1,24 +1,34 @@
 package com.gromozeka.infrastructure.ai.config.mcp
 
+import com.gromozeka.domain.tool.AiToolCallback
+import com.gromozeka.domain.tool.AiToolDefinition
 import io.modelcontextprotocol.kotlin.sdk.Tool
 import klog.KLoggers
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.*
-import org.springframework.ai.chat.model.ToolContext
-import org.springframework.ai.tool.definition.ToolDefinition
-import org.springframework.ai.tool.ToolCallback
+import com.gromozeka.domain.tool.ToolExecutionContext
 
 class McpToolCallbackAdapter(
     private val clientWrapper: McpWrapperInterface,
     private val tool: Tool,
     private val coroutineScope: CoroutineScope
-) : ToolCallback {
+) : AiToolCallback {
 
     private val log = KLoggers.logger {}
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
 
-    override fun call(toolInput: String): String {
+    override val definition: AiToolDefinition = AiToolDefinition(
+        name = tool.name,
+        description = tool.description ?: "",
+        inputSchema = if (tool.inputSchema != null) {
+            Json.encodeToString(io.modelcontextprotocol.kotlin.sdk.Tool.Input.serializer(), tool.inputSchema!!)
+        } else {
+            """{"type":"object","properties":{}}"""
+        }
+    )
+
+    override fun call(toolInput: String, context: ToolExecutionContext?): String {
         return runBlocking {
             try {
                 log.debug { "Calling MCP tool: ${tool.name} with input: $toolInput" }
@@ -72,20 +82,6 @@ class McpToolCallbackAdapter(
             is JsonObject -> convertJsonObjectToMap(element)
             is JsonArray -> element.map { convertJsonElement(it) }
             else -> element.toString()
-        }
-    }
-
-    override fun getToolDefinition(): ToolDefinition {
-        val inputSchemaJson = if (tool.inputSchema != null) {
-            Json.encodeToString(io.modelcontextprotocol.kotlin.sdk.Tool.Input.serializer(), tool.inputSchema!!)
-        } else {
-            """{"type":"object","properties":{}}"""
-        }
-
-        return object : ToolDefinition {
-            override fun name(): String = tool.name
-            override fun description(): String = tool.description ?: ""
-            override fun inputSchema(): String = inputSchemaJson
         }
     }
 }

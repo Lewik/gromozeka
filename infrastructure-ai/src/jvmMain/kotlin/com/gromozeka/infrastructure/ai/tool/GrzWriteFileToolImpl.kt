@@ -3,7 +3,7 @@ package com.gromozeka.infrastructure.ai.tool
 import com.gromozeka.domain.tool.filesystem.GrzWriteFileTool
 import com.gromozeka.domain.tool.filesystem.WriteFileRequest
 import org.slf4j.LoggerFactory
-import org.springframework.ai.chat.model.ToolContext
+import com.gromozeka.domain.tool.ToolExecutionContext
 import org.springframework.stereotype.Service
 import java.io.File
 
@@ -19,7 +19,7 @@ class GrzWriteFileToolImpl : GrzWriteFileTool {
     
     private val logger = LoggerFactory.getLogger(GrzWriteFileToolImpl::class.java)
     
-    override fun execute(request: WriteFileRequest, context: ToolContext?): Map<String, Any> {
+    override fun execute(request: WriteFileRequest, context: ToolExecutionContext?): Map<String, Any> {
         return try {
             val projectPath = context?.getContext()?.get("projectPath") as? String
                 ?: error("Project path is required in tool context - this is a bug!")

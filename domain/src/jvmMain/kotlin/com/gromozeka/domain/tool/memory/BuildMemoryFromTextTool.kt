@@ -1,7 +1,7 @@
 package com.gromozeka.domain.tool.memory
 
 import com.gromozeka.domain.tool.Tool
-import org.springframework.ai.chat.model.ToolContext
+import com.gromozeka.domain.tool.ToolExecutionContext
 
 /**
  * Request parameters for build_memory_from_text tool.
@@ -348,5 +348,5 @@ interface BuildMemoryFromTextTool : Tool<BuildMemoryFromTextRequest, Map<String,
     override val requestType: Class<BuildMemoryFromTextRequest>
         get() = BuildMemoryFromTextRequest::class.java
     
-    override fun execute(request: BuildMemoryFromTextRequest, context: ToolContext?): Map<String, Any>
+    override fun execute(request: BuildMemoryFromTextRequest, context: ToolExecutionContext?): Map<String, Any>
 }

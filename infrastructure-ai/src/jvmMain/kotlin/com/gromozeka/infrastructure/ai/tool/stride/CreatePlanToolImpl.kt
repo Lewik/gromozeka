@@ -8,7 +8,7 @@ import com.gromozeka.domain.tool.stride.CreatePlanResponse
 import com.gromozeka.domain.tool.stride.CreatePlanTool
 import kotlinx.coroutines.runBlocking
 import org.slf4j.LoggerFactory
-import org.springframework.ai.chat.model.ToolContext
+import com.gromozeka.domain.tool.ToolExecutionContext
 import org.springframework.stereotype.Service
 
 /**
@@ -26,17 +26,17 @@ class CreatePlanToolImpl(
     
     private val logger = LoggerFactory.getLogger(CreatePlanToolImpl::class.java)
     
-    override fun execute(request: CreatePlanRequest, context: ToolContext?): CreatePlanResponse {
+    override fun execute(request: CreatePlanRequest, context: ToolExecutionContext?): CreatePlanResponse {
         logger.debug("CreatePlanTool called with ${request.steps.size} steps")
         
-        // Get conversationId from ToolContext
+        // Get conversationId from ToolExecutionContext
         val contextMap = context?.getContext() 
-            ?: throw IllegalArgumentException("ToolContext is required for create_plan tool")
+            ?: throw IllegalArgumentException("ToolExecutionContext is required for create_plan tool")
         
         val conversationId = contextMap["conversationId"] as? String
             ?: throw IllegalArgumentException(
-                "conversationId not found in ToolContext. " +
-                "ConversationEngine must provide conversationId in ToolContext."
+                "conversationId not found in ToolExecutionContext. " +
+                "ConversationEngine must provide conversationId in ToolExecutionContext."
             )
         
         // Convert request.steps to domain StepInput

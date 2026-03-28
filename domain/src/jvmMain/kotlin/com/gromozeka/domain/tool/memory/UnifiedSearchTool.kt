@@ -1,7 +1,7 @@
 package com.gromozeka.domain.tool.memory
 
 import com.gromozeka.domain.tool.Tool
-import org.springframework.ai.chat.model.ToolContext
+import com.gromozeka.domain.tool.ToolExecutionContext
 
 /**
  * Request parameters for unified_search tool.
@@ -738,5 +738,5 @@ interface UnifiedSearchTool : Tool<UnifiedSearchRequest, Map<String, Any>> {
     override val requestType: Class<UnifiedSearchRequest>
         get() = UnifiedSearchRequest::class.java
 
-    override fun execute(request: UnifiedSearchRequest, context: ToolContext?): Map<String, Any>
+    override fun execute(request: UnifiedSearchRequest, context: ToolExecutionContext?): Map<String, Any>
 }

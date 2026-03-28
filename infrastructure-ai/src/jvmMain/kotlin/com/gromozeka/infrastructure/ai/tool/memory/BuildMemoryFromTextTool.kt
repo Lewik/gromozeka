@@ -4,7 +4,7 @@ import com.gromozeka.infrastructure.ai.memory.KnowledgeGraphServiceFacade
 import com.gromozeka.domain.tool.memory.BuildMemoryFromTextRequest
 import kotlinx.coroutines.runBlocking
 import org.slf4j.LoggerFactory
-import org.springframework.ai.chat.model.ToolContext
+import com.gromozeka.domain.tool.ToolExecutionContext
 import org.springframework.stereotype.Service
 
 /**
@@ -21,7 +21,7 @@ class BuildMemoryFromTextTool(
     
     private val logger = LoggerFactory.getLogger(BuildMemoryFromTextTool::class.java)
     
-    override fun execute(request: BuildMemoryFromTextRequest, context: ToolContext?): Map<String, Any> {
+    override fun execute(request: BuildMemoryFromTextRequest, context: ToolExecutionContext?): Map<String, Any> {
         return try {
             val result = runBlocking {
                 knowledgeGraphServiceFacade.extractAndSaveToGraph(

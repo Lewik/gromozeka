@@ -1,7 +1,7 @@
 package com.gromozeka.application.service
 
+import com.gromozeka.domain.model.Conversation
 import klog.KLoggers
-import org.springframework.ai.chat.messages.AssistantMessage
 import org.springframework.stereotype.Service
 
 /**
@@ -18,7 +18,7 @@ interface ToolApprovalService {
      * @param toolCalls List of tool calls requested by the AI model
      * @return ApprovalResult indicating whether the tool calls are approved or rejected
      */
-    suspend fun approve(toolCalls: List<AssistantMessage.ToolCall>): ApprovalResult
+    suspend fun approve(toolCalls: List<Conversation.Message.ContentItem.ToolCall>): ApprovalResult
 }
 
 /**
@@ -48,8 +48,8 @@ sealed class ApprovalResult {
 class AutoApproveToolApprovalService : ToolApprovalService {
     private val log = KLoggers.logger(this)
 
-    override suspend fun approve(toolCalls: List<AssistantMessage.ToolCall>): ApprovalResult {
-        val toolNames = toolCalls.joinToString(", ") { it.name() }
+    override suspend fun approve(toolCalls: List<Conversation.Message.ContentItem.ToolCall>): ApprovalResult {
+        val toolNames = toolCalls.joinToString(", ") { it.call.name }
         log.debug { "Auto-approving ${toolCalls.size} tool calls: $toolNames" }
         return ApprovalResult.Approved
     }

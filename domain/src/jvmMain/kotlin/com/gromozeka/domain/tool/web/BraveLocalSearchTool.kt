@@ -1,7 +1,7 @@
 package com.gromozeka.domain.tool.web
 
 import com.gromozeka.domain.tool.Tool
-import org.springframework.ai.chat.model.ToolContext
+import com.gromozeka.domain.tool.ToolExecutionContext
 
 /**
  * Request parameters for brave_local_search tool.
@@ -378,5 +378,5 @@ interface BraveLocalSearchTool : Tool<BraveLocalSearchRequest, Map<String, Any>>
     override val requestType: Class<BraveLocalSearchRequest>
         get() = BraveLocalSearchRequest::class.java
     
-    override fun execute(request: BraveLocalSearchRequest, context: ToolContext?): Map<String, Any>
+    override fun execute(request: BraveLocalSearchRequest, context: ToolExecutionContext?): Map<String, Any>
 }

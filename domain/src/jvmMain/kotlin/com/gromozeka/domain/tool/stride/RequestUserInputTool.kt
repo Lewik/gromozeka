@@ -2,7 +2,7 @@ package com.gromozeka.domain.tool.stride
 
 import com.gromozeka.domain.tool.Tool
 import kotlinx.serialization.Serializable
-import org.springframework.ai.chat.model.ToolContext
+import com.gromozeka.domain.tool.ToolExecutionContext
 
 /**
  * Domain specification for user input request tool.
@@ -209,7 +209,7 @@ interface RequestUserInputTool : Tool<RequestUserInputRequest, RequestUserInputR
     override val description: String get() = "Request user input to resolve ambiguity or uncertainty"
     override val requestType: Class<RequestUserInputRequest> get() = RequestUserInputRequest::class.java
 
-    override fun execute(request: RequestUserInputRequest, context: ToolContext?): RequestUserInputResponse
+    override fun execute(request: RequestUserInputRequest, context: ToolExecutionContext?): RequestUserInputResponse
 }
 
 @Serializable

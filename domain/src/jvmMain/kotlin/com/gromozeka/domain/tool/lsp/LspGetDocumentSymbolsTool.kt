@@ -1,7 +1,7 @@
 package com.gromozeka.domain.tool.lsp
 
 import com.gromozeka.domain.tool.Tool
-import org.springframework.ai.chat.model.ToolContext
+import com.gromozeka.domain.tool.ToolExecutionContext
 
 /**
  * Request parameters for lsp_get_document_symbols tool.
@@ -411,5 +411,5 @@ interface LspGetDocumentSymbolsTool : Tool<LspGetDocumentSymbolsRequest, Map<Str
     override val requestType: Class<LspGetDocumentSymbolsRequest>
         get() = LspGetDocumentSymbolsRequest::class.java
 
-    override fun execute(request: LspGetDocumentSymbolsRequest, context: ToolContext?): Map<String, Any>
+    override fun execute(request: LspGetDocumentSymbolsRequest, context: ToolExecutionContext?): Map<String, Any>
 }

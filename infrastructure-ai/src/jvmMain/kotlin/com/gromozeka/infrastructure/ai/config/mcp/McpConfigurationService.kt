@@ -1,6 +1,7 @@
 package com.gromozeka.infrastructure.ai.config.mcp
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.gromozeka.domain.tool.AiToolCallback
 import io.modelcontextprotocol.kotlin.sdk.Implementation
 import io.modelcontextprotocol.kotlin.sdk.Tool
 import io.modelcontextprotocol.kotlin.sdk.client.Client
@@ -12,11 +13,9 @@ import kotlinx.coroutines.*
 import kotlinx.io.asSink
 import kotlinx.io.asSource
 import kotlinx.io.buffered
-import org.springframework.ai.tool.ToolCallback
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
-import com.gromozeka.domain.service.McpToolProvider
 import java.io.File
 
 @Service
@@ -24,7 +23,7 @@ class McpConfigurationService(
     @Value("\${GROMOZEKA_HOME:\${user.home}/.gromozeka}")
     private val gromozemkaHome: String,
     @Qualifier("mcpCoroutineScope") private val coroutineScope: CoroutineScope
-) : McpToolProvider {
+) {
     companion object {
         private val DEFAULT_INHERITED_ENV_VARS = if (System.getProperty("os.name").lowercase().contains("win")) {
             listOf(
@@ -232,9 +231,9 @@ class McpConfigurationService(
         return mcpClients.find { it.name.equals(serverName, ignoreCase = true) }
     }
 
-    override fun getToolCallbacks(): List<ToolCallback> {
+    fun getTools(): List<AiToolCallback> {
         return runBlocking {
-            val callbacks = mutableListOf<ToolCallback>()
+            val callbacks = mutableListOf<AiToolCallback>()
 
             for (wrapper in mcpClients) {
                 try {

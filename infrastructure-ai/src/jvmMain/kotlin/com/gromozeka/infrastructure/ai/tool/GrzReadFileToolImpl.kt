@@ -4,7 +4,7 @@ import com.gromozeka.domain.service.FileSearchService
 import com.gromozeka.domain.tool.filesystem.GrzReadFileTool
 import com.gromozeka.domain.tool.filesystem.ReadFileRequest
 import org.slf4j.LoggerFactory
-import org.springframework.ai.chat.model.ToolContext
+import com.gromozeka.domain.tool.ToolExecutionContext
 import org.springframework.stereotype.Service
 import java.io.File
 import java.util.Base64
@@ -23,7 +23,7 @@ class GrzReadFileToolImpl(
     
     private val logger = LoggerFactory.getLogger(GrzReadFileToolImpl::class.java)
     
-    override fun execute(request: ReadFileRequest, context: ToolContext?): Map<String, Any> {
+    override fun execute(request: ReadFileRequest, context: ToolExecutionContext?): Map<String, Any> {
         return try {
             val projectPath = context?.getContext()?.get("projectPath") as? String
                 ?: error("Project path is required in tool context - this is a bug!")

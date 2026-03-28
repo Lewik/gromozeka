@@ -1,7 +1,7 @@
 package com.gromozeka.domain.tool.codebase
 
 import com.gromozeka.domain.tool.Tool
-import org.springframework.ai.chat.model.ToolContext
+import com.gromozeka.domain.tool.ToolExecutionContext
 
 /**
  * Request parameters for index_domain_to_graph tool.
@@ -633,5 +633,5 @@ interface IndexDomainToGraphTool : Tool<IndexDomainToGraphRequest, Map<String, A
     override val requestType: Class<IndexDomainToGraphRequest>
         get() = IndexDomainToGraphRequest::class.java
 
-    override fun execute(request: IndexDomainToGraphRequest, context: ToolContext?): Map<String, Any>
+    override fun execute(request: IndexDomainToGraphRequest, context: ToolExecutionContext?): Map<String, Any>
 }

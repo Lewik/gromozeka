@@ -1,7 +1,7 @@
 package com.gromozeka.domain.tool.memory
 
 import com.gromozeka.domain.tool.Tool
-import org.springframework.ai.chat.model.ToolContext
+import com.gromozeka.domain.tool.ToolExecutionContext
 
 /**
  * Request parameters for add_memory_link tool.
@@ -369,5 +369,5 @@ interface AddMemoryLinkTool : Tool<AddMemoryLinkRequest, Map<String, Any>> {
     override val requestType: Class<AddMemoryLinkRequest>
         get() = AddMemoryLinkRequest::class.java
     
-    override fun execute(request: AddMemoryLinkRequest, context: ToolContext?): Map<String, Any>
+    override fun execute(request: AddMemoryLinkRequest, context: ToolExecutionContext?): Map<String, Any>
 }

@@ -3,7 +3,7 @@ package com.gromozeka.infrastructure.ai.tool.web
 import com.gromozeka.domain.service.SettingsProvider
 import com.gromozeka.domain.tool.web.JinaReadUrlRequest
 import org.slf4j.LoggerFactory
-import org.springframework.ai.chat.model.ToolContext
+import com.gromozeka.domain.tool.ToolExecutionContext
 import org.springframework.stereotype.Service
 import java.net.URI
 import java.net.http.HttpClient
@@ -30,7 +30,7 @@ class JinaReadUrlTool(
         .connectTimeout(Duration.ofSeconds(30))
         .build()
     
-    override fun execute(request: JinaReadUrlRequest, context: ToolContext?): Map<String, Any> {
+    override fun execute(request: JinaReadUrlRequest, context: ToolExecutionContext?): Map<String, Any> {
         if (!settingsProvider.enableJinaReader || settingsProvider.jinaApiKey.isNullOrBlank()) {
             return mapOf<String, Any>(
                 "success" to false,

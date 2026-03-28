@@ -373,12 +373,15 @@ fun SettingsPanel(
                                     modifier = Modifier.padding(vertical = 8.dp)
                                 )
 
-                                // Get available models from Spring AI
                                 val geminiModels = remember {
-                                    org.springframework.ai.google.genai.GoogleGenAiChatModel.ChatModel
-                                        .values()
-                                        .map { it.value }
-                                        .sortedByDescending { it } // Latest versions first
+                                    listOf(
+                                        "gemini-2.5-pro",
+                                        "gemini-2.5-flash",
+                                        "gemini-2.0-flash",
+                                        "gemini-2.0-flash-lite",
+                                        "gemini-1.5-pro",
+                                        "gemini-1.5-flash"
+                                    )
                                 }
 
                                 EditableDropdownSettingItem(
@@ -1588,4 +1591,3 @@ private fun EditableDropdownSettingItem(
         }
     }
 }
-

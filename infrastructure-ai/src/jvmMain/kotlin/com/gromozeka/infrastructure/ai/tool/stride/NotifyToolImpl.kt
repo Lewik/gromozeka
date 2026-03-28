@@ -2,7 +2,7 @@ package com.gromozeka.infrastructure.ai.tool.stride
 
 import com.gromozeka.domain.tool.stride.*
 import org.slf4j.LoggerFactory
-import org.springframework.ai.chat.model.ToolContext
+import com.gromozeka.domain.tool.ToolExecutionContext
 import org.springframework.stereotype.Service
 
 /**
@@ -19,7 +19,7 @@ class NotifyToolImpl : NotifyTool {
     
     private val logger = LoggerFactory.getLogger(NotifyToolImpl::class.java)
     
-    override fun execute(request: NotifyRequest, context: ToolContext?): NotifyResponse {
+    override fun execute(request: NotifyRequest, context: ToolExecutionContext?): NotifyResponse {
         // Log notification based on level
         when (request.level) {
             "info" -> logger.info("Step ${request.stepId} notification: ${request.message}")

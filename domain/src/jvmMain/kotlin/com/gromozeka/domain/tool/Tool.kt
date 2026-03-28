@@ -1,33 +1,12 @@
 package com.gromozeka.domain.tool
 
-import org.springframework.ai.chat.model.ToolContext
-
-// TODO: TECHNICAL DEBT - ToolContext dependency in domain layer
-//
-// Current situation:
-// - Domain layer imports Spring AI's ToolContext (framework dependency)
-// - Violates Clean Architecture Dependency Rule (domain shouldn't depend on frameworks)
-//
-// Why it exists:
-// - Pragmatic trade-off: Reduces boilerplate adapter code
-// - ToolContext is essentially a data container (Map wrapper)
-// - Unlikely to change Spring AI framework in foreseeable future
-//
-// Ideally "clean" solution:
-// - Create domain/tool/ToolExecutionContext.kt interface
-// - Infrastructure provides SpringAIContextAdapter implementing it
-// - Adds abstraction layer but no practical benefit currently
-//
-// Decision: Keep as-is until framework change becomes necessary
-// Impact: Low (isolated to tool interfaces, doesn't leak into domain services)
-
 /**
  * Base interface for all Gromozeka tools.
  * 
  * # Architecture: Domain-Driven Tool Specification Pattern
  * 
  * This interface establishes the contract for **AI-native tools** in Gromozeka. Tools are capabilities
- * exposed to LLMs (via Spring AI and MCP protocol) that allow agents to interact with the system,
+ * exposed to LLM runtimes (via infrastructure adapters and MCP protocol) that allow agents to interact with the system,
  * files, web, memory, and other resources.
  * 
  * ## Design Philosophy: Specification-First Development
@@ -42,7 +21,7 @@ import org.springframework.ai.chat.model.ToolContext
  * 
  * **Infrastructure layer contains MINIMAL implementations:**
  * - Concrete implementation details
- * - Spring AI integration (ToolCallback conversion)
+ * - AI runtime adapter integration
  * - Reference to domain specification via @see
  * - Only infrastructure-specific notes
  * 
@@ -63,8 +42,8 @@ import org.springframework.ai.chat.model.ToolContext
  *                             │
  *                             ▼
  * ┌─────────────────────────────────────────────────────────────┐
- * │ Spring AI Framework                                         │
- * │ - ToolCallback (Spring AI's tool abstraction)              │
+ * │ AI Runtime Adapter                                          │
+ * │ - Provider-specific tool callback abstraction              │
  * │ - JSON Schema generation from requestType                  │
  * │ - Tool execution orchestration                             │
  * └───────────────────────────┬─────────────────────────────────┘
@@ -107,13 +86,13 @@ import org.springframework.ai.chat.model.ToolContext
  * // Infrastructure layer (implementation)
  * @Service
  * class GrzReadFileToolImpl : GrzReadFileTool {
- *     override fun execute(request: ReadFileRequest, context: ToolContext?): Map<String, Any> {
+ *     override fun execute(request: ReadFileRequest, context: ToolExecutionContext?): Map<String, Any> {
  *         // Delegate to domain service
  *     }
  * }
  * ```
  * 
- * **Spring AI automatically generates JSON Schema from `requestType`**, enabling:
+ * **Infrastructure adapters automatically generate JSON Schema from `requestType`**, enabling:
  * - Compile-time parameter validation
  * - IDE autocomplete for tool parameters
  * - Refactoring safety (rename propagates)
@@ -143,7 +122,7 @@ import org.springframework.ai.chat.model.ToolContext
  * ## Tool Registration & Lifecycle
  * 
  * **Automatic Registration:**
- * All beans implementing `Tool<*, *>` are automatically converted to Spring AI's `ToolCallback`
+ * All beans implementing `Tool<*, *>` are automatically converted to runtime-specific tool callbacks
  * by `ToolsRegistrationConfig`. No manual registration needed.
  * 
  * ```kotlin
@@ -165,7 +144,7 @@ import org.springframework.ai.chat.model.ToolContext
  * Tools should **return errors as data**, not throw exceptions:
  * 
  * ```kotlin
- * override fun execute(request: ReadFileRequest, context: ToolContext?): Map<String, Any> {
+ * override fun execute(request: ReadFileRequest, context: ToolExecutionContext?): Map<String, Any> {
  *     return try {
  *         // ... operation ...
  *         mapOf("content" to result)
@@ -195,7 +174,7 @@ import org.springframework.ai.chat.model.ToolContext
  * Change interface freely - compiler enforces infrastructure updates
  * 
  * @param TRequest Request parameters (data class with tool arguments)
- * @param TResponse Response type (typically Map<String, Any> for Spring AI JSON serialization)
+ * @param TResponse Response type (typically Map<String, Any> for JSON serialization)
  * 
  * @see com.gromozeka.infrastructure.ai.config.ToolsRegistrationConfig Automatic tool registration
  * @see com.gromozeka.domain.service Domain services (business logic)
@@ -302,5 +281,5 @@ interface Tool<TRequest, TResponse> {
      * @param context Optional tool context (contains projectPath, conversation context, etc.)
      * @return Tool execution result formatted for Spring AI JSON serialization
      */
-    fun execute(request: TRequest, context: ToolContext?): TResponse
+    fun execute(request: TRequest, context: ToolExecutionContext?): TResponse
 }

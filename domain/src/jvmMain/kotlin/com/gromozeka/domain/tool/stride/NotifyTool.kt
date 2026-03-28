@@ -2,7 +2,7 @@ package com.gromozeka.domain.tool.stride
 
 import com.gromozeka.domain.tool.Tool
 import kotlinx.serialization.Serializable
-import org.springframework.ai.chat.model.ToolContext
+import com.gromozeka.domain.tool.ToolExecutionContext
 
 /**
  * Domain specification for informational notification tool.
@@ -142,7 +142,7 @@ interface NotifyTool : Tool<NotifyRequest, NotifyResponse> {
     override val description: String get() = "Send informational notification without interrupting execution"
     override val requestType: Class<NotifyRequest> get() = NotifyRequest::class.java
 
-    override fun execute(request: NotifyRequest, context: ToolContext?): NotifyResponse
+    override fun execute(request: NotifyRequest, context: ToolExecutionContext?): NotifyResponse
 }
 
 @Serializable

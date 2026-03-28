@@ -1,0 +1,27 @@
+package com.gromozeka.domain.service
+
+import com.gromozeka.domain.model.AIProvider
+import com.gromozeka.domain.model.ai.AiRuntimeRequest
+import com.gromozeka.domain.model.ai.AiRuntimeResponse
+import kotlinx.coroutines.flow.Flow
+
+/**
+ * Provider for Gromozeka's internal AI runtime.
+ *
+ * Application code depends on this contract instead of on Spring AI types.
+ * Infrastructure may implement it using Spring AI, direct provider clients,
+ * or hybrid transports.
+ */
+interface AiRuntimeProvider {
+    fun getRuntime(
+        provider: AIProvider,
+        modelName: String,
+        projectPath: String?
+    ): AiRuntime
+}
+
+interface AiRuntime {
+    suspend fun call(request: AiRuntimeRequest): AiRuntimeResponse
+
+    fun stream(request: AiRuntimeRequest): Flow<AiRuntimeResponse>
+}

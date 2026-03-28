@@ -4,7 +4,7 @@ import com.gromozeka.domain.repository.MemoryManagementService
 import com.gromozeka.domain.tool.memory.DeleteMemoryObjectRequest
 import kotlinx.coroutines.runBlocking
 import org.slf4j.LoggerFactory
-import org.springframework.ai.chat.model.ToolContext
+import com.gromozeka.domain.tool.ToolExecutionContext
 import org.springframework.stereotype.Service
 
 /**
@@ -21,7 +21,7 @@ class DeleteMemoryObjectTool(
     
     private val logger = LoggerFactory.getLogger(DeleteMemoryObjectTool::class.java)
     
-    override fun execute(request: DeleteMemoryObjectRequest, context: ToolContext?): Map<String, Any> {
+    override fun execute(request: DeleteMemoryObjectRequest, context: ToolExecutionContext?): Map<String, Any> {
         return try {
             val result = runBlocking {
                 memoryManagementService.hardDeleteEntity(

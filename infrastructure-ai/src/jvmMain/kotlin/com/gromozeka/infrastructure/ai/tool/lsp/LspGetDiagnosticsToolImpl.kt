@@ -4,7 +4,7 @@ import com.gromozeka.domain.tool.lsp.LspGetDiagnosticsRequest
 import com.gromozeka.domain.tool.lsp.LspGetDiagnosticsTool
 import com.gromozeka.infrastructure.ai.service.lsp.LspClientService
 import klog.KLoggers
-import org.springframework.ai.chat.model.ToolContext
+import com.gromozeka.domain.tool.ToolExecutionContext
 import org.springframework.stereotype.Service
 import java.nio.file.Files
 import java.nio.file.Path
@@ -23,7 +23,7 @@ class LspGetDiagnosticsToolImpl(
 
     override fun execute(
         request: LspGetDiagnosticsRequest,
-        context: ToolContext?
+        context: ToolExecutionContext?
     ): Map<String, Any> {
         return try {
             val projectPath = context?.getContext()?.get("projectPath") as? String

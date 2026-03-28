@@ -4,7 +4,7 @@ import com.gromozeka.domain.service.StepInput
 import com.gromozeka.domain.service.StepRuntime
 import com.gromozeka.domain.tool.Tool
 import kotlinx.serialization.Serializable
-import org.springframework.ai.chat.model.ToolContext
+import com.gromozeka.domain.tool.ToolExecutionContext
 
 /**
  * Domain specification for plan creation tool.
@@ -236,7 +236,7 @@ interface CreatePlanTool : Tool<CreatePlanRequest, CreatePlanResponse> {
     override val description: String get() = "Decompose user message into semantic execution steps"
     override val requestType: Class<CreatePlanRequest> get() = CreatePlanRequest::class.java
 
-    override fun execute(request: CreatePlanRequest, context: ToolContext?): CreatePlanResponse
+    override fun execute(request: CreatePlanRequest, context: ToolExecutionContext?): CreatePlanResponse
 }
 
 /**

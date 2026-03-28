@@ -9,7 +9,7 @@ import com.gromozeka.infrastructure.db.memory.UnifiedSearchService
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Instant
 import org.slf4j.LoggerFactory
-import org.springframework.ai.chat.model.ToolContext
+import com.gromozeka.domain.tool.ToolExecutionContext
 import org.springframework.stereotype.Service
 import kotlin.time.Duration.Companion.hours
 
@@ -27,7 +27,7 @@ class UnifiedSearchTool(
 
     private val logger = LoggerFactory.getLogger(UnifiedSearchTool::class.java)
 
-    override fun execute(request: UnifiedSearchRequest, context: ToolContext?): Map<String, Any> {
+    override fun execute(request: UnifiedSearchRequest, context: ToolExecutionContext?): Map<String, Any> {
         if (request.query.isBlank()) {
             return errorResponse("Query cannot be empty")
         }

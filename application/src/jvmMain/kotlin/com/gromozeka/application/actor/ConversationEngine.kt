@@ -1,38 +1,27 @@
 package com.gromozeka.application.actor
 
-import com.gromozeka.application.service.MessageConversionService
+import com.gromozeka.application.service.AiConversationMessageMapper
 import com.gromozeka.application.service.ParallelToolExecutor
 import com.gromozeka.domain.model.AIProvider
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.ai.AiRuntimeOptions
+import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.service.AgentDomainService
+import com.gromozeka.domain.service.AiRuntimeProvider
+import com.gromozeka.domain.service.AiToolProvider
 import com.gromozeka.domain.repository.ConversationRepository
 import com.gromozeka.domain.repository.MessageRepository
 import com.gromozeka.domain.repository.ThreadRepository
 import com.gromozeka.domain.repository.ThreadMessageRepository
-import com.gromozeka.domain.service.ChatModelProvider
 import com.gromozeka.shared.uuid.uuid7
 import klog.KLoggers
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.SendChannel
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonObject
-import org.springframework.ai.anthropic.AnthropicChatOptions
-import org.springframework.ai.anthropic.api.AnthropicCacheOptions
-import org.springframework.ai.anthropic.api.AnthropicCacheStrategy
-import org.springframework.ai.chat.messages.SystemMessage
-import org.springframework.ai.chat.model.ChatResponse
-import org.springframework.ai.chat.model.ToolContext
-import org.springframework.ai.chat.prompt.ChatOptions
-import org.springframework.ai.chat.prompt.Prompt
-import org.springframework.ai.model.tool.ToolCallingChatOptions
-import org.springframework.ai.openai.OpenAiChatOptions
-import org.springframework.ai.tool.ToolCallback
+import com.gromozeka.domain.tool.ToolExecutionContext
 
 /**
  * Conversation execution engine managing a single conversation.
@@ -76,11 +65,10 @@ class ConversationEngine(
     private val projectRepository: com.gromozeka.domain.repository.ProjectRepository,
     
     // Services
-    private val chatModelProvider: ChatModelProvider,
+    private val aiRuntimeProvider: AiRuntimeProvider,
     private val agentDomainService: AgentDomainService,
     private val parallelToolExecutor: ParallelToolExecutor,
-    private val messageConversionService: MessageConversionService,
-    private val availableTools: List<ToolCallback>,
+    private val aiToolProvider: AiToolProvider,
     
     // Communication
     private val eventChannel: SendChannel<Event>,
@@ -520,70 +508,58 @@ class ConversationEngine(
             
             log.info { "Agent config: name=${definition.name}, modelName=$modelName, provider=$provider, maxTokens=${definition.maxTokens}, thinking=${definition.thinking}, outputConfig=${definition.outputConfig}" }
             
-            val model = chatModelProvider.getChatModel(provider, modelName, project.path)
-            
-            // Assemble system prompts from agent definition
             val systemPrompts = agentDomainService.assembleSystemPrompt(definition, project)
-            val systemMessages = systemPrompts.map { SystemMessage(it) }
-            
-            val toolOptions = collectToolOptions(project.path, provider, definition)
+            val runtime = aiRuntimeProvider.getRuntime(provider, modelName, project.path)
+            val availableTools = aiToolProvider.getTools()
             
             var iteration = 0
             
             while (iteration < maxIterations) {
                 iteration++
-                
-                // Convert current state messages to Spring AI format
-                val springHistory = messageConversionService.convertHistoryToSpringAI(state.messages)
-                val currentPrompt = Prompt(systemMessages + springHistory, toolOptions)
-                
-                // Call LLM
-                log.info { "Calling LLM: model=$modelName, provider=$provider, iteration=$iteration" }
-                val chatResponse: ChatResponse = try {
-                    withContext(Dispatchers.IO) {
-                        model.call(currentPrompt)
-                    }
+
+                log.info { "Calling LLM runtime: model=$modelName, provider=$provider, iteration=$iteration" }
+                val runtimeResponse = try {
+                    runtime.call(
+                        AiRuntimeRequest(
+                            systemPrompts = systemPrompts,
+                            messages = state.messages,
+                            tools = availableTools,
+                            options = AiRuntimeOptions(
+                                maxTokens = definition.maxTokens,
+                                thinking = definition.thinking,
+                                outputConfig = definition.outputConfig,
+                                toolContext = mapOf("projectPath" to project.path)
+                            )
+                        )
+                    )
                 } catch (e: Exception) {
                     log.error(e) { "Chat call error" }
                     eventChannel.send(Event.Error(e))
                     break
                 }
-                
-                val generation = chatResponse.results.firstOrNull()
-                if (generation == null) {
-                    log.warn { "Empty response from chat model" }
+
+                if (runtimeResponse.messages.isEmpty() && runtimeResponse.toolCalls.isEmpty()) {
+                    log.warn { "Empty response from AI runtime" }
                     break
                 }
-                
-                val allToolCalls = chatResponse.results.flatMap { it.output.toolCalls }
-                val hasToolCalls = chatResponse.hasToolCalls()
-                
-                // Create assistant message
-                val assistantMessage = createAssistantMessageFromResponse(chatResponse)
-                
-                // Update state with new message and pending tool calls
-                val toolCallsMap = allToolCalls.associateBy { 
-                    Conversation.Message.ContentItem.ToolCall.Id(it.id()) 
+
+                val assistantMessages = AiConversationMessageMapper.toConversationMessages(conversationId, runtimeResponse)
+
+                assistantMessages.forEach { assistantMessage ->
+                    state = state.copy(messages = state.messages + assistantMessage)
+                    messageRepository.save(assistantMessage)
+                    eventChannel.send(Event.StateChanged(state.messages))
+                    eventChannel.send(Event.MessageEmitted(assistantMessage))
                 }
-                
-                state = state.copy(
-                    messages = state.messages + assistantMessage
-                )
-                
-                // Persist assistant message
-                messageRepository.save(assistantMessage)
-                
-                // Emit state change and message
-                eventChannel.send(Event.StateChanged(state.messages))
-                eventChannel.send(Event.MessageEmitted(assistantMessage))
-                
-                if (!hasToolCalls) {
+
+                val allToolCalls = runtimeResponse.toolCalls
+                if (allToolCalls.isEmpty()) {
                     // No tools - done
                     break
                 }
                 
                 // Execute tools
-                val toolContext = ToolContext(mapOf("projectPath" to project.path))
+                val toolContext = ToolExecutionContext(mapOf("projectPath" to project.path))
                 val executionResult = parallelToolExecutor.executeParallel(
                     toolCalls = allToolCalls,
                     toolContext = toolContext,
@@ -627,153 +603,6 @@ class ConversationEngine(
             state = state.copy(isRunning = false)
             eventChannel.send(Event.Completed)
         }
-    }
-    
-    private suspend fun collectToolOptions(
-        projectPath: String?, 
-        provider: AIProvider,
-        definition: AgentDefinition
-    ): ChatOptions {
-        // Filter tools by definition.tools if specified
-        val toolsToUse = if (definition.tools.isNotEmpty()) {
-            val allowedTools = definition.tools.toSet()
-            availableTools.filter { it.toolDefinition.name() in allowedTools }
-        } else {
-            // No filter - use all available tools
-            availableTools
-        }
-        
-        val toolNames = toolsToUse.map { it.toolDefinition.name() }.toSet()
-        
-        return when (provider) {
-            AIProvider.ANTHROPIC -> {
-                val cacheOptions = AnthropicCacheOptions.builder()
-                    .strategy(AnthropicCacheStrategy.CONVERSATION_HISTORY)
-                    .build()
-                
-                val builder = AnthropicChatOptions.builder()
-                    .toolCallbacks(toolsToUse)
-                    .toolNames(toolNames)
-                    .internalToolExecutionEnabled(false)
-                    .toolContext(mapOf("projectPath" to projectPath))
-                    .cacheOptions(cacheOptions)
-                
-                // Apply maxTokens from agent definition
-                definition.maxTokens?.let { builder.maxTokens(it) }
-                
-                // Apply thinking configuration from agent definition
-                definition.thinking?.let { thinkingConfig ->
-                    when (thinkingConfig.type) {
-                        "adaptive" -> {
-                            // Spring AI 1.1.x doesn't support adaptive thinking natively.
-                            // We set ENABLED as a placeholder — AdaptiveThinkingInterceptor
-                            // will replace it with {"type":"adaptive"} in the actual HTTP request.
-                            val budgetTokens = thinkingConfig.budgetTokens 
-                                ?: (definition.maxTokens?.let { it / 2 } ?: 16_000)
-                            builder.thinking(
-                                org.springframework.ai.anthropic.api.AnthropicApi.ThinkingType.ENABLED,
-                                budgetTokens
-                            )
-                        }
-                        "enabled" -> {
-                            val budgetTokens = thinkingConfig.budgetTokens 
-                                ?: (definition.maxTokens?.let { it / 2 } ?: 16_000)
-                            builder.thinking(
-                                org.springframework.ai.anthropic.api.AnthropicApi.ThinkingType.ENABLED,
-                                budgetTokens
-                            )
-                        }
-                        "disabled" -> {
-                            builder.thinking(
-                                org.springframework.ai.anthropic.api.AnthropicApi.ThinkingType.DISABLED,
-                                null
-                            )
-                        }
-                    }
-                }
-                
-                // Pass thinking type and effort to AdaptiveThinkingInterceptor via HTTP headers.
-                // The interceptor reads these, removes them from the request, and patches
-                // the JSON body with proper Anthropic API fields.
-                val httpHeaders = mutableMapOf<String, String>()
-                definition.thinking?.let { thinkingConfig ->
-                    httpHeaders["X-Gromozeka-Thinking-Type"] = thinkingConfig.type
-                }
-                definition.outputConfig?.let { outputConfig ->
-                    httpHeaders["X-Gromozeka-Effort"] = outputConfig.effort
-                }
-                if (httpHeaders.isNotEmpty()) {
-                    builder.httpHeaders(httpHeaders)
-                }
-                
-                builder.build()
-            }
-            AIProvider.OPEN_AI -> {
-                OpenAiChatOptions.builder()
-                    .toolCallbacks(toolsToUse)
-                    .toolNames(toolNames)
-                    .internalToolExecutionEnabled(false)
-                    .toolContext(mapOf("projectPath" to projectPath))
-                    .build()
-            }
-            else -> {
-                ToolCallingChatOptions.builder()
-                    .toolCallbacks(toolsToUse)
-                    .toolNames(toolNames)
-                    .internalToolExecutionEnabled(false)
-                    .toolContext(mapOf("projectPath" to projectPath))
-                    .build()
-            }
-        }
-    }
-    
-    private fun createAssistantMessageFromResponse(chatResponse: ChatResponse): Conversation.Message {
-        val content = mutableListOf<Conversation.Message.ContentItem>()
-        
-        chatResponse.results.forEach { generation ->
-            val assistantMsg = generation.output
-            
-            if (!assistantMsg.text.isNullOrBlank()) {
-                content.add(
-                    Conversation.Message.ContentItem.AssistantMessage(
-                        structured = Conversation.Message.StructuredText(fullText = assistantMsg.text ?: ""),
-                        state = Conversation.Message.BlockState.COMPLETE
-                    )
-                )
-            }
-            
-            assistantMsg.toolCalls.forEach { toolCall ->
-                val input = try {
-                    Json.parseToJsonElement(toolCall.arguments())
-                } catch (e: Exception) {
-                    log.error(e) { "Failed to parse tool call arguments for ${toolCall.name()}: ${toolCall.arguments()}" }
-                    JsonObject(
-                        mapOf(
-                            "error" to kotlinx.serialization.json.JsonPrimitive("Parse error: ${e.message}"),
-                            "raw" to kotlinx.serialization.json.JsonPrimitive(toolCall.arguments())
-                        )
-                    )
-                }
-                content.add(
-                    Conversation.Message.ContentItem.ToolCall(
-                        id = Conversation.Message.ContentItem.ToolCall.Id(toolCall.id()),
-                        call = Conversation.Message.ContentItem.ToolCall.Data(
-                            name = toolCall.name(),
-                            input = input
-                        ),
-                        state = Conversation.Message.BlockState.COMPLETE
-                    )
-                )
-            }
-        }
-        
-        return Conversation.Message(
-            id = Conversation.Message.Id(uuid7()),
-            conversationId = conversationId,
-            role = Conversation.Message.Role.ASSISTANT,
-            content = content,
-            createdAt = kotlinx.datetime.Clock.System.now()
-        )
     }
     
     /**

@@ -8,7 +8,7 @@ import com.gromozeka.domain.tool.stride.UpdatePlanResponse
 import com.gromozeka.domain.tool.stride.UpdatePlanTool
 import kotlinx.coroutines.runBlocking
 import org.slf4j.LoggerFactory
-import org.springframework.ai.chat.model.ToolContext
+import com.gromozeka.domain.tool.ToolExecutionContext
 import org.springframework.stereotype.Service
 
 /**
@@ -26,17 +26,17 @@ class UpdatePlanToolImpl(
     
     private val logger = LoggerFactory.getLogger(UpdatePlanToolImpl::class.java)
     
-    override fun execute(request: UpdatePlanRequest, context: ToolContext?): UpdatePlanResponse {
+    override fun execute(request: UpdatePlanRequest, context: ToolExecutionContext?): UpdatePlanResponse {
         logger.debug("UpdatePlanTool called with ${request.steps.size} steps")
         
-        // Get planId from ToolContext
+        // Get planId from ToolExecutionContext
         val contextMap = context?.getContext()
-            ?: throw IllegalArgumentException("ToolContext is required for update_plan tool")
+            ?: throw IllegalArgumentException("ToolExecutionContext is required for update_plan tool")
         
         val planId = contextMap["planId"] as? String
             ?: throw IllegalArgumentException(
-                "planId not found in ToolContext. " +
-                "ConversationEngine must provide planId in ToolContext when plan is active."
+                "planId not found in ToolExecutionContext. " +
+                "ConversationEngine must provide planId in ToolExecutionContext when plan is active."
             )
         
         // Convert request.steps to domain StepInput

@@ -1,7 +1,7 @@
 package com.gromozeka.domain.tool.filesystem
 
 import com.gromozeka.domain.tool.Tool
-import org.springframework.ai.chat.model.ToolContext
+import com.gromozeka.domain.tool.ToolExecutionContext
 
 /**
  * Request parameters for grz_write_file tool.
@@ -76,7 +76,7 @@ data class WriteFileRequest(
  * - `"config/settings.json"` - Nested in new directory
  * 
  * **Path resolution:**
- * - Relative paths resolved against project root (from ToolContext)
+ * - Relative paths resolved against project root (from ToolExecutionContext)
  * - Absolute paths used as-is
  * - Parent directories created automatically
  * 
@@ -338,5 +338,5 @@ interface GrzWriteFileTool : Tool<WriteFileRequest, Map<String, Any>> {
     override val requestType: Class<WriteFileRequest>
         get() = WriteFileRequest::class.java
     
-    override fun execute(request: WriteFileRequest, context: ToolContext?): Map<String, Any>
+    override fun execute(request: WriteFileRequest, context: ToolExecutionContext?): Map<String, Any>
 }

@@ -2,8 +2,6 @@ package com.gromozeka.infrastructure.ai.springai
 
 import com.gromozeka.domain.model.AIProvider
 import com.gromozeka.domain.model.AppMode
-import com.gromozeka.domain.service.ChatModelProvider
-import com.gromozeka.domain.service.McpToolProvider
 import com.gromozeka.domain.service.SettingsProvider
 import com.gromozeka.infrastructure.ai.factory.AiApiFactory
 import io.micrometer.observation.ObservationRegistry
@@ -27,8 +25,6 @@ import org.springframework.ai.ollama.api.OllamaChatOptions
 import org.springframework.ai.ollama.management.ModelManagementOptions
 import org.springframework.ai.openai.OpenAiChatModel
 import org.springframework.ai.openai.OpenAiChatOptions
-import org.springframework.ai.tool.ToolCallback
-import org.springframework.context.ApplicationContext
 import org.springframework.retry.support.RetryTemplate
 import org.springframework.stereotype.Service
 import java.util.concurrent.ConcurrentHashMap
@@ -38,11 +34,8 @@ class ChatModelFactory(
     private val aiApiFactory: AiApiFactory,
     private val toolCallingManager: ToolCallingManager,
     private val settingsProvider: SettingsProvider,
-    private val applicationContext: ApplicationContext,
-    private val toolCallbacks: List<ToolCallback>,
-    private val mcpToolProvider: McpToolProvider,
     private val oauthConfigService: com.gromozeka.infrastructure.ai.oauth.OAuthConfigService,
-) : ChatModelProvider {
+) {
     private val log = KLoggers.logger(this)
 
     private data class CacheKey(
@@ -53,17 +46,7 @@ class ChatModelFactory(
 
     private val cache = ConcurrentHashMap<CacheKey, ChatModel>()
 
-    /**
-     * Retrieves all registered ToolCallback beans from Spring context.
-     * Uses the same strategy as SpringContextToolCallbackResolver.
-     */
-    private fun getAllToolCallbacks(): List<ToolCallback> {
-        val toolCallbacks = applicationContext.getBeansOfType(ToolCallback::class.java).values.toList()
-        log.info("Retrieved ${toolCallbacks.size} ToolCallback beans from ApplicationContext: ${toolCallbacks.map { it.toolDefinition.name() }}")
-        return toolCallbacks
-    }
-
-    override fun getChatModel(provider: AIProvider, modelName: String, projectPath: String?): ChatModel {
+    fun getChatModel(provider: AIProvider, modelName: String, projectPath: String?): ChatModel {
         val key = CacheKey(provider, modelName, projectPath)
         return cache.getOrPut(key) {
             createChatModel(provider, modelName, projectPath)
@@ -82,16 +65,6 @@ class ChatModelFactory(
         val retryTemplate = RetryTemplate.builder().maxAttempts(3).build()
         val observationRegistry = ObservationRegistry.NOOP
         
-        // Get tools dynamically from ApplicationContext instead of constructor injection
-        // This ensures we get ALL registered tools including those registered after ChatModelFactory creation
-        val allRegisteredToolCallbacks = applicationContext.getBeansOfType(ToolCallback::class.java).values.toList()
-        val allToolCallbacks = allRegisteredToolCallbacks + mcpToolProvider.getToolCallbacks()
-        val allToolNames = allToolCallbacks.map { it.toolDefinition.name() }.toSet()
-        
-        log.info("ChatModelFactory.createChatModel: provider=$provider, total tools=${allToolCallbacks.size}")
-        log.info("ChatModelFactory.createChatModel: tool names=${allToolNames.sorted()}")
-
-
         return when (provider) {
             AIProvider.OLLAMA -> {
                 val ollamaApi = aiApiFactory.createOllamaApi()
@@ -101,10 +74,7 @@ class ChatModelFactory(
                     .numCtx(131072)
                     .numPredict(8192)
                     .temperature(0.7)
-                    .toolCallbacks(allToolCallbacks)
-                    .toolNames(allToolNames)
                     .internalToolExecutionEnabled(false)
-                    .toolContext(mapOf("projectPath" to projectPath))
                     .build()
 
                 OllamaChatModel(
@@ -130,10 +100,7 @@ class ChatModelFactory(
                     .maxOutputTokens(8192)
                     .thinkingBudget(8192)
                     .includeExtendedUsageMetadata(true)
-                    .toolCallbacks(allToolCallbacks)
-                    .toolNames(allToolNames)
                     .internalToolExecutionEnabled(false)
-                    .toolContext(mapOf("projectPath" to projectPath))
                     .build()
 
                 GoogleGenAiGeminiChatModelWithWorkarounds(
@@ -152,7 +119,7 @@ class ChatModelFactory(
                     openAiApi,
                     OpenAiChatOptions
                         .builder()
-                        .model("deepseek-coder-v2-lite-instruct")
+                        .model(modelName)
                         .temperature(0.7)
                         .maxCompletionTokens(8192)
                         .build(),
@@ -184,10 +151,7 @@ class ChatModelFactory(
                             .strategy(AnthropicCacheStrategy.CONVERSATION_HISTORY)
                             .build()
                     )
-                    .toolCallbacks(allToolCallbacks)
-                    .toolNames(allToolNames)
                     .internalToolExecutionEnabled(false)
-                    .toolContext(mapOf("projectPath" to projectPath))
                     .build()
 
                 log.info("Using prompt caching fixed Anthropic chat model with improved cache strategy")
@@ -217,9 +181,6 @@ class ChatModelFactory(
                     .mcpConfigPath(mcpConfigPath)
                     .build()
 
-                val toolCallbacks = getAllToolCallbacks()
-                log.info("Creating ClaudeCodeChatModel with ${toolCallbacks.size} tool callbacks for model $modelName")
-
                 val options = ClaudeCodeChatOptions.builder()
                     .model(modelName)
                     .temperature(0.7)
@@ -229,8 +190,6 @@ class ChatModelFactory(
                     .workingDirectory(workingDir)
                     .internalToolExecutionEnabled(false)
                     .build()
-
-                options.toolCallbacks = toolCallbacks
 
                 ClaudeCodeChatModel.builder()
                     .claudeCodeApi(api)

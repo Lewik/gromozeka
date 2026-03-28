@@ -10,7 +10,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
-import org.springframework.ai.chat.model.ToolContext
+import com.gromozeka.domain.tool.ToolExecutionContext
 import org.springframework.ai.embedding.EmbeddingModel
 import org.springframework.stereotype.Service
 import java.nio.file.FileSystems
@@ -53,7 +53,7 @@ class IndexDomainToGraphToolImpl(
     
     override fun execute(
         request: IndexDomainToGraphRequest,
-        context: ToolContext?
+        context: ToolExecutionContext?
     ): Map<String, Any> {
         val startTime = System.currentTimeMillis()
         

@@ -1,7 +1,7 @@
 package com.gromozeka.domain.tool.filesystem
 
 import com.gromozeka.domain.tool.Tool
-import org.springframework.ai.chat.model.ToolContext
+import com.gromozeka.domain.tool.ToolExecutionContext
 
 /**
  * Request parameters for grz_edit_file tool.
@@ -432,5 +432,5 @@ interface GrzEditFileTool : Tool<EditFileRequest, Map<String, Any>> {
     override val requestType: Class<EditFileRequest>
         get() = EditFileRequest::class.java
     
-    override fun execute(request: EditFileRequest, context: ToolContext?): Map<String, Any>
+    override fun execute(request: EditFileRequest, context: ToolExecutionContext?): Map<String, Any>
 }

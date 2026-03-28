@@ -1,7 +1,7 @@
 package com.gromozeka.domain.tool.memory
 
 import com.gromozeka.domain.tool.Tool
-import org.springframework.ai.chat.model.ToolContext
+import com.gromozeka.domain.tool.ToolExecutionContext
 
 /**
  * Request parameters for invalidate_memory_link tool.
@@ -384,5 +384,5 @@ interface InvalidateMemoryLinkTool : Tool<InvalidateMemoryLinkRequest, Map<Strin
     override val requestType: Class<InvalidateMemoryLinkRequest>
         get() = InvalidateMemoryLinkRequest::class.java
     
-    override fun execute(request: InvalidateMemoryLinkRequest, context: ToolContext?): Map<String, Any>
+    override fun execute(request: InvalidateMemoryLinkRequest, context: ToolExecutionContext?): Map<String, Any>
 }

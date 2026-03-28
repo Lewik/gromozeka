@@ -1,16 +1,15 @@
 package com.gromozeka.application.actor
 
-import com.gromozeka.application.service.MessageConversionService
 import com.gromozeka.application.service.ParallelToolExecutor
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.service.AgentDomainService
+import com.gromozeka.domain.service.AiRuntimeProvider
+import com.gromozeka.domain.service.AiToolProvider
 import com.gromozeka.domain.repository.ConversationRepository
 import com.gromozeka.domain.repository.MessageRepository
 import com.gromozeka.domain.repository.ThreadMessageRepository
 import com.gromozeka.domain.repository.ThreadRepository
-import com.gromozeka.domain.service.ChatModelProvider
-import com.gromozeka.domain.service.McpToolProvider
 import klog.KLoggers
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
@@ -18,7 +17,6 @@ import kotlinx.coroutines.channels.SendChannel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import org.springframework.ai.tool.ToolCallback
 
 /**
  * Supervisor managing lifecycle of ConversationEngine instances.
@@ -68,14 +66,10 @@ class ConversationSupervisor(
     private val projectRepository: com.gromozeka.domain.repository.ProjectRepository,
     
     // Services (passed to ConversationEngine)
-    private val chatModelProvider: ChatModelProvider,
+    private val aiRuntimeProvider: AiRuntimeProvider,
     private val agentDomainService: AgentDomainService,
     private val parallelToolExecutor: ParallelToolExecutor,
-    private val messageConversionService: MessageConversionService,
-    
-    // Tools (merged before passing to ConversationEngine)
-    private val toolCallbacks: List<ToolCallback>,
-    private val mcpToolProvider: McpToolProvider,
+    private val aiToolProvider: AiToolProvider,
     
     // Configuration
     private val maxIterations: Int = 200
@@ -290,24 +284,16 @@ class ConversationSupervisor(
      * Create new ConversationEngine instance and start broadcasting.
      * 
      * Steps:
-     * 1. Merge all available tools (built-in + MCP)
-     * 2. Create event channel for this engine
-     * 3. Create ConversationEngine with all dependencies
-     * 4. Start engine command processing loop
-     * 5. Start event broadcasting loop
-     * 6. Send Initialize command (engine loads from DB)
+     * 1. Create event channel for this engine
+     * 2. Create ConversationEngine with all dependencies
+     * 3. Start engine command processing loop
+     * 4. Start event broadcasting loop
+     * 5. Send Initialize command (engine loads from DB)
      */
     private fun createEngine(conversationId: Conversation.Id): EngineInstance {
         log.info { "Creating new engine for conversation $conversationId" }
         
         try {
-            // Merge tools from all sources
-            val allTools = mutableListOf<ToolCallback>()
-            allTools.addAll(toolCallbacks)
-            allTools.addAll(mcpToolProvider.getToolCallbacks())
-            
-            log.debug { "Total tools available for engine: ${allTools.size}" }
-            
             // Create event channel
             val eventChannel = Channel<ConversationEngine.Event>(Channel.UNLIMITED)
             
@@ -324,13 +310,10 @@ class ConversationSupervisor(
                 projectRepository = projectRepository,
                 
                 // Services
-                chatModelProvider = chatModelProvider,
+                aiRuntimeProvider = aiRuntimeProvider,
                 agentDomainService = agentDomainService,
                 parallelToolExecutor = parallelToolExecutor,
-                messageConversionService = messageConversionService,
-                
-                // Tools
-                availableTools = allTools,
+                aiToolProvider = aiToolProvider,
                 
                 // Communication
                 eventChannel = eventChannel,

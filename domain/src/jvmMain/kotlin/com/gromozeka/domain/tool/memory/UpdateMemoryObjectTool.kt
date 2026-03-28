@@ -1,7 +1,7 @@
 package com.gromozeka.domain.tool.memory
 
 import com.gromozeka.domain.tool.Tool
-import org.springframework.ai.chat.model.ToolContext
+import com.gromozeka.domain.tool.ToolExecutionContext
 
 /**
  * Request parameters for update_memory_object tool.
@@ -352,5 +352,5 @@ interface UpdateMemoryObjectTool : Tool<UpdateMemoryObjectRequest, Map<String, A
     override val requestType: Class<UpdateMemoryObjectRequest>
         get() = UpdateMemoryObjectRequest::class.java
     
-    override fun execute(request: UpdateMemoryObjectRequest, context: ToolContext?): Map<String, Any>
+    override fun execute(request: UpdateMemoryObjectRequest, context: ToolExecutionContext?): Map<String, Any>
 }

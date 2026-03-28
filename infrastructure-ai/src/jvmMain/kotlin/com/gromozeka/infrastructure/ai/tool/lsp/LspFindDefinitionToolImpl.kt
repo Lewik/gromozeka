@@ -4,7 +4,7 @@ import com.gromozeka.domain.tool.lsp.LspFindDefinitionRequest
 import com.gromozeka.domain.tool.lsp.LspFindDefinitionTool
 import com.gromozeka.infrastructure.ai.service.lsp.LspClientService
 import klog.KLoggers
-import org.springframework.ai.chat.model.ToolContext
+import com.gromozeka.domain.tool.ToolExecutionContext
 import org.springframework.stereotype.Service
 import java.nio.file.Path
 
@@ -22,7 +22,7 @@ class LspFindDefinitionToolImpl(
 
     override fun execute(
         request: LspFindDefinitionRequest,
-        context: ToolContext?
+        context: ToolExecutionContext?
     ): Map<String, Any> {
         return try {
             val projectPath = context?.getContext()?.get("projectPath") as? String

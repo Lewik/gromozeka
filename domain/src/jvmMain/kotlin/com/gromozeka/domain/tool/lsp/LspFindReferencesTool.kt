@@ -1,7 +1,7 @@
 package com.gromozeka.domain.tool.lsp
 
 import com.gromozeka.domain.tool.Tool
-import org.springframework.ai.chat.model.ToolContext
+import com.gromozeka.domain.tool.ToolExecutionContext
 
 /**
  * Request parameters for lsp_find_references tool.

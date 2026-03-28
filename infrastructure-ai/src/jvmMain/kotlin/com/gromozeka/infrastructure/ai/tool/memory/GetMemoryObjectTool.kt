@@ -4,7 +4,7 @@ import com.gromozeka.domain.repository.MemoryManagementService
 import com.gromozeka.domain.tool.memory.GetMemoryObjectRequest
 import kotlinx.coroutines.runBlocking
 import org.slf4j.LoggerFactory
-import org.springframework.ai.chat.model.ToolContext
+import com.gromozeka.domain.tool.ToolExecutionContext
 import org.springframework.stereotype.Service
 
 /**
@@ -21,7 +21,7 @@ class GetMemoryObjectTool(
     
     private val logger = LoggerFactory.getLogger(GetMemoryObjectTool::class.java)
     
-    override fun execute(request: GetMemoryObjectRequest, context: ToolContext?): Map<String, Any> {
+    override fun execute(request: GetMemoryObjectRequest, context: ToolExecutionContext?): Map<String, Any> {
         return try {
             val details = runBlocking {
                 memoryManagementService.getEntityDetails(request.name)

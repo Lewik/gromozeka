@@ -50,14 +50,7 @@ kotlin {
                 implementation(libs.multiplatform.markdown.renderer.code)
 
                 implementation(libs.kotlin.reflect)
-                implementation(libs.kotlinx.coroutines.reactor)
                 implementation(libs.kotlinx.datetime)
-                
-                // Spring AI providers
-                implementation(libs.spring.ai.openai)
-                implementation(libs.spring.ai.anthropic)
-                implementation(libs.spring.ai.google.genai)
-                implementation(libs.spring.ai.ollama)
                 
                 // MCP SDK for internal tools
                 implementation(libs.mcp.kotlin.sdk)

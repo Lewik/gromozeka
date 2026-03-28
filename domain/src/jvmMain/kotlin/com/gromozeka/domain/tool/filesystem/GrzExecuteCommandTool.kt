@@ -1,7 +1,7 @@
 package com.gromozeka.domain.tool.filesystem
 
 import com.gromozeka.domain.tool.Tool
-import org.springframework.ai.chat.model.ToolContext
+import com.gromozeka.domain.tool.ToolExecutionContext
 
 /**
  * Request parameters for grz_execute_command tool.
@@ -153,5 +153,5 @@ interface GrzExecuteCommandTool : Tool<ExecuteCommandRequest, Map<String, Any>> 
     override val requestType: Class<ExecuteCommandRequest>
         get() = ExecuteCommandRequest::class.java
     
-    override fun execute(request: ExecuteCommandRequest, context: ToolContext?): Map<String, Any>
+    override fun execute(request: ExecuteCommandRequest, context: ToolExecutionContext?): Map<String, Any>
 }

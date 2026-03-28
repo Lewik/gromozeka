@@ -1,7 +1,7 @@
 package com.gromozeka.domain.tool.memory
 
 import com.gromozeka.domain.tool.Tool
-import org.springframework.ai.chat.model.ToolContext
+import com.gromozeka.domain.tool.ToolExecutionContext
 
 /**
  * Request parameters for delete_memory_object tool.
@@ -408,5 +408,5 @@ interface DeleteMemoryObjectTool : Tool<DeleteMemoryObjectRequest, Map<String, A
     override val requestType: Class<DeleteMemoryObjectRequest>
         get() = DeleteMemoryObjectRequest::class.java
     
-    override fun execute(request: DeleteMemoryObjectRequest, context: ToolContext?): Map<String, Any>
+    override fun execute(request: DeleteMemoryObjectRequest, context: ToolExecutionContext?): Map<String, Any>
 }

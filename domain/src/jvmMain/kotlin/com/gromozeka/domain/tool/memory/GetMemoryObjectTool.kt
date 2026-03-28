@@ -1,7 +1,7 @@
 package com.gromozeka.domain.tool.memory
 
 import com.gromozeka.domain.tool.Tool
-import org.springframework.ai.chat.model.ToolContext
+import com.gromozeka.domain.tool.ToolExecutionContext
 
 /**
  * Request parameters for get_memory_object tool.
@@ -293,5 +293,5 @@ interface GetMemoryObjectTool : Tool<GetMemoryObjectRequest, Map<String, Any>> {
     override val requestType: Class<GetMemoryObjectRequest>
         get() = GetMemoryObjectRequest::class.java
     
-    override fun execute(request: GetMemoryObjectRequest, context: ToolContext?): Map<String, Any>
+    override fun execute(request: GetMemoryObjectRequest, context: ToolExecutionContext?): Map<String, Any>
 }

@@ -5,7 +5,7 @@ import com.gromozeka.domain.tool.web.BraveLocalSearchRequest
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import org.slf4j.LoggerFactory
-import org.springframework.ai.chat.model.ToolContext
+import com.gromozeka.domain.tool.ToolExecutionContext
 import org.springframework.stereotype.Service
 import java.net.URI
 import java.net.URLEncoder
@@ -35,7 +35,7 @@ class BraveLocalSearchTool(
     
     private val json = Json { ignoreUnknownKeys = true }
     
-    override fun execute(request: BraveLocalSearchRequest, context: ToolContext?): Map<String, Any> {
+    override fun execute(request: BraveLocalSearchRequest, context: ToolExecutionContext?): Map<String, Any> {
         if (!settingsProvider.enableBraveSearch || settingsProvider.braveApiKey.isNullOrBlank()) {
             return mapOf<String, Any>(
                 "success" to false,

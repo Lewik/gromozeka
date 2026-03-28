@@ -1,7 +1,7 @@
 package com.gromozeka.domain.tool.filesystem
 
 import com.gromozeka.domain.tool.Tool
-import org.springframework.ai.chat.model.ToolContext
+import com.gromozeka.domain.tool.ToolExecutionContext
 
 /**
  * Request parameters for grz_read_file tool.
@@ -362,5 +362,5 @@ interface GrzReadFileTool : Tool<ReadFileRequest, Map<String, Any>> {
     override val requestType: Class<ReadFileRequest>
         get() = ReadFileRequest::class.java
     
-    override fun execute(request: ReadFileRequest, context: ToolContext?): Map<String, Any>
+    override fun execute(request: ReadFileRequest, context: ToolExecutionContext?): Map<String, Any>
 }
