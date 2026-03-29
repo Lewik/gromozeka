@@ -59,6 +59,7 @@ class EntityDeduplicationService(
             AIProvider.CLAUDE_CODE -> claudeModel
             AIProvider.OLLAMA -> ollamaModel
             AIProvider.OPEN_AI -> TODO()
+            AIProvider.OPEN_AI_SUBSCRIPTION -> error("Knowledge graph deduplication does not support OPEN_AI_SUBSCRIPTION yet")
             AIProvider.ANTHROPIC -> anthropicModel
         },
         projectPath = null

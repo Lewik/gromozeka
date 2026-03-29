@@ -38,6 +38,7 @@ uuid-creator = "5.3.7"
 neo4j-driver = "5.26.0"
 ktreesitter = "0.24.1"
 lsp4j = "0.23.1"
+openai-java = "4.13.0"
 
 [libraries]
 # Ktor
@@ -58,6 +59,7 @@ ktor-server-content-negotiation = { module = "io.ktor:ktor-server-content-negoti
 spring-ai-bom = { module = "org.springframework.ai:spring-ai-bom", version.ref = "spring-ai" }
 spring-boot-dependencies = { module = "org.springframework.boot:spring-boot-dependencies", version.ref = "spring-boot" }
 spring-ai-openai = { module = "org.springframework.ai:spring-ai-openai", version.ref = "spring-ai" }
+openai-java = { module = "com.openai:openai-java", version.ref = "openai-java" }
 spring-ai-anthropic = { module = "org.springframework.ai:spring-ai-anthropic", version.ref = "spring-ai" }
 spring-ai-vertex-ai-gemini = { module = "org.springframework.ai:spring-ai-vertex-ai-gemini", version.ref = "spring-ai" }
 spring-ai-google-genai = { module = "org.springframework.ai:spring-ai-google-genai", version.ref = "spring-ai" }

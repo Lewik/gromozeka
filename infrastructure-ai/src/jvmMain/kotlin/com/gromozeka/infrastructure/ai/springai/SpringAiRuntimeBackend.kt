@@ -6,7 +6,7 @@ import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.model.ai.AiRuntimeResponse
 import com.gromozeka.domain.model.ai.AiToolChoice
 import com.gromozeka.domain.service.AiRuntime
-import com.gromozeka.domain.service.AiRuntimeProvider
+import com.gromozeka.infrastructure.ai.runtime.AiRuntimeBackend
 import klog.KLoggers
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -25,12 +25,14 @@ import org.springframework.ai.openai.api.OpenAiApi
 import org.springframework.stereotype.Service
 
 @Service
-class SpringAiRuntimeProvider(
+internal class SpringAiRuntimeBackend(
     private val chatModelFactory: ChatModelFactory,
     private val messageMapper: SpringAiMessageMapper,
-) : AiRuntimeProvider {
+) : AiRuntimeBackend {
 
-    override fun getRuntime(
+    override fun supports(provider: AIProvider): Boolean = provider != AIProvider.OPEN_AI_SUBSCRIPTION
+
+    override fun createRuntime(
         provider: AIProvider,
         modelName: String,
         projectPath: String?

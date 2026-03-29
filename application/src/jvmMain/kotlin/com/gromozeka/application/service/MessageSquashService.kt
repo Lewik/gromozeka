@@ -185,7 +185,13 @@ class MessageSquashService(
         val response = runtime.call(
             AiRuntimeRequest(
                 systemPrompts = systemPrompts,
-                messages = markedMessages + commandMessage
+                messages = markedMessages + commandMessage,
+                options = com.gromozeka.domain.model.ai.AiRuntimeOptions(
+                    toolContext = buildMap {
+                        put("conversationId", conversationId.value)
+                        projectPath?.let { put("projectPath", it) }
+                    }
+                )
             )
         )
         val result = AiConversationMessageMapper.extractAssistantText(response)

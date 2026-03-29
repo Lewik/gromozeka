@@ -130,6 +130,10 @@ class ChatModelFactory(
                     )
             }
 
+            AIProvider.OPEN_AI_SUBSCRIPTION -> {
+                error("OPEN_AI_SUBSCRIPTION is handled by a dedicated runtime backend, not Spring AI ChatModelFactory")
+            }
+
             AIProvider.ANTHROPIC -> {
                 val anthropicApi = aiApiFactory.createAnthropicApi()
 

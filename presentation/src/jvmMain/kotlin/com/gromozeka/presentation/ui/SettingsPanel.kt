@@ -250,6 +250,21 @@ fun SettingsPanel(
                                 )
                             }
 
+                            AIProvider.OPEN_AI_SUBSCRIPTION -> {
+                                Text(
+                                    text = "OpenAI Subscription Settings",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.SemiBold,
+                                    modifier = Modifier.padding(vertical = 8.dp)
+                                )
+
+                                Text(
+                                    text = "Subscription-backed Codex integration is configured separately and does not use the regular OpenAI API key flow.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+
                             AIProvider.ANTHROPIC -> {
                                 Text(
                                     text = "Anthropic Settings",

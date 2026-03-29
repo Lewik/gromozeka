@@ -528,7 +528,10 @@ class ConversationEngine(
                                 maxTokens = definition.maxTokens,
                                 thinking = definition.thinking,
                                 outputConfig = definition.outputConfig,
-                                toolContext = mapOf("projectPath" to project.path)
+                                toolContext = mapOf(
+                                    "projectPath" to project.path,
+                                    "conversationId" to conversationId.value
+                                )
                             )
                         )
                     )
