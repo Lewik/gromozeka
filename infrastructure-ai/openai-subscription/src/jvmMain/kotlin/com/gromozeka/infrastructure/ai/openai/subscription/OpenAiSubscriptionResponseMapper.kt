@@ -1,0 +1,175 @@
+package com.gromozeka.infrastructure.ai.openai.subscription
+
+import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.ai.AiAssistantMessage
+import com.gromozeka.domain.model.ai.AiRuntimeResponse
+import com.gromozeka.domain.model.ai.AiUsage
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import org.springframework.stereotype.Component
+
+@Component
+class OpenAiSubscriptionResponseMapper {
+    private val json = Json { ignoreUnknownKeys = true }
+
+    fun toRuntimeResponse(
+        outputItems: List<JsonObject>,
+        completed: OpenAiSubscriptionCompletedResponse?,
+        conversationKey: String,
+    ): AiRuntimeResponse {
+        val messages = outputItems.mapNotNull(::toAssistantMessage)
+
+        return AiRuntimeResponse(
+            messages = messages,
+            usage = completed?.usage?.toAiUsage(),
+            finishReason = completed?.status,
+            providerMetadata = buildMap {
+                put("conversationKey", conversationKey)
+                completed?.id?.let { put("responseId", it) }
+            },
+        )
+    }
+
+    fun parseCompletedResponse(jsonObject: JsonObject): OpenAiSubscriptionCompletedResponse {
+        return json.decodeFromJsonElement(OpenAiSubscriptionCompletedResponse.serializer(), jsonObject)
+    }
+
+    fun extractErrorMessage(body: String): String {
+        val payload = runCatching { json.parseToJsonElement(body).jsonObject }.getOrNull() ?: return body.trim()
+        val errorObject = payload["error"]?.jsonObject
+        val code = errorObject?.get("code")?.jsonPrimitive?.contentOrNull
+        val message = errorObject?.get("message")?.jsonPrimitive?.contentOrNull
+        return listOfNotNull(code, message)
+            .joinToString(": ")
+            .ifBlank { body.trim() }
+    }
+
+    private fun toAssistantMessage(item: JsonObject): AiAssistantMessage? {
+        return when (item["type"]?.jsonPrimitive?.contentOrNull) {
+            "message" -> item.toOutputMessage()
+            "function_call" -> item.toToolCall()
+            "reasoning", "compaction_summary", "compaction" -> item.toReasoningMessage()
+            else -> null
+        }
+    }
+
+    private fun JsonObject.toOutputMessage(): AiAssistantMessage? {
+        if (this["role"]?.jsonPrimitive?.contentOrNull != "assistant") return null
+
+        val blocks = buildList {
+            when (val content = this@toOutputMessage["content"]) {
+                is JsonPrimitive -> {
+                    val text = content.contentOrNull?.trim().orEmpty()
+                    if (text.isNotBlank()) {
+                        add(assistantBlock(text))
+                    }
+                }
+
+                is JsonArray -> {
+                    content.forEach { part ->
+                        val partObject = part as? JsonObject ?: return@forEach
+                        when (partObject["type"]?.jsonPrimitive?.contentOrNull) {
+                            "output_text", "text" -> {
+                                val text = partObject["text"]?.jsonPrimitive?.contentOrNull?.trim().orEmpty()
+                                if (text.isNotBlank()) {
+                                    add(assistantBlock(text))
+                                }
+                            }
+
+                            "refusal" -> {
+                                val text = partObject["refusal"]?.jsonPrimitive?.contentOrNull?.trim().orEmpty()
+                                if (text.isNotBlank()) {
+                                    add(assistantBlock(text))
+                                }
+                            }
+                        }
+                    }
+                }
+
+                else -> Unit
+            }
+        }
+
+        if (blocks.isEmpty()) return null
+
+        return AiAssistantMessage(
+            content = blocks,
+            metadata = buildMap {
+                this@toOutputMessage["id"]?.jsonPrimitive?.contentOrNull?.let { put("messageId", it) }
+                this@toOutputMessage["phase"]?.jsonPrimitive?.contentOrNull?.let { put("phase", it) }
+            },
+        )
+    }
+
+    private fun JsonObject.toToolCall(): AiAssistantMessage {
+        val callId = this["call_id"]?.jsonPrimitive?.contentOrNull
+            ?: error("Function call is missing call_id")
+        val name = this["name"]?.jsonPrimitive?.contentOrNull
+            ?: error("Function call is missing name")
+        val arguments = this["arguments"]?.jsonPrimitive?.contentOrNull.orEmpty()
+        val input = runCatching { json.parseToJsonElement(arguments) }
+            .getOrElse { JsonObject(mapOf("raw" to JsonPrimitive(arguments))) }
+
+        return AiAssistantMessage(
+            content = listOf(
+                Conversation.Message.ContentItem.ToolCall(
+                    id = Conversation.Message.ContentItem.ToolCall.Id(callId),
+                    call = Conversation.Message.ContentItem.ToolCall.Data(
+                        name = name,
+                        input = input,
+                    ),
+                    state = Conversation.Message.BlockState.COMPLETE,
+                )
+            ),
+        )
+    }
+
+    private fun JsonObject.toReasoningMessage(): AiAssistantMessage? {
+        val encryptedContent = this["encrypted_content"]?.jsonPrimitive?.contentOrNull
+        val thinkingText = buildList {
+            this@toReasoningMessage["summary"]?.jsonArray?.forEach { part ->
+                val text = part.jsonObject["text"]?.jsonPrimitive?.contentOrNull?.trim().orEmpty()
+                if (text.isNotBlank()) add(text)
+            }
+            this@toReasoningMessage["content"]?.jsonArray?.forEach { part ->
+                val text = part.jsonObject["text"]?.jsonPrimitive?.contentOrNull?.trim().orEmpty()
+                if (text.isNotBlank()) add(text)
+            }
+        }.joinToString("\n").trim()
+
+        if (thinkingText.isBlank() && encryptedContent.isNullOrBlank()) return null
+
+        return AiAssistantMessage(
+            content = listOf(
+                Conversation.Message.ContentItem.Thinking(
+                    thinking = thinkingText,
+                    signature = encryptedContent,
+                    state = Conversation.Message.BlockState.COMPLETE,
+                )
+            ),
+        )
+    }
+
+    private fun assistantBlock(text: String): Conversation.Message.ContentItem.AssistantMessage {
+        return Conversation.Message.ContentItem.AssistantMessage(
+            structured = Conversation.Message.StructuredText(fullText = text),
+            state = Conversation.Message.BlockState.COMPLETE,
+        )
+    }
+
+    private fun OpenAiSubscriptionUsage.toAiUsage(): AiUsage {
+        return AiUsage(
+            promptTokens = inputTokens.toInt(),
+            completionTokens = outputTokens.toInt(),
+            thinkingTokens = outputTokensDetails?.reasoningTokens?.toInt() ?: 0,
+            cacheReadTokens = inputTokensDetails?.cachedTokens?.toInt() ?: 0,
+        )
+    }
+}

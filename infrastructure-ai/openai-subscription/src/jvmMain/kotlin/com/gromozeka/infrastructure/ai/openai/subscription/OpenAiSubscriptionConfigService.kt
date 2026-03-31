@@ -22,6 +22,15 @@ class OpenAiSubscriptionConfigService(
         File(settingsProvider.homeDirectory, "openai-subscription.json")
     }
 
+    fun ensureConfigFileExists(): File {
+        if (!configFile.exists()) {
+            save(OpenAiSubscriptionConfig())
+        }
+        return configFile
+    }
+
+    fun configFilePath(): String = configFile.absolutePath
+
     fun load(): OpenAiSubscriptionConfig {
         return if (configFile.exists()) {
             try {
@@ -43,23 +52,64 @@ class OpenAiSubscriptionConfigService(
     fun clearSession() {
         save(
             load().copy(
+                pendingVerifier = null,
+                pendingState = null,
+                pendingDeviceCode = null,
                 accessToken = null,
                 refreshToken = null,
                 idToken = null,
                 accountId = null,
-                expiresAt = null
+                expiresAt = null,
             )
         )
     }
 
+    fun updatePendingAuthorization(authorizationUrl: OpenAiSubscriptionAuthorizationUrl) {
+        save(
+            load().copy(
+                pendingDeviceCode = null,
+                pendingVerifier = authorizationUrl.verifier,
+                pendingState = authorizationUrl.state,
+            )
+        )
+    }
+
+    fun clearPendingAuthorization() {
+        save(
+            load().copy(
+                pendingVerifier = null,
+                pendingState = null,
+            )
+        )
+    }
+
+    fun clearPendingDeviceCode() {
+        save(load().copy(pendingDeviceCode = null))
+    }
+
+    fun updatePendingDeviceCode(deviceCode: OpenAiSubscriptionPendingDeviceCode) {
+        save(
+            load().copy(
+                pendingVerifier = null,
+                pendingState = null,
+                pendingDeviceCode = deviceCode,
+            )
+        )
+    }
+
+    fun getPendingDeviceCode(): OpenAiSubscriptionPendingDeviceCode? = load().pendingDeviceCode
+
     fun updateSession(session: OpenAiSubscriptionSession) {
         save(
             load().copy(
+                pendingVerifier = null,
+                pendingState = null,
+                pendingDeviceCode = null,
                 accessToken = session.accessToken,
                 refreshToken = session.refreshToken,
                 idToken = session.idToken,
                 accountId = session.accountId,
-                expiresAt = session.expiresAt
+                expiresAt = session.expiresAt,
             )
         )
     }
@@ -75,7 +125,7 @@ class OpenAiSubscriptionConfigService(
             refreshToken = refreshToken,
             idToken = config.idToken,
             accountId = config.accountId,
-            expiresAt = expiresAt
+            expiresAt = expiresAt,
         )
     }
 }

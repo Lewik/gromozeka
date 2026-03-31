@@ -10,8 +10,8 @@
     "project:spring-ai.role.md",
     "env"
   ],
-  "aiProvider": "ANTHROPIC",
-  "modelName": "claude-sonnet-4-6",
+  "aiProvider": "OPEN_AI_SUBSCRIPTION",
+  "modelName": "gpt-5.3-codex",
   "maxTokens": 64000,
   "thinking": {
     "type": "adaptive",

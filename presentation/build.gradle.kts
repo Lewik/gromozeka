@@ -37,6 +37,7 @@ kotlin {
                 implementation(project(":application"))
                 implementation(project(":infrastructure-db"))
                 implementation(project(":infrastructure-ai"))
+                implementation(project(":infrastructure-ai:openai-subscription"))
 
                 // klog - Kotlin logging framework
                 implementation(libs.klog)

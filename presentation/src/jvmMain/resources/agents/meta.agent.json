@@ -13,8 +13,8 @@
     "project:architecture.knowledge.md",
     "env"
   ],
-  "aiProvider": "ANTHROPIC",
-  "modelName": "claude-opus-4-6",
+  "aiProvider": "OPEN_AI_SUBSCRIPTION",
+  "modelName": "gpt-5.3-codex",
   "maxTokens": 128000,
   "thinking": {
     "type": "adaptive",
