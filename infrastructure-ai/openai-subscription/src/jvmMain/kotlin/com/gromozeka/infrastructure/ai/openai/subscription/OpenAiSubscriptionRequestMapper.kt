@@ -15,7 +15,9 @@ import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.doubleOrNull
+import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.longOrNull
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
@@ -80,7 +82,11 @@ class OpenAiSubscriptionRequestMapper {
         fun flushText() {
             val text = textBuffer.joinToString("\n").trim()
             if (text.isBlank()) return
-            items += messageItem(role = "assistant", content = JsonPrimitive(text))
+            items += messageItem(
+                role = "assistant",
+                content = JsonPrimitive(text),
+                phase = providerMetadata["phase"]?.jsonPrimitive?.contentOrNull,
+            )
             textBuffer.clear()
         }
 
@@ -213,11 +219,14 @@ class OpenAiSubscriptionRequestMapper {
         return JsonObject(normalized)
     }
 
-    private fun messageItem(role: String, content: JsonElement): JsonObject {
+    private fun messageItem(role: String, content: JsonElement, phase: String? = null): JsonObject {
         return buildJsonObject {
             put("type", "message")
             put("role", role)
             put("content", content)
+            if (!phase.isNullOrBlank()) {
+                put("phase", phase)
+            }
         }
     }
 

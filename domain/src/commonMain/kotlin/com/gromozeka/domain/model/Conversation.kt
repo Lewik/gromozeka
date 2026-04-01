@@ -5,6 +5,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonClassDiscriminator
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
 
 /**
  * Conversation containing threads and messages.
@@ -95,6 +96,7 @@ data class Conversation(
      * @property role message author (USER, ASSISTANT, SYSTEM)
      * @property content list of content items (text, tool calls, images, thinking blocks, etc.)
      * @property instructions list of instructions attached to this message (user instructions, response expected tags, source metadata)
+     * @property providerMetadata provider-specific metadata preserved for replay/debugging
      * @property createdAt timestamp when message was created
      */
     @Serializable
@@ -110,6 +112,7 @@ data class Conversation(
         val role: Role,
         val content: List<ContentItem>,
         val instructions: List<Instruction> = emptyList(),
+        val providerMetadata: JsonObject = JsonObject(emptyMap()),
 
         val createdAt: Instant,
 
