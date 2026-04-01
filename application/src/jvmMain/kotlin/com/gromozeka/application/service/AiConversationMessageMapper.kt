@@ -16,23 +16,40 @@ object AiConversationMessageMapper {
         conversationId: Conversation.Id,
         response: AiRuntimeResponse
     ): List<Conversation.Message> {
-        return response.messages.mapNotNull { assistantMessage ->
+        val responseMetadata = toJsonObject(response.providerMetadata)
+        val messages = mutableListOf<Conversation.Message>()
+        var pendingMessageMetadata = JsonObject(emptyMap())
+
+        response.messages.forEach { assistantMessage ->
+            val messageMetadata = toJsonObject(assistantMessage.metadata)
             if (assistantMessage.content.isEmpty()) {
-                null
-            } else {
-                Conversation.Message(
-                    id = Conversation.Message.Id(uuid7()),
-                    conversationId = conversationId,
-                    role = Conversation.Message.Role.ASSISTANT,
-                    content = assistantMessage.content,
-                    providerMetadata = mergeProviderMetadata(
-                        responseMetadata = response.providerMetadata,
-                        messageMetadata = assistantMessage.metadata,
-                    ),
-                    createdAt = Clock.System.now()
-                )
+                pendingMessageMetadata = mergeJsonObjects(pendingMessageMetadata, messageMetadata)
+                return@forEach
             }
+
+            messages += Conversation.Message(
+                id = Conversation.Message.Id(uuid7()),
+                conversationId = conversationId,
+                role = Conversation.Message.Role.ASSISTANT,
+                content = assistantMessage.content,
+                providerMetadata = mergeJsonObjects(
+                    responseMetadata,
+                    mergeJsonObjects(pendingMessageMetadata, messageMetadata),
+                ),
+                createdAt = Clock.System.now()
+            )
+            pendingMessageMetadata = JsonObject(emptyMap())
         }
+
+        if (pendingMessageMetadata.isNotEmpty() && messages.isNotEmpty()) {
+            val lastIndex = messages.lastIndex
+            val lastMessage = messages[lastIndex]
+            messages[lastIndex] = lastMessage.copy(
+                providerMetadata = mergeJsonObjects(lastMessage.providerMetadata, pendingMessageMetadata)
+            )
+        }
+
+        return messages
     }
 
     fun createErrorMessage(
@@ -64,20 +81,39 @@ object AiConversationMessageMapper {
             .trim()
     }
 
-    private fun mergeProviderMetadata(
-        responseMetadata: Map<String, Any?>,
-        messageMetadata: Map<String, Any?>,
+    private fun toJsonObject(metadata: Map<String, Any?>): JsonObject {
+        return JsonObject(
+            metadata.mapNotNull { (key, value) ->
+                toJsonElement(value)?.let { key to it }
+            }.toMap()
+        )
+    }
+
+    private fun mergeJsonObjects(
+        base: JsonObject,
+        extra: JsonObject,
     ): JsonObject {
-        val merged = linkedMapOf<String, JsonElement>()
+        if (base.isEmpty()) return extra
+        if (extra.isEmpty()) return base
 
-        responseMetadata.forEach { (key, value) ->
-            toJsonElement(value)?.let { merged[key] = it }
+        val merged = base.toMutableMap()
+        extra.forEach { (key, value) ->
+            merged[key] = mergeJsonElements(merged[key], value)
         }
-        messageMetadata.forEach { (key, value) ->
-            toJsonElement(value)?.let { merged[key] = it }
-        }
-
         return JsonObject(merged)
+    }
+
+    private fun mergeJsonElements(
+        existing: JsonElement?,
+        incoming: JsonElement,
+    ): JsonElement {
+        if (existing == null) return incoming
+
+        return when {
+            existing is JsonArray && incoming is JsonArray -> JsonArray(existing + incoming)
+            existing is JsonObject && incoming is JsonObject -> mergeJsonObjects(existing, incoming)
+            else -> incoming
+        }
     }
 
     private fun toJsonElement(value: Any?): JsonElement? {

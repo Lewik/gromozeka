@@ -79,6 +79,8 @@ class OpenAiSubscriptionRequestMapper {
         val items = mutableListOf<JsonObject>()
         val textBuffer = mutableListOf<String>()
 
+        items += providerMetadata.toHiddenReasoningItems()
+
         fun flushText() {
             val text = textBuffer.joinToString("\n").trim()
             if (text.isBlank()) return
@@ -122,6 +124,21 @@ class OpenAiSubscriptionRequestMapper {
 
         flushText()
         return items
+    }
+
+    private fun JsonObject.toHiddenReasoningItems(): List<JsonObject> {
+        return this[OPENAI_REASONING_ITEMS_METADATA_KEY]
+            ?.let { it as? JsonArray }
+            ?.mapNotNull { (it as? JsonObject)?.normalizeHiddenReasoningItem() }
+            ?: emptyList()
+    }
+
+    private fun JsonObject.normalizeHiddenReasoningItem(): JsonObject {
+        val normalized = this.toMutableMap()
+        if (normalized["type"]?.jsonPrimitive?.contentOrNull == "reasoning" && normalized["summary"] == null) {
+            normalized["summary"] = JsonArray(emptyList())
+        }
+        return JsonObject(normalized)
     }
 
     private fun Conversation.Message.toSystemInputItems(): List<JsonObject> {

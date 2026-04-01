@@ -309,7 +309,9 @@ fun SessionScreen(
                                 }
 
                                 val thinkingMessages = filteredHistory.filter { message ->
-                                    message.content.any { it is Conversation.Message.ContentItem.Thinking }
+                                    message.content.any {
+                                        (it as? Conversation.Message.ContentItem.Thinking)?.isVisible == true
+                                    }
                                 }
                                 if (thinkingMessages.isNotEmpty() && thinkingMessages.all { it.id in uiState.selectedMessageIds }) {
                                     add(3)
@@ -323,7 +325,9 @@ fun SessionScreen(
                                 }
 
                                 val plainMessages = filteredHistory.filter { message ->
-                                    message.content.none { it is Conversation.Message.ContentItem.Thinking } &&
+                                    message.content.none {
+                                        (it as? Conversation.Message.ContentItem.Thinking)?.isVisible == true
+                                    } &&
                                             message.content.none { it is Conversation.Message.ContentItem.ToolCall }
                                 }
                                 if (plainMessages.isNotEmpty() && plainMessages.all { it.id in uiState.selectedMessageIds }) {

@@ -45,6 +45,22 @@ fun MessageItem(
     onDeleteRequest: (Conversation.Message.Id) -> Unit = {},
 ) {
     val translation = LocalTranslation.current
+    val hasRenderableContent = message.content.any { content ->
+        when (content) {
+            is Conversation.Message.ContentItem.UserMessage -> content.text.isNotBlank()
+            is Conversation.Message.ContentItem.ToolCall -> true
+            is Conversation.Message.ContentItem.ToolResult -> false
+            is Conversation.Message.ContentItem.Thinking -> content.isVisible
+            is Conversation.Message.ContentItem.System -> content.content.isNotBlank()
+            is Conversation.Message.ContentItem.AssistantMessage -> content.structured.fullText.isNotBlank()
+            is Conversation.Message.ContentItem.ImageItem -> true
+            is Conversation.Message.ContentItem.UnknownJson -> true
+        }
+    }
+
+    if (!hasRenderableContent && message.error == null) {
+        return
+    }
 
     // Combined metadata button data
     val roleIcon = when (message.role) {
@@ -58,7 +74,7 @@ fun MessageItem(
             is Conversation.Message.ContentItem.UserMessage -> null
             is Conversation.Message.ContentItem.ToolCall -> Icons.Default.Build
             is Conversation.Message.ContentItem.ToolResult -> null // Don't show ToolResult icon - they're integrated into ToolCall
-            is Conversation.Message.ContentItem.Thinking -> Icons.Default.Psychology
+            is Conversation.Message.ContentItem.Thinking -> if (content.isVisible) Icons.Default.Psychology else null
             is Conversation.Message.ContentItem.System -> Icons.Default.Settings
             is Conversation.Message.ContentItem.AssistantMessage -> null
             is Conversation.Message.ContentItem.ImageItem -> Icons.Default.Image
@@ -78,7 +94,7 @@ fun MessageItem(
                     is Conversation.Message.ContentItem.UserMessage -> "Message"
                     is Conversation.Message.ContentItem.ToolCall -> "ToolCall"
                     is Conversation.Message.ContentItem.ToolResult -> null // Don't show in tooltip - integrated into ToolCall
-                    is Conversation.Message.ContentItem.Thinking -> "Thinking"
+                    is Conversation.Message.ContentItem.Thinking -> if (content.isVisible) "Thinking" else null
                     is Conversation.Message.ContentItem.System -> "System"
                     is Conversation.Message.ContentItem.AssistantMessage -> "Assistant"
                     is Conversation.Message.ContentItem.ImageItem -> "Image"
@@ -133,7 +149,9 @@ fun MessageItem(
                     })
                 }
 
-                val hasThinking = message.content.any { it is Conversation.Message.ContentItem.Thinking }
+                val hasThinking = message.content.any {
+                    (it as? Conversation.Message.ContentItem.Thinking)?.isVisible == true
+                }
                 if (!hasThinking) {
                     add(ContextMenuItem("Edit") {
                         onEditRequest(message.id)
@@ -325,59 +343,60 @@ fun MessageItem(
                         }
 
                         is Conversation.Message.ContentItem.Thinking -> {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(bottom = 8.dp)
-                                    .background(
-                                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-                                        shape = MaterialTheme.shapes.small
-                                    )
-                                    .padding(8.dp)
-                                    .animateContentSize()
-                                    .then(
-                                        if (isContentCollapsed) {
-                                            Modifier
-                                                .height(48.dp)
-                                                .clipToBounds()
-                                        } else {
-                                            Modifier
-                                        }
-                                    )
-                                    .alpha(if (isContentCollapsed) 0.5f else 1f)
-                            ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                ) {
-                                    Column(
-                                        modifier = Modifier.weight(1f),
-                                        verticalArrangement = Arrangement.Center,
-                                    ) {
-                                        org.slf4j.LoggerFactory.getLogger("MessageItem").trace(
-                                            "Rendering Thinking markdown | msg_id={} | content_length={} | preview={}",
-                                            message.id.value,
-                                            content.thinking.length,
-                                            content.thinking.take(100).replace("\n", "\\n")
+                            if (content.isVisible) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(bottom = 8.dp)
+                                        .background(
+                                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                                            shape = MaterialTheme.shapes.small
                                         )
-                                        GromozekaMarkdown(content = content.thinking)
-                                    }
-                                    DisableSelection {
-                                        FlowRow(
-                                            modifier = Modifier.align(Alignment.Top),
-                                            maxItemsInEachRow = 4,
-                                            verticalArrangement = Arrangement.Top,
-                                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                        .padding(8.dp)
+                                        .animateContentSize()
+                                        .then(
+                                            if (isContentCollapsed) {
+                                                Modifier
+                                                    .height(48.dp)
+                                                    .clipToBounds()
+                                            } else {
+                                                Modifier
+                                            }
+                                        )
+                                        .alpha(if (isContentCollapsed) 0.5f else 1f)
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        Column(
+                                            modifier = Modifier.weight(1f),
+                                            verticalArrangement = Arrangement.Center,
                                         ) {
-                                            // Chevron for collapse/expand
-                                            Box(
-                                                modifier = Modifier.clickable { onToggleContentItemCollapse(message.id, contentIndex) }
-                                                    .padding(8.dp)
+                                            org.slf4j.LoggerFactory.getLogger("MessageItem").trace(
+                                                "Rendering Thinking markdown | msg_id={} | content_length={} | preview={}",
+                                                message.id.value,
+                                                content.thinking.length,
+                                                content.thinking.take(100).replace("\n", "\\n")
+                                            )
+                                            GromozekaMarkdown(content = content.thinking)
+                                        }
+                                        DisableSelection {
+                                            FlowRow(
+                                                modifier = Modifier.align(Alignment.Top),
+                                                maxItemsInEachRow = 4,
+                                                verticalArrangement = Arrangement.Top,
+                                                horizontalArrangement = Arrangement.spacedBy(4.dp),
                                             ) {
-                                                Icon(
-                                                    if (isContentCollapsed) Icons.Default.ExpandMore else Icons.Default.ExpandLess,
-                                                    contentDescription = if (isContentCollapsed) "Expand" else "Collapse",
-                                                    tint = MaterialTheme.colorScheme.onSurface
-                                                )
+                                                Box(
+                                                    modifier = Modifier.clickable { onToggleContentItemCollapse(message.id, contentIndex) }
+                                                        .padding(8.dp)
+                                                ) {
+                                                    Icon(
+                                                        if (isContentCollapsed) Icons.Default.ExpandMore else Icons.Default.ExpandLess,
+                                                        contentDescription = if (isContentCollapsed) "Expand" else "Collapse",
+                                                        tint = MaterialTheme.colorScheme.onSurface
+                                                    )
+                                                }
                                             }
                                         }
                                     }

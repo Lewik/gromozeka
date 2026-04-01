@@ -305,7 +305,10 @@ data class Conversation(
                 val thinking: String,
                 val signature: String? = null,
                 override val state: BlockState = BlockState.COMPLETE
-            ) : ContentItem()
+            ) : ContentItem() {
+                val isVisible: Boolean
+                    get() = thinking.isNotBlank()
+            }
 
             /**
              * System notification or message.

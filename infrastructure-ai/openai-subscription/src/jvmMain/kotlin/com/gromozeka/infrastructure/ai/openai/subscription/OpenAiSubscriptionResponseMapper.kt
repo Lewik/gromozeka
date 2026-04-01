@@ -9,10 +9,13 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonArray
+import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.put
 import org.springframework.stereotype.Component
 
 @Component
@@ -146,6 +149,17 @@ class OpenAiSubscriptionResponseMapper {
 
         if (thinkingText.isBlank() && encryptedContent.isNullOrBlank()) return null
 
+        if (thinkingText.isBlank()) {
+            return AiAssistantMessage(
+                content = emptyList(),
+                metadata = mapOf(
+                    OPENAI_REASONING_ITEMS_METADATA_KEY to buildJsonArray {
+                        add(toHiddenReasoningItem())
+                    }
+                ),
+            )
+        }
+
         return AiAssistantMessage(
             content = listOf(
                 Conversation.Message.ContentItem.Thinking(
@@ -155,6 +169,19 @@ class OpenAiSubscriptionResponseMapper {
                 )
             ),
         )
+    }
+
+    private fun JsonObject.toHiddenReasoningItem(): JsonObject {
+        val type = this["type"]?.jsonPrimitive?.contentOrNull ?: "reasoning"
+        val encryptedContent = this["encrypted_content"]?.jsonPrimitive?.contentOrNull
+
+        return buildJsonObject {
+            put("type", type)
+            put("summary", JsonArray(emptyList()))
+            if (!encryptedContent.isNullOrBlank()) {
+                put("encrypted_content", encryptedContent)
+            }
+        }
     }
 
     private fun assistantBlock(text: String): Conversation.Message.ContentItem.AssistantMessage {

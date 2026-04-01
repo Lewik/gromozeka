@@ -149,7 +149,7 @@ class TabViewModel(
             val collapsedItems = mutableMapOf<Conversation.Message.Id, Set<Int>>()
             messages.forEach { message ->
                 val thinkingIndices = message.content.mapIndexedNotNull { index, item ->
-                    if (item is Conversation.Message.ContentItem.Thinking) index else null
+                    if ((item as? Conversation.Message.ContentItem.Thinking)?.isVisible == true) index else null
                 }.toSet()
                 
                 if (thinkingIndices.isNotEmpty()) {
@@ -341,7 +341,7 @@ class TabViewModel(
 
                         // Collapse Thinking blocks by default in new messages
                         val thinkingIndices = message.content.mapIndexedNotNull { index, item ->
-                            if (item is Conversation.Message.ContentItem.Thinking) index else null
+                            if ((item as? Conversation.Message.ContentItem.Thinking)?.isVisible == true) index else null
                         }.toSet()
                         
                         if (thinkingIndices.isNotEmpty()) {
@@ -549,7 +549,9 @@ class TabViewModel(
     fun toggleSelectThinkingMessages() {
         val filteredHistory = filteredMessages.value
         val thinkingMessageIds = filteredHistory
-            .filter { message -> message.content.any { it is Conversation.Message.ContentItem.Thinking } }
+            .filter { message ->
+                message.content.any { (it as? Conversation.Message.ContentItem.Thinking)?.isVisible == true }
+            }
             .map { it.id }
             .toSet()
         
@@ -588,7 +590,7 @@ class TabViewModel(
         val filteredHistory = filteredMessages.value
         val plainMessageIds = filteredHistory
             .filter { message -> 
-                message.content.none { it is Conversation.Message.ContentItem.Thinking } &&
+                message.content.none { (it as? Conversation.Message.ContentItem.Thinking)?.isVisible == true } &&
                 message.content.none { it is Conversation.Message.ContentItem.ToolCall }
             }
             .map { it.id }
