@@ -11,7 +11,10 @@
     "env"
   ],
   "aiProvider": "OPEN_AI_SUBSCRIPTION",
-  "modelName": "gpt-5.3-codex",
+  "modelName": "gpt-5.4",
+  "outputConfig": {
+    "effort": "max"
+  },
   "description": "Build and release engineer",
   "createdAt": "2025-11-26T20:00:00Z",
   "updatedAt": "2025-12-06T00:00:00Z"

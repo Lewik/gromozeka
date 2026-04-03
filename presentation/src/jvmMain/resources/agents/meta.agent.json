@@ -14,7 +14,7 @@
     "env"
   ],
   "aiProvider": "OPEN_AI_SUBSCRIPTION",
-  "modelName": "gpt-5.3-codex",
+  "modelName": "gpt-5.4",
   "maxTokens": 128000,
   "thinking": {
     "type": "adaptive",
