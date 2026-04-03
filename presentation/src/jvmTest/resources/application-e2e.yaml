@@ -1,0 +1,9 @@
+knowledge-graph:
+  enabled: false
+
+gromozeka:
+  vector:
+    enabled: false
+
+reranker:
+  auto-start: false

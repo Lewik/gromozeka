@@ -21,12 +21,14 @@ import androidx.compose.ui.input.pointer.isPrimaryPressed
 import androidx.compose.ui.input.pointer.isShiftPressed
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.presentation.model.Settings
 import com.gromozeka.presentation.ui.GromozekaMarkdown
 import com.gromozeka.presentation.ui.LocalTranslation
+import com.gromozeka.presentation.ui.UiTestTag
 import com.gromozeka.shared.utils.jsonPrettyPrint
 
 @Composable
@@ -172,6 +174,7 @@ fun MessageItem(
             modifier = Modifier
                 .fillMaxWidth()
                 .heightIn(min = 48.dp)
+                .testTag(UiTestTag.MessageItem(message.id.value).value)
                 .background(
                     color = if (message.role == Conversation.Message.Role.USER &&
                         message.content.any { it is Conversation.Message.ContentItem.UserMessage }

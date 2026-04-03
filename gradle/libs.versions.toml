@@ -125,6 +125,9 @@ mcp-java-sdk-core = { module = "io.modelcontextprotocol.sdk:mcp-core", version.r
 # Logging
 klog = { module = "com.github.lewik.klog:klog-jvm", version.ref = "klog" }
 
+# Compose testing
+compose-ui-test = { module = "org.jetbrains.compose.ui:ui-test", version.ref = "jetbrains-compose" }
+
 # UUID v7
 uuid-creator = { module = "com.github.f4b6a3:uuid-creator", version.ref = "uuid-creator" }
 

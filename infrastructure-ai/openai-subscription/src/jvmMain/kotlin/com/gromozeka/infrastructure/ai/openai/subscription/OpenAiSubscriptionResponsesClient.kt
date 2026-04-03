@@ -3,9 +3,8 @@ package com.gromozeka.infrastructure.ai.openai.subscription
 import klog.KLoggers
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonObject
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
 import java.io.InputStream
 import java.net.URI
@@ -16,6 +15,8 @@ import java.net.http.HttpResponse
 @Component
 class OpenAiSubscriptionResponsesClient(
     private val responseMapper: OpenAiSubscriptionResponseMapper,
+    @Value("\${gromozeka.ai.openai-subscription.responses-url:https://chatgpt.com/backend-api/codex/responses}")
+    private val responsesUrl: String,
 ) {
     private val log = KLoggers.logger(this)
     private val json = Json {
@@ -32,7 +33,7 @@ class OpenAiSubscriptionResponsesClient(
     ): OpenAiSubscriptionParsedResponse = withContext(Dispatchers.IO) {
         val requestJson = json.encodeToString(requestBody)
         val requestBuilder = HttpRequest.newBuilder()
-            .uri(URI.create(CODEX_RESPONSES_URL))
+            .uri(URI.create(responsesUrl))
             .header("Authorization", "Bearer ${session.accessToken}")
             .header("OpenAI-Beta", "responses=experimental")
             .header("originator", "gromozeka")
@@ -134,9 +135,6 @@ class OpenAiSubscriptionResponsesClient(
         )
     }
 
-    private companion object {
-        const val CODEX_RESPONSES_URL = "https://chatgpt.com/backend-api/codex/responses"
-    }
 }
 
 data class OpenAiSubscriptionParsedResponse(

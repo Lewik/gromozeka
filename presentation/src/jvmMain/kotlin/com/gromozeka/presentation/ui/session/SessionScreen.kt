@@ -18,6 +18,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.TtsTask
@@ -26,6 +27,7 @@ import com.gromozeka.presentation.services.TTSQueueService
 import com.gromozeka.presentation.ui.CompactButton
 import com.gromozeka.presentation.ui.LocalTranslation
 import com.gromozeka.presentation.ui.ToggleButtonGroup
+import com.gromozeka.presentation.ui.UiTestTag
 import com.gromozeka.presentation.ui.viewmodel.TabViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -125,7 +127,11 @@ fun SessionScreen(
         }
     }
 
-    Row(modifier = Modifier.fillMaxSize()) {
+    Row(
+        modifier = Modifier
+            .fillMaxSize()
+            .testTag(UiTestTag.SessionScreen.value)
+    ) {
         // Main chat content
         SelectionContainer(modifier = Modifier.weight(1f)) {
             Column(modifier = Modifier.fillMaxSize()) {
@@ -192,6 +198,7 @@ fun SessionScreen(
                         // Agent button
                         CompactButton(
                             onClick = { onShowPromptsPanelChange(true) },
+                            modifier = Modifier.testTag(UiTestTag.AgentButton.value),
                             tooltip = when {
                                 contextPercentage != null && contextPercentage >= 90 -> "Agent (критическое заполнение контекста $contextPercentage%)"
                                 contextPercentage != null && contextPercentage >= 75 -> "Agent (контекст заполнен на $contextPercentage%)"
@@ -246,6 +253,7 @@ fun SessionScreen(
                         // Settings button
                         CompactButton(
                             onClick = { onShowSettingsPanelChange(!showSettingsPanel) },
+                            modifier = Modifier.testTag(UiTestTag.SettingsButton.value),
                             tooltip = LocalTranslation.current.settingsTooltip
                         ) {
                             Icon(Icons.Default.Settings, contentDescription = LocalTranslation.current.settingsTooltip)
@@ -440,7 +448,9 @@ fun SessionScreen(
 
                 // LazyColumn instead of Column + forEach
                 LazyColumn(
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .weight(1f)
+                        .testTag(UiTestTag.MessageList.value),
                     state = lazyListState,
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {

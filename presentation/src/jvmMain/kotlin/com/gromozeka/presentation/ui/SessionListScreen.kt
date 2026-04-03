@@ -10,6 +10,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -213,14 +214,37 @@ fun SessionListScreen(
                         }
                     } else {
                         if (projectGroups.isEmpty()) {
+                            val emptyStateLines = LocalTranslation.current.noSavedProjectsText
+                                .lines()
+                                .map(String::trim)
+                                .filter(String::isNotEmpty)
+
                             Box(
                                 modifier = Modifier.fillMaxSize(),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Text(
-                                    text = LocalTranslation.current.noSavedProjectsText,
-                                    textAlign = TextAlign.Center
-                                )
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    emptyStateLines.firstOrNull()?.let { title ->
+                                        Text(
+                                            text = title,
+                                            style = MaterialTheme.typography.titleLarge,
+                                            color = MaterialTheme.colorScheme.onSurface,
+                                            textAlign = TextAlign.Center
+                                        )
+                                    }
+
+                                    emptyStateLines.drop(1).takeIf { it.isNotEmpty() }?.let { details ->
+                                        Text(
+                                            text = details.joinToString("\n"),
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            textAlign = TextAlign.Center
+                                        )
+                                    }
+                                }
                             }
                         } else {
                             projectGroups.forEach { group ->

@@ -14,6 +14,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.onPointerEvent
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.presentation.getTabDisplayName
@@ -37,136 +38,142 @@ fun CustomTabRow(
     var renameTabIndex by remember { mutableStateOf(-1) }
     var renameCurrentName by remember { mutableStateOf("") }
 
-    SecondaryTabRow(
-        selectedTabIndex = selectedTabIndex,
-        indicator = {
-            TabRowDefaults.SecondaryIndicator(
-                Modifier.Companion
-                    .tabIndicatorOffset(selectedTabIndex, matchContentSize = false)
-                    .offset(y = if (showTabsAtBottom) (-46).dp else 0.dp)
-            )
-        },
-        divider = {},
-    ) {
-        // Projects tab (index 0)
-        OptionalTooltip("Проекты") {
-            Tab(
-                selected = selectedTabIndex == 0,
-                onClick = {
-                    coroutineScope.launch {
-                        onTabSelect(null)
-                    }
-                },
-                text = {
-                    Row(verticalAlignment = Alignment.Companion.CenterVertically) {
-                        Icon(Icons.Default.Folder, contentDescription = "Projects")
-                    }
-                }
-            )
-        }
-
-        // Agents tab (index 1) - NEW
-        OptionalTooltip("Агенты") {
-            Tab(
-                selected = selectedTabIndex == 1,
-                onClick = {
-                    coroutineScope.launch {
-                        onTabSelect(-1) // special index for Agents tab
-                    }
-                },
-                text = {
-                    Row(verticalAlignment = Alignment.Companion.CenterVertically) {
-                        Icon(Icons.Default.Face, contentDescription = "Agents")
-                    }
-                }
-            )
-        }
-
-        // Session tabs with loading indicators and edit button (index 2+)
-        tabs.forEachIndexed { index, tab ->
-            val isLoading = tab.isWaitingForResponse.collectAsState().value
-            val tabUiState = tab.uiState.collectAsState().value
-            val tabIndex = index + 2 // was index + 1, now +2 to account for Agents tab
-
-            Tab(
-                selected = selectedTabIndex == tabIndex,
-                onClick = {
-                    coroutineScope.launch {
-                        onTabSelect(index)
-                    }
-                },
-                modifier = Modifier.Companion.onPointerEvent(PointerEventType.Companion.Enter) {
-                    onTabHover(index)
-                }
-                    .onPointerEvent(PointerEventType.Companion.Exit) { onTabHoverExit() },
-                text = {
-                    Box(
-                        modifier = Modifier.Companion.fillMaxWidth(),
-                        contentAlignment = Alignment.Companion.Center
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.Companion.CenterVertically,
-                            horizontalArrangement = Arrangement.Center
-                        ) {
-                            Icon(
-                                imageVector = when (val type = tabUiState.agent.type) {
-                                    is AgentDefinition.Type.Project -> Icons.Default.Folder
-                                    is AgentDefinition.Type.Global -> Icons.Default.Home
-                                    is AgentDefinition.Type.Builtin -> Icons.Default.Lock
-                                    is AgentDefinition.Type.Inline -> Icons.Default.Description
-                                },
-                                contentDescription = null,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(getTabDisplayName(tabUiState, index))
+    Box(modifier = Modifier.testTag(UiTestTag.TabRow.value)) {
+        SecondaryTabRow(
+            selectedTabIndex = selectedTabIndex,
+            indicator = {
+                TabRowDefaults.SecondaryIndicator(
+                    Modifier.Companion
+                        .tabIndicatorOffset(selectedTabIndex, matchContentSize = false)
+                        .offset(y = if (showTabsAtBottom) (-46).dp else 0.dp)
+                )
+            },
+            divider = {},
+        ) {
+            // Projects tab (index 0)
+            OptionalTooltip("Проекты") {
+                Tab(
+                    selected = selectedTabIndex == 0,
+                    onClick = {
+                        coroutineScope.launch {
+                            onTabSelect(null)
                         }
+                    },
+                    modifier = Modifier.testTag(UiTestTag.ProjectsTab.value),
+                    text = {
+                        Row(verticalAlignment = Alignment.Companion.CenterVertically) {
+                            Icon(Icons.Default.Folder, contentDescription = "Projects")
+                        }
+                    }
+                )
+            }
 
-                        // Edit button (pencil) - appears on hover
-                        if (hoveredTabIndex == index) {
-                            IconButton(
-                                onClick = {
-                                    renameTabIndex = index
-                                    renameCurrentName = getTabDisplayName(tabUiState, index)
-                                    renameDialogOpen = true
-                                },
-                                modifier = Modifier.Companion
-                                    .size(16.dp)
-                                    .align(Alignment.Companion.CenterStart)
-                                    .offset(x = (-8).dp)
+            // Agents tab (index 1) - NEW
+            OptionalTooltip("Агенты") {
+                Tab(
+                    selected = selectedTabIndex == 1,
+                    onClick = {
+                        coroutineScope.launch {
+                            onTabSelect(-1) // special index for Agents tab
+                        }
+                    },
+                    modifier = Modifier.testTag(UiTestTag.AgentsTab.value),
+                    text = {
+                        Row(verticalAlignment = Alignment.Companion.CenterVertically) {
+                            Icon(Icons.Default.Face, contentDescription = "Agents")
+                        }
+                    }
+                )
+            }
+
+            // Session tabs with loading indicators and edit button (index 2+)
+            tabs.forEachIndexed { index, tab ->
+                val isLoading = tab.isWaitingForResponse.collectAsState().value
+                val tabUiState = tab.uiState.collectAsState().value
+                val tabIndex = index + 2 // was index + 1, now +2 to account for Agents tab
+
+                Tab(
+                    selected = selectedTabIndex == tabIndex,
+                    onClick = {
+                        coroutineScope.launch {
+                            onTabSelect(index)
+                        }
+                    },
+                    modifier = Modifier.Companion
+                        .onPointerEvent(PointerEventType.Companion.Enter) {
+                            onTabHover(index)
+                        }
+                        .onPointerEvent(PointerEventType.Companion.Exit) { onTabHoverExit() }
+                        .testTag(UiTestTag.SessionTab(index).value),
+                    text = {
+                        Box(
+                            modifier = Modifier.Companion.fillMaxWidth(),
+                            contentAlignment = Alignment.Companion.Center
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.Companion.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
                             ) {
-                                Icon(Icons.Default.Edit, contentDescription = "Edit tab name")
+                                Icon(
+                                    imageVector = when (val type = tabUiState.agent.type) {
+                                        is AgentDefinition.Type.Project -> Icons.Default.Folder
+                                        is AgentDefinition.Type.Global -> Icons.Default.Home
+                                        is AgentDefinition.Type.Builtin -> Icons.Default.Lock
+                                        is AgentDefinition.Type.Inline -> Icons.Default.Description
+                                    },
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(getTabDisplayName(tabUiState, index))
+                            }
+
+                            // Edit button (pencil) - appears on hover
+                            if (hoveredTabIndex == index) {
+                                IconButton(
+                                    onClick = {
+                                        renameTabIndex = index
+                                        renameCurrentName = getTabDisplayName(tabUiState, index)
+                                        renameDialogOpen = true
+                                    },
+                                    modifier = Modifier.Companion
+                                        .size(16.dp)
+                                        .align(Alignment.Companion.CenterStart)
+                                        .offset(x = (-8).dp)
+                                ) {
+                                    Icon(Icons.Default.Edit, contentDescription = "Edit tab name")
+                                }
+                            }
+
+                            if (isLoading) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.Companion
+                                        .size(12.dp)
+                                        .align(Alignment.Companion.CenterEnd),
+                                    strokeWidth = 1.5.dp
+                                )
                             }
                         }
-
-                        if (isLoading) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.Companion
-                                    .size(12.dp)
-                                    .align(Alignment.Companion.CenterEnd),
-                                strokeWidth = 1.5.dp
-                            )
-                        }
                     }
+                )
+            }
+
+            // Rename dialog
+            TabRenameDialog(
+                isOpen = renameDialogOpen,
+                currentName = renameCurrentName,
+                onRename = { newName ->
+                    val tabIndexToRename = renameTabIndex
+                    coroutineScope.launch {
+                        onRenameTab(tabIndexToRename, newName)
+                    }
+                },
+                onDismiss = {
+                    renameDialogOpen = false
+                    renameTabIndex = -1
+                    renameCurrentName = ""
                 }
             )
         }
-
-        // Rename dialog
-        TabRenameDialog(
-            isOpen = renameDialogOpen,
-            currentName = renameCurrentName,
-            onRename = { newName ->
-                val tabIndexToRename = renameTabIndex
-                coroutineScope.launch {
-                    onRenameTab(tabIndexToRename, newName)
-                }
-            },
-            onDismiss = {
-                renameDialogOpen = false
-                renameTabIndex = -1
-                renameCurrentName = ""
-            }
-        )
     }
 }

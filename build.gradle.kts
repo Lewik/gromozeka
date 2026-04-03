@@ -24,6 +24,10 @@ val experimentalOptIns = listOf(
     "androidx.compose.foundation.ExperimentalFoundationApi"
 )
 
+val experimentalTestOptIns = listOf(
+    "androidx.compose.ui.test.ExperimentalTestApi"
+)
+
 // Centralized version for the entire project
 val projectVersion = "1.4.9"
 
@@ -35,6 +39,9 @@ allprojects {
     tasks.withType<KotlinCompilationTask<*>>().configureEach {
         compilerOptions {
             experimentalOptIns.forEach { optIn.add(it) }
+            if (name.contains("Test", ignoreCase = true)) {
+                experimentalTestOptIns.forEach { optIn.add(it) }
+            }
         }
     }
 }

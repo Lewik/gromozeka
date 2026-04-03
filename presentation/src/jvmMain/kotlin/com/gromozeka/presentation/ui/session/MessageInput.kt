@@ -10,10 +10,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.key.*
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import com.gromozeka.presentation.ui.CompactButton
 import com.gromozeka.presentation.ui.LocalTranslation
+import com.gromozeka.presentation.ui.UiTestTag
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
@@ -55,7 +57,8 @@ fun MessageInput(
                         else -> false
                     }
                 }
-                .weight(1f),
+                .weight(1f)
+                .testTag(UiTestTag.MessageInput.value),
             placeholder = { Text("") }
         )
         Spacer(modifier = Modifier.width(4.dp))
@@ -79,7 +82,9 @@ fun MessageInput(
                         onSendMessage(userInput)
                     }
                 },
-                modifier = Modifier.fillMaxHeight(),
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .testTag(UiTestTag.SendButton.value),
                 tooltip = when {
                     isWaitingForResponse && pendingMessagesCount > 0 -> "Отправляется... ($pendingMessagesCount в очереди)"
                     isWaitingForResponse -> LocalTranslation.current.sendingMessageTooltip
@@ -106,7 +111,9 @@ fun MessageInput(
 
             CompactButton(
                 onClick = {},
-                modifier = modifierWithPushToTalk.fillMaxHeight(),
+                modifier = modifierWithPushToTalk
+                    .fillMaxHeight()
+                    .testTag(UiTestTag.PttButton.value),
                 tooltip = if (isRecording) LocalTranslation.current.recordingTooltip else LocalTranslation.current.pttButtonTooltip
             ) {
                 Icon(

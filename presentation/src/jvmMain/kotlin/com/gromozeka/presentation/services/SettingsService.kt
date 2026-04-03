@@ -77,11 +77,13 @@ class SettingsService : SettingsProvider {
     }
 
     private fun determineMode(): AppMode {
-        val modeEnv = System.getenv("GROMOZEKA_MODE")
-        log.info("Environment variable GROMOZEKA_MODE = $modeEnv")
+        val modeEnv = System.getProperty("GROMOZEKA_MODE")
+            ?: System.getenv("GROMOZEKA_MODE")
+        log.info("Configured GROMOZEKA_MODE = $modeEnv")
 
         return when (modeEnv?.lowercase()) {
             "dev", "development" -> AppMode.DEV
+            "test", "e2e" -> AppMode.TEST
             "prod", "production" -> AppMode.PRODUCTION
             null -> AppMode.PRODUCTION
             else -> throw IllegalArgumentException("GROMOZEKA_MODE value '$modeEnv' not supported")
@@ -89,12 +91,13 @@ class SettingsService : SettingsProvider {
     }
 
     private fun determineGromozekaHome(): File {
-        val customPath = System.getenv("GROMOZEKA_HOME")
+        val customPath = System.getProperty("GROMOZEKA_HOME")
+            ?: System.getenv("GROMOZEKA_HOME")
 
         return when {
             customPath != null -> {
                 val customDir = File(customPath)
-                log.info("Using custom gromozeka home from system property: ${customDir.absolutePath}")
+                log.info("Using custom gromozeka home: ${customDir.absolutePath}")
                 customDir
             }
 
@@ -108,6 +111,12 @@ class SettingsService : SettingsProvider {
                 log.info("DEV mode - project root: $projectRoot")
                 log.info("DEV mode - using dev-data: ${devDataDir.absolutePath}")
                 devDataDir
+            }
+
+            mode == AppMode.TEST -> {
+                val testDir = File("build/test-data/.gromozeka")
+                log.info("TEST mode - using test data directory: ${testDir.absolutePath}")
+                testDir
             }
 
             else -> {

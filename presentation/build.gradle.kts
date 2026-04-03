@@ -86,6 +86,8 @@ kotlin {
         
         val jvmTest by getting {
             dependencies {
+                implementation(compose.desktop.currentOs)
+                implementation(libs.compose.ui.test)
                 implementation(libs.spring.boot.starter.test)
                 implementation(libs.mockk)
                 implementation(libs.kotlinx.serialization.json)
@@ -113,6 +115,17 @@ dependencyManagement {
 
 tasks.withType<Test> {
     useJUnitPlatform()
+
+    // Compose desktop UI tests render offscreen, but AWT/Swing still initialize at JVM startup.
+    // Without these flags local smoke tests can briefly create a transient app that steals focus
+    // and interrupts whoever is working at the machine. Headless mode must be enabled before the
+    // test JVM starts, and macOS UIElement keeps that transient process from surfacing as a real app.
+    systemProperty("java.awt.headless", "true")
+
+    val currentOs = DefaultNativePlatform.getCurrentOperatingSystem()
+    if (currentOs.isMacOsX) {
+        jvmArgs("-Dapple.awt.UIElement=true")
+    }
 }
 
 compose.desktop {
