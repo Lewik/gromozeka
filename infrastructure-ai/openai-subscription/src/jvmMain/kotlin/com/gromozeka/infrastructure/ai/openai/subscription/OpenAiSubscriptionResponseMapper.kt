@@ -177,7 +177,9 @@ class OpenAiSubscriptionResponseMapper {
 
         return buildJsonObject {
             put("type", type)
-            put("summary", JsonArray(emptyList()))
+            if (type == "reasoning") {
+                put("summary", JsonArray(emptyList()))
+            }
             if (!encryptedContent.isNullOrBlank()) {
                 put("encrypted_content", encryptedContent)
             }

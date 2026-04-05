@@ -156,11 +156,28 @@ class OpenAiSubscriptionRequestMapper {
     }
 
     private fun JsonObject.normalizeHiddenReasoningItem(): JsonObject {
-        val normalized = this.toMutableMap()
-        if (normalized["type"]?.jsonPrimitive?.contentOrNull == "reasoning" && normalized["summary"] == null) {
-            normalized["summary"] = JsonArray(emptyList())
+        val type = this["type"]?.jsonPrimitive?.contentOrNull ?: return this
+        val encryptedContent = this["encrypted_content"]?.jsonPrimitive?.contentOrNull
+
+        return buildJsonObject {
+            put("type", type)
+
+            when (type) {
+                "reasoning" -> {
+                    put("summary", this@normalizeHiddenReasoningItem["summary"] ?: JsonArray(emptyList()))
+                }
+
+                "compaction", "compaction_summary" -> Unit
+
+                else -> {
+                    this@normalizeHiddenReasoningItem["summary"]?.let { put("summary", it) }
+                }
+            }
+
+            if (!encryptedContent.isNullOrBlank()) {
+                put("encrypted_content", encryptedContent)
+            }
         }
-        return JsonObject(normalized)
     }
 
     private fun Conversation.Message.toSystemInputItems(): List<JsonObject> {
