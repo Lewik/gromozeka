@@ -2,9 +2,11 @@ package com.gromozeka.infrastructure.ai.openai.subscription
 
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.ai.AiAutoCompaction
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.model.ai.AiToolChoice
 import com.gromozeka.domain.tool.AiToolCallback
+import klog.KLoggers
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -26,6 +28,7 @@ import org.springframework.stereotype.Component
 
 @Component
 class OpenAiSubscriptionRequestMapper {
+    private val log = KLoggers.logger(this)
     private val json = Json {
         ignoreUnknownKeys = true
         encodeDefaults = true
@@ -37,10 +40,18 @@ class OpenAiSubscriptionRequestMapper {
         modelName: String,
         conversationKey: String,
     ): OpenAiSubscriptionResponsesRequest {
+        val replayWindow = request.messages.toReplayWindow()
+
         return OpenAiSubscriptionResponsesRequest(
             model = modelName,
-            input = request.messages.flatMap(::toInputItems),
+            input = replayWindow.messages.flatMapIndexed { index, message ->
+                toInputItems(
+                    message = message,
+                    replayCompactionOnly = replayWindow.compactionAnchorIndex == index,
+                )
+            },
             instructions = request.systemPrompts.joinToString("\n\n").trim().ifBlank { null },
+            contextManagement = buildContextManagement(request.options.autoCompaction),
             tools = request.tools.map { tool -> tool.toToolJson() },
             toolChoice = request.options.toolChoice.toToolChoiceJson(),
             text = buildTextConfig(),
@@ -49,10 +60,13 @@ class OpenAiSubscriptionRequestMapper {
         )
     }
 
-    private fun toInputItems(message: Conversation.Message): List<JsonObject> {
+    private fun toInputItems(
+        message: Conversation.Message,
+        replayCompactionOnly: Boolean = false,
+    ): List<JsonObject> {
         return when (message.role) {
             Conversation.Message.Role.USER -> message.toUserInputItems()
-            Conversation.Message.Role.ASSISTANT -> message.toAssistantInputItems()
+            Conversation.Message.Role.ASSISTANT -> message.toAssistantInputItems(replayCompactionOnly)
             Conversation.Message.Role.SYSTEM -> message.toSystemInputItems()
         }
     }
@@ -75,11 +89,19 @@ class OpenAiSubscriptionRequestMapper {
         return items
     }
 
-    private fun Conversation.Message.toAssistantInputItems(): List<JsonObject> {
+    private fun Conversation.Message.toAssistantInputItems(
+        replayCompactionOnly: Boolean,
+    ): List<JsonObject> {
         val items = mutableListOf<JsonObject>()
         val textBuffer = mutableListOf<String>()
+        val hiddenReplayItems = providerMetadata.toHiddenReplayItems()
+        val compactionItems = hiddenReplayItems.filter { it.isCompactionReplayItem() }
 
-        items += providerMetadata.toHiddenReasoningItems()
+        if (replayCompactionOnly && compactionItems.isNotEmpty()) {
+            return compactionItems
+        }
+
+        items += hiddenReplayItems
 
         fun flushText() {
             val text = textBuffer.joinToString("\n").trim()
@@ -126,7 +148,7 @@ class OpenAiSubscriptionRequestMapper {
         return items
     }
 
-    private fun JsonObject.toHiddenReasoningItems(): List<JsonObject> {
+    private fun JsonObject.toHiddenReplayItems(): List<JsonObject> {
         return this[OPENAI_REASONING_ITEMS_METADATA_KEY]
             ?.let { it as? JsonArray }
             ?.mapNotNull { (it as? JsonObject)?.normalizeHiddenReasoningItem() }
@@ -172,6 +194,17 @@ class OpenAiSubscriptionRequestMapper {
         return buildJsonObject {
             put("verbosity", "medium")
         }
+    }
+
+    private fun buildContextManagement(autoCompaction: AiAutoCompaction?): List<JsonObject>? {
+        val threshold = autoCompaction?.threshold ?: return null
+
+        return listOf(
+            buildJsonObject {
+                put("type", "compaction")
+                put("compact_threshold", threshold)
+            }
+        )
     }
 
     private fun buildReasoning(outputConfig: AgentDefinition.OutputConfig?): JsonObject? {
@@ -314,4 +347,39 @@ class OpenAiSubscriptionRequestMapper {
             }
         }
     }
+
+    private fun List<Conversation.Message>.toReplayWindow(): ReplayWindow {
+        val compactionAnchorIndex = indexOfLast { it.providerMetadata.containsCompactionReplayItem() }
+        if (compactionAnchorIndex < 0) {
+            return ReplayWindow(messages = this, compactionAnchorIndex = null)
+        }
+
+        val trimmedMessageCount = compactionAnchorIndex
+        val retainedMessageCount = size - compactionAnchorIndex
+        log.info(
+            "OpenAI subscription replay window trimmed to latest compaction anchor: " +
+                "trimmedMessages=$trimmedMessageCount, retainedMessages=$retainedMessageCount"
+        )
+
+        return ReplayWindow(
+            messages = drop(compactionAnchorIndex),
+            compactionAnchorIndex = 0,
+        )
+    }
+
+    private fun JsonObject.containsCompactionReplayItem(): Boolean {
+        return toHiddenReplayItems().any { it.isCompactionReplayItem() }
+    }
+
+    private fun JsonObject.isCompactionReplayItem(): Boolean {
+        return when (this["type"]?.jsonPrimitive?.contentOrNull) {
+            "compaction", "compaction_summary" -> true
+            else -> false
+        }
+    }
+
+    private data class ReplayWindow(
+        val messages: List<Conversation.Message>,
+        val compactionAnchorIndex: Int?,
+    )
 }

@@ -1,6 +1,7 @@
 package com.gromozeka.infrastructure.ai.openai.subscription
 
 import com.gromozeka.domain.model.AIProvider
+import com.gromozeka.domain.model.ai.AiRuntimeCapabilities
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.model.ai.AiRuntimeResponse
 import com.gromozeka.domain.service.AiRuntime
@@ -45,6 +46,9 @@ private class Runtime(
     private val responseMapper: OpenAiSubscriptionResponseMapper,
 ) : AiRuntime {
     private val fallbackConversationKey = UUID.randomUUID().toString()
+    override val capabilities: AiRuntimeCapabilities = AiRuntimeCapabilities(
+        supportsAutoCompaction = true,
+    )
 
     override suspend fun call(request: AiRuntimeRequest): AiRuntimeResponse {
         return execute(request, retryOnUnauthorized = true)

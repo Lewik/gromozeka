@@ -8,6 +8,7 @@ import com.gromozeka.domain.model.Conversation.Message.ContentItem
 import com.gromozeka.domain.model.Plan
 import com.gromozeka.domain.model.TokenUsageStatistics
 import com.gromozeka.domain.model.ai.AiRuntimeOptions
+import com.gromozeka.domain.model.ai.AiAutoCompaction
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.model.ai.AiToolChoice
 import com.gromozeka.domain.service.AgentDomainService
@@ -208,6 +209,9 @@ class ConversationEngineService(
                     maxTokens = agent.maxTokens,
                     thinking = agent.thinking,
                     outputConfig = agent.outputConfig,
+                    autoCompaction = runtime.capabilities.supportsAutoCompaction
+                        .takeIf { it }
+                        ?.let { AiAutoCompaction() },
                     toolChoice = toolChoice,
                     toolContext = mapOf(
                         "projectPath" to project.path,

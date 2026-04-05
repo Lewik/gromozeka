@@ -44,6 +44,8 @@ object ModelContextWindows {
         // OpenAI
         "gpt-4-turbo" to 128_000,
         "gpt-4o" to 128_000,
+        "gpt-5.3-codex" to 400_000,
+        "gpt-5.4" to 1_050_000,
     )
 
     /**

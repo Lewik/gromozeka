@@ -3,6 +3,7 @@ package com.gromozeka.domain.service
 import com.gromozeka.domain.model.AIProvider
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.model.ai.AiRuntimeResponse
+import com.gromozeka.domain.model.ai.AiRuntimeCapabilities
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -21,6 +22,9 @@ interface AiRuntimeProvider {
 }
 
 interface AiRuntime {
+    val capabilities: AiRuntimeCapabilities
+        get() = AiRuntimeCapabilities()
+
     suspend fun call(request: AiRuntimeRequest): AiRuntimeResponse
 
     fun stream(request: AiRuntimeRequest): Flow<AiRuntimeResponse>

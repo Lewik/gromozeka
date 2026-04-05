@@ -59,6 +59,8 @@ data class OpenAiSubscriptionResponsesRequest(
     val store: Boolean = false,
     val stream: Boolean = true,
     val instructions: String? = null,
+    @SerialName("context_management")
+    val contextManagement: List<JsonObject>? = null,
     @SerialName("parallel_tool_calls")
     val parallelToolCalls: Boolean = true,
     val tools: List<JsonObject> = emptyList(),

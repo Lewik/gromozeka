@@ -4,6 +4,8 @@ import klog.KLoggers
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonPrimitive
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
 import java.io.InputStream
@@ -89,7 +91,16 @@ class OpenAiSubscriptionResponsesClient(
 
             when (eventName ?: envelope.type) {
                 "response.output_item.done" -> {
-                    envelope.item?.let(outputItems::add)
+                    envelope.item?.let { item ->
+                        val itemType = item["type"]?.jsonPrimitive?.contentOrNull
+                        if (itemType == "compaction" || itemType == "compaction_summary") {
+                            log.info(
+                                "OpenAI subscription auto-compaction item received: " +
+                                    "type=$itemType, responseEvent=${eventName ?: envelope.type}"
+                            )
+                        }
+                        outputItems += item
+                    }
                 }
 
                 "response.completed" -> {

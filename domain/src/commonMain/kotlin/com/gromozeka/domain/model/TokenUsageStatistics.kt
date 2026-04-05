@@ -49,6 +49,12 @@ data class TokenUsageStatistics(
     @JvmInline
     value class Id(val value: String)
 
+    val totalInputTokens: Int
+        get() = promptTokens + cacheCreationTokens + cacheReadTokens
+
+    val totalOutputTokens: Int
+        get() = completionTokens + thinkingTokens
+
     /**
      * Total tokens consumed (prompt + completion, excluding cache operations).
      */

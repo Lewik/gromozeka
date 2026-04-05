@@ -45,10 +45,10 @@ class ExposedTokenUsageStatisticsRepository : TokenUsageStatisticsRepository {
 
         val recentCalls = getRecentCalls(threadId, 10)
 
-        // Calculate current context size: all tokens visible to model in last call
-        // = new prompt tokens + cached tokens (creation + read) + completion tokens
+        // Approximation of what the model has to carry into the next turn.
+        // Uses normalized input token accounting from provider adapters.
         val lastCallContextSize = lastCall?.let { call ->
-            call.promptTokens + call.cacheCreationTokens + call.cacheReadTokens + call.completionTokens
+            call.totalInputTokens + call.completionTokens
         }
 
         TokenUsageStatistics.ThreadTotals(
