@@ -142,22 +142,24 @@ infrastructure/db/
 #### Infrastructure/AI Module
 
 **Module:** `:infrastructure-ai`
-**Agent:** Spring AI Agent
-**Spring:** YES (`@Service`, `@Configuration`)
+**Agent:** AI Integration Agent
+**Spring:** YES (`@Service`, `@Configuration`) where relevant
 
 **Responsibilities:**
-- System code
-- Spring AI integration
-- Claude Code CLI integration
+- AI runtime backends
+- OpenAI subscription integration
+- Spring AI-backed provider integrations
 - MCP tools and servers
-- AI provider abstractions
+- Memory, embeddings, and adjacent AI infrastructure
 
 **What lives here:**
 ```
-infrastructure/ai/
-  ├── springai/        - Spring AI ChatModel implementations
-  ├── claudecode/      - Claude Code CLI integration
-  └── mcp/             - MCP servers, tools, clients
+infrastructure-ai/
+  ├── openai-subscription/  - Dedicated OpenAI subscription runtime backend
+  ├── src/.../springai/     - Spring AI-backed provider integrations
+  ├── src/.../mcp/          - MCP servers, tools, clients
+  ├── src/.../memory/       - Memory extraction and graph-adjacent AI logic
+  └── src/.../tool/         - AI-facing tools and adapters
 ```
 
 ---

@@ -43,7 +43,7 @@ class ExposedPromptRepository(
 
             // Check for project override first
             val projectOverride = Prompt.Id("project:$fileName")
-            fileSystemPromptScanner.loadPromptById(projectOverride, project.path)?.let {
+            fileSystemPromptScanner.loadPromptById(projectOverride, project.path, logMissing = false)?.let {
                 return it
             }
 

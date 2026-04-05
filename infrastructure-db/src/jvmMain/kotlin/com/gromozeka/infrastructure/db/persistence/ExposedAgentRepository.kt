@@ -50,7 +50,7 @@ class ExposedAgentRepository(
             // Check for project override first
             if (projectPath != null) {
                 val projectOverride = AgentDefinition.Id("project:$fileName")
-                fileSystemAgentScanner.loadAgentById(projectOverride, projectPath)?.let {
+                fileSystemAgentScanner.loadAgentById(projectOverride, projectPath, logMissing = false)?.let {
                     return it
                 }
             }

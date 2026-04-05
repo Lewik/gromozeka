@@ -85,6 +85,17 @@ class FileSystemAgentScanner {
     }
     
     fun findProjectRoot(): File? {
+        val explicitProjectRoot = System.getProperty("gromozeka.project.root")
+            ?.let(::File)
+            ?.takeIf { root ->
+                File(root, ".gromozeka").isDirectory
+            }
+
+        if (explicitProjectRoot != null) {
+            log.info { "Using configured project root: ${explicitProjectRoot.absolutePath}" }
+            return explicitProjectRoot
+        }
+
         var current = File(System.getProperty("user.dir"))
         
         log.debug { "Searching for project root starting from: ${current.absolutePath}" }
@@ -171,7 +182,7 @@ class FileSystemAgentScanner {
      * Loads a single agent by ID from filesystem.
      * Supports global:filename and project:filename formats.
      */
-    fun loadAgentById(id: AgentDefinition.Id, projectPath: String?): AgentDefinition? {
+    fun loadAgentById(id: AgentDefinition.Id, projectPath: String?, logMissing: Boolean = true): AgentDefinition? {
         val idValue = id.value
 
         return when {
@@ -183,7 +194,9 @@ class FileSystemAgentScanner {
                 val file = File(gromozekaHome, "agents/$fileName")
 
                 if (!file.exists() || !file.isFile) {
-                    log.warn { "Global agent file not found: ${file.absolutePath}" }
+                    if (logMissing) {
+                        log.warn { "Global agent file not found: ${file.absolutePath}" }
+                    }
                     return null
                 }
 
@@ -230,7 +243,9 @@ class FileSystemAgentScanner {
                 val file = File(projectPath, ".gromozeka/agents/$fileName")
 
                 if (!file.exists() || !file.isFile) {
-                    log.warn { "Project agent file not found: ${file.absolutePath}" }
+                    if (logMissing) {
+                        log.warn { "Project agent file not found: ${file.absolutePath}" }
+                    }
                     return null
                 }
 

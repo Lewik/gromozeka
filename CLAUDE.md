@@ -36,7 +36,7 @@ cat .gromozeka/prompts/agents-roster.knowledge.md
 **2. Find the expert for your problem:**
 - Build broken? → `build-release.role.md`
 - Database issue? → `repository.role.md`
-- AI integration? → `spring-ai.role.md`
+- AI integration? → `spring-ai.role.md` (AI Integration Agent)
 - UI problem? → `ui.role.md`
 - Architecture question? → `architect.role.md`
 

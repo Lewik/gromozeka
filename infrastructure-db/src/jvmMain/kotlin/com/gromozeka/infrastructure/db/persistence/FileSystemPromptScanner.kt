@@ -82,7 +82,7 @@ class FileSystemPromptScanner {
      * Loads a single prompt by ID from filesystem.
      * Supports global:path and project:filename formats.
      */
-    fun loadPromptById(id: Prompt.Id, projectPath: String?): Prompt? {
+    fun loadPromptById(id: Prompt.Id, projectPath: String?, logMissing: Boolean = true): Prompt? {
         val idValue = id.value
 
         return when {
@@ -92,7 +92,9 @@ class FileSystemPromptScanner {
                 val file = File(resolvedPath)
 
                 if (!file.exists() || !file.isFile) {
-                    log.warn { "Global prompt file not found: $resolvedPath" }
+                    if (logMissing) {
+                        log.warn { "Global prompt file not found: $resolvedPath" }
+                    }
                     return null
                 }
 
@@ -126,7 +128,9 @@ class FileSystemPromptScanner {
                 val file = File(projectPath, ".gromozeka/prompts/$fileName")
 
                 if (!file.exists() || !file.isFile) {
-                    log.warn { "Project prompt file not found: ${file.absolutePath}" }
+                    if (logMissing) {
+                        log.warn { "Project prompt file not found: ${file.absolutePath}" }
+                    }
                     return null
                 }
 

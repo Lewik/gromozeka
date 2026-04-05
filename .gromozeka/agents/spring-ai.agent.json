@@ -1,9 +1,10 @@
 {
   "id": "project:spring-ai.agent.json",
-  "name": "Spring AI агент",
+  "name": "AI интеграции агент",
   "prompts": [
     "builtin:common-prompt-prefix.md",
     "builtin:common.identity.md",
+    "builtin:common.knowledge.md",
     "builtin:knowledge-graph.knowledge.md",
     "builtin:developer.role.md",
     "project:project-common.knowledge.md",
@@ -20,7 +21,7 @@
   "outputConfig": {
     "effort": "max"
   },
-  "description": "Spring AI integration",
+  "description": "AI runtime integrations",
   "createdAt": "2025-11-22T19:11:52Z",
   "updatedAt": "2026-03-18T00:00:00Z"
 }

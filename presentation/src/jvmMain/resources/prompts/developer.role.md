@@ -162,4 +162,4 @@ Use specialized Gromozeka tools instead of bash for file operations.
 
 ## File Creation Policy
 
-File creation policy is defined in `common.identity.md` and applies to all agents.
+File creation policy is defined in `common.knowledge.md` and applies to all agents.

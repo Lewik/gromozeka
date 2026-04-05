@@ -1,192 +1,138 @@
-# Gromozeka Project Agent Context
+# Gromozeka Project Agent Design Notes
 
-This document describes project-specific agent architecture, coordination patterns, and development workflow for Gromozeka.
+Project-specific guidance for designing and maintaining the Gromozeka agent system.
 
-## Project Overview
+## What This Document Is For
 
-**Gromozeka** is a multi-armed AI assistant built with Kotlin Multiplatform and Compose Desktop. It features:
-- Hybrid memory architecture (knowledge graph + vector store)
-- Multi-agent collaboration system
-- Spring AI integration with Claude Code CLI
-- Clean Architecture with DDD patterns
+Use this document to keep project agent prompts:
+- compositional
+- thin
+- non-contradictory
+- aligned with the current codebase and workflow
 
-## Architecture Approach
+It is not a replacement for:
+- `agent-architecture.knowledge.md` for generic prompt composition rules
+- `architecture.knowledge.md` for layer definitions
+- `agents-roster.knowledge.md` for current specialist roster
 
-Gromozeka follows **Clean Architecture** with strict layer separation:
+## Composition Defaults
 
-```
-Infrastructure → Domain
-Application    → Domain
-Presentation   → Domain + Application
-```
+For code-writing project agents, the default stack should usually be:
 
-**Key principles:**
-- Dependencies point inward only
-- Domain layer is pure Kotlin (no framework dependencies)
-- Each layer has dedicated agents
-- Agents communicate through typed interfaces and KDoc (Code-as-Contract)
-
-## Code-as-Contract Coordination
-
-### Pattern 1: Interface First
-1. Architect designs interface with complete KDoc
-   - KDoc must be **sufficient** to understand WHAT to implement
-   - Include: operation semantics, parameters, return values, exceptions
-   - **Avoid:** Implementation details, step-by-step HOW
-   - Think: **specification, not tutorial**
-2. Implementation agent reads interface from filesystem
-3. Implements based on KDoc specification
-4. Compiler validates contract adherence
-
-**Why KDoc completeness matters:**
-Domain contracts drive development. Complete KDoc enables implementation agents to work independently without chat clarifications.
-
-**Key insight:** Architecture leverages Clean Architecture to enable **AI-driven development management**. Domain layer allows AI to control development without loading detailed implementation code.
-
-### Pattern 2: Handoff via Filesystem
-```
-Architect writes:     domain/repository/XRepository.kt
-                     domain/service/XService.kt
-Repository Agent reads:  domain/repository/XRepository.kt
-Repository Agent writes: infrastructure/db/persistence/ExposedXRepository.kt
-Business Logic Agent reads: domain/service/XService.kt
-Business Logic Agent writes: application/service/XServiceImpl.kt
+```json
+[
+  "builtin:common-prompt-prefix.md",
+  "builtin:common.identity.md",
+  "builtin:common.knowledge.md",
+  "builtin:knowledge-graph.knowledge.md",
+  "builtin:developer.role.md",
+  "project:project-common.knowledge.md",
+  "project:<specialist>.role.md",
+  "env"
+]
 ```
 
-Chat is available for clarifications, but domain contracts drive development.
+Use extra prompts only when they add unique information.
 
-### Pattern 3: Knowledge Graph Context
-Before implementing, agent queries graph:
-- "What repository patterns have we used?"
-- "How did we handle pagination last time?"
-- "What error handling approach for external APIs?"
+Add `builtin:common.multi-agent.knowledge.md` only for agents that actually coordinate other agents or need explicit delegation rules.
 
-**Key Principle:** Agents communicate **primarily** through typed code and comprehensive KDoc. Chat supplements for clarifications and coordination. The compiler validates integration.
+## Keep Information In One Place
 
-## Technology Stack
+Prompt design rule:
+- stable cross-project behavior belongs in builtin prompts
+- current project reality belongs in `project-common.knowledge.md`
+- lane ownership and build commands belong in specialist `.role.md`
+- roster belongs in `agents-roster.knowledge.md`
+- architecture belongs in `architecture.knowledge.md`
 
-**Core:**
-- Kotlin Multiplatform
-- Spring Framework (DI, configuration)
-- Spring AI (LLM integrations)
+If a fact changes often, it should exist in one prompt only.
 
-**UI:**
-- JetBrains Compose Desktop
-- Material 3 components
+Treat prompt content as different classes of information:
+- stable cross-project principles
+- current project reality
+- role-specific workflow and ownership
+- temporary task-specific examples
 
-**Data:**
-- Exposed (SQL ORM)
-- Neo4j (knowledge graph and vector store)
+Do not mix these casually in one file when they can be kept orthogonal.
 
-**AI:**
-- Claude Code CLI (custom integration)
-- Gemini (via Spring AI)
-- Model Context Protocol (MCP)
+## Anti-Duplication Rules
 
-## Multi-Agent Workflow Example
+Avoid repeating the same material across multiple prompts:
+- technology stack summaries
+- Clean Architecture explanations
+- repository synchronization workflow
+- team roster
+- code-as-contract philosophy
 
-**Task:** "Add note storage feature"
+Reference the prompt that owns the concept instead of copying its content again.
 
-**Step 1: Architect Agent**
-Creates domain contracts:
-```kotlin
-// domain/model/Note.kt
-data class Note(
-    val id: Id,
-    val content: String,
-    val createdAt: Instant
-)
+If a new instruction is needed, first ask:
+- does this idea already exist elsewhere in the stack?
+- is the problem duplication, contradiction, or missing guidance?
+- can the fix be done by deleting or narrowing existing text instead of adding more text?
 
-// domain/repository/NoteRepository.kt
-interface NoteRepository {
-    suspend fun findById(id: Note.Id): Note?
-    suspend fun save(note: Note): Note
-}
-```
+## Drift Control
 
-**Step 2: Repository Agent**
-Reads interface from filesystem, implements:
-```kotlin
-// infrastructure/db/persistence/ExposedNoteRepository.kt
-@Service
-class ExposedNoteRepository : NoteRepository {
-    override suspend fun findById(id: Note.Id): Note? = transaction {
-        // Implementation based on KDoc contract
-    }
-}
-```
+When prompts are updated, prefer current operational truth over historical wording.
 
-**Step 3: Business Logic Agent**
-Reads interfaces, implements orchestration:
-```kotlin
-// application/service/NoteServiceImpl.kt
-@Service
-class NoteServiceImpl(
-    private val noteRepository: NoteRepository
-) : NoteService {
-    override suspend fun createNote(content: String): Note {
-        require(content.isNotBlank()) { "Content cannot be blank" }
-        // Orchestration logic
-    }
-}
-```
+Typical drift smells:
+- old provider/runtime names after a backend migration
+- outdated branch names or checkout roles
+- stale build commands or test names
+- prompts describing removed directories or integrations
 
-**Result:**
-- Minimal coordination overhead (domain contracts are self-sufficient)
-- Compiler validates all contracts
-- Clean layer separation enforced by module dependencies
-- Build succeeds - integration verified through compilation
+If runtime facts changed, fix the shared knowledge prompt instead of patching the same fact in many role prompts.
 
-## Verification Strategy
+## Prompt Change Workflow
 
-**Build verification command:**
-```bash
-./gradlew :presentation:build :presentation:jvmTest --tests ApplicationContextTest -q || \
-  ./gradlew :presentation:build :presentation:jvmTest --tests ApplicationContextTest
-```
+When changing prompts:
+1. Identify the concrete failure mode or desired behaviour
+2. Find the owning prompt for that concept
+3. Prefer the smallest effective patch
+4. Prefer removing or narrowing conflicting text before adding new text
+5. Re-check the full assembled stack for duplication and contradictions
+6. Validate the changed behaviour, not just file syntax
 
-**Quiet mode pattern:**
-- Always try `-q` first (saves 80-90% tokens)
-- Full output only on errors
-- Verify both compilation AND Spring context
+Prompt changes should be driven by observed behaviour, user feedback, or current runtime truth.
+Avoid speculative prompt ornamentation.
 
-## Project-Specific Guidelines
+## Prompt Editing Heuristics
 
-### Practicality Over Elegance
-- Working solutions over beautiful abstractions
-- Simple implementations over clever patterns
-- Maintainable code over theoretical purity
+- Prefer positive defaults over reactive prohibitions
+- Prefer conditional defaults over absolute rules unless the rule is a true invariant
+- Prefer compact examples that constrain behaviour over long didactic explanations
+- Prefer explicit conflict resolution when heuristics are likely to collide
+- Prefer one strong instruction over three weaker paraphrases of the same idea
 
-### Fail Fast - No Guessing on Errors
-When errors occur, **NEVER** attempt recovery through guessing:
-- Better to fail loudly than silently corrupt data
-- Eloquent error message > wrong operation that looks correct
+OpenAI-style practical takeaway:
+- stable instructions and variable project facts should not live in the same conceptual layer
+- prompt improvement should be failure-driven
+- adding more guidance is not always the right fix; sometimes the right fix is removal
 
-**Internal vs External:**
-- Internal components: fail immediately on invalid state (`require()`, `check()`)
-- External interfaces: defensive error handling (user input, network, APIs)
+## When To Create A New Agent
 
-### Code Comments - Avoid Noise
-- Clear naming over comments
-- Comments for non-obvious business logic only
-- Avoid "moved from X to Y", "TODO: refactor", obvious explanations
-- Commit history explains WHY, code explains WHAT
+Create a new agent only if at least one of these is true:
+- it owns a distinct module or boundary
+- it needs a different instruction stack than existing agents
+- it represents a stable repeated workflow, not a one-off task
 
-### DDD Patterns We Use
-- **Repository Pattern** - abstraction over data persistence
-- **Value Objects** - typed wrappers for primitives (Thread.Id, Message.Id)
-- **Domain Services** - business logic that doesn't fit entities
-- **Immutable Entities** - data classes with `val` properties
+Do not create a new agent just to encode a temporary task.
 
-We DON'T use (yet): Aggregate Roots, Bounded Contexts, Domain Events, Specification Pattern.
-Keep architecture pragmatic. Add complexity only when needed.
+## Meta-Agent Validation Checklist
 
-## Remember
+Before saving prompt changes, check:
+1. Every loaded prompt adds unique value
+2. No prompt repeats mutable project facts already owned elsewhere
+3. Prompt order still makes sense
+4. `env` is last
+5. All referenced files exist
+6. The resulting stack matches the current codebase and current repo workflow
+7. The specific failure mode or target behaviour was actually addressed
 
-- **Code-as-Contract** - typed interfaces and KDoc drive development
-- **Domain contracts are self-sufficient** - enable AI-driven development management
-- **Chat supplements** - clarifications only, contracts specify
-- **Strict layer boundaries** - each agent respects Clean Architecture
-- **Compiler validates** - integration verified through compilation
-- **Knowledge graph is memory** - shared organizational context
-- **Parallel independent development** - enabled by Code-as-Contract
+## Current Project Reality To Respect
+
+- `OPEN_AI_SUBSCRIPTION` is the main dogfood runtime path
+- `:infrastructure-ai/openai-subscription` is first-class, not an experiment
+- Spring AI integrations still exist, but they no longer describe the whole AI stack
+- `beta/` tracks branch `beta`, not `main`
+- `AppStartupSmokeTest` is the current lightweight app smoke test in `:presentation`

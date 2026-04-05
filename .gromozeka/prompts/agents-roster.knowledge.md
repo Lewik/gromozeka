@@ -1,53 +1,36 @@
 # Project Development Agents Roster
 
-List of Gromozeka development agents. All agents work in parallel, each in their area of responsibility.
+Current specialist roster for Gromozeka development.
 
-## Agent Roster
+## Architect Agent
+- Module: `:domain`
+- Responsibility: design entities, value objects, service/repository interfaces, UI contracts
+- Output: `domain/model/`, `domain/repository/`, `domain/service/`, `domain/presentation/`
 
-### Architect Agent
-**Role:** Domain Designer  
-**Module:** `:domain`
-**Spring:** NO (pure Kotlin)
-**Output:** `domain/model/`, `domain/repository/`  
-**Key focus:** Technology-agnostic abstractions, comprehensive KDoc, immutable data classes
+## Repository Agent
+- Module: `:infrastructure-db`
+- Responsibility: implement persistence, graph, and vector data access behind domain interfaces
+- Output: `infrastructure-db/src/.../persistence/`, `infrastructure-db/src/.../graph/`
 
-### Repository Agent
-**Role:** Data Persistence Specialist  
-**Module:** `:infrastructure-db`
-**Spring:** YES (`@Service`, `@Repository`)
-**Output:** `infrastructure/db/persistence/`, `infrastructure/db/vector/`, `infrastructure/db/graph/`  
-**Key focus:** DDD Repository implementation (NOT Spring Data Repository), data access patterns
+## Business Logic Agent
+- Module: `:application`
+- Responsibility: implement use cases, orchestration, transactional workflows, and business rules
+- Output: `application/src/.../service/`
 
-### Business Logic Agent
-**Role:** Use Case Orchestrator  
-**Module:** `:application`
-**Spring:** YES (`@Service`)
-**Output:** `application/service/`  
-**Key focus:** Multi-repository coordination, transactional workflows, business invariants
+## AI Integration Agent
+- Module: `:infrastructure-ai`
+- Responsibility: maintain AI runtimes, OpenAI subscription backend, Spring AI integrations, MCP tools, memory and tool-facing AI infrastructure
+- Output: `infrastructure-ai/openai-subscription/`, `infrastructure-ai/src/.../springai/`, `infrastructure-ai/src/.../mcp/`, `infrastructure-ai/src/.../memory/`, `infrastructure-ai/src/.../tool/`
 
-### Spring AI Agent
-**Role:** AI Integration Specialist  
-**Module:** `:infrastructure-ai`
-**Spring:** YES (`@Service`, `@Configuration`)
-**Output:** `infrastructure/ai/springai/`, `infrastructure/ai/claudecode/`, `infrastructure/ai/mcp/`  
-**Key focus:** Streaming responses, ChatModel implementations, MCP tools/servers
+## UI Agent
+- Module: `:presentation`
+- Responsibility: Compose Desktop UI, viewmodels, app shell, interaction flows
+- Output: `presentation/src/.../ui/`, `presentation/src/.../viewmodel/`
 
-### UI Agent
-**Role:** User Interface Developer  
-**Module:** `:presentation`
-**Spring:** YES (transitive, for DI and app startup)
-**Output:** `presentation/ui/`, `presentation/viewmodel/`  
-**Key focus:** Material 3 design, reactive StateFlow/SharedFlow, UX patterns
+## Build/Release Agent
+- Module: cross-cutting
+- Responsibility: build verification, packaging, tags, branch/checkouts synchronization
 
-### Build/Release Agent
-**Role:** Build Engineer  
-**Module:** Cross-cutting
-**Output:** Build artifacts, git tags, DMG/AppImage/MSI packages  
-**Key focus:** Quiet mode verification, version management, GitHub releases
-
-### IDEA Plugin Agent
-**Role:** IntelliJ IDEA Plugin Developer  
-**Module:** `:idea-plugin` (will be created)
-**Spring:** NO (IntelliJ Platform plugin)
-**Output:** `idea-plugin/src/main/kotlin/`, `idea-plugin/src/main/resources/META-INF/plugin.xml`  
-**Key focus:** Actions, Extensions, Services, PSI operations, UI DSL, Gradle configuration
+## IDEA Plugin Agent
+- Module: future `:idea-plugin`
+- Responsibility: IntelliJ Platform plugin development when that module becomes real

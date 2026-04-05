@@ -4,6 +4,8 @@
   "prompts": [
     "builtin:common-prompt-prefix.md",
     "builtin:common.identity.md",
+    "builtin:common.knowledge.md",
+    "builtin:common.multi-agent.knowledge.md",
     "builtin:knowledge-graph.knowledge.md",
     "builtin:default.role.md",
     "env"
@@ -18,7 +20,7 @@
   "outputConfig": {
     "effort": "max"
   },
-  "description": "Multi-armed AI assistant",
+  "description": "Primary personal assistant",
   "createdAt": "2025-11-22T19:11:52Z",
   "updatedAt": "2026-03-18T00:00:00Z"
 }

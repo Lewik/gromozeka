@@ -6,6 +6,7 @@ import com.gromozeka.domain.model.Conversation.Message.ContentItem
 import com.gromozeka.domain.service.ConversationDomainService
 import com.gromozeka.domain.repository.ConversationRepository
 import com.gromozeka.domain.repository.MessageRepository
+import com.gromozeka.domain.repository.ThreadMessageLink
 import com.gromozeka.domain.repository.ThreadMessageRepository
 import com.gromozeka.domain.repository.ThreadRepository
 import com.gromozeka.shared.uuid.uuid7
@@ -29,6 +30,12 @@ class ToolCallSequenceFixerService(
     private val threadMessageRepository: ThreadMessageRepository
 ) {
     private val log = KLoggers.logger(this)
+
+    private data class FixedMessageSequence(
+        val messages: List<Conversation.Message>,
+        val addedResults: Int,
+        val convertedResults: Int,
+    )
     
     /**
      * Result of fixing operation.
@@ -58,26 +65,21 @@ class ToolCallSequenceFixerService(
     @Transactional
     suspend fun fixNonSequentialPairs(conversationId: Conversation.Id): FixResult {
         val messages = conversationService.loadCurrentMessages(conversationId)
-        
-        // Build fixed message sequence (single pass)
-        val fixedMessages = buildFixedMessageSequence(
+
+        val fixedSequence = buildFixedMessageSequence(
             messages = messages,
             conversationId = conversationId
         )
-        
-        // Check if any changes were made
-        if (fixedMessages.size == messages.size) {
+
+        if (fixedSequence.addedResults == 0 && fixedSequence.convertedResults == 0) {
             log.debug { "No non-sequential pairs found in conversation $conversationId" }
             return FixResult(fixed = false, addedResults = 0, convertedResults = 0)
         }
-        
-        val addedResults = fixedMessages.size - messages.size
-        val convertedResults = fixedMessages.count { msg ->
-            msg.role == Conversation.Message.Role.ASSISTANT &&
-            msg.content.any { it is ContentItem.AssistantMessage && 
-                             it.structured.fullText.startsWith("[Converted from orphaned ToolResult:") }
-        }
-        
+
+        val fixedMessages = fixedSequence.messages
+        val addedResults = fixedSequence.addedResults
+        val convertedResults = fixedSequence.convertedResults
+
         log.warn { 
             "Found non-sequential pairs in conversation $conversationId: " +
             "added $addedResults messages, converted $convertedResults orphaned results" 
@@ -97,12 +99,23 @@ class ToolCallSequenceFixerService(
         )
         
         threadRepository.save(newThread)
-        
-        // Save fixed messages and create thread-message links
-        fixedMessages.forEachIndexed { index, message ->
+
+        val existingMessageIds = messageRepository.findByIds(fixedMessages.map { it.id })
+            .mapTo(mutableSetOf()) { it.id }
+
+        fixedMessages.filter { it.id !in existingMessageIds }.forEach { message ->
             messageRepository.save(message)
-            threadMessageRepository.add(newThread.id, message.id, index)
         }
+
+        threadMessageRepository.addBatch(
+            fixedMessages.mapIndexed { index, message ->
+                ThreadMessageLink(
+                    threadId = newThread.id,
+                    messageId = message.id,
+                    position = index
+                )
+            }
+        )
         
         // Update conversation to use new thread
         conversationRepository.updateCurrentThread(conversationId, newThread.id)
@@ -123,47 +136,72 @@ class ToolCallSequenceFixerService(
     private fun buildFixedMessageSequence(
         messages: List<Conversation.Message>,
         conversationId: Conversation.Id
-    ): List<Conversation.Message> {
-        return sequence {
-            var pendingToolCalls = emptyMap<ContentItem.ToolCall.Id, ContentItem.ToolCall>()
-            
-            messages.forEach { message ->
-                val toolCalls = message.content.filterIsInstance<ContentItem.ToolCall>()
-                val toolResults = message.content.filterIsInstance<ContentItem.ToolResult>()
-                
-                val matchedResultIds = toolResults.map { it.toolUseId }.toSet()
-                val unmatchedResults = toolResults.filter { it.toolUseId !in pendingToolCalls.keys }
-                
-                if (unmatchedResults.isNotEmpty()) {
-                    log.debug { 
-                        "Converting ${unmatchedResults.size} orphaned ToolResult(s) in message ${message.id.value}" 
-                    }
-                    yield(convertOrphanedToolResults(message, unmatchedResults))
+    ): FixedMessageSequence {
+        val fixedMessages = mutableListOf<Conversation.Message>()
+        var pendingToolCalls = emptyMap<ContentItem.ToolCall.Id, ContentItem.ToolCall>()
+        var addedResults = 0
+        var convertedResults = 0
+
+        messages.forEach { message ->
+            val toolCalls = message.content.filterIsInstance<ContentItem.ToolCall>()
+            val toolResults = message.content.filterIsInstance<ContentItem.ToolResult>()
+            val unmatchedResults = toolResults.filter { it.toolUseId !in pendingToolCalls.keys }
+            val matchedResultIds = toolResults
+                .filter { it.toolUseId in pendingToolCalls.keys }
+                .mapTo(mutableSetOf()) { it.toolUseId }
+
+            val remainingContent = if (unmatchedResults.isEmpty()) {
+                message.content
+            } else {
+                message.content.filterNot { content ->
+                    content is ContentItem.ToolResult && content.toolUseId !in pendingToolCalls.keys
+                }
+            }
+
+            if (remainingContent.isNotEmpty()) {
+                fixedMessages += if (remainingContent.size == message.content.size) {
+                    message
                 } else {
-                    yield(message)
+                    message.copy(content = remainingContent)
                 }
-                
-                val unmatchedCallIds = pendingToolCalls.keys - matchedResultIds
-                unmatchedCallIds.forEach { callId ->
-                    val toolCall = pendingToolCalls[callId]!!
-                    log.debug { 
-                        "Inserting error ToolResult for orphaned ToolCall: " +
-                        "${toolCall.call.name} (id=${callId.value})" 
-                    }
-                    yield(createErrorToolResult(conversationId, toolCall))
-                }
-                
-                pendingToolCalls = toolCalls.associateBy { it.id }
             }
-            
-            pendingToolCalls.values.forEach { toolCall ->
-                log.debug { 
-                    "Inserting error ToolResult for final orphaned ToolCall: " +
-                    "${toolCall.call.name} (id=${toolCall.id.value})" 
+
+            if (unmatchedResults.isNotEmpty()) {
+                log.debug {
+                    "Converting ${unmatchedResults.size} orphaned ToolResult(s) in message ${message.id.value}"
                 }
-                yield(createErrorToolResult(conversationId, toolCall))
+                fixedMessages += createConvertedOrphanedToolResultsMessage(conversationId, unmatchedResults)
+                convertedResults += unmatchedResults.size
             }
-        }.toList()
+
+            val unmatchedCallIds = pendingToolCalls.keys - matchedResultIds
+            unmatchedCallIds.forEach { callId ->
+                val toolCall = pendingToolCalls.getValue(callId)
+                log.debug {
+                    "Inserting error ToolResult for orphaned ToolCall: " +
+                        "${toolCall.call.name} (id=${callId.value})"
+                }
+                fixedMessages += createErrorToolResult(conversationId, toolCall)
+                addedResults++
+            }
+
+            pendingToolCalls = toolCalls.associateBy { it.id }
+        }
+
+        pendingToolCalls.values.forEach { toolCall ->
+            log.debug {
+                "Inserting error ToolResult for final orphaned ToolCall: " +
+                    "${toolCall.call.name} (id=${toolCall.id.value})"
+            }
+            fixedMessages += createErrorToolResult(conversationId, toolCall)
+            addedResults++
+        }
+
+        return FixedMessageSequence(
+            messages = fixedMessages,
+            addedResults = addedResults,
+            convertedResults = convertedResults,
+        )
     }
     
     private fun createErrorToolResult(
@@ -189,51 +227,41 @@ class ToolCallSequenceFixerService(
         )
     }
     
-    private fun convertOrphanedToolResults(
-        message: Conversation.Message,
+    private fun createConvertedOrphanedToolResultsMessage(
+        conversationId: Conversation.Id,
         orphanedResults: List<ContentItem.ToolResult>
     ): Conversation.Message {
-        val orphanedIds = orphanedResults.map { it.toolUseId }.toSet()
-        
-        val updatedContent = message.content.map { content ->
-            if (content is ContentItem.ToolResult && content.toolUseId in orphanedIds) {
-                // Extract result text
-                val resultText = content.result.joinToString("\n") { data ->
-                    when (data) {
-                        is ContentItem.ToolResult.Data.Text -> data.content
-                        is ContentItem.ToolResult.Data.Base64Data -> "[Base64 data: ${data.mediaType}]"
-                        is ContentItem.ToolResult.Data.UrlData -> "[URL: ${data.url}]"
-                        is ContentItem.ToolResult.Data.FileData -> "[File: ${data.fileId}]"
-                    }
+        val convertedContent = orphanedResults.map { orphanedResult ->
+            val resultText = orphanedResult.result.joinToString("\n") { data ->
+                when (data) {
+                    is ContentItem.ToolResult.Data.Text -> data.content
+                    is ContentItem.ToolResult.Data.Base64Data -> "[Base64 data: ${data.mediaType}]"
+                    is ContentItem.ToolResult.Data.UrlData -> "[URL: ${data.url}]"
+                    is ContentItem.ToolResult.Data.FileData -> "[File: ${data.fileId}]"
                 }
-                
-                val convertedText = """
-                    [Converted from orphaned ToolResult: ${content.toolName}]
-                    
-                    This message was originally a tool result without corresponding tool call.
-                    Original result:
-                    
-                    $resultText
-                """.trimIndent()
-                
-                ContentItem.AssistantMessage(
-                    structured = Conversation.Message.StructuredText(fullText = convertedText),
-                    state = BlockState.COMPLETE
-                )
-            } else {
-                content
             }
+
+            val convertedText = """
+                [Converted from orphaned ToolResult: ${orphanedResult.toolName}]
+                
+                This message was originally a tool result without corresponding tool call.
+                Original result:
+                
+                $resultText
+            """.trimIndent()
+
+            ContentItem.AssistantMessage(
+                structured = Conversation.Message.StructuredText(fullText = convertedText),
+                state = BlockState.COMPLETE
+            )
         }
-        
-        log.debug { 
-            "Converted ${orphanedResults.size} orphaned ToolResult(s) in message ${message.id.value}" 
-        }
-        
-        return message.copy(
-            id = Conversation.Message.Id(uuid7()), // New ID for converted message
+
+        return Conversation.Message(
+            id = Conversation.Message.Id(uuid7()),
+            conversationId = conversationId,
             role = Conversation.Message.Role.ASSISTANT,
-            content = updatedContent,
-            createdAt = Clock.System.now()
+            content = convertedContent,
+            createdAt = Clock.System.now(),
         )
     }
 }

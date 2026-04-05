@@ -287,7 +287,7 @@ PROACTIVELY google things you don't understand.
 - Implements in `application/service/ConversationServiceImpl.kt`
 - Orchestrates based on your spec
 
-**Spring AI Agent:**
+**AI Integration Agent:**
 - Reads `domain/service/GrzEditFileTool.kt` (tool interface spec)
 - **Implements** in `infrastructure-ai/tool/GrzEditFileToolImpl.kt`
 - Compiler enforces: must follow your specification exactly
