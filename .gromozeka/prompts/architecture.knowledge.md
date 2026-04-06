@@ -1,317 +1,190 @@
 # Gromozeka Clean Architecture
 
-This document defines the Clean Architecture structure for Gromozeka project. All development agents must follow this architecture.
-
-Current architecture pursues two goals:
- - Managing development through specifications in code
- - Classic Clean Architecture
-
-
-## Managing development through specifications in code
- - Architector-agent defines and maintains specifications for whole project. 
- - This specifications described with Kotlin high-level abstractions (Interfaces, data classes, enums, etc.) and KDoc. 
- - This allows architector to focus on the whole project, business logic and architecture details. 
- - This allows architector to describe code with a small number of tokens but with enough details to understand it. 
- - This allows other agents to deeply focus on their areas of responsibility, patterns, and implementation details without being distracted by what is outside their scope.
- - Architector writes specifications.
- - Other agents track current ':domain' changes using `git status` and implement them. They:
-   - read specifications
-   - what is new
-   - what was removed
-   - what was changed
- - Other agents can verify their implementations against specifications using git history.
+Reference architecture for the Gromozeka project.
 
-**Possible specification mechanisms:**
-1. **Interfaces** - contracts that must be implemented
-2. **Type safety** - prevent confusion
-3. **Sealed classes** - explicit type variants
-4. **Enums** - finite state machines
-5. **KDoc** - operation semantics, parameters, errors
-
-Gromozeka follows Clean Architecture principles with clear layer separation and dependency rules.
-
-**Core principle:** Dependencies point inward only.
-
-```
-Infrastructure → Domain
-Application    → Domain
-Presentation   → Domain + Application
-```
-
-## Classic Clean Architecture Layers
-
-### 1. Domain Layer
-
-**Module:** `:domain`
-**Agent:** Architect Agent
-
-Use only kotlin and sdk-like libraries (like kotlinx-coroutines-core)
-Try to put all possible code into common module.
-
-**Responsibilities:**
-- Define all specifications to manage development 
-  - Entities and Value Objects
-  - Repository interfaces (for all data access)
-  - Domain Service interfaces
-  - ViewModel interfaces (UI contracts)
-  - All other interfaces, value objects, enums, sealed classes, etc to describe what to implement
-  - Own complete application model
-
-**What lives here:**
-```
-domain/
-  ├── model/           - Entities, Value Objects
-  ├── repository/      - Repository interfaces (data access abstraction)
-  ├── service/         - Domain Service interfaces (business logic)
-  └── presentation/    - UI contract specifications
-      ├── desktop/
-      │   ├── component/  - UI components (MUST have ASCII diagrams)
-      │   └── logic/      - Orchestration (NO UI details)
-```
-
-**Dependencies:**
-- `kotlinx-coroutines-core` - for StateFlow/SharedFlow in ViewModel interfaces
-
-**ViewModel naming convention:**
-- `XXXComponentVM` - for UI component ViewModels (e.g., `ThreadPanelComponentVM`)
-- `XXXLogicVM` - for logic/service ViewModels (e.g., `ConversationLogicVM`)
-
-**Why desktop/ only:** Mobile/Web will be added as needed.
-
----
-
-### 2. Application Layer
-
-**Module:** `:application`
-**Agent:** Business Logic Agent
-
-**Responsibilities:**
-- Implement Use Cases and Application logic
-- Services with business rules and decision-making
-- Coordination of repositories and domain services
-- Workflows with filtering, ranking, formatting
-- "Smart" operations (not just dumb technical IO)
-
-**Key principle:** If there's LOGIC (decisions, rules, workflows) → Application layer.
-If it's just technical code without decisions → Infrastructure.
-
-**What lives here:**
-```
-application/
-  └── service/         - Use Case implementations, Application Services
-```
-
-**Dependencies:** `:domain` only
-
-**Pattern:**
-- Use `@Service` annotation for Spring DI
-- Inject Repository interfaces via constructor
-- Coordinate multiple repositories in use cases
-
----
-
-### 3. Infrastructure Layer
+Use this document to keep agent responsibilities aligned with the current codebase, not with an outdated idealized diagram.
 
-Infrastructure implements Domain interfaces. Each subdomain has its own module.
-
-#### Infrastructure/DB Module
-
-**Module:** `:infrastructure-db`
-**Agent:** Repository Agent
-**Spring:** YES (`@Service`, `@Repository`)
-
-**Responsibilities:**
-- System code
-- Database access (Exposed, SQL)
-- Vector indexes (Neo4j)
-- Knowledge graph (Neo4j)
-- Implement Repository interfaces from Domain
-
-**What lives here:**
-```
-infrastructure/db/
-  ├── persistence/     - Database implementations (Exposed ORM)
-  └── graph/           - Neo4j knowledge graph and vector indexes
-```
-
-**Three levels of abstraction:**
-1. **DDD Repository interface** (domain/repository/) - PUBLIC, what other layers see
-2. **DDD Repository implementation** (infrastructure/db/persistence/) - code
-3. **Spring Data Repository** (infrastructure/db/persistence/, internal) - ORM tool you use privately
-
-#### Infrastructure/AI Module
+## Two Architectural Goals
 
-**Module:** `:infrastructure-ai`
-**Agent:** AI Integration Agent
-**Spring:** YES (`@Service`, `@Configuration`) where relevant
+### 1. Specifications Through Code
 
-**Responsibilities:**
-- AI runtime backends
-- OpenAI subscription integration
-- Spring AI-backed provider integrations
-- MCP tools and servers
-- Memory, embeddings, and adjacent AI infrastructure
-
-**What lives here:**
-```
-infrastructure-ai/
-  ├── openai-subscription/  - Dedicated OpenAI subscription runtime backend
-  ├── src/.../springai/     - Spring AI-backed provider integrations
-  ├── src/.../mcp/          - MCP servers, tools, clients
-  ├── src/.../memory/       - Memory extraction and graph-adjacent AI logic
-  └── src/.../tool/         - AI-facing tools and adapters
-```
-
----
-
-### 4. Presentation Layer
-
-**Module:** `:presentation`
-**Agent:** UI Agent
-**Primary Framework:** Compose Desktop
-**Spring:** YES (transitive, for DI and app startup)
-
-**Responsibilities:**
-- User interface (Compose Desktop)
-- ViewModels
-- Application entry point (Main.kt)
-- Spring Boot startup
+The project coordinates development through typed domain contracts.
 
-**What lives here:**
-```
-presentation/
-  ├── ui/              - Compose UI components
-  ├── viewmodel/       - ViewModels
-  └── Main.kt          - Application entry point + Spring Boot
-```
+- The Architect Agent defines and maintains specifications in `:domain`
+- Specifications are expressed as interfaces, data classes, sealed hierarchies, enums, and KDoc
+- Other agents implement those contracts in their own layers
+- The compiler is the main conformance check
 
-**Dependencies:** `:domain`, `:application`
+This lets agents coordinate primarily through code instead of long chat handoffs.
 
----
+### 2. Pragmatic Clean Architecture
 
-### 5. Shared Module
+Dependencies should still point toward domain concepts where practical.
 
-**Module:** `:shared`
-**Agent:** Shared Agent (will be created later)
-**Spring:** NO (pure Kotlin)
+Conceptual intent:
+- application logic depends on domain contracts
+- infrastructure implements domain contracts
+- UI code consumes domain/application abstractions
 
-**Responsibilities:**
-- Cross-cutting types used by multiple modules
-- Common value objects (IDs, timestamps, etc.)
-- Universal utilities (UUID generation, date/time helpers)
+Current runtime reality:
+- `:presentation` is also the desktop app composition root and startup module
+- because of that, the module graph currently includes direct presentation dependencies on infrastructure modules for bootstrapping and packaging
+- keep that exception in bootstrap/config wiring, not in ordinary UI code
 
-**What lives here:**
-```
-shared/
-  ├── model/           - Common value objects, primitives
-  └── uuid/            - UUID generation utilities (uuid7, etc.)
-```
+## Layer Overview
 
-**Current status:** Each agent creates utilities locally. Shared Agent will be created later to consolidate common code.
+### `:shared`
 
-## DDD Patterns Used
+**Purpose:** Cross-cutting primitives and utilities used by multiple modules.
 
-### What we USE:
-- **Repository Pattern** - abstraction over data persistence (`domain/repository/`)
-- **Domain Services** - business logic that doesn't fit entities (`domain/service/`)
-- **Value Objects** - typed wrappers for primitives (Thread.Id, Message.Id)
-- **Entities** - data classes with .Id
+Typical contents:
+- common value objects
+- UUID helpers
+- shared utility types
 
-### What we DON'T USE (yet):
-- **Aggregate Roots** - we don't enforce aggregate boundaries
-- **Bounded Contexts** - single context for now
-- **Domain Events** - no event sourcing
-- **Specification Pattern** - queries are simple
+**Nature:** Pure Kotlin, no Spring.
 
-Keep architecture pragmatic. Add complexity only when needed.
+### `:domain`
 
-## DDD Repository vs Spring Data Repository
+**Primary owner:** Architect Agent
 
+**Purpose:** Application specifications and domain contracts.
 
-**1. DDD Repository Pattern (Domain-Driven Design)**
-- **What:** Architectural pattern, domain abstraction
-- **Where:** Interface in `domain/repository/` (PUBLIC)
-- **Created by:** Architect Agent
-- **Implemented by:** Repository Agent
+Typical contents:
+- `domain/model/` - entities, value objects, enums, result types, exceptions
+- `domain/repository/` - repository interfaces
+- `domain/service/` - business/service contracts
+- `domain/presentation/` - UI contracts and presentation-facing specifications
+- `domain/tool/` - AI-facing and tool-facing contracts
 
-**2. Spring Data Repository (Spring Framework)**
-- **What:** ORM technology/library from Spring
-- **Where:** `infrastructure/db/persistence/` (PRIVATE/INTERNAL)
-- **Used by:** Repository Agent internally
+**Nature:** Technology-light Kotlin. Keep framework and storage details out unless a contract genuinely requires them.
 
-## Gradle Modules Structure
+**Current dependency reality:** `:domain` exports `:shared` transitively and also contains some JVM-specific contracts where needed.
 
-```
-:shared                    - NO Spring, pure Kotlin, NO dependencies
-:domain                    - NO Spring, pure Kotlin, NO dependencies
-:application               → :domain, :shared
-:infrastructure-db         → :domain, :shared
-:infrastructure-ai         → :domain, :shared
-:presentation              → :domain, :application, :shared
-```
+### `:application`
 
-**Dependency rules:**
-- `:shared` and `:domain` have NO dependencies
-- All other modules can depend on `:domain` and `:shared`
-- Modules do NOT depend on each other (except presentation → application)
+**Primary owner:** Business Logic Agent
 
-## Spring Framework Usage
+**Purpose:** Use cases, orchestration, business workflows, transactional boundaries.
 
-**Domain - NO Spring:**
-- Pure Kotlin interfaces and data classes
-- No annotations, no framework code
+Typical contents:
+- `application/service/` - application services and workflow implementations
 
-**Application - YES Spring:**
-- Use `@Service` annotation
-- Constructor injection for dependencies
+**Rules:**
+- implement domain service contracts
+- coordinate repositories and domain services
+- keep decision-making here, not in infrastructure
 
-**Infrastructure - YES Spring:**
-- Use `@Service` for implementations
-- Use `@Configuration` for setup
+**Nature:** Spring-enabled service layer.
 
-**Presentation - YES Spring (transitive):**
-- `@SpringBootApplication` for Main.kt
-- `@Component` for ViewModels if using Spring DI
+### `:infrastructure-db`
 
-## Error Handling Patterns
+**Primary owner:** Repository Agent
 
-### 1. Nullable Return - Absence is Normal
+**Purpose:** Persistence, graph storage, vector storage, and related repository implementations.
 
-Use `T?` when absence of a result is a valid, expected outcome, when the `null` value has a particular meaning.
+Typical contents:
+- `infrastructure-db/src/.../persistence/`
+- `infrastructure-db/src/.../graph/`
+
+**Rules:**
+- implement domain repository contracts
+- keep ORM/database details private to infrastructure
+- do not move business workflows here
+
+### `:infrastructure-ai`
+
+**Primary owner:** AI Integration Agent
+
+**Purpose:** AI runtimes, provider integrations, MCP, memory, embeddings, code tooling, and tool implementations.
+
+Typical contents:
+- `infrastructure-ai/openai-subscription/`
+- `infrastructure-ai/src/.../springai/`
+- `infrastructure-ai/src/.../mcp/`
+- `infrastructure-ai/src/.../memory/`
+- `infrastructure-ai/src/.../tool/`
+- adjacent runtime/config/platform code
+
+**Rules:**
+- implement domain tool and service contracts where applicable
+- keep provider quirks and transport details inside infrastructure
+- prefer streaming and defensive boundary handling
+
+### `:presentation`
+
+**Primary owner:** UI Agent
+
+**Purpose:** Compose Desktop UI, presentation state, startup wiring, and desktop shell.
+
+Typical contents:
+- `presentation/src/.../ui/`
+- `presentation/src/.../ui/viewmodel/`
+- `presentation/src/.../services/`
+- `presentation/src/.../config/`
+- `presentation/src/.../AppBootstrap.kt`
+- `presentation/src/.../Main.kt`
+
+**Rules:**
+- keep composables and viewmodels focused on presentation concerns
+- call application/domain abstractions from UI logic
+- keep infrastructure coupling concentrated in startup/config/composition-root code
+
+## Ownership Summary
+
+- **Architect Agent** → `:domain`
+- **Business Logic Agent** → `:application`
+- **Repository Agent** → `:infrastructure-db`
+- **AI Integration Agent** → `:infrastructure-ai`
+- **UI Agent** → `:presentation`
+
+## Specification Mechanisms
+
+Preferred mechanisms for precise contracts:
+1. interfaces
+2. value classes and typed IDs
+3. sealed classes / sealed interfaces
+4. enums for finite states
+5. KDoc for semantics, parameters, and failure modes
+
+## Error Handling Defaults
+
+### Nullable return
+Use `T?` when absence is normal.
 
 ```kotlin
-interface EntityRepository {
-    suspend fun findById(id: Entity.Id): Entity?  // null = not found (normal)
-}
+suspend fun findById(id: Entity.Id): Entity?
 ```
 
-### 2. Exceptions - Business Rule Violations
-
-Use exceptions when an operation fails due to violated business rules or unexpected errors.
-
-**Domain exceptions location:** `domain/model/` package
+### Exception
+Use exceptions for business rule violations or unexpected failures.
 
 ```kotlin
-class DuplicateEntityException(
-    val fieldValue: String
-) : Exception("Entity with field '$fieldValue' already exists")
+class DuplicateEntityException(val fieldValue: String) : Exception()
 ```
 
-### 3. Result<T> - Multiple Failure Modes
-
-Use sealed classes/Result when operation has multiple distinct failure cases.
+### Explicit result type
+Use sealed results when an operation has multiple meaningful failure modes.
 
 ```kotlin
 sealed interface CreateEntityResult {
     data class Success(val entity: Entity) : CreateEntityResult
-    data class DuplicateField(val existingId: Entity.Id) : CreateEntityResult
-    data class InvalidField(val reason: String) : CreateEntityResult
+    data class Duplicate(val existingId: Entity.Id) : CreateEntityResult
+    data class Invalid(val reason: String) : CreateEntityResult
 }
 ```
 
-### Decision Tree
+## Design Heuristics
 
-1. **Not finding something?** → Nullable (`Entity?`)
-2. **Business rule violated?** → Exception
-3. **Multiple failure types?** → Result/Sealed class
-4. **Unexpected infrastructure error?** → Exception (let it propagate)
+- Keep domain contracts more stable than implementations
+- Prefer explicit types over comments when encoding invariants
+- Put workflows with decisions in application, not infrastructure
+- Keep provider/storage/UI toolkit details out of domain unless contractually necessary
+- Treat `:presentation` infrastructure dependencies as composition-root wiring, not as permission to leak infrastructure into ordinary UI code
+
+## Important Anti-Patterns
+
+- Domain polluted with storage schema or Spring wiring
+- Infrastructure containing business workflows that belong in application
+- UI talking directly to storage/provider implementations for ordinary features
+- Prompt/agent design based on historical architecture text instead of current repo truth

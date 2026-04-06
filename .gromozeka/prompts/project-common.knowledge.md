@@ -19,6 +19,7 @@ This prompt should describe the project as it exists now, not as an old migratio
 - Dedicated OpenAI subscription backend lives in `:infrastructure-ai/openai-subscription`
 - `:infrastructure-ai` still contains Spring AI-backed integrations for Anthropic, Gemini, embeddings, and auxiliary runtime pieces
 - MCP servers, tools, memory extraction, search, and code tooling also live in `:infrastructure-ai`
+- `:presentation` is both the desktop UI layer and the current application composition root / startup module
 
 ## Working Model
 
@@ -31,29 +32,31 @@ Stay in your lane unless the task is explicitly cross-cutting.
 
 ## Architecture Summary
 
-Dependencies point inward only:
+Clean Architecture intent still matters, but follow current codebase truth when they differ.
 
-```
-Infrastructure → Domain
-Application    → Domain
-Presentation   → Domain + Application
-```
-
-Practical implications:
-- UI must not depend on infrastructure directly
+Practical dependency rules:
+- UI and viewmodel code should depend on domain and application abstractions
 - Application orchestrates use cases and business workflows
 - Infrastructure implements domain abstractions
-- Domain stays technology-agnostic
+- Domain stays as technology-light as practical
+- `:presentation` currently also wires startup and therefore has direct module dependencies on infrastructure for bootstrapping
 
-For full layer definitions and module responsibilities, `architecture.knowledge.md` is the source of truth.
+For full layer definitions and ownership boundaries, `architecture.knowledge.md` is the source of truth.
 
 ## Domain-First Workflow
 
 If your role implements behavior outside `:domain`, treat domain contracts as the primary specification.
 
+Contracts may live in:
+- `domain/model/`
+- `domain/repository/`
+- `domain/service/`
+- `domain/presentation/`
+- `domain/tool/`
+
 Recommended order:
 1. Search domain specs or knowledge graph first
-2. Read the exact interface, data class, or KDoc contract
+2. Read the exact interface, data class, tool contract, or KDoc
 3. Implement in your own layer
 4. Verify with a module-scoped build
 
@@ -65,6 +68,16 @@ Do not guess contract semantics from naming alone when the domain file already e
 - Use `unified_search` for concepts, patterns, and existing domain contracts
 - Read files when you know the target symbol or are about to modify code
 - Ask the user to re-index only after meaningful `:domain` changes
+
+## Dependency Research Pattern
+
+When API behavior matters, prefer code truth over assumptions.
+
+- If the project already has a useful dependency mirror in repository-level `.sources/`, reuse it
+- Module specialists may also use a module-local `.sources/` directory when that keeps research scoped to their lane
+- Search dependency tests and examples before guessing
+- Clone dependency sources only when needed for a real implementation question
+- Treat `.sources/` inspection as research, not as a project change
 
 ## Repository Instances
 
@@ -79,8 +92,9 @@ gromozeka/
 
 Default workflow:
 1. Make code changes in `dev/`
-2. Commit and push the appropriate branch
-3. Sync `beta/` or `release/` via git inside that checkout
+2. Stop after local edits and verification unless the user explicitly asked for git writes
+3. When git writes are explicitly approved, commit and push the appropriate branch
+4. Sync `beta/` or `release/` via git inside that checkout
 
 Prefer git-based synchronization over manual file copying between checkouts.
 

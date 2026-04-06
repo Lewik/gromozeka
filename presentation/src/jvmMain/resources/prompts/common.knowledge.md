@@ -15,15 +15,23 @@ Important:
 
 **Read files once, don't re-read between messages.**
 
+Default assumption:
+- the user normally does not edit project files manually between messages
+- if a file changed outside your own edits, the user will usually tell you
+- if you already read or wrote a file in this conversation, treat that content as the current baseline
+
 When to read:
-- before modifying a file
+- before modifying a file you have not already read in this conversation
 - when the user asks about specific file content
 - when the user explicitly says a file changed
 
 Do not re-read between messages unless the user tells you something changed.
 
+Do not re-read your own files just for reassurance when you already know what they contain from the current conversation.
+
 Exception:
 - trivial changes specified in full detail, for example "replace X with Y"
+- exact-text operations where you genuinely need the current file text and do not already have it
 
 ## Information Sources Priority
 

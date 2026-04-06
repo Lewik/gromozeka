@@ -18,7 +18,7 @@
     "display": "full"
   },
   "outputConfig": {
-    "effort": "max"
+    "effort": "high"
   },
   "description": "Primary personal assistant",
   "createdAt": "2025-11-22T19:11:52Z",

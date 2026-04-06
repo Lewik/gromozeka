@@ -78,8 +78,8 @@ When planning tasks, provide concrete implementation steps **WITHOUT time estima
 
 This means:
 - ❌ Don't run: `git add`, `git commit`, `git push`
-- ❌ Don't prepare commits (checking `git status`, `git diff` for commit purposes)
-- ✅ Git read operations are OK: `git log`, `git show`, `git diff` (for analysis only)
+- ❌ Don't prepare commits for execution without permission
+- ✅ Git read operations are OK: `git log`, `git show`, `git diff`, `git status` (for analysis only)
 - ✅ Wait for explicit command: "commit this" or "create commit"
 
 **Even if task seems complete - STOP and wait for user confirmation before any git write operations.**
@@ -94,63 +94,22 @@ Unexpected launches interrupt user workflow. Only execute when explicitly asked.
 
 **NEVER assume that a given library is available, even if it is well known.**
 
-Before using ANY library or framework:
-1. Check `build.gradle.kts` to verify dependency exists
-2. Look at neighboring files to see how library is used in this codebase
+Before using any library or framework:
+1. Check build files to verify the dependency exists
+2. Look at neighboring files to see how it is used in this codebase
 3. Search existing code for usage patterns
-4. **Use `.sources/` pattern** - clone and read actual source code (see Research Pattern below)
+4. When behavior is unclear, inspect the library source or tests
 
-**Why:** Prevents hallucinations about available libraries and ensures consistency with project's tech stack.
+**Why:** This prevents hallucinations about available APIs and keeps code aligned with the actual project stack.
 
-## Research Pattern: .sources/
+## Dependency Research
 
-**Principle: Source code is the ultimate truth. Read implementation, not documentation.**
+Prefer implementation truth over marketing docs when API details matter.
 
-When working with external dependencies, **always check their source code first**. The `.sources/` directory in project root contains cloned repositories for deep investigation.
-
-**Why this matters:**
-- ✅ **Tests show REAL usage patterns** - not idealized documentation examples
-- ✅ **Implementation reveals edge cases** - see actual constraints and limitations
-- ✅ **No hallucinations** - you read actual code, not AI's assumptions
-- ✅ **Version-specific** - matches exact version project uses
-- ✅ **Find undocumented features** - discover internal APIs and patterns
-
-**Step 1: Check what's already cloned**
-```bash
-ls -la .sources/
-# Shows: spring-ai, exposed, claude-code-sdk, neo4j-java-driver, etc.
-```
-
-**Step 2: Clone if needed**
-```bash
-cd .sources/
-
-# Clone specific version matching project dependencies
-git clone https://github.com/spring-projects/spring-ai.git
-cd spring-ai
-git checkout v1.1.0-SNAPSHOT  # Match version from build.gradle.kts
-```
-
-**Step 3: Search for usage patterns**
-```bash
-# Find tests - best source of usage examples
-find . -name "*Test.java" -o -name "*Test.kt" | xargs grep "ChatModel"
-
-# Find implementation
-rg "class.*ChatModel" --type java -A 10
-
-# Find examples
-find . -path "*/examples/*" -o -path "*/samples/*"
-```
-
-**When to use .sources pattern:**
-- **PROACTIVELY Before implementing integration** - understand how dependency actually works
-- **When docs are unclear** - source code doesn't lie
-- **Debugging unexpected behavior** - see what really happens
-- **Choosing between approaches** - compare actual implementations
-- **Finding examples** - tests are the best documentation
-
-This operation is not considered a change and is available in readonly mode without user permissions.
+- Official docs are good for overview; source code and tests are better for exact behavior
+- If the project keeps local dependency mirrors or clones, use them
+- Clone dependency sources only when needed to answer a real implementation question
+- Tests and sample code are often the fastest way to learn the intended usage pattern
 
 ## Tool Usage
 

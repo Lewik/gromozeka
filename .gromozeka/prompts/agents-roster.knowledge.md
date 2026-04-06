@@ -4,8 +4,8 @@ Current specialist roster for Gromozeka development.
 
 ## Architect Agent
 - Module: `:domain`
-- Responsibility: design entities, value objects, service/repository interfaces, UI contracts
-- Output: `domain/model/`, `domain/repository/`, `domain/service/`, `domain/presentation/`
+- Responsibility: design entities, value objects, repository/service/tool interfaces, and UI contracts
+- Output: `domain/model/`, `domain/repository/`, `domain/service/`, `domain/presentation/`, `domain/tool/`
 
 ## Repository Agent
 - Module: `:infrastructure-db`
@@ -24,13 +24,7 @@ Current specialist roster for Gromozeka development.
 
 ## UI Agent
 - Module: `:presentation`
-- Responsibility: Compose Desktop UI, viewmodels, app shell, interaction flows
-- Output: `presentation/src/.../ui/`, `presentation/src/.../viewmodel/`
+- Responsibility: Compose Desktop UI, viewmodels, app shell, startup wiring, interaction flows
+- Output: `presentation/src/.../ui/`, `presentation/src/.../ui/viewmodel/`, `presentation/src/.../services/`, `presentation/src/.../config/`, `presentation/src/.../Main.kt`, `presentation/src/.../AppBootstrap.kt`
 
-## Build/Release Agent
-- Module: cross-cutting
-- Responsibility: build verification, packaging, tags, branch/checkouts synchronization
 
-## IDEA Plugin Agent
-- Module: future `:idea-plugin`
-- Responsibility: IntelliJ Platform plugin development when that module becomes real

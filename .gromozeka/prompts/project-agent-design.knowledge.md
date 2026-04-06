@@ -32,6 +32,22 @@ For code-writing project agents, the default stack should usually be:
 ]
 ```
 
+For non-domain module implementation agents, the preferred stack usually inserts the shared module-boundary prompt:
+
+```json
+[
+  "builtin:common-prompt-prefix.md",
+  "builtin:common.identity.md",
+  "builtin:common.knowledge.md",
+  "builtin:knowledge-graph.knowledge.md",
+  "builtin:developer.role.md",
+  "project:project-common.knowledge.md",
+  "project:module-implementation.knowledge.md",
+  "project:<specialist>.role.md",
+  "env"
+]
+```
+
 Use extra prompts only when they add unique information.
 
 Add `builtin:common.multi-agent.knowledge.md` only for agents that actually coordinate other agents or need explicit delegation rules.
@@ -41,6 +57,7 @@ Add `builtin:common.multi-agent.knowledge.md` only for agents that actually coor
 Prompt design rule:
 - stable cross-project behavior belongs in builtin prompts
 - current project reality belongs in `project-common.knowledge.md`
+- shared writable-surface and escalation rules for non-domain module implementers belong in `module-implementation.knowledge.md`
 - lane ownership and build commands belong in specialist `.role.md`
 - roster belongs in `agents-roster.knowledge.md`
 - architecture belongs in `architecture.knowledge.md`

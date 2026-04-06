@@ -18,6 +18,34 @@ You may work in:
 - `infrastructure-ai/src/.../mcp/` - MCP tools, servers, and adapters
 - `infrastructure-ai/src/.../memory/`, `embedding/`, `tool/`, `config/` - supporting AI infrastructure
 
+## Primary Inputs
+
+Read these first when relevant:
+- `domain/tool/` - tool-facing contracts and DTOs
+- `domain/service/` - service contracts implemented or called from AI infrastructure
+- `domain/model/` - shared result and model types used across AI flows
+- neighboring `infrastructure-ai/` runtime code - existing provider, streaming, and adapter patterns
+- `.sources/` mirrors - exact framework and SDK behavior
+
+Read other project modules only for integration context. They remain read-only.
+
+## Primary Output Paths
+
+Write primarily in:
+- `infrastructure-ai/openai-subscription/`
+- `infrastructure-ai/src/.../springai/`
+- `infrastructure-ai/src/.../mcp/`
+- `infrastructure-ai/src/.../memory/`, `embedding/`, `tool/`, `config/`
+- adjacent helpers inside `:infrastructure-ai` only when they directly support the runtime path
+
+## Analyze First
+
+1. Identify which runtime path the task belongs to
+2. Read the relevant domain contracts and DTOs
+3. Read neighboring infrastructure-ai implementations for current patterns
+4. Check `.sources/` when SDK or framework behavior matters
+5. Then design the provider/tool integration inside `:infrastructure-ai`
+
 ## Library Reference
 
 Study implementations as needed:

@@ -13,21 +13,79 @@ Shared memory across all agents - prevents reinventing solutions, enables learni
 - Vectorized: entity name/summary
 - Examples: "Spring AI", "Neo4j", "Clean Architecture"
 
-**2. Code Specs** - ALL domain layer symbols
+**2. Code Specs** - indexed code symbols from the project
 - Classes, interfaces, methods, properties, constructors
 - **Indexed:** Symbol name, KDoc, file location, relationships
 - **NOT indexed:** Method bodies, local variables
 - Vectorized: KDoc + structure summary
 
 **3. Relationships** - Connections between entities
-- Code: DEFINES_METHOD, HAS_PROPERTY, IMPLEMENTS, EXTENDS, RETURNS_TYPE
-- Knowledge: uses, implements, related to
+- Code: `DEFINES_METHOD`, `HAS_PROPERTY`, `IMPLEMENTS`, `EXTENDS`, `RETURNS_TYPE`
+- Knowledge: `uses`, `implements`, `related to`
 
-**Vectorization (same for all):** OpenAI text-embedding-3-large (3072 dimensions) → enables semantic search via hybrid BM25 + Vector similarity.
+**Vectorization (same for all):** OpenAI text-embedding-3-large (3072 dimensions) → enables semantic search via hybrid BM25 + vector similarity.
 
 ## How to Search
 
-**Use `unified_search` tool** - searches memory objects, code specs, conversations.
+**Use `unified_search`** for knowledge objects, code specs, and conversation history.
+
+Use exact tool fields, not pseudo-parameters.
+
+### Common Queries
+
+**Find domain specs:**
+```json
+{
+  "query": "thread repository",
+  "entityTypes": ["CODE_SPECS_INTERFACE"],
+  "searchMode": "HYBRID",
+  "limit": 5,
+  "projectIds": [],
+  "conversationIds": [],
+  "roles": [],
+  "threadId": "",
+  "dateFrom": "",
+  "dateTo": "",
+  "asOf": "",
+  "useReranking": true
+}
+```
+
+**Research decisions:**
+```json
+{
+  "query": "pagination decision",
+  "entityTypes": ["MEMORY_OBJECTS", "CONVERSATION_MESSAGES"],
+  "searchMode": "HYBRID",
+  "limit": 5,
+  "projectIds": [],
+  "conversationIds": [],
+  "roles": [],
+  "threadId": "",
+  "dateFrom": "",
+  "dateTo": "",
+  "asOf": "",
+  "useReranking": true
+}
+```
+
+**Discover related code:**
+```json
+{
+  "query": "repository pattern",
+  "entityTypes": ["CODE_SPECS_INTERFACE", "CODE_SPECS_CLASS"],
+  "searchMode": "HYBRID",
+  "limit": 5,
+  "projectIds": [],
+  "conversationIds": [],
+  "roles": [],
+  "threadId": "",
+  "dateFrom": "",
+  "dateTo": "",
+  "asOf": "",
+  "useReranking": true
+}
+```
 
 ## Index Synchronization
 
@@ -38,7 +96,7 @@ Shared memory across all agents - prevents reinventing solutions, enables learni
 **Ask user to re-index when:**
 - You modified domain code significantly
 - Search results seem outdated
-- New interfaces/classes not appearing
+- New interfaces/classes are missing from search results
 
 **How to ask:**
 > "I modified domain interfaces. Please re-index domain code via UI button to update search index."
@@ -51,35 +109,31 @@ Shared memory across all agents - prevents reinventing solutions, enables learni
 
 **Search first, read second.**
 
-```kotlin
-// ❌ DON'T: Read file blindly
-grz_read_file("domain/model/Thread.kt")
-
-// ✅ DO: Search first, understand context
-unified_search(query = "Thread model structure", scopes = ["code_specs:class"])
-// Then read specific file if needed
+```json
+{
+  "query": "Thread model structure",
+  "entityTypes": ["CODE_SPECS_CLASS"],
+  "searchMode": "HYBRID",
+  "limit": 5,
+  "projectIds": [],
+  "conversationIds": [],
+  "roles": [],
+  "threadId": "",
+  "dateFrom": "",
+  "dateTo": "",
+  "asOf": "",
+  "useReranking": true
+}
 ```
+
+Then read the specific file if needed.
 
 **Why:** Saves tokens, finds related patterns, gives overview.
 
-**Read directly when:** User asks for specific file, modifying code, already know location.
-
-## Usage Patterns
-
-**Find domain specs:**
-```kotlin
-unified_search(query = "thread repository", scopes = ["code_specs:interface"])
-```
-
-**Research decisions:**
-```kotlin
-unified_search(query = "pagination decision", scopes = ["memory_objects", "conversation_messages"])
-```
-
-**Discover related code:**
-```kotlin
-unified_search(query = "repository pattern", scopes = ["code_specs:interface", "code_specs:class"])
-```
+**Read directly when:**
+- the user asks for a specific file
+- you are about to modify a known file
+- you already know the exact location from search results
 
 ## Saving Knowledge
 
@@ -93,13 +147,13 @@ unified_search(query = "repository pattern", scopes = ["code_specs:interface", "
 
 **Do:**
 - ✅ Search BEFORE implementing
-- ✅ Use semantic queries ("thread repository pattern" not "ThreadRepository.kt")
+- ✅ Use semantic queries ("thread repository pattern" not just a file name)
 - ✅ Save decisions after implementing
 - ✅ Ask user to re-index after significant domain changes
-- ✅ Use specific scopes (code_specs:interface vs code_specs)
+- ✅ Use specific scopes (`CODE_SPECS_INTERFACE` vs `CODE_SPECS`)
 
 **Don't:**
-- ❌ Read files blindly without searching
-- ❌ Assume search is up-to-date (check git status)
+- ❌ Read files blindly without searching when discovery is the real task
+- ❌ Assume search is up-to-date without considering git state
 - ❌ Use `build_memory_from_text` for simple facts (use `add_memory_link`)
 - ❌ Forget to save decisions
