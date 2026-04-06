@@ -19,6 +19,7 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.longOrNull
 import kotlinx.serialization.json.put
@@ -41,23 +42,48 @@ class OpenAiSubscriptionRequestMapper {
         conversationKey: String,
     ): OpenAiSubscriptionResponsesRequest {
         val replayWindow = request.messages.toReplayWindow()
-
-        return OpenAiSubscriptionResponsesRequest(
+        val sortedTools = request.tools.sortedBy { it.definition.name }
+        val inputItems = replayWindow.messages.flatMapIndexed { index, message ->
+            toInputItems(
+                message = message,
+                replayCompactionOnly = replayWindow.compactionAnchorIndex == index,
+            )
+        }
+        val instructions = request.systemPrompts.joinToString("\n\n").trim().ifBlank { null }
+        val requestPayload = OpenAiSubscriptionResponsesRequest(
             model = modelName,
-            input = replayWindow.messages.flatMapIndexed { index, message ->
-                toInputItems(
-                    message = message,
-                    replayCompactionOnly = replayWindow.compactionAnchorIndex == index,
-                )
-            },
-            instructions = request.systemPrompts.joinToString("\n\n").trim().ifBlank { null },
+            input = inputItems,
+            instructions = instructions,
             contextManagement = buildContextManagement(request.options.autoCompaction),
-            tools = request.tools.map { tool -> tool.toToolJson() },
+            tools = sortedTools.map { tool -> tool.toToolJson() },
             toolChoice = request.options.toolChoice.toToolChoiceJson(),
             text = buildTextConfig(),
             reasoning = buildReasoning(request.options.outputConfig),
             promptCacheKey = conversationKey,
         )
+
+        logRequestLayout(
+            request = request,
+            requestPayload = requestPayload,
+            replayWindow = replayWindow,
+            sortedTools = sortedTools,
+            conversationKey = conversationKey,
+        )
+
+        return requestPayload
+    }
+
+    fun buildTransportSignature(request: OpenAiSubscriptionResponsesRequest): String {
+        val normalized = request.copy(
+            input = emptyList(),
+            previousResponseId = null,
+        )
+
+        return json.encodeToString(OpenAiSubscriptionResponsesRequest.serializer(), normalized)
+    }
+
+    fun toReplayItems(outputItems: List<JsonObject>): List<JsonObject> {
+        return outputItems.flatMap(::normalizeReplayItem)
     }
 
     private fun toInputItems(
@@ -365,10 +391,118 @@ class OpenAiSubscriptionRequestMapper {
         }
     }
 
+    private fun normalizeReplayItem(item: JsonObject): List<JsonObject> {
+        return when (item["type"]?.jsonPrimitive?.contentOrNull) {
+            "message" -> item.toReplayMessageItems()
+            "function_call" -> listOfNotNull(item.toReplayFunctionCallItem())
+            "reasoning", "compaction", "compaction_summary" -> listOfNotNull(item.toReplayReasoningItem())
+            else -> emptyList()
+        }
+    }
+
+    private fun JsonObject.toReplayMessageItems(): List<JsonObject> {
+        if (this["role"]?.jsonPrimitive?.contentOrNull != "assistant") return emptyList()
+
+        val text = buildList {
+            when (val content = this@toReplayMessageItems["content"]) {
+                is JsonPrimitive -> {
+                    content.contentOrNull?.trim()?.takeIf { it.isNotBlank() }?.let(::add)
+                }
+
+                is JsonArray -> {
+                    content.forEach { part ->
+                        val partObject = part as? JsonObject ?: return@forEach
+                        when (partObject["type"]?.jsonPrimitive?.contentOrNull) {
+                            "output_text", "text" -> {
+                                partObject["text"]?.jsonPrimitive?.contentOrNull?.trim()
+                                    ?.takeIf { it.isNotBlank() }
+                                    ?.let(::add)
+                            }
+
+                            "refusal" -> {
+                                partObject["refusal"]?.jsonPrimitive?.contentOrNull?.trim()
+                                    ?.takeIf { it.isNotBlank() }
+                                    ?.let(::add)
+                            }
+                        }
+                    }
+                }
+
+                else -> Unit
+            }
+        }.joinToString("\n").trim()
+
+        if (text.isBlank()) return emptyList()
+
+        return listOf(
+            messageItem(
+                role = "assistant",
+                content = JsonPrimitive(text),
+                phase = this["phase"]?.jsonPrimitive?.contentOrNull,
+            )
+        )
+    }
+
+    private fun JsonObject.toReplayFunctionCallItem(): JsonObject? {
+        val callId = this["call_id"]?.jsonPrimitive?.contentOrNull ?: return null
+        val name = this["name"]?.jsonPrimitive?.contentOrNull ?: return null
+        val arguments = this["arguments"]?.jsonPrimitive?.contentOrNull.orEmpty()
+
+        return functionCallItem(
+            callId = callId,
+            name = name,
+            arguments = arguments,
+        )
+    }
+
+    private fun JsonObject.toReplayReasoningItem(): JsonObject? {
+        val type = this["type"]?.jsonPrimitive?.contentOrNull ?: return null
+        val encryptedContent = this["encrypted_content"]?.jsonPrimitive?.contentOrNull
+        val thinking = extractThinkingText()
+
+        return when {
+            thinking.isNotBlank() -> reasoningItem(
+                encryptedContent = encryptedContent,
+                thinking = thinking,
+            )
+
+            encryptedContent.isNullOrBlank() -> null
+
+            else -> buildJsonObject {
+                put("type", type)
+                if (type == "reasoning") {
+                    put("summary", JsonArray(emptyList()))
+                }
+                put("encrypted_content", encryptedContent)
+            }
+        }
+    }
+
+    private fun JsonObject.extractThinkingText(): String {
+        return buildList {
+            this@extractThinkingText["summary"]?.jsonArray?.forEach { part ->
+                part.jsonObject["text"]?.jsonPrimitive?.contentOrNull?.trim()
+                    ?.takeIf { it.isNotBlank() }
+                    ?.let(::add)
+            }
+
+            this@extractThinkingText["content"]?.jsonArray?.forEach { part ->
+                part.jsonObject["text"]?.jsonPrimitive?.contentOrNull?.trim()
+                    ?.takeIf { it.isNotBlank() }
+                    ?.let(::add)
+            }
+        }.joinToString("\n").trim()
+    }
+
     private fun List<Conversation.Message>.toReplayWindow(): ReplayWindow {
         val compactionAnchorIndex = indexOfLast { it.providerMetadata.containsCompactionReplayItem() }
         if (compactionAnchorIndex < 0) {
-            return ReplayWindow(messages = this, compactionAnchorIndex = null)
+            return ReplayWindow(
+                messages = this,
+                compactionAnchorIndex = null,
+                originalMessageCount = size,
+                trimmedMessageCount = 0,
+            )
         }
 
         val trimmedMessageCount = compactionAnchorIndex
@@ -381,6 +515,8 @@ class OpenAiSubscriptionRequestMapper {
         return ReplayWindow(
             messages = drop(compactionAnchorIndex),
             compactionAnchorIndex = 0,
+            originalMessageCount = size,
+            trimmedMessageCount = trimmedMessageCount,
         )
     }
 
@@ -395,8 +531,41 @@ class OpenAiSubscriptionRequestMapper {
         }
     }
 
+    private fun logRequestLayout(
+        request: AiRuntimeRequest,
+        requestPayload: OpenAiSubscriptionResponsesRequest,
+        replayWindow: ReplayWindow,
+        sortedTools: List<AiToolCallback>,
+        conversationKey: String,
+    ) {
+        val itemTypeCounts = requestPayload.input
+            .groupingBy { it["type"]?.jsonPrimitive?.contentOrNull ?: "unknown" }
+            .eachCount()
+        val payloadChars = runCatching {
+            json.encodeToString(OpenAiSubscriptionResponsesRequest.serializer(), requestPayload).length
+        }.getOrNull()
+        val toolSignature = sortedTools.joinToString(",") { it.definition.name }.hashCode()
+
+        log.info(
+            "OpenAI subscription request layout: " +
+                "conversationKey=$conversationKey, " +
+                "systemPrompts=${request.systemPrompts.size}, " +
+                "instructionsChars=${requestPayload.instructions?.length ?: 0}, " +
+                "replayMessages=${replayWindow.messages.size}/${replayWindow.originalMessageCount}, " +
+                "trimmedMessages=${replayWindow.trimmedMessageCount}, " +
+                "inputItems=${requestPayload.input.size}, " +
+                "itemTypes=$itemTypeCounts, " +
+                "tools=${sortedTools.size}, " +
+                "toolSignature=${toolSignature.toUInt().toString(16)}, " +
+                "autoCompaction=${request.options.autoCompaction != null}, " +
+                "payloadChars=${payloadChars ?: -1}"
+        )
+    }
+
     private data class ReplayWindow(
         val messages: List<Conversation.Message>,
         val compactionAnchorIndex: Int?,
+        val originalMessageCount: Int,
+        val trimmedMessageCount: Int,
     )
 }

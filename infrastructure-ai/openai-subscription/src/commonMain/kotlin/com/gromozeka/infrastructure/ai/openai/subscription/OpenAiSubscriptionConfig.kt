@@ -59,6 +59,8 @@ data class OpenAiSubscriptionResponsesRequest(
     val store: Boolean = false,
     val stream: Boolean = true,
     val instructions: String? = null,
+    @SerialName("previous_response_id")
+    val previousResponseId: String? = null,
     @SerialName("context_management")
     val contextManagement: List<JsonObject>? = null,
     @SerialName("parallel_tool_calls")
@@ -72,6 +74,51 @@ data class OpenAiSubscriptionResponsesRequest(
     @SerialName("prompt_cache_key")
     val promptCacheKey: String? = null,
 )
+
+@Serializable
+data class OpenAiSubscriptionResponsesWebSocketRequest(
+    val type: String = "response.create",
+    val model: String,
+    val input: List<JsonObject>,
+    val store: Boolean = false,
+    val stream: Boolean = true,
+    val instructions: String? = null,
+    @SerialName("previous_response_id")
+    val previousResponseId: String? = null,
+    @SerialName("context_management")
+    val contextManagement: List<JsonObject>? = null,
+    @SerialName("parallel_tool_calls")
+    val parallelToolCalls: Boolean = true,
+    val tools: List<JsonObject> = emptyList(),
+    @SerialName("tool_choice")
+    val toolChoice: JsonElement? = null,
+    val include: List<String> = listOf("reasoning.encrypted_content"),
+    val text: JsonObject? = null,
+    val reasoning: JsonObject? = null,
+    @SerialName("prompt_cache_key")
+    val promptCacheKey: String? = null,
+) {
+    companion object {
+        fun from(request: OpenAiSubscriptionResponsesRequest): OpenAiSubscriptionResponsesWebSocketRequest {
+            return OpenAiSubscriptionResponsesWebSocketRequest(
+                model = request.model,
+                input = request.input,
+                store = request.store,
+                stream = request.stream,
+                instructions = request.instructions,
+                previousResponseId = request.previousResponseId,
+                contextManagement = request.contextManagement,
+                parallelToolCalls = request.parallelToolCalls,
+                tools = request.tools,
+                toolChoice = request.toolChoice,
+                include = request.include,
+                text = request.text,
+                reasoning = request.reasoning,
+                promptCacheKey = request.promptCacheKey,
+            )
+        }
+    }
+}
 
 @Serializable
 data class OpenAiSubscriptionSseEnvelope(

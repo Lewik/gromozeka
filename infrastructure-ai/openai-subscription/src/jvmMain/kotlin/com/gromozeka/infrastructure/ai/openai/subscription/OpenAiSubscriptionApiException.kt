@@ -13,3 +13,8 @@ internal class OpenAiSubscriptionRequestException(
     val statusCode: Int,
     message: String,
 ) : OpenAiSubscriptionApiException(message)
+
+internal class OpenAiSubscriptionTransportException(
+    message: String,
+    cause: Throwable? = null,
+) : OpenAiSubscriptionApiException(message, cause)

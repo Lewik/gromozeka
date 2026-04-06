@@ -49,7 +49,7 @@ object AiConversationMessageMapper {
             )
         }
 
-        return messages
+        return mergeAdjacentToolCallMessages(messages)
     }
 
     fun createErrorMessage(
@@ -101,6 +101,41 @@ object AiConversationMessageMapper {
             merged[key] = mergeJsonElements(merged[key], value)
         }
         return JsonObject(merged)
+    }
+
+    private fun mergeAdjacentToolCallMessages(
+        messages: List<Conversation.Message>,
+    ): List<Conversation.Message> {
+        if (messages.size < 2) return messages
+
+        val merged = mutableListOf<Conversation.Message>()
+
+        messages.forEach { message ->
+            val previous = merged.lastOrNull()
+            if (previous != null && previous.canMergeAdjacentToolCallsWith(message)) {
+                merged[merged.lastIndex] = previous.copy(
+                    content = previous.content + message.content,
+                    providerMetadata = mergeJsonObjects(previous.providerMetadata, message.providerMetadata),
+                )
+            } else {
+                merged += message
+            }
+        }
+
+        return merged
+    }
+
+    private fun Conversation.Message.canMergeAdjacentToolCallsWith(
+        other: Conversation.Message,
+    ): Boolean {
+        return isToolCallOnlyAssistantMessage() && other.isToolCallOnlyAssistantMessage()
+    }
+
+    private fun Conversation.Message.isToolCallOnlyAssistantMessage(): Boolean {
+        return role == Conversation.Message.Role.ASSISTANT &&
+            error == null &&
+            content.isNotEmpty() &&
+            content.all { it is Conversation.Message.ContentItem.ToolCall }
     }
 
     private fun mergeJsonElements(

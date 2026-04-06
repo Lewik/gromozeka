@@ -30,11 +30,15 @@ class ToolCallSequenceFixerService(
     private val threadMessageRepository: ThreadMessageRepository
 ) {
     private val log = KLoggers.logger(this)
+    private companion object {
+        const val OPENAI_REASONING_ITEMS_METADATA_KEY = "openaiReasoningItems"
+    }
 
     private data class FixedMessageSequence(
         val messages: List<Conversation.Message>,
         val addedResults: Int,
         val convertedResults: Int,
+        val mergedToolCallMessages: Int,
     )
     
     /**
@@ -47,7 +51,8 @@ class ToolCallSequenceFixerService(
     data class FixResult(
         val fixed: Boolean,
         val addedResults: Int,
-        val convertedResults: Int
+        val convertedResults: Int,
+        val mergedToolCallMessages: Int,
     )
     
     /**
@@ -65,23 +70,35 @@ class ToolCallSequenceFixerService(
     @Transactional
     suspend fun fixNonSequentialPairs(conversationId: Conversation.Id): FixResult {
         val messages = conversationService.loadCurrentMessages(conversationId)
+        val replayWindow = messages.toFixableReplayWindow()
 
         val fixedSequence = buildFixedMessageSequence(
-            messages = messages,
+            messages = replayWindow.messages,
             conversationId = conversationId
         )
 
-        if (fixedSequence.addedResults == 0 && fixedSequence.convertedResults == 0) {
+        if (
+            fixedSequence.addedResults == 0 &&
+            fixedSequence.convertedResults == 0 &&
+            fixedSequence.mergedToolCallMessages == 0
+        ) {
             log.debug { "No non-sequential pairs found in conversation $conversationId" }
-            return FixResult(fixed = false, addedResults = 0, convertedResults = 0)
+            return FixResult(
+                fixed = false,
+                addedResults = 0,
+                convertedResults = 0,
+                mergedToolCallMessages = 0,
+            )
         }
 
-        val fixedMessages = fixedSequence.messages
+        val fixedMessages = replayWindow.preservedPrefix + fixedSequence.messages
         val addedResults = fixedSequence.addedResults
         val convertedResults = fixedSequence.convertedResults
+        val mergedToolCallMessages = fixedSequence.mergedToolCallMessages
 
         log.warn { 
             "Found non-sequential pairs in conversation $conversationId: " +
+            "merged $mergedToolCallMessages tool-call messages, " +
             "added $addedResults messages, converted $convertedResults orphaned results" 
         }
         
@@ -122,14 +139,16 @@ class ToolCallSequenceFixerService(
         
         log.info { 
             "Fixed non-sequential pairs in conversation $conversationId: " +
+            "merged $mergedToolCallMessages tool-call messages, " +
             "added $addedResults error results, converted $convertedResults orphaned results, " +
             "created new thread ${newThread.id}" 
         }
-        
+
         return FixResult(
             fixed = true,
             addedResults = addedResults,
-            convertedResults = convertedResults
+            convertedResults = convertedResults,
+            mergedToolCallMessages = mergedToolCallMessages,
         )
     }
     
@@ -137,12 +156,13 @@ class ToolCallSequenceFixerService(
         messages: List<Conversation.Message>,
         conversationId: Conversation.Id
     ): FixedMessageSequence {
+        val normalizedSequence = messages.mergeAdjacentToolCallMessages()
         val fixedMessages = mutableListOf<Conversation.Message>()
         var pendingToolCalls = emptyMap<ContentItem.ToolCall.Id, ContentItem.ToolCall>()
         var addedResults = 0
         var convertedResults = 0
 
-        messages.forEach { message ->
+        normalizedSequence.forEach { message ->
             val toolCalls = message.content.filterIsInstance<ContentItem.ToolCall>()
             val toolResults = message.content.filterIsInstance<ContentItem.ToolResult>()
             val unmatchedResults = toolResults.filter { it.toolUseId !in pendingToolCalls.keys }
@@ -201,7 +221,81 @@ class ToolCallSequenceFixerService(
             messages = fixedMessages,
             addedResults = addedResults,
             convertedResults = convertedResults,
+            mergedToolCallMessages = messages.size - normalizedSequence.size,
         )
+    }
+
+    private data class ReplayWindow(
+        val preservedPrefix: List<Conversation.Message>,
+        val messages: List<Conversation.Message>,
+    )
+
+    private fun List<Conversation.Message>.toFixableReplayWindow(): ReplayWindow {
+        val compactionAnchorIndex = indexOfLast { it.providerMetadata.containsCompactionReplayItem() }
+        if (compactionAnchorIndex < 0) {
+            return ReplayWindow(
+                preservedPrefix = emptyList(),
+                messages = this,
+            )
+        }
+
+        log.info {
+            "Tool call sequence fixer limited to post-compaction replay window: " +
+                "preservedMessages=$compactionAnchorIndex, fixableMessages=${size - compactionAnchorIndex}"
+        }
+
+        return ReplayWindow(
+            preservedPrefix = take(compactionAnchorIndex),
+            messages = drop(compactionAnchorIndex),
+        )
+    }
+
+    private fun List<Conversation.Message>.mergeAdjacentToolCallMessages(): List<Conversation.Message> {
+        if (size < 2) return this
+
+        val merged = mutableListOf<Conversation.Message>()
+
+        forEach { message ->
+            val previous = merged.lastOrNull()
+            if (previous != null && previous.canMergeAdjacentToolCallsWith(message)) {
+                merged[merged.lastIndex] = previous.copy(
+                    content = previous.content + message.content,
+                    providerMetadata = kotlinx.serialization.json.JsonObject(
+                        previous.providerMetadata.toMap() + message.providerMetadata.toMap()
+                    ),
+                )
+            } else {
+                merged += message
+            }
+        }
+
+        return merged
+    }
+
+    private fun Conversation.Message.canMergeAdjacentToolCallsWith(
+        other: Conversation.Message,
+    ): Boolean {
+        return isToolCallOnlyAssistantMessage() && other.isToolCallOnlyAssistantMessage()
+    }
+
+    private fun Conversation.Message.isToolCallOnlyAssistantMessage(): Boolean {
+        return role == Conversation.Message.Role.ASSISTANT &&
+            error == null &&
+            content.isNotEmpty() &&
+            content.all { it is ContentItem.ToolCall }
+    }
+
+    private fun kotlinx.serialization.json.JsonObject.containsCompactionReplayItem(): Boolean {
+        val reasoningItems = this[OPENAI_REASONING_ITEMS_METADATA_KEY]
+            ?.let { it as? kotlinx.serialization.json.JsonArray }
+            ?: return false
+        return reasoningItems.any { item ->
+            val type = (item as? kotlinx.serialization.json.JsonObject)
+                ?.get("type")
+                ?.toString()
+                ?.trim('"')
+            type == "compaction" || type == "compaction_summary"
+        }
     }
     
     private fun createErrorToolResult(

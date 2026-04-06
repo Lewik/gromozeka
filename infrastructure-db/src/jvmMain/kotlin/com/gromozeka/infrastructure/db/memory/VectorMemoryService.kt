@@ -21,6 +21,7 @@ class VectorMemoryService(
     private val conversationRepository: ConversationRepository
 ) : com.gromozeka.domain.service.VectorMemoryService {
     private val log = KLoggers.logger(this)
+    private val embeddingFallbackCharLimits = listOf(20_000, 12_000, 8_000, 4_000)
 
     override suspend fun rememberThread(threadId: String) = withContext(Dispatchers.IO) {
         try {
@@ -47,14 +48,17 @@ class VectorMemoryService(
 
             val messageNodes = threadMessages.mapNotNull { message ->
                 val content = extractTextContent(message)
-                
+
                 // Skip messages with no text content (OpenAI Embeddings API doesn't accept empty strings)
                 if (content.isBlank()) {
                     log.debug { "Skipping message ${message.id.value} - no text content to embed" }
                     return@mapNotNull null
                 }
-                
-                val embedding = embeddingModel.embed(content).toList()
+
+                val embedding = embedMessageContent(
+                    messageId = message.id.value,
+                    content = content,
+                )?.toList() ?: return@mapNotNull null
 
                 ConversationMessageGraphService.ConversationMessageNode(
                     id = message.id.value,
@@ -123,6 +127,71 @@ class VectorMemoryService(
                 else -> null
             }
         }.joinToString("\n")
+    }
+
+    private fun embedMessageContent(
+        messageId: String,
+        content: String,
+    ): FloatArray? {
+        var lastOversizeError: Exception? = null
+
+        for (candidate in buildEmbeddingCandidates(content)) {
+            try {
+                if (candidate !== content) {
+                    log.warn {
+                        "Vector memory truncated oversized message for embedding: " +
+                            "messageId=$messageId, originalChars=${content.length}, embeddingChars=${candidate.length}"
+                    }
+                }
+                return embeddingModel.embed(candidate)
+            } catch (error: Exception) {
+                if (!error.isEmbeddingTooLarge()) {
+                    throw error
+                }
+                lastOversizeError = error
+            }
+        }
+
+        val failureMessage = "Skipping oversized message in vector memory after truncation retries: " +
+            "messageId=$messageId, originalChars=${content.length}"
+        if (lastOversizeError != null) {
+            log.error(lastOversizeError) { failureMessage }
+        } else {
+            log.error { failureMessage }
+        }
+        return null
+    }
+
+    private fun buildEmbeddingCandidates(content: String): List<String> {
+        return buildList {
+            add(content)
+            embeddingFallbackCharLimits.forEach { limit ->
+                if (content.length > limit) {
+                    add(content.compactForEmbedding(limit))
+                }
+            }
+        }.distinct()
+    }
+
+    private fun String.compactForEmbedding(maxChars: Int): String {
+        if (length <= maxChars) return this
+
+        val separator = "\n...\n"
+        val budget = (maxChars - separator.length).coerceAtLeast(0)
+        val headChars = budget / 2
+        val tailChars = budget - headChars
+
+        return buildString(maxChars) {
+            append(take(headChars))
+            append(separator)
+            append(takeLast(tailChars))
+        }
+    }
+
+    private fun Exception.isEmbeddingTooLarge(): Boolean {
+        val message = message.orEmpty()
+        return message.contains("maximum context length", ignoreCase = true) ||
+            message.contains("Please reduce your prompt", ignoreCase = true)
     }
 
     private fun hasToolCalls(message: Conversation.Message): Boolean {
