@@ -52,7 +52,7 @@ import kotlinx.serialization.Serializable
 //     {
 //       "id": 0,
 //       "text": "Find all TODO...",
-//       "type": "command",
+//       "type": "COMMAND",
 //       "status": "COMPLETED",
 //       "result": "Found 49 TODO items...",
 //       "certainty": 1.0,
@@ -62,7 +62,7 @@ import kotlinx.serialization.Serializable
 //     {
 //       "id": 1,
 //       "text": "Yesterday's hotkey bug...",
-//       "type": "inform",
+//       "type": "INFORM",
 //       "status": "IN_PROGRESS",
 //       "result": null,
 //       "certainty": 1.0,
@@ -71,7 +71,7 @@ import kotlinx.serialization.Serializable
 //     }
 //   ],
 //   "current_step_id": 1,
-//   "instruction": "Current step — [1] inform: 'Yesterday's hotkey bug...'. User states fact. Process: ..."
+//   "instruction": "Current step — [1] INFORM: 'Yesterday's hotkey bug...'. User states fact. Process: ..."
 // }
 // ```
 //
@@ -118,13 +118,13 @@ import kotlinx.serialization.Serializable
 //
 // | Type | Instruction Template |
 // |------|---------------------|
-// | command | Execute task: '{text}'. Gather context, use tools, complete. Call step_complete when done. |
-// | query | Answer question: '{text}'. Research topic, gather information. Call step_complete with detailed answer. |
-// | inform | User states: '{text}'. Are there related issues or consequences? Anything to update? Call step_complete with findings. |
-// | correct | User corrects fact: '{text}'. What depended on old fact? What to reconsider? Call step_complete with analysis. |
-// | evaluate | User gives opinion: '{text}'. Do you agree? Arguments for/against? Call step_complete with analysis. |
-// | commit | User makes commitment: '{text}'. Record it. Any dependencies or conditions? Call step_complete. |
-// | condition | User sets condition: '{text}'. Is it satisfied now? What depends on it? Call step_complete. |
+// | COMMAND | Execute task: '{text}'. Gather context, use tools, complete. Call step_complete when done. |
+// | QUERY | Answer question: '{text}'. Research topic, gather information. Call step_complete with detailed answer. |
+// | INFORM | User states: '{text}'. Are there related issues or consequences? Anything to update? Call step_complete with findings. |
+// | CORRECT | User corrects fact: '{text}'. What depended on old fact? What to reconsider? Call step_complete with analysis. |
+// | EVALUATE | User gives opinion: '{text}'. Do you agree? Arguments for/against? Call step_complete with analysis. |
+// | COMMIT | User makes commitment: '{text}'. Record it. Any dependencies or conditions? Call step_complete. |
+// | CONDITION | User sets condition: '{text}'. Is it satisfied now? What depends on it? Call step_complete. |
 //
 // **Certainty modifier** (added when certainty < 1.0):
 // > "Confidence in this statement is low ({certainty}). Gather additional context,

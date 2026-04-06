@@ -53,7 +53,7 @@ import com.gromozeka.domain.tool.ToolExecutionContext
  * - Enable execution order determination
  *
  * **Type classification:**
- * - 7 types: command, query, inform, commit, correct, condition, evaluate
+ * - 7 types: COMMAND, QUERY, INFORM, COMMIT, CORRECT, CONDITION, EVALUATE
  * - Type determines instruction template in tool_result
  *
  * # Parameters
@@ -63,7 +63,7 @@ import com.gromozeka.domain.tool.ToolExecutionContext
  *
  * Each step contains:
  * - **text** - original fragment from user message
- * - **type** - step type (command/query/inform/commit/correct/condition/evaluate)
+ * - **type** - step type (COMMAND/QUERY/INFORM/COMMIT/CORRECT/CONDITION/EVALUATE)
  * - **certainty** - confidence level (0.0-1.0)
  * - **entities** - key entities/technologies mentioned
  * - **depends_on** - array of step indices (0-based)
@@ -78,7 +78,7 @@ import com.gromozeka.domain.tool.ToolExecutionContext
  *     {
  *       "id": 0,
  *       "text": "Find all TODO in project",
- *       "type": "command",
+ *       "type": "COMMAND",
  *       "status": "IN_PROGRESS",
  *       "result": null,
  *       "certainty": 1.0,
@@ -93,32 +93,32 @@ import com.gromozeka.domain.tool.ToolExecutionContext
  *
  * # Type Guidelines
  *
- * **command** - direct action instruction
+ * **COMMAND** - direct action instruction
  * - "find all TODO", "run tests", "create file"
  * - App instruction: "Execute task: '{text}'. Gather context, use tools..."
  *
- * **query** - request for information/analysis
+ * **QUERY** - request for information/analysis
  * - "what's better?", "should we use X?", "explain why"
  * - App instruction: "Answer question: '{text}'. Research topic..."
- * - NOTE: Question ≠ command ("is this needed?" ≠ "delete this")
+ * - NOTE: Question ≠ COMMAND ("is this needed?" ≠ "delete this")
  *
- * **inform** - statement of fact/context
+ * **INFORM** - statement of fact/context
  * - "we use PostgreSQL", "bug was in listener"
  * - App instruction: "User states: '{text}'. Related issues? Consequences?..."
  *
- * **commit** - speaker's promise/obligation
+ * **COMMIT** - speaker's promise/obligation
  * - "I'll fix this tomorrow", "will write tests by Friday"
  * - App instruction: "User commits: '{text}'. Record. Dependencies?..."
  *
- * **correct** - correction of known fact
+ * **CORRECT** - correction of known fact
  * - "no, it's MySQL not PostgreSQL", "not a bug, it's a feature"
  * - App instruction: "User corrects: '{text}'. What depended on old fact?..."
  *
- * **condition** - constraint for other steps
+ * **CONDITION** - constraint for other steps
  * - "if project is Kotlin", "only for Linux"
  * - App instruction: "User sets condition: '{text}'. Is it satisfied? What depends?..."
  *
- * **evaluate** - opinion/assessment
+ * **EVALUATE** - opinion/assessment
  * - "this approach is better", "Swing is terrible"
  * - App instruction: "User opines: '{text}'. Do you agree? Arguments?..."
  *
@@ -158,7 +158,7 @@ import com.gromozeka.domain.tool.ToolExecutionContext
  *
  * Split into separate steps when:
  * - **Explicit markers:** "кстати", "а ещё", "но", "также", "ещё"
- * - **Speech act change:** command → inform → query
+ * - **Speech act change:** COMMAND → INFORM → QUERY
  * - **Topic/entity change:** TODO → hotkey bug → Compose Desktop
  * - **Temporal frame change:** "сейчас" → "вчера"
  * - **Modality change:** fact → hypothesis
@@ -168,13 +168,13 @@ import com.gromozeka.domain.tool.ToolExecutionContext
  *
  * # Examples
  *
- * **Single command:**
+ * **Single COMMAND:**
  * ```
  * Input: "Run tests and show results"
  * Output: [
  *   {
  *     "text": "Run tests and show results",
- *     "type": "command",
+ *     "type": "COMMAND",
  *     "certainty": 1.0,
  *     "entities": ["tests"],
  *     "depends_on": []
@@ -188,14 +188,14 @@ import com.gromozeka.domain.tool.ToolExecutionContext
  * Output: [
  *   {
  *     "text": "Seems like cache issue",
- *     "type": "inform",
+ *     "type": "INFORM",
  *     "certainty": 0.6,
  *     "entities": ["cache"],
  *     "depends_on": []
  *   },
  *   {
  *     "text": "Clear cache and check",
- *     "type": "command",
+ *     "type": "COMMAND",
  *     "certainty": 1.0,
  *     "entities": ["cache"],
  *     "depends_on": [0]
@@ -209,21 +209,21 @@ import com.gromozeka.domain.tool.ToolExecutionContext
  * Output: [
  *   {
  *     "text": "Find all TODO in project, group by priority",
- *     "type": "command",
+ *     "type": "COMMAND",
  *     "certainty": 1.0,
  *     "entities": ["TODO", "project"],
  *     "depends_on": []
  *   },
  *   {
  *     "text": "yesterday's hotkey bug is fixed — problem was in KeyEvent listener",
- *     "type": "inform",
+ *     "type": "INFORM",
  *     "certainty": 1.0,
  *     "entities": ["hotkey-bug", "KeyEvent listener"],
  *     "depends_on": []
  *   },
  *   {
  *     "text": "should we switch to Compose Desktop instead of Swing",
- *     "type": "query",
+ *     "type": "QUERY",
  *     "certainty": 1.0,
  *     "entities": ["Compose Desktop", "Swing"],
  *     "depends_on": []

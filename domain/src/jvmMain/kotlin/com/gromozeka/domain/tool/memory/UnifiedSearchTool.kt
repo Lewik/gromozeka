@@ -65,7 +65,7 @@ data class UnifiedSearchRequest(
  * - **SEMANTIC:** Vector similarity search for conceptual understanding (RECOMMENDED DEFAULT, best for natural language)
  * - **HYBRID:** Combined keyword + semantic (only for exact term matching like error codes, scores may be compressed)
  * - **KEYWORD:** BM25 fulltext search for exact term matching (rarely needed)
- * - **Graph traversal:** For connected entities (memory_objects only)
+ * - **Graph traversal:** For connected entities (MEMORY_OBJECTS only)
  * - **Cross-source reranking:** Unified relevance ranking across all sources
  *
  * **Flexible filtering:**
@@ -76,7 +76,7 @@ data class UnifiedSearchRequest(
  *
  * # Entity Types
  *
- * ## memory_objects
+ * ## MEMORY_OBJECTS
  *
  * Facts, concepts, people, technologies stored in knowledge graph.
  *
@@ -94,7 +94,7 @@ data class UnifiedSearchRequest(
  * - "Spring AI: Framework for LLM integration"
  * - "Neo4j: Graph database with vector search"
  *
- * ## code_specs
+ * ## CODE_SPECS
  *
  * Code symbols extracted from codebase: classes, interfaces, methods, functions.
  *
@@ -112,7 +112,7 @@ data class UnifiedSearchRequest(
  * - "ThreadRepository: Interface for thread persistence (domain/.../ThreadRepository.kt:15)"
  * - "UnifiedSearchService: Hybrid search across entity types"
  *
- * ## conversation_messages
+ * ## CONVERSATION_MESSAGES
  *
  * Historical conversation messages with multiple search modes.
  *
@@ -162,22 +162,22 @@ data class UnifiedSearchRequest(
  * Which entity types to search. Must contain at least one valid type.
  *
  * **Valid values:**
- * - `"memory_objects"` - Knowledge graph entities
- * - `"conversation_messages"` - Chat history
- * - `"code_specs"` - All code symbols (shortcut)
- * - `"code_specs:class"` - Only classes
- * - `"code_specs:interface"` - Only interfaces
- * - `"code_specs:enum"` - Only enums
- * - `"code_specs:method"` - Only methods/functions
- * - `"code_specs:property"` - Only properties/fields
- * - `"code_specs:constructor"` - Only constructors
+ * - `"MEMORY_OBJECTS"` - Knowledge graph entities
+ * - `"CONVERSATION_MESSAGES"` - Chat history
+ * - `"CODE_SPECS"` - All code symbols (shortcut)
+ * - `"CODE_SPECS_CLASS"` - Only classes
+ * - `"CODE_SPECS_INTERFACE"` - Only interfaces
+ * - `"CODE_SPECS_ENUM"` - Only enums
+ * - `"CODE_SPECS_METHOD"` - Only methods/functions
+ * - `"CODE_SPECS_PROPERTY"` - Only properties/fields
+ * - `"CODE_SPECS_CONSTRUCTOR"` - Only constructors
  *
  * **Examples:**
- * - `["memory_objects"]` - Only facts
- * - `["code_specs"]` - All code symbols
- * - `["code_specs:class", "code_specs:interface"]` - Only type definitions
- * - `["memory_objects", "code_specs"]` - Facts and all code
- * - `["memory_objects", "code_specs", "conversation_messages"]` - Everything
+ * - `["MEMORY_OBJECTS"]` - Only facts
+ * - `["CODE_SPECS"]` - All code symbols
+ * - `["CODE_SPECS_CLASS", "CODE_SPECS_INTERFACE"]` - Only type definitions
+ * - `["MEMORY_OBJECTS", "CODE_SPECS"]` - Facts and all code
+ * - `["MEMORY_OBJECTS", "CODE_SPECS", "CONVERSATION_MESSAGES"]` - Everything
  *
  * ## limit: Int (optional, default: 5)
  *
@@ -190,7 +190,7 @@ data class UnifiedSearchRequest(
  *
  * ## threadId: String? (optional)
  *
- * Filter conversation_messages by specific thread.
+ * Filter CONVERSATION_MESSAGES by specific thread.
  *
  * **Examples:**
  * - `null`, `""` (empty), or omit - Search all threads (default)
@@ -220,7 +220,7 @@ data class UnifiedSearchRequest(
  *
  * ## symbolKinds: List<String>? (optional)
  *
- * Filter CODE_SPECS results by symbol type. Only applies when searching code_specs.
+ * Filter CODE_SPECS results by symbol type. Only applies when searching CODE_SPECS.
  *
  * **Valid values:**
  * - `"Class"` - Class definitions
@@ -265,7 +265,7 @@ data class UnifiedSearchRequest(
  *
  * ## searchMode: String? (optional, default: "SEMANTIC")
  *
- * Search mode for ALL entity types (memory_objects, code_specs, conversation_messages).
+ * Search mode for ALL entity types (MEMORY_OBJECTS, CODE_SPECS, CONVERSATION_MESSAGES).
  * Controls search strategy across all sources.
  *
  * **Valid values:**
@@ -300,18 +300,18 @@ data class UnifiedSearchRequest(
  * **Examples:**
  * ```json
  * // Default: semantic search (recommended for most queries)
- * {"query": "how to implement authentication", "entityTypes": ["code_specs", "conversation_messages"], "searchMode": "SEMANTIC"}
+ * {"query": "how to implement authentication", "entityTypes": ["CODE_SPECS", "CONVERSATION_MESSAGES"], "searchMode": "SEMANTIC"}
  *
  * // Exact error code matching (use HYBRID)
- * {"query": "NullPointerException E4502", "entityTypes": ["conversation_messages"], "searchMode": "HYBRID"}
+ * {"query": "NullPointerException E4502", "entityTypes": ["CONVERSATION_MESSAGES"], "searchMode": "HYBRID"}
  *
  * // Conceptual search (use SEMANTIC)
- * {"query": "vector search implementation patterns", "entityTypes": ["memory_objects", "code_specs"], "searchMode": "SEMANTIC"}
+ * {"query": "vector search implementation patterns", "entityTypes": ["MEMORY_OBJECTS", "CODE_SPECS"], "searchMode": "SEMANTIC"}
  * ```
  *
  * ## conversationIds: List<String>? (optional)
  *
- * Filter conversation_messages by specific conversations. Only applies when searching conversation_messages.
+ * Filter CONVERSATION_MESSAGES by specific conversations. Only applies when searching CONVERSATION_MESSAGES.
  *
  * **Valid values:**
  * - `null` or omit - Search all conversations (default)
@@ -325,7 +325,7 @@ data class UnifiedSearchRequest(
  *
  * ## roles: List<String>? (optional)
  *
- * Filter conversation_messages by message roles. Only applies when searching conversation_messages.
+ * Filter CONVERSATION_MESSAGES by message roles. Only applies when searching CONVERSATION_MESSAGES.
  *
  * **Valid role values:**
  * - `"USER"` - Human user messages
@@ -344,7 +344,7 @@ data class UnifiedSearchRequest(
  *
  * ## dateFrom: String? (optional)
  *
- * Filter conversation_messages created after this timestamp (inclusive). Only applies when searching conversation_messages.
+ * Filter CONVERSATION_MESSAGES created after this timestamp (inclusive). Only applies when searching CONVERSATION_MESSAGES.
  *
  * **Format:** ISO 8601 timestamp (e.g., `"2024-01-15T10:30:00Z"`)
  *
@@ -359,7 +359,7 @@ data class UnifiedSearchRequest(
  *
  * ## dateTo: String? (optional)
  *
- * Filter conversation_messages created before this timestamp (inclusive). Only applies when searching conversation_messages.
+ * Filter CONVERSATION_MESSAGES created before this timestamp (inclusive). Only applies when searching CONVERSATION_MESSAGES.
  *
  * **Format:** ISO 8601 timestamp (e.g., `"2024-01-20T23:59:59Z"`)
  *
@@ -383,7 +383,7 @@ data class UnifiedSearchRequest(
  *
  * ## asOf: String? (optional)
  *
- * Point-in-time query for memory_objects (knowledge graph entities). Only applies when searching memory_objects.
+ * Point-in-time query for MEMORY_OBJECTS (knowledge graph entities). Only applies when searching MEMORY_OBJECTS.
  * Returns entities that were valid at specified timestamp according to bi-temporal model.
  *
  * **Format:** ISO 8601 timestamp (e.g., `"2024-01-20T12:00:00Z"`)
@@ -408,16 +408,16 @@ data class UnifiedSearchRequest(
  * **Examples:**
  * ```json
  * // Current state (default)
- * {"query": "PostgreSQL", "entityTypes": ["memory_objects"], "asOf": null}
+ * {"query": "PostgreSQL", "entityTypes": ["MEMORY_OBJECTS"], "asOf": null}
  *
  * // Historical state
- * {"query": "database", "entityTypes": ["memory_objects"], "asOf": "2023-06-01T00:00:00Z"}
+ * {"query": "database", "entityTypes": ["MEMORY_OBJECTS"], "asOf": "2023-06-01T00:00:00Z"}
  *
  * // Obsolete concepts (set asOf to past, entities with invalidAt < asOf won't appear)
- * {"query": "Phlogiston", "entityTypes": ["memory_objects"], "asOf": "1800-01-01T00:00:00Z"}
+ * {"query": "Phlogiston", "entityTypes": ["MEMORY_OBJECTS"], "asOf": "1800-01-01T00:00:00Z"}
  * ```
  *
- * **Note:** Does NOT affect conversation_messages or code_specs. Use `dateFrom`/`dateTo` for conversation temporal filtering.
+ * **Note:** Does NOT affect CONVERSATION_MESSAGES or CODE_SPECS. Use `dateFrom`/`dateTo` for conversation temporal filtering.
  *
  * # Returns
  *
@@ -437,7 +437,7 @@ data class UnifiedSearchRequest(
  * ```json
  * {
  *   "type": "text",
- *   "text": "No results found for 'nonexistent query' in [memory_objects, code_specs]"
+ *   "text": "No results found for 'nonexistent query' in [MEMORY_OBJECTS, CODE_SPECS]"
  * }
  * ```
  *
@@ -446,7 +446,7 @@ data class UnifiedSearchRequest(
  * ```json
  * {
  *   "type": "text",
- *   "text": "Error: No valid entity types specified. Use: memory_objects, code_specs, conversation_messages"
+ *   "text": "Error: No valid entity types specified. Use: MEMORY_OBJECTS, CODE_SPECS, CONVERSATION_MESSAGES"
  * }
  * ```
  *
@@ -455,7 +455,7 @@ data class UnifiedSearchRequest(
  * | Error | Reason | Solution |
  * |-------|--------|----------|
  * | Empty query | `query` is blank | Provide non-empty search query |
- * | No valid entity types | Invalid or empty entityTypes | Use valid types: memory_objects, code_specs, conversation_messages |
+ * | No valid entity types | Invalid or empty entityTypes | Use valid types: MEMORY_OBJECTS, CODE_SPECS, CONVERSATION_MESSAGES |
  * | Knowledge graph disabled | Service not available | Enable knowledge-graph in config |
  * | Neo4j error | Database unavailable | Check Neo4j service |
  *
@@ -470,7 +470,7 @@ data class UnifiedSearchRequest(
  *   "tool": "unified_search",
  *   "parameters": {
  *     "query": "thread persistence repository",
- *     "entityTypes": ["code_specs"],
+ *     "entityTypes": ["CODE_SPECS"],
  *     "searchMode": "SEMANTIC",
  *     "limit": 5
  *   }
@@ -488,7 +488,7 @@ data class UnifiedSearchRequest(
  *   "tool": "unified_search",
  *   "parameters": {
  *     "query": "Spring AI",
- *     "entityTypes": ["memory_objects", "code_specs"],
+ *     "entityTypes": ["MEMORY_OBJECTS", "CODE_SPECS"],
  *     "searchMode": "KEYWORD"
  *   }
  * }
@@ -505,7 +505,7 @@ data class UnifiedSearchRequest(
  *   "tool": "unified_search",
  *   "parameters": {
  *     "query": "architecture decision migration",
- *     "entityTypes": ["conversation_messages"],
+ *     "entityTypes": ["CONVERSATION_MESSAGES"],
  *     "threadId": "current-thread-id"
  *   }
  * }
@@ -522,7 +522,7 @@ data class UnifiedSearchRequest(
  *   "tool": "unified_search",
  *   "parameters": {
  *     "query": "vector search Neo4j",
- *     "entityTypes": ["memory_objects", "code_specs", "conversation_messages"],
+ *     "entityTypes": ["MEMORY_OBJECTS", "CODE_SPECS", "CONVERSATION_MESSAGES"],
  *     "searchMode": "HYBRID",
  *     "limit": 15,
  *     "useReranking": true
@@ -541,7 +541,7 @@ data class UnifiedSearchRequest(
  *   "tool": "unified_search",
  *   "parameters": {
  *     "query": "repository pattern",
- *     "entityTypes": ["code_specs"],
+ *     "entityTypes": ["CODE_SPECS"],
  *     "projectIds": ["fedcba98-7654-3210-fedc-ba9876543210"]
  *   }
  * }
@@ -558,7 +558,7 @@ data class UnifiedSearchRequest(
  *   "tool": "unified_search",
  *   "parameters": {
  *     "query": "authentication service",
- *     "entityTypes": ["code_specs"],
+ *     "entityTypes": ["CODE_SPECS"],
  *     "projectIds": ["gromozeka-dev", "gromozeka-prod"],
  *     "limit": 10
  *   }
@@ -576,7 +576,7 @@ data class UnifiedSearchRequest(
  *   "tool": "unified_search",
  *   "parameters": {
  *     "query": "NullPointerException in ThreadRepository",
- *     "entityTypes": ["conversation_messages"],
+ *     "entityTypes": ["CONVERSATION_MESSAGES"],
  *     "searchMode": "KEYWORD",
  *     "limit": 10
  *   }
@@ -594,7 +594,7 @@ data class UnifiedSearchRequest(
  *   "tool": "unified_search",
  *   "parameters": {
  *     "query": "authentication implementation",
- *     "entityTypes": ["conversation_messages"],
+ *     "entityTypes": ["CONVERSATION_MESSAGES"],
  *     "searchMode": "HYBRID",
  *     "roles": ["USER"],
  *     "dateFrom": "2024-01-15T00:00:00Z",
@@ -614,7 +614,7 @@ data class UnifiedSearchRequest(
  *   "tool": "unified_search",
  *   "parameters": {
  *     "query": "repository pattern",
- *     "entityTypes": ["memory_objects", "code_specs", "conversation_messages"],
+ *     "entityTypes": ["MEMORY_OBJECTS", "CODE_SPECS", "CONVERSATION_MESSAGES"],
  *     "searchMode": "HYBRID",
  *     "projectIds": ["current-project-id"],
  *     "roles": ["USER", "ASSISTANT"],
@@ -632,21 +632,21 @@ data class UnifiedSearchRequest(
  *
  * Find code by description, then get details:
  *
- * 1. `unified_search("user authentication", ["code_specs"])` - Find relevant code
+ * 1. `unified_search("user authentication", ["CODE_SPECS"])` - Find relevant code
  * 2. `grz_read_file(path, startLine)` - Read the implementation
  *
  * ## Pattern: Knowledge + Code
  *
  * Understand concept and find implementation:
  *
- * 1. `unified_search("Clean Architecture", ["memory_objects", "code_specs"])`
+ * 1. `unified_search("Clean Architecture", ["MEMORY_OBJECTS", "CODE_SPECS"])`
  * 2. Get both facts about pattern AND code that implements it
  *
  * ## Pattern: Context Recall
  *
  * Before making decisions, recall relevant context:
  *
- * 1. `unified_search("previous decision about X", ["conversation_messages", "memory_objects"])`
+ * 1. `unified_search("previous decision about X", ["CONVERSATION_MESSAGES", "MEMORY_OBJECTS"])`
  * 2. Use recalled context to inform current decision
  *
  * # Performance Characteristics
@@ -689,15 +689,15 @@ interface UnifiedSearchTool : Tool<UnifiedSearchRequest, Map<String, Any>> {
             Unified search across knowledge graph, code, and conversation history with configurable search modes.
 
             **Entity Types (what to search):**
-            - `memory_objects` - Facts, concepts, technologies in knowledge graph
-            - `conversation_messages` - Past conversation messages
-            - `code_specs` - All code symbols (shortcut)
-            - `code_specs:class` - Only classes
-            - `code_specs:interface` - Only interfaces
-            - `code_specs:enum` - Only enums
-            - `code_specs:method` - Only methods/functions
-            - `code_specs:property` - Only properties/fields
-            - `code_specs:constructor` - Only constructors
+            - `MEMORY_OBJECTS` - Facts, concepts, technologies in knowledge graph
+            - `CONVERSATION_MESSAGES` - Past conversation messages
+            - `CODE_SPECS` - All code symbols (shortcut)
+            - `CODE_SPECS_CLASS` - Only classes
+            - `CODE_SPECS_INTERFACE` - Only interfaces
+            - `CODE_SPECS_ENUM` - Only enums
+            - `CODE_SPECS_METHOD` - Only methods/functions
+            - `CODE_SPECS_PROPERTY` - Only properties/fields
+            - `CODE_SPECS_CONSTRUCTOR` - Only constructors
 
             **Search Modes (applies to ALL sources):**
             - KEYWORD: Fulltext search (BM25) - fast, exact terms
@@ -709,26 +709,26 @@ interface UnifiedSearchTool : Tool<UnifiedSearchRequest, Map<String, Any>> {
             - entityTypes: List of entity types to search (required)
             - searchMode: KEYWORD, SEMANTIC, or HYBRID (default: HYBRID, applies to all sources)
             - limit: Max results (default: 5)
-            - projectIds: Filter by projects (code_specs and conversation_messages)
-            - conversationIds: Filter by conversations (conversation_messages only)
-            - threadId: Filter by thread (conversation_messages only)
-            - roles: Filter by message roles - USER, ASSISTANT, SYSTEM (conversation_messages only)
-            - dateFrom/dateTo: Filter by date range (conversation_messages only)
+            - projectIds: Filter by projects (CODE_SPECS and CONVERSATION_MESSAGES)
+            - conversationIds: Filter by conversations (CONVERSATION_MESSAGES only)
+            - threadId: Filter by thread (CONVERSATION_MESSAGES only)
+            - roles: Filter by message roles - USER, ASSISTANT, SYSTEM (CONVERSATION_MESSAGES only)
+            - dateFrom/dateTo: Filter by date range (CONVERSATION_MESSAGES only)
             - useReranking: Cross-source relevance ranking (default: true)
 
             **Examples:**
             ```json
             // Keyword search across all sources
-            {"query": "NullPointerException", "entityTypes": ["memory_objects", "code_specs", "conversation_messages"], "searchMode": "KEYWORD"}
+            {"query": "NullPointerException", "entityTypes": ["MEMORY_OBJECTS", "CODE_SPECS", "CONVERSATION_MESSAGES"], "searchMode": "KEYWORD"}
 
             // Semantic search for code
-            {"query": "thread persistence", "entityTypes": ["code_specs"], "searchMode": "SEMANTIC"}
+            {"query": "thread persistence", "entityTypes": ["CODE_SPECS"], "searchMode": "SEMANTIC"}
 
             // Hybrid search (default, best results)
-            {"query": "authentication implementation", "entityTypes": ["code_specs", "conversation_messages"], "searchMode": "HYBRID"}
+            {"query": "authentication implementation", "entityTypes": ["CODE_SPECS", "CONVERSATION_MESSAGES"], "searchMode": "HYBRID"}
             
             // Search recent user messages
-            {"query": "authentication", "entityTypes": ["conversation_messages"], "roles": ["USER"], "dateFrom": "2024-01-15T00:00:00Z"}
+            {"query": "authentication", "entityTypes": ["CONVERSATION_MESSAGES"], "roles": ["USER"], "dateFrom": "2024-01-15T00:00:00Z"}
             ```
 
             **What is Reranking:**

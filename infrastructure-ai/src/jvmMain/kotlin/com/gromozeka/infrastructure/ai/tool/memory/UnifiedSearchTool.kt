@@ -38,7 +38,7 @@ class UnifiedSearchTool(
 
         val entityTypeScopes = request.entityTypes.toSet()
         if (entityTypeScopes.isEmpty()) {
-            return errorResponse("No entity types specified. Use: memory_objects, conversation_messages, code_specs, code_specs:class, etc.")
+            return errorResponse("No entity types specified. Use: MEMORY_OBJECTS, CONVERSATION_MESSAGES, CODE_SPECS, CODE_SPECS_CLASS, etc.")
         }
 
         val entityTypes = buildSet {
@@ -74,7 +74,7 @@ class UnifiedSearchTool(
             logger.debug("Unified search for '${request.query}' returned ${results.size} results")
 
             if (results.isEmpty()) {
-                val scopeNames = entityTypeScopes.joinToString { it.toJson() }
+                val scopeNames = entityTypeScopes.joinToString { it.name }
                 return mapOf(
                     "type" to "text",
                     "text" to "No results found for '${request.query}' in [$scopeNames]"

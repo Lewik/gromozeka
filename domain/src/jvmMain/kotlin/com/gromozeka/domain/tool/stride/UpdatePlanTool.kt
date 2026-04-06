@@ -46,7 +46,7 @@ import com.gromozeka.domain.tool.ToolExecutionContext
  *   → Add step: "Ask user: overwrite or merge?"
  *
  * - User: "Skip the analysis, just show results"
- *   → Remove query step, keep only command
+ *   → Remove QUERY step, keep only COMMAND
  *
  * - Discovered dependency: "Step 3 needs result from step 1"
  *   → Add depends_on relationship
@@ -122,7 +122,7 @@ import com.gromozeka.domain.tool.ToolExecutionContext
  *     {...existing step 1...},
  *     {
  *       "text": "Ask user: overwrite or merge config?",
- *       "type": "query",
+ *       "type": "QUERY",
  *       "certainty": 1.0,
  *       "entities": ["config"],
  *       "depends_on": [1]  // depends on step that found existing config
@@ -138,7 +138,7 @@ import com.gromozeka.domain.tool.ToolExecutionContext
  *     {...completed step 0...},
  *     {
  *       "text": "Search TODO and FIXME patterns",  // changed text
- *       "type": "command",
+ *       "type": "COMMAND",
  *       "certainty": 1.0,
  *       "entities": ["TODO", "FIXME"],  // added entity
  *       "depends_on": []
@@ -166,7 +166,7 @@ import com.gromozeka.domain.tool.ToolExecutionContext
  *     {...step 1...},
  *     {
  *       "text": "Create report",
- *       "type": "command",
+ *       "type": "COMMAND",
  *       "certainty": 1.0,
  *       "entities": ["report"],
  *       "depends_on": [0, 1]  // now depends on both 0 and 1

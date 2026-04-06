@@ -37,11 +37,11 @@ import com.gromozeka.domain.tool.ToolExecutionContext
  *
  * # When to Use
  *
- * **Call after:**
- * - Step execution finished (all tools called, work done)
- * - Got final answer for query
- * - Completed command execution
- * - Processed inform/commit/correct/condition/evaluate
+     * **Call after:**
+     * - Step execution finished (all tools called, work done)
+     * - Got final answer for QUERY
+     * - Completed COMMAND execution
+     * - Processed INFORM / COMMIT / CORRECT / CONDITION / EVALUATE
  *
  * **Success examples:**
  * - "Found 15 TODO items, grouped by priority"

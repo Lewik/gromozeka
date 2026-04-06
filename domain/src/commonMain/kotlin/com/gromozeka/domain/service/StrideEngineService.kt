@@ -156,13 +156,13 @@ interface StrideEngineService {
      * Generates instruction text for LLM based on step type and certainty.
      *
      * Instruction templates by type:
-     * - command: "Execute task: '{text}'. Gather context, use tools, complete..."
-     * - query: "Answer question: '{text}'. Research topic, gather information..."
-     * - inform: "User states: '{text}'. Related issues? Consequences?..."
-     * - correct: "User corrects: '{text}'. What depended on old fact?..."
-     * - evaluate: "User opines: '{text}'. Do you agree? Arguments?..."
-     * - commit: "User commits: '{text}'. Record. Dependencies?..."
-     * - condition: "User sets condition: '{text}'. Is it satisfied?..."
+     * - COMMAND: "Execute task: '{text}'. Gather context, use tools, complete..."
+     * - QUERY: "Answer question: '{text}'. Research topic, gather information..."
+     * - INFORM: "User states: '{text}'. Related issues? Consequences?..."
+     * - CORRECT: "User corrects: '{text}'. What depended on old fact?..."
+     * - EVALUATE: "User opines: '{text}'. Do you agree? Arguments?..."
+     * - COMMIT: "User commits: '{text}'. Record. Dependencies?..."
+     * - CONDITION: "User sets condition: '{text}'. Is it satisfied?..."
      *
      * If certainty < 1.0, adds modifier:
      * "Confidence in this statement is low ({certainty}). Gather additional
@@ -185,8 +185,7 @@ interface StrideEngineService {
 /**
  * Step input from create_plan or update_plan tool.
  *
- * Pure domain type - uses kotlinx.serialization types.
- * Infrastructure layer (infrastructure-ai) converts this to/from Jackson DTOs.
+ * Pure domain type shared across tool contracts and application services.
  */
 @Serializable
 data class StepInput(
@@ -199,8 +198,8 @@ data class StepInput(
 
 /**
  * Unified tool_result structure for create_plan, step_complete tools.
- * 
- * Pure domain type - infrastructure layer converts to Jackson DTOs.
+ *
+ * Pure domain result shape shared across tool contracts and application services.
  */
 @Serializable
 data class PlanResult(
@@ -212,8 +211,8 @@ data class PlanResult(
 
 /**
  * Tool_result structure for update_plan (can be success or error).
- * 
- * Pure domain type - infrastructure layer converts to Jackson DTOs.
+ *
+ * Pure domain result shape shared across tool contracts and application services.
  */
 @Serializable
 data class UpdatePlanResult(
@@ -227,8 +226,8 @@ data class UpdatePlanResult(
 
 /**
  * Step runtime representation (full state including execution progress).
- * 
- * Pure domain type - infrastructure layer converts to Jackson DTOs.
+ *
+ * Pure domain result shape shared across tool contracts and application services.
  */
 @Serializable
 data class StepRuntime(

@@ -141,7 +141,7 @@ class StrideEngineApplicationService(
             StepRuntime(
                 id = step.position,
                 text = step.text,
-                type = step.type.name.lowercase(),
+                type = step.type.name,
                 status = if (step.id == firstStep.id) Step.Status.IN_PROGRESS.name else step.status.name,
                 result = step.result,
                 certainty = step.certainty,
@@ -313,7 +313,7 @@ class StrideEngineApplicationService(
             StepRuntime(
                 id = step.position,
                 text = step.text,
-                type = step.type.name.lowercase(),
+                type = step.type.name,
                 status = step.status.name,
                 result = step.result,
                 certainty = step.certainty,
@@ -342,13 +342,13 @@ class StrideEngineApplicationService(
      * Generates instruction text for LLM based on step type and certainty.
      *
      * Instruction templates by type:
-     * - command: "Execute task: '{text}'. Gather context, use tools, complete..."
-     * - query: "Answer question: '{text}'. Research topic, gather information..."
-     * - inform: "User states: '{text}'. Related issues? Consequences?..."
-     * - correct: "User corrects: '{text}'. What depended on old fact?..."
-     * - evaluate: "User opines: '{text}'. Do you agree? Arguments?..."
-     * - commit: "User commits: '{text}'. Record. Dependencies?..."
-     * - condition: "User sets condition: '{text}'. Is it satisfied?..."
+     * - COMMAND: "Execute task: '{text}'. Gather context, use tools, complete..."
+     * - QUERY: "Answer question: '{text}'. Research topic, gather information..."
+     * - INFORM: "User states: '{text}'. Related issues? Consequences?..."
+     * - CORRECT: "User corrects: '{text}'. What depended on old fact?..."
+     * - EVALUATE: "User opines: '{text}'. Do you agree? Arguments?..."
+     * - COMMIT: "User commits: '{text}'. Record. Dependencies?..."
+     * - CONDITION: "User sets condition: '{text}'. Is it satisfied?..."
      *
      * If certainty < 1.0, adds modifier.
      */
@@ -498,7 +498,7 @@ class StrideEngineApplicationService(
             StepRuntime(
                 id = step.position,
                 text = step.text,
-                type = step.type.name.lowercase(),
+                type = step.type.name,
                 status = status.name,
                 result = stepResult,
                 certainty = step.certainty,

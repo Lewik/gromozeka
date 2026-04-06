@@ -14,7 +14,7 @@ import kotlinx.serialization.Serializable
  * ```json
  * {
  *   "text": "Find all TODO in project",
- *   "type": "command",
+ *   "type": "COMMAND",
  *   "certainty": 1.0,
  *   "entities": ["TODO", "project"],
  *   "depends_on": []
@@ -28,7 +28,7 @@ import kotlinx.serialization.Serializable
  * {
  *   "id": 0,
  *   "text": "Find all TODO in project",
- *   "type": "command",
+ *   "type": "COMMAND",
  *   "status": "IN_PROGRESS",
  *   "result": null,
  *   "certainty": 1.0,
@@ -45,13 +45,13 @@ import kotlinx.serialization.Serializable
  *
  * | Type | Purpose | Execution |
  * |------|---------|-----------|
- * | command | Execute action ("find all TODO") | LLM + tools |
- * | query | Request info/analysis ("what's better?") | LLM + tools |
- * | inform | State fact ("we use PostgreSQL") | LLM analyzes |
- * | commit | Promise ("I'll fix tomorrow") | LLM records |
- * | correct | Fix fact ("no, it's MySQL") | LLM updates |
- * | condition | Set constraint ("if Kotlin") | LLM checks |
- * | evaluate | Give opinion ("this is better") | LLM analyzes |
+ * | COMMAND | Execute action ("find all TODO") | LLM + tools |
+ * | QUERY | Request info/analysis ("what's better?") | LLM + tools |
+ * | INFORM | State fact ("we use PostgreSQL") | LLM analyzes |
+ * | COMMIT | Promise ("I'll fix tomorrow") | LLM records |
+ * | CORRECT | Fix fact ("no, it's MySQL") | LLM updates |
+ * | CONDITION | Set constraint ("if Kotlin") | LLM checks |
+ * | EVALUATE | Give opinion ("this is better") | LLM analyzes |
  *
  * All steps executed through LLM + tools. Type determines instruction template.
  *
@@ -63,7 +63,7 @@ import kotlinx.serialization.Serializable
  * @property type step type (determines instruction template)
  * @property certainty confidence level (0.0-1.0): 1.0 = fact, 0.5 = guess, 0.0 = doubt
  * @property entities key entities/technologies mentioned (for graph linking)
- * @property meta arbitrary metadata for specific type (e.g., {"deadline": "tomorrow"} for commit)
+ * @property meta arbitrary metadata for specific type (e.g., {"deadline": "tomorrow"} for COMMIT)
  * @property position order in plan (0-based, respects depends_on)
  * @property status current execution status
  * @property result execution result (null until completed/failed)
@@ -97,8 +97,7 @@ data class Step(
      * Based on speech act taxonomy (Searle 1975, ISO 24617-2).
      * Type guides app in forming instruction for LLM in tool_result.
      *
-     * Pure domain enum - no serialization concerns.
-     * Jackson serialization configured in infrastructure-ai layer.
+     * Pure domain enum serialized using enum names as-is.
      */
     enum class Type {
         /** Execute action (e.g., "find all TODO", "run tests") */
