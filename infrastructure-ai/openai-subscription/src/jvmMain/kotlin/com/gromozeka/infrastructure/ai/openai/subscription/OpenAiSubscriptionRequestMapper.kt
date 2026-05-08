@@ -2,7 +2,6 @@ package com.gromozeka.infrastructure.ai.openai.subscription
 
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
-import com.gromozeka.domain.model.ai.AiAutoCompaction
 import com.gromozeka.domain.model.ai.AiResponseFormat
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.model.ai.AiToolChoice
@@ -55,7 +54,7 @@ class OpenAiSubscriptionRequestMapper {
             model = modelName,
             input = inputItems,
             instructions = instructions,
-            contextManagement = buildContextManagement(request.options.autoCompaction),
+            contextManagement = buildContextManagement(request.options.autoCompactionThresholdTokens),
             tools = sortedTools.map { tool -> tool.toToolJson() },
             toolChoice = request.options.toolChoice.toToolChoiceJson().takeIf { sortedTools.isNotEmpty() },
             text = buildTextConfig(request.options.responseFormat),
@@ -267,9 +266,8 @@ class OpenAiSubscriptionRequestMapper {
         }
     }
 
-    private fun buildContextManagement(autoCompaction: AiAutoCompaction?): List<JsonObject>? {
-        val threshold = autoCompaction?.threshold ?: return null
-
+    private fun buildContextManagement(autoCompactionThresholdTokens: Int?): List<JsonObject>? {
+        val threshold = autoCompactionThresholdTokens ?: return null
         return listOf(
             buildJsonObject {
                 put("type", "compaction")
@@ -641,7 +639,7 @@ class OpenAiSubscriptionRequestMapper {
                 "tools=${sortedTools.size}, " +
                 "toolChoice=${requestPayload.toolChoice?.toString()?.take(80) ?: "omitted"}, " +
                 "toolSignature=${toolSignature.toUInt().toString(16)}, " +
-                "autoCompaction=${request.options.autoCompaction != null}, " +
+                "autoCompactionThreshold=${request.options.autoCompactionThresholdTokens ?: "omitted"}, " +
                 "responseFormat=${request.options.responseFormat.logName()}, " +
                 "payloadChars=${payloadChars ?: -1}"
         )

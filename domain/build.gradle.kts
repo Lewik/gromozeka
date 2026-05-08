@@ -27,5 +27,11 @@ kotlin {
                 implementation(libs.spring.ai.openai)
             }
         }
+
+        val jvmTest by getting {
+            dependencies {
+                implementation(kotlin("test"))
+            }
+        }
     }
 }

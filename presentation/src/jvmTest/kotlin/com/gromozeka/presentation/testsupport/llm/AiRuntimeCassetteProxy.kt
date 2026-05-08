@@ -4,7 +4,6 @@ import com.gromozeka.domain.model.AIProvider
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ai.AiAssistantMessage
-import com.gromozeka.domain.model.ai.AiAutoCompaction
 import com.gromozeka.domain.model.ai.AiResponseFormat
 import com.gromozeka.domain.model.ai.AiRuntimeCapabilities
 import com.gromozeka.domain.model.ai.AiRuntimeOptions
@@ -737,7 +736,7 @@ private fun AiRuntimeOptions.toCassetteOptionsSnapshot(
         maxTokens = maxTokens,
         thinking = thinking?.let { cassetteJson.encodeToJsonElement(AgentDefinition.ThinkingConfig.serializer(), it) },
         outputConfig = outputConfig?.let { cassetteJson.encodeToJsonElement(AgentDefinition.OutputConfig.serializer(), it) },
-        autoCompactionThreshold = autoCompaction?.threshold,
+        autoCompactionThreshold = autoCompactionThresholdTokens,
         toolChoice = toolChoice.toCassetteJson(),
         responseFormat = responseFormat.toCassetteJson(runtimeBindings),
         toolContext = JsonObject(

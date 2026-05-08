@@ -23,19 +23,11 @@ data class AiRuntimeOptions(
     val maxTokens: Int? = null,
     val thinking: AgentDefinition.ThinkingConfig? = null,
     val outputConfig: AgentDefinition.OutputConfig? = null,
-    val autoCompaction: AiAutoCompaction? = null,
+    val autoCompactionThresholdTokens: Int? = null,
     val toolChoice: AiToolChoice = AiToolChoice.Auto,
     val responseFormat: AiResponseFormat = AiResponseFormat.Text,
     val toolContext: Map<String, Any?> = emptyMap(),
 )
-
-data class AiAutoCompaction(
-    val threshold: Int = DEFAULT_THRESHOLD,
-) {
-    companion object {
-        const val DEFAULT_THRESHOLD = 12_000
-    }
-}
 
 sealed class AiToolChoice {
     data object Auto : AiToolChoice()

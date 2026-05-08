@@ -13,7 +13,8 @@ import com.gromozeka.domain.model.memory.DirectStructuredMemoryWriteResult
 import com.gromozeka.domain.model.memory.MemoryReadResult
 import com.gromozeka.domain.model.memory.MemoryUpdateBatch
 import com.gromozeka.domain.model.ai.AiRuntimeOptions
-import com.gromozeka.domain.model.ai.AiAutoCompaction
+import com.gromozeka.domain.model.ai.AiModelSpec
+import com.gromozeka.domain.model.ai.AiModelSpecs
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.model.ai.AiToolChoice
 import com.gromozeka.domain.service.AgentDomainService
@@ -102,6 +103,18 @@ class ConversationEngineService(
             modelName,
             project.path
         )
+        val modelProvider = AiModelSpec.Provider.valueOf(provider.name)
+        val autoCompactionThresholdTokens = if (runtime.capabilities.supportsAutoCompaction) {
+            AiModelSpecs.byProviderAndId[modelProvider to modelName]?.autoCompactionThresholdTokens.also { threshold ->
+                if (threshold == null) {
+                    log.warn { "Auto compaction disabled: context window is not configured for model=$modelName" }
+                } else {
+                    log.info { "Auto compaction configured: model=$modelName threshold=$threshold" }
+                }
+            }
+        } else {
+            null
+        }
         val availableTools = aiToolProvider.getTools()
         val baseSystemPrompts = agentDomainService.assembleSystemPrompt(agent, project)
         val systemPrompts = baseSystemPrompts
@@ -281,9 +294,7 @@ class ConversationEngineService(
                     maxTokens = agent.maxTokens,
                     thinking = agent.thinking,
                     outputConfig = agent.outputConfig,
-                    autoCompaction = runtime.capabilities.supportsAutoCompaction
-                        .takeIf { it }
-                        ?.let { AiAutoCompaction() },
+                    autoCompactionThresholdTokens = autoCompactionThresholdTokens,
                     toolChoice = toolChoice,
                     toolContext = mapOf(
                         "projectPath" to project.path,

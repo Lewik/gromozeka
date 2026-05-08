@@ -1,6 +1,7 @@
 package com.gromozeka.infrastructure.ai.openai.subscription
 
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.ai.AiRuntimeOptions
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import kotlinx.datetime.Instant
 import kotlinx.serialization.json.JsonArray
@@ -12,6 +13,7 @@ import kotlinx.serialization.json.put
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 
 class OpenAiSubscriptionRequestMapperTest {
     private val mapper = OpenAiSubscriptionRequestMapper()
@@ -68,6 +70,38 @@ class OpenAiSubscriptionRequestMapperTest {
         val itemTypes = request.input.map { it.string("type") }
         assertEquals(listOf("compaction"), itemTypes)
         assertFalse(request.input.any { it.string("type") == "function_call_output" })
+    }
+
+    @Test
+    fun mapsResolvedAutoCompactionThresholdIntoContextManagement() {
+        val request = mapper.toRequest(
+            request = AiRuntimeRequest(
+                systemPrompts = emptyList(),
+                messages = emptyList(),
+                options = AiRuntimeOptions(autoCompactionThresholdTokens = 945_000),
+            ),
+            modelName = "gpt-5.4",
+            conversationKey = "test-conversation",
+        )
+
+        val contextManagement = request.contextManagement?.single()
+        assertEquals("compaction", contextManagement?.string("type"))
+        assertEquals(945_000, contextManagement?.int("compact_threshold"))
+    }
+
+    @Test
+    fun omitsContextManagementWhenAutoCompactionThresholdIsAbsent() {
+        val request = mapper.toRequest(
+            request = AiRuntimeRequest(
+                systemPrompts = emptyList(),
+                messages = emptyList(),
+                options = AiRuntimeOptions(autoCompactionThresholdTokens = null),
+            ),
+            modelName = "gpt-5.4",
+            conversationKey = "test-conversation",
+        )
+
+        assertNull(request.contextManagement)
     }
 
     private fun assistantCompactionMessage(
@@ -132,4 +166,7 @@ class OpenAiSubscriptionRequestMapperTest {
 
     private fun JsonObject.string(key: String): String? =
         this[key]?.jsonPrimitive?.contentOrNull
+
+    private fun JsonObject.int(key: String): Int? =
+        this[key]?.jsonPrimitive?.contentOrNull?.toIntOrNull()
 }

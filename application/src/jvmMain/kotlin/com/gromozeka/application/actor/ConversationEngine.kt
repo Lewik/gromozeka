@@ -6,7 +6,8 @@ import com.gromozeka.domain.model.AIProvider
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ai.AiRuntimeOptions
-import com.gromozeka.domain.model.ai.AiAutoCompaction
+import com.gromozeka.domain.model.ai.AiModelSpec
+import com.gromozeka.domain.model.ai.AiModelSpecs
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.service.AgentDomainService
 import com.gromozeka.domain.service.AiRuntimeProvider
@@ -511,6 +512,18 @@ class ConversationEngine(
             
             val systemPrompts = agentDomainService.assembleSystemPrompt(definition, project)
             val runtime = aiRuntimeProvider.getRuntime(provider, modelName, project.path)
+            val modelProvider = AiModelSpec.Provider.valueOf(provider.name)
+            val autoCompactionThresholdTokens = if (runtime.capabilities.supportsAutoCompaction) {
+                AiModelSpecs.byProviderAndId[modelProvider to modelName]?.autoCompactionThresholdTokens.also { threshold ->
+                    if (threshold == null) {
+                        log.warn { "Auto compaction disabled: context window is not configured for model=$modelName" }
+                    } else {
+                        log.info { "Auto compaction configured: model=$modelName threshold=$threshold" }
+                    }
+                }
+            } else {
+                null
+            }
             val availableTools = aiToolProvider.getTools()
             
             var iteration = 0
@@ -529,9 +542,7 @@ class ConversationEngine(
                                 maxTokens = definition.maxTokens,
                                 thinking = definition.thinking,
                                 outputConfig = definition.outputConfig,
-                                autoCompaction = runtime.capabilities.supportsAutoCompaction
-                                    .takeIf { it }
-                                    ?.let { AiAutoCompaction() },
+                                autoCompactionThresholdTokens = autoCompactionThresholdTokens,
                                 toolContext = mapOf(
                                     "projectPath" to project.path,
                                     "conversationId" to conversationId.value

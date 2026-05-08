@@ -59,7 +59,7 @@ fun TokenStatisticsTable(
 
             // Context Window
             val contextWindow = tokenStats.modelId?.let {
-                com.gromozeka.domain.model.ModelContextWindows.getContextWindow(it)
+                com.gromozeka.domain.model.ai.AiModelSpecs.byProviderAndId.values.singleOrNull { spec -> spec.id == it }?.contextWindowTokens
             }
             val currentContext = tokenStats.currentContextSize
 
