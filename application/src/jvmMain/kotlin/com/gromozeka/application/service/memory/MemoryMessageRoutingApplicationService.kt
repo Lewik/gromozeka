@@ -40,6 +40,14 @@ class MemoryMessageRoutingApplicationService(
         runtimeSystemPrompts: List<String>,
         runtimeTools: List<AiToolCallback>,
     ): DirectStructuredMemoryWriteResult? {
+        if (!message.isMemoryRouteableTarget()) {
+            log.info {
+                "Memory router skipped: conversation=${conversationId.value} message=${message.id.value} " +
+                    "role=${message.role} reason=system_or_error_message"
+            }
+            return null
+        }
+
         val namespace = MemoryNamespace("project:${project.id.value}")
         val source = sourceMapper.toChatTurn(
             namespace = namespace,
@@ -192,6 +200,7 @@ class MemoryMessageRoutingApplicationService(
     ): MemoryThreadContext {
         val threadMessages = threadMessageRepository.getMessagesByThread(threadId)
             .filterNot { it.isSyntheticMemoryRuntimeMessage() }
+            .filter { it.isMemoryStageContextMessage() }
         val targetIndex = threadMessages.indexOfFirst { it.id == targetMessage.id }
         val contextMessages = if (targetIndex >= 0) {
             threadMessages.take(targetIndex + 1)
@@ -213,6 +222,12 @@ class MemoryMessageRoutingApplicationService(
 
     private fun Conversation.Message.isSyntheticMemoryRuntimeMessage(): Boolean =
         providerMetadata["syntheticKind"]?.jsonPrimitive?.contentOrNull == "memory"
+
+    private fun Conversation.Message.isMemoryRouteableTarget(): Boolean =
+        role != Conversation.Message.Role.SYSTEM && error == null
+
+    private fun Conversation.Message.isMemoryStageContextMessage(): Boolean =
+        role != Conversation.Message.Role.SYSTEM && error == null
 }
 
 private fun MemoryWriteRetrievalPlan.describeForLog(): String =

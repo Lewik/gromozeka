@@ -32,6 +32,8 @@ kotlin {
 
         val jvmTest by getting {
             dependencies {
+                implementation(project(":domain"))
+                implementation(libs.kotlinx.datetime)
                 implementation(kotlin("test"))
             }
         }

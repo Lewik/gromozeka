@@ -49,7 +49,7 @@ class OpenAiSubscriptionRequestMapper {
                 message = message,
                 replayCompactionOnly = replayWindow.compactionAnchorIndex == index,
             )
-        }
+        }.dropOrphanFunctionCallOutputs(conversationKey)
         val instructions = request.systemPrompts.joinToString("\n\n").trim().ifBlank { null }
         val requestPayload = OpenAiSubscriptionResponsesRequest(
             model = modelName,
@@ -125,7 +125,14 @@ class OpenAiSubscriptionRequestMapper {
         val compactionItems = hiddenReplayItems.filter { it.isCompactionReplayItem() }
 
         if (replayCompactionOnly && compactionItems.isNotEmpty()) {
-            return compactionItems
+            return compactionItems + content.filterIsInstance<Conversation.Message.ContentItem.ToolCall>()
+                .map { toolCall ->
+                    functionCallItem(
+                        callId = toolCall.id.value,
+                        name = toolCall.call.name,
+                        arguments = toolCall.call.input.toString(),
+                    )
+                }
         }
 
         items += hiddenReplayItems
@@ -520,6 +527,42 @@ class OpenAiSubscriptionRequestMapper {
                     ?.let(::add)
             }
         }.joinToString("\n").trim()
+    }
+
+    private fun List<JsonObject>.dropOrphanFunctionCallOutputs(conversationKey: String): List<JsonObject> {
+        val knownCallIds = mutableSetOf<String>()
+        val droppedCallIds = mutableListOf<String>()
+        val retainedItems = mutableListOf<JsonObject>()
+
+        forEach { item ->
+            when (item["type"]?.jsonPrimitive?.contentOrNull) {
+                "function_call" -> {
+                    item["call_id"]?.jsonPrimitive?.contentOrNull?.let(knownCallIds::add)
+                    retainedItems += item
+                }
+
+                "function_call_output" -> {
+                    val callId = item["call_id"]?.jsonPrimitive?.contentOrNull
+                    if (callId != null && callId in knownCallIds) {
+                        retainedItems += item
+                    } else {
+                        droppedCallIds += callId ?: "<missing>"
+                    }
+                }
+
+                else -> retainedItems += item
+            }
+        }
+
+        if (droppedCallIds.isNotEmpty()) {
+            log.warn(
+                "OpenAI subscription request dropped orphan function_call_output item(s): " +
+                    "conversationKey=$conversationKey count=${droppedCallIds.size} " +
+                    "callIds=${droppedCallIds.take(8)}"
+            )
+        }
+
+        return retainedItems
     }
 
     private fun List<Conversation.Message>.toReplayWindow(): ReplayWindow {
