@@ -1,0 +1,125 @@
+{
+  "id": "preference-dedup-evidence",
+  "category": "preference_following",
+  "description": "A direct user preference should be stored once, deduplicated on repeat, recalled across sessions, and grounded only in user evidence.",
+  "timeoutSeconds": 900,
+  "seedSessions": [
+    {
+      "id": "seed-a",
+      "turns": [
+        "For future recommendations, remember that I prefer Toyota cars.",
+        {
+          "text": "For future recommendations, remember that I prefer Toyota cars.",
+          "memoryWriteTraceExpectation": {
+            "present": true,
+            "retrievedHitsMin": 1,
+            "rawClaimOpsMin": 1,
+            "claimOpsContainsAll": ["NOOP"],
+            "materializedClaimsMax": 0,
+            "containsAll": ["Toyota"]
+          }
+        }
+      ]
+    }
+  ],
+  "recallSessions": [
+    {
+      "id": "recall-b",
+      "turns": [
+        {
+          "text": "Which car brand should you remember that I prefer? Answer with only the brand name.",
+          "answerExpectation": {
+            "containsAll": ["Toyota"],
+            "containsNone": ["Honda", "BMW", "Ford"]
+          },
+          "memoryTraceExpectation": {
+            "needMemory": true,
+            "injectedPromptPresent": true,
+            "selectedClaimsMin": 1,
+            "requiredSelectedClaims": [
+              {
+                "predicateIn": ["prefers"],
+                "objectEntityCanonicalNameIn": ["Toyota", "Toyota cars"],
+                "normalizedContainsAll": ["Toyota"]
+              }
+            ],
+            "injectedPromptContainsAll": ["Toyota"]
+          }
+        },
+        {
+          "text": "When did I say that I prefer Toyota cars? Answer with the exact quote if memory has it.",
+          "answerExpectation": {
+            "containsAll": ["For future recommendations, remember that I prefer Toyota cars."],
+            "containsNone": ["Honda", "BMW", "Ford"]
+          },
+          "memoryTraceExpectation": {
+            "needMemory": true,
+            "injectedPromptPresent": true,
+            "selectedHitsMin": 2,
+            "requiredSelectedClaims": [
+              {
+                "predicateIn": ["prefers"],
+                "objectEntityCanonicalNameIn": ["Toyota", "Toyota cars"],
+                "normalizedContainsAll": ["Toyota"]
+              }
+            ],
+            "injectedPromptContainsAll": ["For future recommendations, remember that I prefer Toyota cars."]
+          }
+        }
+      ]
+    }
+  ],
+  "expectedAfterSeeds": {
+    "activeClaimsMin": 1,
+    "activeClaimsMax": 1,
+    "userSourcesMin": 2,
+    "requiredEntities": [
+      {
+        "typeIn": ["USER"],
+        "canonicalNameIn": ["User"]
+      },
+      {
+        "canonicalNameIn": ["Toyota", "Toyota cars"],
+        "containsAll": ["Toyota"]
+      }
+    ],
+    "requiredClaims": [
+      {
+        "predicateIn": ["prefers"],
+        "subjectEntityTypeIn": ["USER"],
+        "objectEntityCanonicalNameIn": ["Toyota", "Toyota cars"],
+        "normalizedContainsAll": ["Toyota"],
+        "evidenceQuoteContainsAll": ["I prefer Toyota cars"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      }
+    ],
+    "allActiveClaimsEvidenceSpeakerRoleIn": ["USER"]
+  },
+  "expectedFinal": {
+    "activeClaimsMin": 1,
+    "activeClaimsMax": 1,
+    "userSourcesMin": 4,
+    "requiredClaims": [
+      {
+        "predicateIn": ["prefers"],
+        "subjectEntityTypeIn": ["USER"],
+        "objectEntityCanonicalNameIn": ["Toyota", "Toyota cars"],
+        "normalizedContainsAll": ["Toyota"],
+        "evidenceQuoteContainsAll": ["I prefer Toyota cars"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      }
+    ],
+    "forbiddenClaims": [
+      {
+        "containsAll": ["Honda"]
+      },
+      {
+        "containsAll": ["BMW"]
+      },
+      {
+        "containsAll": ["Ford"]
+      }
+    ],
+    "allActiveClaimsEvidenceSpeakerRoleIn": ["USER"]
+  }
+}

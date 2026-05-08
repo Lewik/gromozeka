@@ -298,9 +298,9 @@ open class AppViewModel(
 
         try {
             conversationEngineService.addToGraphCurrentThread(current.conversationId)
-            log.info { "Added current thread to knowledge graph for conversation: ${current.conversationId}" }
+            log.info { "Added current thread to typed memory for conversation: ${current.conversationId}" }
         } catch (e: Exception) {
-            log.error(e) { "Failed to add current thread to graph: ${e.message}" }
+            log.error(e) { "Failed to add current thread to typed memory: ${e.message}" }
         }
     }
 
@@ -321,6 +321,54 @@ open class AppViewModel(
             log.info { "Indexed domain to graph: $result" }
         } catch (e: Exception) {
             log.error(e) { "Failed to index domain to graph: ${e.message}" }
+            throw e
+        }
+    }
+
+    suspend fun consolidateCurrentMemory() {
+        val current = currentTab.value ?: return
+
+        try {
+            conversationEngineService.consolidateCurrentMemory(current.conversationId)
+            log.info { "Consolidated memory for conversation: ${current.conversationId}" }
+        } catch (e: Exception) {
+            log.error(e) { "Failed to consolidate memory: ${e.message}" }
+            throw e
+        }
+    }
+
+    suspend fun repairCurrentMemory() {
+        val current = currentTab.value ?: return
+
+        try {
+            conversationEngineService.repairCurrentMemory(current.conversationId)
+            log.info { "Repaired memory for conversation: ${current.conversationId}" }
+        } catch (e: Exception) {
+            log.error(e) { "Failed to repair memory: ${e.message}" }
+            throw e
+        }
+    }
+
+    suspend fun maintainMemoryEntities() {
+        val current = currentTab.value ?: return
+
+        try {
+            conversationEngineService.maintainMemoryEntities(current.conversationId)
+            log.info { "Maintained memory entities for conversation: ${current.conversationId}" }
+        } catch (e: Exception) {
+            log.error(e) { "Failed to maintain memory entities: ${e.message}" }
+            throw e
+        }
+    }
+
+    suspend fun applyCurrentMemoryRetention() {
+        val current = currentTab.value ?: return
+
+        try {
+            conversationEngineService.applyCurrentMemoryRetention(current.conversationId)
+            log.info { "Applied memory retention for conversation: ${current.conversationId}" }
+        } catch (e: Exception) {
+            log.error(e) { "Failed to apply memory retention: ${e.message}" }
             throw e
         }
     }

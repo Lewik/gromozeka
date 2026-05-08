@@ -1,0 +1,48 @@
+{
+  "id": "uncertain-claim-confidence",
+  "category": "uncertainty",
+  "description": "An explicitly uncertain observation should not become a high-confidence structured fact; source fallback may still recall it as uncertain.",
+  "timeoutSeconds": 600,
+  "seedSessions": [
+    {
+      "id": "seed-a",
+      "turns": [
+        "I think Strider used to work more reliably, but I am not sure."
+      ]
+    }
+  ],
+  "recallSessions": [
+    {
+      "id": "recall-b",
+      "turns": [
+        {
+          "text": "What uncertain observation did I mention about Strider? Mention that it was uncertain.",
+          "answerExpectation": {
+            "containsAll": ["Strider"],
+            "containsAnyGroups": [
+              ["not sure", "uncertain", "seems", "think", "weren't sure", "weren’t sure"]
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "expectedAfterSeeds": {
+    "activeClaimsMax": 0,
+    "userSourcesMin": 1,
+    "forbiddenClaims": [
+      {
+        "containsAll": ["Strider"]
+      }
+    ]
+  },
+  "expectedFinal": {
+    "activeClaimsMax": 0,
+    "userSourcesMin": 2,
+    "forbiddenClaims": [
+      {
+        "containsAll": ["Strider"]
+      }
+    ]
+  }
+}

@@ -54,6 +54,26 @@ After any fix, verify:
 
 Pattern: `-q` first (saves tokens), full output only on error.
 
+## Codex Run Actions
+
+Codex App run buttons are configured in `.codex/environments/environment.toml`.
+Keep common local commands there so both the user and future Codex agents use the same entry points.
+
+Current high-value commands:
+```bash
+./gradlew :presentation:run -q
+./gradlew :presentation:build -q
+./gradlew :presentation:build :presentation:jvmTest --tests ApplicationContextTest -q
+./gradlew :application:jvmTest --tests 'com.gromozeka.application.service.memory.MemoryMaintenancePipelineTest' -q
+./gradlew :presentation:jvmTest --tests 'com.gromozeka.presentation.MemoryRealModelE2eTest' -Dgromozeka.memory.e2e=true -Dgromozeka.llm.cassette.mode=replay-only -q
+```
+
+Mongo is intentionally explicit:
+```bash
+GROMOZEKA_HOME="$PWD/dev-data/client/.gromozeka" docker compose -f "$PWD/presentation/src/jvmMain/resources/docker-compose.yml" up -d mongodb
+docker compose -f "$PWD/presentation/src/jvmMain/resources/docker-compose.yml" stop mongodb
+```
+
 ## Your Approach
 
 1. User tells you what's broken

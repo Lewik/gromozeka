@@ -112,20 +112,19 @@ interface SettingsProvider {
         get() = "http://localhost:11434"
 
     /**
-     * Enable vector storage for conversation messages.
+     * Enable graph-native knowledge memory.
      *
-     * When true, conversation messages are stored in Neo4j vector database for semantic search.
-     * Enables conversation search via unified_search tool.
+     * When false, conversation ingestion into the new knowledge graph is disabled.
      */
-    val vectorStorageEnabled: Boolean
+    val knowledgeMemoryEnabled: Boolean
         get() = true
 
     /**
-     * Auto-remember threads to vector memory after each assistant response.
+     * Auto-process threads into knowledge memory after each assistant response.
      *
-     * When true, automatically calls VectorMemoryService.rememberThread() after final assistant message.
-     * Only applies when [vectorStorageEnabled] is true.
-     * Enables incremental conversation indexing without manual intervention.
+     * When true, the conversation engine launches background memory ingestion
+     * after the final assistant message.
+     * Only applies when [knowledgeMemoryEnabled] is true.
      */
     val autoRememberThreads: Boolean
         get() = true

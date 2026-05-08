@@ -1,0 +1,131 @@
+{
+    "version": 1,
+    "hash": "a7387ad6e1a45acd5702f80194032f81b2002546a5753e61495e12706db2ff4b",
+    "provider": "OPEN_AI_SUBSCRIPTION",
+    "model": "gpt-5.3-codex",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>/projects/note-path-rationale",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "Current memory MVP direction: design rationale and trade-offs should be kept as notes first, not forced into claims; stable conclusions can be promoted later.",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "autoCompactionThreshold": 12000,
+            "maxTokens": 2048,
+            "outputConfig": null,
+            "responseFormat": {
+                "type": "text"
+            },
+            "thinking": null,
+            "toolChoice": {
+                "type": "auto"
+            },
+            "toolContext": {
+                "aiProvider": "OPEN_AI_SUBSCRIPTION",
+                "conversationId": "<conversation-key>",
+                "modelName": "gpt-5.3-codex",
+                "planId": null,
+                "projectPath": "gromozeka-e2e-<id>/projects/note-path-rationale"
+            }
+        },
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "Current memory MVP direction: design rationale and trade-offs should be kept as notes first, not forced into claims; stable conclusions can be promoted later.",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxTokens": 2048,
+            "thinking": null,
+            "outputConfig": null,
+            "autoCompactionThreshold": 12000,
+            "toolChoice": {
+                "type": "auto"
+            },
+            "responseFormat": {
+                "type": "text"
+            },
+            "toolContext": {
+                "aiProvider": "OPEN_AI_SUBSCRIPTION",
+                "conversationId": "<conversation-key>",
+                "modelName": "gpt-5.3-codex",
+                "planId": null,
+                "projectPath": "gromozeka-e2e-<id>/projects/note-path-rationale"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "Got it — for the MVP, capture design rationale and trade-offs as **notes first**, then **promote to claims only when conclusions are stable**.",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 81,
+                "completionTokens": 35,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

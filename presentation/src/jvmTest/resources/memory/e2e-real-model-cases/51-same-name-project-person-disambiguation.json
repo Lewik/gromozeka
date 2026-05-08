@@ -1,0 +1,122 @@
+{
+  "id": "same-name-project-person-disambiguation",
+  "category": "entity_disambiguation",
+  "description": "The same surface name used for a project and a person should not collapse project technical facts into personal preferences.",
+  "timeoutSeconds": 1000,
+  "seedSessions": [
+    {
+      "id": "seed-a",
+      "turns": [
+        "Memory test setup: there is a project named Atlas and a person named Atlas. For the Atlas project, the backend database is MongoDB. For Atlas the person, the preferred tutorial database is PostgreSQL."
+      ]
+    }
+  ],
+  "recallSessions": [
+    {
+      "id": "recall-b",
+      "turns": [
+        {
+          "text": "What database does the Atlas project backend use? Answer with only the database name.",
+          "answerExpectation": {
+            "containsAll": ["MongoDB"],
+            "containsNone": ["PostgreSQL", "SQLite", "Redis"]
+          },
+          "memoryTraceExpectation": {
+            "needMemory": true,
+            "injectedPromptPresent": true,
+            "selectedClaimsMin": 1,
+            "requiredSelectedClaims": [
+              {
+                "containsAll": ["Atlas", "MongoDB"]
+              }
+            ],
+            "forbiddenSelectedClaims": [
+              {
+                "normalizedContainsAll": ["Atlas", "PostgreSQL"]
+              }
+            ],
+            "injectedPromptContainsAll": ["Atlas", "MongoDB"],
+            "selectedContainsNone": ["Atlas the person prefers PostgreSQL"]
+          },
+          "memoryWriteTraceExpectation": {
+            "routeDecisionIn": ["NOOP"],
+            "materializedClaimsMax": 0,
+            "materializedNotesMax": 0,
+            "materializedTasksMax": 0
+          }
+        }
+      ]
+    },
+    {
+      "id": "recall-c",
+      "turns": [
+        {
+          "text": "Which tutorial database does Atlas the person prefer? Answer with only the database name.",
+          "answerExpectation": {
+            "containsAll": ["PostgreSQL"],
+            "containsNone": ["MongoDB", "SQLite", "Redis"]
+          },
+          "memoryTraceExpectation": {
+            "needMemory": true,
+            "injectedPromptPresent": true,
+            "selectedClaimsMin": 1,
+            "requiredSelectedClaims": [
+              {
+                "containsAll": ["Atlas", "PostgreSQL"]
+              }
+            ],
+            "forbiddenSelectedClaims": [
+              {
+                "normalizedContainsAll": ["Atlas", "MongoDB"]
+              }
+            ],
+            "injectedPromptContainsAll": ["Atlas", "PostgreSQL"],
+            "selectedContainsNone": ["Atlas project has MongoDB"]
+          },
+          "memoryWriteTraceExpectation": {
+            "routeDecisionIn": ["NOOP"],
+            "materializedClaimsMax": 0,
+            "materializedNotesMax": 0,
+            "materializedTasksMax": 0
+          }
+        }
+      ]
+    }
+  ],
+  "expectedAfterSeeds": {
+    "activeClaimsMin": 2,
+    "activeClaimsMax": 4,
+    "userSourcesMin": 1,
+    "requiredClaims": [
+      {
+        "containsAll": ["Atlas", "MongoDB"],
+        "evidenceQuoteContainsAll": ["Atlas project", "backend database is MongoDB"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      },
+      {
+        "containsAll": ["Atlas", "PostgreSQL"],
+        "evidenceQuoteContainsAll": ["Atlas the person", "preferred tutorial database is PostgreSQL"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      }
+    ],
+    "allActiveClaimsEvidenceSpeakerRoleIn": ["USER"]
+  },
+  "expectedFinal": {
+    "activeClaimsMin": 2,
+    "activeClaimsMax": 4,
+    "userSourcesMin": 3,
+    "requiredClaims": [
+      {
+        "containsAll": ["Atlas", "MongoDB"],
+        "evidenceQuoteContainsAll": ["Atlas project", "backend database is MongoDB"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      },
+      {
+        "containsAll": ["Atlas", "PostgreSQL"],
+        "evidenceQuoteContainsAll": ["Atlas the person", "preferred tutorial database is PostgreSQL"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      }
+    ],
+    "allActiveClaimsEvidenceSpeakerRoleIn": ["USER"]
+  }
+}

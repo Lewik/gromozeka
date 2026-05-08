@@ -1,0 +1,100 @@
+{
+  "id": "quoted-assistant-source-only",
+  "category": "assistant_source_policy",
+  "description": "A quoted diagnostic sentence that the user asks the assistant to repeat should not become durable structured memory.",
+  "timeoutSeconds": 300,
+  "seedSessions": [
+    {
+      "id": "seed-a",
+      "turns": [
+        "Please repeat exactly this diagnostic sentence and do not remember it as my preference or project fact: Memory Sandbox cache uses Redis."
+      ]
+    }
+  ],
+  "recallSessions": [
+    {
+      "id": "recall-b",
+      "turns": [
+        {
+          "text": "What cache does Memory Sandbox use? If memory lacks this, answer exactly: I don't have enough information.",
+          "answerExpectation": {
+            "containsAnyGroups": [
+              ["don't have enough information", "do not have enough information", "not enough information"]
+            ],
+            "containsNone": ["Redis"]
+          },
+          "memoryTraceExpectation": {
+            "needMemory": true,
+            "injectedPromptPresent": true,
+            "selectedHitsMax": 0,
+            "selectedClaimsMax": 0,
+            "selectedNotesMax": 0,
+            "selectedTasksMax": 0,
+            "selectedContainsNone": ["Redis"],
+            "selectorSelectedContainsNone": ["Redis", "Memory Sandbox"],
+            "injectedPromptContainsAll": ["No relevant persisted memory"],
+            "injectedPromptContainsNone": ["Redis", "Memory Sandbox"]
+          },
+          "memoryWriteTraceExpectation": {
+            "routeDecisionIn": ["NOOP"],
+            "materializedClaimsMax": 0,
+            "materializedNotesMax": 0,
+            "materializedTasksMax": 0
+          }
+        }
+      ]
+    }
+  ],
+  "expectedAfterSeeds": {
+    "activeClaimsMax": 0,
+    "userSourcesMin": 1,
+    "assistantSourcesMin": 1,
+    "requiredSources": [
+      {
+        "roleIn": ["USER"],
+        "textContainsAll": ["Memory Sandbox", "Redis"],
+        "allowStructuredExtraction": false,
+        "allowRecall": false,
+        "allowEvidenceHydration": false
+      },
+      {
+        "roleIn": ["ASSISTANT"],
+        "allowStructuredExtraction": false,
+        "allowRecall": false,
+        "allowEvidenceHydration": false,
+        "usagePolicyReasonContainsAll": ["assistant", "source-only"]
+      }
+    ],
+    "forbiddenClaims": [
+      {
+        "containsAll": ["Memory Sandbox", "Redis"]
+      }
+    ]
+  },
+  "expectedFinal": {
+    "activeClaimsMax": 0,
+    "userSourcesMin": 2,
+    "assistantSourcesMin": 2,
+    "requiredSources": [
+      {
+        "roleIn": ["USER"],
+        "textContainsAll": ["Memory Sandbox", "Redis"],
+        "allowStructuredExtraction": false,
+        "allowRecall": false,
+        "allowEvidenceHydration": false
+      },
+      {
+        "roleIn": ["ASSISTANT"],
+        "allowStructuredExtraction": false,
+        "allowRecall": false,
+        "allowEvidenceHydration": false,
+        "usagePolicyReasonContainsAll": ["assistant", "source-only"]
+      }
+    ],
+    "forbiddenClaims": [
+      {
+        "containsAll": ["Memory Sandbox", "Redis"]
+      }
+    ]
+  }
+}

@@ -1,0 +1,72 @@
+{
+  "id": "ownership-not-preference-abstain",
+  "category": "abstention",
+  "description": "Owning a vehicle should not be generalized into a recommendation preference.",
+  "timeoutSeconds": 600,
+  "seedSessions": [
+    {
+      "id": "seed-a",
+      "turns": [
+        "For vehicle context: I own a Toyota RunX."
+      ]
+    }
+  ],
+  "recallSessions": [
+    {
+      "id": "recall-b",
+      "turns": [
+        {
+          "text": "Which car brand did I say I prefer? If memory lacks this exact preference, answer exactly: I don't have enough information.",
+          "answerExpectation": {
+            "containsAnyGroups": [
+              ["don't have enough information", "do not have enough information", "not enough information"]
+            ],
+            "containsNone": ["Honda", "BMW", "Ford"]
+          }
+        }
+      ]
+    }
+  ],
+  "expectedAfterSeeds": {
+    "activeClaimsMin": 1,
+    "activeClaimsMax": 1,
+    "userSourcesMin": 1,
+    "requiredClaims": [
+      {
+        "subjectEntityTypeIn": ["USER"],
+        "containsAll": ["Toyota", "RunX"],
+        "evidenceQuoteContainsAll": ["I own a Toyota RunX"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      }
+    ],
+    "forbiddenClaims": [
+      {
+        "predicateIn": ["prefers"],
+        "subjectEntityTypeIn": ["USER"],
+        "normalizedContainsAll": ["Toyota"]
+      }
+    ],
+    "allActiveClaimsEvidenceSpeakerRoleIn": ["USER"]
+  },
+  "expectedFinal": {
+    "activeClaimsMin": 1,
+    "activeClaimsMax": 1,
+    "userSourcesMin": 2,
+    "requiredClaims": [
+      {
+        "subjectEntityTypeIn": ["USER"],
+        "containsAll": ["Toyota", "RunX"],
+        "evidenceQuoteContainsAll": ["I own a Toyota RunX"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      }
+    ],
+    "forbiddenClaims": [
+      {
+        "predicateIn": ["prefers"],
+        "subjectEntityTypeIn": ["USER"],
+        "normalizedContainsAll": ["Toyota"]
+      }
+    ],
+    "allActiveClaimsEvidenceSpeakerRoleIn": ["USER"]
+  }
+}

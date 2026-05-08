@@ -1,0 +1,52 @@
+@startuml
+title Direct Structured Write
+
+actor User
+participant Runtime
+participant "Memory API" as API
+participant Router
+participant Retriever
+participant "Entity Canonicalizer" as Canon
+participant "Claim Extractor" as CExtract
+participant "Claim Reconciler" as CRecon
+participant "Task Updater" as TUpdate
+participant "Profile Updater" as PUpdate
+database DB
+
+User -> Runtime: Explicit fact / preference / task
+Runtime -> API: persist_source(turn)
+API -> DB: INSERT Source
+
+Runtime -> API: process_memory_write(source_id)
+API -> Router: route(latest_turns)
+Router --> API: direct_structured_write
+
+API -> Retriever: retrieve_for_update\n(claims, tasks, profile, sources)
+Retriever -> DB: SELECT candidate items
+Retriever --> API: candidate memory pack
+
+API -> Canon: canonicalize_entities(turn, candidates)
+Canon --> API: resolved entities
+
+API -> CExtract: extract_claims(turn, entities,\npredicate_catalog)
+CExtract --> API: candidate claims
+
+API -> CRecon: reconcile_claims(candidates,\nexisting claims)
+CRecon --> API: claim ops
+
+API -> TUpdate: update_tasks(turn, existing tasks)
+TUpdate --> API: task ops
+
+API -> PUpdate: rebuild_profile(existing profile,\npreview(claim ops), preview(task ops))
+PUpdate --> API: profile projection
+
+API -> DB: APPLY transaction\n(entities, claim ops, task ops,\nprofile, lineage)
+API -> DB: INSERT MemoryRun
+API --> Runtime: write complete
+
+note over API, DB
+Retrieval-before-update prevents duplicates,
+conflicts, and silent overwrites.
+end note
+
+@enduml

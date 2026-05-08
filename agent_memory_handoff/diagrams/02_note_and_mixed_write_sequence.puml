@@ -1,0 +1,67 @@
+@startuml
+title Note Write And Mixed Write
+
+actor User
+participant Runtime
+participant "Memory API" as API
+participant Router
+participant Retriever
+participant "Entity Canonicalizer" as Canon
+participant "Note Constructor" as NConstruct
+participant "Note Reconciler" as NRecon
+participant "Claim Extractor" as CExtract
+participant "Claim Reconciler" as CRecon
+participant "Task Updater" as TUpdate
+participant "Profile Updater" as PUpdate
+database DB
+
+User -> Runtime: Rationale / design discussion / mixed turn
+Runtime -> API: persist_source(turn)
+API -> DB: INSERT Source
+
+Runtime -> API: process_memory_write(source_id)
+API -> Router: route(latest_turns)
+Router --> API: note_write or mixed
+
+API -> Retriever: retrieve_for_update\n(notes, claims, tasks, profile, sources)
+Retriever -> DB: SELECT candidate items
+Retriever --> API: candidate memory pack
+
+API -> Canon: canonicalize_entities(turn, candidates)
+Canon --> API: resolved entities
+
+alt note_write
+    API -> NConstruct: construct_notes(turn, entities,\nretrieved notes, sources)
+    NConstruct --> API: candidate notes
+    API -> NRecon: reconcile_notes(candidates,\nexisting notes)
+    NRecon --> API: note ops
+    API -> DB: APPLY note transaction\n(notes, links, lineage)
+else mixed
+    API -> NConstruct: construct_notes(...)
+    NConstruct --> API: candidate notes
+    API -> NRecon: reconcile_notes(...)
+    NRecon --> API: note ops
+
+    API -> CExtract: extract_claims(turn, entities,\npredicate_catalog)
+    CExtract --> API: candidate claims
+    API -> CRecon: reconcile_claims(candidates,\nexisting claims)
+    CRecon --> API: claim ops
+
+    API -> TUpdate: update_tasks(turn, existing tasks)
+    TUpdate --> API: task ops
+
+    API -> PUpdate: rebuild_profile(...)
+    PUpdate --> API: profile projection
+
+    API -> DB: APPLY mixed transaction\n(note ops + structured ops + lineage)
+end
+
+API -> DB: INSERT MemoryRun
+API --> Runtime: write complete
+
+note over NConstruct, NRecon
+Notes capture rationale, direction, and evolving plans
+without forcing premature hard facts.
+end note
+
+@enduml

@@ -1,0 +1,72 @@
+{
+  "id": "explicit-do-not-store",
+  "category": "assistant_source_policy",
+  "description": "A user can mention a diagnostic fact while explicitly saying it must not be remembered as durable memory.",
+  "timeoutSeconds": 500,
+  "seedSessions": [
+    {
+      "id": "seed-a",
+      "turns": [
+        "Do not remember this as a fact: Project Mirage uses Cassandra."
+      ]
+    }
+  ],
+  "recallSessions": [
+    {
+      "id": "recall-b",
+      "turns": [
+        {
+          "text": "What database does Project Mirage use? If memory lacks this, answer exactly: I don't have enough information.",
+          "answerExpectation": {
+            "containsAnyGroups": [
+              ["don't have enough information", "do not have enough information", "not enough information"]
+            ],
+            "containsNone": ["Cassandra", "MongoDB", "PostgreSQL"]
+          },
+          "memoryTraceExpectation": {
+            "needMemory": true,
+            "injectedPromptPresent": true,
+            "selectedHitsMax": 0,
+            "selectedClaimsMax": 0
+          }
+        }
+      ]
+    }
+  ],
+  "expectedAfterSeeds": {
+    "activeClaimsMax": 0,
+    "userSourcesMin": 1,
+    "requiredSources": [
+      {
+        "roleIn": ["USER"],
+        "textContainsAll": ["Project Mirage", "Cassandra"],
+        "allowStructuredExtraction": false,
+        "allowRecall": false,
+        "allowEvidenceHydration": false
+      }
+    ],
+    "forbiddenClaims": [
+      {
+        "containsAll": ["Project Mirage", "Cassandra"]
+      }
+    ]
+  },
+  "expectedFinal": {
+    "activeClaimsMax": 0,
+    "userSourcesMin": 2,
+    "requiredSources": [
+      {
+        "roleIn": ["USER"],
+        "textContainsAll": ["Project Mirage", "Cassandra"],
+        "allowStructuredExtraction": false,
+        "allowRecall": false,
+        "allowEvidenceHydration": false
+      }
+    ],
+    "forbiddenClaims": [
+      {
+        "containsAll": ["Project Mirage", "Cassandra"]
+      }
+    ]
+  }
+}

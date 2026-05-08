@@ -336,7 +336,7 @@ fun GromozekaAppContent(
                                                     settings = currentSettings,
                                                     showSettingsPanel = showSettingsPanel,
                                                     onShowSettingsPanelChange = { showSettingsPanel = it },
-                                                    onRememberThread = if (currentSettings.vectorStorageEnabled) {
+                                                    onRememberThread = if (currentSettings.knowledgeMemoryEnabled) {
                                                         {
                                                             coroutineScope.launch {
                                                                 runCatching { appComponents.appViewModel.rememberCurrentThread() }
@@ -346,12 +346,52 @@ fun GromozekaAppContent(
                                                             }
                                                         }
                                                     } else null,
-                                                    onAddToGraph = if (currentSettings.graphStorageEnabled) {
+                                                    onAddToGraph = if (currentSettings.knowledgeMemoryEnabled) {
                                                         {
                                                             coroutineScope.launch {
                                                                 runCatching { appComponents.appViewModel.addToGraphCurrentThread() }
                                                                     .onFailure { error ->
-                                                                        log.warn(error) { "Add to graph failed: ${error.message}" }
+                                                                        log.warn(error) { "Add to typed memory failed: ${error.message}" }
+                                                                    }
+                                                            }
+                                                        }
+                                                    } else null,
+                                                    onConsolidateMemory = if (currentSettings.knowledgeMemoryEnabled) {
+                                                        {
+                                                            coroutineScope.launch {
+                                                                runCatching { appComponents.appViewModel.consolidateCurrentMemory() }
+                                                                    .onFailure { error ->
+                                                                        log.warn(error) { "Memory consolidation failed: ${error.message}" }
+                                                                    }
+                                                            }
+                                                        }
+                                                    } else null,
+                                                    onRepairMemory = if (currentSettings.knowledgeMemoryEnabled) {
+                                                        {
+                                                            coroutineScope.launch {
+                                                                runCatching { appComponents.appViewModel.repairCurrentMemory() }
+                                                                    .onFailure { error ->
+                                                                        log.warn(error) { "Memory repair failed: ${error.message}" }
+                                                                    }
+                                                            }
+                                                        }
+                                                    } else null,
+                                                    onMaintainMemoryEntities = if (currentSettings.knowledgeMemoryEnabled) {
+                                                        {
+                                                            coroutineScope.launch {
+                                                                runCatching { appComponents.appViewModel.maintainMemoryEntities() }
+                                                                    .onFailure { error ->
+                                                                        log.warn(error) { "Memory entity maintenance failed: ${error.message}" }
+                                                                    }
+                                                            }
+                                                        }
+                                                    } else null,
+                                                    onApplyMemoryRetention = if (currentSettings.knowledgeMemoryEnabled) {
+                                                        {
+                                                            coroutineScope.launch {
+                                                                runCatching { appComponents.appViewModel.applyCurrentMemoryRetention() }
+                                                                    .onFailure { error ->
+                                                                        log.warn(error) { "Memory retention failed: ${error.message}" }
                                                                     }
                                                             }
                                                         }

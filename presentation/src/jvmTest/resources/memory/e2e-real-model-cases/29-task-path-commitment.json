@@ -1,0 +1,77 @@
+{
+  "id": "task-path-commitment",
+  "category": "task_memory",
+  "description": "An explicit follow-up should become task memory and be recalled as an open task across sessions.",
+  "timeoutSeconds": 700,
+  "seedSessions": [
+    {
+      "id": "seed-a",
+      "turns": [
+        "Memory MVP follow-up: keep an open task to add real-model e2e coverage for task memory before we call the memory MVP stable."
+      ]
+    }
+  ],
+  "recallSessions": [
+    {
+      "id": "recall-b",
+      "turns": [
+        {
+          "text": "What open follow-up remains before we call the memory MVP stable? Keep it short.",
+          "answerExpectation": {
+            "containsAll": ["task memory"],
+            "containsAnyGroups": [
+              ["e2e coverage", "real-model e2e", "coverage"]
+            ],
+            "containsNone": ["done", "cancelled", "canceled"]
+          },
+          "memoryTraceExpectation": {
+            "needMemory": true,
+            "injectedPromptPresent": true,
+            "selectedTasksMin": 1,
+            "selectedContainsAll": ["task memory", "OPEN"],
+            "injectedPromptContainsAll": ["task memory", "memory MVP stable"],
+            "requiredSelectedTasks": [
+              {
+                "statusIn": ["OPEN"],
+                "containsAll": ["task memory", "e2e", "memory MVP stable"],
+                "evidenceSourceSpeakerRoleIn": ["USER"]
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "expectedAfterSeeds": {
+    "activeClaimsMax": 2,
+    "notesMax": 1,
+    "tasksMin": 1,
+    "tasksMax": 1,
+    "userSourcesMin": 1,
+    "requiredTasks": [
+      {
+        "statusIn": ["OPEN"],
+        "titleContainsAll": ["task memory"],
+        "containsAll": ["e2e", "memory MVP stable"],
+        "evidenceQuoteContainsAll": ["keep an open task"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      }
+    ],
+    "allActiveClaimsEvidenceSpeakerRoleIn": ["USER"]
+  },
+  "expectedFinal": {
+    "activeClaimsMax": 2,
+    "notesMax": 1,
+    "tasksMin": 1,
+    "tasksMax": 1,
+    "userSourcesMin": 2,
+    "requiredTasks": [
+      {
+        "statusIn": ["OPEN"],
+        "containsAll": ["task memory", "e2e", "memory MVP stable"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      }
+    ],
+    "allActiveClaimsEvidenceSpeakerRoleIn": ["USER"]
+  }
+}

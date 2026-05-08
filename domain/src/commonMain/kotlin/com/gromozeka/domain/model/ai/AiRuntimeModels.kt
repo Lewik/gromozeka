@@ -3,6 +3,8 @@ package com.gromozeka.domain.model.ai
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.tool.AiToolCallback
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonObject
 
 /**
  * Canonical request for one model execution step inside Gromozeka.
@@ -23,6 +25,7 @@ data class AiRuntimeOptions(
     val outputConfig: AgentDefinition.OutputConfig? = null,
     val autoCompaction: AiAutoCompaction? = null,
     val toolChoice: AiToolChoice = AiToolChoice.Auto,
+    val responseFormat: AiResponseFormat = AiResponseFormat.Text,
     val toolContext: Map<String, Any?> = emptyMap(),
 )
 
@@ -36,8 +39,20 @@ data class AiAutoCompaction(
 
 sealed class AiToolChoice {
     data object Auto : AiToolChoice()
+    data object None : AiToolChoice()
     data object RequiredAny : AiToolChoice()
     data class RequiredTool(val name: String) : AiToolChoice()
+}
+
+sealed class AiResponseFormat {
+    data object Text : AiResponseFormat()
+
+    data class JsonSchema(
+        val name: String,
+        val schema: JsonObject,
+        val description: String? = null,
+        val strict: Boolean = true,
+    ) : AiResponseFormat()
 }
 
 data class AiRuntimeCapabilities(
@@ -61,6 +76,7 @@ data class AiAssistantMessage(
     val metadata: Map<String, Any?> = emptyMap()
 )
 
+@Serializable
 data class AiUsage(
     val promptTokens: Int = 0,
     val completionTokens: Int = 0,

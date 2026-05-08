@@ -1,0 +1,167 @@
+{
+    "version": 1,
+    "hash": "15bd1b29d4fef12d2bd4b3423eb9fcad1c58846ab84ec993160fea6409897766",
+    "provider": "OPEN_AI_SUBSCRIPTION",
+    "model": "gpt-5.3-codex",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>/projects/profile-projection",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "content": "MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            Use the retrieved memory below only if it is relevant to the immediately following user request.\n            If retrieved memory is irrelevant or insufficient, ignore it or say that memory is insufficient.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and tasks for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n\n            Namespace: project:<0>\n            Answer mode: FACTUAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            - profile project:<1> Profile for User (USER).\nStable facts:\n- The user prefers English as the language for code comments in Kotlin code for this project.\n- The user prefers assistant responses in Russian for this project when discussing implementation decisions.\n- The user wants comments to be added only when genuinely needed for Kotlin code in this project.\n- The user prefers concise answer detail for this project when discussing implementation decisions.\n\n            Retrieved tasks:\n            none\n\n            Retrieved claims:\n            none\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            none\n\n            Retrieved entities:\n            - entity entity:<0> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "level": "INFO",
+                        "state": "COMPLETE",
+                        "toolUseId": null,
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.System"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "SYSTEM"
+            },
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "How should you adapt your answer style for me in this project? Keep it short.",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "autoCompactionThreshold": 12000,
+            "maxTokens": 2048,
+            "outputConfig": null,
+            "responseFormat": {
+                "type": "text"
+            },
+            "thinking": null,
+            "toolChoice": {
+                "type": "auto"
+            },
+            "toolContext": {
+                "aiProvider": "OPEN_AI_SUBSCRIPTION",
+                "conversationId": "<conversation-key>",
+                "modelName": "gpt-5.3-codex",
+                "planId": null,
+                "projectPath": "gromozeka-e2e-<id>/projects/profile-projection"
+            }
+        },
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "SYSTEM",
+                "content": [
+                    {
+                        "content": "MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            Use the retrieved memory below only if it is relevant to the immediately following user request.\n            If retrieved memory is irrelevant or insufficient, ignore it or say that memory is insufficient.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and tasks for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n\n            Namespace: project:<0>\n            Answer mode: FACTUAL\n            Require evidence fallback: true\n\n            Retrieved profile:\n            - profile project:<1> Profile for User (USER).\nStable facts:\n- The user prefers English as the language for code comments in Kotlin code for this project.\n- The user prefers assistant responses in Russian for this project when discussing implementation decisions.\n- The user wants comments to be added only when genuinely needed for Kotlin code in this project.\n- The user prefers concise answer detail for this project when discussing implementation decisions.\n\n            Retrieved tasks:\n            none\n\n            Retrieved claims:\n            none\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            none\n\n            Retrieved entities:\n            - entity entity:<0> [USER]: User; The user interacting with this agent.\n\n            Retrieved episodes:\n            none",
+                        "level": "INFO",
+                        "state": "COMPLETE",
+                        "toolUseId": null,
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.System"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "How should you adapt your answer style for me in this project? Keep it short.",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxTokens": 2048,
+            "thinking": null,
+            "outputConfig": null,
+            "autoCompactionThreshold": 12000,
+            "toolChoice": {
+                "type": "auto"
+            },
+            "responseFormat": {
+                "type": "text"
+            },
+            "toolContext": {
+                "aiProvider": "OPEN_AI_SUBSCRIPTION",
+                "conversationId": "<conversation-key>",
+                "modelName": "gpt-5.3-codex",
+                "planId": null,
+                "projectPath": "gromozeka-e2e-<id>/projects/profile-projection"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "- Отвечать по-русски (для обсуждения реализации).\n- Кратко и по делу.\n- В Kotlin-комментариях использовать английский.\n- Добавлять комментарии в Kotlin только когда это действительно нужно.",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 419,
+                "completionTokens": 49,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

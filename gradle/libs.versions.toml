@@ -39,6 +39,7 @@ neo4j-driver = "5.26.0"
 ktreesitter = "0.24.1"
 lsp4j = "0.23.1"
 openai-java = "4.13.0"
+mongodb-driver = "5.6.4"
 
 [libraries]
 # Ktor
@@ -141,6 +142,10 @@ jagged-framework = { module = "com.exceptionfactory.jagged:jagged-framework", ve
 
 # Neo4j Driver (Knowledge Graph - Phase 2)
 neo4j-driver = { module = "org.neo4j.driver:neo4j-java-driver", version.ref = "neo4j-driver" }
+
+# MongoDB
+mongodb-driver-kotlin-coroutine = { module = "org.mongodb:mongodb-driver-kotlin-coroutine", version.ref = "mongodb-driver" }
+mongodb-bson-kotlinx = { module = "org.mongodb:bson-kotlinx", version.ref = "mongodb-driver" }
 
 # Testing
 junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit" }

@@ -1,0 +1,72 @@
+{
+  "id": "task-path-cancel",
+  "category": "task_memory",
+  "description": "A cancellation message should cancel an existing task instead of keeping it open or creating another task.",
+  "timeoutSeconds": 900,
+  "seedSessions": [
+    {
+      "id": "seed-a",
+      "turns": [
+        "Memory MVP follow-up: keep an open task to run a temporary task memory cancellation experiment.",
+        "Cancel the temporary task memory cancellation experiment follow-up because we decided not to do it."
+      ]
+    }
+  ],
+  "recallSessions": [
+    {
+      "id": "recall-b",
+      "turns": [
+        {
+          "text": "What is the status of the temporary task memory cancellation experiment follow-up? Answer with only CANCELLED or OPEN.",
+          "answerExpectation": {
+            "containsAll": ["CANCELLED"],
+            "containsNone": ["OPEN"]
+          },
+          "memoryTraceExpectation": {
+            "needMemory": true,
+            "injectedPromptPresent": true,
+            "selectedTasksMin": 1,
+            "requiredSelectedTasks": [
+              {
+                "statusIn": ["CANCELLED"],
+                "containsAll": ["temporary task memory cancellation experiment"],
+                "evidenceSourceSpeakerRoleIn": ["USER"]
+              }
+            ],
+            "injectedPromptContainsAll": ["CANCELLED", "temporary task memory cancellation experiment"]
+          }
+        }
+      ]
+    }
+  ],
+  "expectedAfterSeeds": {
+    "activeClaimsMax": 2,
+    "notesMax": 1,
+    "tasksMin": 1,
+    "tasksMax": 1,
+    "userSourcesMin": 2,
+    "requiredTasks": [
+      {
+        "statusIn": ["CANCELLED"],
+        "containsAll": ["temporary task memory cancellation experiment"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      }
+    ],
+    "allActiveClaimsEvidenceSpeakerRoleIn": ["USER"]
+  },
+  "expectedFinal": {
+    "activeClaimsMax": 2,
+    "notesMax": 1,
+    "tasksMin": 1,
+    "tasksMax": 1,
+    "userSourcesMin": 3,
+    "requiredTasks": [
+      {
+        "statusIn": ["CANCELLED"],
+        "containsAll": ["temporary task memory cancellation experiment"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      }
+    ],
+    "allActiveClaimsEvidenceSpeakerRoleIn": ["USER"]
+  }
+}

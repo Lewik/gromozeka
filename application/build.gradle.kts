@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.kotlin.spring)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 kotlin {
@@ -19,6 +20,12 @@ kotlin {
                 
                 // kotlinx.serialization для JSON парсинга
                 implementation(libs.kotlinx.serialization.json)
+            }
+        }
+
+        val jvmTest by getting {
+            dependencies {
+                implementation(kotlin("test"))
             }
         }
     }

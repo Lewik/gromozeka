@@ -1,0 +1,71 @@
+{
+  "id": "used-to-current-preference",
+  "category": "knowledge_update",
+  "description": "A single sentence with used-to/current contrast should answer current-preference questions with the current value.",
+  "timeoutSeconds": 700,
+  "seedSessions": [
+    {
+      "id": "seed-a",
+      "turns": [
+        "I used to prefer Toyota cars, but now I prefer Honda cars."
+      ]
+    }
+  ],
+  "recallSessions": [
+    {
+      "id": "recall-b",
+      "turns": [
+        {
+          "text": "Which car brand do I currently prefer? Answer with only the brand name.",
+          "answerExpectation": {
+            "containsAll": ["Honda"],
+            "containsNone": ["Toyota", "BMW", "Ford"]
+          },
+          "memoryTraceExpectation": {
+            "needMemory": true,
+            "injectedPromptPresent": true,
+            "selectedClaimsMin": 1,
+            "requiredSelectedClaims": [
+              {
+                "predicateIn": ["prefers"],
+                "subjectEntityTypeIn": ["USER"],
+                "containsAll": ["Honda"]
+              }
+            ],
+            "injectedPromptContainsAll": ["Honda"]
+          }
+        }
+      ]
+    }
+  ],
+  "expectedAfterSeeds": {
+    "activeClaimsMin": 1,
+    "activeClaimsMax": 2,
+    "userSourcesMin": 1,
+    "requiredClaims": [
+      {
+        "predicateIn": ["prefers"],
+        "subjectEntityTypeIn": ["USER"],
+        "containsAll": ["Honda"],
+        "evidenceQuoteContainsAll": ["now I prefer Honda cars"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      }
+    ],
+    "allActiveClaimsEvidenceSpeakerRoleIn": ["USER"]
+  },
+  "expectedFinal": {
+    "activeClaimsMin": 1,
+    "activeClaimsMax": 2,
+    "userSourcesMin": 2,
+    "requiredClaims": [
+      {
+        "predicateIn": ["prefers"],
+        "subjectEntityTypeIn": ["USER"],
+        "containsAll": ["Honda"],
+        "evidenceQuoteContainsAll": ["now I prefer Honda cars"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      }
+    ],
+    "allActiveClaimsEvidenceSpeakerRoleIn": ["USER"]
+  }
+}

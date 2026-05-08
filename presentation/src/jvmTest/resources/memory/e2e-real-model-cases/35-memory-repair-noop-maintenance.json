@@ -1,0 +1,38 @@
+{
+  "id": "memory-repair-noop-maintenance",
+  "category": "maintenance_memory",
+  "description": "Manual memory repair should run auditably even when no suspicious duplicate cluster exists.",
+  "timeoutSeconds": 700,
+  "seedSessions": [
+    {
+      "id": "seed-a",
+      "turns": [
+        "For the memory repair MVP, the repair workflow must be conservative and audit-friendly."
+      ]
+    }
+  ],
+  "maintenanceAfterSeeds": ["repair_memory"],
+  "recallSessions": [],
+  "expectedAfterSeeds": {
+    "notesMin": 1,
+    "runsMin": 2,
+    "userSourcesMin": 1,
+    "requiredNotes": [
+      {
+        "containsAll": ["repair", "conservative", "audit"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      }
+    ]
+  },
+  "expectedFinal": {
+    "notesMin": 1,
+    "runsMin": 2,
+    "userSourcesMin": 1,
+    "requiredNotes": [
+      {
+        "containsAll": ["repair", "conservative", "audit"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      }
+    ]
+  }
+}

@@ -1,0 +1,61 @@
+{
+  "id": "exact-entity-mismatch-abstain",
+  "category": "abstention",
+  "description": "Recall should not answer a nearby but different role when the question asks for an exact entity/role.",
+  "timeoutSeconds": 600,
+  "seedSessions": [
+    {
+      "id": "seed-a",
+      "turns": [
+        "For Nimbus account context: Alex is the Senior Sales Engineer."
+      ]
+    }
+  ],
+  "recallSessions": [
+    {
+      "id": "recall-b",
+      "turns": [
+        {
+          "text": "Who is the Sales Manager for Nimbus? If memory lacks this exact role, answer exactly: I don't have enough information.",
+          "answerExpectation": {
+            "containsAnyGroups": [
+              ["don't have enough information", "do not have enough information", "not enough information"]
+            ],
+            "containsNone": ["Alex"]
+          }
+        }
+      ]
+    }
+  ],
+  "expectedAfterSeeds": {
+    "activeClaimsMin": 1,
+    "activeClaimsMax": 2,
+    "userSourcesMin": 1,
+    "requiredClaims": [
+      {
+        "containsAll": ["Nimbus", "Alex", "Senior Sales Engineer"],
+        "evidenceQuoteContainsAll": ["Alex is the Senior Sales Engineer"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      }
+    ],
+    "allActiveClaimsEvidenceSpeakerRoleIn": ["USER"]
+  },
+  "expectedFinal": {
+    "activeClaimsMin": 1,
+    "activeClaimsMax": 2,
+    "userSourcesMin": 2,
+    "requiredClaims": [
+      {
+        "containsAll": ["Nimbus", "Alex", "Senior Sales Engineer"],
+        "evidenceQuoteContainsAll": ["Alex is the Senior Sales Engineer"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      }
+    ],
+    "forbiddenClaims": [
+      {
+        "containsAll": ["Sales Manager"]
+      }
+    ],
+    "allActiveClaimsEvidenceSpeakerRoleIn": ["USER"]
+  }
+}

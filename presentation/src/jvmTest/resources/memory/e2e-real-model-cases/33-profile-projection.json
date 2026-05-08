@@ -1,0 +1,81 @@
+{
+  "id": "profile-projection",
+  "category": "profile_memory",
+  "description": "Profile projection should be rebuilt from stable profile-sync claims; broad style recall may use either the projection or more precise active claims.",
+  "timeoutSeconds": 900,
+  "seedSessions": [
+    {
+      "id": "seed-a",
+      "turns": [
+        "For this project, I prefer concise Russian answers when we discuss implementation decisions.",
+        "For Kotlin code in this project, I prefer English comments only when a comment is genuinely needed."
+      ]
+    }
+  ],
+  "recallSessions": [
+    {
+      "id": "recall-b",
+      "turns": [
+        {
+          "text": "How should you adapt your answer style for me in this project? Keep it short.",
+          "answerExpectation": {
+            "containsAnyGroups": [
+              ["Russian", "русск"],
+              ["concise", "кратк", "лаконич", "коротк"]
+            ]
+          },
+          "memoryWriteTraceExpectation": {
+            "present": true,
+            "routeDecisionIn": ["NOOP"],
+            "claimCandidatesMax": 0,
+            "claimOpsMax": 0,
+            "materializedClaimsMax": 0,
+            "materializedRunsMax": 0
+          },
+          "memoryTraceExpectation": {
+            "needMemory": true,
+            "injectedPromptPresent": true,
+            "selectedClaimsMin": 2,
+            "requiredSelectedClaims": [
+              {
+                "predicateIn": ["prefers_response_language"],
+                "containsAll": ["Russian", "implementation"]
+              },
+              {
+                "predicateIn": ["prefers_answer_detail"],
+                "containsAll": ["concise", "implementation"]
+              }
+            ],
+            "injectedPromptContainsAll": ["Russian", "concise"]
+          }
+        }
+      ]
+    }
+  ],
+  "expectedAfterSeeds": {
+    "activeClaimsMin": 2,
+    "profilesMin": 1,
+    "profilesMax": 2,
+    "userSourcesMin": 2,
+    "requiredProfiles": [
+      {
+        "ownerEntityTypeIn": ["USER"],
+        "textContainsAll": ["Russian", "concise", "English"]
+      }
+    ],
+    "allActiveClaimsEvidenceSpeakerRoleIn": ["USER"]
+  },
+  "expectedFinal": {
+    "activeClaimsMin": 2,
+    "profilesMin": 1,
+    "profilesMax": 2,
+    "userSourcesMin": 3,
+    "requiredProfiles": [
+      {
+        "ownerEntityTypeIn": ["USER"],
+        "textContainsAll": ["Russian", "concise", "English"]
+      }
+    ],
+    "allActiveClaimsEvidenceSpeakerRoleIn": ["USER"]
+  }
+}

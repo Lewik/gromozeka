@@ -1,0 +1,131 @@
+{
+    "version": 1,
+    "hash": "96d87da9896c59712983d3e627b23581adc2e45a8ec4803352c17b14e2af4257",
+    "provider": "OPEN_AI_SUBSCRIPTION",
+    "model": "gpt-5.3-codex",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>/projects/memory-repair-noop-maintenance",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "For the memory repair MVP, the repair workflow must be conservative and audit-friendly.",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "autoCompactionThreshold": 12000,
+            "maxTokens": 2048,
+            "outputConfig": null,
+            "responseFormat": {
+                "type": "text"
+            },
+            "thinking": null,
+            "toolChoice": {
+                "type": "auto"
+            },
+            "toolContext": {
+                "aiProvider": "OPEN_AI_SUBSCRIPTION",
+                "conversationId": "<conversation-key>",
+                "modelName": "gpt-5.3-codex",
+                "planId": null,
+                "projectPath": "gromozeka-e2e-<id>/projects/memory-repair-noop-maintenance"
+            }
+        },
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "For the memory repair MVP, the repair workflow must be conservative and audit-friendly.",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxTokens": 2048,
+            "thinking": null,
+            "outputConfig": null,
+            "autoCompactionThreshold": 12000,
+            "toolChoice": {
+                "type": "auto"
+            },
+            "responseFormat": {
+                "type": "text"
+            },
+            "toolContext": {
+                "aiProvider": "OPEN_AI_SUBSCRIPTION",
+                "conversationId": "<conversation-key>",
+                "modelName": "gpt-5.3-codex",
+                "planId": null,
+                "projectPath": "gromozeka-e2e-<id>/projects/memory-repair-noop-maintenance"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "Understood. For a **memory repair MVP**, make the workflow:\n\n1. **Read-only by default** (no silent mutations).  \n2. **Propose patch, don’t apply immediately** (human/policy approval gate).  \n3. **Minimal-diff repairs only** (smallest possible change).  \n4. **Fully logged** (before/after, reason, actor, timestamp, trace ID).  \n5. **Reversible** (store original, one-click rollback).  \n6. **Deterministic checks** (schema/consistency validation pre- and post-repair).  \n7. **Idempotent operations** (safe to retry without extra changes).  \n8. **Scoped permissions** (only repair service can patch, least privilege).  \n9. **Versioned records** (append-only history, never hard overwrite).  \n10. **Dry-run mode first** (show impact summary before commit).",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 68,
+                "completionTokens": 192,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

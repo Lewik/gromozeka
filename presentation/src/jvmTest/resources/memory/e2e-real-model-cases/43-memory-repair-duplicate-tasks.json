@@ -1,0 +1,104 @@
+{
+  "id": "memory-repair-duplicate-tasks",
+  "category": "maintenance_memory",
+  "description": "Manual memory repair should merge duplicate open tasks and leave one active follow-up for task recall.",
+  "timeoutSeconds": 900,
+  "preloadedMemory": [
+    {
+      "type": "duplicate_tasks",
+      "subjectName": "Memory E2E suite",
+      "subjectType": "PROJECT",
+      "scopeText": "Memory E2E follow-ups",
+      "taskTitle": "Add selector trace report to memory e2e",
+      "taskDescription": "Expose selector decisions in memory e2e reports.",
+      "firstText": "Follow-up: add selector trace report to memory e2e.",
+      "secondText": "Duplicate follow-up: add selector trace report to memory e2e."
+    }
+  ],
+  "maintenanceAfterSeeds": ["repair_memory"],
+  "maintenanceTraceExpectations": [
+    {
+      "present": true,
+      "stageIn": ["MEMORY_REPAIR"],
+      "tracesMin": 1,
+      "repairCandidateClustersMin": 1,
+      "repairSuspiciousHitsMin": 2,
+      "repairActionsMin": 1,
+      "repairMaterializedTasksMin": 1,
+      "repairMaterializedRunsMin": 1,
+      "repairAppliedOpsMin": 1,
+      "containsAll": ["DUPLICATE_TASKS", "MERGE_DUPLICATES", "selector trace"]
+    }
+  ],
+  "recallSessions": [
+    {
+      "id": "recall-b",
+      "turns": [
+        {
+          "text": "Which open follow-up exists for memory e2e trace reporting? Answer with the task title.",
+          "answerExpectation": {
+            "containsAll": ["selector trace", "memory e2e"],
+            "containsNone": ["Expose selector decisions"]
+          },
+          "memoryTraceExpectation": {
+            "needMemory": true,
+            "injectedPromptPresent": true,
+            "selectedTasksMin": 1,
+            "selectedTasksMax": 1,
+            "selectedContainsAll": ["selector trace"],
+            "injectedPromptContainsAll": ["title=\"Add selector trace report to memory e2e\""],
+            "requiredSelectedTasks": [
+              {
+                "titleContainsAll": ["selector trace", "memory e2e"]
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "expectedAfterSeeds": {
+    "tasksMin": 1,
+    "tasksMax": 1,
+    "sourcesMin": 2,
+    "userSourcesMin": 2,
+    "runsMin": 1,
+    "requiredTasks": [
+      {
+        "statusIn": ["OPEN"],
+        "titleContainsAll": ["selector trace", "memory e2e"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      }
+    ],
+    "requiredRuns": [
+      {
+        "runTypeIn": ["REPAIR_MEMORY"],
+        "statusIn": ["SUCCESS"],
+        "containsAll": ["archive_duplicate_task"],
+        "appliedOpsMin": 1
+      }
+    ]
+  },
+  "expectedFinal": {
+    "tasksMin": 1,
+    "tasksMax": 1,
+    "sourcesMin": 3,
+    "userSourcesMin": 3,
+    "runsMin": 1,
+    "requiredTasks": [
+      {
+        "statusIn": ["OPEN"],
+        "titleContainsAll": ["selector trace", "memory e2e"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      }
+    ],
+    "requiredRuns": [
+      {
+        "runTypeIn": ["REPAIR_MEMORY"],
+        "statusIn": ["SUCCESS"],
+        "containsAll": ["archive_duplicate_task"],
+        "appliedOpsMin": 1
+      }
+    ]
+  }
+}

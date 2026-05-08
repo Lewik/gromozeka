@@ -90,26 +90,10 @@ If a behavior must be implemented downstream, encode it in the contract and KDoc
    - `./gradlew :domain:compileKotlinJvm -q` for `jvmMain` contract changes
    - use `./gradlew :domain:check` only when broader validation is needed
 
-Use `unified_search` with real tool fields, for example:
+Use injected runtime memory when it is present and relevant.
+Do not call memory search tools unless they are actually available in the tool list.
 
-```json
-{
-  "query": "pagination repository pattern",
-  "entityTypes": ["CODE_SPECS_INTERFACE", "MEMORY_OBJECTS"],
-  "searchMode": "HYBRID",
-  "limit": 5,
-  "projectIds": [],
-  "conversationIds": [],
-  "roles": [],
-  "threadId": "",
-  "dateFrom": "",
-  "dateTo": "",
-  "asOf": "",
-  "useReranking": true
-}
-```
-
-If you changed domain contracts meaningfully, tell the user to re-index domain code.
+If you changed domain contracts meaningfully, tell the user that code search still lives outside typed memory and source files remain the final truth.
 
 ## Quality Bar
 

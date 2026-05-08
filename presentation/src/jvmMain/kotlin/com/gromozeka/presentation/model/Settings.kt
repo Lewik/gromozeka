@@ -31,9 +31,9 @@ data class Settings(
     val openAiModel: String = "gpt-4o-mini",
     val includeCurrentTime: Boolean = true,
     val responseFormat: ResponseFormat = ResponseFormat.XML_INLINE,
-    val autoApproveAllTools: Boolean = true, // Auto-approve all tool requests without showing dialogs (affects new sessions only)
-    val autoRememberThreads: Boolean = true, // Auto-remember threads to vector memory after each assistant response
-    val vectorStorageEnabled: Boolean = false,
+    val autoApproveAllTools: Boolean = true, // Auto-approve all tool requests without showing permission dialogs (affects new sessions only)
+    val knowledgeMemoryEnabled: Boolean = false,
+    val autoRememberThreads: Boolean = true, // Auto-process threads into knowledge memory after each assistant response
     val graphStorageEnabled: Boolean = true,
 
     // API Keys

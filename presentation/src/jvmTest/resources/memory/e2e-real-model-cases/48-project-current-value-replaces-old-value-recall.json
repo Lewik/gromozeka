@@ -1,0 +1,100 @@
+{
+  "id": "project-current-value-replaces-old-value-recall",
+  "category": "project_fact_update_recall",
+  "description": "A later project current-value correction should supersede the old current value, and recall should answer from the active typed claim even when the question mentions the old value.",
+  "timeoutSeconds": 900,
+  "seedSessions": [
+    {
+      "id": "seed-a",
+      "turns": [
+        "For the BookNest project, the current primary export format is CSV.",
+        "Correction for BookNest: the current primary export format is Parquet; CSV is the old value."
+      ]
+    }
+  ],
+  "recallSessions": [
+    {
+      "id": "recall-b",
+      "turns": [
+        {
+          "text": "I remember BookNest exported CSV. Is that still current? Answer with only the current format.",
+          "answerExpectation": {
+            "containsAll": ["Parquet"],
+            "containsNone": ["CSV", "ShelfLog", "PantryPilot"]
+          },
+          "memoryTraceExpectation": {
+            "needMemory": true,
+            "injectedPromptPresent": true,
+            "selectedClaimsMin": 1,
+            "requiredSelectedClaims": [
+              {
+                "predicateIn": ["primary_export_format"],
+                "containsAll": ["BookNest", "Parquet"]
+              }
+            ],
+            "forbiddenSelectedClaims": [
+              {
+                "predicateIn": ["primary_export_format"],
+                "normalizedContainsAll": ["BookNest", "CSV"]
+              }
+            ],
+            "selectedContainsAll": ["BookNest", "Parquet"],
+            "selectedContainsNone": ["ShelfLog", "PantryPilot"],
+            "injectedPromptContainsAll": ["BookNest", "Parquet"],
+            "injectedPromptContainsNone": ["ShelfLog", "PantryPilot"]
+          },
+          "memoryWriteTraceExpectation": {
+            "routeDecisionIn": ["NOOP"],
+            "materializedClaimsMax": 0,
+            "materializedNotesMax": 0,
+            "materializedTasksMax": 0
+          }
+        }
+      ]
+    }
+  ],
+  "expectedAfterSeeds": {
+    "activeClaimsMin": 1,
+    "userSourcesMin": 2,
+    "requiredEntities": [
+      {
+        "typeIn": ["PROJECT"],
+        "canonicalNameIn": ["BookNest"]
+      }
+    ],
+    "requiredClaims": [
+      {
+        "predicateIn": ["primary_export_format"],
+        "containsAll": ["BookNest", "Parquet"],
+        "evidenceQuoteContainsAll": ["current primary export format is Parquet"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      }
+    ],
+    "forbiddenClaims": [
+      {
+        "predicateIn": ["primary_export_format"],
+        "normalizedContainsAll": ["BookNest", "CSV"]
+      }
+    ],
+    "allActiveClaimsEvidenceSpeakerRoleIn": ["USER"]
+  },
+  "expectedFinal": {
+    "activeClaimsMin": 1,
+    "userSourcesMin": 3,
+    "requiredClaims": [
+      {
+        "predicateIn": ["primary_export_format"],
+        "containsAll": ["BookNest", "Parquet"],
+        "evidenceQuoteContainsAll": ["current primary export format is Parquet"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      }
+    ],
+    "forbiddenClaims": [
+      {
+        "predicateIn": ["primary_export_format"],
+        "normalizedContainsAll": ["BookNest", "CSV"]
+      }
+    ],
+    "allActiveClaimsEvidenceSpeakerRoleIn": ["USER"]
+  }
+}

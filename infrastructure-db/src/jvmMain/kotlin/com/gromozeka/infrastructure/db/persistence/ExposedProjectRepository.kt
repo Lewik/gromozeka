@@ -8,6 +8,7 @@ import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.*
+import org.springframework.context.annotation.Profile
 import org.springframework.stereotype.Service
 
 /**
@@ -21,6 +22,7 @@ import org.springframework.stereotype.Service
  * - Neo4j repository (denormalized project data for code spec filtering)
  */
 @Service
+@Profile("sqlite")
 class ExposedProjectRepository(
     private val projectConfigRepository: ProjectConfigRepository
 ) : ProjectRepository {

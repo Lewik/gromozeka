@@ -94,6 +94,17 @@ class OpenAiSubscriptionReplayServer private constructor(
             body = requestBody,
         )
 
+        if (exchange.requestMethod.equals("GET", ignoreCase = true)) {
+            val responseBytes = """{"error":{"message":"WebSocket upgrade is not supported by replay server"}}"""
+                .toByteArray(StandardCharsets.UTF_8)
+            exchange.responseHeaders.add("Content-Type", "application/json")
+            exchange.sendResponseHeaders(426, responseBytes.size.toLong())
+            exchange.responseBody.use { output ->
+                output.write(responseBytes)
+            }
+            return
+        }
+
         val response = scriptedResponses.poll() ?: StubHttpResponse(
             statusCode = 500,
             body = """{"error":{"message":"No scripted response available for ${exchange.requestURI.path}"}}""",

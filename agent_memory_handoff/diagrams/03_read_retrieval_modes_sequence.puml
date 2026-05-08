@@ -1,0 +1,43 @@
+@startuml
+title Read Path And Retrieval Modes
+
+actor User
+participant Runtime
+participant "Read-Time Retrieval Planner" as Planner
+participant "Answer Composer" as Composer
+database DB
+
+User -> Runtime: Ask memory-dependent question
+Runtime -> Planner: plan_retrieval(request,\nrecent_context, core blocks)
+Planner --> Runtime: answer_mode + retrieval budget
+
+alt factual
+    Runtime -> DB: load claims + tasks\n(+ evidence fallback if needed)
+else rationale
+    Runtime -> DB: load notes first\n+ claims + evidence fallback
+else task
+    Runtime -> DB: load active tasks\n+ supporting notes if needed
+else mixed
+    Runtime -> DB: load claims + notes + tasks
+end
+
+opt conflict or quote requested
+    Runtime -> DB: load raw source evidence
+end
+
+DB --> Runtime: retrieval pack
+Runtime -> Composer: compose_answer(request,\nretrieval pack, uncertainty flags)
+Composer --> Runtime: grounded answer
+Runtime --> User: final answer
+
+note over Planner
+Retrieval is bounded.
+Budgets differ for factual, rationale, task, and mixed modes.
+end note
+
+note over Composer
+Do not present notes as hard facts
+without qualification.
+end note
+
+@enduml

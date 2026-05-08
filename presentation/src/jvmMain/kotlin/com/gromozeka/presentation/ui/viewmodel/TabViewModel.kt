@@ -289,6 +289,11 @@ class TabViewModel(
         message: String,
         additionalInstructions: List<Conversation.Message.Instruction> = emptyList(),
     ) {
+        if (currentRequestJob?.isActive == true || _isWaitingForResponse.value) {
+            log.warn { "Ignoring send request for conversation $conversationId because previous request is still running" }
+            return
+        }
+
         val currentState = _uiState.value
 
         val activeTagsData = availableMessageTags.mapNotNull { messageTag ->

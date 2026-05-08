@@ -1,0 +1,38 @@
+{
+  "id": "memory-retention-maintenance",
+  "category": "maintenance_memory",
+  "description": "Manual memory retention should run auditably and preserve active memory when no safe archival candidate exists.",
+  "timeoutSeconds": 700,
+  "seedSessions": [
+    {
+      "id": "seed-a",
+      "turns": [
+        "For the memory retention MVP, remember this policy direction: retention may archive closed or resolved memory, but it must not delete source evidence automatically."
+      ]
+    }
+  ],
+  "maintenanceAfterSeeds": ["apply_retention"],
+  "recallSessions": [],
+  "expectedAfterSeeds": {
+    "runsMin": 2,
+    "userSourcesMin": 1,
+    "requiredRuns": [
+      {
+        "runTypeIn": ["APPLY_RETENTION"],
+        "statusIn": ["SUCCESS"],
+        "containsAll": ["retention"]
+      }
+    ]
+  },
+  "expectedFinal": {
+    "runsMin": 2,
+    "userSourcesMin": 1,
+    "requiredRuns": [
+      {
+        "runTypeIn": ["APPLY_RETENTION"],
+        "statusIn": ["SUCCESS"],
+        "containsAll": ["retention"]
+      }
+    ]
+  }
+}

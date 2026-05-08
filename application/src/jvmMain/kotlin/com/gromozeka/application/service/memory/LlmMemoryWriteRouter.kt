@@ -1,0 +1,279 @@
+package com.gromozeka.application.service.memory
+
+import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.ai.AiToolChoice
+import com.gromozeka.domain.model.ai.AiRuntimeOptions
+import com.gromozeka.domain.model.ai.AiRuntimeRequest
+import com.gromozeka.domain.model.memory.DirectStructuredMemoryWriteRequest
+import com.gromozeka.domain.model.memory.MemoryRouteDecision
+import com.gromozeka.domain.model.memory.MemorySemanticType
+import com.gromozeka.domain.model.memory.MemorySource
+import com.gromozeka.domain.model.memory.MemorySourceUsagePolicy
+import com.gromozeka.domain.model.memory.MemoryWriteRouter
+import com.gromozeka.domain.service.AiRuntime
+import com.gromozeka.domain.tool.AiToolCallback
+import klog.KLoggers
+import kotlinx.datetime.Clock
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.json.Json
+
+class LlmMemoryWriteRouter(
+    private val runtime: AiRuntime,
+    private val timezone: String,
+    private val runtimeSystemPrompts: List<String>,
+    private val runtimeTools: List<AiToolCallback>,
+    private val json: Json = Json { ignoreUnknownKeys = true },
+) : MemoryWriteRouter {
+    private val log = KLoggers.logger(this)
+
+    override suspend fun route(request: DirectStructuredMemoryWriteRequest): MemoryRouteDecision {
+        if (request.source.contentText.isBlank()) {
+            return MemoryRouteDecision(
+                decision = MemoryRouteDecision.Decision.NOOP,
+                reason = "Source text is blank",
+            )
+        }
+
+        val stageMessages = request.toMemoryStageMessages(
+            stageName = "write-router",
+            taskPrompt = buildRouterUserPrompt(request),
+        )
+
+        log.info {
+            "Memory router LLM call: namespace=${request.namespace.value} source=${request.source.id.value} " +
+                "threadContext=${request.memoryThreadContextSummaryForLog()} " +
+                "runtimeSystemPrompts=${runtimeSystemPrompts.size} runtimeTools=${runtimeTools.size} stageMessages=${stageMessages.size}"
+        }
+
+        val response = runtime.callMemoryStageWithRetry(
+            AiRuntimeRequest(
+                systemPrompts = runtimeSystemPrompts,
+                messages = stageMessages,
+                tools = runtimeTools,
+                options = AiRuntimeOptions(
+                    maxTokens = 900,
+                    toolChoice = AiToolChoice.None,
+                    responseFormat = MemoryStructuredResponseFormats.WriteRouter,
+                    toolContext = mapOf(
+                        "memoryRouter" to true,
+                        "memoryNamespace" to request.namespace.value,
+                        "memorySourceId" to request.source.id.value,
+                    ) + request.conversationToolContext(),
+                ),
+            ),
+            stageName = "write-router",
+            logContext = "namespace=${request.namespace.value} source=${request.source.id.value}",
+        )
+
+        val rawText = response.messages
+            .flatMap { it.content }
+            .filterIsInstance<Conversation.Message.ContentItem.AssistantMessage>()
+            .joinToString("\n") { it.structured.fullText }
+            .trim()
+
+        log.info {
+            "Memory router raw response: namespace=${request.namespace.value} source=${request.source.id.value} " +
+                "chars=${rawText.length} response=${rawText.oneLineForRouterMemoryLog(4_000)}"
+        }
+
+        val jsonText = extractJsonObject(rawText)
+            ?: throw IllegalStateException("Memory router did not return JSON: ${rawText.take(500)}")
+
+        return json.decodeFromString<MemoryRouterResponse>(jsonText).toRouteDecision()
+    }
+
+    private fun buildRouterUserPrompt(request: DirectStructuredMemoryWriteRequest): String = """
+        Memory stage: MemoryRouter v3.
+        Current time: ${Clock.System.now()}
+        Timezone: $timezone
+        Namespace: ${request.namespace.value}
+
+        Stage instructions:
+        $MEMORY_ROUTER_SYSTEM_PROMPT
+
+        TARGET_MESSAGE source data:
+        ${request.source.renderLatestTurn()}
+    """.trimIndent()
+
+    private fun MemorySource.renderLatestTurn(): String {
+        val role = when (this) {
+            is MemorySource.ChatTurn -> speakerRole.name
+            is MemorySource.ToolOutput -> "TOOL"
+            is MemorySource.DocumentChunk -> "DOCUMENT"
+            is MemorySource.ImportedNote -> "IMPORT"
+            is MemorySource.ExternalRecord -> "EXTERNAL"
+        }
+
+        return "[${id.value}] $role\n${contentText.limitForRouterPrompt()}"
+    }
+
+    private fun String.limitForRouterPrompt(maxChars: Int = 8_000): String {
+        val trimmed = trim()
+        if (trimmed.length <= maxChars) {
+            return trimmed
+        }
+        return trimmed.take(maxChars) + "\n[truncated ${trimmed.length - maxChars} chars]"
+    }
+
+    private fun extractJsonObject(rawText: String): String? {
+        val fenced = Regex("```(?:json)?\\s*(\\{.*\\})\\s*```", setOf(RegexOption.DOT_MATCHES_ALL))
+            .find(rawText)
+            ?.groupValues
+            ?.getOrNull(1)
+        if (fenced != null) {
+            return fenced.trim()
+        }
+
+        val start = rawText.indexOf('{')
+        val end = rawText.lastIndexOf('}')
+        if (start >= 0 && end > start) {
+            return rawText.substring(start, end + 1)
+        }
+
+        return null
+    }
+
+    @Serializable
+    private data class MemoryRouterResponse(
+        val decision: String,
+        @SerialName("memory_types")
+        val memoryTypes: List<String> = emptyList(),
+        val salience: Double = 0.0,
+        @SerialName("source_policy")
+        val sourcePolicy: SourcePolicy = SourcePolicy(),
+        @SerialName("source_search_text")
+        val sourceSearchText: String = "",
+        val reason: String = "",
+    ) {
+        fun toRouteDecision(): MemoryRouteDecision =
+            MemoryRouteDecision(
+                decision = decision.toDecision(),
+                memoryTypes = memoryTypes.mapNotNull { it.toMemorySemanticType() }.toSet(),
+                salience = salience.coerceIn(0.0, 1.0),
+                sourcePolicy = sourcePolicy.toUsagePolicy(),
+                sourceSearchText = sourceSearchText.trim().take(4_000).ifBlank { null },
+                reason = reason,
+            )
+    }
+
+    @Serializable
+    private data class SourcePolicy(
+        @SerialName("allow_structured_extraction")
+        val allowStructuredExtraction: Boolean = true,
+        @SerialName("allow_recall")
+        val allowRecall: Boolean = true,
+        @SerialName("allow_evidence_hydration")
+        val allowEvidenceHydration: Boolean = true,
+        val reason: String = "standard",
+    ) {
+        fun toUsagePolicy(): MemorySourceUsagePolicy =
+            MemorySourceUsagePolicy(
+                allowStructuredExtraction = allowStructuredExtraction,
+                allowRecall = allowRecall,
+                allowEvidenceHydration = allowEvidenceHydration,
+                reason = reason.trim().ifBlank { "standard" },
+            )
+    }
+
+    private companion object {
+        val MEMORY_ROUTER_SYSTEM_PROMPT = """
+            You are MemoryRouter v3 for a long-term AI agent.
+
+            Your job is to decide whether the latest turns contain durable information worth storing in long-term memory, and if so, which write mode to use.
+
+            Return JSON:
+            {
+              "decision": "noop | direct_structured_write | note_write | mixed | forget_request",
+              "memory_types": ["claim", "note", "task", "profile", "source"],
+              "salience": 0.0,
+              "source_policy": {
+                "allow_structured_extraction": true,
+                "allow_recall": true,
+                "allow_evidence_hydration": true,
+                "reason": "short source usage explanation"
+              },
+              "source_search_text": "English search-only paraphrase of TARGET_MESSAGE, or empty string",
+              "reason": "short explanation"
+            }
+
+            Decision policy:
+            - "noop" for greetings, filler, repetition, low-value chatter, and transient content.
+            - "direct_structured_write" for explicit facts, stable preferences, clear status changes, deadlines, and commitments.
+            - "note_write" for rationale, trade-offs, design direction, evolving plans, local conclusions, lessons, and document digests.
+            - "mixed" when the material contains both structured facts/tasks and richer rationale/context.
+            - "forget_request" when TARGET_MESSAGE explicitly asks to forget, remove, delete, or stop remembering previously stored information.
+            - Include memory_type "task" when TARGET_MESSAGE explicitly creates, repeats, updates, closes, cancels, blocks, unblocks, reprioritizes, or assigns a follow-up/task/todo.
+            - Include memory_type "source" for "forget_request".
+            - Attributed viewpoints such as "Alice thinks X" or "Bob says Y" are claim-worthy because the durable fact is the attribution, even when X and Y conflict.
+            - A single weak uncertain observation without rationale, decision, plan, lesson, or reusable analysis should usually be "noop", not "note_write" or "direct_structured_write".
+
+            Source policy:
+            - Default source_policy allows structured extraction, recall, and evidence hydration for non-noop memory-worthy sources.
+            - For low-value "noop" greetings, filler, pure repetition, and no-content chatter, keep the source only as audit material:
+              allow_structured_extraction=false, allow_recall=false, allow_evidence_hydration=false.
+            - For "noop" user statements that are not durable enough for structured memory but still contain a concrete name, source wording, uncertainty, attribution, or a soft observation the user may later ask about, keep them as recallable source-only memory:
+              allow_structured_extraction=false, allow_recall=true, allow_evidence_hydration=true.
+            - If the target explicitly says the content should not be remembered, stored, or treated as a fact/preference/project fact, keep the source only as audit material:
+              allow_structured_extraction=false, allow_recall=false, allow_evidence_hydration=false.
+            - For "forget_request", keep the forget command as audit material only:
+              allow_structured_extraction=false, allow_recall=false, allow_evidence_hydration=false.
+            - Questions, probes, and "I remember X, is that still true?" turns are not evidence of X. If they contain no new durable assertion, route "noop" and make them audit-only.
+            - Recall/probe questions about existing memory are "noop" even if they include answer-shaping instructions such as "keep it short", "answer briefly", or "answer with only the value".
+            - Examples of audit-only noop targets: "How should you adapt your answer style for me?", "What do you remember about my preferences?", "Which open follow-up exists?", "What database does this project use?".
+            - A question becomes write-worthy only when TARGET_MESSAGE also asserts new durable content or explicitly asks to remember/update/forget a memory.
+            - If the target is a quoted diagnostic/repeat-only instruction and says not to remember it, also set all three source policy gates to false.
+            - If the target is a normal correction, disagreement, retraction, or clarification, do not block source usage; route the correction as durable memory when appropriate.
+
+            Source search bridge:
+            - Always return source_search_text.
+            - source_search_text is derived search/index text only, never evidence.
+            - Use concise English even when TARGET_MESSAGE is in another language.
+            - Preserve important names, product names, dates, identifiers, and exact entities.
+            - Include uncertainty, negation, correction, and attribution markers when present.
+            - For "forget_request", make source_search_text the thing to forget, not the instruction itself. Example: "forget that I prefer Toyota cars" -> "user preference Toyota cars".
+            - For low-value greetings or blocked do-not-remember sources, use an empty string.
+            - For "noop" questions/probes, source_search_text may describe the question for audit/debug, but the source must not be recallable evidence.
+            - Do not invent facts beyond TARGET_MESSAGE; paraphrase only what the source actually says.
+
+            Hard rules:
+            - Prefer "noop" over memory pollution.
+            - Do not treat every question as a task.
+            - Do not force rationale into claims.
+            - Do not force weak one-off observations into notes.
+            - If the user explicitly asks to remember something, do not return "noop", unless the same target says not to remember/store/treat that content as memory.
+            - Return valid JSON only.
+        """.trimIndent()
+    }
+}
+
+private fun String.toDecision(): MemoryRouteDecision.Decision =
+    when (trim().lowercase().replace("-", "_")) {
+        "noop" -> MemoryRouteDecision.Decision.NOOP
+        "direct_structured_write" -> MemoryRouteDecision.Decision.DIRECT_STRUCTURED_WRITE
+        "note_write" -> MemoryRouteDecision.Decision.NOTE_WRITE
+        "mixed" -> MemoryRouteDecision.Decision.MIXED
+        "forget_request" -> MemoryRouteDecision.Decision.FORGET_REQUEST
+        else -> throw IllegalArgumentException("Unknown memory router decision: $this")
+    }
+
+internal fun String.toMemorySemanticType(): MemorySemanticType? =
+    when (trim().lowercase().removeSuffix("s")) {
+        "claim", "fact", "preference", "commitment" -> MemorySemanticType.CLAIM
+        "note", "rationale", "context", "lesson", "decision" -> MemorySemanticType.NOTE
+        "task", "deadline" -> MemorySemanticType.TASK
+        "profile" -> MemorySemanticType.PROFILE
+        "source", "evidence" -> MemorySemanticType.SOURCE
+        "entity" -> MemorySemanticType.ENTITY
+        "episode", "experience" -> MemorySemanticType.EPISODE
+        else -> null
+    }
+
+private fun String.oneLineForRouterMemoryLog(maxChars: Int): String {
+    val normalized = replace('\n', ' ').replace(Regex("\\s+"), " ").trim()
+    if (normalized.length <= maxChars) {
+        return normalized
+    }
+    return normalized.take(maxChars) + "...[truncated ${normalized.length - maxChars} chars]"
+}

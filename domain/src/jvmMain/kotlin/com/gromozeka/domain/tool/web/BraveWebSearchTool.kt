@@ -280,7 +280,7 @@ data class BraveWebSearchRequest(
  * 1. `brave_web_search("Topic overview", count=5)` - Get general understanding
  * 2. Select most promising URLs
  * 3. `jina_read_url(selectedUrl)` - Read detailed content
- * 4. `build_memory_from_text(content)` - Save to knowledge graph
+ * 4. Optionally write distilled assertions or relations to the knowledge graph
  * 
  * Result: Deep research with knowledge retention
  * 
@@ -366,7 +366,7 @@ data class BraveWebSearchRequest(
  * 
  * - **brave_local_search** - For local businesses and places
  * - **jina_read_url** - Read content from search result URLs
- * - **build_memory_from_text** - Save search findings to knowledge graph
+ * - **unified_search** - Search the new knowledge graph after ingesting findings elsewhere
  * 
  * # Infrastructure Implementation
  * 

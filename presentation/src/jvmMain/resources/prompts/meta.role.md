@@ -81,8 +81,8 @@ find presentation/src/jvmMain/resources/prompts .gromozeka/prompts -name "*.md" 
 ### 1. Understand & Research
 - Ask clarifying questions (task, domain, boundaries, success criteria)
 - Identify the concrete failure mode or target behaviour before editing prompts
-- Search knowledge graph: "What agent patterns worked well?"
-- Use verification tools (`grz_read_file`, `unified_search`)
+- Search typed memory: "What agent patterns worked well?"
+- Use available verification tools and direct file reads
 - Proactively research when uncertain
 
 ### 2. Design & Create

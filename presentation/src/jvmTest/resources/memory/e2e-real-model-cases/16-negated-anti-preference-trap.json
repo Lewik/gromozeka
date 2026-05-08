@@ -1,0 +1,68 @@
+{
+  "id": "negated-anti-preference-trap",
+  "category": "abstention",
+  "description": "A double-negative statement about BMW should not be stored as an anti-preference.",
+  "timeoutSeconds": 600,
+  "seedSessions": [
+    {
+      "id": "seed-a",
+      "turns": [
+        "I do not dislike BMW cars; do not treat BMW as something to avoid."
+      ]
+    }
+  ],
+  "recallSessions": [
+    {
+      "id": "recall-b",
+      "turns": [
+        {
+          "text": "Which car brand should you avoid recommending to me? If memory lacks such an anti-preference, answer exactly: I don't have enough information.",
+          "answerExpectation": {
+            "containsAnyGroups": [
+              ["don't have enough information", "do not have enough information", "not enough information", "did not", "didn't"]
+            ],
+            "containsNone": ["Toyota", "Honda", "Ford"]
+          },
+          "memoryTraceExpectation": {
+            "needMemory": true,
+            "selectedClaimsMax": 0
+          }
+        }
+      ]
+    }
+  ],
+  "expectedAfterSeeds": {
+    "activeClaimsMax": 1,
+    "userSourcesMin": 1,
+    "forbiddenClaims": [
+      {
+        "predicateIn": ["avoids"],
+        "subjectEntityTypeIn": ["USER"],
+        "normalizedContainsAll": ["BMW"]
+      },
+      {
+        "predicateIn": ["prefers"],
+        "subjectEntityTypeIn": ["USER"],
+        "normalizedContainsAll": ["BMW"]
+      }
+    ],
+    "allActiveClaimsEvidenceSpeakerRoleIn": ["USER"]
+  },
+  "expectedFinal": {
+    "activeClaimsMax": 1,
+    "userSourcesMin": 2,
+    "forbiddenClaims": [
+      {
+        "predicateIn": ["avoids"],
+        "subjectEntityTypeIn": ["USER"],
+        "normalizedContainsAll": ["BMW"]
+      },
+      {
+        "predicateIn": ["prefers"],
+        "subjectEntityTypeIn": ["USER"],
+        "normalizedContainsAll": ["BMW"]
+      }
+    ],
+    "allActiveClaimsEvidenceSpeakerRoleIn": ["USER"]
+  }
+}

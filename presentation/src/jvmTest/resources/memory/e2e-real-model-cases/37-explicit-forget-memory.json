@@ -1,0 +1,80 @@
+{
+  "id": "explicit-forget-memory",
+  "category": "forget_memory",
+  "description": "An explicit user forget request should remove matching remembered information from normal recall.",
+  "timeoutSeconds": 900,
+  "seedSessions": [
+    {
+      "id": "seed-a",
+      "turns": [
+        "For future recommendations, remember that I prefer Toyota cars.",
+        "Forget the remembered Toyota car preference. Remove it from memory."
+      ]
+    }
+  ],
+  "recallSessions": [
+    {
+      "id": "recall-b",
+      "turns": [
+        {
+          "text": "Which car brand should you remember that I prefer? If memory lacks this, answer exactly: I don't have enough information.",
+          "answerExpectation": {
+            "containsAnyGroups": [
+              ["don't have enough information", "do not have enough information", "not enough information"]
+            ],
+            "containsNone": ["Toyota", "Honda", "BMW", "Ford"]
+          },
+          "memoryTraceExpectation": {
+            "needMemory": true,
+            "selectedContainsNone": ["Toyota"],
+            "injectedPromptContainsNone": ["Toyota"]
+          }
+        }
+      ]
+    }
+  ],
+  "expectedAfterSeeds": {
+    "activeClaimsMax": 0,
+    "userSourcesMin": 1,
+    "requiredRuns": [
+      {
+        "runTypeIn": ["FORGET_MEMORY"],
+        "statusIn": ["SUCCESS"],
+        "containsAll": ["forget"],
+        "appliedOpsMin": 1
+      }
+    ],
+    "forbiddenClaims": [
+      {
+        "containsAll": ["Toyota"]
+      }
+    ],
+    "forbiddenNotes": [
+      {
+        "containsAll": ["Toyota"]
+      }
+    ]
+  },
+  "expectedFinal": {
+    "activeClaimsMax": 0,
+    "userSourcesMin": 2,
+    "requiredRuns": [
+      {
+        "runTypeIn": ["FORGET_MEMORY"],
+        "statusIn": ["SUCCESS"],
+        "containsAll": ["forget"],
+        "appliedOpsMin": 1
+      }
+    ],
+    "forbiddenClaims": [
+      {
+        "containsAll": ["Toyota"]
+      }
+    ],
+    "forbiddenNotes": [
+      {
+        "containsAll": ["Toyota"]
+      }
+    ]
+  }
+}

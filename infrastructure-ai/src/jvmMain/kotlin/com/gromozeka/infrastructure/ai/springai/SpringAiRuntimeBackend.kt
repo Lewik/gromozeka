@@ -1,6 +1,7 @@
 package com.gromozeka.infrastructure.ai.springai
 
 import com.gromozeka.domain.model.AIProvider
+import com.gromozeka.domain.model.ai.AiResponseFormat
 import com.gromozeka.domain.model.ai.AiRuntimeOptions
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.model.ai.AiRuntimeResponse
@@ -75,6 +76,9 @@ private class SpringAiRuntime(
     ): ChatOptions {
         val toolCallbacks = request.tools.map(::SpringAiToolCallbackAdapter)
         val toolNames = toolCallbacks.map { it.toolDefinition.name() }.toSet()
+        if (options.responseFormat !is AiResponseFormat.Text) {
+            log.warn { "Provider $provider does not expose structured response format via Spring AI runtime options yet" }
+        }
 
         return when (provider) {
             AIProvider.ANTHROPIC -> {
@@ -111,6 +115,7 @@ private class SpringAiRuntime(
 
                 when (val toolChoice = options.toolChoice) {
                     AiToolChoice.Auto -> Unit
+                    AiToolChoice.None -> builder.toolChoice(AnthropicApi.ToolChoiceNone())
                     AiToolChoice.RequiredAny -> builder.toolChoice(AnthropicApi.ToolChoiceAny())
                     is AiToolChoice.RequiredTool -> builder.toolChoice(AnthropicApi.ToolChoiceTool(toolChoice.name))
                 }
@@ -129,6 +134,7 @@ private class SpringAiRuntime(
 
                 when (val toolChoice = options.toolChoice) {
                     AiToolChoice.Auto -> builder.toolChoice(OpenAiApi.ChatCompletionRequest.ToolChoiceBuilder.AUTO)
+                    AiToolChoice.None -> builder.toolChoice(OpenAiApi.ChatCompletionRequest.ToolChoiceBuilder.NONE)
                     AiToolChoice.RequiredAny -> builder.toolChoice("required")
                     is AiToolChoice.RequiredTool -> {
                         builder.toolChoice(OpenAiApi.ChatCompletionRequest.ToolChoiceBuilder.function(toolChoice.name))
@@ -139,16 +145,25 @@ private class SpringAiRuntime(
             }
 
             else -> {
-                if (options.toolChoice !is AiToolChoice.Auto) {
+                if (options.toolChoice !is AiToolChoice.Auto && options.toolChoice !is AiToolChoice.None) {
                     log.warn { "Provider $provider does not expose forced tool choice via Spring AI runtime options" }
                 }
 
-                ToolCallingChatOptions.builder()
-                    .toolCallbacks(toolCallbacks)
-                    .toolNames(toolNames)
+                if (options.toolChoice is AiToolChoice.None && toolCallbacks.isNotEmpty()) {
+                    log.warn { "Provider $provider does not expose tool_choice=none via Spring AI runtime options; dropping tools for this call" }
+                }
+
+                val builder = ToolCallingChatOptions.builder()
                     .internalToolExecutionEnabled(false)
                     .toolContext(options.toolContext)
-                    .build()
+
+                if (options.toolChoice !is AiToolChoice.None) {
+                    builder
+                        .toolCallbacks(toolCallbacks)
+                        .toolNames(toolNames)
+                }
+
+                builder.build()
             }
         }
     }

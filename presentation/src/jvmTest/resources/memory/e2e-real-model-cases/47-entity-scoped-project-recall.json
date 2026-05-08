@@ -1,0 +1,115 @@
+{
+  "id": "entity-scoped-project-recall",
+  "category": "read_entity_scoping",
+  "description": "Runtime recall should keep two named project entities separate when questions are asked back-to-back in the same conversation.",
+  "timeoutSeconds": 900,
+  "preloadedMemory": [
+    {
+      "type": "profile_drift",
+      "subjectName": "PantryPilot",
+      "subjectType": "PROJECT",
+      "predicate": "primary_export_format",
+      "predicateDescription": "Current primary export or report format for a project.",
+      "scopeText": "PantryPilot project memory",
+      "newerValue": "XLSX",
+      "newerText": "PantryPilot's weekly report primary format is XLSX.",
+      "profileText": "Profile for PantryPilot (PROJECT).\nStable facts:\n- PantryPilot's weekly report primary format is XLSX."
+    },
+    {
+      "type": "profile_drift",
+      "subjectName": "ShelfLog",
+      "subjectType": "PROJECT",
+      "predicate": "project_summary",
+      "predicateDescription": "Compact project summary facts.",
+      "scopeText": "ShelfLog project memory",
+      "newerValue": "ShelfLog",
+      "newerText": "ShelfLog is a home book catalog project whose primary export format is JSON Lines and whose reading status field is reading_state.",
+      "profileText": "Profile for ShelfLog (PROJECT).\nStable facts:\n- ShelfLog is a home book catalog project.\n- ShelfLog's primary export format is JSON Lines.\n- ShelfLog's reading status field is reading_state."
+    }
+  ],
+  "recallSessions": [
+    {
+      "id": "recall-a",
+      "turns": [
+        {
+          "text": "What do you know about PantryPilot? Answer only from stored memory.",
+          "answerExpectation": {
+            "containsAll": ["PantryPilot", "XLSX"],
+            "containsNone": ["ShelfLog", "JSON Lines", "reading_state", "home book catalog"]
+          },
+          "memoryTraceExpectation": {
+            "needMemory": true,
+            "injectedPromptPresent": true,
+            "selectedHitsMin": 1,
+            "selectedContainsAll": ["PantryPilot", "XLSX"],
+            "selectedContainsNone": ["ShelfLog", "JSON Lines", "reading_state", "home book catalog"],
+            "injectedPromptContainsAll": ["PantryPilot", "XLSX"],
+            "injectedPromptContainsNone": ["ShelfLog", "JSON Lines", "reading_state", "home book catalog"]
+          },
+          "memoryWriteTraceExpectation": {
+            "routeDecisionIn": ["NOOP"],
+            "materializedClaimsMax": 0,
+            "materializedNotesMax": 0,
+            "materializedTasksMax": 0
+          }
+        },
+        {
+          "text": "What do you know about ShelfLog? Answer only from stored memory.",
+          "answerExpectation": {
+            "containsAll": ["ShelfLog", "JSON Lines", "reading_state"],
+            "containsNone": ["PantryPilot", "XLSX"]
+          },
+          "memoryTraceExpectation": {
+            "needMemory": true,
+            "injectedPromptPresent": true,
+            "selectedHitsMin": 1,
+            "selectedContainsAll": ["ShelfLog", "JSON Lines", "reading_state"],
+            "selectedContainsNone": ["PantryPilot", "XLSX"],
+            "injectedPromptContainsAll": ["ShelfLog", "JSON Lines", "reading_state"],
+            "injectedPromptContainsNone": ["PantryPilot", "XLSX"]
+          },
+          "memoryWriteTraceExpectation": {
+            "routeDecisionIn": ["NOOP"],
+            "materializedClaimsMax": 0,
+            "materializedNotesMax": 0,
+            "materializedTasksMax": 0
+          }
+        }
+      ]
+    }
+  ],
+  "expectedAfterSeeds": {
+    "activeClaimsMin": 2,
+    "activeClaimsMax": 2,
+    "userSourcesMin": 2,
+    "profilesMin": 2,
+    "requiredClaims": [
+      {
+        "containsAll": ["PantryPilot", "XLSX"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      },
+      {
+        "containsAll": ["ShelfLog", "JSON Lines", "reading_state"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      }
+    ],
+    "allActiveClaimsEvidenceSpeakerRoleIn": ["USER"]
+  },
+  "expectedFinal": {
+    "activeClaimsMin": 2,
+    "activeClaimsMax": 2,
+    "userSourcesMin": 4,
+    "profilesMin": 2,
+    "requiredClaims": [
+      {
+        "containsAll": ["PantryPilot", "XLSX"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      },
+      {
+        "containsAll": ["ShelfLog", "JSON Lines", "reading_state"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      }
+    ],
+    "allActiveClaimsEvidenceSpeakerRoleIn": ["USER"]
+  }
+}

@@ -1,0 +1,90 @@
+{
+  "id": "conditional-preference",
+  "category": "preference_following",
+  "description": "A conditional tooling preference should be recalled without collapsing the exception into the default.",
+  "timeoutSeconds": 700,
+  "seedSessions": [
+    {
+      "id": "seed-a",
+      "turns": [
+        "For editor advice, remember: JetBrains tools are my default choice, but suggest VS Code only when there is a strong plugin reason."
+      ]
+    }
+  ],
+  "recallSessions": [
+    {
+      "id": "recall-b",
+      "turns": [
+        {
+          "text": "For editor advice, what is my default tool family? Answer with only the tool family name.",
+          "answerExpectation": {
+            "containsAll": ["JetBrains"],
+            "containsNone": ["VS Code", "Visual Studio Code", "Vim"]
+          },
+          "memoryTraceExpectation": {
+            "needMemory": true,
+            "injectedPromptPresent": true,
+            "selectedClaimsMin": 1,
+            "requiredSelectedClaims": [
+              {
+                "subjectEntityTypeIn": ["USER"],
+                "containsAll": ["JetBrains"]
+              }
+            ],
+            "injectedPromptContainsAll": ["JetBrains"]
+          }
+        },
+        {
+          "text": "When should you suggest VS Code to me? Keep the answer short.",
+          "answerExpectation": {
+            "containsAll": ["plugin"],
+            "containsAnyGroups": [
+              ["strong", "good", "specific"]
+            ],
+            "containsNone": ["default"]
+          },
+          "memoryTraceExpectation": {
+            "needMemory": true,
+            "injectedPromptPresent": true,
+            "selectedClaimsMin": 1,
+            "requiredSelectedClaims": [
+              {
+                "subjectEntityTypeIn": ["USER"],
+                "containsAll": ["VS Code", "plugin"]
+              }
+            ],
+            "injectedPromptContainsAll": ["VS Code", "plugin"]
+          }
+        }
+      ]
+    }
+  ],
+  "expectedAfterSeeds": {
+    "activeClaimsMin": 1,
+    "activeClaimsMax": 2,
+    "userSourcesMin": 1,
+    "requiredClaims": [
+      {
+        "subjectEntityTypeIn": ["USER"],
+        "containsAll": ["JetBrains"],
+        "evidenceQuoteContainsAll": ["JetBrains tools are my default choice"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      }
+    ],
+    "allActiveClaimsEvidenceSpeakerRoleIn": ["USER"]
+  },
+  "expectedFinal": {
+    "activeClaimsMin": 1,
+    "activeClaimsMax": 2,
+    "userSourcesMin": 3,
+    "requiredClaims": [
+      {
+        "subjectEntityTypeIn": ["USER"],
+        "containsAll": ["JetBrains"],
+        "evidenceQuoteContainsAll": ["JetBrains tools are my default choice"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      }
+    ],
+    "allActiveClaimsEvidenceSpeakerRoleIn": ["USER"]
+  }
+}

@@ -1,0 +1,46 @@
+@startuml
+title Background Maintenance
+
+actor Scheduler
+participant "Memory Worker" as Worker
+participant "Note Consolidator" as Consolidator
+participant "Memory Repair Planner" as Repair
+participant "Retention Worker" as Retention
+database DB
+
+Scheduler -> Worker: cron / debounce trigger
+
+group Note consolidation
+    Worker -> DB: SELECT mature notes
+    DB --> Worker: note batch
+    Worker -> Consolidator: consolidate(notes,\nrelated claims, tasks, profile)
+    Consolidator --> Worker: claim/task/profile/episode ops\n+ note actions
+    Worker -> DB: APPLY consolidation transaction
+    Worker -> DB: INSERT MemoryRun
+end
+
+group Memory repair
+    Worker -> DB: SELECT suspicious clusters\n(duplicates, conflicts, drift)
+    DB --> Worker: suspicious items
+    Worker -> Repair: plan_repair(items,\nsupporting evidence)
+    Repair --> Worker: repair ops
+    Worker -> DB: APPLY repair transaction
+    Worker -> DB: INSERT MemoryRun
+end
+
+group Retention / forgetting
+    Worker -> DB: SELECT retention candidates
+    DB --> Worker: stale / low-use items
+    Worker -> Retention: classify keep / warm / cold /\narchive / delete
+    Retention --> Worker: retention ops
+    Worker -> DB: APPLY retrieval_state changes\narchive / delete per policy
+    Worker -> DB: INSERT MemoryRun
+end
+
+note over Worker, DB
+Consolidation makes memory richer.
+Repair keeps memory healthy.
+Retention keeps retrieval bounded over time.
+end note
+
+@enduml

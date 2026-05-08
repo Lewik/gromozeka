@@ -1,0 +1,59 @@
+{
+  "id": "abstention-no-write",
+  "category": "abstention",
+  "description": "A recall question about absent personal memory should not invent an answer or write a claim.",
+  "timeoutSeconds": 240,
+  "recallSessions": [
+    {
+      "id": "recall-a",
+      "turns": [
+        {
+          "text": "What laptop brand did I tell you I prefer? If memory does not contain this, answer exactly: I don't have enough information.",
+          "answerExpectation": {
+            "containsAnyGroups": [
+              ["don't have enough information", "do not have enough information", "not enough information"]
+            ],
+            "containsNone": ["Apple", "Dell", "Lenovo", "Asus", "HP"]
+          },
+          "memoryTraceExpectation": {
+            "needMemory": true,
+            "injectedPromptPresent": true,
+            "selectedHitsMax": 0,
+            "selectedClaimsMax": 0
+          }
+        }
+      ]
+    }
+  ],
+  "expectedAfterSeeds": {
+    "activeClaimsMax": 0,
+    "userSourcesMax": 0
+  },
+  "expectedFinal": {
+    "activeClaimsMax": 0,
+    "userSourcesMin": 1,
+    "requiredSources": [
+      {
+        "roleIn": ["USER"],
+        "textContainsAll": ["laptop brand"],
+        "allowStructuredExtraction": false,
+        "allowRecall": false,
+        "allowEvidenceHydration": false
+      }
+    ],
+    "forbiddenClaims": [
+      {
+        "containsAll": ["laptop"]
+      },
+      {
+        "containsAll": ["Apple"]
+      },
+      {
+        "containsAll": ["Dell"]
+      },
+      {
+        "containsAll": ["Lenovo"]
+      }
+    ]
+  }
+}

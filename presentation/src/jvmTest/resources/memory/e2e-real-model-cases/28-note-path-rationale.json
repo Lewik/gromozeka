@@ -1,0 +1,78 @@
+{
+  "id": "note-path-rationale",
+  "category": "note_memory",
+  "description": "Rationale/design direction should be stored and recalled through note memory rather than only raw sources or atomic claims.",
+  "timeoutSeconds": 700,
+  "seedSessions": [
+    {
+      "id": "seed-a",
+      "turns": [
+        "Current memory MVP direction: design rationale and trade-offs should be kept as notes first, not forced into claims; stable conclusions can be promoted later."
+      ]
+    }
+  ],
+  "recallSessions": [
+    {
+      "id": "recall-b",
+      "turns": [
+        {
+          "text": "For memory MVP, how did we decide to store design rationale and trade-offs? Keep it short.",
+          "answerExpectation": {
+            "containsAll": ["notes"],
+            "containsAnyGroups": [
+              ["claims", "claim"],
+              ["promoted", "promote", "stable conclusions"]
+            ]
+          },
+          "memoryTraceExpectation": {
+            "needMemory": true,
+            "injectedPromptPresent": true,
+            "selectedNotesMin": 1,
+            "selectedContainsAll": ["design rationale", "notes"],
+            "injectedPromptContainsAll": ["design rationale", "notes"],
+            "requiredSelectedNotes": [
+              {
+                "typeIn": ["DIRECTION", "DECISION", "CONTEXT", "PLAN"],
+                "statusIn": ["ACTIVE"],
+                "containsAll": ["design rationale", "notes", "claims"],
+                "evidenceSourceSpeakerRoleIn": ["USER"]
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "expectedAfterSeeds": {
+    "activeClaimsMax": 2,
+    "notesMin": 1,
+    "notesMax": 2,
+    "userSourcesMin": 1,
+    "requiredNotes": [
+      {
+        "typeIn": ["DIRECTION", "DECISION", "CONTEXT", "PLAN"],
+        "statusIn": ["ACTIVE"],
+        "containsAll": ["design rationale", "notes", "claims"],
+        "evidenceQuoteContainsAll": ["design rationale"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      }
+    ],
+    "allActiveClaimsEvidenceSpeakerRoleIn": ["USER"]
+  },
+  "expectedFinal": {
+    "activeClaimsMax": 2,
+    "notesMin": 1,
+    "notesMax": 2,
+    "userSourcesMin": 2,
+    "requiredNotes": [
+      {
+        "typeIn": ["DIRECTION", "DECISION", "CONTEXT", "PLAN"],
+        "statusIn": ["ACTIVE"],
+        "containsAll": ["design rationale", "notes", "claims"],
+        "evidenceQuoteContainsAll": ["design rationale"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      }
+    ],
+    "allActiveClaimsEvidenceSpeakerRoleIn": ["USER"]
+  }
+}

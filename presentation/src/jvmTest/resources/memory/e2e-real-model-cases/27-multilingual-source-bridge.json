@@ -1,0 +1,81 @@
+{
+  "id": "multilingual-source-bridge",
+  "category": "multilingual_recall",
+  "description": "A Russian source that should not become a claim must still be retrievable through the English source search bridge.",
+  "timeoutSeconds": 700,
+  "seedSessions": [
+    {
+      "id": "seed-a",
+      "turns": [
+        "Кажется, Strider раньше работал стабильнее, но я не уверен."
+      ]
+    }
+  ],
+  "recallSessions": [
+    {
+      "id": "recall-b",
+      "turns": [
+        {
+          "text": "What system did I say used to work more reliably? Mention that I was uncertain.",
+          "answerExpectation": {
+            "containsAll": ["Strider"],
+            "containsAnyGroups": [
+              ["uncertain", "not sure", "unsure", "не уверен"]
+            ]
+          },
+          "memoryTraceExpectation": {
+            "needMemory": true,
+            "injectedPromptPresent": true,
+            "selectedHitsMin": 1,
+            "selectedClaimsMax": 0,
+            "selectedContainsAll": ["Strider"],
+            "selectorSelectedContainsAll": ["SELECT SOURCE", "Strider", "не уверен"],
+            "selectorSelectedContainsNone": ["CLAIM"],
+            "injectedPromptContainsAll": ["Кажется", "Strider", "стабильнее"],
+            "injectedPromptContainsNone": ["not requested for this answer mode"]
+          }
+        }
+      ]
+    }
+  ],
+  "expectedAfterSeeds": {
+    "activeClaimsMax": 0,
+    "userSourcesMin": 1,
+    "requiredSources": [
+      {
+        "roleIn": ["USER"],
+        "textContainsAll": ["Кажется", "Strider", "стабильнее"],
+        "searchTextContainsAll": ["Strider"],
+        "searchTextContainsAnyGroups": [
+          ["reliable", "reliably", "stable", "stability", "stably"],
+          ["uncertain", "not sure", "unsure"]
+        ]
+      }
+    ],
+    "forbiddenClaims": [
+      {
+        "containsAll": ["Strider"]
+      }
+    ]
+  },
+  "expectedFinal": {
+    "activeClaimsMax": 0,
+    "userSourcesMin": 2,
+    "requiredSources": [
+      {
+        "roleIn": ["USER"],
+        "textContainsAll": ["Кажется", "Strider", "стабильнее"],
+        "searchTextContainsAll": ["Strider"],
+        "searchTextContainsAnyGroups": [
+          ["reliable", "reliably", "stable", "stability", "stably"],
+          ["uncertain", "not sure", "unsure"]
+        ]
+      }
+    ],
+    "forbiddenClaims": [
+      {
+        "containsAll": ["Strider"]
+      }
+    ]
+  }
+}

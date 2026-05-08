@@ -1,0 +1,80 @@
+{
+  "id": "assistant-guess-correction",
+  "category": "knowledge_update",
+  "description": "A user correction should store the actual fact and not the assistant's wrong guessed fact.",
+  "timeoutSeconds": 700,
+  "seedSessions": [
+    {
+      "id": "seed-a",
+      "turns": [
+        "The assistant previously guessed that the LedgerBox backend uses Redis, but that was wrong. The actual LedgerBox backend uses MongoDB."
+      ]
+    }
+  ],
+  "recallSessions": [
+    {
+      "id": "recall-b",
+      "turns": [
+        {
+          "text": "What database does the LedgerBox backend actually use? Answer with only the database name.",
+          "answerExpectation": {
+            "containsAll": ["MongoDB"],
+            "containsNone": ["Redis", "PostgreSQL", "SQLite"]
+          },
+          "memoryTraceExpectation": {
+            "needMemory": true,
+            "injectedPromptPresent": true,
+            "selectedClaimsMin": 1,
+            "requiredSelectedClaims": [
+              {
+                "containsAll": ["LedgerBox", "MongoDB"]
+              }
+            ],
+            "forbiddenSelectedClaims": [
+              {
+                "normalizedContainsAll": ["LedgerBox", "Redis"]
+              }
+            ],
+            "injectedPromptContainsAll": ["LedgerBox", "MongoDB"]
+          }
+        }
+      ]
+    }
+  ],
+  "expectedAfterSeeds": {
+    "activeClaimsMin": 1,
+    "activeClaimsMax": 1,
+    "userSourcesMin": 1,
+    "requiredClaims": [
+      {
+        "containsAll": ["LedgerBox", "MongoDB"],
+        "evidenceQuoteContainsAll": ["actual LedgerBox backend uses MongoDB"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      }
+    ],
+    "forbiddenClaims": [
+      {
+        "normalizedContainsAll": ["LedgerBox", "Redis"]
+      }
+    ],
+    "allActiveClaimsEvidenceSpeakerRoleIn": ["USER"]
+  },
+  "expectedFinal": {
+    "activeClaimsMin": 1,
+    "activeClaimsMax": 1,
+    "userSourcesMin": 2,
+    "requiredClaims": [
+      {
+        "containsAll": ["LedgerBox", "MongoDB"],
+        "evidenceQuoteContainsAll": ["actual LedgerBox backend uses MongoDB"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      }
+    ],
+    "forbiddenClaims": [
+      {
+        "normalizedContainsAll": ["LedgerBox", "Redis"]
+      }
+    ],
+    "allActiveClaimsEvidenceSpeakerRoleIn": ["USER"]
+  }
+}

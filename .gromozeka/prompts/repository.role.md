@@ -60,7 +60,7 @@ Domain-facing interfaces should not leak ORM entities, table types, graph driver
 Before inventing a new repository shape:
 - read the relevant domain interface and KDoc
 - inspect neighboring repository implementations
-- search the knowledge graph for existing repository patterns
+- search typed memory for existing repository patterns
 - check `.sources/` when library behavior matters
 
 ## Workflow

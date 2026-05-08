@@ -8,9 +8,11 @@ import kotlinx.serialization.json.Json
 import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.*
+import org.springframework.context.annotation.Profile
 import org.springframework.stereotype.Service
 
 @Service
+@Profile("sqlite")
 class ExposedSquashOperationRepository(
     private val json: Json
 ) : SquashOperationRepository {

@@ -1,0 +1,75 @@
+@startuml
+title Memory Lifecycle Overview
+
+skinparam shadowing false
+skinparam ActivityBackgroundColor #FFF8E7
+skinparam ActivityBorderColor #6B7280
+skinparam ArrowColor #4B5563
+skinparam ConditionEndStyle hline
+
+|input| Input
+|evidence| Evidence
+|routing| Routing
+|write| Write
+|scheduling| Scheduling
+|background| Background (later, async)
+|recall| Runtime Recall (later, on demand)
+
+|input|
+start
+:New turn / tool output / document chunk;
+
+|evidence|
+:Persist `Source`;
+
+|routing|
+if (Worth writing into memory?) then (yes)
+  :Continue to semantic write;
+else (no)
+  :Keep only `Source` as evidence;
+  stop
+endif
+
+if (Write mode?) then (direct_structured)
+  |write|
+  :Write-time retrieval of nearby\nclaims / tasks / profile / sources;
+  :Entity canonicalization;
+  :Extract and reconcile\n`Claim` / `Task` / `Profile`;
+  :Apply structured transaction;
+elseif (note_write)
+  |write|
+  :Write-time retrieval of nearby\nnotes / claims / sources;
+  :Entity canonicalization;
+  :Construct and reconcile `Note`;
+  :Apply note transaction;
+else (mixed)
+  |write|
+  :Write-time retrieval of nearby memory;
+  :Entity canonicalization;
+  :Reconcile `Note` + `Claim` + `Task` + `Profile`;
+  :Apply mixed transaction;
+endif
+
+|scheduling|
+:Schedule background maintenance;
+
+|background|
+:Asynchronous workers may run later:\n- consolidation\n- repair\n- retention;
+
+|recall|
+:New user request;
+if (Need memory retrieval?) then (yes)
+  :Load core blocks\n(`Profile`, active `Task`, session summary);
+  :Choose retrieval mode\n(claim-first / note-first / mixed / evidence-first);
+  :Retrieve bounded memory pack;
+  if (Conflict or uncertainty?) then (yes)
+    :Fall back to `Source`;
+  endif
+  :Compose grounded answer;
+else (no)
+  :Answer without memory retrieval;
+endif
+
+stop
+
+@enduml

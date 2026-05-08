@@ -1,0 +1,102 @@
+{
+  "id": "reported-speech-separation",
+  "category": "multi_perspective",
+  "description": "Third-party preference and user preference in one message should stay attached to different subjects.",
+  "timeoutSeconds": 700,
+  "seedSessions": [
+    {
+      "id": "seed-a",
+      "turns": [
+        "For recommendation context: Vasya prefers Tesla. I prefer Nissan."
+      ]
+    }
+  ],
+  "recallSessions": [
+    {
+      "id": "recall-b",
+      "turns": [
+        {
+          "text": "Which car brand do I prefer? Answer with only the brand name.",
+          "answerExpectation": {
+            "containsAll": ["Nissan"],
+            "containsNone": ["Tesla", "Toyota", "Honda"]
+          },
+          "memoryTraceExpectation": {
+            "needMemory": true,
+            "injectedPromptPresent": true,
+            "selectedClaimsMin": 1,
+            "requiredSelectedClaims": [
+              {
+                "predicateIn": ["prefers"],
+                "subjectEntityTypeIn": ["USER"],
+                "containsAll": ["Nissan"]
+              }
+            ],
+            "injectedPromptContainsAll": ["Nissan"]
+          }
+        },
+        {
+          "text": "Which car brand does Vasya prefer? Answer with only the brand name.",
+          "answerExpectation": {
+            "containsAll": ["Tesla"],
+            "containsNone": ["Nissan", "Toyota", "Honda"]
+          },
+          "memoryTraceExpectation": {
+            "needMemory": true,
+            "injectedPromptPresent": true,
+            "selectedClaimsMin": 1,
+            "requiredSelectedClaims": [
+              {
+                "predicateIn": ["prefers"],
+                "containsAll": ["Vasya", "Tesla"]
+              }
+            ],
+            "injectedPromptContainsAll": ["Vasya", "Tesla"]
+          }
+        }
+      ]
+    }
+  ],
+  "expectedAfterSeeds": {
+    "activeClaimsMin": 2,
+    "activeClaimsMax": 2,
+    "userSourcesMin": 1,
+    "requiredClaims": [
+      {
+        "predicateIn": ["prefers"],
+        "subjectEntityTypeIn": ["USER"],
+        "containsAll": ["Nissan"],
+        "evidenceQuoteContainsAll": ["I prefer Nissan"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      },
+      {
+        "predicateIn": ["prefers"],
+        "containsAll": ["Vasya", "Tesla"],
+        "evidenceQuoteContainsAll": ["Vasya prefers Tesla"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      }
+    ],
+    "allActiveClaimsEvidenceSpeakerRoleIn": ["USER"]
+  },
+  "expectedFinal": {
+    "activeClaimsMin": 2,
+    "activeClaimsMax": 2,
+    "userSourcesMin": 3,
+    "requiredClaims": [
+      {
+        "predicateIn": ["prefers"],
+        "subjectEntityTypeIn": ["USER"],
+        "containsAll": ["Nissan"],
+        "evidenceQuoteContainsAll": ["I prefer Nissan"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      },
+      {
+        "predicateIn": ["prefers"],
+        "containsAll": ["Vasya", "Tesla"],
+        "evidenceQuoteContainsAll": ["Vasya prefers Tesla"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      }
+    ],
+    "allActiveClaimsEvidenceSpeakerRoleIn": ["USER"]
+  }
+}

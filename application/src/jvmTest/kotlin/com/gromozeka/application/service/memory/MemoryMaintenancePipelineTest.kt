@@ -1,0 +1,3320 @@
+package com.gromozeka.application.service.memory
+
+import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.memory.DirectStructuredMemoryWriteRequest
+import com.gromozeka.domain.model.memory.MemoryClaim
+import com.gromozeka.domain.model.memory.MemoryClaimCandidate
+import com.gromozeka.domain.model.memory.MemoryClaimReconciliationOp
+import com.gromozeka.domain.model.memory.MemoryClaimReconciler
+import com.gromozeka.domain.model.memory.MemoryEntity
+import com.gromozeka.domain.model.memory.MemoryEntityCanonicalizationOp
+import com.gromozeka.domain.model.memory.MemoryEntityMaintenanceCandidateGroup
+import com.gromozeka.domain.model.memory.MemoryEntityMaintenancePlan
+import com.gromozeka.domain.model.memory.MemoryEntityMaintenancePlanner
+import com.gromozeka.domain.model.memory.MemoryEpisodeCandidate
+import com.gromozeka.domain.model.memory.MemoryEvidenceRef
+import com.gromozeka.domain.model.memory.MemoryEpisode
+import com.gromozeka.domain.model.memory.MemoryForgetPlan
+import com.gromozeka.domain.model.memory.MemoryForgetPlanner
+import com.gromozeka.domain.model.memory.MemoryItemRef
+import com.gromozeka.domain.model.memory.MemoryMaintenanceRequest
+import com.gromozeka.domain.model.memory.MemoryNamespace
+import com.gromozeka.domain.model.memory.MemoryNamespaceSnapshot
+import com.gromozeka.domain.model.memory.MemoryNote
+import com.gromozeka.domain.model.memory.MemoryNoteConsolidator
+import com.gromozeka.domain.model.memory.MemoryNoteCandidate
+import com.gromozeka.domain.model.memory.MemoryPredicateDefinition
+import com.gromozeka.domain.model.memory.MemoryProfile
+import com.gromozeka.domain.model.memory.MemoryReadPlan
+import com.gromozeka.domain.model.memory.MemoryReadPlanner
+import com.gromozeka.domain.model.memory.MemoryReadRequest
+import com.gromozeka.domain.model.memory.MemoryReadSelectionRequest
+import com.gromozeka.domain.model.memory.MemoryReadSelectionResult
+import com.gromozeka.domain.model.memory.MemoryReadSelector
+import com.gromozeka.domain.model.memory.MemoryReconciliationAction
+import com.gromozeka.domain.model.memory.MemoryRepairCandidateCluster
+import com.gromozeka.domain.model.memory.MemoryRepairPlan
+import com.gromozeka.domain.model.memory.MemoryRepairPlanner
+import com.gromozeka.domain.model.memory.MemoryRetrievalBudget
+import com.gromozeka.domain.model.memory.MemoryRouteDecision
+import com.gromozeka.domain.model.memory.MemoryRun
+import com.gromozeka.domain.model.memory.MemoryScope
+import com.gromozeka.domain.model.memory.MemorySemanticType
+import com.gromozeka.domain.model.memory.MemorySource
+import com.gromozeka.domain.model.memory.MemorySourceUsagePolicy
+import com.gromozeka.domain.model.memory.MemoryStore
+import com.gromozeka.domain.model.memory.MemoryTask
+import com.gromozeka.domain.model.memory.MemoryTaskUpdateOp
+import com.gromozeka.domain.model.memory.MemoryThreadContext
+import com.gromozeka.domain.model.memory.MemoryUpdateBatch
+import com.gromozeka.domain.model.memory.MemoryWriteRetrievalPlan
+import com.gromozeka.domain.model.memory.NoteConsolidationResult
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
+import kotlinx.coroutines.runBlocking
+import kotlinx.datetime.Instant
+import kotlinx.serialization.json.JsonPrimitive
+
+class MemoryMaintenancePipelineTest {
+
+    @Test
+    fun noopQuestionSourcesBecomeAuditOnlyAndDoNotRecall() = runBlocking {
+        val questionSource = source(
+            "booknest-question-source",
+            "I remember BookNest exported CSV. Is that still current?",
+        )
+        val store = InMemoryMemoryStore()
+
+        val result = DirectStructuredMemoryWritePipeline(
+            store = store,
+            router = FixedMemoryWriteRouter(
+                MemoryRouteDecision(
+                    decision = MemoryRouteDecision.Decision.NOOP,
+                    sourcePolicy = MemorySourceUsagePolicy.STANDARD,
+                    sourceSearchText = "BookNest exported CSV still current question",
+                    reason = "Question only.",
+                )
+            ),
+            retrievalPlanner = FixedMemoryWriteRetrievalPlanner(),
+            entityCanonicalizer = FixedMemoryEntityCanonicalizer(),
+            noteConstructor = FixedMemoryNoteConstructor(),
+            noteReconciler = InsertOnlyMemoryNoteReconciler,
+            claimExtractor = FixedMemoryClaimExtractor(),
+            claimReconciler = InsertOnlyMemoryClaimReconciler,
+            taskUpdater = FixedMemoryTaskUpdater(),
+            materializer = DefaultDirectStructuredMemoryWriteMaterializer(
+                idFactory = SequentialMemoryIdFactory("noop-question-policy"),
+            ),
+            clock = FixedMemoryClock(NOW),
+        ).write(
+            DirectStructuredMemoryWriteRequest(
+                namespace = TEST_NAMESPACE,
+                source = questionSource,
+            )
+        )
+
+        val snapshot = store.loadNamespaceSnapshot(TEST_NAMESPACE, includeArchived = true)
+        val storedSource = snapshot.sourceById(questionSource.id.value)
+
+        assertEquals(MemoryRouteDecision.Decision.NOOP, result.routeDecision.decision)
+        assertTrue(!result.routeDecision.sourcePolicy.allowStructuredExtraction)
+        assertTrue(!result.routeDecision.sourcePolicy.allowRecall)
+        assertTrue(!result.routeDecision.sourcePolicy.allowEvidenceHydration)
+        assertEquals("BookNest exported CSV still current question", storedSource.searchText)
+        assertTrue(!storedSource.usagePolicy.allowStructuredExtraction)
+        assertTrue(!storedSource.usagePolicy.allowRecall)
+        assertTrue(!storedSource.usagePolicy.allowEvidenceHydration)
+
+        val readResult = RuntimeMemoryReadPipeline(
+            store = store,
+            planner = FixedReadPlanner(
+                MemoryReadPlan(
+                    needMemory = true,
+                    answerMode = MemoryReadPlan.AnswerMode.FACTUAL,
+                    requireEvidenceFallback = true,
+                    retrievalBudget = MemoryRetrievalBudget(sources = 3),
+                    retrievalRequests = listOf(
+                        MemoryReadPlan.RetrievalRequest(
+                            memoryType = MemorySemanticType.SOURCE,
+                            why = "Question-only source should not be normal recall evidence.",
+                            query = "BookNest exported CSV still current",
+                            topK = 3,
+                        )
+                    ),
+                )
+            ),
+        ).read(memoryReadRequest("booknest-question-read", "What did I ask about BookNest CSV?"))
+
+        val prompt = assertNotNull(readResult.runtimePrompt)
+
+        assertTrue(readResult.retrievedHits.none { it.toTestItemRef().id == questionSource.id.value })
+        assertTrue(prompt.contains("No relevant persisted memory was retrieved"))
+        assertTrue(!prompt.contains("BookNest exported CSV"))
+        assertTrue(readResult.trace.searchSteps.any { step ->
+            step.stage == "retrieval:SOURCE" && step.rawCount == 1 && step.selectedCount == 0
+        })
+    }
+
+    @Test
+    fun assistantChatTurnsBecomeAuditOnlySourceOnlyAndDoNotRecall() = runBlocking {
+        val assistantSource = source(
+            id = "assistant-source",
+            text = "Запомнил: для HarborLens основной формат аналитического экспорта — ORC.",
+            speakerRole = MemorySource.ActorRole.ASSISTANT,
+        )
+        val store = InMemoryMemoryStore()
+
+        val result = DirectStructuredMemoryWritePipeline(
+            store = store,
+            router = FixedMemoryWriteRouter(
+                MemoryRouteDecision(
+                    decision = MemoryRouteDecision.Decision.DIRECT_STRUCTURED_WRITE,
+                    memoryTypes = setOf(MemorySemanticType.CLAIM),
+                    reason = "Should not be called for assistant turns.",
+                )
+            ),
+            retrievalPlanner = FixedMemoryWriteRetrievalPlanner(),
+            entityCanonicalizer = FixedMemoryEntityCanonicalizer(),
+            noteConstructor = FixedMemoryNoteConstructor(),
+            noteReconciler = InsertOnlyMemoryNoteReconciler,
+            claimExtractor = FixedMemoryClaimExtractor(),
+            claimReconciler = InsertOnlyMemoryClaimReconciler,
+            taskUpdater = FixedMemoryTaskUpdater(),
+            materializer = DefaultDirectStructuredMemoryWriteMaterializer(
+                idFactory = SequentialMemoryIdFactory("assistant-source-only"),
+            ),
+            clock = FixedMemoryClock(NOW),
+        ).write(
+            DirectStructuredMemoryWriteRequest(
+                namespace = TEST_NAMESPACE,
+                source = assistantSource,
+            )
+        )
+
+        val snapshot = store.loadNamespaceSnapshot(TEST_NAMESPACE, includeArchived = true)
+        val storedSource = snapshot.sourceById(assistantSource.id.value)
+
+        assertEquals(MemoryRouteDecision.Decision.NOOP, result.routeDecision.decision)
+        assertTrue(!result.routeDecision.sourcePolicy.allowStructuredExtraction)
+        assertTrue(!result.routeDecision.sourcePolicy.allowRecall)
+        assertTrue(!result.routeDecision.sourcePolicy.allowEvidenceHydration)
+        assertTrue(result.memoryBatch.claims.isEmpty())
+        assertTrue(result.memoryBatch.notes.isEmpty())
+        assertTrue(result.memoryBatch.tasks.isEmpty())
+        assertTrue(!storedSource.usagePolicy.allowStructuredExtraction)
+        assertTrue(!storedSource.usagePolicy.allowRecall)
+        assertTrue(!storedSource.usagePolicy.allowEvidenceHydration)
+        assertTrue(storedSource.usagePolicy.reason.contains("Assistant chat turn"))
+
+        val readResult = RuntimeMemoryReadPipeline(
+            store = store,
+            planner = FixedReadPlanner(
+                MemoryReadPlan(
+                    needMemory = true,
+                    answerMode = MemoryReadPlan.AnswerMode.FACTUAL,
+                    requireEvidenceFallback = true,
+                    retrievalBudget = MemoryRetrievalBudget(sources = 3),
+                    retrievalRequests = listOf(
+                        MemoryReadPlan.RetrievalRequest(
+                            memoryType = MemorySemanticType.SOURCE,
+                            why = "Assistant acknowledgements must not become recall evidence.",
+                            query = "HarborLens ORC export format",
+                            topK = 3,
+                        )
+                    ),
+                )
+            ),
+        ).read(memoryReadRequest("assistant-source-read", "What format did HarborLens use?"))
+
+        val prompt = assertNotNull(readResult.runtimePrompt)
+
+        assertTrue(readResult.retrievedHits.none { it.toTestItemRef().id == assistantSource.id.value })
+        assertTrue(prompt.contains("No relevant persisted memory was retrieved"))
+        assertTrue(!prompt.contains("HarborLens"))
+        assertTrue(readResult.trace.searchSteps.any { step ->
+            step.stage == "retrieval:SOURCE" && step.rawCount == 1 && step.selectedCount == 0
+        })
+    }
+
+    @Test
+    fun explicitForgetArchivesSelectedMemoryAndKeepsCurrentForgetSource() = runBlocking {
+        val oldSource = source("source-to-forget", "User prefers Toyota RunX for daily driving.")
+        val forgetSource = source("forget-command", "Forget that I prefer Toyota.")
+        val claim = claim(
+            id = "claim-to-forget",
+            sourceId = oldSource.id.value,
+            normalizedText = "The user prefers Toyota RunX for daily driving.",
+        )
+        val store = InMemoryMemoryStore(
+            MemoryNamespaceSnapshot(
+                sources = listOf(oldSource, forgetSource),
+                entities = listOf(entity()),
+                claims = listOf(claim),
+            )
+        )
+        val planner = FixedForgetPlanner(
+            MemoryForgetPlan(
+                forgetActions = listOf(
+                    MemoryForgetPlan.Action(
+                        action = MemoryForgetPlan.Action.Type.SOFT_DELETE_SOURCE,
+                        targetType = MemoryItemRef.Type.SOURCE,
+                        targetIds = listOf(oldSource.id.value),
+                        reason = "Remove source evidence requested by the user.",
+                    ),
+                    MemoryForgetPlan.Action(
+                        action = MemoryForgetPlan.Action.Type.SOFT_DELETE_SOURCE,
+                        targetType = MemoryItemRef.Type.SOURCE,
+                        targetIds = listOf(forgetSource.id.value),
+                        reason = "Planner must not be able to delete the current forget command.",
+                    ),
+                    MemoryForgetPlan.Action(
+                        action = MemoryForgetPlan.Action.Type.ARCHIVE_ITEM,
+                        targetType = MemoryItemRef.Type.CLAIM,
+                        targetIds = listOf(claim.id.value),
+                        reason = "Remove interpreted memory from normal recall.",
+                    ),
+                ),
+                summary = "Forgot Toyota preference.",
+            )
+        )
+
+        val result = ExplicitMemoryForgetPipeline(
+            store = store,
+            planner = planner,
+            idFactory = SequentialMemoryIdFactory("forget"),
+            clock = FixedMemoryClock(NOW),
+        ).run(
+            request = DirectStructuredMemoryWriteRequest(TEST_NAMESPACE, forgetSource),
+            routeDecision = MemoryRouteDecision(
+                decision = MemoryRouteDecision.Decision.FORGET_REQUEST,
+                memoryTypes = setOf(MemorySemanticType.SOURCE, MemorySemanticType.CLAIM),
+                sourcePolicy = MemorySourceUsagePolicy(
+                    allowStructuredExtraction = false,
+                    allowRecall = false,
+                    allowEvidenceHydration = false,
+                    reason = "explicit forget command",
+                ),
+                sourceSearchText = "Toyota RunX preference",
+                reason = "User asked to forget remembered information.",
+            ),
+        )
+
+        val snapshot = store.loadNamespaceSnapshot(TEST_NAMESPACE, includeArchived = true)
+
+        assertEquals(1, result.memoryBatch.sources.size)
+        assertEquals(NOW, snapshot.sourceById(oldSource.id.value).deletedAt)
+        assertNull(snapshot.sourceById(forgetSource.id.value).deletedAt)
+        assertEquals(NOW, snapshot.claimById(claim.id.value).archivedAt)
+        assertTrue(snapshot.runs.any { it.runType == MemoryRun.Type.FORGET_MEMORY })
+    }
+
+    @Test
+    fun retentionArchivesOnlyInactiveCandidates() = runBlocking {
+        val activeClaim = claim("claim-active", status = MemoryClaim.Status.ACTIVE)
+        val supersededClaim = claim("claim-superseded", status = MemoryClaim.Status.SUPERSEDED)
+        val activeNote = note("note-active", status = MemoryNote.Status.ACTIVE)
+        val resolvedNote = note("note-resolved", status = MemoryNote.Status.RESOLVED)
+        val openTask = task("task-open", status = MemoryTask.Status.OPEN)
+        val doneTask = task("task-done", status = MemoryTask.Status.DONE)
+        val store = InMemoryMemoryStore(
+            MemoryNamespaceSnapshot(
+                sources = listOf(source()),
+                entities = listOf(entity()),
+                claims = listOf(activeClaim, supersededClaim),
+                notes = listOf(activeNote, resolvedNote),
+                tasks = listOf(openTask, doneTask),
+            )
+        )
+
+        MemoryRetentionPipeline(
+            store = store,
+            planner = PolicyMemoryRetentionPlanner(),
+            idFactory = SequentialMemoryIdFactory("retention"),
+            clock = FixedMemoryClock(NOW),
+        ).run(MemoryMaintenanceRequest(TEST_NAMESPACE))
+
+        val snapshot = store.loadNamespaceSnapshot(TEST_NAMESPACE, includeArchived = true)
+
+        assertNull(snapshot.claimById(activeClaim.id.value).archivedAt)
+        assertEquals(NOW, snapshot.claimById(supersededClaim.id.value).archivedAt)
+        assertEquals(MemoryClaim.Status.SUPERSEDED, snapshot.claimById(supersededClaim.id.value).status)
+        assertNull(snapshot.noteById(activeNote.id.value).archivedAt)
+        assertEquals(NOW, snapshot.noteById(resolvedNote.id.value).archivedAt)
+        assertNull(snapshot.taskById(openTask.id.value).archivedAt)
+        assertEquals(NOW, snapshot.taskById(doneTask.id.value).archivedAt)
+        assertTrue(snapshot.runs.any { it.runType == MemoryRun.Type.APPLY_RETENTION })
+    }
+
+    @Test
+    fun repairMergesDuplicateClaimsAndArchivesLoser() = runBlocking {
+        val firstSource = source("source-first", "User prefers Toyota.")
+        val secondSource = source("source-second", "User still prefers Toyota.")
+        val weakerClaim = claim(
+            id = "claim-weaker",
+            sourceId = firstSource.id.value,
+            confidence = 0.55,
+            importance = 5,
+        )
+        val strongerClaim = claim(
+            id = "claim-stronger",
+            sourceId = secondSource.id.value,
+            confidence = 0.9,
+            importance = 8,
+        )
+        val store = InMemoryMemoryStore(
+            MemoryNamespaceSnapshot(
+                sources = listOf(firstSource, secondSource),
+                entities = listOf(entity()),
+                claims = listOf(weakerClaim, strongerClaim),
+            )
+        )
+
+        val result = MemoryRepairPipeline(
+            store = store,
+            planner = FixedRepairPlanner(
+                MemoryRepairPlan(
+                    repairActions = listOf(
+                        MemoryRepairPlan.Action(
+                            action = MemoryRepairPlan.Action.Type.MERGE_DUPLICATES,
+                            targetType = MemoryItemRef.Type.CLAIM,
+                            targetIds = listOf(weakerClaim.id.value, strongerClaim.id.value),
+                            reason = "Duplicate claim detected.",
+                        )
+                    ),
+                    summary = "Merged duplicate Toyota preference claims.",
+                )
+            ),
+            idFactory = SequentialMemoryIdFactory("repair"),
+            profileUpdater = ProjectionMemoryProfileUpdater(store),
+            clock = FixedMemoryClock(NOW),
+        ).run(MemoryMaintenanceRequest(TEST_NAMESPACE))
+
+        val snapshot = store.loadNamespaceSnapshot(TEST_NAMESPACE, includeArchived = true)
+
+        assertEquals(2, result.suspiciousHits.filterIsInstance<MemoryStore.SearchHit.ClaimHit>().size)
+        assertEquals(NOW, snapshot.claimById(weakerClaim.id.value).archivedAt)
+        assertNull(snapshot.claimById(strongerClaim.id.value).archivedAt)
+        assertEquals(2, snapshot.claimById(strongerClaim.id.value).evidenceRefs.size)
+        assertTrue(snapshot.runs.any { it.runType == MemoryRun.Type.REPAIR_MEMORY })
+
+        val normalSnapshot = store.loadNamespaceSnapshot(TEST_NAMESPACE)
+        val searchHits = store.search(
+            MemoryStore.SearchRequest(
+                namespace = TEST_NAMESPACE,
+                scopes = setOf(MemoryStore.SearchScope.CLAIMS),
+                query = "Toyota preference",
+                limit = 10,
+            )
+        )
+        assertTrue(normalSnapshot.claims.none { it.id == weakerClaim.id })
+        assertTrue(normalSnapshot.claims.any { it.id == strongerClaim.id })
+        assertTrue(searchHits.none { it.toTestItemRef().id == weakerClaim.id.value })
+        assertTrue(searchHits.any { it.toTestItemRef().id == strongerClaim.id.value })
+    }
+
+    @Test
+    fun repairMergesDuplicateTasksAndArchivesLoser() = runBlocking {
+        val title = "Add selector trace report to memory e2e"
+        val weakerTask = task("task-weaker-selector-trace", status = MemoryTask.Status.OPEN).copy(
+            title = title,
+            description = "Expose selector decisions in memory e2e reports.",
+            confidence = 0.55,
+            updatedAt = EARLIER,
+        )
+        val strongerTask = task("task-stronger-selector-trace", status = MemoryTask.Status.OPEN).copy(
+            title = title,
+            description = "Expose selector decisions in memory e2e reports.",
+            priority = MemoryTask.Priority.HIGH,
+            confidence = 0.95,
+            updatedAt = NOW,
+        )
+        val store = InMemoryMemoryStore(
+            MemoryNamespaceSnapshot(
+                sources = listOf(source()),
+                entities = listOf(entity()),
+                tasks = listOf(weakerTask, strongerTask),
+            )
+        )
+
+        val result = MemoryRepairPipeline(
+            store = store,
+            planner = FixedRepairPlanner(
+                MemoryRepairPlan(
+                    repairActions = listOf(
+                        MemoryRepairPlan.Action(
+                            action = MemoryRepairPlan.Action.Type.MERGE_DUPLICATES,
+                            targetType = MemoryItemRef.Type.TASK,
+                            targetIds = listOf(weakerTask.id.value, strongerTask.id.value),
+                            reason = "Duplicate task detected.",
+                        )
+                    ),
+                    summary = "Merged duplicate selector trace tasks.",
+                )
+            ),
+            idFactory = SequentialMemoryIdFactory("repair-task"),
+            profileUpdater = ProjectionMemoryProfileUpdater(store),
+            clock = FixedMemoryClock(NOW),
+        ).run(MemoryMaintenanceRequest(TEST_NAMESPACE))
+
+        val snapshot = store.loadNamespaceSnapshot(TEST_NAMESPACE, includeArchived = true)
+
+        assertTrue(result.candidateClusters.any { it.kind == MemoryRepairCandidateCluster.Kind.DUPLICATE_TASKS })
+        assertEquals(1, result.memoryBatch.tasks.size)
+        assertEquals(weakerTask.id, result.memoryBatch.tasks.single().id)
+        assertEquals(NOW, snapshot.taskById(weakerTask.id.value).archivedAt)
+        assertNull(snapshot.taskById(strongerTask.id.value).archivedAt)
+
+        val normalSnapshot = store.loadNamespaceSnapshot(TEST_NAMESPACE)
+        val searchHits = store.search(
+            MemoryStore.SearchRequest(
+                namespace = TEST_NAMESPACE,
+                scopes = setOf(MemoryStore.SearchScope.TASKS),
+                query = "selector trace report",
+                limit = 10,
+            )
+        )
+        assertTrue(normalSnapshot.tasks.none { it.id == weakerTask.id })
+        assertTrue(normalSnapshot.tasks.any { it.id == strongerTask.id })
+        assertTrue(searchHits.none { it.toTestItemRef().id == weakerTask.id.value })
+        assertTrue(searchHits.any { it.toTestItemRef().id == strongerTask.id.value })
+    }
+
+    @Test
+    fun repairDetectsConflictingReplacementClaimsAndSupersedesOlderClaim() = runBlocking {
+        val modelPredicate = MemoryPredicateDefinition(
+            namespace = TEST_NAMESPACE,
+            predicate = "uses_primary_model",
+            objectKind = MemoryPredicateDefinition.ObjectValueKind.STRING,
+            cardinality = MemoryPredicateDefinition.Cardinality.SINGLE,
+            conflictPolicy = MemoryPredicateDefinition.ConflictPolicy.REPLACE,
+            profileSync = true,
+        )
+        val oldClaim = claim(
+            id = "claim-old-model",
+            predicate = "uses_primary_model",
+            objectValue = JsonPrimitive("gpt-5.3-codex"),
+            normalizedText = "Gromozeka uses gpt-5.3-codex as the primary model.",
+        ).copy(
+            predicatePolicy = modelPredicate,
+            updatedAt = EARLIER,
+        )
+        val newClaim = claim(
+            id = "claim-new-model",
+            predicate = "uses_primary_model",
+            objectValue = JsonPrimitive("gpt-5.4"),
+            normalizedText = "Gromozeka uses gpt-5.4 as the primary model.",
+        ).copy(
+            predicatePolicy = modelPredicate,
+            updatedAt = NOW,
+        )
+        val store = InMemoryMemoryStore(
+            MemoryNamespaceSnapshot(
+                predicateDefinitions = listOf(modelPredicate),
+                sources = listOf(source()),
+                entities = listOf(entity()),
+                claims = listOf(oldClaim, newClaim),
+            )
+        )
+
+        val result = MemoryRepairPipeline(
+            store = store,
+            planner = FixedRepairPlanner(
+                MemoryRepairPlan(
+                    repairActions = listOf(
+                        MemoryRepairPlan.Action(
+                            action = MemoryRepairPlan.Action.Type.SUPERSEDE_ITEM,
+                            targetType = MemoryItemRef.Type.CLAIM,
+                            targetIds = listOf(oldClaim.id.value),
+                            reason = "Older replacement-style claim conflicts with newer claim.",
+                        )
+                    ),
+                    summary = "Superseded old model claim.",
+                )
+            ),
+            idFactory = SequentialMemoryIdFactory("repair-conflict"),
+            profileUpdater = ProjectionMemoryProfileUpdater(store),
+            clock = FixedMemoryClock(NOW),
+        ).run(MemoryMaintenanceRequest(TEST_NAMESPACE))
+
+        val snapshot = store.loadNamespaceSnapshot(TEST_NAMESPACE, includeArchived = true)
+
+        assertTrue(result.candidateClusters.any { it.kind == MemoryRepairCandidateCluster.Kind.CONFLICTING_CLAIMS })
+        assertEquals(2, result.suspiciousHits.filterIsInstance<MemoryStore.SearchHit.ClaimHit>().size)
+        assertEquals(MemoryClaim.Status.SUPERSEDED, snapshot.claimById(oldClaim.id.value).status)
+        assertEquals(MemoryClaim.Status.ACTIVE, snapshot.claimById(newClaim.id.value).status)
+        assertNull(snapshot.claimById(oldClaim.id.value).archivedAt)
+    }
+
+    @Test
+    fun repairRefreshesDriftedProfileProjection() = runBlocking {
+        val preferencePredicate = MemoryPredicateDefinition(
+            namespace = TEST_NAMESPACE,
+            predicate = "prefers",
+            objectKind = MemoryPredicateDefinition.ObjectValueKind.STRING,
+            cardinality = MemoryPredicateDefinition.Cardinality.MULTI,
+            conflictPolicy = MemoryPredicateDefinition.ConflictPolicy.COEXIST,
+            profileSync = true,
+        )
+        val profile = profile(
+            id = "profile-user",
+            ownerEntityId = USER_ENTITY_ID,
+            profileText = "Profile for Lewik (USER).\nNo active profile-synced memory.",
+            version = 1,
+            updatedAt = EARLIER,
+        )
+        val freshClaim = claim(
+            id = "claim-profile-toyota",
+            predicate = "prefers",
+            normalizedText = "The user prefers Toyota.",
+        ).copy(
+            predicatePolicy = preferencePredicate,
+            updatedAt = NOW,
+        )
+        val store = InMemoryMemoryStore(
+            MemoryNamespaceSnapshot(
+                predicateDefinitions = listOf(preferencePredicate),
+                sources = listOf(source()),
+                entities = listOf(entity()),
+                claims = listOf(freshClaim),
+                profiles = listOf(profile),
+            )
+        )
+
+        val result = MemoryRepairPipeline(
+            store = store,
+            planner = FixedRepairPlanner(
+                MemoryRepairPlan(
+                    repairActions = listOf(
+                        MemoryRepairPlan.Action(
+                            action = MemoryRepairPlan.Action.Type.REFRESH_PROFILE,
+                            targetType = MemoryItemRef.Type.PROFILE,
+                            targetIds = listOf(profile.id.value),
+                            reason = "Profile is older than active profile-synced claim.",
+                        )
+                    ),
+                    summary = "Refreshed drifted profile.",
+                )
+            ),
+            idFactory = SequentialMemoryIdFactory("repair-profile"),
+            profileUpdater = ProjectionMemoryProfileUpdater(store),
+            clock = FixedMemoryClock(NOW),
+        ).run(MemoryMaintenanceRequest(TEST_NAMESPACE))
+
+        val snapshot = store.loadNamespaceSnapshot(TEST_NAMESPACE, includeArchived = true)
+        val updatedProfile = snapshot.profiles.single()
+
+        assertTrue(result.candidateClusters.any { it.kind == MemoryRepairCandidateCluster.Kind.PROFILE_DRIFT })
+        assertEquals(1, result.memoryBatch.profiles.size)
+        assertEquals(2, updatedProfile.version)
+        assertTrue(updatedProfile.profileText.contains("The user prefers Toyota."))
+        assertTrue(snapshot.runs.any { run ->
+            run.runType == MemoryRun.Type.REPAIR_MEMORY &&
+                run.appliedOps.any { it.toString().contains("refresh_profile") }
+        })
+    }
+
+    @Test
+    fun profileProjectionIgnoresExpiredAndLowConfidenceMemory() = runBlocking {
+        val profile = profile(
+            id = "profile-user",
+            ownerEntityId = USER_ENTITY_ID,
+            profileText = "Profile for Lewik (USER).\nStable facts:\n- The user prefers Obsidian.",
+            version = 1,
+            updatedAt = EARLIER,
+        )
+        val currentClaim = claim(
+            id = "claim-current-logseq",
+            predicate = "prefers",
+            objectValue = JsonPrimitive("Logseq"),
+            normalizedText = "The user prefers Logseq for personal notes.",
+            confidence = 0.9,
+        ).copy(updatedAt = NOW)
+        val expiredClaim = claim(
+            id = "claim-expired-obsidian",
+            predicate = "prefers",
+            objectValue = JsonPrimitive("Obsidian"),
+            normalizedText = "The user prefers Obsidian for personal notes.",
+            confidence = 0.95,
+        ).copy(validTo = EARLIER, updatedAt = NOW)
+        val weakClaim = claim(
+            id = "claim-weak-vim",
+            predicate = "prefers",
+            objectValue = JsonPrimitive("Vim"),
+            normalizedText = "The user may prefer Vim for notes.",
+            confidence = 0.4,
+        ).copy(updatedAt = NOW)
+        val expiredNote = note(
+            id = "note-expired-obsidian",
+            title = "Old Obsidian context",
+            summary = "The user used to prefer Obsidian for personal notes.",
+            confidence = 0.95,
+            importance = 9,
+        ).copy(validTo = EARLIER, updatedAt = NOW)
+        val store = InMemoryMemoryStore(
+            MemoryNamespaceSnapshot(
+                sources = listOf(source()),
+                entities = listOf(entity()),
+                claims = listOf(currentClaim, expiredClaim, weakClaim),
+                notes = listOf(expiredNote),
+                profiles = listOf(profile),
+            )
+        )
+
+        val result = ProjectionMemoryProfileUpdater(store).updateNamespaceProfiles(
+            namespace = TEST_NAMESPACE,
+            logSubject = "test=profile_projection_safety",
+            appliedBatch = MemoryUpdateBatch(
+                claims = listOf(currentClaim, expiredClaim, weakClaim),
+                notes = listOf(expiredNote),
+            ),
+            completedAt = NOW,
+        )
+
+        val updatedProfile = result.profiles.single()
+
+        assertTrue(updatedProfile.profileText.contains("The user prefers Logseq for personal notes."))
+        assertTrue(!updatedProfile.profileText.contains("Obsidian"))
+        assertTrue(!updatedProfile.profileText.contains("Vim"))
+        assertTrue(!updatedProfile.profileText.contains("Old Obsidian context"))
+        assertTrue(updatedProfile.profileJson.toString().contains("claim-current-logseq"))
+        assertTrue(!updatedProfile.profileJson.toString().contains("claim-expired-obsidian"))
+        assertTrue(!updatedProfile.profileJson.toString().contains("claim-weak-vim"))
+    }
+
+    @Test
+    fun directWriteMarksNotesSupportedBySupersededClaimsAsStaleEvenWhenNotesWereNotRetrieved() = runBlocking {
+        val obsidian = entity(
+            id = MemoryEntity.Id("entity-obsidian"),
+            entityType = MemoryEntity.Type.PRODUCT,
+            canonicalName = "Obsidian",
+            normalizedName = "obsidian",
+        )
+        val logseq = entity(
+            id = MemoryEntity.Id("entity-logseq"),
+            entityType = MemoryEntity.Type.PRODUCT,
+            canonicalName = "Logseq",
+            normalizedName = "logseq",
+        )
+        val oldSource = source("source-obsidian", "For personal notes, remember that I prefer Obsidian.")
+        val updateSource = source("source-logseq", "I now prefer Logseq instead of Obsidian for personal notes.")
+        val oldClaim = claim(
+            id = "claim-obsidian",
+            sourceId = oldSource.id.value,
+            objectEntityId = obsidian.id,
+            objectValue = null,
+            normalizedText = "The user prefers Obsidian for personal notes.",
+        )
+        val staleCandidateNote = note(
+            id = "note-obsidian",
+            title = "Obsidian personal notes preference",
+            summary = "The user prefers Obsidian for personal notes because it keeps Markdown local.",
+            anchorEntityId = USER_ENTITY_ID,
+            entityRefs = listOf(
+                MemoryNote.EntityRef(USER_ENTITY_ID, MemoryNote.EntityRef.Role.SUBJECT),
+                MemoryNote.EntityRef(obsidian.id, MemoryNote.EntityRef.Role.PRIMARY),
+            ),
+            evidenceRefs = listOf(evidenceRef(oldSource.id.value, oldSource.contentText)),
+        )
+        val unrelatedNote = note(
+            id = "note-local-first",
+            title = "Local-first notes context",
+            summary = "The user likes local-first personal notes workflows.",
+            anchorEntityId = USER_ENTITY_ID,
+            entityRefs = listOf(MemoryNote.EntityRef(USER_ENTITY_ID, MemoryNote.EntityRef.Role.SUBJECT)),
+            evidenceRefs = listOf(evidenceRef(oldSource.id.value, "local-first personal notes workflow")),
+        )
+        val newClaimCandidate = MemoryClaimCandidate(
+            subjectEntityId = USER_ENTITY_ID,
+            predicate = "prefers",
+            objectEntityId = logseq.id,
+            normalizedText = "The user prefers Logseq for personal notes.",
+            scope = MemoryScope.Global("User-level preference"),
+            confidence = 0.98,
+            importance = 7,
+            evidenceQuote = "I now prefer Logseq instead of Obsidian",
+            evidenceReason = "The target message explicitly replaces the previous note-taking preference.",
+            reason = "Scripted replacement candidate.",
+        )
+        val store = InMemoryMemoryStore(
+            MemoryNamespaceSnapshot(
+                sources = listOf(oldSource),
+                entities = listOf(entity(), obsidian, logseq),
+                claims = listOf(oldClaim),
+                notes = listOf(staleCandidateNote, unrelatedNote),
+            )
+        )
+
+        val result = DirectStructuredMemoryWritePipeline(
+            store = store,
+            router = FixedMemoryWriteRouter(),
+            retrievalPlanner = FixedMemoryWriteRetrievalPlanner(
+                MemoryWriteRetrievalPlan(
+                    needRetrieval = true,
+                    entityQueries = listOf("user", "Obsidian", "Logseq"),
+                    textQueries = listOf("personal notes preference Obsidian Logseq"),
+                    memoryTypes = setOf(MemorySemanticType.CLAIM, MemorySemanticType.ENTITY, MemorySemanticType.SOURCE),
+                    retrievalBudget = MemoryRetrievalBudget(claims = 5, sources = 5),
+                )
+            ),
+            entityCanonicalizer = FixedMemoryEntityCanonicalizer(),
+            noteConstructor = FixedMemoryNoteConstructor(),
+            noteReconciler = InsertOnlyMemoryNoteReconciler,
+            claimExtractor = FixedMemoryClaimExtractor(listOf(newClaimCandidate)),
+            claimReconciler = FixedMemoryClaimReconciler(
+                listOf(
+                    MemoryClaimReconciliationOp(
+                        action = MemoryReconciliationAction.SUPERSEDE,
+                        targetClaimId = oldClaim.id,
+                        candidate = newClaimCandidate,
+                        reason = "Scripted replacement supersedes old Obsidian preference.",
+                    )
+                )
+            ),
+            taskUpdater = FixedMemoryTaskUpdater(),
+            materializer = DefaultDirectStructuredMemoryWriteMaterializer(
+                idFactory = SequentialMemoryIdFactory("claim-supersede-cascade"),
+            ),
+            clock = FixedMemoryClock(NOW),
+        ).write(
+            DirectStructuredMemoryWriteRequest(
+                namespace = TEST_NAMESPACE,
+                source = updateSource,
+            )
+        )
+
+        val snapshot = store.loadNamespaceSnapshot(TEST_NAMESPACE, includeArchived = true)
+
+        assertTrue(result.retrievedHits.none { it is MemoryStore.SearchHit.NoteHit })
+        assertEquals(MemoryClaim.Status.SUPERSEDED, snapshot.claimById(oldClaim.id.value).status)
+        assertEquals(MemoryClaim.Status.ACTIVE, snapshot.claimById("claim-supersede-cascade-claim-2").status)
+        assertEquals(MemoryNote.Status.STALE, snapshot.noteById(staleCandidateNote.id.value).status)
+        assertEquals(NOW, snapshot.noteById(staleCandidateNote.id.value).validTo)
+        assertEquals(NOW, snapshot.noteById(staleCandidateNote.id.value).updatedAt)
+        assertEquals(MemoryNote.Status.ACTIVE, snapshot.noteById(unrelatedNote.id.value).status)
+        assertTrue(result.memoryBatch.notes.any { it.id == staleCandidateNote.id && it.status == MemoryNote.Status.STALE })
+    }
+
+    @Test
+    fun directWriteKeepsEntitySummariesIdentityOnlyWhenClaimsChange() = runBlocking {
+        val bookNest = entity(
+            id = MemoryEntity.Id("entity-booknest"),
+            entityType = MemoryEntity.Type.PROJECT,
+            canonicalName = "BookNest",
+            normalizedName = "booknest",
+            summary = "A project whose current primary export format is CSV.",
+        )
+        val csv = entity(
+            id = MemoryEntity.Id("entity-csv"),
+            entityType = MemoryEntity.Type.TECHNOLOGY,
+            canonicalName = "CSV",
+            normalizedName = "csv",
+            summary = "Comma-Separated Values data format used as the primary export format in ShelfLog.",
+        )
+        val parquetId = MemoryEntity.Id("entity-parquet")
+        val oldSource = source("booknest-csv-source", "For BookNest, the primary export format is CSV.")
+        val updateSource = source("booknest-parquet-source", "BookNest primary export is now Parquet; CSV is old.")
+        val oldClaim = claim(
+            id = "booknest-csv-claim",
+            sourceId = oldSource.id.value,
+            subjectEntityId = bookNest.id,
+            predicate = "primary_export_format",
+            objectEntityId = csv.id,
+            objectValue = null,
+            normalizedText = "The current primary export format for BookNest is CSV.",
+        )
+        val newClaimCandidate = MemoryClaimCandidate(
+            subjectEntityId = bookNest.id,
+            predicate = "primary_export_format",
+            predicateFamily = "primary_export_format",
+            objectEntityId = parquetId,
+            normalizedText = "The current primary export format for BookNest is Parquet.",
+            contextText = "This replaces the old CSV value.",
+            scope = MemoryScope.Entity("BookNest project", bookNest.id),
+            confidence = 0.99,
+            importance = 5,
+            evidenceQuote = "primary export is now Parquet",
+            evidenceReason = "The target message explicitly updates BookNest's current export format.",
+            reason = "Scripted current export replacement.",
+        )
+        val store = InMemoryMemoryStore(
+            MemoryNamespaceSnapshot(
+                sources = listOf(oldSource),
+                entities = listOf(entity(), bookNest, csv),
+                claims = listOf(oldClaim),
+            )
+        )
+
+        DirectStructuredMemoryWritePipeline(
+            store = store,
+            router = FixedMemoryWriteRouter(),
+            retrievalPlanner = FixedMemoryWriteRetrievalPlanner(
+                MemoryWriteRetrievalPlan(
+                    needRetrieval = true,
+                    entityQueries = listOf("BookNest", "CSV", "Parquet"),
+                    textQueries = listOf("BookNest primary export format"),
+                    memoryTypes = setOf(MemorySemanticType.CLAIM, MemorySemanticType.ENTITY, MemorySemanticType.SOURCE),
+                    retrievalBudget = MemoryRetrievalBudget(claims = 5, sources = 5),
+                )
+            ),
+            entityCanonicalizer = FixedMemoryEntityCanonicalizer(
+                listOf(
+                    MemoryEntityCanonicalizationOp(
+                        mention = "BookNest",
+                        action = MemoryEntityCanonicalizationOp.Action.LINK_EXISTING,
+                        entityId = bookNest.id,
+                    ),
+                    MemoryEntityCanonicalizationOp(
+                        mention = "CSV",
+                        action = MemoryEntityCanonicalizationOp.Action.LINK_EXISTING,
+                        entityId = csv.id,
+                    ),
+                    MemoryEntityCanonicalizationOp(
+                        mention = "Parquet",
+                        action = MemoryEntityCanonicalizationOp.Action.CREATE_NEW,
+                        entityId = parquetId,
+                        newEntity = MemoryEntityCanonicalizationOp.NewEntity(
+                            entityType = MemoryEntity.Type.TECHNOLOGY,
+                            canonicalName = "Parquet",
+                            summary = "Columnar format now used as the primary export format for BookNest.",
+                        ),
+                    ),
+                )
+            ),
+            noteConstructor = FixedMemoryNoteConstructor(),
+            noteReconciler = InsertOnlyMemoryNoteReconciler,
+            claimExtractor = FixedMemoryClaimExtractor(listOf(newClaimCandidate)),
+            claimReconciler = FixedMemoryClaimReconciler(
+                listOf(
+                    MemoryClaimReconciliationOp(
+                        action = MemoryReconciliationAction.SUPERSEDE,
+                        targetClaimId = oldClaim.id,
+                        candidate = newClaimCandidate,
+                    )
+                )
+            ),
+            taskUpdater = FixedMemoryTaskUpdater(),
+            materializer = DefaultDirectStructuredMemoryWriteMaterializer(
+                idFactory = SequentialMemoryIdFactory("entity-summary"),
+            ),
+            clock = FixedMemoryClock(NOW),
+        ).write(
+            DirectStructuredMemoryWriteRequest(
+                namespace = TEST_NAMESPACE,
+                source = updateSource,
+            )
+        )
+
+        val snapshot = store.loadNamespaceSnapshot(TEST_NAMESPACE, includeArchived = true)
+
+        assertEquals("Project named BookNest.", snapshot.entityById(bookNest.id.value).summary)
+        assertEquals("Technology named CSV.", snapshot.entityById(csv.id.value).summary)
+        assertEquals("Technology named Parquet.", snapshot.entityById(parquetId.value).summary)
+        assertEquals(MemoryClaim.Status.SUPERSEDED, snapshot.claimById(oldClaim.id.value).status)
+        assertTrue(snapshot.claims.any { it.status == MemoryClaim.Status.ACTIVE && it.normalizedText.contains("Parquet") })
+    }
+
+    @Test
+    fun directWriteDedupGuardNoopsDuplicateClaimInsert() = runBlocking {
+        val toyota = entity(
+            id = MemoryEntity.Id("entity-toyota"),
+            entityType = MemoryEntity.Type.PRODUCT,
+            canonicalName = "Toyota cars",
+            normalizedName = "toyota cars",
+        )
+        val existingSource = source("source-existing", "For future recommendations, remember that I prefer Toyota cars.")
+        val duplicateSource = source("source-duplicate", "Just to repeat the preference: I still prefer Toyota cars.")
+        val existingClaim = claim(
+            id = "claim-existing-toyota",
+            sourceId = existingSource.id.value,
+            objectEntityId = toyota.id,
+            objectValue = null,
+            normalizedText = "The user prefers Toyota cars.",
+        )
+        val duplicateCandidate = MemoryClaimCandidate(
+            subjectEntityId = USER_ENTITY_ID,
+            predicate = "prefers",
+            objectEntityId = toyota.id,
+            normalizedText = "The user prefers Toyota cars.",
+            scope = MemoryScope.Global("User-level preference"),
+            confidence = 0.9,
+            importance = 7,
+            evidenceQuote = "I still prefer Toyota cars",
+            evidenceReason = "The target message repeats the same preference.",
+            reason = "Scripted duplicate candidate",
+        )
+        val store = InMemoryMemoryStore(
+            MemoryNamespaceSnapshot(
+                sources = listOf(existingSource),
+                entities = listOf(entity(), toyota),
+                claims = listOf(existingClaim),
+            )
+        )
+
+        val result = DirectStructuredMemoryWritePipeline(
+            store = store,
+            router = FixedMemoryWriteRouter(),
+            retrievalPlanner = FixedMemoryWriteRetrievalPlanner(
+                MemoryWriteRetrievalPlan(
+                    needRetrieval = true,
+                    memoryTypes = setOf(MemorySemanticType.CLAIM, MemorySemanticType.ENTITY, MemorySemanticType.SOURCE),
+                    retrievalBudget = MemoryRetrievalBudget(claims = 5, sources = 5),
+                )
+            ),
+            entityCanonicalizer = FixedMemoryEntityCanonicalizer(),
+            noteConstructor = FixedMemoryNoteConstructor(),
+            noteReconciler = InsertOnlyMemoryNoteReconciler,
+            claimExtractor = FixedMemoryClaimExtractor(listOf(duplicateCandidate)),
+            claimReconciler = InsertOnlyMemoryClaimReconciler,
+            taskUpdater = FixedMemoryTaskUpdater(),
+            materializer = DefaultDirectStructuredMemoryWriteMaterializer(
+                idFactory = SequentialMemoryIdFactory("dedup"),
+            ),
+            clock = FixedMemoryClock(NOW),
+        ).write(
+            DirectStructuredMemoryWriteRequest(
+                namespace = TEST_NAMESPACE,
+                source = duplicateSource,
+            )
+        )
+
+        val snapshot = store.loadNamespaceSnapshot(TEST_NAMESPACE, includeArchived = true)
+
+        assertEquals(MemoryReconciliationAction.NOOP, result.claimOps.single().action)
+        assertEquals(existingClaim.id, result.claimOps.single().targetClaimId)
+        assertTrue(result.memoryBatch.claims.isEmpty())
+        assertEquals(MemoryRun.Type.RECONCILE_CLAIMS, result.memoryBatch.runs.single().runType)
+        assertTrue(result.memoryBatch.runs.single().summary.contains("no durable changes"))
+        assertTrue(result.memoryBatch.runs.single().summary.contains("claims=1"))
+        assertTrue(!result.memoryBatch.runs.single().summary.contains("1 claim ops"))
+        assertEquals(listOf(existingClaim.id), snapshot.claims.map { it.id })
+        assertTrue(snapshot.sources.any { it.id == duplicateSource.id })
+    }
+
+    @Test
+    fun directWriteSkipsAlreadyProcessedSameSource() = runBlocking {
+        val repeatedSource = source(
+            "source-idempotent",
+            "For recommendations, remember that I prefer Toyota.",
+        )
+        val candidate = MemoryClaimCandidate(
+            subjectEntityId = USER_ENTITY_ID,
+            predicate = "prefers",
+            objectValue = JsonPrimitive("Toyota"),
+            normalizedText = "The user prefers Toyota.",
+            scope = MemoryScope.Global("User-level preference"),
+            confidence = 0.9,
+            importance = 7,
+            evidenceQuote = "I prefer Toyota",
+            evidenceReason = "The target message states the preference directly.",
+            reason = "Scripted idempotent write candidate.",
+        )
+        val store = InMemoryMemoryStore(
+            MemoryNamespaceSnapshot(
+                entities = listOf(entity()),
+            )
+        )
+
+        fun pipeline(prefix: String) = DirectStructuredMemoryWritePipeline(
+            store = store,
+            router = FixedMemoryWriteRouter(),
+            retrievalPlanner = FixedMemoryWriteRetrievalPlanner(
+                MemoryWriteRetrievalPlan(
+                    needRetrieval = false,
+                    memoryTypes = setOf(MemorySemanticType.CLAIM),
+                    retrievalBudget = MemoryRetrievalBudget(claims = 0),
+                )
+            ),
+            entityCanonicalizer = FixedMemoryEntityCanonicalizer(),
+            noteConstructor = FixedMemoryNoteConstructor(),
+            noteReconciler = InsertOnlyMemoryNoteReconciler,
+            claimExtractor = FixedMemoryClaimExtractor(listOf(candidate)),
+            claimReconciler = InsertOnlyMemoryClaimReconciler,
+            taskUpdater = FixedMemoryTaskUpdater(),
+            materializer = DefaultDirectStructuredMemoryWriteMaterializer(
+                idFactory = SequentialMemoryIdFactory(prefix),
+            ),
+            clock = FixedMemoryClock(NOW),
+        )
+
+        val first = pipeline("idempotent-first").write(
+            DirectStructuredMemoryWriteRequest(
+                namespace = TEST_NAMESPACE,
+                source = repeatedSource,
+            )
+        )
+        val second = pipeline("idempotent-second").write(
+            DirectStructuredMemoryWriteRequest(
+                namespace = TEST_NAMESPACE,
+                source = repeatedSource,
+            )
+        )
+        val snapshot = store.loadNamespaceSnapshot(TEST_NAMESPACE, includeArchived = true)
+        val structuredRuns = snapshot.runs
+            .filter { repeatedSource.id in it.sourceIds }
+            .filter { it.runType == MemoryRun.Type.RECONCILE_CLAIMS }
+
+        assertEquals(1, first.memoryBatch.claims.size)
+        assertEquals(MemoryRouteDecision.Decision.NOOP, second.routeDecision.decision)
+        assertTrue(second.routeDecision.reason.contains("already processed"))
+        assertTrue(second.sourceBatch.sources.isEmpty())
+        assertTrue(second.memoryBatch.claims.isEmpty())
+        assertEquals(1, snapshot.sources.count { it.id == repeatedSource.id })
+        assertEquals(1, snapshot.claims.count { claim -> claim.evidenceRefs.any { it.sourceId == repeatedSource.id } })
+        assertEquals(1, structuredRuns.size)
+        assertTrue(!structuredRuns.single().inputHash.isNullOrBlank())
+    }
+
+    @Test
+    fun directWriteDedupGuardNoopsDuplicateNoteInsert() = runBlocking {
+        val existingSource = source("source-existing-note", "Memory recall logging should expose planner, selector, and prompt composition decisions.")
+        val duplicateSource = source("source-duplicate-note", "Repeat the note: memory recall logging should expose planner, selector, and prompt composition decisions.")
+        val existingNote = note(
+            id = "note-existing-recall-logging",
+            title = "Memory recall logging",
+            summary = "Memory recall logging should expose planner, selector, and prompt composition decisions.",
+            noteType = MemoryNote.Type.DECISION,
+            evidenceRefs = listOf(evidenceRef(existingSource.id.value, existingSource.contentText)),
+        )
+        val duplicateCandidate = MemoryNoteCandidate(
+            title = existingNote.title,
+            summary = existingNote.summary,
+            scope = existingNote.scope,
+            noteType = existingNote.noteType,
+            entityRefs = existingNote.entityRefs,
+            confidence = 0.9,
+            importance = 8,
+            evidenceQuote = "memory recall logging should expose planner, selector, and prompt composition decisions",
+            evidenceReason = "The target message repeats the same note.",
+            rationale = "Scripted duplicate note candidate",
+        )
+        val store = InMemoryMemoryStore(
+            MemoryNamespaceSnapshot(
+                sources = listOf(existingSource),
+                entities = listOf(entity()),
+                notes = listOf(existingNote),
+            )
+        )
+
+        val result = DirectStructuredMemoryWritePipeline(
+            store = store,
+            router = FixedMemoryWriteRouter(
+                MemoryRouteDecision(
+                    decision = MemoryRouteDecision.Decision.NOTE_WRITE,
+                    memoryTypes = setOf(MemorySemanticType.NOTE, MemorySemanticType.ENTITY),
+                    salience = 1.0,
+                    reason = "Scripted note write",
+                )
+            ),
+            retrievalPlanner = FixedMemoryWriteRetrievalPlanner(
+                MemoryWriteRetrievalPlan(
+                    needRetrieval = true,
+                    memoryTypes = setOf(MemorySemanticType.NOTE, MemorySemanticType.ENTITY),
+                    retrievalBudget = MemoryRetrievalBudget(notes = 5),
+                )
+            ),
+            entityCanonicalizer = FixedMemoryEntityCanonicalizer(),
+            noteConstructor = FixedMemoryNoteConstructor(listOf(duplicateCandidate)),
+            noteReconciler = InsertOnlyMemoryNoteReconciler,
+            claimExtractor = FixedMemoryClaimExtractor(),
+            claimReconciler = InsertOnlyMemoryClaimReconciler,
+            taskUpdater = FixedMemoryTaskUpdater(),
+            materializer = DefaultDirectStructuredMemoryWriteMaterializer(
+                idFactory = SequentialMemoryIdFactory("note-dedup"),
+            ),
+            clock = FixedMemoryClock(NOW),
+        ).write(
+            DirectStructuredMemoryWriteRequest(
+                namespace = TEST_NAMESPACE,
+                source = duplicateSource,
+            )
+        )
+
+        val snapshot = store.loadNamespaceSnapshot(TEST_NAMESPACE, includeArchived = true)
+
+        assertEquals(MemoryReconciliationAction.INSERT, result.rawNoteOps.single().action)
+        assertEquals(MemoryReconciliationAction.NOOP, result.noteOps.single().action)
+        assertEquals(existingNote.id, result.noteOps.single().targetNoteId)
+        assertTrue(result.memoryBatch.notes.isEmpty())
+        assertEquals(listOf(existingNote.id), snapshot.notes.map { it.id })
+    }
+
+    @Test
+    fun directWriteDedupGuardConvertsDuplicateTaskInsertToUpdate() = runBlocking {
+        val existingSource = source("source-existing-task", "Remember follow-up: add write trace report to memory e2e.")
+        val duplicateSource = source("source-duplicate-task", "Update the same follow-up: add write trace report to memory e2e with raw and final ops.")
+        val existingTask = task(
+            id = "task-existing-write-trace",
+            status = MemoryTask.Status.OPEN,
+        ).copy(
+            title = "Add write trace report to memory e2e",
+            description = "Expose write pipeline stages in the real-model memory e2e report.",
+            evidenceRefs = listOf(evidenceRef(existingSource.id.value, existingSource.contentText)),
+        )
+        val duplicateDraft = MemoryTaskUpdateOp.Draft(
+            title = existingTask.title,
+            description = "Expose raw and final write operations in the real-model memory e2e report.",
+            status = MemoryTask.Status.OPEN,
+            scope = existingTask.scope,
+            ownerEntityId = existingTask.ownerEntityId,
+            evidenceQuote = "add write trace report to memory e2e with raw and final ops",
+            evidenceReason = "The target message updates the same follow-up.",
+            confidence = 0.9,
+        )
+        val store = InMemoryMemoryStore(
+            MemoryNamespaceSnapshot(
+                sources = listOf(existingSource),
+                entities = listOf(entity()),
+                tasks = listOf(existingTask),
+            )
+        )
+
+        val result = DirectStructuredMemoryWritePipeline(
+            store = store,
+            router = FixedMemoryWriteRouter(
+                MemoryRouteDecision(
+                    decision = MemoryRouteDecision.Decision.MIXED,
+                    memoryTypes = setOf(MemorySemanticType.TASK, MemorySemanticType.ENTITY),
+                    salience = 1.0,
+                    reason = "Scripted task write",
+                )
+            ),
+            retrievalPlanner = FixedMemoryWriteRetrievalPlanner(
+                MemoryWriteRetrievalPlan(
+                    needRetrieval = true,
+                    memoryTypes = setOf(MemorySemanticType.TASK, MemorySemanticType.ENTITY),
+                    retrievalBudget = MemoryRetrievalBudget(tasks = 5),
+                )
+            ),
+            entityCanonicalizer = FixedMemoryEntityCanonicalizer(),
+            noteConstructor = FixedMemoryNoteConstructor(),
+            noteReconciler = InsertOnlyMemoryNoteReconciler,
+            claimExtractor = FixedMemoryClaimExtractor(),
+            claimReconciler = InsertOnlyMemoryClaimReconciler,
+            taskUpdater = FixedMemoryTaskUpdater(
+                listOf(
+                    MemoryTaskUpdateOp(
+                        action = MemoryTaskUpdateOp.Action.INSERT,
+                        task = duplicateDraft,
+                        reason = "Scripted duplicate task insert",
+                    )
+                )
+            ),
+            materializer = DefaultDirectStructuredMemoryWriteMaterializer(
+                idFactory = SequentialMemoryIdFactory("task-dedup"),
+            ),
+            clock = FixedMemoryClock(NOW),
+        ).write(
+            DirectStructuredMemoryWriteRequest(
+                namespace = TEST_NAMESPACE,
+                source = duplicateSource,
+            )
+        )
+
+        val snapshot = store.loadNamespaceSnapshot(TEST_NAMESPACE, includeArchived = true)
+
+        assertEquals(MemoryTaskUpdateOp.Action.INSERT, result.rawTaskOps.single().action)
+        assertEquals(MemoryTaskUpdateOp.Action.UPDATE, result.taskOps.single().action)
+        assertEquals(existingTask.id, result.taskOps.single().targetTaskId)
+        assertEquals(listOf(existingTask.id), snapshot.tasks.map { it.id })
+        assertTrue(snapshot.taskById(existingTask.id.value).description!!.contains("raw and final write operations"))
+    }
+
+    @Test
+    fun entityMaintenanceMergesDuplicateEntitiesAndRelinksMemory() = runBlocking {
+        val source = source("entity-source", "No Memory Verifier and NoMemoryVerifier refer to the same verifier service.")
+        val winner = entity(
+            id = MemoryEntity.Id("entity-no-memory-verifier"),
+            entityType = MemoryEntity.Type.SERVICE,
+            canonicalName = "NoMemoryVerifier",
+            normalizedName = "no memory verifier",
+            summary = "Service that verifies no-memory read decisions.",
+        )
+        val loser = entity(
+            id = MemoryEntity.Id("entity-no-memory-verifier-spaced"),
+            entityType = MemoryEntity.Type.SERVICE,
+            canonicalName = "No Memory Verifier",
+            normalizedName = "no memory verifier",
+        )
+        val claim = claim(
+            id = "claim-verifier",
+            sourceId = source.id.value,
+            subjectEntityId = loser.id,
+            predicate = "verifies_read_need",
+            normalizedText = "No Memory Verifier checks whether a no-memory read plan still needs recall.",
+        )
+        val note = note(
+            id = "note-verifier",
+            title = "No Memory Verifier context",
+            summary = "The verifier guards recall when the read planner says no memory is needed.",
+            anchorEntityId = loser.id,
+            entityRefs = listOf(MemoryNote.EntityRef(loser.id, MemoryNote.EntityRef.Role.PRIMARY)),
+            evidenceRefs = listOf(evidenceRef(source.id.value, source.contentText)),
+        )
+        val task = task(
+            id = "task-verifier",
+            status = MemoryTask.Status.OPEN,
+            ownerEntityId = loser.id,
+            relatedEntityIds = listOf(loser.id),
+        )
+        val episode = episode(
+            id = "episode-verifier",
+            ownerEntityId = loser.id,
+        )
+        val store = InMemoryMemoryStore(
+            MemoryNamespaceSnapshot(
+                sources = listOf(source),
+                entities = listOf(winner, loser),
+                claims = listOf(claim),
+                notes = listOf(note),
+                tasks = listOf(task),
+                episodes = listOf(episode),
+            )
+        )
+
+        val result = MemoryEntityMaintenancePipeline(
+            store = store,
+            planner = FixedEntityMaintenancePlanner(
+                MemoryEntityMaintenancePlan(
+                    actions = listOf(
+                        MemoryEntityMaintenancePlan.Action(
+                            action = MemoryEntityMaintenancePlan.Action.Type.MERGE,
+                            winnerEntityId = winner.id.value,
+                            loserEntityIds = listOf(loser.id.value),
+                            aliasTexts = listOf("No Memory Verifier"),
+                            reason = "Both names refer to the same verifier service.",
+                        )
+                    ),
+                    summary = "Merged duplicate verifier entities.",
+                )
+            ),
+            idFactory = SequentialMemoryIdFactory("entity-maintenance"),
+            profileUpdater = ProjectionMemoryProfileUpdater(store),
+            clock = FixedMemoryClock(NOW),
+        ).run(MemoryMaintenanceRequest(TEST_NAMESPACE))
+
+        val snapshot = store.loadNamespaceSnapshot(TEST_NAMESPACE, includeArchived = true)
+
+        assertEquals(1, result.candidateGroups.size)
+        assertTrue(result.candidateGroups.single().entities.map { it.id }.containsAll(listOf(winner.id, loser.id)))
+        assertEquals(MemoryEntity.Status.ACTIVE, snapshot.entityById(winner.id.value).status)
+        assertEquals(MemoryEntity.Status.MERGED, snapshot.entityById(loser.id.value).status)
+        assertEquals(winner.id, snapshot.entityById(loser.id.value).mergedIntoEntityId)
+        assertTrue(snapshot.entityById(winner.id.value).aliases.any { it.text == "No Memory Verifier" })
+        assertEquals(winner.id, snapshot.claimById(claim.id.value).subjectEntityId)
+        assertEquals(winner.id, snapshot.noteById(note.id.value).anchorEntityId)
+        assertEquals(winner.id, snapshot.noteById(note.id.value).entityRefs.single().entityId)
+        assertEquals(winner.id, snapshot.taskById(task.id.value).ownerEntityId)
+        assertEquals(listOf(winner.id), snapshot.taskById(task.id.value).relatedEntityIds)
+        assertEquals(winner.id, snapshot.episodeById(episode.id.value).ownerEntityId)
+        assertTrue(snapshot.runs.any { it.runType == MemoryRun.Type.MAINTAIN_ENTITIES })
+    }
+
+    @Test
+    fun entityMaintenanceRefreshesSummaryAfterReplacementClaim() = runBlocking {
+        val pantryPilot = entity(
+            id = MemoryEntity.Id("entity-pantry-pilot"),
+            entityType = MemoryEntity.Type.PROJECT,
+            canonicalName = "PantryPilot",
+            normalizedName = "pantrypilot",
+            summary = "A fictional card or project context in which the primary format for the weekly report is PDF.",
+        )
+        val pdf = entity(
+            id = MemoryEntity.Id("entity-pdf"),
+            entityType = MemoryEntity.Type.TECHNOLOGY,
+            canonicalName = "PDF",
+            normalizedName = "pdf",
+        )
+        val xlsx = entity(
+            id = MemoryEntity.Id("entity-xlsx"),
+            entityType = MemoryEntity.Type.TECHNOLOGY,
+            canonicalName = "XLSX",
+            normalizedName = "xlsx",
+        )
+        val oldClaim = claim(
+            id = "claim-pantry-pilot-pdf",
+            subjectEntityId = pantryPilot.id,
+            predicate = "primary_export_format",
+            objectEntityId = pdf.id,
+            objectValue = null,
+            normalizedText = "The current primary format for PantryPilot's weekly report is PDF.",
+            status = MemoryClaim.Status.SUPERSEDED,
+        )
+        val activeClaim = claim(
+            id = "claim-pantry-pilot-xlsx",
+            subjectEntityId = pantryPilot.id,
+            predicate = "primary_export_format",
+            objectEntityId = xlsx.id,
+            objectValue = null,
+            normalizedText = "The current primary format for PantryPilot's weekly report is XLSX.",
+        ).copy(supersedesClaimId = oldClaim.id)
+        val claimLikeSummary = "PantryPilot is a fictional project whose current weekly report format is XLSX."
+        val store = InMemoryMemoryStore(
+            MemoryNamespaceSnapshot(
+                entities = listOf(pantryPilot, pdf, xlsx),
+                claims = listOf(oldClaim, activeClaim),
+            )
+        )
+
+        val result = MemoryEntityMaintenancePipeline(
+            store = store,
+            planner = FixedEntityMaintenancePlanner(
+                MemoryEntityMaintenancePlan(
+                    actions = listOf(
+                        MemoryEntityMaintenancePlan.Action(
+                            action = MemoryEntityMaintenancePlan.Action.Type.UPDATE_SUMMARY,
+                            targetEntityIds = listOf(pantryPilot.id.value),
+                            summaryText = claimLikeSummary,
+                            reason = "Active replacement claim changed the current report format from PDF to XLSX.",
+                        )
+                    ),
+                    summary = "Refreshed stale entity summary.",
+                )
+            ),
+            idFactory = SequentialMemoryIdFactory("entity-maintenance"),
+            profileUpdater = ProjectionMemoryProfileUpdater(store),
+            clock = FixedMemoryClock(NOW),
+        ).run(MemoryMaintenanceRequest(TEST_NAMESPACE))
+
+        val snapshot = store.loadNamespaceSnapshot(TEST_NAMESPACE, includeArchived = true)
+
+        assertEquals(1, result.candidateGroups.size)
+        assertEquals(listOf(pantryPilot.id), result.candidateGroups.single().entities.map { it.id })
+        assertTrue(result.candidateGroups.single().reason.contains("summary may be stale"))
+        assertEquals("Project named PantryPilot.", snapshot.entityById(pantryPilot.id.value).summary)
+        assertEquals("Technology named PDF.", snapshot.entityById(pdf.id.value).summary)
+        assertEquals("Technology named XLSX.", snapshot.entityById(xlsx.id.value).summary)
+        assertEquals(NOW, snapshot.entityById(pantryPilot.id.value).updatedAt)
+        assertTrue(snapshot.runs.any { run ->
+            run.runType == MemoryRun.Type.MAINTAIN_ENTITIES &&
+                run.appliedOps.toString().contains("normalize_entity_identity_summary")
+        })
+    }
+
+    @Test
+    fun entityMaintenanceNormalizesAllActiveEntitySummariesWithoutCandidateGroups() = runBlocking {
+        val bookNest = entity(
+            id = MemoryEntity.Id("entity-book-nest"),
+            entityType = MemoryEntity.Type.PROJECT,
+            canonicalName = "BookNest",
+            normalizedName = "booknest",
+            summary = "A project whose current primary export format is CSV.",
+        )
+        val user = entity(
+            id = MemoryEntity.Id("entity-user-memory"),
+            entityType = MemoryEntity.Type.USER,
+            canonicalName = "User",
+            normalizedName = "user",
+            summary = "The human user who currently prefers Toyota and iPad.",
+        )
+        val store = InMemoryMemoryStore(
+            MemoryNamespaceSnapshot(
+                entities = listOf(bookNest, user),
+            )
+        )
+
+        val result = MemoryEntityMaintenancePipeline(
+            store = store,
+            planner = FixedEntityMaintenancePlanner(MemoryEntityMaintenancePlan(summary = "No action.")),
+            idFactory = SequentialMemoryIdFactory("entity-maintenance"),
+            profileUpdater = ProjectionMemoryProfileUpdater(store),
+            clock = FixedMemoryClock(NOW),
+        ).run(MemoryMaintenanceRequest(TEST_NAMESPACE))
+
+        val snapshot = store.loadNamespaceSnapshot(TEST_NAMESPACE, includeArchived = true)
+
+        assertEquals(0, result.candidateGroups.size)
+        assertEquals("Project named BookNest.", snapshot.entityById(bookNest.id.value).summary)
+        assertEquals("The user interacting with this agent.", snapshot.entityById(user.id.value).summary)
+        assertTrue(snapshot.runs.any { run ->
+            run.runType == MemoryRun.Type.MAINTAIN_ENTITIES &&
+                run.appliedOps.toString().contains("normalize_entity_identity_summary")
+        })
+    }
+
+    @Test
+    fun noteConsolidationMaterializesEpisodeAndConsolidatesOriginNote() = runBlocking {
+        val source = source("lesson-source", "We tried lexical heuristics for recall and replaced them with a short LLM verification call.")
+        val originNote = note(
+            id = "note-lesson",
+            title = "Recall planner fallback lesson",
+            summary = "Lexical fallback heuristics were brittle; a short LLM verification is a better guard.",
+            noteType = MemoryNote.Type.LESSON,
+            maturity = MemoryNote.Maturity.STABILIZING,
+            confidence = 0.85,
+            importance = 9,
+            evidenceRefs = listOf(evidenceRef(source.id.value, source.contentText)),
+        )
+        val store = InMemoryMemoryStore(
+            MemoryNamespaceSnapshot(
+                sources = listOf(source),
+                entities = listOf(entity()),
+                notes = listOf(originNote),
+            )
+        )
+
+        val result = MemoryNoteConsolidationPipeline(
+            store = store,
+            consolidator = FixedNoteConsolidator(
+                NoteConsolidationResult(
+                    episodeCandidates = listOf(
+                        MemoryEpisodeCandidate(
+                            ownerEntityId = USER_ENTITY_ID,
+                            originNoteId = originNote.id,
+                            situation = "Recall planner returned no-memory for ambiguous user questions.",
+                            action = "Run a short LLM verification call instead of hard-coded substring heuristics.",
+                            result = "The pipeline can recover recall intent without lexical hacks.",
+                            lesson = "Use a cheap model check for ambiguous no-memory recall decisions instead of brittle text matching.",
+                            tags = listOf("memory", "recall", "planner"),
+                            successScore = 0.8,
+                            reason = "Reusable implementation lesson.",
+                        )
+                    ),
+                    summary = "Materialized one reusable recall lesson.",
+                )
+            ),
+            idFactory = SequentialMemoryIdFactory("episode"),
+            profileUpdater = ProjectionMemoryProfileUpdater(store),
+            clock = FixedMemoryClock(NOW),
+        ).run(MemoryMaintenanceRequest(TEST_NAMESPACE))
+
+        val snapshot = store.loadNamespaceSnapshot(TEST_NAMESPACE, includeArchived = true)
+        val episode = snapshot.episodes.single()
+        val updatedNote = snapshot.noteById(originNote.id.value)
+
+        assertEquals(1, result.memoryBatch.episodes.size)
+        assertEquals(USER_ENTITY_ID, episode.ownerEntityId)
+        assertEquals(originNote.id, episode.originNoteId)
+        assertEquals(MemoryEvidenceRef.Kind.DERIVED_FROM_NOTE, episode.evidenceRefs.single().kind)
+        assertEquals(MemoryNote.Status.RESOLVED, updatedNote.status)
+        assertEquals(MemoryNote.Maturity.CONSOLIDATED, updatedNote.maturity)
+        assertTrue(snapshot.runs.any { it.runType == MemoryRun.Type.CONSOLIDATE_NOTES })
+    }
+
+    @Test
+    fun noteConsolidationDedupGuardDropsDuplicateClaimAndConsolidatesOriginNote() = runBlocking {
+        val source = source("duplicate-claim-source", "Repeatable preference note: the user prefers Toyota.")
+        val originNote = note(
+            id = "note-duplicate-toyota",
+            title = "Toyota preference note",
+            summary = "The user prefers Toyota.",
+            noteType = MemoryNote.Type.CONTEXT,
+            confidence = 0.9,
+            importance = 9,
+            evidenceRefs = listOf(evidenceRef(source.id.value, source.contentText)),
+        )
+        val existingClaim = claim(
+            id = "claim-existing-toyota",
+            sourceId = source.id.value,
+            normalizedText = "The user prefers Toyota.",
+        )
+        val duplicateCandidate = MemoryClaimCandidate(
+            subjectEntityId = USER_ENTITY_ID,
+            predicate = "prefers",
+            objectValue = JsonPrimitive("Toyota"),
+            normalizedText = "The user prefers Toyota.",
+            scope = MemoryScope.Global("User-level preference"),
+            confidence = 0.9,
+            importance = 8,
+            originNoteId = originNote.id,
+            reason = "Scripted duplicate claim candidate.",
+        )
+        val store = InMemoryMemoryStore(
+            MemoryNamespaceSnapshot(
+                sources = listOf(source),
+                entities = listOf(entity()),
+                claims = listOf(existingClaim),
+                notes = listOf(originNote),
+            )
+        )
+
+        val result = MemoryNoteConsolidationPipeline(
+            store = store,
+            consolidator = FixedNoteConsolidator(
+                NoteConsolidationResult(
+                    claimCandidates = listOf(duplicateCandidate),
+                    summary = "Scripted duplicate claim consolidation.",
+                )
+            ),
+            idFactory = SequentialMemoryIdFactory("claim-dedup"),
+            profileUpdater = ProjectionMemoryProfileUpdater(store),
+            clock = FixedMemoryClock(NOW),
+        ).run(MemoryMaintenanceRequest(TEST_NAMESPACE))
+
+        val snapshot = store.loadNamespaceSnapshot(TEST_NAMESPACE, includeArchived = true)
+        val updatedNote = snapshot.noteById(originNote.id.value)
+
+        assertEquals(1, result.rawConsolidationResult.claimCandidates.size)
+        assertTrue(result.consolidationResult.claimCandidates.isEmpty())
+        assertTrue(result.memoryBatch.claims.isEmpty())
+        assertEquals(listOf(existingClaim.id), snapshot.claims.map { it.id })
+        assertEquals(MemoryNote.Status.RESOLVED, updatedNote.status)
+        assertEquals(MemoryNote.Maturity.CONSOLIDATED, updatedNote.maturity)
+    }
+
+    @Test
+    fun noteConsolidationDedupGuardConvertsDuplicateTaskInsertToUpdate() = runBlocking {
+        val source = source("duplicate-task-source", "Follow-up note: add maintenance trace report to memory e2e.")
+        val originNote = note(
+            id = "note-duplicate-task",
+            title = "Maintenance trace follow-up",
+            summary = "Add maintenance trace report to memory e2e.",
+            noteType = MemoryNote.Type.DECISION,
+            confidence = 0.9,
+            importance = 9,
+            evidenceRefs = listOf(evidenceRef(source.id.value, source.contentText)),
+        )
+        val existingTask = task(
+            id = "task-maintenance-trace",
+            status = MemoryTask.Status.OPEN,
+        ).copy(
+            title = "Add maintenance trace report to memory e2e",
+            description = "Expose maintenance pipeline actions in the e2e report.",
+            evidenceRefs = listOf(evidenceRef(source.id.value, source.contentText)),
+        )
+        val duplicateDraft = MemoryTaskUpdateOp.Draft(
+            title = existingTask.title,
+            description = "Expose raw and final maintenance pipeline actions in the e2e report.",
+            status = MemoryTask.Status.OPEN,
+            scope = existingTask.scope,
+            ownerEntityId = existingTask.ownerEntityId,
+            originNoteId = originNote.id,
+            confidence = 0.9,
+        )
+        val store = InMemoryMemoryStore(
+            MemoryNamespaceSnapshot(
+                sources = listOf(source),
+                entities = listOf(entity()),
+                notes = listOf(originNote),
+                tasks = listOf(existingTask),
+            )
+        )
+
+        val result = MemoryNoteConsolidationPipeline(
+            store = store,
+            consolidator = FixedNoteConsolidator(
+                NoteConsolidationResult(
+                    taskActions = listOf(
+                        MemoryTaskUpdateOp(
+                            action = MemoryTaskUpdateOp.Action.INSERT,
+                            task = duplicateDraft,
+                            reason = "Scripted duplicate task insert.",
+                        )
+                    ),
+                    summary = "Scripted duplicate task consolidation.",
+                )
+            ),
+            idFactory = SequentialMemoryIdFactory("task-dedup"),
+            profileUpdater = ProjectionMemoryProfileUpdater(store),
+            clock = FixedMemoryClock(NOW),
+        ).run(MemoryMaintenanceRequest(TEST_NAMESPACE))
+
+        val snapshot = store.loadNamespaceSnapshot(TEST_NAMESPACE, includeArchived = true)
+
+        assertEquals(MemoryTaskUpdateOp.Action.INSERT, result.rawConsolidationResult.taskActions.single().action)
+        assertEquals(MemoryTaskUpdateOp.Action.UPDATE, result.consolidationResult.taskActions.single().action)
+        assertEquals(existingTask.id, result.consolidationResult.taskActions.single().targetTaskId)
+        assertEquals(listOf(existingTask.id), snapshot.tasks.map { it.id })
+        assertTrue(snapshot.taskById(existingTask.id.value).description!!.contains("raw and final maintenance"))
+        assertEquals(MemoryNote.Maturity.CONSOLIDATED, snapshot.noteById(originNote.id.value).maturity)
+    }
+
+    @Test
+    fun noteConsolidationDedupGuardDropsDuplicateEpisodeAndConsolidatesOriginNote() = runBlocking {
+        val source = source("duplicate-episode-source", "Lesson note: use model verification instead of substring matching.")
+        val originNote = note(
+            id = "note-duplicate-episode",
+            title = "Recall verifier lesson",
+            summary = "Use model verification instead of substring matching.",
+            noteType = MemoryNote.Type.LESSON,
+            confidence = 0.9,
+            importance = 9,
+            evidenceRefs = listOf(evidenceRef(source.id.value, source.contentText)),
+        )
+        val existingEpisode = episode("episode-existing-verifier")
+        val duplicateCandidate = MemoryEpisodeCandidate(
+            ownerEntityId = existingEpisode.ownerEntityId,
+            originNoteId = originNote.id,
+            situation = existingEpisode.situation,
+            action = existingEpisode.action,
+            result = existingEpisode.result,
+            lesson = existingEpisode.lesson,
+            tags = existingEpisode.tags,
+            reason = "Scripted duplicate episode candidate.",
+        )
+        val store = InMemoryMemoryStore(
+            MemoryNamespaceSnapshot(
+                sources = listOf(source),
+                entities = listOf(entity()),
+                notes = listOf(originNote),
+                episodes = listOf(existingEpisode),
+            )
+        )
+
+        val result = MemoryNoteConsolidationPipeline(
+            store = store,
+            consolidator = FixedNoteConsolidator(
+                NoteConsolidationResult(
+                    episodeCandidates = listOf(duplicateCandidate),
+                    summary = "Scripted duplicate episode consolidation.",
+                )
+            ),
+            idFactory = SequentialMemoryIdFactory("episode-dedup"),
+            profileUpdater = ProjectionMemoryProfileUpdater(store),
+            clock = FixedMemoryClock(NOW),
+        ).run(MemoryMaintenanceRequest(TEST_NAMESPACE))
+
+        val snapshot = store.loadNamespaceSnapshot(TEST_NAMESPACE, includeArchived = true)
+
+        assertEquals(1, result.rawConsolidationResult.episodeCandidates.size)
+        assertTrue(result.consolidationResult.episodeCandidates.isEmpty())
+        assertTrue(result.memoryBatch.episodes.isEmpty())
+        assertEquals(listOf(existingEpisode.id), snapshot.episodes.map { it.id })
+        assertEquals(MemoryNote.Maturity.CONSOLIDATED, snapshot.noteById(originNote.id.value).maturity)
+    }
+
+    @Test
+    fun runtimeReadRetrievesAndRendersEpisodes() = runBlocking {
+        val episode = MemoryEpisode(
+            id = MemoryEpisode.Id("episode-recall-lesson"),
+            namespace = TEST_NAMESPACE,
+            ownerEntityId = USER_ENTITY_ID,
+            situation = "Recall planner returned no-memory for ambiguous user questions.",
+            action = "Run a short LLM verification call instead of hard-coded substring heuristics.",
+            result = "The pipeline recovered recall intent without lexical hacks.",
+            lesson = "Use a cheap model check for ambiguous no-memory recall decisions instead of brittle text matching.",
+            tags = listOf("memory", "recall", "planner"),
+            successScore = 0.8,
+            evidenceRefs = listOf(evidenceRef("lesson-source", "Short LLM verification replaced lexical fallback heuristics.")),
+            createdAt = EARLIER,
+            updatedAt = EARLIER,
+        )
+        val store = InMemoryMemoryStore(
+            MemoryNamespaceSnapshot(
+                sources = listOf(source("lesson-source", "Short LLM verification replaced lexical fallback heuristics.")),
+                entities = listOf(entity()),
+                episodes = listOf(episode),
+            )
+        )
+        val targetMessage = userMessage(
+            id = "target-message",
+            text = "What did we learn about recall planner fallback?",
+        )
+
+        val result = RuntimeMemoryReadPipeline(
+            store = store,
+            planner = FixedReadPlanner(
+                MemoryReadPlan(
+                    needMemory = true,
+                    answerMode = MemoryReadPlan.AnswerMode.RATIONALE,
+                    retrievalBudget = MemoryRetrievalBudget(episodes = 1),
+                    retrievalRequests = listOf(
+                        MemoryReadPlan.RetrievalRequest(
+                            memoryType = MemorySemanticType.EPISODE,
+                            why = "The user asks for a reusable implementation lesson.",
+                            query = "recall planner fallback lesson",
+                            topK = 1,
+                        )
+                    ),
+                )
+            ),
+        ).read(
+            MemoryReadRequest(
+                namespace = TEST_NAMESPACE,
+                threadContext = MemoryThreadContext(
+                    conversationId = Conversation.Id("conversation"),
+                    threadId = Conversation.Thread.Id("read-thread"),
+                    targetMessageId = targetMessage.id,
+                    messages = listOf(targetMessage),
+                ),
+            )
+        )
+
+        val prompt = assertNotNull(result.runtimePrompt)
+
+        assertTrue(result.retrievedHits.map { it.toTestItemRef() }.contains(MemoryItemRef(MemoryItemRef.Type.EPISODE, episode.id.value)))
+        assertTrue(prompt.contains("Retrieved episodes:"))
+        assertTrue(prompt.contains(episode.situation))
+        assertTrue(prompt.contains(episode.action))
+        assertTrue(prompt.contains(episode.result))
+        assertTrue(prompt.contains(episode.lesson))
+        assertTrue(result.trace.selectedHits.any { it.ref == MemoryItemRef(MemoryItemRef.Type.EPISODE, episode.id.value) })
+    }
+
+    @Test
+    fun runtimeReadSelectorFiltersCandidatesBeforeHydrationAndPromptComposition() = runBlocking {
+        val verifierSource = source("verifier-source", "NoMemoryVerifier should use model-based verification instead of substring checks.")
+        val hydratorSource = source("hydrator-source", "SourceHydrator should use bounded quote hydration for evidence fallback.")
+        val verifierEpisode = MemoryEpisode(
+            id = MemoryEpisode.Id("episode-no-memory-verifier"),
+            namespace = TEST_NAMESPACE,
+            ownerEntityId = USER_ENTITY_ID,
+            situation = "ReadTimeRetrievalPlanner returned no-memory for ambiguous recall.",
+            action = "Run a short model-based verification call.",
+            result = "Recall intent was recovered without hard-coded substring matching.",
+            lesson = "NoMemoryVerifier should use model-based verification for ambiguous no-memory recall decisions.",
+            tags = listOf("memory", "recall"),
+            evidenceRefs = listOf(evidenceRef(verifierSource.id.value, verifierSource.contentText)),
+            createdAt = EARLIER,
+            updatedAt = EARLIER,
+        )
+        val hydratorEpisode = MemoryEpisode(
+            id = MemoryEpisode.Id("episode-source-hydrator"),
+            namespace = TEST_NAMESPACE,
+            ownerEntityId = USER_ENTITY_ID,
+            situation = "Factual answers needed raw source evidence.",
+            action = "Fetch a bounded set of source quotes.",
+            result = "Prompt stayed grounded without source flooding.",
+            lesson = "SourceHydrator should use bounded quote hydration for source evidence.",
+            tags = listOf("memory", "source"),
+            evidenceRefs = listOf(evidenceRef(hydratorSource.id.value, hydratorSource.contentText)),
+            createdAt = EARLIER,
+            updatedAt = EARLIER,
+        )
+        val store = InMemoryMemoryStore(
+            MemoryNamespaceSnapshot(
+                sources = listOf(verifierSource, hydratorSource),
+                entities = listOf(entity()),
+                episodes = listOf(verifierEpisode, hydratorEpisode),
+            )
+        )
+        val targetMessage = userMessage(
+            id = "target-message",
+            text = "What reusable lesson did we record for NoMemoryVerifier about ambiguous no-memory recall decisions?",
+        )
+
+        val result = RuntimeMemoryReadPipeline(
+            store = store,
+            planner = FixedReadPlanner(
+                MemoryReadPlan(
+                    needMemory = true,
+                    answerMode = MemoryReadPlan.AnswerMode.RATIONALE,
+                    retrievalBudget = MemoryRetrievalBudget(sources = 2, episodes = 2),
+                    retrievalRequests = listOf(
+                        MemoryReadPlan.RetrievalRequest(
+                            memoryType = MemorySemanticType.EPISODE,
+                            why = "The user asks for a reusable lesson.",
+                            query = "memory lesson",
+                            topK = 2,
+                        )
+                    ),
+                )
+            ),
+            selector = FixedReadSelector(
+                selectedRefs = listOf(MemoryItemRef(MemoryItemRef.Type.EPISODE, verifierEpisode.id.value))
+            ),
+        ).read(
+            MemoryReadRequest(
+                namespace = TEST_NAMESPACE,
+                threadContext = MemoryThreadContext(
+                    conversationId = Conversation.Id("conversation"),
+                    threadId = Conversation.Thread.Id("read-thread"),
+                    targetMessageId = targetMessage.id,
+                    messages = listOf(targetMessage),
+                ),
+            )
+        )
+
+        val prompt = assertNotNull(result.runtimePrompt)
+
+        assertTrue(result.retrievedHits.map { it.toTestItemRef() }.contains(MemoryItemRef(MemoryItemRef.Type.EPISODE, verifierEpisode.id.value)))
+        assertTrue(result.retrievedHits.map { it.toTestItemRef() }.contains(MemoryItemRef(MemoryItemRef.Type.SOURCE, verifierSource.id.value)))
+        assertTrue(result.retrievedHits.map { it.toTestItemRef() }.none { it.id == hydratorEpisode.id.value })
+        assertTrue(result.retrievedHits.map { it.toTestItemRef() }.none { it.id == hydratorSource.id.value })
+        assertTrue(prompt.contains("NoMemoryVerifier"))
+        assertTrue(!prompt.contains("SourceHydrator"))
+        assertTrue(result.trace.searchSteps.any { it.stage == "selector" && it.rawCount == 2 && it.selectedCount == 1 })
+        assertTrue(result.trace.selectorDecisions.any { it.selected && it.ref.id == verifierEpisode.id.value })
+        assertTrue(result.trace.selectorDecisions.any { !it.selected && it.ref.id == hydratorEpisode.id.value })
+    }
+
+    @Test
+    fun runtimeReadDoesNotRestoreRejectedCoreProfilesAfterSelector() = runBlocking {
+        val noisyProfile = profile(
+            id = "profile-noisy-user",
+            ownerEntityId = USER_ENTITY_ID,
+            profileText = "Irrelevant ShelfLog profile noise should not be injected into PantryPilot answers.",
+        )
+        val source = source("pantry-pilot-xlsx-source", "PantryPilot weekly report format is currently XLSX.")
+        val claim = claim(
+            id = "pantry-pilot-xlsx-claim",
+            sourceId = source.id.value,
+            predicate = "weekly_report_format",
+            objectValue = JsonPrimitive("XLSX"),
+            normalizedText = "PantryPilot weekly report format is currently XLSX.",
+        )
+        val store = InMemoryMemoryStore(
+            MemoryNamespaceSnapshot(
+                sources = listOf(source),
+                entities = listOf(entity()),
+                profiles = listOf(noisyProfile),
+                claims = listOf(claim),
+            )
+        )
+        val targetMessage = userMessage(
+            id = "target-message",
+            text = "What do we know about PantryPilot?",
+        )
+
+        val result = RuntimeMemoryReadPipeline(
+            store = store,
+            planner = FixedReadPlanner(
+                MemoryReadPlan(
+                    needMemory = true,
+                    answerMode = MemoryReadPlan.AnswerMode.FACTUAL,
+                    coreBlocks = setOf(MemoryReadPlan.CoreBlock.PROFILE),
+                    retrievalBudget = MemoryRetrievalBudget(claims = 1, sources = 1),
+                    retrievalRequests = listOf(
+                        MemoryReadPlan.RetrievalRequest(
+                            memoryType = MemorySemanticType.CLAIM,
+                            why = "The user asks about a project.",
+                            query = "PantryPilot",
+                            topK = 1,
+                        )
+                    ),
+                )
+            ),
+            selector = FixedReadSelector(
+                selectedRefs = listOf(MemoryItemRef(MemoryItemRef.Type.CLAIM, claim.id.value))
+            ),
+        ).read(
+            MemoryReadRequest(
+                namespace = TEST_NAMESPACE,
+                threadContext = MemoryThreadContext(
+                    conversationId = Conversation.Id("conversation"),
+                    threadId = Conversation.Thread.Id("read-thread"),
+                    targetMessageId = targetMessage.id,
+                    messages = listOf(targetMessage),
+                ),
+            )
+        )
+
+        val prompt = assertNotNull(result.runtimePrompt)
+        val refs = result.retrievedHits.map { it.toTestItemRef() }
+
+        assertTrue(refs.contains(MemoryItemRef(MemoryItemRef.Type.CLAIM, claim.id.value)))
+        assertTrue(refs.none { it == MemoryItemRef(MemoryItemRef.Type.PROFILE, noisyProfile.id.value) })
+        assertTrue(prompt.contains("PantryPilot weekly report format is currently XLSX."))
+        assertTrue(!prompt.contains(noisyProfile.profileText))
+        assertTrue(
+            result.trace.selectorDecisions.any {
+                !it.selected && it.ref == MemoryItemRef(MemoryItemRef.Type.PROFILE, noisyProfile.id.value)
+            }
+        )
+    }
+
+    @Test
+    fun runtimeReadScopesCoreAndTypedRetrievalToResolvedTargetEntityBeforeSelector() = runBlocking {
+        val pantryPilotEntityId = MemoryEntity.Id("entity-pantry-pilot")
+        val shelfLogEntityId = MemoryEntity.Id("entity-shelflog")
+        val ipadEntityId = MemoryEntity.Id("entity-ipad")
+        val pantrySource = source("pantry-pilot-xlsx-source", "PantryPilot weekly report format is currently XLSX.")
+        val ipadSource = source("ipad-source", "The user prefers iPad for reading technical books.")
+        val shelfLogSource = source("shelflog-source", "ShelfLog reports should start with a short summary.")
+        val pantryClaim = claim(
+            id = "pantry-pilot-xlsx-claim",
+            sourceId = pantrySource.id.value,
+            subjectEntityId = pantryPilotEntityId,
+            predicate = "weekly_report_format",
+            objectValue = JsonPrimitive("XLSX"),
+            normalizedText = "PantryPilot weekly report format is currently XLSX.",
+        )
+        val ipadClaim = claim(
+            id = "ipad-claim",
+            sourceId = ipadSource.id.value,
+            subjectEntityId = USER_ENTITY_ID,
+            objectEntityId = ipadEntityId,
+            objectValue = null,
+            predicate = "prefers",
+            normalizedText = "The user prefers iPad for reading technical books.",
+        )
+        val shelfLogNote = note(
+            id = "shelflog-note",
+            title = "ShelfLog report output preference",
+            summary = "ShelfLog reports should start with a short summary.",
+            anchorEntityId = shelfLogEntityId,
+            entityRefs = listOf(MemoryNote.EntityRef(shelfLogEntityId, MemoryNote.EntityRef.Role.PRIMARY)),
+            evidenceRefs = listOf(evidenceRef(shelfLogSource.id.value, shelfLogSource.contentText)),
+        )
+        val store = InMemoryMemoryStore(
+            MemoryNamespaceSnapshot(
+                sources = listOf(pantrySource, ipadSource, shelfLogSource),
+                entities = listOf(
+                    entity(),
+                    entity(
+                        id = pantryPilotEntityId,
+                        entityType = MemoryEntity.Type.PROJECT,
+                        canonicalName = "PantryPilot",
+                        normalizedName = "pantrypilot",
+                    ),
+                    entity(
+                        id = shelfLogEntityId,
+                        entityType = MemoryEntity.Type.PROJECT,
+                        canonicalName = "ShelfLog",
+                        normalizedName = "shelflog",
+                    ),
+                    entity(
+                        id = ipadEntityId,
+                        entityType = MemoryEntity.Type.TECHNOLOGY,
+                        canonicalName = "iPad",
+                        normalizedName = "ipad",
+                    ),
+                ),
+                profiles = listOf(
+                    profile(
+                        id = "profile-pantry-pilot",
+                        ownerEntityId = pantryPilotEntityId,
+                        profileText = "Profile for PantryPilot. Stable facts: weekly report format is XLSX.",
+                    ),
+                    profile(
+                        id = "profile-user",
+                        ownerEntityId = USER_ENTITY_ID,
+                        profileText = "Profile for User. Stable facts: the user prefers iPad.",
+                    ),
+                    profile(
+                        id = "profile-shelflog",
+                        ownerEntityId = shelfLogEntityId,
+                        profileText = "Profile for ShelfLog. Stable facts: home book catalog.",
+                    ),
+                ),
+                claims = listOf(pantryClaim, ipadClaim),
+                notes = listOf(shelfLogNote),
+            )
+        )
+        val selector = CapturingReadSelector(
+            selectedRefs = listOf(MemoryItemRef(MemoryItemRef.Type.CLAIM, pantryClaim.id.value))
+        )
+        val targetMessage = userMessage(
+            id = "target-message",
+            text = "What do we know about PantryPilot?",
+        )
+
+        val result = RuntimeMemoryReadPipeline(
+            store = store,
+            planner = FixedReadPlanner(
+                MemoryReadPlan(
+                    needMemory = true,
+                    answerMode = MemoryReadPlan.AnswerMode.FACTUAL,
+                    coreBlocks = setOf(MemoryReadPlan.CoreBlock.PROFILE),
+                    retrievalBudget = MemoryRetrievalBudget(claims = 5, notes = 2),
+                    retrievalRequests = listOf(
+                        MemoryReadPlan.RetrievalRequest(
+                            memoryType = MemorySemanticType.CLAIM,
+                            why = "Retrieve project-specific facts about PantryPilot.",
+                            query = "PantryPilot project product repository app facts",
+                            topK = 5,
+                        ),
+                        MemoryReadPlan.RetrievalRequest(
+                            memoryType = MemorySemanticType.NOTE,
+                            why = "Retrieve any PantryPilot summary context.",
+                            query = "PantryPilot summary context",
+                            topK = 2,
+                        )
+                    ),
+                )
+            ),
+            selector = selector,
+        ).read(
+            MemoryReadRequest(
+                namespace = TEST_NAMESPACE,
+                threadContext = MemoryThreadContext(
+                    conversationId = Conversation.Id("conversation"),
+                    threadId = Conversation.Thread.Id("read-thread"),
+                    targetMessageId = targetMessage.id,
+                    messages = listOf(targetMessage),
+                ),
+            )
+        )
+
+        val capturedRefs = selector.capturedRefs.toSet()
+
+        assertTrue(capturedRefs.contains(MemoryItemRef(MemoryItemRef.Type.ENTITY, pantryPilotEntityId.value)))
+        assertTrue(capturedRefs.contains(MemoryItemRef(MemoryItemRef.Type.PROFILE, "profile-pantry-pilot")))
+        assertTrue(capturedRefs.contains(MemoryItemRef(MemoryItemRef.Type.CLAIM, pantryClaim.id.value)))
+        assertTrue(capturedRefs.none { it == MemoryItemRef(MemoryItemRef.Type.PROFILE, "profile-user") })
+        assertTrue(capturedRefs.none { it == MemoryItemRef(MemoryItemRef.Type.PROFILE, "profile-shelflog") })
+        assertTrue(capturedRefs.none { it == MemoryItemRef(MemoryItemRef.Type.CLAIM, ipadClaim.id.value) })
+        assertTrue(capturedRefs.none { it == MemoryItemRef(MemoryItemRef.Type.NOTE, shelfLogNote.id.value) })
+        assertTrue(result.trace.searchSteps.any { it.stage == "target_entities" && it.selectedCount == 1 })
+    }
+
+    @Test
+    fun runtimeReadKeepsProjectEntitiesSeparateAcrossBackToBackQuestions() = runBlocking {
+        val pantryPilotEntityId = MemoryEntity.Id("entity-pantry-pilot")
+        val shelfLogEntityId = MemoryEntity.Id("entity-shelflog")
+        val xlsxEntityId = MemoryEntity.Id("entity-xlsx")
+        val jsonLinesEntityId = MemoryEntity.Id("entity-json-lines")
+        val readingStateEntityId = MemoryEntity.Id("entity-reading-state")
+        val pantrySource = source("pantry-pilot-xlsx-source", "PantryPilot weekly report primary format is XLSX.")
+        val shelfPurposeSource = source("shelflog-purpose-source", "ShelfLog is used to maintain a home book catalog.")
+        val shelfExportSource = source("shelflog-json-lines-source", "ShelfLog primary export format is JSON Lines.")
+        val shelfFieldSource = source("shelflog-reading-state-source", "ShelfLog reading status is stored in reading_state.")
+        val pantryClaim = claim(
+            id = "pantry-pilot-xlsx-claim",
+            sourceId = pantrySource.id.value,
+            subjectEntityId = pantryPilotEntityId,
+            objectEntityId = xlsxEntityId,
+            objectValue = null,
+            predicate = "primary_export_format",
+            normalizedText = "The current primary format for PantryPilot's weekly report is XLSX.",
+        )
+        val shelfPurposeClaim = claim(
+            id = "shelflog-purpose-claim",
+            sourceId = shelfPurposeSource.id.value,
+            subjectEntityId = shelfLogEntityId,
+            objectValue = null,
+            predicate = "has_goal",
+            normalizedText = "ShelfLog is used to maintain a home book catalog.",
+        )
+        val shelfExportClaim = claim(
+            id = "shelflog-json-lines-claim",
+            sourceId = shelfExportSource.id.value,
+            subjectEntityId = shelfLogEntityId,
+            objectEntityId = jsonLinesEntityId,
+            objectValue = null,
+            predicate = "primary_export_format",
+            normalizedText = "The primary export format for ShelfLog is currently JSON Lines.",
+        )
+        val shelfFieldClaim = claim(
+            id = "shelflog-reading-state-claim",
+            sourceId = shelfFieldSource.id.value,
+            subjectEntityId = shelfLogEntityId,
+            objectEntityId = readingStateEntityId,
+            objectValue = null,
+            predicate = "reading_status_field_name",
+            normalizedText = "In ShelfLog, reading status is stored in the field reading_state.",
+        )
+        val shelfLogNote = note(
+            id = "shelflog-report-note",
+            title = "ShelfLog report output preference",
+            summary = "ShelfLog reports should start with a short summary.",
+            anchorEntityId = shelfLogEntityId,
+            entityRefs = listOf(MemoryNote.EntityRef(shelfLogEntityId, MemoryNote.EntityRef.Role.PRIMARY)),
+            evidenceRefs = listOf(evidenceRef(shelfPurposeSource.id.value, shelfPurposeSource.contentText)),
+        )
+        val store = InMemoryMemoryStore(
+            MemoryNamespaceSnapshot(
+                sources = listOf(pantrySource, shelfPurposeSource, shelfExportSource, shelfFieldSource),
+                entities = listOf(
+                    entity(),
+                    entity(
+                        id = pantryPilotEntityId,
+                        entityType = MemoryEntity.Type.PROJECT,
+                        canonicalName = "PantryPilot",
+                        normalizedName = "pantrypilot",
+                    ),
+                    entity(
+                        id = shelfLogEntityId,
+                        entityType = MemoryEntity.Type.PROJECT,
+                        canonicalName = "ShelfLog",
+                        normalizedName = "shelflog",
+                    ),
+                    entity(
+                        id = xlsxEntityId,
+                        entityType = MemoryEntity.Type.TECHNOLOGY,
+                        canonicalName = "XLSX",
+                        normalizedName = "xlsx",
+                    ),
+                    entity(
+                        id = jsonLinesEntityId,
+                        entityType = MemoryEntity.Type.TECHNOLOGY,
+                        canonicalName = "JSON Lines",
+                        normalizedName = "json lines",
+                    ),
+                    entity(
+                        id = readingStateEntityId,
+                        entityType = MemoryEntity.Type.CONCEPT,
+                        canonicalName = "reading_state",
+                        normalizedName = "reading_state",
+                    ),
+                ),
+                profiles = listOf(
+                    profile(
+                        id = "profile-pantry-pilot",
+                        ownerEntityId = pantryPilotEntityId,
+                        profileText = "Profile for PantryPilot. Stable facts: weekly report format is XLSX.",
+                    ),
+                    profile(
+                        id = "profile-shelflog",
+                        ownerEntityId = shelfLogEntityId,
+                        profileText = "Profile for ShelfLog. Stable facts: home book catalog.",
+                    ),
+                ),
+                claims = listOf(pantryClaim, shelfPurposeClaim, shelfExportClaim, shelfFieldClaim),
+                notes = listOf(shelfLogNote),
+            )
+        )
+
+        val pantrySelector = CapturingReadSelector(
+            selectedRefs = listOf(
+                MemoryItemRef(MemoryItemRef.Type.PROFILE, "profile-pantry-pilot"),
+                MemoryItemRef(MemoryItemRef.Type.CLAIM, pantryClaim.id.value),
+            )
+        )
+        val pantryResult = RuntimeMemoryReadPipeline(
+            store = store,
+            planner = FixedReadPlanner(projectFactReadPlan("PantryPilot", claims = 4, notes = 2)),
+            selector = pantrySelector,
+        ).read(memoryReadRequest("pantry-target", "What do we know about PantryPilot?"))
+        val pantryPrompt = assertNotNull(pantryResult.runtimePrompt)
+        val pantryCandidateRefs = pantrySelector.capturedRefs.toSet()
+
+        assertTrue(pantryCandidateRefs.contains(MemoryItemRef(MemoryItemRef.Type.ENTITY, pantryPilotEntityId.value)))
+        assertTrue(pantryCandidateRefs.contains(MemoryItemRef(MemoryItemRef.Type.PROFILE, "profile-pantry-pilot")))
+        assertTrue(pantryCandidateRefs.contains(MemoryItemRef(MemoryItemRef.Type.CLAIM, pantryClaim.id.value)))
+        assertTrue(pantryCandidateRefs.none { it.id == shelfLogEntityId.value })
+        assertTrue(pantryCandidateRefs.none { it.id == "profile-shelflog" })
+        assertTrue(pantryCandidateRefs.none { it.id == shelfPurposeClaim.id.value })
+        assertTrue(pantryCandidateRefs.none { it.id == shelfExportClaim.id.value })
+        assertTrue(pantryCandidateRefs.none { it.id == shelfFieldClaim.id.value })
+        assertTrue(pantryCandidateRefs.none { it.id == shelfLogNote.id.value })
+        assertTrue(pantryPrompt.contains("PantryPilot"))
+        assertTrue(pantryPrompt.contains("XLSX"))
+        assertTrue(!pantryPrompt.contains("ShelfLog"))
+        assertTrue(!pantryPrompt.contains("JSON Lines"))
+        assertTrue(!pantryPrompt.contains("reading_state"))
+        assertTrue(pantryResult.trace.searchSteps.any { it.stage == "target_entities" && it.selectedCount == 1 })
+
+        val shelfLogSelector = CapturingReadSelector(
+            selectedRefs = listOf(
+                MemoryItemRef(MemoryItemRef.Type.PROFILE, "profile-shelflog"),
+                MemoryItemRef(MemoryItemRef.Type.CLAIM, shelfPurposeClaim.id.value),
+                MemoryItemRef(MemoryItemRef.Type.CLAIM, shelfExportClaim.id.value),
+                MemoryItemRef(MemoryItemRef.Type.CLAIM, shelfFieldClaim.id.value),
+            )
+        )
+        val shelfLogResult = RuntimeMemoryReadPipeline(
+            store = store,
+            planner = FixedReadPlanner(projectFactReadPlan("ShelfLog", claims = 4, notes = 2)),
+            selector = shelfLogSelector,
+        ).read(memoryReadRequest("shelflog-target", "What do we know about ShelfLog?"))
+        val shelfLogPrompt = assertNotNull(shelfLogResult.runtimePrompt)
+        val shelfLogCandidateRefs = shelfLogSelector.capturedRefs.toSet()
+
+        assertTrue(shelfLogCandidateRefs.contains(MemoryItemRef(MemoryItemRef.Type.ENTITY, shelfLogEntityId.value)))
+        assertTrue(shelfLogCandidateRefs.contains(MemoryItemRef(MemoryItemRef.Type.PROFILE, "profile-shelflog")))
+        assertTrue(shelfLogCandidateRefs.contains(MemoryItemRef(MemoryItemRef.Type.CLAIM, shelfPurposeClaim.id.value)))
+        assertTrue(shelfLogCandidateRefs.contains(MemoryItemRef(MemoryItemRef.Type.CLAIM, shelfExportClaim.id.value)))
+        assertTrue(shelfLogCandidateRefs.contains(MemoryItemRef(MemoryItemRef.Type.CLAIM, shelfFieldClaim.id.value)))
+        assertTrue(shelfLogCandidateRefs.contains(MemoryItemRef(MemoryItemRef.Type.NOTE, shelfLogNote.id.value)))
+        assertTrue(shelfLogCandidateRefs.none { it.id == pantryPilotEntityId.value })
+        assertTrue(shelfLogCandidateRefs.none { it.id == "profile-pantry-pilot" })
+        assertTrue(shelfLogCandidateRefs.none { it.id == pantryClaim.id.value })
+        assertTrue(shelfLogPrompt.contains("ShelfLog"))
+        assertTrue(shelfLogPrompt.contains("JSON Lines"))
+        assertTrue(shelfLogPrompt.contains("reading_state"))
+        assertTrue(!shelfLogPrompt.contains("PantryPilot"))
+        assertTrue(!shelfLogPrompt.contains("weekly report"))
+        assertTrue(!shelfLogPrompt.contains("XLSX"))
+        assertTrue(shelfLogResult.trace.searchSteps.any { it.stage == "target_entities" && it.selectedCount == 1 })
+    }
+
+    @Test
+    fun runtimeReadUsesSubjectTargetEntityInsteadOfMentionedOldValueEntity() = runBlocking {
+        val bookNestEntityId = MemoryEntity.Id("entity-booknest")
+        val shelfLogEntityId = MemoryEntity.Id("entity-shelflog")
+        val csvEntityId = MemoryEntity.Id("entity-csv")
+        val parquetEntityId = MemoryEntity.Id("entity-parquet")
+        val bookNestSource = source("booknest-parquet-source", "BookNest primary export format is Parquet.")
+        val shelfLogSource = source("shelflog-csv-source", "ShelfLog primary export format is CSV.")
+        val bookNestClaim = claim(
+            id = "booknest-parquet-claim",
+            sourceId = bookNestSource.id.value,
+            subjectEntityId = bookNestEntityId,
+            objectEntityId = parquetEntityId,
+            objectValue = null,
+            predicate = "primary_export_format",
+            normalizedText = "The current primary export format for BookNest is Parquet.",
+        )
+        val shelfLogClaim = claim(
+            id = "shelflog-csv-claim",
+            sourceId = shelfLogSource.id.value,
+            subjectEntityId = shelfLogEntityId,
+            objectEntityId = csvEntityId,
+            objectValue = null,
+            predicate = "primary_export_format",
+            normalizedText = "The current primary export format for ShelfLog is CSV.",
+        )
+        val store = InMemoryMemoryStore(
+            MemoryNamespaceSnapshot(
+                sources = listOf(bookNestSource, shelfLogSource),
+                entities = listOf(
+                    entity(
+                        id = bookNestEntityId,
+                        entityType = MemoryEntity.Type.PROJECT,
+                        canonicalName = "BookNest",
+                        normalizedName = "booknest",
+                    ),
+                    entity(
+                        id = shelfLogEntityId,
+                        entityType = MemoryEntity.Type.PROJECT,
+                        canonicalName = "ShelfLog",
+                        normalizedName = "shelflog",
+                    ),
+                    entity(
+                        id = csvEntityId,
+                        entityType = MemoryEntity.Type.TECHNOLOGY,
+                        canonicalName = "CSV",
+                        normalizedName = "csv",
+                    ),
+                    entity(
+                        id = parquetEntityId,
+                        entityType = MemoryEntity.Type.TECHNOLOGY,
+                        canonicalName = "Parquet",
+                        normalizedName = "parquet",
+                    ),
+                ),
+                claims = listOf(bookNestClaim, shelfLogClaim),
+            )
+        )
+        val selector = CapturingReadSelector(
+            selectedRefs = listOf(MemoryItemRef(MemoryItemRef.Type.CLAIM, bookNestClaim.id.value))
+        )
+
+        val result = RuntimeMemoryReadPipeline(
+            store = store,
+            planner = FixedReadPlanner(
+                MemoryReadPlan(
+                    needMemory = true,
+                    answerMode = MemoryReadPlan.AnswerMode.FACTUAL,
+                    retrievalBudget = MemoryRetrievalBudget(claims = 3),
+                    retrievalRequests = listOf(
+                        MemoryReadPlan.RetrievalRequest(
+                            memoryType = MemorySemanticType.CLAIM,
+                            why = "Check whether the remembered old CSV value is still current for BookNest.",
+                            query = "BookNest CSV export still current",
+                            topK = 3,
+                        )
+                    ),
+                )
+            ),
+            selector = selector,
+        ).read(memoryReadRequest("booknest-target", "I remember BookNest exported CSV. Is that still current?"))
+
+        val capturedRefs = selector.capturedRefs.toSet()
+        val prompt = assertNotNull(result.runtimePrompt)
+
+        assertTrue(capturedRefs.contains(MemoryItemRef(MemoryItemRef.Type.ENTITY, bookNestEntityId.value)))
+        assertTrue(capturedRefs.contains(MemoryItemRef(MemoryItemRef.Type.CLAIM, bookNestClaim.id.value)))
+        assertTrue(capturedRefs.none { it.id == csvEntityId.value })
+        assertTrue(capturedRefs.none { it.id == shelfLogClaim.id.value })
+        assertTrue(prompt.contains("BookNest"))
+        assertTrue(prompt.contains("Parquet"))
+        assertTrue(!prompt.contains("ShelfLog"))
+    }
+
+    @Test
+    fun runtimeReadDefersRawSourceCandidatesWhenActiveTypedFactExists() = runBlocking {
+        val bookNestEntityId = MemoryEntity.Id("entity-booknest")
+        val parquetEntityId = MemoryEntity.Id("entity-parquet")
+        val activeSource = source("booknest-parquet-source", "BookNest primary export is now Parquet.")
+        val unrelatedSource = source("pantrypilot-question-source", "I remember PantryPilot reports were PDF. Is that still current?")
+        val activeClaim = claim(
+            id = "booknest-parquet-claim",
+            sourceId = activeSource.id.value,
+            subjectEntityId = bookNestEntityId,
+            objectEntityId = parquetEntityId,
+            objectValue = null,
+            predicate = "primary_export_format",
+            normalizedText = "The current primary export format for BookNest is Parquet.",
+        )
+        val store = InMemoryMemoryStore(
+            MemoryNamespaceSnapshot(
+                sources = listOf(unrelatedSource, activeSource),
+                entities = listOf(
+                    entity(
+                        id = bookNestEntityId,
+                        entityType = MemoryEntity.Type.PROJECT,
+                        canonicalName = "BookNest",
+                        normalizedName = "booknest",
+                    ),
+                    entity(
+                        id = parquetEntityId,
+                        entityType = MemoryEntity.Type.TECHNOLOGY,
+                        canonicalName = "Parquet",
+                        normalizedName = "parquet",
+                    ),
+                ),
+                claims = listOf(activeClaim),
+            )
+        )
+        val selector = CapturingReadSelector(
+            selectedRefs = listOf(MemoryItemRef(MemoryItemRef.Type.CLAIM, activeClaim.id.value))
+        )
+
+        val result = RuntimeMemoryReadPipeline(
+            store = store,
+            planner = FixedReadPlanner(
+                MemoryReadPlan(
+                    needMemory = true,
+                    answerMode = MemoryReadPlan.AnswerMode.FACTUAL,
+                    requireEvidenceFallback = true,
+                    retrievalBudget = MemoryRetrievalBudget(claims = 1, sources = 2),
+                    retrievalRequests = listOf(
+                        MemoryReadPlan.RetrievalRequest(
+                            memoryType = MemorySemanticType.CLAIM,
+                            why = "Active typed fact should answer the question.",
+                            query = "BookNest current export format",
+                            topK = 1,
+                        ),
+                        MemoryReadPlan.RetrievalRequest(
+                            memoryType = MemorySemanticType.SOURCE,
+                            why = "Raw source fallback should be deferred when typed memory already answers.",
+                            query = "BookNest current export format evidence",
+                            topK = 2,
+                        )
+                    ),
+                )
+            ),
+            selector = selector,
+        ).read(memoryReadRequest("booknest-source-target", "Is BookNest still on CSV or something else?"))
+
+        val capturedRefs = selector.capturedRefs.toSet()
+        val resultRefs = result.retrievedHits.map { it.toTestItemRef() }
+        val prompt = assertNotNull(result.runtimePrompt)
+
+        assertTrue(capturedRefs.contains(MemoryItemRef(MemoryItemRef.Type.CLAIM, activeClaim.id.value)))
+        assertTrue(capturedRefs.none { it.type == MemoryItemRef.Type.SOURCE })
+        assertTrue(resultRefs.contains(MemoryItemRef(MemoryItemRef.Type.SOURCE, activeSource.id.value)))
+        assertTrue(resultRefs.none { it == MemoryItemRef(MemoryItemRef.Type.SOURCE, unrelatedSource.id.value) })
+        assertTrue(prompt.contains("BookNest primary export is now Parquet."))
+        assertTrue(!prompt.contains("PantryPilot"))
+    }
+
+    @Test
+    fun runtimeTaskPromptLabelsTitleAndDoesNotHydrateEvidenceWithoutFallback() = runBlocking {
+        val taskSource = source("task-source", "Follow-up: add selector trace report to memory e2e.")
+        val task = task("task-selector-trace", status = MemoryTask.Status.OPEN).copy(
+            title = "Add selector trace report to memory e2e",
+            description = "Expose selector decisions in memory e2e reports.",
+            evidenceRefs = listOf(evidenceRef(taskSource.id.value, taskSource.contentText)),
+        )
+        val store = InMemoryMemoryStore(
+            MemoryNamespaceSnapshot(
+                sources = listOf(taskSource),
+                entities = listOf(entity()),
+                tasks = listOf(task),
+            )
+        )
+
+        val result = RuntimeMemoryReadPipeline(
+            store = store,
+            planner = FixedReadPlanner(
+                MemoryReadPlan(
+                    needMemory = true,
+                    answerMode = MemoryReadPlan.AnswerMode.TASK,
+                    requireEvidenceFallback = false,
+                    retrievalBudget = MemoryRetrievalBudget(tasks = 1, sources = 1),
+                    retrievalRequests = listOf(
+                        MemoryReadPlan.RetrievalRequest(
+                            memoryType = MemorySemanticType.TASK,
+                            why = "The user asks for the open follow-up title.",
+                            query = "memory e2e trace reporting follow-up",
+                            topK = 1,
+                        )
+                    ),
+                )
+            ),
+        ).read(memoryReadRequest("task-title-target", "Which open follow-up exists for memory e2e trace reporting? Answer with the task title."))
+
+        val prompt = assertNotNull(result.runtimePrompt)
+        val refs = result.retrievedHits.map { it.toTestItemRef() }
+
+        assertTrue(refs.contains(MemoryItemRef(MemoryItemRef.Type.TASK, task.id.value)))
+        assertTrue(refs.none { it == MemoryItemRef(MemoryItemRef.Type.SOURCE, taskSource.id.value) })
+        assertTrue(prompt.contains("title=\"Add selector trace report to memory e2e\""))
+        assertTrue(prompt.contains("description=\"Expose selector decisions in memory e2e reports.\""))
+        assertTrue(prompt.contains("Retrieved evidence:\nnot requested for this answer mode"))
+    }
+
+    @Test
+    fun runtimeReadSuppressesRawSourcesLinkedToSupersededMemory() = runBlocking {
+        val oldSource = source("old-csv-source", "ShelfLog primary export is currently CSV.")
+        val newSource = source("new-json-source", "ShelfLog primary export is currently JSON Lines instead of CSV.")
+        val oldClaim = claim(
+            id = "old-export-claim",
+            sourceId = oldSource.id.value,
+            predicate = "primary_export_format",
+            objectValue = JsonPrimitive("CSV"),
+            normalizedText = "The primary export format for ShelfLog is currently CSV.",
+            status = MemoryClaim.Status.SUPERSEDED,
+        )
+        val activeClaim = claim(
+            id = "active-export-claim",
+            sourceId = newSource.id.value,
+            predicate = "primary_export_format",
+            objectValue = JsonPrimitive("JSON Lines"),
+            normalizedText = "The primary export format for ShelfLog is currently JSON Lines.",
+            status = MemoryClaim.Status.ACTIVE,
+        ).copy(supersedesClaimId = oldClaim.id)
+        val store = InMemoryMemoryStore(
+            MemoryNamespaceSnapshot(
+                sources = listOf(oldSource, newSource),
+                entities = listOf(entity()),
+                claims = listOf(oldClaim, activeClaim),
+            )
+        )
+        val targetMessage = userMessage(
+            id = "target-message",
+            text = "What is the current primary export format for ShelfLog?",
+        )
+
+        val result = RuntimeMemoryReadPipeline(
+            store = store,
+            planner = FixedReadPlanner(
+                MemoryReadPlan(
+                    needMemory = true,
+                    answerMode = MemoryReadPlan.AnswerMode.FACTUAL,
+                    requireEvidenceFallback = true,
+                    retrievalBudget = MemoryRetrievalBudget(claims = 2, sources = 2),
+                    retrievalRequests = listOf(
+                        MemoryReadPlan.RetrievalRequest(
+                            memoryType = MemorySemanticType.CLAIM,
+                            why = "Current primary export format is a typed fact.",
+                            query = "ShelfLog primary export format",
+                            topK = 2,
+                        ),
+                        MemoryReadPlan.RetrievalRequest(
+                            memoryType = MemorySemanticType.SOURCE,
+                            why = "Evidence fallback should not resurrect superseded source wording.",
+                            query = "ShelfLog primary export format",
+                            topK = 2,
+                        )
+                    ),
+                )
+            ),
+        ).read(
+            MemoryReadRequest(
+                namespace = TEST_NAMESPACE,
+                threadContext = MemoryThreadContext(
+                    conversationId = Conversation.Id("conversation"),
+                    threadId = Conversation.Thread.Id("read-thread"),
+                    targetMessageId = targetMessage.id,
+                    messages = listOf(targetMessage),
+                ),
+            )
+        )
+
+        val prompt = assertNotNull(result.runtimePrompt)
+        val refs = result.retrievedHits.map { it.toTestItemRef() }
+
+        assertTrue(refs.contains(MemoryItemRef(MemoryItemRef.Type.CLAIM, activeClaim.id.value)))
+        assertTrue(refs.none { it == MemoryItemRef(MemoryItemRef.Type.SOURCE, oldSource.id.value) })
+        assertTrue(refs.contains(MemoryItemRef(MemoryItemRef.Type.SOURCE, newSource.id.value)))
+        assertTrue(result.trace.sourceSafety.suppressedSources.isEmpty())
+        assertTrue(prompt.contains("The primary export format for ShelfLog is currently JSON Lines."))
+        assertTrue(!prompt.contains("ShelfLog primary export is currently CSV."))
+    }
+
+    @Test
+    fun readSelectorCandidateViewShowsSourceReplacementLifecycle() {
+        val oldSource = source("selector-old-csv-source", "ShelfLog primary export is currently CSV.")
+        val newSource = source("selector-new-json-source", "ShelfLog primary export is currently JSON Lines instead of CSV.")
+        val oldClaim = claim(
+            id = "selector-old-export-claim",
+            sourceId = oldSource.id.value,
+            predicate = "primary_export_format",
+            objectValue = JsonPrimitive("CSV"),
+            normalizedText = "The primary export format for ShelfLog is currently CSV.",
+            status = MemoryClaim.Status.SUPERSEDED,
+        )
+        val activeClaim = claim(
+            id = "selector-active-export-claim",
+            sourceId = newSource.id.value,
+            predicate = "primary_export_format",
+            objectValue = JsonPrimitive("JSON Lines"),
+            normalizedText = "The primary export format for ShelfLog is currently JSON Lines.",
+            status = MemoryClaim.Status.ACTIVE,
+        ).copy(supersedesClaimId = oldClaim.id)
+        val snapshot = MemoryNamespaceSnapshot(
+            sources = listOf(oldSource, newSource),
+            entities = listOf(entity()),
+            claims = listOf(oldClaim, activeClaim),
+        )
+
+        val rendered = MemoryReadSelectorCandidateRenderer.render(
+            hits = listOf(
+                MemoryStore.SearchHit.SourceHit(oldSource, score = 0.99),
+                MemoryStore.SearchHit.ClaimHit(activeClaim, score = 0.8),
+            ),
+            snapshot = snapshot,
+        )
+
+        assertTrue(rendered.contains("\"lifecycle_state\":\"overridden_evidence\""))
+        assertTrue(rendered.contains("\"supports\":[{\"type\":\"claim\",\"id\":\"selector-old-export-claim\",\"status\":\"SUPERSEDED\""))
+        assertTrue(rendered.contains("\"overridden_by\":[{\"type\":\"claim\",\"id\":\"selector-active-export-claim\",\"status\":\"ACTIVE\""))
+        assertTrue(rendered.contains("Do not select as current truth"))
+        assertTrue(rendered.contains("\"lifecycle_state\":\"current\""))
+    }
+
+    @Test
+    fun runtimeReadAddsActiveReplacementToSelectorCandidatesForRawSource() = runBlocking {
+        val oldSource = source("candidate-old-csv-source", "ShelfLog primary export is currently CSV.")
+        val newSource = source("candidate-new-json-source", "ShelfLog primary export is currently JSON Lines instead of CSV.")
+        val oldClaim = claim(
+            id = "candidate-old-export-claim",
+            sourceId = oldSource.id.value,
+            predicate = "primary_export_format",
+            objectValue = JsonPrimitive("CSV"),
+            normalizedText = "The primary export format for ShelfLog is currently CSV.",
+            status = MemoryClaim.Status.SUPERSEDED,
+        )
+        val activeClaim = claim(
+            id = "candidate-active-export-claim",
+            sourceId = newSource.id.value,
+            predicate = "primary_export_format",
+            objectValue = JsonPrimitive("JSON Lines"),
+            normalizedText = "The primary export format for ShelfLog is currently JSON Lines.",
+            status = MemoryClaim.Status.ACTIVE,
+        ).copy(supersedesClaimId = oldClaim.id)
+        val store = InMemoryMemoryStore(
+            MemoryNamespaceSnapshot(
+                sources = listOf(oldSource, newSource),
+                entities = listOf(entity()),
+                claims = listOf(oldClaim, activeClaim),
+            )
+        )
+        val selector = CapturingReadSelector(
+            selectedRefs = listOf(MemoryItemRef(MemoryItemRef.Type.CLAIM, activeClaim.id.value))
+        )
+        val targetMessage = userMessage(
+            id = "target-message",
+            text = "What is the current primary export format for ShelfLog?",
+        )
+
+        val result = RuntimeMemoryReadPipeline(
+            store = store,
+            planner = FixedReadPlanner(
+                MemoryReadPlan(
+                    needMemory = true,
+                    answerMode = MemoryReadPlan.AnswerMode.FACTUAL,
+                    requireEvidenceFallback = true,
+                    retrievalBudget = MemoryRetrievalBudget(claims = 0, sources = 1),
+                    retrievalRequests = listOf(
+                        MemoryReadPlan.RetrievalRequest(
+                            memoryType = MemorySemanticType.SOURCE,
+                            why = "Only raw evidence was retrieved lexically.",
+                            query = "ShelfLog primary export format CSV",
+                            topK = 1,
+                        )
+                    ),
+                )
+            ),
+            selector = selector,
+        ).read(
+            MemoryReadRequest(
+                namespace = TEST_NAMESPACE,
+                threadContext = MemoryThreadContext(
+                    conversationId = Conversation.Id("conversation"),
+                    threadId = Conversation.Thread.Id("read-thread"),
+                    targetMessageId = targetMessage.id,
+                    messages = listOf(targetMessage),
+                ),
+            )
+        )
+
+        assertTrue(selector.capturedRefs.contains(MemoryItemRef(MemoryItemRef.Type.SOURCE, oldSource.id.value)))
+        assertTrue(selector.capturedRefs.contains(MemoryItemRef(MemoryItemRef.Type.CLAIM, activeClaim.id.value)))
+        assertTrue(result.retrievedHits.map { it.toTestItemRef() }.contains(MemoryItemRef(MemoryItemRef.Type.CLAIM, activeClaim.id.value)))
+    }
+
+    @Test
+    fun runtimeReadSourceSafetySuppressesSelectedOldSourceAndRestoresActiveClaim() = runBlocking {
+        val oldSource = source("source-safety-old-csv-source", "BookNest primary export format is CSV.")
+        val newSource = source("source-safety-new-parquet-source", "BookNest primary export format is now Parquet; CSV is old.")
+        val oldClaim = claim(
+            id = "source-safety-old-export-claim",
+            sourceId = oldSource.id.value,
+            predicate = "primary_export_format",
+            objectValue = JsonPrimitive("CSV"),
+            normalizedText = "The current primary export format for BookNest is CSV.",
+            status = MemoryClaim.Status.SUPERSEDED,
+        )
+        val activeClaim = claim(
+            id = "source-safety-active-export-claim",
+            sourceId = newSource.id.value,
+            predicate = "primary_export_format",
+            objectValue = JsonPrimitive("Parquet"),
+            normalizedText = "The current primary export format for BookNest is Parquet.",
+            status = MemoryClaim.Status.ACTIVE,
+        ).copy(supersedesClaimId = oldClaim.id)
+        val store = InMemoryMemoryStore(
+            MemoryNamespaceSnapshot(
+                sources = listOf(oldSource, newSource),
+                entities = listOf(entity()),
+                claims = listOf(oldClaim, activeClaim),
+            )
+        )
+
+        val result = RuntimeMemoryReadPipeline(
+            store = store,
+            planner = FixedReadPlanner(
+                MemoryReadPlan(
+                    needMemory = true,
+                    answerMode = MemoryReadPlan.AnswerMode.MIXED,
+                    requireEvidenceFallback = false,
+                    retrievalBudget = MemoryRetrievalBudget(claims = 0, sources = 1),
+                    retrievalRequests = listOf(
+                        MemoryReadPlan.RetrievalRequest(
+                            memoryType = MemorySemanticType.SOURCE,
+                            why = "Selector may pick the stale raw source, but source safety must still repair it.",
+                            query = "BookNest primary export format CSV",
+                            topK = 1,
+                        )
+                    ),
+                )
+            ),
+            selector = FixedReadSelector(
+                selectedRefs = listOf(MemoryItemRef(MemoryItemRef.Type.SOURCE, oldSource.id.value))
+            ),
+        ).read(memoryReadRequest("source-safety-target", "I remember BookNest exported CSV. Is that still current?"))
+
+        val prompt = assertNotNull(result.runtimePrompt)
+        val refs = result.retrievedHits.map { it.toTestItemRef() }
+
+        assertTrue(refs.contains(MemoryItemRef(MemoryItemRef.Type.CLAIM, activeClaim.id.value)))
+        assertTrue(refs.none { it == MemoryItemRef(MemoryItemRef.Type.SOURCE, oldSource.id.value) })
+        assertEquals(listOf(oldSource.id.value), result.trace.sourceSafety.suppressedSources.map { it.ref.id })
+        assertEquals(listOf(activeClaim.id.value), result.trace.sourceSafety.restoredTypedHits.map { it.ref.id })
+        assertTrue(prompt.contains("The current primary export format for BookNest is Parquet."))
+        assertTrue(!prompt.contains("BookNest primary export format is CSV."))
+    }
+
+    @Test
+    fun runtimeReadKeepsActiveNoteQuoteWithoutRenderingContaminatedSource() = runBlocking {
+        val mixedSource = source(
+            "mixed-shelflog-source",
+            "ShelfLog primary export is currently CSV. When I ask for ShelfLog reports, I prefer a short summary first, then disputed points.",
+        )
+        val newSource = source("new-shelflog-source", "ShelfLog primary export is currently JSON Lines instead of CSV.")
+        val oldClaim = claim(
+            id = "old-shelflog-export-claim",
+            sourceId = mixedSource.id.value,
+            predicate = "primary_export_format",
+            objectValue = JsonPrimitive("CSV"),
+            normalizedText = "The primary export format for ShelfLog is currently CSV.",
+            status = MemoryClaim.Status.SUPERSEDED,
+        )
+        val activeClaim = claim(
+            id = "active-shelflog-export-claim",
+            sourceId = newSource.id.value,
+            predicate = "primary_export_format",
+            objectValue = JsonPrimitive("JSON Lines"),
+            normalizedText = "The primary export format for ShelfLog is currently JSON Lines.",
+            status = MemoryClaim.Status.ACTIVE,
+        ).copy(supersedesClaimId = oldClaim.id)
+        val activeNote = note(
+            id = "shelflog-report-note",
+            title = "ShelfLog report output preference",
+            summary = "For ShelfLog reports, the user prefers a short summary first, then disputed points.",
+            evidenceRefs = listOf(
+                evidenceRef(
+                    mixedSource.id.value,
+                    "When I ask for ShelfLog reports, I prefer a short summary first, then disputed points.",
+                )
+            ),
+        )
+        val store = InMemoryMemoryStore(
+            MemoryNamespaceSnapshot(
+                sources = listOf(mixedSource, newSource),
+                entities = listOf(entity()),
+                claims = listOf(oldClaim, activeClaim),
+                notes = listOf(activeNote),
+            )
+        )
+        val targetMessage = userMessage(
+            id = "target-message",
+            text = "How do I prefer ShelfLog reports to be formatted?",
+        )
+
+        val result = RuntimeMemoryReadPipeline(
+            store = store,
+            planner = FixedReadPlanner(
+                MemoryReadPlan(
+                    needMemory = true,
+                    answerMode = MemoryReadPlan.AnswerMode.MIXED,
+                    requireEvidenceFallback = true,
+                    retrievalBudget = MemoryRetrievalBudget(claims = 1, notes = 1, sources = 2),
+                    retrievalRequests = listOf(
+                        MemoryReadPlan.RetrievalRequest(
+                            memoryType = MemorySemanticType.NOTE,
+                            why = "Report preference is contextual memory.",
+                            query = "ShelfLog report output preference",
+                            topK = 1,
+                        ),
+                        MemoryReadPlan.RetrievalRequest(
+                            memoryType = MemorySemanticType.SOURCE,
+                            why = "Evidence fallback should use quotes, not a stale mixed raw source.",
+                            query = "ShelfLog report output preference",
+                            topK = 2,
+                        )
+                    ),
+                )
+            ),
+        ).read(
+            MemoryReadRequest(
+                namespace = TEST_NAMESPACE,
+                threadContext = MemoryThreadContext(
+                    conversationId = Conversation.Id("conversation"),
+                    threadId = Conversation.Thread.Id("read-thread"),
+                    targetMessageId = targetMessage.id,
+                    messages = listOf(targetMessage),
+                ),
+            )
+        )
+
+        val prompt = assertNotNull(result.runtimePrompt)
+        val refs = result.retrievedHits.map { it.toTestItemRef() }
+
+        assertTrue(refs.contains(MemoryItemRef(MemoryItemRef.Type.NOTE, activeNote.id.value)))
+        assertTrue(refs.none { it == MemoryItemRef(MemoryItemRef.Type.SOURCE, mixedSource.id.value) })
+        assertTrue(prompt.contains("short summary first, then disputed points"))
+        assertTrue(!prompt.contains("ShelfLog primary export is currently CSV."))
+    }
+
+    @Test
+    fun runtimeReadKeepsRawSourceLinkedToNonActiveMemoryWhenNoActiveReplacementExists() = runBlocking {
+        val historicalSource = source("historical-source", "ShelfLog used to export CSV during the first prototype.")
+        val historicalClaim = claim(
+            id = "historical-export-claim",
+            sourceId = historicalSource.id.value,
+            predicate = "historical_export_format",
+            objectValue = JsonPrimitive("CSV"),
+            normalizedText = "ShelfLog used to export CSV during the first prototype.",
+            status = MemoryClaim.Status.EXPIRED,
+        )
+        val store = InMemoryMemoryStore(
+            MemoryNamespaceSnapshot(
+                sources = listOf(historicalSource),
+                entities = listOf(entity()),
+                claims = listOf(historicalClaim),
+            )
+        )
+        val targetMessage = userMessage(
+            id = "target-message",
+            text = "What historical export format did ShelfLog use during the first prototype?",
+        )
+
+        val result = RuntimeMemoryReadPipeline(
+            store = store,
+            planner = FixedReadPlanner(
+                MemoryReadPlan(
+                    needMemory = true,
+                    answerMode = MemoryReadPlan.AnswerMode.RATIONALE,
+                    requireEvidenceFallback = true,
+                    retrievalBudget = MemoryRetrievalBudget(sources = 1),
+                    retrievalRequests = listOf(
+                        MemoryReadPlan.RetrievalRequest(
+                            memoryType = MemorySemanticType.SOURCE,
+                            why = "Historical evidence is useful when there is no active replacement.",
+                            query = "ShelfLog first prototype historical export format",
+                            topK = 1,
+                        )
+                    ),
+                )
+            ),
+        ).read(
+            MemoryReadRequest(
+                namespace = TEST_NAMESPACE,
+                threadContext = MemoryThreadContext(
+                    conversationId = Conversation.Id("conversation"),
+                    threadId = Conversation.Thread.Id("read-thread"),
+                    targetMessageId = targetMessage.id,
+                    messages = listOf(targetMessage),
+                ),
+            )
+        )
+
+        val prompt = assertNotNull(result.runtimePrompt)
+        val refs = result.retrievedHits.map { it.toTestItemRef() }
+
+        assertTrue(refs.contains(MemoryItemRef(MemoryItemRef.Type.SOURCE, historicalSource.id.value)))
+        assertTrue(prompt.contains("ShelfLog used to export CSV during the first prototype."))
+    }
+
+    @Test
+    fun claimReconcilerKeepsTimeScopedHistoricalClaimWhenCurrentStatusSupersedeIsProposed() {
+        val projectId = MemoryEntity.Id("entity-memory-mvp")
+        val sqliteId = MemoryEntity.Id("entity-sqlite")
+        val mongoId = MemoryEntity.Id("entity-mongodb")
+        val historicalPolicy = MemoryPredicateDefinition(
+            predicate = "uses_persistence_database",
+            namespace = TEST_NAMESPACE,
+            objectKind = MemoryPredicateDefinition.ObjectValueKind.ENTITY,
+            cardinality = MemoryPredicateDefinition.Cardinality.MULTI,
+            temporalPolicy = MemoryPredicateDefinition.TemporalPolicy.TIME_SCOPED,
+            conflictPolicy = MemoryPredicateDefinition.ConflictPolicy.RANGE_SPLIT,
+        )
+        val currentPolicy = MemoryPredicateDefinition(
+            predicate = "primary_storage_backend",
+            namespace = TEST_NAMESPACE,
+            objectKind = MemoryPredicateDefinition.ObjectValueKind.ENTITY,
+            cardinality = MemoryPredicateDefinition.Cardinality.SINGLE,
+            temporalPolicy = MemoryPredicateDefinition.TemporalPolicy.STATUS_LIKE,
+            conflictPolicy = MemoryPredicateDefinition.ConflictPolicy.REPLACE,
+        )
+        val historicalClaim = claim(
+            id = "historical-sqlite-claim",
+            subjectEntityId = projectId,
+            predicate = historicalPolicy.predicate,
+            objectEntityId = sqliteId,
+            objectValue = null,
+            normalizedText = "Memory MVP used SQLite during the early prototype.",
+        ).copy(
+            predicateFamily = historicalPolicy.predicate,
+            predicatePolicy = historicalPolicy,
+            validFrom = Instant.parse("2026-01-10T00:00:00Z"),
+            validTo = Instant.parse("2026-02-01T00:00:00Z"),
+        )
+        val currentCandidate = MemoryClaimCandidate(
+            subjectEntityId = projectId,
+            predicate = currentPolicy.predicate,
+            predicateFamily = currentPolicy.predicate,
+            predicatePolicy = currentPolicy,
+            objectEntityId = mongoId,
+            normalizedText = "Memory MVP currently uses MongoDB as the primary storage backend.",
+            scope = MemoryScope.Global("Memory MVP project"),
+            confidence = 0.9,
+            importance = 8,
+        )
+        val oldCurrentClaim = historicalClaim.copy(
+            id = MemoryClaim.Id("old-current-storage-claim"),
+            predicate = currentPolicy.predicate,
+            predicateFamily = currentPolicy.predicate,
+            predicatePolicy = currentPolicy,
+            objectEntityId = sqliteId,
+            validFrom = null,
+            validTo = null,
+            normalizedText = "Memory MVP currently uses SQLite as the primary storage backend.",
+        )
+
+        assertTrue(currentCandidate.shouldCoexistWithTemporalTargetForMemoryReconciliation(historicalClaim))
+        assertTrue(!currentCandidate.shouldCoexistWithTemporalTargetForMemoryReconciliation(oldCurrentClaim))
+    }
+
+    @Test
+    fun runtimeReadRendersSelectedSourceWithoutEvidenceFallback() = runBlocking {
+        val striderSource = source(
+            id = "strider-uncertain-source",
+            text = "Кажется, Strider раньше работал стабильнее, но я не уверен.",
+        )
+        val store = InMemoryMemoryStore(
+            MemoryNamespaceSnapshot(
+                sources = listOf(striderSource),
+                entities = listOf(entity()),
+            )
+        )
+
+        val result = RuntimeMemoryReadPipeline(
+            store = store,
+            planner = FixedReadPlanner(
+                MemoryReadPlan(
+                    needMemory = true,
+                    answerMode = MemoryReadPlan.AnswerMode.FACTUAL,
+                    requireEvidenceFallback = false,
+                    retrievalBudget = MemoryRetrievalBudget(sources = 1),
+                    retrievalRequests = listOf(
+                        MemoryReadPlan.RetrievalRequest(
+                            memoryType = MemorySemanticType.SOURCE,
+                            why = "The answer depends on the raw remembered wording.",
+                            query = "Strider раньше работал стабильнее не уверен",
+                            topK = 1,
+                        )
+                    ),
+                )
+            ),
+        ).read(memoryReadRequest("strider-source-target", "What did I say about Strider reliability?"))
+
+        val prompt = assertNotNull(result.runtimePrompt)
+        val refs = result.retrievedHits.map { it.toTestItemRef() }
+
+        assertTrue(refs.contains(MemoryItemRef(MemoryItemRef.Type.SOURCE, striderSource.id.value)))
+        assertTrue(prompt.contains("Кажется, Strider раньше работал стабильнее, но я не уверен."))
+        assertTrue(!prompt.contains("Retrieved evidence:\nnot requested for this answer mode"))
+    }
+
+    @Test
+    fun runtimePromptTellsModelToCompareDatesForOrderingQuestions() = runBlocking {
+        val orderingSource = source("ordering-source", "On 2026-02-12, Memory MVP added evidence-backed recall.")
+        val orderingClaim = claim(
+            id = "ordering-claim",
+            sourceId = orderingSource.id.value,
+            predicate = "memory_milestone",
+            objectValue = JsonPrimitive("evidence-backed recall"),
+            normalizedText = "On 2026-02-12, Memory MVP added evidence-backed recall.",
+        )
+        val store = InMemoryMemoryStore(
+            MemoryNamespaceSnapshot(
+                sources = listOf(orderingSource),
+                entities = listOf(entity()),
+                claims = listOf(orderingClaim),
+            )
+        )
+
+        val result = RuntimeMemoryReadPipeline(
+            store = store,
+            planner = FixedReadPlanner(
+                MemoryReadPlan(
+                    needMemory = true,
+                    answerMode = MemoryReadPlan.AnswerMode.FACTUAL,
+                    requireEvidenceFallback = false,
+                    retrievalBudget = MemoryRetrievalBudget(claims = 1),
+                    retrievalRequests = listOf(
+                        MemoryReadPlan.RetrievalRequest(
+                            memoryType = MemorySemanticType.CLAIM,
+                            why = "The user asks for timeline ordering.",
+                            query = "Memory MVP evidence-backed recall 2026-02-12",
+                            topK = 1,
+                        )
+                    ),
+                )
+            ),
+        ).read(memoryReadRequest("ordering-target", "Which Memory MVP milestone happened second?"))
+
+        val prompt = assertNotNull(result.runtimePrompt)
+
+        assertTrue(prompt.contains("If the user asks for first/second/latest/earliest/ordering"))
+        assertTrue(prompt.contains("compare explicit dates in retrieved memory before answering"))
+    }
+}
+
+private class FixedForgetPlanner(
+    private val scriptedPlan: MemoryForgetPlan,
+) : MemoryForgetPlanner {
+    override suspend fun plan(
+        request: DirectStructuredMemoryWriteRequest,
+        routeDecision: MemoryRouteDecision,
+        candidates: List<MemoryStore.SearchHit>,
+        snapshot: MemoryNamespaceSnapshot,
+    ): MemoryForgetPlan = scriptedPlan
+}
+
+private class FixedRepairPlanner(
+    private val scriptedPlan: MemoryRepairPlan,
+) : MemoryRepairPlanner {
+    override suspend fun plan(
+        request: MemoryMaintenanceRequest,
+        candidateClusters: List<MemoryRepairCandidateCluster>,
+        snapshot: MemoryNamespaceSnapshot,
+    ): MemoryRepairPlan = scriptedPlan
+}
+
+private class FixedEntityMaintenancePlanner(
+    private val scriptedPlan: MemoryEntityMaintenancePlan,
+) : MemoryEntityMaintenancePlanner {
+    override suspend fun plan(
+        request: MemoryMaintenanceRequest,
+        candidateGroups: List<MemoryEntityMaintenanceCandidateGroup>,
+        snapshot: MemoryNamespaceSnapshot,
+    ): MemoryEntityMaintenancePlan = scriptedPlan
+}
+
+private class FixedNoteConsolidator(
+    private val scriptedResult: NoteConsolidationResult,
+) : MemoryNoteConsolidator {
+    override suspend fun consolidate(
+        request: MemoryMaintenanceRequest,
+        selectedNotes: List<MemoryNote>,
+        relatedHits: List<MemoryStore.SearchHit>,
+        snapshot: MemoryNamespaceSnapshot,
+    ): NoteConsolidationResult = scriptedResult
+}
+
+private class FixedReadPlanner(
+    private val scriptedPlan: MemoryReadPlan,
+) : MemoryReadPlanner {
+    override suspend fun plan(request: MemoryReadRequest): MemoryReadPlan = scriptedPlan
+}
+
+private class FixedReadSelector(
+    private val selectedRefs: List<MemoryItemRef>,
+) : MemoryReadSelector {
+    override suspend fun select(request: MemoryReadSelectionRequest): MemoryReadSelectionResult {
+        val hitsByRef = request.candidateHits.associateBy { it.toTestItemRef() }
+        val selectedRefSet = selectedRefs.toSet()
+        return MemoryReadSelectionResult(
+            selectedHits = selectedRefs.mapNotNull(hitsByRef::get),
+            decisions = request.candidateHits.mapIndexed { index, hit ->
+                val ref = hit.toTestItemRef()
+                MemoryReadSelectionResult.Decision(
+                    ref = ref,
+                    selected = ref in selectedRefSet,
+                    rank = if (ref in selectedRefSet) index + 1 else 0,
+                    reason = if (ref in selectedRefSet) "selected by fixed test selector" else "rejected by fixed test selector",
+                )
+            },
+        )
+    }
+}
+
+private class CapturingReadSelector(
+    private val selectedRefs: List<MemoryItemRef>,
+) : MemoryReadSelector {
+    val capturedRefs = mutableListOf<MemoryItemRef>()
+
+    override suspend fun select(request: MemoryReadSelectionRequest): MemoryReadSelectionResult {
+        capturedRefs += request.candidateHits.map { it.toTestItemRef() }
+        val hitsByRef = request.candidateHits.associateBy { it.toTestItemRef() }
+        return MemoryReadSelectionResult(
+            selectedHits = selectedRefs.mapNotNull(hitsByRef::get),
+            decisions = request.candidateHits.mapIndexed { index, hit ->
+                val ref = hit.toTestItemRef()
+                MemoryReadSelectionResult.Decision(
+                    ref = ref,
+                    selected = ref in selectedRefs,
+                    rank = if (ref in selectedRefs) index + 1 else 0,
+                    reason = if (ref in selectedRefs) "selected by capturing test selector" else "rejected by capturing test selector",
+                )
+            },
+        )
+    }
+}
+
+private class FixedMemoryClaimReconciler(
+    private val scriptedOps: List<MemoryClaimReconciliationOp>,
+) : MemoryClaimReconciler {
+    override suspend fun reconcile(
+        request: DirectStructuredMemoryWriteRequest,
+        claimCandidates: List<MemoryClaimCandidate>,
+        retrievedHits: List<MemoryStore.SearchHit>,
+        predicateCatalog: List<MemoryPredicateDefinition>,
+    ): List<MemoryClaimReconciliationOp> = scriptedOps
+}
+
+private val TEST_NAMESPACE = MemoryNamespace("memory-maintenance-test")
+private val USER_ENTITY_ID = MemoryEntity.Id("entity-user")
+private val NOW: Instant = Instant.parse("2026-01-02T03:04:05Z")
+private val EARLIER: Instant = Instant.parse("2026-01-01T00:00:00Z")
+
+private fun entity(
+    id: MemoryEntity.Id = USER_ENTITY_ID,
+    entityType: MemoryEntity.Type = MemoryEntity.Type.USER,
+    canonicalName: String = "Lewik",
+    normalizedName: String = "lewik",
+    summary: String? = null,
+): MemoryEntity =
+    MemoryEntity(
+        id = id,
+        namespace = TEST_NAMESPACE,
+        entityType = entityType,
+        canonicalName = canonicalName,
+        normalizedName = normalizedName,
+        summary = summary,
+        firstSeenAt = EARLIER,
+        lastSeenAt = EARLIER,
+        createdAt = EARLIER,
+        updatedAt = EARLIER,
+    )
+
+private fun profile(
+    id: String,
+    ownerEntityId: MemoryEntity.Id,
+    profileText: String,
+    version: Long = 1,
+    updatedAt: Instant = EARLIER,
+): MemoryProfile =
+    MemoryProfile(
+        id = MemoryProfile.Id(id),
+        namespace = TEST_NAMESPACE,
+        ownerEntityId = ownerEntityId,
+        profileText = profileText,
+        version = version,
+        createdAt = EARLIER,
+        updatedAt = updatedAt,
+    )
+
+private fun source(
+    id: String = "source",
+    text: String = "User prefers Toyota.",
+    speakerRole: MemorySource.ActorRole = MemorySource.ActorRole.USER,
+): MemorySource =
+    MemorySource.ChatTurn(
+        id = MemorySource.Id(id),
+        namespace = TEST_NAMESPACE,
+        conversationId = Conversation.Id("conversation"),
+        threadId = Conversation.Thread.Id("thread"),
+        sourceMessageId = Conversation.Message.Id("message-$id"),
+        speakerRole = speakerRole,
+        contentText = text,
+        searchText = text,
+        contentHash = "$id-hash",
+        observedAt = EARLIER,
+        createdAt = EARLIER,
+    )
+
+private fun claim(
+    id: String = "claim",
+    sourceId: String = "source",
+    subjectEntityId: MemoryEntity.Id = USER_ENTITY_ID,
+    predicate: String = "prefers",
+    objectEntityId: MemoryEntity.Id? = null,
+    objectValue: JsonPrimitive? = JsonPrimitive("Toyota"),
+    normalizedText: String = "The user prefers Toyota.",
+    status: MemoryClaim.Status = MemoryClaim.Status.ACTIVE,
+    confidence: Double = 0.8,
+    importance: Int = 7,
+): MemoryClaim =
+    MemoryClaim(
+        id = MemoryClaim.Id(id),
+        namespace = TEST_NAMESPACE,
+        subjectEntityId = subjectEntityId,
+        predicate = predicate,
+        objectEntityId = objectEntityId,
+        objectValue = objectValue,
+        normalizedText = normalizedText,
+        scope = MemoryScope.Global("User-level preference"),
+        confidence = confidence,
+        importance = importance,
+        status = status,
+        firstSeenAt = EARLIER,
+        lastSeenAt = EARLIER,
+        evidenceRefs = listOf(evidenceRef(sourceId, normalizedText)),
+        createdAt = EARLIER,
+        updatedAt = EARLIER,
+    )
+
+private fun note(
+    id: String = "note",
+    title: String = "Memory note",
+    summary: String = "Memory note summary.",
+    noteType: MemoryNote.Type = MemoryNote.Type.CONTEXT,
+    status: MemoryNote.Status = MemoryNote.Status.ACTIVE,
+    maturity: MemoryNote.Maturity = MemoryNote.Maturity.STABILIZING,
+    anchorEntityId: MemoryEntity.Id? = USER_ENTITY_ID,
+    entityRefs: List<MemoryNote.EntityRef> = listOf(MemoryNote.EntityRef(USER_ENTITY_ID, MemoryNote.EntityRef.Role.PRIMARY)),
+    confidence: Double = 0.8,
+    importance: Int = 8,
+    evidenceRefs: List<MemoryEvidenceRef> = listOf(evidenceRef("source", summary)),
+): MemoryNote =
+    MemoryNote(
+        id = MemoryNote.Id(id),
+        namespace = TEST_NAMESPACE,
+        noteType = noteType,
+        title = title,
+        summary = summary,
+        scope = MemoryScope.Global("User-level context"),
+        status = status,
+        maturity = maturity,
+        anchorEntityId = anchorEntityId,
+        entityRefs = entityRefs,
+        confidence = confidence,
+        importance = importance,
+        evidenceRefs = evidenceRefs,
+        createdAt = EARLIER,
+        updatedAt = EARLIER,
+    )
+
+private fun task(
+    id: String,
+    status: MemoryTask.Status,
+    ownerEntityId: MemoryEntity.Id? = USER_ENTITY_ID,
+    assigneeEntityId: MemoryEntity.Id? = null,
+    relatedEntityIds: List<MemoryEntity.Id> = emptyList(),
+): MemoryTask =
+    MemoryTask(
+        id = MemoryTask.Id(id),
+        namespace = TEST_NAMESPACE,
+        ownerEntityId = ownerEntityId,
+        assigneeEntityId = assigneeEntityId,
+        title = "Memory task $id",
+        status = status,
+        scope = MemoryScope.Global("User-level task"),
+        relatedEntityIds = relatedEntityIds,
+        evidenceRefs = listOf(evidenceRef("source", "Task evidence")),
+        createdAt = EARLIER,
+        updatedAt = EARLIER,
+    )
+
+private fun episode(
+    id: String,
+    ownerEntityId: MemoryEntity.Id? = USER_ENTITY_ID,
+): MemoryEpisode =
+    MemoryEpisode(
+        id = MemoryEpisode.Id(id),
+        namespace = TEST_NAMESPACE,
+        ownerEntityId = ownerEntityId,
+        situation = "A no-memory read plan needed verification.",
+        action = "Run a verifier before skipping recall.",
+        result = "Recall intent was recovered safely.",
+        lesson = "Use verifier calls for ambiguous no-memory plans.",
+        tags = listOf("memory", "recall"),
+        evidenceRefs = listOf(evidenceRef("source", "Episode evidence")),
+        createdAt = EARLIER,
+        updatedAt = EARLIER,
+    )
+
+private fun evidenceRef(
+    sourceId: String,
+    quote: String,
+): MemoryEvidenceRef =
+    MemoryEvidenceRef(
+        sourceId = MemorySource.Id(sourceId),
+        kind = MemoryEvidenceRef.Kind.DIRECT,
+        cachedQuote = quote,
+    )
+
+private fun userMessage(
+    id: String,
+    text: String,
+): Conversation.Message =
+    Conversation.Message(
+        id = Conversation.Message.Id(id),
+        conversationId = Conversation.Id("conversation"),
+        role = Conversation.Message.Role.USER,
+        content = listOf(Conversation.Message.ContentItem.UserMessage(text)),
+        createdAt = EARLIER,
+    )
+
+private fun memoryReadRequest(
+    targetMessageId: String,
+    targetText: String,
+): MemoryReadRequest {
+    val targetMessage = userMessage(targetMessageId, targetText)
+    return MemoryReadRequest(
+        namespace = TEST_NAMESPACE,
+        threadContext = MemoryThreadContext(
+            conversationId = Conversation.Id("conversation"),
+            threadId = Conversation.Thread.Id("read-thread"),
+            targetMessageId = targetMessage.id,
+            messages = listOf(targetMessage),
+        ),
+    )
+}
+
+private fun projectFactReadPlan(
+    projectName: String,
+    claims: Int,
+    notes: Int,
+): MemoryReadPlan =
+    MemoryReadPlan(
+        needMemory = true,
+        answerMode = MemoryReadPlan.AnswerMode.FACTUAL,
+        coreBlocks = setOf(MemoryReadPlan.CoreBlock.PROFILE),
+        retrievalBudget = MemoryRetrievalBudget(claims = claims, notes = notes),
+        retrievalRequests = listOf(
+            MemoryReadPlan.RetrievalRequest(
+                memoryType = MemorySemanticType.CLAIM,
+                why = "Retrieve project-specific facts about $projectName.",
+                query = "$projectName project facts purpose export field",
+                topK = claims,
+            ),
+            MemoryReadPlan.RetrievalRequest(
+                memoryType = MemorySemanticType.NOTE,
+                why = "Retrieve project-specific context about $projectName.",
+                query = "$projectName project context",
+                topK = notes,
+            )
+        ),
+    )
+
+private fun MemoryStore.SearchHit.toTestItemRef(): MemoryItemRef =
+    when (this) {
+        is MemoryStore.SearchHit.SourceHit -> MemoryItemRef(MemoryItemRef.Type.SOURCE, source.id.value)
+        is MemoryStore.SearchHit.EntityHit -> MemoryItemRef(MemoryItemRef.Type.ENTITY, entity.id.value)
+        is MemoryStore.SearchHit.ClaimHit -> MemoryItemRef(MemoryItemRef.Type.CLAIM, claim.id.value)
+        is MemoryStore.SearchHit.NoteHit -> MemoryItemRef(MemoryItemRef.Type.NOTE, note.id.value)
+        is MemoryStore.SearchHit.TaskHit -> MemoryItemRef(MemoryItemRef.Type.TASK, task.id.value)
+        is MemoryStore.SearchHit.ProfileHit -> MemoryItemRef(MemoryItemRef.Type.PROFILE, profile.id.value)
+        is MemoryStore.SearchHit.EpisodeHit -> MemoryItemRef(MemoryItemRef.Type.EPISODE, episode.id.value)
+        is MemoryStore.SearchHit.RunHit -> MemoryItemRef(MemoryItemRef.Type.RUN, run.id.value)
+    }
+
+private fun MemoryNamespaceSnapshot.sourceById(id: String): MemorySource =
+    sources.single { it.id.value == id }
+
+private fun MemoryNamespaceSnapshot.entityById(id: String): MemoryEntity =
+    entities.single { it.id.value == id }
+
+private fun MemoryNamespaceSnapshot.claimById(id: String): MemoryClaim =
+    claims.single { it.id.value == id }
+
+private fun MemoryNamespaceSnapshot.noteById(id: String): MemoryNote =
+    notes.single { it.id.value == id }
+
+private fun MemoryNamespaceSnapshot.taskById(id: String): MemoryTask =
+    tasks.single { it.id.value == id }
+
+private fun MemoryNamespaceSnapshot.episodeById(id: String): MemoryEpisode =
+    episodes.single { it.id.value == id }

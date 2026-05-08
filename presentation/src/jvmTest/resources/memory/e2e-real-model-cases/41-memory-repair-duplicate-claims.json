@@ -1,0 +1,103 @@
+{
+  "id": "memory-repair-duplicate-claims",
+  "category": "maintenance_memory",
+  "description": "Manual memory repair should merge duplicate active claims, keep one active claim, preserve evidence, and recall the cleaned fact.",
+  "timeoutSeconds": 900,
+  "preloadedMemory": [
+    {
+      "type": "duplicate_claims",
+      "subjectName": "Atlas planner sandbox",
+      "subjectType": "PROJECT",
+      "predicate": "uses_runtime_language",
+      "predicateDescription": "Runtime implementation language used by a project or sandbox.",
+      "scopeText": "Atlas planner sandbox implementation facts",
+      "olderValue": "Kotlin",
+      "firstText": "The Atlas planner sandbox uses Kotlin for workflow orchestration.",
+      "secondText": "Repeated confirmation: the Atlas planner sandbox uses Kotlin for workflow orchestration."
+    }
+  ],
+  "maintenanceAfterSeeds": ["repair_memory"],
+  "maintenanceTraceExpectations": [
+    {
+      "present": true,
+      "stageIn": ["MEMORY_REPAIR"],
+      "tracesMin": 1,
+      "repairCandidateClustersMin": 1,
+      "repairSuspiciousHitsMin": 2,
+      "repairActionsMin": 1,
+      "repairMaterializedClaimsMin": 1,
+      "repairMaterializedRunsMin": 1,
+      "repairAppliedOpsMin": 1,
+      "containsAll": ["DUPLICATE_CLAIMS", "MERGE_DUPLICATES", "Kotlin"]
+    }
+  ],
+  "recallSessions": [
+    {
+      "id": "recall-b",
+      "turns": [
+        {
+          "text": "What runtime language does the Atlas planner sandbox use? Answer with only the language name.",
+          "answerExpectation": {
+            "containsAll": ["Kotlin"]
+          },
+          "memoryTraceExpectation": {
+            "needMemory": true,
+            "injectedPromptPresent": true,
+            "selectedClaimsMin": 1,
+            "selectedClaimsMax": 1,
+            "selectedContainsAll": ["Kotlin"],
+            "requiredSelectedClaims": [
+              {
+                "containsAll": ["Kotlin"]
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "expectedAfterSeeds": {
+    "activeClaimsMin": 1,
+    "activeClaimsMax": 1,
+    "sourcesMin": 2,
+    "userSourcesMin": 2,
+    "runsMin": 1,
+    "requiredClaims": [
+      {
+        "predicateIn": ["uses_runtime_language"],
+        "containsAll": ["Kotlin"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      }
+    ],
+    "requiredRuns": [
+      {
+        "runTypeIn": ["REPAIR_MEMORY"],
+        "statusIn": ["SUCCESS"],
+        "containsAll": ["merge_duplicate_claim"],
+        "appliedOpsMin": 1
+      }
+    ]
+  },
+  "expectedFinal": {
+    "activeClaimsMin": 1,
+    "activeClaimsMax": 1,
+    "sourcesMin": 3,
+    "userSourcesMin": 3,
+    "runsMin": 1,
+    "requiredClaims": [
+      {
+        "predicateIn": ["uses_runtime_language"],
+        "containsAll": ["Kotlin"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      }
+    ],
+    "requiredRuns": [
+      {
+        "runTypeIn": ["REPAIR_MEMORY"],
+        "statusIn": ["SUCCESS"],
+        "containsAll": ["merge_duplicate_claim"],
+        "appliedOpsMin": 1
+      }
+    ]
+  }
+}

@@ -106,44 +106,25 @@ private fun buildDetailedParameters(toolName: String, input: JsonElement, projec
             }
             "unified_search" -> {
                 val query = json["query"]?.jsonPrimitive?.content ?: ""
-                val searchVector = json["search_vector"]?.jsonPrimitive?.booleanOrNull ?: true
-                val searchGraph = json["search_graph"]?.jsonPrimitive?.booleanOrNull ?: true
+                val scopes = json["scopes"]?.jsonArray
+                    ?.mapNotNull { it.jsonPrimitive.contentOrNull }
+                    ?.takeIf { it.isNotEmpty() }
+                    ?: listOf("ALL")
                 val limit = json["limit"]?.jsonPrimitive?.intOrNull ?: 5
+                val standings = json["standings"]?.jsonArray
+                    ?.mapNotNull { it.jsonPrimitive.contentOrNull }
+                    ?.takeIf { it.isNotEmpty() }
+                val bases = json["bases"]?.jsonArray
+                    ?.mapNotNull { it.jsonPrimitive.contentOrNull }
+                    ?.takeIf { it.isNotEmpty() }
                 
                 buildString {
                     append("Query: $query\n")
-                    append("Sources: ")
-                    val sources = mutableListOf<String>()
-                    if (searchVector) sources.add("conversation history")
-                    if (searchGraph) sources.add("knowledge graph")
-                    append(sources.joinToString(", "))
+                    append("Scopes: ${scopes.joinToString(", ")}")
+                    standings?.let { append("\nStanding: ${it.joinToString(", ")}") }
+                    bases?.let { append("\nBasis: ${it.joinToString(", ")}") }
                     append("\nLimit: $limit results")
                 }
-            }
-            "build_memory_from_text" -> {
-                val content = json["content"]?.jsonPrimitive?.content ?: ""
-                "Content length: ${content.length} characters"
-            }
-            "add_memory_link" -> {
-                val from = json["from"]?.jsonPrimitive?.content ?: ""
-                val relation = json["relation"]?.jsonPrimitive?.content ?: ""
-                val to = json["to"]?.jsonPrimitive?.content ?: ""
-                val summary = json["summary"]?.jsonPrimitive?.content
-                
-                buildString {
-                    append("$from → $relation → $to")
-                    summary?.let { append("\nSummary: $it") }
-                }
-            }
-            "get_memory_object", "update_memory_object", "delete_memory_object" -> {
-                val name = json["name"]?.jsonPrimitive?.content ?: ""
-                "Entity: $name"
-            }
-            "invalidate_memory_link" -> {
-                val from = json["from"]?.jsonPrimitive?.content ?: ""
-                val relation = json["relation"]?.jsonPrimitive?.content ?: ""
-                val to = json["to"]?.jsonPrimitive?.content ?: ""
-                "$from → $relation → $to"
             }
             "create_agent" -> {
                 val agentName = json["agent_name"]?.jsonPrimitive?.content ?: ""
@@ -196,12 +177,6 @@ private fun getToolDisplayName(toolName: String): String = when (toolName) {
     "brave_local_search" -> "Local Search"
     "jina_read_url" -> "Read URL"
     "unified_search" -> "Memory Search"
-    "build_memory_from_text" -> "Update Memory From Text"
-    "add_memory_link" -> "Add Memory Link"
-    "get_memory_object" -> "Get Memory Object"
-    "update_memory_object" -> "Update Memory Object"
-    "invalidate_memory_link" -> "Invalidate Memory Link"
-    "delete_memory_object" -> "Delete Memory Object"
     "create_agent" -> "Create Agent"
     "tell_agent" -> "Tell Agent"
     "switch_tab" -> "Switch Tab"
@@ -223,12 +198,6 @@ private fun getToolIcon(toolName: String): ImageVector = when (toolName) {
     "brave_local_search" -> Icons.Default.Public
     "jina_read_url" -> Icons.Default.Public
     "unified_search" -> Icons.Default.Psychology
-    "build_memory_from_text" -> Icons.Default.Psychology
-    "add_memory_link" -> Icons.Default.Psychology
-    "get_memory_object" -> Icons.Default.Psychology
-    "update_memory_object" -> Icons.Default.Psychology
-    "invalidate_memory_link" -> Icons.Default.Psychology
-    "delete_memory_object" -> Icons.Default.Psychology
     "create_agent" -> Icons.Default.DeveloperBoard
     "tell_agent" -> Icons.Default.DeveloperBoard
     "switch_tab" -> Icons.Default.Tab
@@ -249,12 +218,6 @@ private fun getToolSecondaryIcon(toolName: String): ImageVector? = when (toolNam
     "brave_local_search" -> Icons.Default.Search
     "jina_read_url" -> Icons.Default.ArrowForward
     "unified_search" -> Icons.Default.Search
-    "build_memory_from_text" -> Icons.Default.Description
-    "add_memory_link" -> Icons.Default.Link
-    "get_memory_object" -> Icons.Default.ArrowForward
-    "update_memory_object" -> Icons.Default.ArrowBack
-    "invalidate_memory_link" -> Icons.Default.LinkOff
-    "delete_memory_object" -> Icons.Default.Close
     "create_agent" -> Icons.Default.Add
     "tell_agent" -> Icons.Default.ArrowBack
     else -> null
@@ -343,25 +306,6 @@ private fun extractKeyParameters(toolName: String, input: JsonElement, projectPa
             }
             "unified_search" -> {
                 json["query"]?.jsonPrimitive?.content ?: ""
-            }
-            "build_memory_from_text" -> {
-                val content = json["content"]?.jsonPrimitive?.content ?: ""
-                if (content.length > 40) content.take(37) + "..." else content
-            }
-            "add_memory_link" -> {
-                val from = json["from"]?.jsonPrimitive?.content ?: ""
-                val relation = json["relation"]?.jsonPrimitive?.content ?: ""
-                val to = json["to"]?.jsonPrimitive?.content ?: ""
-                "$from → $relation → $to"
-            }
-            "get_memory_object", "update_memory_object", "delete_memory_object" -> {
-                json["name"]?.jsonPrimitive?.content ?: ""
-            }
-            "invalidate_memory_link" -> {
-                val from = json["from"]?.jsonPrimitive?.content ?: ""
-                val relation = json["relation"]?.jsonPrimitive?.content ?: ""
-                val to = json["to"]?.jsonPrimitive?.content ?: ""
-                "$from → $relation → $to"
             }
             "create_agent" -> {
                 val agentName = json["agent_name"]?.jsonPrimitive?.content ?: ""

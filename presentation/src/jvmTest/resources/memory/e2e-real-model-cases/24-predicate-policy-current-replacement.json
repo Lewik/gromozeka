@@ -1,0 +1,107 @@
+{
+  "id": "predicate-policy-current-replacement",
+  "category": "predicate_policy",
+  "description": "A current-state predicate policy should replace the old active value without lexical hardcoded predicate matching.",
+  "timeoutSeconds": 900,
+  "seedSessions": [
+    {
+      "id": "seed-a",
+      "turns": [
+        "Keep this as my current editor default: I use JetBrains IDEs as my default editor family.",
+        "Update my current editor default: I use Zed as my default editor family instead of JetBrains."
+      ]
+    }
+  ],
+  "recallSessions": [
+    {
+      "id": "recall-b",
+      "turns": [
+        {
+          "text": "What editor family is my current default? Answer with only the editor family name.",
+          "answerExpectation": {
+            "containsAll": ["Zed"],
+            "containsNone": ["JetBrains", "VS Code"]
+          },
+          "memoryTraceExpectation": {
+            "needMemory": true,
+            "injectedPromptPresent": true,
+            "selectedClaimsMin": 1,
+            "requiredSelectedClaims": [
+              {
+                "normalizedContainsAll": ["Zed", "default"],
+                "predicatePolicyCardinalityIn": ["SINGLE"],
+                "predicatePolicyTemporalPolicyIn": ["STATUS_LIKE"],
+                "predicatePolicyConflictPolicyIn": ["REPLACE"]
+              }
+            ],
+            "forbiddenSelectedClaims": [
+              {
+                "normalizedContainsAll": ["JetBrains", "default"]
+              }
+            ],
+            "injectedPromptContainsAll": ["Zed"]
+          }
+        }
+      ]
+    }
+  ],
+  "expectedAfterSeeds": {
+    "predicateDefinitionsMin": 18,
+    "activeClaimsMin": 1,
+    "activeClaimsMax": 1,
+    "userSourcesMin": 2,
+    "requiredPredicateDefinitions": [
+      {
+        "containsAll": ["editor", "family"],
+        "cardinalityIn": ["SINGLE"],
+        "temporalPolicyIn": ["STATUS_LIKE"],
+        "conflictPolicyIn": ["REPLACE"]
+      }
+    ],
+    "requiredClaims": [
+      {
+        "normalizedContainsAll": ["Zed", "default"],
+        "predicatePolicyCardinalityIn": ["SINGLE"],
+        "predicatePolicyTemporalPolicyIn": ["STATUS_LIKE"],
+        "predicatePolicyConflictPolicyIn": ["REPLACE"],
+        "evidenceQuoteContainsAll": ["I use Zed as my default editor family instead of JetBrains"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      }
+    ],
+    "forbiddenClaims": [
+      {
+        "normalizedContainsAll": ["JetBrains", "default"]
+      }
+    ],
+    "allActiveClaimsEvidenceSpeakerRoleIn": ["USER"]
+  },
+  "expectedFinal": {
+    "predicateDefinitionsMin": 18,
+    "activeClaimsMin": 1,
+    "activeClaimsMax": 1,
+    "userSourcesMin": 3,
+    "requiredPredicateDefinitions": [
+      {
+        "containsAll": ["editor", "family"],
+        "cardinalityIn": ["SINGLE"],
+        "temporalPolicyIn": ["STATUS_LIKE"],
+        "conflictPolicyIn": ["REPLACE"]
+      }
+    ],
+    "requiredClaims": [
+      {
+        "normalizedContainsAll": ["Zed", "default"],
+        "predicatePolicyCardinalityIn": ["SINGLE"],
+        "predicatePolicyTemporalPolicyIn": ["STATUS_LIKE"],
+        "predicatePolicyConflictPolicyIn": ["REPLACE"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      }
+    ],
+    "forbiddenClaims": [
+      {
+        "normalizedContainsAll": ["JetBrains", "default"]
+      }
+    ],
+    "allActiveClaimsEvidenceSpeakerRoleIn": ["USER"]
+  }
+}

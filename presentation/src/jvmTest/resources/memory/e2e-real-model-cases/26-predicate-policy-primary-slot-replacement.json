@@ -1,0 +1,107 @@
+{
+  "id": "predicate-policy-primary-slot-replacement",
+  "category": "predicate_policy",
+  "description": "A single-slot project fact should replace the old value without relying on editor/default-specific wording.",
+  "timeoutSeconds": 900,
+  "seedSessions": [
+    {
+      "id": "seed-a",
+      "turns": [
+        "For the Nimbus project, the primary storage backend is MongoDB.",
+        "Nimbus project update: PostgreSQL has replaced MongoDB as Nimbus's main persistence database."
+      ]
+    }
+  ],
+  "recallSessions": [
+    {
+      "id": "recall-b",
+      "turns": [
+        {
+          "text": "What is the primary storage backend for the Nimbus project now? Answer with only the backend name.",
+          "answerExpectation": {
+            "containsAll": ["PostgreSQL"],
+            "containsNone": ["MongoDB", "SQLite"]
+          },
+          "memoryTraceExpectation": {
+            "needMemory": true,
+            "injectedPromptPresent": true,
+            "selectedClaimsMin": 1,
+            "requiredSelectedClaims": [
+              {
+                "normalizedContainsAll": ["PostgreSQL", "primary", "storage"],
+                "predicatePolicyCardinalityIn": ["SINGLE"],
+                "predicatePolicyTemporalPolicyIn": ["STATUS_LIKE"],
+                "predicatePolicyConflictPolicyIn": ["REPLACE"]
+              }
+            ],
+            "forbiddenSelectedClaims": [
+              {
+                "normalizedContainsAll": ["MongoDB", "primary", "storage"]
+              }
+            ],
+            "injectedPromptContainsAll": ["PostgreSQL"]
+          }
+        }
+      ]
+    }
+  ],
+  "expectedAfterSeeds": {
+    "predicateDefinitionsMin": 18,
+    "activeClaimsMin": 1,
+    "activeClaimsMax": 1,
+    "userSourcesMin": 2,
+    "requiredPredicateDefinitions": [
+      {
+        "containsAll": ["primary", "storage", "backend"],
+        "cardinalityIn": ["SINGLE"],
+        "temporalPolicyIn": ["STATUS_LIKE"],
+        "conflictPolicyIn": ["REPLACE"]
+      }
+    ],
+    "requiredClaims": [
+      {
+        "normalizedContainsAll": ["PostgreSQL", "primary", "storage"],
+        "predicatePolicyCardinalityIn": ["SINGLE"],
+        "predicatePolicyTemporalPolicyIn": ["STATUS_LIKE"],
+        "predicatePolicyConflictPolicyIn": ["REPLACE"],
+        "evidenceQuoteContainsAll": ["PostgreSQL has replaced MongoDB as Nimbus's main persistence database"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      }
+    ],
+    "forbiddenClaims": [
+      {
+        "normalizedContainsAll": ["MongoDB", "primary", "storage"]
+      }
+    ],
+    "allActiveClaimsEvidenceSpeakerRoleIn": ["USER"]
+  },
+  "expectedFinal": {
+    "predicateDefinitionsMin": 18,
+    "activeClaimsMin": 1,
+    "activeClaimsMax": 1,
+    "userSourcesMin": 3,
+    "requiredPredicateDefinitions": [
+      {
+        "containsAll": ["primary", "storage", "backend"],
+        "cardinalityIn": ["SINGLE"],
+        "temporalPolicyIn": ["STATUS_LIKE"],
+        "conflictPolicyIn": ["REPLACE"]
+      }
+    ],
+    "requiredClaims": [
+      {
+        "normalizedContainsAll": ["PostgreSQL", "primary", "storage"],
+        "predicatePolicyCardinalityIn": ["SINGLE"],
+        "predicatePolicyTemporalPolicyIn": ["STATUS_LIKE"],
+        "predicatePolicyConflictPolicyIn": ["REPLACE"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      }
+    ],
+    "forbiddenClaims": [
+      {
+        "normalizedContainsAll": ["MongoDB", "primary", "storage"]
+      }
+    ],
+    "allActiveClaimsEvidenceSpeakerRoleIn": ["USER"]
+  }
+}

@@ -1,0 +1,156 @@
+{
+  "id": "forget-specificity-keeps-related-project-fact",
+  "category": "forget_memory_specificity",
+  "description": "Forgetting a personal preference should not remove a separate project fact that happens to live near the same topic.",
+  "timeoutSeconds": 1000,
+  "seedSessions": [
+    {
+      "id": "seed-a",
+      "turns": [
+        "For future car advice, remember that I prefer Toyota cars.",
+        "For the FleetNorth project, remember that the backend database is MongoDB.",
+        {
+          "text": "Forget only my Toyota car preference. Keep unrelated project facts.",
+          "memoryWriteTraceExpectation": {
+            "routeDecisionIn": ["FORGET_REQUEST"],
+            "materializedRunsMin": 1
+          }
+        }
+      ]
+    }
+  ],
+  "recallSessions": [
+    {
+      "id": "recall-b",
+      "turns": [
+        {
+          "text": "What database does the FleetNorth backend use? Answer with only the database name.",
+          "answerExpectation": {
+            "containsAll": ["MongoDB"],
+            "containsNone": ["Toyota", "PostgreSQL", "SQLite"]
+          },
+          "memoryTraceExpectation": {
+            "needMemory": true,
+            "injectedPromptPresent": true,
+            "selectedClaimsMin": 1,
+            "requiredSelectedClaims": [
+              {
+                "containsAll": ["FleetNorth", "MongoDB"],
+                "evidenceSourceSpeakerRoleIn": ["USER"]
+              }
+            ],
+            "forbiddenSelectedClaims": [
+              {
+                "subjectEntityTypeIn": ["USER"],
+                "normalizedContainsAll": ["Toyota"]
+              }
+            ],
+            "injectedPromptContainsAll": ["FleetNorth", "MongoDB"],
+            "injectedPromptContainsNone": ["Toyota cars"]
+          },
+          "memoryWriteTraceExpectation": {
+            "routeDecisionIn": ["NOOP"],
+            "materializedClaimsMax": 0,
+            "materializedNotesMax": 0,
+            "materializedTasksMax": 0
+          }
+        }
+      ]
+    },
+    {
+      "id": "recall-c",
+      "turns": [
+        {
+          "text": "Which car brand should you remember that I prefer? If memory lacks this, answer exactly: I don't have enough information.",
+          "answerExpectation": {
+            "containsAnyGroups": [
+              ["don't have enough information", "do not have enough information", "not enough information"]
+            ],
+            "containsNone": ["Toyota", "Honda", "Ford", "BMW"]
+          },
+          "memoryTraceExpectation": {
+            "needMemory": true,
+            "selectedContainsNone": ["Toyota cars", "prefer Toyota"],
+            "injectedPromptContainsNone": ["Toyota cars", "prefer Toyota"],
+            "forbiddenSelectedClaims": [
+              {
+                "subjectEntityTypeIn": ["USER"],
+                "normalizedContainsAll": ["Toyota"]
+              }
+            ]
+          },
+          "memoryWriteTraceExpectation": {
+            "routeDecisionIn": ["NOOP"],
+            "materializedClaimsMax": 0,
+            "materializedNotesMax": 0,
+            "materializedTasksMax": 0
+          }
+        }
+      ]
+    }
+  ],
+  "expectedAfterSeeds": {
+    "activeClaimsMin": 1,
+    "activeClaimsMax": 3,
+    "userSourcesMin": 2,
+    "requiredClaims": [
+      {
+        "containsAll": ["FleetNorth", "MongoDB"],
+        "evidenceQuoteContainsAll": ["backend database is MongoDB"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      }
+    ],
+    "requiredRuns": [
+      {
+        "runTypeIn": ["FORGET_MEMORY"],
+        "statusIn": ["SUCCESS"],
+        "containsAll": ["forget"],
+        "appliedOpsMin": 1
+      }
+    ],
+    "forbiddenClaims": [
+      {
+        "subjectEntityTypeIn": ["USER"],
+        "normalizedContainsAll": ["Toyota"]
+      }
+    ],
+    "forbiddenNotes": [
+      {
+        "containsAll": ["Toyota cars"]
+      }
+    ],
+    "allActiveClaimsEvidenceSpeakerRoleIn": ["USER"]
+  },
+  "expectedFinal": {
+    "activeClaimsMin": 1,
+    "activeClaimsMax": 3,
+    "userSourcesMin": 3,
+    "requiredClaims": [
+      {
+        "containsAll": ["FleetNorth", "MongoDB"],
+        "evidenceQuoteContainsAll": ["backend database is MongoDB"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      }
+    ],
+    "requiredRuns": [
+      {
+        "runTypeIn": ["FORGET_MEMORY"],
+        "statusIn": ["SUCCESS"],
+        "containsAll": ["forget"],
+        "appliedOpsMin": 1
+      }
+    ],
+    "forbiddenClaims": [
+      {
+        "subjectEntityTypeIn": ["USER"],
+        "normalizedContainsAll": ["Toyota"]
+      }
+    ],
+    "forbiddenNotes": [
+      {
+        "containsAll": ["Toyota cars"]
+      }
+    ],
+    "allActiveClaimsEvidenceSpeakerRoleIn": ["USER"]
+  }
+}

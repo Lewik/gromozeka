@@ -1,0 +1,167 @@
+{
+    "version": 1,
+    "hash": "8465c5c3c61a8f5387f5f6563b1ba705532dd383aa468f287f9bdda53bcc3530",
+    "provider": "OPEN_AI_SUBSCRIPTION",
+    "model": "gpt-5.3-codex",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>/projects/task-path-cancel",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "content": "MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            Use the retrieved memory below only if it is relevant to the immediately following user request.\n            If retrieved memory is irrelevant or insufficient, ignore it or say that memory is insufficient.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and tasks for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n\n            Namespace: project:<0>\n            Answer mode: TASK\n            Require evidence fallback: false\n\n            Retrieved profile:\n            none\n\n            Retrieved tasks:\n            - task hot-path:task:<0> [OPEN]: title=\"Run temporary task memory cancellation experiment\"; description=\"Keep an open follow-up task in the Memory MVP project to run a temporary task memory cancellation experiment.\"\n\n            Retrieved claims:\n            none\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            not requested for this answer mode\n\n            Retrieved entities:\n            - entity entity:<0> [USER]: User; The user interacting with this agent.\n- entity entity:<1> [PROJECT]: Memory MVP; Project named Memory MVP.\n- entity entity:<2> [CONCEPT]: temporary task memory cancellation experiment; Concept named temporary task memory cancellation experiment.\n\n            Retrieved episodes:\n            none",
+                        "level": "INFO",
+                        "state": "COMPLETE",
+                        "toolUseId": null,
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.System"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "SYSTEM"
+            },
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "Memory MVP follow-up: keep an open task to run a temporary task memory cancellation experiment.",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "autoCompactionThreshold": 12000,
+            "maxTokens": 2048,
+            "outputConfig": null,
+            "responseFormat": {
+                "type": "text"
+            },
+            "thinking": null,
+            "toolChoice": {
+                "type": "auto"
+            },
+            "toolContext": {
+                "aiProvider": "OPEN_AI_SUBSCRIPTION",
+                "conversationId": "<conversation-key>",
+                "modelName": "gpt-5.3-codex",
+                "planId": null,
+                "projectPath": "gromozeka-e2e-<id>/projects/task-path-cancel"
+            }
+        },
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "SYSTEM",
+                "content": [
+                    {
+                        "content": "MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            Use the retrieved memory below only if it is relevant to the immediately following user request.\n            If retrieved memory is irrelevant or insufficient, ignore it or say that memory is insufficient.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and tasks for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n\n            Namespace: project:<0>\n            Answer mode: TASK\n            Require evidence fallback: false\n\n            Retrieved profile:\n            none\n\n            Retrieved tasks:\n            - task hot-path:task:<0> [OPEN]: title=\"Run temporary task memory cancellation experiment\"; description=\"Keep an open follow-up task in the Memory MVP project to run a temporary task memory cancellation experiment.\"\n\n            Retrieved claims:\n            none\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            not requested for this answer mode\n\n            Retrieved entities:\n            - entity entity:<0> [USER]: User; The user interacting with this agent.\n- entity entity:<1> [PROJECT]: Memory MVP; Project named Memory MVP.\n- entity entity:<2> [CONCEPT]: temporary task memory cancellation experiment; Concept named temporary task memory cancellation experiment.\n\n            Retrieved episodes:\n            none",
+                        "level": "INFO",
+                        "state": "COMPLETE",
+                        "toolUseId": null,
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.System"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "Memory MVP follow-up: keep an open task to run a temporary task memory cancellation experiment.",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxTokens": 2048,
+            "thinking": null,
+            "outputConfig": null,
+            "autoCompactionThreshold": 12000,
+            "toolChoice": {
+                "type": "auto"
+            },
+            "responseFormat": {
+                "type": "text"
+            },
+            "toolContext": {
+                "aiProvider": "OPEN_AI_SUBSCRIPTION",
+                "conversationId": "<conversation-key>",
+                "modelName": "gpt-5.3-codex",
+                "planId": null,
+                "projectPath": "gromozeka-e2e-<id>/projects/task-path-cancel"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "Done — I’ll keep an open follow-up task to run a temporary task memory cancellation experiment.",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 438,
+                "completionTokens": 23,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

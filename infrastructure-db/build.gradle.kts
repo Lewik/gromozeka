@@ -24,6 +24,8 @@ kotlin {
                 implementation(libs.exposed.migration.core)
                 implementation(libs.exposed.migration.jdbc)
                 implementation(libs.flyway.core)
+                implementation(libs.mongodb.driver.kotlin.coroutine)
+                implementation(libs.mongodb.bson.kotlinx)
 
                 // Knowledge Graph
                 implementation(libs.neo4j.driver)
@@ -45,11 +47,19 @@ kotlin {
                 // Logging
                 implementation(libs.klog)
                 
-                // Ktor Client for RerankService
+                // Ktor Client for HTTP-based infrastructure services
                 implementation(libs.ktor.client.core)
                 implementation(libs.ktor.client.cio)
                 implementation(libs.ktor.client.content.negotiation)
                 implementation(libs.ktor.serialization.kotlinx.json)
+            }
+        }
+
+        val jvmTest by getting {
+            dependencies {
+                implementation(kotlin("test"))
+                implementation(libs.kotlinx.datetime)
+                implementation(libs.kotlinx.serialization.json)
             }
         }
     }

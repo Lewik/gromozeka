@@ -1,0 +1,167 @@
+{
+    "version": 1,
+    "hash": "310e80a8d9be5ed947b40d8c67c9c9dbf286ea08a218e20074a233d33ecf1dd8",
+    "provider": "OPEN_AI_SUBSCRIPTION",
+    "model": "gpt-5.3-codex",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>/projects/multilingual-source-bridge",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "content": "MEMORY-ONLY CONTEXT\nThis message is not part of the real conversation and must not be stored as evidence.\nNo relevant persisted memory was retrieved for the immediately following user request.\nIf the user asks what memory contains or what should be remembered, do not guess from common sense, test setup, or absent context; say that memory is insufficient.\n\nNamespace: project:<0>\nAnswer mode: FACTUAL",
+                        "level": "INFO",
+                        "state": "COMPLETE",
+                        "toolUseId": null,
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.System"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "SYSTEM"
+            },
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "Кажется, Strider раньше работал стабильнее, но я не уверен.",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "autoCompactionThreshold": 12000,
+            "maxTokens": 2048,
+            "outputConfig": null,
+            "responseFormat": {
+                "type": "text"
+            },
+            "thinking": null,
+            "toolChoice": {
+                "type": "auto"
+            },
+            "toolContext": {
+                "aiProvider": "OPEN_AI_SUBSCRIPTION",
+                "conversationId": "<conversation-key>",
+                "modelName": "gpt-5.3-codex",
+                "planId": null,
+                "projectPath": "gromozeka-e2e-<id>/projects/multilingual-source-bridge"
+            }
+        },
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "SYSTEM",
+                "content": [
+                    {
+                        "content": "MEMORY-ONLY CONTEXT\nThis message is not part of the real conversation and must not be stored as evidence.\nNo relevant persisted memory was retrieved for the immediately following user request.\nIf the user asks what memory contains or what should be remembered, do not guess from common sense, test setup, or absent context; say that memory is insufficient.\n\nNamespace: project:<0>\nAnswer mode: FACTUAL",
+                        "level": "INFO",
+                        "state": "COMPLETE",
+                        "toolUseId": null,
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.System"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "Кажется, Strider раньше работал стабильнее, но я не уверен.",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxTokens": 2048,
+            "thinking": null,
+            "outputConfig": null,
+            "autoCompactionThreshold": 12000,
+            "toolChoice": {
+                "type": "auto"
+            },
+            "responseFormat": {
+                "type": "text"
+            },
+            "toolContext": {
+                "aiProvider": "OPEN_AI_SUBSCRIPTION",
+                "conversationId": "<conversation-key>",
+                "modelName": "gpt-5.3-codex",
+                "planId": null,
+                "projectPath": "gromozeka-e2e-<id>/projects/multilingual-source-bridge"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "Понимаю. По этой фразе нельзя уверенно сделать вывод — это скорее ощущение, чем подтверждённый факт. Если хотите, можно сравнить метрики (аптайм, ошибки, задержки) за разные периоды и проверить, действительно ли стабильность изменилась.",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 177,
+                "completionTokens": 65,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

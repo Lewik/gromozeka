@@ -1,0 +1,107 @@
+{
+  "id": "predicate-policy-temporal-coexist",
+  "category": "predicate_policy",
+  "description": "A temporal predicate policy should keep historical facts active while still recalling the current value.",
+  "timeoutSeconds": 900,
+  "seedSessions": [
+    {
+      "id": "seed-a",
+      "turns": [
+        "Acme project timeline: on 2026-01-05 the search service used Elasticsearch during the prototype.",
+        "Acme project update: as of 2026-04-15 the search service uses OpenSearch in production instead of Elasticsearch."
+      ]
+    }
+  ],
+  "recallSessions": [
+    {
+      "id": "recall-b",
+      "turns": [
+        {
+          "text": "What search backend does the Acme project use in production now? Answer with only the backend name.",
+          "answerExpectation": {
+            "containsAll": ["OpenSearch"],
+            "containsNone": ["Elasticsearch", "Solr"]
+          },
+          "memoryTraceExpectation": {
+            "needMemory": true,
+            "injectedPromptPresent": true,
+            "selectedClaimsMin": 1,
+            "requiredSelectedClaims": [
+              {
+                "normalizedContainsAll": ["OpenSearch", "production"],
+                "predicatePolicyCardinalityIn": ["SINGLE"],
+                "predicatePolicyTemporalPolicyIn": ["STATUS_LIKE", "TIME_SCOPED"],
+                "predicatePolicyConflictPolicyIn": ["REPLACE", "RANGE_SPLIT"]
+              }
+            ],
+            "injectedPromptContainsAll": ["OpenSearch"]
+          }
+        }
+      ]
+    }
+  ],
+  "expectedAfterSeeds": {
+    "predicateDefinitionsMin": 18,
+    "activeClaimsMin": 2,
+    "activeClaimsMax": 2,
+    "userSourcesMin": 2,
+    "requiredPredicateDefinitions": [
+      {
+        "containsAll": ["search", "backend"],
+        "cardinalityIn": ["SINGLE"],
+        "temporalPolicyIn": ["TIME_SCOPED"],
+        "conflictPolicyIn": ["RANGE_SPLIT"]
+      }
+    ],
+    "requiredClaims": [
+      {
+        "normalizedContainsAll": ["Elasticsearch", "prototype"],
+        "predicatePolicyCardinalityIn": ["SINGLE", "MULTI"],
+        "predicatePolicyTemporalPolicyIn": ["TIME_SCOPED"],
+        "predicatePolicyConflictPolicyIn": ["COEXIST", "RANGE_SPLIT"],
+        "evidenceQuoteContainsAll": ["2026-01-05"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      },
+      {
+        "normalizedContainsAll": ["OpenSearch", "production"],
+        "predicatePolicyCardinalityIn": ["SINGLE"],
+        "predicatePolicyTemporalPolicyIn": ["STATUS_LIKE", "TIME_SCOPED"],
+        "predicatePolicyConflictPolicyIn": ["REPLACE", "RANGE_SPLIT"],
+        "evidenceQuoteContainsAll": ["2026-04-15"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      }
+    ],
+    "allActiveClaimsEvidenceSpeakerRoleIn": ["USER"]
+  },
+  "expectedFinal": {
+    "predicateDefinitionsMin": 18,
+    "activeClaimsMin": 2,
+    "activeClaimsMax": 2,
+    "userSourcesMin": 3,
+    "requiredPredicateDefinitions": [
+      {
+        "containsAll": ["search", "backend"],
+        "cardinalityIn": ["SINGLE"],
+        "temporalPolicyIn": ["TIME_SCOPED"],
+        "conflictPolicyIn": ["RANGE_SPLIT"]
+      }
+    ],
+    "requiredClaims": [
+      {
+        "normalizedContainsAll": ["Elasticsearch", "prototype"],
+        "predicatePolicyCardinalityIn": ["SINGLE", "MULTI"],
+        "predicatePolicyTemporalPolicyIn": ["TIME_SCOPED"],
+        "predicatePolicyConflictPolicyIn": ["COEXIST", "RANGE_SPLIT"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      },
+      {
+        "normalizedContainsAll": ["OpenSearch", "production"],
+        "predicatePolicyCardinalityIn": ["SINGLE"],
+        "predicatePolicyTemporalPolicyIn": ["STATUS_LIKE", "TIME_SCOPED"],
+        "predicatePolicyConflictPolicyIn": ["REPLACE", "RANGE_SPLIT"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      }
+    ],
+    "allActiveClaimsEvidenceSpeakerRoleIn": ["USER"]
+  }
+}

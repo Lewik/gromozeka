@@ -1,0 +1,105 @@
+{
+  "id": "memory-repair-duplicate-episodes",
+  "category": "maintenance_memory",
+  "description": "Manual memory repair should merge duplicate episodes and leave one reusable lesson for episode recall.",
+  "timeoutSeconds": 900,
+  "preloadedMemory": [
+    {
+      "type": "duplicate_episodes",
+      "subjectName": "NoMemoryVerifier",
+      "subjectType": "SERVICE",
+      "scopeText": "Memory read planning lessons",
+      "episodeSituation": "Read-time planner sometimes returns no memory for ambiguous recall questions.",
+      "episodeAction": "Run a short model-based verifier before accepting the no-memory plan.",
+      "episodeResult": "Recall questions avoid brittle substring heuristics.",
+      "episodeLesson": "Prefer model-based no-memory verification over hard-coded substring matching.",
+      "firstText": "Lesson: prefer model-based no-memory verification over hard-coded substring matching.",
+      "secondText": "Repeated lesson: prefer model-based no-memory verification over hard-coded substring matching."
+    }
+  ],
+  "maintenanceAfterSeeds": ["repair_memory"],
+  "maintenanceTraceExpectations": [
+    {
+      "present": true,
+      "stageIn": ["MEMORY_REPAIR"],
+      "tracesMin": 1,
+      "repairCandidateClustersMin": 1,
+      "repairSuspiciousHitsMin": 2,
+      "repairActionsMin": 1,
+      "repairMaterializedEpisodesMin": 1,
+      "repairMaterializedRunsMin": 1,
+      "repairAppliedOpsMin": 1,
+      "containsAll": ["DUPLICATE_EPISODES", "MERGE_DUPLICATES", "substring"]
+    }
+  ],
+  "recallSessions": [
+    {
+      "id": "recall-b",
+      "turns": [
+        {
+          "text": "What lesson did we learn for NoMemoryVerifier about ambiguous no-memory decisions? One sentence.",
+          "answerExpectation": {
+            "containsAnyGroups": [
+              ["model-based", "verification"],
+              ["substring", "hard-coded"]
+            ]
+          },
+          "memoryTraceExpectation": {
+            "needMemory": true,
+            "injectedPromptPresent": true,
+            "selectedEpisodesMin": 1,
+            "selectedEpisodesMax": 1,
+            "selectedContainsAll": ["substring"],
+            "requiredSelectedEpisodes": [
+              {
+                "containsAll": ["model-based", "substring"]
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "expectedAfterSeeds": {
+    "episodesMin": 1,
+    "episodesMax": 1,
+    "sourcesMin": 2,
+    "userSourcesMin": 2,
+    "runsMin": 1,
+    "requiredEpisodes": [
+      {
+        "containsAll": ["model-based", "substring"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      }
+    ],
+    "requiredRuns": [
+      {
+        "runTypeIn": ["REPAIR_MEMORY"],
+        "statusIn": ["SUCCESS"],
+        "containsAll": ["archive_duplicate_episode"],
+        "appliedOpsMin": 1
+      }
+    ]
+  },
+  "expectedFinal": {
+    "episodesMin": 1,
+    "episodesMax": 1,
+    "sourcesMin": 3,
+    "userSourcesMin": 3,
+    "runsMin": 1,
+    "requiredEpisodes": [
+      {
+        "containsAll": ["model-based", "substring"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      }
+    ],
+    "requiredRuns": [
+      {
+        "runTypeIn": ["REPAIR_MEMORY"],
+        "statusIn": ["SUCCESS"],
+        "containsAll": ["archive_duplicate_episode"],
+        "appliedOpsMin": 1
+      }
+    ]
+  }
+}

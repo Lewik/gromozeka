@@ -64,10 +64,11 @@ private class Runtime(
     ): AiRuntimeResponse = withContext(Dispatchers.IO) {
         val session = authService.getValidSession()
         val conversationKey = request.options.toolContext["conversationId"] as? String ?: fallbackConversationKey
+        val promptCacheKey = request.options.toolContext["promptCacheKey"] as? String ?: conversationKey
         val requestBody = requestMapper.toRequest(
             request = request,
             modelName = modelName,
-            conversationKey = conversationKey,
+            conversationKey = promptCacheKey,
         )
 
         try {

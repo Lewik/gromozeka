@@ -1,0 +1,81 @@
+{
+  "id": "event-ordering",
+  "category": "event_ordering",
+  "description": "Multiple dated facts should support a simple order question across sessions.",
+  "timeoutSeconds": 900,
+  "seedSessions": [
+    {
+      "id": "seed-a",
+      "turns": [
+        "Memory timeline: on 2026-01-10 we enabled MongoDB storage; on 2026-02-15 we added evidence-backed recall; on 2026-03-20 we added deduplication."
+      ]
+    }
+  ],
+  "recallSessions": [
+    {
+      "id": "recall-b",
+      "turns": [
+        {
+          "text": "In the Memory timeline, which milestone happened second? Answer with only the milestone name.",
+          "answerExpectation": {
+            "containsAll": ["evidence-backed recall"],
+            "containsNone": ["MongoDB storage", "deduplication", "SQLite"]
+          },
+          "memoryTraceExpectation": {
+            "needMemory": true,
+            "injectedPromptPresent": true,
+            "selectedHitsMin": 2,
+            "selectedContainsAll": ["2026-01-10", "MongoDB", "2026-02-15", "evidence-backed recall", "2026-03-20", "deduplication"],
+            "injectedPromptContainsAll": ["2026-01-10", "2026-02-15", "2026-03-20"]
+          }
+        }
+      ]
+    }
+  ],
+  "expectedAfterSeeds": {
+    "activeClaimsMin": 3,
+    "activeClaimsMax": 3,
+    "userSourcesMin": 1,
+    "requiredClaims": [
+      {
+        "containsAll": ["2026-01-10", "MongoDB storage"],
+        "evidenceQuoteContainsAll": ["2026-01-10 we enabled MongoDB storage"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      },
+      {
+        "containsAll": ["2026-02-15", "evidence-backed recall"],
+        "evidenceQuoteContainsAll": ["2026-02-15 we added evidence-backed recall"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      },
+      {
+        "containsAll": ["2026-03-20", "deduplication"],
+        "evidenceQuoteContainsAll": ["2026-03-20 we added deduplication"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      }
+    ],
+    "allActiveClaimsEvidenceSpeakerRoleIn": ["USER"]
+  },
+  "expectedFinal": {
+    "activeClaimsMin": 3,
+    "activeClaimsMax": 3,
+    "userSourcesMin": 2,
+    "requiredClaims": [
+      {
+        "containsAll": ["2026-01-10", "MongoDB storage"],
+        "evidenceQuoteContainsAll": ["2026-01-10 we enabled MongoDB storage"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      },
+      {
+        "containsAll": ["2026-02-15", "evidence-backed recall"],
+        "evidenceQuoteContainsAll": ["2026-02-15 we added evidence-backed recall"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      },
+      {
+        "containsAll": ["2026-03-20", "deduplication"],
+        "evidenceQuoteContainsAll": ["2026-03-20 we added deduplication"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      }
+    ],
+    "allActiveClaimsEvidenceSpeakerRoleIn": ["USER"]
+  }
+}

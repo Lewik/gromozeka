@@ -1,6 +1,7 @@
 package com.gromozeka.domain.repository
 
 import com.gromozeka.domain.model.Conversation
+import kotlinx.serialization.Serializable
 
 /**
  * Link between thread and message with position.
@@ -12,6 +13,7 @@ import com.gromozeka.domain.model.Conversation
  * @property messageId message in the thread
  * @property position zero-based position in thread (0 = first message)
  */
+@Serializable
 data class ThreadMessageLink(
     val threadId: Conversation.Thread.Id,
     val messageId: Conversation.Message.Id,

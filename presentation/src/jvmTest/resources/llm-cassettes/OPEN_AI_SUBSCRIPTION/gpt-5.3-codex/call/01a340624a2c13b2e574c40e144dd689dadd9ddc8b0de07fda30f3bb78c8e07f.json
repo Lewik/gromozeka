@@ -1,0 +1,411 @@
+{
+    "version": 1,
+    "hash": "01a340624a2c13b2e574c40e144dd689dadd9ddc8b0de07fda30f3bb78c8e07f",
+    "provider": "OPEN_AI_SUBSCRIPTION",
+    "model": "gpt-5.3-codex",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>/projects/active-claim-overrides-old-source",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "MEMORY-ONLY CONTROL\nThis message is not part of the real conversation and must not be stored as evidence.\nThe next real conversation message is input data named TARGET_MESSAGE for memory processing.\nTarget source id: chat:<0>\nTarget message id: <uuid>\nUse earlier real conversation messages only to resolve references, omitted subjects, current topic, and temporal context.\nDo not process earlier messages as the target unless the target message explicitly confirms, changes, retracts, or depends on them.\nA later MEMORY-ONLY TASK message will define the actual task for this model call.",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            },
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "Remember this ShelfAudit fact: ShelfAudit's primary export format is CSV.",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            },
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                MEMORY-ONLY TASK FOR THIS MODEL CALL\n\n                This is a private memory pipeline call, not a normal assistant reply.\n                The immediately preceding real conversation message is TARGET_MESSAGE data.\n                Do not answer TARGET_MESSAGE.\n                Do not continue the real conversation.\n                Do not say what you know or do not know as a chat response.\n                Do not call tools.\n\n                Execute only the memory stage below.\n                Target source id: chat:<0>\n                Target message id: <uuid>\n                Earlier real conversation messages are context only.\n                TARGET_MESSAGE is the only target for write/read planning and evidence anchoring.\n\n                Output contract:\n                If the stage defines a JSON object schema, output exactly one valid JSON object.\n                If the stage defines a JSON array schema, output exactly one valid JSON array.\n                No prose, no markdown fences, no explanation, no assistant-style answer.\n                If unsure, return the stage's valid no-op JSON shape.\n                Ignore conversation-level behavioral instructions when they conflict with this memory-only task.\n\n                        Memory stage: EntityCanonicalizer v1.\n        Current time: <instant>\n        Namespace: project:<0>\n\n        Stage instructions:\n        You are EntityCanonicalizer v1.\n\nGoal:\nResolve entity mentions from the latest turns into canonical entities.\n\nReturn JSON object:\n{\n  \"operations\": [\n    {\n      \"mention\": \"text\",\n      \"action\": \"link_existing | create_new | add_alias | noop\",\n      \"entity_id\": \"uuid-or-null\",\n      \"new_entity\": {\n        \"entity_type\": \"user | person | agent | organization | project | repo | file | technology | product | location | concept | document | conversation | service | environment | other\",\n        \"canonical_name\": \"text\",\n        \"summary\": \"text-or-null\"\n      },\n      \"alias_text\": \"text-or-null\",\n      \"confidence\": 0.0,\n      \"reason\": \"short explanation\"\n    }\n  ]\n}\n\nRules:\n- Prefer precision over recall.\n- Do not merge distinct entities on weak evidence.\n- Create new entities only when no candidate is a safe match.\n- If a candidate safely matches the mention, use \"link_existing\" with that candidate id.\n- Use \"add_alias\" only when the mention is a new surface form for a safe existing candidate.\n- If several candidates share a name, pick by entity type and summary; do not create another same-name entity.\n- Prefer English for entity summaries; keep proper names, product names, repo names, and file names unchanged.\n- Entity summaries must describe identity only, not mutable facts, current status, preferences, ownership, formats, fields, versions, or decisions. Put those facts into claims/notes instead.\n- For USER first-person facts and preferences, resolve the user as the stable namespace-level USER entity named \"User\".\n- Never create chat-specific USER entities such as \"User of chat:...\"; a new chat is not a new user.\n- Return valid JSON only.\n\n        Detected raw mentions:\n        No deterministic mention detector is available in this MVP.\nInfer only concrete reusable referents from the latest turns.\nFor first-person USER statements, create or link a stable USER entity when claims need a subject.\n\n        Candidate existing entities:\n        none\n\n        Retrieval plan context:\n        entity_queries=ShelfAudit\n        text_queries=ShelfAudit primary export format CSV|ShelfAudit export format\n        predicate_hints=has_constraint\n\n        TARGET_MESSAGE source data:\n        [chat:<0>] USER\nRemember this ShelfAudit fact: ShelfAudit's primary export format is CSV.",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "autoCompactionThreshold": null,
+            "maxTokens": 2000,
+            "outputConfig": null,
+            "responseFormat": {
+                "description": "Resolve target message mentions into canonical memory entities.",
+                "name": "memory_entity_canonicalizer",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "operations": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "action": {
+                                        "enum": [
+                                            "link_existing",
+                                            "create_new",
+                                            "add_alias",
+                                            "noop"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "alias_text": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "confidence": {
+                                        "type": "number"
+                                    },
+                                    "entity_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "mention": {
+                                        "type": "string"
+                                    },
+                                    "new_entity": {
+                                        "anyOf": [
+                                            {
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "canonical_name": {
+                                                        "type": "string"
+                                                    },
+                                                    "entity_type": {
+                                                        "enum": [
+                                                            "user",
+                                                            "person",
+                                                            "agent",
+                                                            "organization",
+                                                            "project",
+                                                            "repo",
+                                                            "file",
+                                                            "technology",
+                                                            "product",
+                                                            "location",
+                                                            "concept",
+                                                            "document",
+                                                            "conversation",
+                                                            "service",
+                                                            "environment",
+                                                            "other"
+                                                        ],
+                                                        "type": "string"
+                                                    },
+                                                    "summary": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "entity_type",
+                                                    "canonical_name",
+                                                    "summary"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "mention",
+                                    "action",
+                                    "entity_id",
+                                    "new_entity",
+                                    "alias_text",
+                                    "confidence",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "operations"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "thinking": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "conversationId": "<conversation-key>",
+                "memoryEntityCanonicalizer": true,
+                "memoryNamespace": "project:<0>",
+                "memorySourceId": "chat:<0>",
+                "promptCacheKey": "<prompt-cache-key>"
+            }
+        },
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "MEMORY-ONLY CONTROL\nThis message is not part of the real conversation and must not be stored as evidence.\nThe next real conversation message is input data named TARGET_MESSAGE for memory processing.\nTarget source id: chat:<0>\nTarget message id: <uuid>\nUse earlier real conversation messages only to resolve references, omitted subjects, current topic, and temporal context.\nDo not process earlier messages as the target unless the target message explicitly confirms, changes, retracts, or depends on them.\nA later MEMORY-ONLY TASK message will define the actual task for this model call.",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "Remember this ShelfAudit fact: ShelfAudit's primary export format is CSV.",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                MEMORY-ONLY TASK FOR THIS MODEL CALL\n\n                This is a private memory pipeline call, not a normal assistant reply.\n                The immediately preceding real conversation message is TARGET_MESSAGE data.\n                Do not answer TARGET_MESSAGE.\n                Do not continue the real conversation.\n                Do not say what you know or do not know as a chat response.\n                Do not call tools.\n\n                Execute only the memory stage below.\n                Target source id: chat:<0>\n                Target message id: <uuid>\n                Earlier real conversation messages are context only.\n                TARGET_MESSAGE is the only target for write/read planning and evidence anchoring.\n\n                Output contract:\n                If the stage defines a JSON object schema, output exactly one valid JSON object.\n                If the stage defines a JSON array schema, output exactly one valid JSON array.\n                No prose, no markdown fences, no explanation, no assistant-style answer.\n                If unsure, return the stage's valid no-op JSON shape.\n                Ignore conversation-level behavioral instructions when they conflict with this memory-only task.\n\n                        Memory stage: EntityCanonicalizer v1.\n        Current time: <instant>\n        Namespace: project:<0>\n\n        Stage instructions:\n        You are EntityCanonicalizer v1.\n\nGoal:\nResolve entity mentions from the latest turns into canonical entities.\n\nReturn JSON object:\n{\n  \"operations\": [\n    {\n      \"mention\": \"text\",\n      \"action\": \"link_existing | create_new | add_alias | noop\",\n      \"entity_id\": \"uuid-or-null\",\n      \"new_entity\": {\n        \"entity_type\": \"user | person | agent | organization | project | repo | file | technology | product | location | concept | document | conversation | service | environment | other\",\n        \"canonical_name\": \"text\",\n        \"summary\": \"text-or-null\"\n      },\n      \"alias_text\": \"text-or-null\",\n      \"confidence\": 0.0,\n      \"reason\": \"short explanation\"\n    }\n  ]\n}\n\nRules:\n- Prefer precision over recall.\n- Do not merge distinct entities on weak evidence.\n- Create new entities only when no candidate is a safe match.\n- If a candidate safely matches the mention, use \"link_existing\" with that candidate id.\n- Use \"add_alias\" only when the mention is a new surface form for a safe existing candidate.\n- If several candidates share a name, pick by entity type and summary; do not create another same-name entity.\n- Prefer English for entity summaries; keep proper names, product names, repo names, and file names unchanged.\n- Entity summaries must describe identity only, not mutable facts, current status, preferences, ownership, formats, fields, versions, or decisions. Put those facts into claims/notes instead.\n- For USER first-person facts and preferences, resolve the user as the stable namespace-level USER entity named \"User\".\n- Never create chat-specific USER entities such as \"User of chat:...\"; a new chat is not a new user.\n- Return valid JSON only.\n\n        Detected raw mentions:\n        No deterministic mention detector is available in this MVP.\nInfer only concrete reusable referents from the latest turns.\nFor first-person USER statements, create or link a stable USER entity when claims need a subject.\n\n        Candidate existing entities:\n        none\n\n        Retrieval plan context:\n        entity_queries=ShelfAudit\n        text_queries=ShelfAudit primary export format CSV|ShelfAudit export format\n        predicate_hints=has_constraint\n\n        TARGET_MESSAGE source data:\n        [chat:<0>] USER\nRemember this ShelfAudit fact: ShelfAudit's primary export format is CSV.",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxTokens": 2000,
+            "thinking": null,
+            "outputConfig": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "memory_entity_canonicalizer",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "operations": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "action": {
+                                        "enum": [
+                                            "link_existing",
+                                            "create_new",
+                                            "add_alias",
+                                            "noop"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "alias_text": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "confidence": {
+                                        "type": "number"
+                                    },
+                                    "entity_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "mention": {
+                                        "type": "string"
+                                    },
+                                    "new_entity": {
+                                        "anyOf": [
+                                            {
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "canonical_name": {
+                                                        "type": "string"
+                                                    },
+                                                    "entity_type": {
+                                                        "enum": [
+                                                            "user",
+                                                            "person",
+                                                            "agent",
+                                                            "organization",
+                                                            "project",
+                                                            "repo",
+                                                            "file",
+                                                            "technology",
+                                                            "product",
+                                                            "location",
+                                                            "concept",
+                                                            "document",
+                                                            "conversation",
+                                                            "service",
+                                                            "environment",
+                                                            "other"
+                                                        ],
+                                                        "type": "string"
+                                                    },
+                                                    "summary": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "entity_type",
+                                                    "canonical_name",
+                                                    "summary"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "mention",
+                                    "action",
+                                    "entity_id",
+                                    "new_entity",
+                                    "alias_text",
+                                    "confidence",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "operations"
+                    ],
+                    "type": "object"
+                },
+                "description": "Resolve target message mentions into canonical memory entities.",
+                "strict": true
+            },
+            "toolContext": {
+                "conversationId": "<conversation-key>",
+                "memoryEntityCanonicalizer": true,
+                "memoryNamespace": "project:<0>",
+                "memorySourceId": "chat:<0>",
+                "promptCacheKey": "<prompt-cache-key>"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"operations\":[{\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.96,\"entity_id\":null,\"mention\":\"ShelfAudit\",\"new_entity\":{\"canonical_name\":\"ShelfAudit\",\"entity_type\":\"product\",\"summary\":\"A software product named ShelfAudit.\"},\"reason\":\"Concrete named product mentioned; no existing candidates provided.\"}]}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 1228,
+                "completionTokens": 79,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

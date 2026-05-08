@@ -10,9 +10,11 @@ import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.*
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
+import org.springframework.context.annotation.Profile
 import org.springframework.stereotype.Service
 
 @Service
+@Profile("sqlite")
 class ExposedConversationRepository : ConversationRepository {
 
     override suspend fun create(conversation: Conversation): Conversation = dbQuery {

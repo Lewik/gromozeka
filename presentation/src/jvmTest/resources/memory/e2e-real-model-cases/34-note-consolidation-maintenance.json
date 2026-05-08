@@ -1,0 +1,77 @@
+{
+  "id": "note-consolidation-maintenance",
+  "category": "maintenance_memory",
+  "description": "Manual note consolidation should review a rationale note, promote stable reusable meaning into a claim when appropriate, and keep provenance through user evidence.",
+  "timeoutSeconds": 900,
+  "seedSessions": [
+    {
+      "id": "seed-a",
+      "turns": [
+        "Memory MVP design rationale note, keep this as a note for now: Gromozeka memory consolidation may later promote a note into a durable claim only when its meaning is stable, precise, queryable, and evidence-backed. Weak rationale must stay as a note."
+      ]
+    }
+  ],
+  "maintenanceAfterSeeds": ["consolidate_notes"],
+  "maintenanceTraceExpectations": [
+    {
+      "present": true,
+      "stageIn": ["NOTE_CONSOLIDATION"],
+      "tracesMin": 1,
+      "selectedNotesMin": 1,
+      "finalClaimCandidatesMin": 1,
+      "materializedClaimsMin": 1,
+      "materializedRunsMin": 1,
+      "containsAll": ["rawClaimCandidates", "finalClaimCandidates"]
+    }
+  ],
+  "recallSessions": [
+    {
+      "id": "recall-b",
+      "turns": [
+        {
+          "text": "What is the memory consolidation promotion rule? Keep it short.",
+          "answerExpectation": {
+            "containsAnyGroups": [
+              ["stable"],
+              ["precise"],
+              ["queryable"],
+              ["evidence"]
+            ]
+          },
+          "memoryTraceExpectation": {
+            "needMemory": true,
+            "injectedPromptPresent": true,
+            "selectedHitsMin": 1,
+            "selectedContainsAll": ["stable", "precise"]
+          }
+        }
+      ]
+    }
+  ],
+  "expectedAfterSeeds": {
+    "activeClaimsMin": 1,
+    "runsMin": 2,
+    "userSourcesMin": 1,
+    "requiredClaims": [
+      {
+        "normalizedContainsAll": ["stable"],
+        "containsAll": ["precise", "queryable", "evidence"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      }
+    ],
+    "allActiveClaimsEvidenceSpeakerRoleIn": ["USER"]
+  },
+  "expectedFinal": {
+    "activeClaimsMin": 1,
+    "runsMin": 2,
+    "userSourcesMin": 2,
+    "requiredClaims": [
+      {
+        "normalizedContainsAll": ["stable"],
+        "containsAll": ["precise", "queryable", "evidence"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      }
+    ],
+    "allActiveClaimsEvidenceSpeakerRoleIn": ["USER"]
+  }
+}

@@ -1,0 +1,97 @@
+{
+  "id": "cross-language-current-update-recall",
+  "category": "multilingual_update_recall",
+  "description": "A Russian project fact followed by an English correction should produce one active current claim and recall correctly from Russian.",
+  "timeoutSeconds": 1000,
+  "seedSessions": [
+    {
+      "id": "seed-a",
+      "turns": [
+        "Для проекта RiverLedger запомни: основной формат аналитического экспорта теперь Avro.",
+        "Correction for RiverLedger: the current primary analytics export format is ORC instead of Avro."
+      ]
+    }
+  ],
+  "recallSessions": [
+    {
+      "id": "recall-b",
+      "turns": [
+        {
+          "text": "Какой сейчас основной формат аналитического экспорта у RiverLedger? Ответь только форматом.",
+          "answerExpectation": {
+            "containsAll": ["ORC"],
+            "containsNone": ["Avro", "Parquet", "CSV"]
+          },
+          "memoryTraceExpectation": {
+            "needMemory": true,
+            "injectedPromptPresent": true,
+            "selectedClaimsMin": 1,
+            "requiredSelectedClaims": [
+              {
+                "containsAll": ["RiverLedger", "ORC"],
+                "evidenceQuoteContainsAll": ["ORC instead of Avro"],
+                "evidenceSourceSpeakerRoleIn": ["USER"]
+              }
+            ],
+            "forbiddenSelectedClaims": [
+              {
+                "normalizedContainsAll": ["RiverLedger", "Avro"]
+              }
+            ],
+            "selectedContainsAll": ["RiverLedger", "ORC"],
+            "injectedPromptContainsAll": ["RiverLedger", "ORC"],
+            "injectedPromptContainsNone": ["основной формат аналитического экспорта теперь Avro"]
+          },
+          "memoryWriteTraceExpectation": {
+            "routeDecisionIn": ["NOOP"],
+            "materializedClaimsMax": 0,
+            "materializedNotesMax": 0,
+            "materializedTasksMax": 0
+          }
+        }
+      ]
+    }
+  ],
+  "expectedAfterSeeds": {
+    "activeClaimsMin": 1,
+    "activeClaimsMax": 2,
+    "userSourcesMin": 2,
+    "requiredEntities": [
+      {
+        "typeIn": ["PROJECT"],
+        "canonicalNameIn": ["RiverLedger"]
+      }
+    ],
+    "requiredClaims": [
+      {
+        "containsAll": ["RiverLedger", "ORC"],
+        "evidenceQuoteContainsAll": ["ORC instead of Avro"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      }
+    ],
+    "forbiddenClaims": [
+      {
+        "normalizedContainsAll": ["RiverLedger", "Avro"]
+      }
+    ],
+    "allActiveClaimsEvidenceSpeakerRoleIn": ["USER"]
+  },
+  "expectedFinal": {
+    "activeClaimsMin": 1,
+    "activeClaimsMax": 2,
+    "userSourcesMin": 3,
+    "requiredClaims": [
+      {
+        "containsAll": ["RiverLedger", "ORC"],
+        "evidenceQuoteContainsAll": ["ORC instead of Avro"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      }
+    ],
+    "forbiddenClaims": [
+      {
+        "normalizedContainsAll": ["RiverLedger", "Avro"]
+      }
+    ],
+    "allActiveClaimsEvidenceSpeakerRoleIn": ["USER"]
+  }
+}

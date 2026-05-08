@@ -1,0 +1,626 @@
+{
+    "version": 1,
+    "hash": "fd74f2f91504597e64b505d202a3cdc607692ef830ac92f7c71bf7de9adebb15",
+    "provider": "OPEN_AI_SUBSCRIPTION",
+    "model": "gpt-5.3-codex",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>/projects/task-path-update-dedup",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "Memory MVP follow-up: keep an open task to add task memory lifecycle e2e coverage before declaring the memory MVP stable.",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            },
+            {
+                "content": [
+                    {
+                        "call": {
+                            "input": {
+                                "mode": "automatic_hot_path",
+                                "target": "previous_user_message",
+                                "target_message_id": "<uuid>"
+                            },
+                            "name": "memory_remember"
+                        },
+                        "id": "<id>",
+                        "state": "COMPLETE",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolCall"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "ASSISTANT"
+            },
+            {
+                "content": [
+                    {
+                        "isError": false,
+                        "result": [
+                            {
+                                "content": "{\"status\":\"completed\",\"decision\":\"DIRECT_STRUCTURED_WRITE\",\"memory_types\":[\"TASK\"],\"salience\":0.83,\"reason\":\"TARGET_MESSAGE explicitly creates/updates an open project task with a clear condition for completion.\",\"source_id\":\"chat:<0>\",\"counts\":{\"predicate_definitions\":0,\"sources\":0,\"runs\":1,\"entities\":2,\"claims\":0,\"notes\":0,\"tasks\":1,\"profiles\":0,\"episodes\":0},\"runs\":[{\"id\":\"hot-path:run:<0>\",\"type\":\"UPDATE_TASKS\",\"summary\":\"Direct structured write applied: notes=0, claims=0, tasks=1, entities=2; noop ops: notes=0, claims=0, tasks=0\"}],\"claims\":[],\"notes\":[],\"tasks\":[{\"id\":\"hot-path:task:<0>\",\"status\":\"OPEN\",\"priority\":\"HIGH\",\"title\":\"Add task memory lifecycle E2E coverage before declaring Memory MVP stable\"}],\"entities\":[{\"id\":\"entity:<0>\",\"type\":\"PROJECT\",\"name\":\"Memory MVP\"},{\"id\":\"entity:<1>\",\"type\":\"CONCEPT\",\"name\":\"Task memory lifecycle e2e coverage\"}]}",
+                                "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult.Data.Text"
+                            }
+                        ],
+                        "state": "COMPLETE",
+                        "toolName": "memory_remember",
+                        "toolUseId": "tool-call",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            },
+            {
+                "content": [
+                    {
+                        "call": {
+                            "input": {
+                                "mode": "automatic_runtime_recall",
+                                "target": "previous_user_message",
+                                "target_message_id": "<uuid>"
+                            },
+                            "name": "memory_recall"
+                        },
+                        "id": "<id>",
+                        "state": "COMPLETE",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolCall"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "ASSISTANT"
+            },
+            {
+                "content": [
+                    {
+                        "isError": false,
+                        "result": [
+                            {
+                                "content": "{\"status\":\"completed\",\"need_memory\":true,\"answer_mode\":\"TASK\",\"retrieved_count\":3,\"memory_context\":\"            MEMORY-ONLY CONTEXT\\n            This message is not part of the real conversation and must not be stored as evidence.\\n            Use the retrieved memory below only if it is relevant to the immediately following user request.\\n            If retrieved memory is irrelevant or insufficient, ignore it or say that memory is insufficient.\\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and tasks for commitments.\\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\\n            If the user asks for an exact quote, exact wording, source, or when something was said, copy the relevant wording exactly from Retrieved evidence or quoted evidence; do not shorten or paraphrase it.\\n\\n            Namespace: project:<0>\\n            Answer mode: TASK\\n            Require evidence fallback: false\\n\\n            Retrieved profile:\\n            none\\n\\n            Retrieved tasks:\\n            - task hot-path:task:<0> [OPEN]: title=\\\"Add task memory lifecycle E2E coverage before declaring Memory MVP stable\\\"; description=\\\"Keep this as an open follow-up task for the Memory MVP: add end-to-end coverage for the task memory lifecycle, and complete it before declaring the Memory MVP stable.\\\"\\n\\n            Retrieved claims:\\n            none\\n\\n            Retrieved notes:\\n            none\\n\\n            Retrieved evidence:\\n            not requested for this answer mode\\n\\n            Retrieved entities:\\n            - entity entity:<0> [PROJECT]: Memory MVP; Project named Memory MVP.\\n- entity entity:<1> [CONCEPT]: Task memory lifecycle e2e coverage; Concept named Task memory lifecycle e2e coverage.\\n\\n            Retrieved episodes:\\n            none\",\"selected_refs\":[{\"type\":\"TASK\",\"id\":\"hot-path:task:<0>\",\"summary\":\"OPEN: Add task memory lifecycle E2E coverage before declaring Memory MVP stable\",\"status\":\"OPEN\"},{\"type\":\"ENTITY\",\"id\":\"entity:<0>\",\"summary\":\"PROJECT:Memory MVP\"},{\"type\":\"ENTITY\",\"id\":\"entity:<1>\",\"summary\":\"CONCEPT:Task memory lifecycle e2e coverage\"}],\"selector_decisions\":[{\"type\":\"TASK\",\"id\":\"hot-path:task:<0>\",\"selected\":true,\"rank\":1,\"reason\":\"Active open task exactly matches the requested follow-up commitment and workflow state.\"},{\"type\":\"ENTITY\",\"id\":\"entity:<0>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Generic project entity label is unnecessary once the specific task is selected.\"}]}",
+                                "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult.Data.Text"
+                            }
+                        ],
+                        "state": "COMPLETE",
+                        "toolName": "memory_recall",
+                        "toolUseId": "tool-call",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            },
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "structured": {
+                            "failedToParse": false,
+                            "fullText": "Done — I’ll keep that as an open task before calling the Memory MVP stable.",
+                            "ttsText": null,
+                            "voiceTone": null
+                        },
+                        "type": "IntermediateMessage"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "ASSISTANT"
+            },
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "Same Memory MVP follow-up, no new task: keep the task memory lifecycle e2e coverage task open.",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            },
+            {
+                "content": [
+                    {
+                        "call": {
+                            "input": {
+                                "mode": "automatic_hot_path",
+                                "target": "previous_user_message",
+                                "target_message_id": "<uuid>"
+                            },
+                            "name": "memory_remember"
+                        },
+                        "id": "<id>",
+                        "state": "COMPLETE",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolCall"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "ASSISTANT"
+            },
+            {
+                "content": [
+                    {
+                        "isError": false,
+                        "result": [
+                            {
+                                "content": "{\"status\":\"completed\",\"decision\":\"DIRECT_STRUCTURED_WRITE\",\"memory_types\":[\"TASK\"],\"salience\":0.79,\"reason\":\"User explicitly reiterates and updates task state (remain open), which is durable project task tracking information.\",\"source_id\":\"chat:<1>\",\"counts\":{\"predicate_definitions\":0,\"sources\":0,\"runs\":1,\"entities\":0,\"claims\":0,\"notes\":0,\"tasks\":0,\"profiles\":0,\"episodes\":0},\"runs\":[{\"id\":\"hot-path:run:<1>\",\"type\":\"UPDATE_TASKS\",\"summary\":\"Direct structured write applied no durable changes; noop ops: notes=0, claims=0, tasks=1\"}],\"claims\":[],\"notes\":[],\"tasks\":[],\"entities\":[]}",
+                                "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult.Data.Text"
+                            }
+                        ],
+                        "state": "COMPLETE",
+                        "toolName": "memory_remember",
+                        "toolUseId": "tool-call",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            },
+            {
+                "content": [
+                    {
+                        "call": {
+                            "input": {
+                                "mode": "automatic_runtime_recall",
+                                "target": "previous_user_message",
+                                "target_message_id": "<uuid>"
+                            },
+                            "name": "memory_recall"
+                        },
+                        "id": "<id>",
+                        "state": "COMPLETE",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolCall"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "ASSISTANT"
+            },
+            {
+                "content": [
+                    {
+                        "isError": false,
+                        "result": [
+                            {
+                                "content": "{\"status\":\"completed\",\"need_memory\":true,\"answer_mode\":\"TASK\",\"retrieved_count\":3,\"memory_context\":\"            MEMORY-ONLY CONTEXT\\n            This message is not part of the real conversation and must not be stored as evidence.\\n            Use the retrieved memory below only if it is relevant to the immediately following user request.\\n            If retrieved memory is irrelevant or insufficient, ignore it or say that memory is insufficient.\\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and tasks for commitments.\\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\\n            If the user asks for an exact quote, exact wording, source, or when something was said, copy the relevant wording exactly from Retrieved evidence or quoted evidence; do not shorten or paraphrase it.\\n\\n            Namespace: project:<0>\\n            Answer mode: TASK\\n            Require evidence fallback: false\\n\\n            Retrieved profile:\\n            none\\n\\n            Retrieved tasks:\\n            - task hot-path:task:<0> [OPEN]: title=\\\"Add task memory lifecycle E2E coverage before declaring Memory MVP stable\\\"; description=\\\"Keep this as an open follow-up task for the Memory MVP: add end-to-end coverage for the task memory lifecycle, and complete it before declaring the Memory MVP stable.\\\"\\n\\n            Retrieved claims:\\n            none\\n\\n            Retrieved notes:\\n            none\\n\\n            Retrieved evidence:\\n            not requested for this answer mode\\n\\n            Retrieved entities:\\n            - entity entity:<0> [PROJECT]: Memory MVP; Project named Memory MVP.\\n- entity entity:<1> [CONCEPT]: Task memory lifecycle e2e coverage; Concept named Task memory lifecycle e2e coverage.\\n\\n            Retrieved episodes:\\n            none\",\"selected_refs\":[{\"type\":\"TASK\",\"id\":\"hot-path:task:<0>\",\"summary\":\"OPEN: Add task memory lifecycle E2E coverage before declaring Memory MVP stable\",\"status\":\"OPEN\"},{\"type\":\"ENTITY\",\"id\":\"entity:<0>\",\"summary\":\"PROJECT:Memory MVP\"},{\"type\":\"ENTITY\",\"id\":\"entity:<1>\",\"summary\":\"CONCEPT:Task memory lifecycle e2e coverage\"}],\"selector_decisions\":[{\"type\":\"TASK\",\"id\":\"hot-path:task:<0>\",\"selected\":true,\"rank\":1,\"reason\":\"Matches target request to keep this follow-up task open; active open task is the needed workflow state.\"},{\"type\":\"ENTITY\",\"id\":\"entity:<0>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Generic project label not needed to answer task-status follow-up.\"}]}",
+                                "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult.Data.Text"
+                            }
+                        ],
+                        "state": "COMPLETE",
+                        "toolName": "memory_recall",
+                        "toolUseId": "tool-call",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "autoCompactionThreshold": 12000,
+            "maxTokens": 2048,
+            "outputConfig": null,
+            "responseFormat": {
+                "type": "text"
+            },
+            "thinking": null,
+            "toolChoice": {
+                "type": "auto"
+            },
+            "toolContext": {
+                "aiProvider": "OPEN_AI_SUBSCRIPTION",
+                "conversationId": "<conversation-key>",
+                "modelName": "gpt-5.3-codex",
+                "planId": null,
+                "projectPath": "gromozeka-e2e-<id>/projects/task-path-update-dedup"
+            }
+        },
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "Memory MVP follow-up: keep an open task to add task memory lifecycle e2e coverage before declaring the memory MVP stable.",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "ASSISTANT",
+                "content": [
+                    {
+                        "call": {
+                            "input": {
+                                "mode": "automatic_hot_path",
+                                "target": "previous_user_message",
+                                "target_message_id": "<uuid>"
+                            },
+                            "name": "memory_remember"
+                        },
+                        "id": "<id>",
+                        "state": "COMPLETE",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolCall"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {
+                    "synthetic": true,
+                    "syntheticKind": "memory",
+                    "targetMessageId": "<uuid>"
+                },
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "isError": false,
+                        "result": [
+                            {
+                                "content": "{\"status\":\"completed\",\"decision\":\"DIRECT_STRUCTURED_WRITE\",\"memory_types\":[\"TASK\"],\"salience\":0.83,\"reason\":\"TARGET_MESSAGE explicitly creates/updates an open project task with a clear condition for completion.\",\"source_id\":\"chat:<0>\",\"counts\":{\"predicate_definitions\":0,\"sources\":0,\"runs\":1,\"entities\":2,\"claims\":0,\"notes\":0,\"tasks\":1,\"profiles\":0,\"episodes\":0},\"runs\":[{\"id\":\"hot-path:run:<0>\",\"type\":\"UPDATE_TASKS\",\"summary\":\"Direct structured write applied: notes=0, claims=0, tasks=1, entities=2; noop ops: notes=0, claims=0, tasks=0\"}],\"claims\":[],\"notes\":[],\"tasks\":[{\"id\":\"hot-path:task:<0>\",\"status\":\"OPEN\",\"priority\":\"HIGH\",\"title\":\"Add task memory lifecycle E2E coverage before declaring Memory MVP stable\"}],\"entities\":[{\"id\":\"entity:<0>\",\"type\":\"PROJECT\",\"name\":\"Memory MVP\"},{\"id\":\"entity:<1>\",\"type\":\"CONCEPT\",\"name\":\"Task memory lifecycle e2e coverage\"}]}",
+                                "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult.Data.Text"
+                            }
+                        ],
+                        "state": "COMPLETE",
+                        "toolName": "memory_remember",
+                        "toolUseId": "tool-call",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {
+                    "synthetic": true,
+                    "syntheticKind": "memory",
+                    "targetMessageId": "<uuid>"
+                },
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "ASSISTANT",
+                "content": [
+                    {
+                        "call": {
+                            "input": {
+                                "mode": "automatic_runtime_recall",
+                                "target": "previous_user_message",
+                                "target_message_id": "<uuid>"
+                            },
+                            "name": "memory_recall"
+                        },
+                        "id": "<id>",
+                        "state": "COMPLETE",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolCall"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {
+                    "synthetic": true,
+                    "syntheticKind": "memory",
+                    "targetMessageId": "<uuid>"
+                },
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "isError": false,
+                        "result": [
+                            {
+                                "content": "{\"status\":\"completed\",\"need_memory\":true,\"answer_mode\":\"TASK\",\"retrieved_count\":3,\"memory_context\":\"            MEMORY-ONLY CONTEXT\\n            This message is not part of the real conversation and must not be stored as evidence.\\n            Use the retrieved memory below only if it is relevant to the immediately following user request.\\n            If retrieved memory is irrelevant or insufficient, ignore it or say that memory is insufficient.\\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and tasks for commitments.\\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\\n            If the user asks for an exact quote, exact wording, source, or when something was said, copy the relevant wording exactly from Retrieved evidence or quoted evidence; do not shorten or paraphrase it.\\n\\n            Namespace: project:<0>\\n            Answer mode: TASK\\n            Require evidence fallback: false\\n\\n            Retrieved profile:\\n            none\\n\\n            Retrieved tasks:\\n            - task hot-path:task:<0> [OPEN]: title=\\\"Add task memory lifecycle E2E coverage before declaring Memory MVP stable\\\"; description=\\\"Keep this as an open follow-up task for the Memory MVP: add end-to-end coverage for the task memory lifecycle, and complete it before declaring the Memory MVP stable.\\\"\\n\\n            Retrieved claims:\\n            none\\n\\n            Retrieved notes:\\n            none\\n\\n            Retrieved evidence:\\n            not requested for this answer mode\\n\\n            Retrieved entities:\\n            - entity entity:<0> [PROJECT]: Memory MVP; Project named Memory MVP.\\n- entity entity:<1> [CONCEPT]: Task memory lifecycle e2e coverage; Concept named Task memory lifecycle e2e coverage.\\n\\n            Retrieved episodes:\\n            none\",\"selected_refs\":[{\"type\":\"TASK\",\"id\":\"hot-path:task:<0>\",\"summary\":\"OPEN: Add task memory lifecycle E2E coverage before declaring Memory MVP stable\",\"status\":\"OPEN\"},{\"type\":\"ENTITY\",\"id\":\"entity:<0>\",\"summary\":\"PROJECT:Memory MVP\"},{\"type\":\"ENTITY\",\"id\":\"entity:<1>\",\"summary\":\"CONCEPT:Task memory lifecycle e2e coverage\"}],\"selector_decisions\":[{\"type\":\"TASK\",\"id\":\"hot-path:task:<0>\",\"selected\":true,\"rank\":1,\"reason\":\"Active open task exactly matches the requested follow-up commitment and workflow state.\"},{\"type\":\"ENTITY\",\"id\":\"entity:<0>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Generic project entity label is unnecessary once the specific task is selected.\"}]}",
+                                "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult.Data.Text"
+                            }
+                        ],
+                        "state": "COMPLETE",
+                        "toolName": "memory_recall",
+                        "toolUseId": "tool-call",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {
+                    "synthetic": true,
+                    "syntheticKind": "memory",
+                    "targetMessageId": "<uuid>"
+                },
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "ASSISTANT",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "structured": {
+                            "failedToParse": false,
+                            "fullText": "Done — I’ll keep that as an open task before calling the Memory MVP stable.",
+                            "ttsText": null,
+                            "voiceTone": null
+                        },
+                        "type": "IntermediateMessage"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {
+                    "conversationKey": "<conversation-key>",
+                    "messageId": "msg_<id>",
+                    "phase": "final_answer",
+                    "responseId": "resp_<id>"
+                },
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "Same Memory MVP follow-up, no new task: keep the task memory lifecycle e2e coverage task open.",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "ASSISTANT",
+                "content": [
+                    {
+                        "call": {
+                            "input": {
+                                "mode": "automatic_hot_path",
+                                "target": "previous_user_message",
+                                "target_message_id": "<uuid>"
+                            },
+                            "name": "memory_remember"
+                        },
+                        "id": "<id>",
+                        "state": "COMPLETE",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolCall"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {
+                    "synthetic": true,
+                    "syntheticKind": "memory",
+                    "targetMessageId": "<uuid>"
+                },
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "isError": false,
+                        "result": [
+                            {
+                                "content": "{\"status\":\"completed\",\"decision\":\"DIRECT_STRUCTURED_WRITE\",\"memory_types\":[\"TASK\"],\"salience\":0.79,\"reason\":\"User explicitly reiterates and updates task state (remain open), which is durable project task tracking information.\",\"source_id\":\"chat:<1>\",\"counts\":{\"predicate_definitions\":0,\"sources\":0,\"runs\":1,\"entities\":0,\"claims\":0,\"notes\":0,\"tasks\":0,\"profiles\":0,\"episodes\":0},\"runs\":[{\"id\":\"hot-path:run:<1>\",\"type\":\"UPDATE_TASKS\",\"summary\":\"Direct structured write applied no durable changes; noop ops: notes=0, claims=0, tasks=1\"}],\"claims\":[],\"notes\":[],\"tasks\":[],\"entities\":[]}",
+                                "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult.Data.Text"
+                            }
+                        ],
+                        "state": "COMPLETE",
+                        "toolName": "memory_remember",
+                        "toolUseId": "tool-call",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {
+                    "synthetic": true,
+                    "syntheticKind": "memory",
+                    "targetMessageId": "<uuid>"
+                },
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "ASSISTANT",
+                "content": [
+                    {
+                        "call": {
+                            "input": {
+                                "mode": "automatic_runtime_recall",
+                                "target": "previous_user_message",
+                                "target_message_id": "<uuid>"
+                            },
+                            "name": "memory_recall"
+                        },
+                        "id": "<id>",
+                        "state": "COMPLETE",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolCall"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {
+                    "synthetic": true,
+                    "syntheticKind": "memory",
+                    "targetMessageId": "<uuid>"
+                },
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "isError": false,
+                        "result": [
+                            {
+                                "content": "{\"status\":\"completed\",\"need_memory\":true,\"answer_mode\":\"TASK\",\"retrieved_count\":3,\"memory_context\":\"            MEMORY-ONLY CONTEXT\\n            This message is not part of the real conversation and must not be stored as evidence.\\n            Use the retrieved memory below only if it is relevant to the immediately following user request.\\n            If retrieved memory is irrelevant or insufficient, ignore it or say that memory is insufficient.\\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and tasks for commitments.\\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\\n            If the user asks for an exact quote, exact wording, source, or when something was said, copy the relevant wording exactly from Retrieved evidence or quoted evidence; do not shorten or paraphrase it.\\n\\n            Namespace: project:<0>\\n            Answer mode: TASK\\n            Require evidence fallback: false\\n\\n            Retrieved profile:\\n            none\\n\\n            Retrieved tasks:\\n            - task hot-path:task:<0> [OPEN]: title=\\\"Add task memory lifecycle E2E coverage before declaring Memory MVP stable\\\"; description=\\\"Keep this as an open follow-up task for the Memory MVP: add end-to-end coverage for the task memory lifecycle, and complete it before declaring the Memory MVP stable.\\\"\\n\\n            Retrieved claims:\\n            none\\n\\n            Retrieved notes:\\n            none\\n\\n            Retrieved evidence:\\n            not requested for this answer mode\\n\\n            Retrieved entities:\\n            - entity entity:<0> [PROJECT]: Memory MVP; Project named Memory MVP.\\n- entity entity:<1> [CONCEPT]: Task memory lifecycle e2e coverage; Concept named Task memory lifecycle e2e coverage.\\n\\n            Retrieved episodes:\\n            none\",\"selected_refs\":[{\"type\":\"TASK\",\"id\":\"hot-path:task:<0>\",\"summary\":\"OPEN: Add task memory lifecycle E2E coverage before declaring Memory MVP stable\",\"status\":\"OPEN\"},{\"type\":\"ENTITY\",\"id\":\"entity:<0>\",\"summary\":\"PROJECT:Memory MVP\"},{\"type\":\"ENTITY\",\"id\":\"entity:<1>\",\"summary\":\"CONCEPT:Task memory lifecycle e2e coverage\"}],\"selector_decisions\":[{\"type\":\"TASK\",\"id\":\"hot-path:task:<0>\",\"selected\":true,\"rank\":1,\"reason\":\"Matches target request to keep this follow-up task open; active open task is the needed workflow state.\"},{\"type\":\"ENTITY\",\"id\":\"entity:<0>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Generic project label not needed to answer task-status follow-up.\"}]}",
+                                "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult.Data.Text"
+                            }
+                        ],
+                        "state": "COMPLETE",
+                        "toolName": "memory_recall",
+                        "toolUseId": "tool-call",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {
+                    "synthetic": true,
+                    "syntheticKind": "memory",
+                    "targetMessageId": "<uuid>"
+                },
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxTokens": 2048,
+            "thinking": null,
+            "outputConfig": null,
+            "autoCompactionThreshold": 12000,
+            "toolChoice": {
+                "type": "auto"
+            },
+            "responseFormat": {
+                "type": "text"
+            },
+            "toolContext": {
+                "aiProvider": "OPEN_AI_SUBSCRIPTION",
+                "conversationId": "<conversation-key>",
+                "modelName": "gpt-5.3-codex",
+                "planId": null,
+                "projectPath": "gromozeka-e2e-<id>/projects/task-path-update-dedup"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "Kept open.",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 2250,
+                "completionTokens": 8,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

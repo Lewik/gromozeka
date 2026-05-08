@@ -1,0 +1,120 @@
+{
+  "id": "knowledge-update-latest-wins",
+  "category": "knowledge_update",
+  "description": "A later explicit replacement should supersede the older preference instead of keeping both as active facts.",
+  "timeoutSeconds": 900,
+  "seedSessions": [
+    {
+      "id": "seed-a",
+      "turns": [
+        "For future recommendations, remember that I prefer Toyota cars.",
+        "Update my car recommendation preference: I now prefer Honda cars instead of Toyota."
+      ]
+    }
+  ],
+  "recallSessions": [
+    {
+      "id": "recall-b",
+      "turns": [
+        {
+          "text": "Which car brand should you remember that I currently prefer? Answer with only the brand name.",
+          "answerExpectation": {
+            "containsAll": ["Honda"],
+            "containsNone": ["Toyota", "BMW", "Ford"]
+          },
+          "memoryTraceExpectation": {
+            "needMemory": true,
+            "injectedPromptPresent": true,
+            "selectedClaimsMin": 1,
+            "requiredSelectedClaims": [
+              {
+                "predicateIn": ["prefers"],
+                "objectEntityCanonicalNameIn": ["Honda", "Honda cars"],
+                "normalizedContainsAll": ["Honda"]
+              }
+            ],
+            "forbiddenSelectedClaims": [
+              {
+                "subjectEntityTypeIn": ["USER"],
+                "normalizedContainsAll": ["Toyota"]
+              }
+            ],
+            "forbiddenSelectedNotes": [
+              {
+                "statusIn": ["ACTIVE"],
+                "containsAll": ["Toyota"]
+              }
+            ],
+            "injectedPromptContainsAll": ["Honda"]
+          }
+        }
+      ]
+    }
+  ],
+  "expectedAfterSeeds": {
+    "activeClaimsMin": 1,
+    "activeClaimsMax": 1,
+    "userSourcesMin": 2,
+    "requiredEntities": [
+      {
+        "typeIn": ["USER"],
+        "canonicalNameIn": ["User"]
+      },
+      {
+        "canonicalNameIn": ["Honda", "Honda cars"],
+        "containsAll": ["Honda"]
+      }
+    ],
+    "requiredClaims": [
+      {
+        "predicateIn": ["prefers"],
+        "subjectEntityTypeIn": ["USER"],
+        "objectEntityCanonicalNameIn": ["Honda", "Honda cars"],
+        "normalizedContainsAll": ["Honda"],
+        "evidenceQuoteContainsAll": ["I now prefer Honda cars instead of Toyota"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      }
+    ],
+    "forbiddenClaims": [
+      {
+        "subjectEntityTypeIn": ["USER"],
+        "normalizedContainsAll": ["Toyota"]
+      }
+    ],
+    "forbiddenNotes": [
+      {
+        "statusIn": ["ACTIVE"],
+        "containsAll": ["Toyota"]
+      }
+    ],
+    "allActiveClaimsEvidenceSpeakerRoleIn": ["USER"]
+  },
+  "expectedFinal": {
+    "activeClaimsMin": 1,
+    "activeClaimsMax": 1,
+    "userSourcesMin": 3,
+    "requiredClaims": [
+      {
+        "predicateIn": ["prefers"],
+        "subjectEntityTypeIn": ["USER"],
+        "objectEntityCanonicalNameIn": ["Honda", "Honda cars"],
+        "normalizedContainsAll": ["Honda"],
+        "evidenceQuoteContainsAll": ["I now prefer Honda cars instead of Toyota"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      }
+    ],
+    "forbiddenClaims": [
+      {
+        "subjectEntityTypeIn": ["USER"],
+        "normalizedContainsAll": ["Toyota"]
+      }
+    ],
+    "forbiddenNotes": [
+      {
+        "statusIn": ["ACTIVE"],
+        "containsAll": ["Toyota"]
+      }
+    ],
+    "allActiveClaimsEvidenceSpeakerRoleIn": ["USER"]
+  }
+}

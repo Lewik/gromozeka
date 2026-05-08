@@ -1,0 +1,96 @@
+{
+  "id": "pronoun-context-resolution",
+  "category": "multi_session_reasoning",
+  "description": "The write pipeline should use earlier thread context to resolve a target-message pronoun before storing a preference.",
+  "timeoutSeconds": 900,
+  "seedSessions": [
+    {
+      "id": "seed-a",
+      "turns": [
+        "For future car recommendations, I am choosing between Toyota, Honda, and Ford.",
+        "Remember that I prefer the first one from that list."
+      ]
+    }
+  ],
+  "recallSessions": [
+    {
+      "id": "recall-b",
+      "turns": [
+        {
+          "text": "Which car brand did I prefer from the earlier list? Answer with only the brand name.",
+          "answerExpectation": {
+            "containsAll": ["Toyota"],
+            "containsNone": ["Honda", "Ford", "BMW"]
+          },
+          "memoryTraceExpectation": {
+            "needMemory": true,
+            "injectedPromptPresent": true,
+            "selectedClaimsMin": 1,
+            "requiredSelectedClaims": [
+              {
+                "predicateIn": ["prefers"],
+                "containsAll": ["Toyota"],
+                "normalizedContainsAll": ["Toyota"]
+              }
+            ],
+            "injectedPromptContainsAll": ["Toyota"]
+          }
+        }
+      ]
+    }
+  ],
+  "expectedAfterSeeds": {
+    "activeClaimsMin": 1,
+    "activeClaimsMax": 5,
+    "userSourcesMin": 2,
+    "requiredClaims": [
+      {
+        "predicateIn": ["prefers"],
+        "subjectEntityTypeIn": ["USER"],
+        "containsAll": ["Toyota"],
+        "evidenceQuoteContainsAll": ["first one"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      }
+    ],
+    "forbiddenClaims": [
+      {
+        "predicateIn": ["prefers"],
+        "subjectEntityTypeIn": ["USER"],
+        "normalizedContainsAll": ["Honda"]
+      },
+      {
+        "predicateIn": ["prefers"],
+        "subjectEntityTypeIn": ["USER"],
+        "normalizedContainsAll": ["Ford"]
+      }
+    ],
+    "allActiveClaimsEvidenceSpeakerRoleIn": ["USER"]
+  },
+  "expectedFinal": {
+    "activeClaimsMin": 1,
+    "activeClaimsMax": 5,
+    "userSourcesMin": 3,
+    "requiredClaims": [
+      {
+        "predicateIn": ["prefers"],
+        "subjectEntityTypeIn": ["USER"],
+        "containsAll": ["Toyota"],
+        "evidenceQuoteContainsAll": ["first one"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      }
+    ],
+    "forbiddenClaims": [
+      {
+        "predicateIn": ["prefers"],
+        "subjectEntityTypeIn": ["USER"],
+        "normalizedContainsAll": ["Honda"]
+      },
+      {
+        "predicateIn": ["prefers"],
+        "subjectEntityTypeIn": ["USER"],
+        "normalizedContainsAll": ["Ford"]
+      }
+    ],
+    "allActiveClaimsEvidenceSpeakerRoleIn": ["USER"]
+  }
+}

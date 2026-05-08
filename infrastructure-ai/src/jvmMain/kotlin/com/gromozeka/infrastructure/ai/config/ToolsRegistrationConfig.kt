@@ -23,6 +23,7 @@ import java.util.function.BiFunction
 class ToolsRegistrationConfig {
 
     private val logger = LoggerFactory.getLogger(ToolsRegistrationConfig::class.java)
+    private val disabledToolNames = setOf("unified_search")
 
     /**
      * Регистрирует каждый Tool как отдельный AiToolCallback bean.
@@ -47,9 +48,16 @@ class ToolsRegistrationConfig {
             logger.info("  - Tool bean: ${tool::class.qualifiedName}, name='${tool.name}', description='${tool.description.take(50)}...'")
         }
 
-        logger.info("Registering ${tools.size} tools as individual AiToolCallback beans: ${tools.map { it.name }}")
+        val enabledTools = tools.filterNot { it.name in disabledToolNames }
+        val disabledTools = tools.filter { it.name in disabledToolNames }
 
-        tools.forEach { tool ->
+        if (disabledTools.isNotEmpty()) {
+            logger.info("Skipping disabled tools: ${disabledTools.map { it.name }}")
+        }
+
+        logger.info("Registering ${enabledTools.size} tools as individual AiToolCallback beans: ${enabledTools.map { it.name }}")
+
+        enabledTools.forEach { tool ->
             val callback = adaptToolToCallback(tool)
             val beanName = "${tool.name}AiToolCallback"
 
@@ -58,7 +66,7 @@ class ToolsRegistrationConfig {
             logger.debug("Registered AiToolCallback bean: $beanName")
         }
 
-        return ToolCallbacksRegistrar(tools.size)
+        return ToolCallbacksRegistrar(enabledTools.size)
     }
 
     /**

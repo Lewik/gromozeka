@@ -11,6 +11,7 @@ Common builtin layers:
 - `common.identity.md` for shared identity and communication style
 - `common.knowledge.md` for shared operational rules
 - `common.multi-agent.knowledge.md` for delegation and coordination rules
+- `memory.knowledge.md` for the runtime memory contract
 
 Specialized layers:
 - `*.role.md` for capability and responsibility
@@ -27,6 +28,7 @@ Typical code-writing specialist:
   "builtin:common.identity.md",
   "builtin:common.knowledge.md",
   "builtin:knowledge-graph.knowledge.md",
+  "builtin:memory.knowledge.md",
   "builtin:developer.role.md",
   "project:project-common.knowledge.md",
   "project:<specialist>.role.md",

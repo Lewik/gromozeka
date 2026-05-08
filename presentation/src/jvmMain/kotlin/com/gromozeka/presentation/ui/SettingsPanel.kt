@@ -475,23 +475,23 @@ fun SettingsPanel(
                         )
 
                         SwitchSettingItem(
-                            label = "Enable Vector Storage",
-                            description = "Store conversation messages in vector database for semantic search",
-                            value = settings.vectorStorageEnabled,
-                            onValueChange = { onSettingsChange(settings.copy(vectorStorageEnabled = it)) }
+                            label = "Enable Knowledge Memory",
+                            description = "Process conversations into typed long-term memory",
+                            value = settings.knowledgeMemoryEnabled,
+                            onValueChange = { onSettingsChange(settings.copy(knowledgeMemoryEnabled = it)) }
                         )
 
                         SwitchSettingItem(
                             label = "Auto-remember threads",
-                            description = "Automatically save conversations to vector memory after each assistant response",
+                            description = "Automatically process conversations into knowledge memory after each assistant response",
                             value = settings.autoRememberThreads,
                             onValueChange = { onSettingsChange(settings.copy(autoRememberThreads = it)) },
-                            enabled = settings.vectorStorageEnabled
+                            enabled = settings.knowledgeMemoryEnabled
                         )
 
                         SwitchSettingItem(
-                            label = "Enable Knowledge Graph",
-                            description = "Extract entities and relationships from conversations into knowledge graph",
+                            label = "Enable Code Graph",
+                            description = "Allow separate code graph features such as domain indexing",
                             value = settings.graphStorageEnabled,
                             onValueChange = { onSettingsChange(settings.copy(graphStorageEnabled = it)) }
                         )

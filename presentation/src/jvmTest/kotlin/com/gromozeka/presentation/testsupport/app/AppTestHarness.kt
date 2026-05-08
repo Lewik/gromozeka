@@ -13,12 +13,15 @@ import com.gromozeka.presentation.ui.GromozekaApp
 import com.gromozeka.presentation.testsupport.config.E2eSupportConfig
 import com.gromozeka.presentation.testsupport.network.OpenAiSubscriptionReplayServer
 import kotlinx.datetime.Clock
+import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.io.Closeable
 import java.nio.file.Files
 import java.nio.file.Path
+import kotlin.io.path.exists
 import kotlin.io.path.deleteIfExists
+import kotlin.io.path.readText
 import kotlin.io.path.writeText
 
 /**
@@ -29,10 +32,12 @@ class AppTestHarness(
     private val subscriptionSession: OpenAiSubscriptionSession? = defaultSubscriptionSession(),
     private val replayServer: OpenAiSubscriptionReplayServer? = null,
     private val initialization: AppInitializationOptions = defaultInitialization,
+    private val systemProperties: Map<String, String> = emptyMap(),
+    private val additionalSources: List<Class<*>> = emptyList(),
     private val customizeHome: (Path) -> Unit = {},
 ) : Closeable {
     val homeDirectory: Path = prepareHomeDirectory()
-    private val startedApp: StartedApp = AppBootstrap.start(
+    val startedApp: StartedApp = AppBootstrap.start(
         AppBootstrapOptions(
             modeOverride = "test",
             springProfileOverride = "e2e",
@@ -40,8 +45,9 @@ class AppTestHarness(
             systemProperties = buildMap {
                 put("GROMOZEKA_HOME", homeDirectory.toString())
                 replayServer?.let { put("gromozeka.ai.openai-subscription.responses-url", it.responsesUrl) }
+                putAll(systemProperties)
             },
-            additionalSources = listOf(E2eSupportConfig::class.java),
+            additionalSources = listOf(E2eSupportConfig::class.java) + additionalSources,
             initialization = initialization,
         )
     )
@@ -100,7 +106,7 @@ class AppTestHarness(
         )
     }
 
-    private companion object {
+    companion object {
         val defaultInitialization = AppInitializationOptions(
             initializeGlobalHotkeys = false,
             initializePttRouter = false,
@@ -116,7 +122,7 @@ class AppTestHarness(
             openAiModel = "gpt-5.3-codex",
             enableBraveSearch = false,
             enableJinaReader = false,
-            vectorStorageEnabled = false,
+            knowledgeMemoryEnabled = false,
             graphStorageEnabled = false,
         )
 
@@ -127,6 +133,21 @@ class AppTestHarness(
             accountId = "test-account-id",
             expiresAt = Clock.System.now().toEpochMilliseconds() + 86_400_000L,
         )
+
+        fun subscriptionSessionFromConfig(configPath: Path): OpenAiSubscriptionSession? {
+            if (!configPath.exists()) return null
+            val config = appTestJson.decodeFromString<OpenAiSubscriptionConfig>(configPath.readText())
+            val accessToken = config.accessToken ?: return null
+            val refreshToken = config.refreshToken ?: return null
+            val expiresAt = config.expiresAt ?: return null
+            return OpenAiSubscriptionSession(
+                accessToken = accessToken,
+                refreshToken = refreshToken,
+                idToken = config.idToken,
+                accountId = config.accountId,
+                expiresAt = expiresAt,
+            )
+        }
 
         val appTestJson = Json {
             prettyPrint = true

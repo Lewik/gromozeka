@@ -1,0 +1,86 @@
+{
+  "id": "conflicting-viewpoints",
+  "category": "multi_perspective",
+  "description": "Conflicting third-party viewpoints should stay separate instead of collapsing into one truth.",
+  "timeoutSeconds": 600,
+  "seedSessions": [
+    {
+      "id": "seed-a",
+      "turns": [
+        "Vasya thinks graph memory should be layered. Yura thinks graph memory does not need layers."
+      ]
+    }
+  ],
+  "recallSessions": [
+    {
+      "id": "recall-b",
+      "turns": [
+        {
+          "text": "Who thinks graph memory should be layered, and who thinks it does not need layers?",
+          "answerExpectation": {
+            "containsAll": ["Vasya", "Yura"],
+            "containsAnyGroups": [
+              ["layered", "layers"]
+            ]
+          },
+          "memoryTraceExpectation": {
+            "needMemory": true,
+            "injectedPromptPresent": true,
+            "selectedClaimsMin": 2,
+            "requiredSelectedClaims": [
+              {
+                "predicateIn": ["believes"],
+                "containsAll": ["Vasya", "graph memory", "layered"]
+              },
+              {
+                "predicateIn": ["believes"],
+                "containsAll": ["Yura", "graph memory", "layers"]
+              }
+            ],
+            "injectedPromptContainsAll": ["Vasya", "Yura"]
+          }
+        }
+      ]
+    }
+  ],
+  "expectedAfterSeeds": {
+    "activeClaimsMin": 2,
+    "activeClaimsMax": 3,
+    "userSourcesMin": 1,
+    "requiredClaims": [
+      {
+        "predicateIn": ["believes"],
+        "containsAll": ["Vasya", "graph memory", "layered"],
+        "evidenceQuoteContainsAll": ["Vasya thinks graph memory should be layered"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      },
+      {
+        "predicateIn": ["believes"],
+        "containsAll": ["Yura", "graph memory", "layers"],
+        "evidenceQuoteContainsAll": ["Yura thinks graph memory does not need layers"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      }
+    ],
+    "allActiveClaimsEvidenceSpeakerRoleIn": ["USER"]
+  },
+  "expectedFinal": {
+    "activeClaimsMin": 2,
+    "activeClaimsMax": 3,
+    "userSourcesMin": 2,
+    "requiredClaims": [
+      {
+        "predicateIn": ["believes"],
+        "containsAll": ["Vasya", "graph memory", "layered"],
+        "evidenceQuoteContainsAll": ["Vasya thinks graph memory should be layered"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      },
+      {
+        "predicateIn": ["believes"],
+        "containsAll": ["Yura", "graph memory", "layers"],
+        "evidenceQuoteContainsAll": ["Yura thinks graph memory does not need layers"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      }
+    ],
+    "allActiveClaimsEvidenceSpeakerRoleIn": ["USER"]
+  }
+}

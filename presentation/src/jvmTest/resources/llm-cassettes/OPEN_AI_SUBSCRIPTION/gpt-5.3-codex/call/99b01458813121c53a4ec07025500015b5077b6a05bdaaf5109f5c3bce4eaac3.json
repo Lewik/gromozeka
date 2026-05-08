@@ -1,0 +1,246 @@
+{
+    "version": 1,
+    "hash": "99b01458813121c53a4ec07025500015b5077b6a05bdaaf5109f5c3bce4eaac3",
+    "provider": "OPEN_AI_SUBSCRIPTION",
+    "model": "gpt-5.3-codex",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>/projects/entity-scoped-project-recall",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "What do you know about PantryPilot? Answer only from stored memory.",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            },
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "structured": {
+                            "failedToParse": false,
+                            "fullText": "PantryPilot’s weekly report primary format is **XLSX**.",
+                            "ttsText": null,
+                            "voiceTone": null
+                        },
+                        "type": "IntermediateMessage"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "ASSISTANT"
+            },
+            {
+                "content": [
+                    {
+                        "content": "MEMORY-ONLY CONTEXT\nThis message is not part of the real conversation and must not be stored as evidence.\nUse the retrieved memory below only if it is relevant to the immediately following user request.\nIf retrieved memory is irrelevant or insufficient, ignore it or say that memory is insufficient.\nDo not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and tasks for commitments.\nIf raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\nIf the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n\nNamespace: project:<0>\nAnswer mode: FACTUAL\nRequire evidence fallback: false\n\nRetrieved profile:\nnone\n\nRetrieved tasks:\nnone\n\nRetrieved claims:\n- claim entity-scoped-project-recall-fixture-2-claim-fresh [ACTIVE] project_summary family=fixture_profile_fact: ShelfLog is a home book catalog project whose primary export format is JSON Lines and whose reading status field is reading_state.; scope=ShelfLog project memory\n\nRetrieved notes:\nnone\n\nRetrieved evidence:\nnot requested for this answer mode\n\nRetrieved entities:\n- entity entity-scoped-project-recall-fixture-2-subject [PROJECT]: ShelfLog; no summary\n\nRetrieved episodes:\nnone",
+                        "level": "INFO",
+                        "state": "COMPLETE",
+                        "toolUseId": null,
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.System"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "SYSTEM"
+            },
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "What do you know about ShelfLog? Answer only from stored memory.",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "autoCompactionThreshold": 12000,
+            "maxTokens": 2048,
+            "outputConfig": null,
+            "responseFormat": {
+                "type": "text"
+            },
+            "thinking": null,
+            "toolChoice": {
+                "type": "auto"
+            },
+            "toolContext": {
+                "aiProvider": "OPEN_AI_SUBSCRIPTION",
+                "conversationId": "<conversation-key>",
+                "modelName": "gpt-5.3-codex",
+                "planId": null,
+                "projectPath": "gromozeka-e2e-<id>/projects/entity-scoped-project-recall"
+            }
+        },
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "What do you know about PantryPilot? Answer only from stored memory.",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "ASSISTANT",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "structured": {
+                            "failedToParse": false,
+                            "fullText": "PantryPilot’s weekly report primary format is **XLSX**.",
+                            "ttsText": null,
+                            "voiceTone": null
+                        },
+                        "type": "IntermediateMessage"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {
+                    "conversationKey": "<conversation-key>",
+                    "messageId": "msg_<id>",
+                    "phase": "final_answer",
+                    "responseId": "resp_<id>"
+                },
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "SYSTEM",
+                "content": [
+                    {
+                        "content": "MEMORY-ONLY CONTEXT\nThis message is not part of the real conversation and must not be stored as evidence.\nUse the retrieved memory below only if it is relevant to the immediately following user request.\nIf retrieved memory is irrelevant or insufficient, ignore it or say that memory is insufficient.\nDo not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and tasks for commitments.\nIf raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\nIf the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n\nNamespace: project:<0>\nAnswer mode: FACTUAL\nRequire evidence fallback: false\n\nRetrieved profile:\nnone\n\nRetrieved tasks:\nnone\n\nRetrieved claims:\n- claim entity-scoped-project-recall-fixture-2-claim-fresh [ACTIVE] project_summary family=fixture_profile_fact: ShelfLog is a home book catalog project whose primary export format is JSON Lines and whose reading status field is reading_state.; scope=ShelfLog project memory\n\nRetrieved notes:\nnone\n\nRetrieved evidence:\nnot requested for this answer mode\n\nRetrieved entities:\n- entity entity-scoped-project-recall-fixture-2-subject [PROJECT]: ShelfLog; no summary\n\nRetrieved episodes:\nnone",
+                        "level": "INFO",
+                        "state": "COMPLETE",
+                        "toolUseId": null,
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.System"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "What do you know about ShelfLog? Answer only from stored memory.",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxTokens": 2048,
+            "thinking": null,
+            "outputConfig": null,
+            "autoCompactionThreshold": 12000,
+            "toolChoice": {
+                "type": "auto"
+            },
+            "responseFormat": {
+                "type": "text"
+            },
+            "toolContext": {
+                "aiProvider": "OPEN_AI_SUBSCRIPTION",
+                "conversationId": "<conversation-key>",
+                "modelName": "gpt-5.3-codex",
+                "planId": null,
+                "projectPath": "gromozeka-e2e-<id>/projects/entity-scoped-project-recall"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "ShelfLog is a home book catalog project. Its primary export format is JSON Lines, and its reading status field is `reading_state`.",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 388,
+                "completionTokens": 31,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

@@ -1,0 +1,39 @@
+{
+  "id": "procedure-memory",
+  "category": "instruction_following",
+  "description": "Ordered troubleshooting guidance should be reusable across sessions even before the note/procedure materializer exists.",
+  "timeoutSeconds": 600,
+  "seedSessions": [
+    {
+      "id": "seed-a",
+      "turns": [
+        "If a prompt change breaks memory behavior, first check logs, then check the database, then change code."
+      ]
+    }
+  ],
+  "recallSessions": [
+    {
+      "id": "recall-b",
+      "turns": [
+        {
+          "text": "If a prompt change breaks memory behavior, what order should we follow? Keep the answer short.",
+          "answerExpectation": {
+            "containsAll": ["logs", "database", "code"]
+          }
+        }
+      ]
+    }
+  ],
+  "expectedAfterSeeds": {
+    "activeClaimsMax": 2,
+    "tasksMax": 0,
+    "userSourcesMin": 1,
+    "allActiveClaimsEvidenceSpeakerRoleIn": ["USER"]
+  },
+  "expectedFinal": {
+    "activeClaimsMax": 2,
+    "tasksMax": 0,
+    "userSourcesMin": 2,
+    "allActiveClaimsEvidenceSpeakerRoleIn": ["USER"]
+  }
+}

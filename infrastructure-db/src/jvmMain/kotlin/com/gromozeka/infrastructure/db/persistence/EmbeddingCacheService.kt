@@ -1,53 +1,58 @@
 package com.gromozeka.infrastructure.db.persistence
 
-import com.gromozeka.infrastructure.db.persistence.tables.EmbeddingCache
+import com.gromozeka.infrastructure.db.persistence.mongo.MongoIndexInitializer
+import com.mongodb.client.model.Filters
+import com.mongodb.client.model.IndexOptions
+import com.mongodb.client.model.Indexes
+import com.mongodb.kotlin.client.coroutine.MongoCollection
+import com.mongodb.kotlin.client.coroutine.MongoDatabase
 import klog.KLoggers
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Clock
-import org.jetbrains.exposed.v1.core.and
-import org.jetbrains.exposed.v1.core.eq
-import org.jetbrains.exposed.v1.jdbc.*
+import kotlinx.datetime.Instant
+import kotlinx.serialization.Serializable
 import org.springframework.stereotype.Service
 import java.security.MessageDigest
 
 @Service
-class EmbeddingCacheService {
+class EmbeddingCacheService(
+    database: MongoDatabase,
+) {
     private val log = KLoggers.logger(this)
+    private val embeddings: MongoCollection<Entry> = database.getCollection("embedding_cache")
+    private val indexes = MongoIndexInitializer {
+        embeddings.createIndex(
+            Indexes.ascending("textHash", "model"),
+            IndexOptions().unique(true),
+        )
+    }
 
     fun getCachedEmbedding(text: String, model: String): FloatArray? = runBlocking {
         val hash = computeHash(text)
-
-        dbQuery {
-            EmbeddingCache
-                .selectAll()
-                .where { (EmbeddingCache.textHash eq hash) and (EmbeddingCache.model eq model) }
-                .singleOrNull()
-                ?.let { row ->
-                    val vectorJson = row[EmbeddingCache.embeddingVector]
-                    parseEmbeddingVector(vectorJson)
-                }
-        }
+        indexes.ensure()
+        embeddings.find(Filters.and(Filters.eq("textHash", hash), Filters.eq("model", model)))
+            .firstOrNull()
+            ?.embeddingVector
+            ?.toFloatArray()
     }
 
     fun cacheEmbedding(text: String, model: String, embedding: FloatArray) = runBlocking {
         val hash = computeHash(text)
-        val vectorJson = serializeEmbeddingVector(embedding)
+        indexes.ensure()
+        val exists = embeddings.countDocuments(
+            Filters.and(Filters.eq("textHash", hash), Filters.eq("model", model)),
+        ) > 0
 
-        dbQuery {
-            // Check if already exists
-            val exists = EmbeddingCache
-                .selectAll()
-                .where { (EmbeddingCache.textHash eq hash) and (EmbeddingCache.model eq model) }
-                .count() > 0
-
-            if (!exists) {
-                EmbeddingCache.insert {
-                    it[textHash] = hash
-                    it[embeddingVector] = vectorJson
-                    it[EmbeddingCache.model] = model
-                    it[createdAt] = Clock.System.now().toKotlin()
-                }
-            }
+        if (!exists) {
+            embeddings.insertOne(
+                Entry(
+                    textHash = hash,
+                    model = model,
+                    embeddingVector = embedding.toList(),
+                    createdAt = Clock.System.now(),
+                ),
+            )
         }
     }
 
@@ -57,15 +62,11 @@ class EmbeddingCacheService {
         return hashBytes.joinToString("") { "%02x".format(it) }
     }
 
-    private fun serializeEmbeddingVector(vector: FloatArray): String {
-        return vector.joinToString(",", "[", "]") { it.toString() }
-    }
-
-    private fun parseEmbeddingVector(json: String): FloatArray {
-        return json
-            .trim('[', ']')
-            .split(',')
-            .map { it.trim().toFloat() }
-            .toFloatArray()
-    }
+    @Serializable
+    private data class Entry(
+        val textHash: String,
+        val model: String,
+        val embeddingVector: List<Float>,
+        val createdAt: Instant,
+    )
 }

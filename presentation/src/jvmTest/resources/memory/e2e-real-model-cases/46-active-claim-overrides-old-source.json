@@ -1,0 +1,108 @@
+{
+  "id": "active-claim-overrides-old-source",
+  "category": "read_selector_conflict",
+  "description": "When a recall question mentions an old source value, runtime recall should use the active typed claim and not inject the old source as current truth.",
+  "timeoutSeconds": 900,
+  "seedSessions": [
+    {
+      "id": "seed-a",
+      "turns": [
+        "Remember this ShelfAudit fact: ShelfAudit's primary export format is CSV.",
+        "Correction for ShelfAudit: JSON Lines replaces CSV as the current primary export format."
+      ]
+    }
+  ],
+  "recallSessions": [
+    {
+      "id": "recall-b",
+      "turns": [
+        {
+          "text": "I remember ShelfAudit exported CSV. Is that still current? Answer with only the current primary export format.",
+          "answerExpectation": {
+            "containsAll": ["JSON Lines"],
+            "containsNone": ["CSV", "SQLite", "MongoDB"]
+          },
+          "memoryTraceExpectation": {
+            "needMemory": true,
+            "injectedPromptPresent": true,
+            "selectedClaimsMin": 1,
+            "selectedClaimsMax": 1,
+            "requiredSelectedClaims": [
+              {
+                "normalizedContainsAll": ["ShelfAudit", "JSON Lines"],
+                "evidenceSourceSpeakerRoleIn": ["USER"]
+              }
+            ],
+            "forbiddenSelectedClaims": [
+              {
+                "normalizedContainsAll": ["ShelfAudit", "CSV"],
+                "statusIn": ["ACTIVE"]
+              }
+            ],
+            "selectedContainsAll": ["ShelfAudit", "JSON Lines"],
+            "selectedContainsNone": ["ShelfAudit's primary export format is CSV"],
+            "selectorSelectedContainsAll": ["SELECT CLAIM", "JSON Lines"],
+            "selectorSelectedContainsNone": ["SOURCE"],
+            "sourceSafetyRestoredTypedHitsMax": 0,
+            "injectedPromptContainsAll": ["ShelfAudit", "JSON Lines"],
+            "injectedPromptContainsNone": ["ShelfAudit's primary export format is CSV"]
+          },
+          "memoryWriteTraceExpectation": {
+            "routeDecisionIn": ["NOOP"],
+            "materializedClaimsMax": 0,
+            "materializedNotesMax": 0,
+            "materializedTasksMax": 0
+          }
+        }
+      ]
+    }
+  ],
+  "expectedAfterSeeds": {
+    "activeClaimsMin": 1,
+    "userSourcesMin": 2,
+    "requiredClaims": [
+      {
+        "normalizedContainsAll": ["ShelfAudit", "JSON Lines"],
+        "evidenceQuoteContainsAll": ["JSON Lines replaces CSV"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      }
+    ],
+    "forbiddenClaims": [
+      {
+        "normalizedContainsAll": ["ShelfAudit", "CSV"],
+        "statusIn": ["ACTIVE"]
+      }
+    ],
+    "forbiddenNotes": [
+      {
+        "statusIn": ["ACTIVE"],
+        "containsAll": ["ShelfAudit", "CSV"]
+      }
+    ],
+    "allActiveClaimsEvidenceSpeakerRoleIn": ["USER"]
+  },
+  "expectedFinal": {
+    "activeClaimsMin": 1,
+    "userSourcesMin": 3,
+    "requiredClaims": [
+      {
+        "normalizedContainsAll": ["ShelfAudit", "JSON Lines"],
+        "evidenceQuoteContainsAll": ["JSON Lines replaces CSV"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      }
+    ],
+    "forbiddenClaims": [
+      {
+        "normalizedContainsAll": ["ShelfAudit", "CSV"],
+        "statusIn": ["ACTIVE"]
+      }
+    ],
+    "forbiddenNotes": [
+      {
+        "statusIn": ["ACTIVE"],
+        "containsAll": ["ShelfAudit", "CSV"]
+      }
+    ],
+    "allActiveClaimsEvidenceSpeakerRoleIn": ["USER"]
+  }
+}

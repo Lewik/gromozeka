@@ -106,13 +106,8 @@ package com.gromozeka.domain.tool
  * @see com.gromozeka.domain.tool.filesystem.GrzEditFileTool Exact string replacement in files
  * @see com.gromozeka.domain.tool.filesystem.GrzExecuteCommandTool Execute shell commands
  * 
- * **Memory/Knowledge Graph Tools (6):**
- * @see com.gromozeka.domain.tool.memory.AddMemoryLinkTool Add facts to knowledge graph
- * @see com.gromozeka.domain.tool.memory.BuildMemoryFromTextTool Extract entities from text via LLM
- * @see com.gromozeka.domain.tool.memory.GetMemoryObjectTool Retrieve entity details
- * @see com.gromozeka.domain.tool.memory.UpdateMemoryObjectTool Update entity metadata
- * @see com.gromozeka.domain.tool.memory.InvalidateMemoryLinkTool Mark facts as outdated (soft delete)
- * @see com.gromozeka.domain.tool.memory.DeleteMemoryObjectTool Permanently delete entities (DANGER)
+ * **Knowledge Memory Tools:**
+ * @see com.gromozeka.domain.tool.memory.UnifiedSearchTool Search the graph-native knowledge memory
  * 
  * **Web Tools (3):**
  * @see com.gromozeka.domain.tool.web.BraveWebSearchTool Web search via Brave API

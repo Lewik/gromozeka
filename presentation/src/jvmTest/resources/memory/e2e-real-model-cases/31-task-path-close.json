@@ -1,0 +1,72 @@
+{
+  "id": "task-path-close",
+  "category": "task_memory",
+  "description": "A completion message should close an existing task instead of creating another open task.",
+  "timeoutSeconds": 900,
+  "seedSessions": [
+    {
+      "id": "seed-a",
+      "turns": [
+        "Memory MVP follow-up: keep an open task to add task memory close-path e2e coverage before declaring lifecycle stable.",
+        "Close the Memory MVP follow-up about task memory close-path e2e coverage: it is done now."
+      ]
+    }
+  ],
+  "recallSessions": [
+    {
+      "id": "recall-b",
+      "turns": [
+        {
+          "text": "What is the status of the task memory close-path e2e coverage follow-up? Answer with only DONE or OPEN.",
+          "answerExpectation": {
+            "containsAll": ["DONE"],
+            "containsNone": ["OPEN"]
+          },
+          "memoryTraceExpectation": {
+            "needMemory": true,
+            "injectedPromptPresent": true,
+            "selectedTasksMin": 1,
+            "requiredSelectedTasks": [
+              {
+                "statusIn": ["DONE"],
+                "containsAll": ["task memory close-path", "e2e coverage"],
+                "evidenceSourceSpeakerRoleIn": ["USER"]
+              }
+            ],
+            "injectedPromptContainsAll": ["DONE", "task memory close-path"]
+          }
+        }
+      ]
+    }
+  ],
+  "expectedAfterSeeds": {
+    "activeClaimsMax": 2,
+    "notesMax": 1,
+    "tasksMin": 1,
+    "tasksMax": 1,
+    "userSourcesMin": 2,
+    "requiredTasks": [
+      {
+        "statusIn": ["DONE"],
+        "containsAll": ["task memory close-path", "e2e coverage"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      }
+    ],
+    "allActiveClaimsEvidenceSpeakerRoleIn": ["USER"]
+  },
+  "expectedFinal": {
+    "activeClaimsMax": 2,
+    "notesMax": 1,
+    "tasksMin": 1,
+    "tasksMax": 1,
+    "userSourcesMin": 3,
+    "requiredTasks": [
+      {
+        "statusIn": ["DONE"],
+        "containsAll": ["task memory close-path", "e2e coverage"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      }
+    ],
+    "allActiveClaimsEvidenceSpeakerRoleIn": ["USER"]
+  }
+}

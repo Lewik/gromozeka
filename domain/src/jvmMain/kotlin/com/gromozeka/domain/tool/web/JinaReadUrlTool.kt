@@ -227,7 +227,7 @@ data class JinaReadUrlRequest(
  * 
  * 1. `brave_web_search("Topic")` - Find relevant pages
  * 2. `jina_read_url(result.url)` - Read most relevant page
- * 3. `build_memory_from_text(content)` - Save to knowledge graph
+ * 3. Optionally extract assertions or relations and write them to the knowledge graph
  * 
  * Result: Research with persistent knowledge
  * 
@@ -387,8 +387,7 @@ data class JinaReadUrlRequest(
  * 
  * - **brave_web_search** - Find URLs to read
  * - **brave_local_search** - Find local business websites
- * - **build_memory_from_text** - Save extracted content to knowledge graph
- * - **add_memory_link** - Link URL to knowledge entities
+ * - **unified_search** - Search the knowledge graph after ingestion
  * 
  * # Infrastructure Implementation
  * 

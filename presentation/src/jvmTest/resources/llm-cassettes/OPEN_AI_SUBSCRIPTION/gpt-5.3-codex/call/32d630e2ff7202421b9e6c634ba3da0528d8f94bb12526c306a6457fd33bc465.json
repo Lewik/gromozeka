@@ -1,0 +1,167 @@
+{
+    "version": 1,
+    "hash": "32d630e2ff7202421b9e6c634ba3da0528d8f94bb12526c306a6457fd33bc465",
+    "provider": "OPEN_AI_SUBSCRIPTION",
+    "model": "gpt-5.3-codex",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>/projects/event-ordering",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "content": "MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            Use the retrieved memory below only if it is relevant to the immediately following user request.\n            If retrieved memory is irrelevant or insufficient, ignore it or say that memory is insufficient.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and tasks for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n\n            Namespace: project:<0>\n            Answer mode: FACTUAL\n            Require evidence fallback: false\n\n            Retrieved profile:\n            none\n\n            Retrieved tasks:\n            none\n\n            Retrieved claims:\n            - claim hot-path:claim:<0> [ACTIVE] added_capability family=added_capability: The current project added evidence-backed recall on 2026-02-15.; scope=Current project timeline fact\n- claim hot-path:claim:<1> [ACTIVE] uses_persistence_database family=uses_persistence_database: The current project enabled MongoDB as a persistence database on 2026-01-10.; scope=Current project timeline fact\n- claim hot-path:claim:<2> [ACTIVE] added_capability family=added_capability: The current project added deduplication on 2026-03-20.; scope=Current project timeline fact\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            not requested for this answer mode\n\n            Retrieved entities:\n            - entity entity:<0> [TECHNOLOGY]: MongoDB; Technology named MongoDB.\n- entity entity:<1> [CONCEPT]: evidence-backed recall; Concept named evidence-backed recall.\n- entity entity:<2> [CONCEPT]: deduplication; Concept named deduplication.\n- entity entity:<3> [PROJECT]: Current project; Project named Current project.\n\n            Retrieved episodes:\n            none",
+                        "level": "INFO",
+                        "state": "COMPLETE",
+                        "toolUseId": null,
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.System"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "SYSTEM"
+            },
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "In the Memory timeline, which milestone happened second? Answer with only the milestone name.",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "autoCompactionThreshold": 12000,
+            "maxTokens": 2048,
+            "outputConfig": null,
+            "responseFormat": {
+                "type": "text"
+            },
+            "thinking": null,
+            "toolChoice": {
+                "type": "auto"
+            },
+            "toolContext": {
+                "aiProvider": "OPEN_AI_SUBSCRIPTION",
+                "conversationId": "<conversation-key>",
+                "modelName": "gpt-5.3-codex",
+                "planId": null,
+                "projectPath": "gromozeka-e2e-<id>/projects/event-ordering"
+            }
+        },
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "SYSTEM",
+                "content": [
+                    {
+                        "content": "MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            Use the retrieved memory below only if it is relevant to the immediately following user request.\n            If retrieved memory is irrelevant or insufficient, ignore it or say that memory is insufficient.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and tasks for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n\n            Namespace: project:<0>\n            Answer mode: FACTUAL\n            Require evidence fallback: false\n\n            Retrieved profile:\n            none\n\n            Retrieved tasks:\n            none\n\n            Retrieved claims:\n            - claim hot-path:claim:<0> [ACTIVE] added_capability family=added_capability: The current project added evidence-backed recall on 2026-02-15.; scope=Current project timeline fact\n- claim hot-path:claim:<1> [ACTIVE] uses_persistence_database family=uses_persistence_database: The current project enabled MongoDB as a persistence database on 2026-01-10.; scope=Current project timeline fact\n- claim hot-path:claim:<2> [ACTIVE] added_capability family=added_capability: The current project added deduplication on 2026-03-20.; scope=Current project timeline fact\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            not requested for this answer mode\n\n            Retrieved entities:\n            - entity entity:<0> [TECHNOLOGY]: MongoDB; Technology named MongoDB.\n- entity entity:<1> [CONCEPT]: evidence-backed recall; Concept named evidence-backed recall.\n- entity entity:<2> [CONCEPT]: deduplication; Concept named deduplication.\n- entity entity:<3> [PROJECT]: Current project; Project named Current project.\n\n            Retrieved episodes:\n            none",
+                        "level": "INFO",
+                        "state": "COMPLETE",
+                        "toolUseId": null,
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.System"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "In the Memory timeline, which milestone happened second? Answer with only the milestone name.",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxTokens": 2048,
+            "thinking": null,
+            "outputConfig": null,
+            "autoCompactionThreshold": 12000,
+            "toolChoice": {
+                "type": "auto"
+            },
+            "responseFormat": {
+                "type": "text"
+            },
+            "toolContext": {
+                "aiProvider": "OPEN_AI_SUBSCRIPTION",
+                "conversationId": "<conversation-key>",
+                "modelName": "gpt-5.3-codex",
+                "planId": null,
+                "projectPath": "gromozeka-e2e-<id>/projects/event-ordering"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "evidence-backed recall",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 602,
+                "completionTokens": 8,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

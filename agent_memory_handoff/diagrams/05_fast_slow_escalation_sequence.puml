@@ -1,0 +1,39 @@
+@startuml
+title Fast Slow Escalation
+
+actor User
+participant "Fast Runtime" as Fast
+participant "Retrieval Planner" as Planner
+participant "Escalation Planner" as Escalate
+participant "Slow Path" as Slow
+database DB
+
+User -> Fast: Ask question
+Fast -> Planner: plan_retrieval(request)
+Planner --> Fast: mode + budget
+
+Fast -> DB: load bounded retrieval pack
+DB --> Fast: profile / claims / notes /\ntasks / evidence
+
+Fast -> Fast: draft answer
+Fast -> Escalate: evaluate_conflict_uncertainty\n(draft, retrieval pack)
+
+alt stay on fast path
+    Escalate --> Fast: no escalation
+    Fast --> User: answer
+else escalate to slow path
+    Escalate --> Fast: typed handoff required
+    Fast -> Slow: typed handoff\n(user_goal, facts_we_believe,\nopen_questions, uncertainty_flags,\nrequired_outputs)
+    Slow -> DB: fetch extra evidence if needed
+    DB --> Slow: expanded retrieval pack
+    Slow -> Slow: verify / resolve conflict /\nprepare memory patch
+    Slow --> Fast: refined answer\n+ optional memory patch
+    Fast --> User: refined answer
+end
+
+note over Fast, Slow
+Pass structured handoff objects,
+not free-form agent chatter.
+end note
+
+@enduml

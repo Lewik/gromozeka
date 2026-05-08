@@ -55,19 +55,20 @@ Contracts may live in:
 - `domain/tool/`
 
 Recommended order:
-1. Search domain specs or knowledge graph first
+1. Search domain specs or typed memory first
 2. Read the exact interface, data class, tool contract, or KDoc
 3. Implement in your own layer
 4. Verify with a module-scoped build
 
 Do not guess contract semantics from naming alone when the domain file already exists.
 
-## Knowledge Graph Workflow
+## Memory Workflow
 
 - Search first, read files second
-- Use `unified_search` for concepts, patterns, and existing domain contracts
+- Use injected runtime memory when it is present and relevant
+- Do not call memory search tools unless they are actually available in the tool list
 - Read files when you know the target symbol or are about to modify code
-- Ask the user to re-index only after meaningful `:domain` changes
+- Do not assume memory search replaces file reading when exact source code truth matters
 
 ## Dependency Research Pattern
 

@@ -91,6 +91,7 @@ kotlin {
                 implementation(libs.spring.boot.starter.test)
                 implementation(libs.mockk)
                 implementation(libs.kotlinx.serialization.json)
+                implementation(libs.mongodb.driver.kotlin.coroutine)
                 implementation(kotlin("test"))
                 
                 // Batik for SVG to PNG conversion (build-time only)
@@ -125,6 +126,44 @@ tasks.withType<Test> {
     val currentOs = DefaultNativePlatform.getCurrentOperatingSystem()
     if (currentOs.isMacOsX) {
         jvmArgs("-Dapple.awt.UIElement=true")
+    }
+
+    System.getProperty("gromozeka.realModelProbe")?.let {
+        systemProperty("gromozeka.realModelProbe", it)
+    }
+    System.getProperty("gromozeka.realModelProbe.subscriptionConfig")?.let {
+        systemProperty("gromozeka.realModelProbe.subscriptionConfig", it)
+    }
+    System.getProperty("gromozeka.realModelProbe.caseFilter")?.let {
+        systemProperty("gromozeka.realModelProbe.caseFilter", it)
+    }
+    System.getProperty("gromozeka.realModelProbe.modelName")?.let {
+        systemProperty("gromozeka.realModelProbe.modelName", it)
+    }
+
+    System.getProperty("gromozeka.memory.e2e")?.let {
+        systemProperty("gromozeka.memory.e2e", it)
+    }
+    System.getProperty("gromozeka.memory.e2e.subscriptionConfig")?.let {
+        systemProperty("gromozeka.memory.e2e.subscriptionConfig", it)
+    }
+    System.getProperty("gromozeka.memory.e2e.caseFilter")?.let {
+        systemProperty("gromozeka.memory.e2e.caseFilter", it)
+    }
+    System.getProperty("gromozeka.memory.e2e.modelName")?.let {
+        systemProperty("gromozeka.memory.e2e.modelName", it)
+    }
+    System.getProperty("gromozeka.llm.cassette.mode")?.let {
+        systemProperty("gromozeka.llm.cassette.mode", it)
+    }
+    System.getProperty("gromozeka.llm.cassette.dir")?.let {
+        systemProperty("gromozeka.llm.cassette.dir", it)
+    }
+    System.getProperty("gromozeka.llm.cassette.reportUnused")?.let {
+        systemProperty("gromozeka.llm.cassette.reportUnused", it)
+    }
+    System.getProperty("gromozeka.llm.cassette.deleteUnused")?.let {
+        systemProperty("gromozeka.llm.cassette.deleteUnused", it)
     }
 }
 

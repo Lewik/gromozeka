@@ -1,0 +1,24 @@
+{
+  "id": "phatic-ignore",
+  "category": "abstention",
+  "description": "Greeting-only input should be captured as source but should not produce durable structured memory.",
+  "timeoutSeconds": 300,
+  "seedSessions": [
+    {
+      "id": "seed-a",
+      "turns": [
+        "Hi, how are you today?"
+      ]
+    }
+  ],
+  "expectedAfterSeeds": {
+    "activeClaimsMax": 0,
+    "userSourcesMin": 1,
+    "assistantSourcesMin": 1
+  },
+  "expectedFinal": {
+    "activeClaimsMax": 0,
+    "userSourcesMin": 1,
+    "assistantSourcesMin": 1
+  }
+}

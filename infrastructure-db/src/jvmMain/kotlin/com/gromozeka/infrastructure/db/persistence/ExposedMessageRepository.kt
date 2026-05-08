@@ -11,9 +11,11 @@ import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.core.like
 import org.jetbrains.exposed.v1.jdbc.*
 import kotlinx.datetime.Instant
+import org.springframework.context.annotation.Profile
 import org.springframework.stereotype.Service
 
 @Service
+@Profile("sqlite")
 class ExposedMessageRepository(
     private val json: Json
 ) : MessageRepository {

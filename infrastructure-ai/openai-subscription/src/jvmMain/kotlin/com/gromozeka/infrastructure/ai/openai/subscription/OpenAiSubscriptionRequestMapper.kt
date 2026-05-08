@@ -3,6 +3,7 @@ package com.gromozeka.infrastructure.ai.openai.subscription
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ai.AiAutoCompaction
+import com.gromozeka.domain.model.ai.AiResponseFormat
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.model.ai.AiToolChoice
 import com.gromozeka.domain.tool.AiToolCallback
@@ -56,8 +57,8 @@ class OpenAiSubscriptionRequestMapper {
             instructions = instructions,
             contextManagement = buildContextManagement(request.options.autoCompaction),
             tools = sortedTools.map { tool -> tool.toToolJson() },
-            toolChoice = request.options.toolChoice.toToolChoiceJson(),
-            text = buildTextConfig(),
+            toolChoice = request.options.toolChoice.toToolChoiceJson().takeIf { sortedTools.isNotEmpty() },
+            text = buildTextConfig(request.options.responseFormat),
             reasoning = buildReasoning(request.options.outputConfig),
             promptCacheKey = conversationKey,
         )
@@ -214,7 +215,17 @@ class OpenAiSubscriptionRequestMapper {
 
         if (text.isBlank()) return emptyList()
 
-        return listOf(messageItem(role = "system", content = JsonPrimitive(text)))
+        val isRuntimeMemoryDeveloperMessage = id.value.startsWith("memory-runtime-developer:")
+        val role = if (isRuntimeMemoryDeveloperMessage) "developer" else "system"
+        val content = if (isRuntimeMemoryDeveloperMessage) {
+            buildJsonArray {
+                add(inputTextItem(text))
+            }
+        } else {
+            JsonPrimitive(text)
+        }
+
+        return listOf(messageItem(role = role, content = content))
     }
 
     private fun buildUserMessageText(message: Conversation.Message): String? {
@@ -233,9 +244,19 @@ class OpenAiSubscriptionRequestMapper {
             .ifBlank { null }
     }
 
-    private fun buildTextConfig(): JsonObject {
+    private fun buildTextConfig(responseFormat: AiResponseFormat): JsonObject {
         return buildJsonObject {
             put("verbosity", "medium")
+            when (responseFormat) {
+                AiResponseFormat.Text -> Unit
+                is AiResponseFormat.JsonSchema -> putJsonObject("format") {
+                    put("type", "json_schema")
+                    put("name", responseFormat.name)
+                    responseFormat.description?.takeIf { it.isNotBlank() }?.let { put("description", it) }
+                    put("schema", responseFormat.schema)
+                    put("strict", responseFormat.strict)
+                }
+            }
         }
     }
 
@@ -268,6 +289,7 @@ class OpenAiSubscriptionRequestMapper {
     private fun AiToolChoice.toToolChoiceJson(): JsonElement? {
         return when (this) {
             AiToolChoice.Auto -> JsonPrimitive("auto")
+            AiToolChoice.None -> JsonPrimitive("none")
             AiToolChoice.RequiredAny -> JsonPrimitive("required")
             is AiToolChoice.RequiredTool -> buildJsonObject {
                 put("type", "function")
@@ -322,6 +344,12 @@ class OpenAiSubscriptionRequestMapper {
             }
         }
     }
+
+    private fun inputTextItem(text: String): JsonObject =
+        buildJsonObject {
+            put("type", "input_text")
+            put("text", text)
+        }
 
     private fun reasoningItem(
         encryptedContent: String?,
@@ -541,6 +569,16 @@ class OpenAiSubscriptionRequestMapper {
         val itemTypeCounts = requestPayload.input
             .groupingBy { it["type"]?.jsonPrimitive?.contentOrNull ?: "unknown" }
             .eachCount()
+        val messageRoleCounts = requestPayload.input
+            .asSequence()
+            .filter { it["type"]?.jsonPrimitive?.contentOrNull == "message" }
+            .groupingBy { it["role"]?.jsonPrimitive?.contentOrNull ?: "unknown" }
+            .eachCount()
+        val messageContentShapeCounts = requestPayload.input
+            .asSequence()
+            .filter { it["type"]?.jsonPrimitive?.contentOrNull == "message" }
+            .groupingBy { it.messageContentShapeForLog() }
+            .eachCount()
         val payloadChars = runCatching {
             json.encodeToString(OpenAiSubscriptionResponsesRequest.serializer(), requestPayload).length
         }.getOrNull()
@@ -555,12 +593,41 @@ class OpenAiSubscriptionRequestMapper {
                 "trimmedMessages=${replayWindow.trimmedMessageCount}, " +
                 "inputItems=${requestPayload.input.size}, " +
                 "itemTypes=$itemTypeCounts, " +
+                "messageRoles=$messageRoleCounts, " +
+                "messageContentShapes=$messageContentShapeCounts, " +
                 "tools=${sortedTools.size}, " +
+                "toolChoice=${requestPayload.toolChoice?.toString()?.take(80) ?: "omitted"}, " +
                 "toolSignature=${toolSignature.toUInt().toString(16)}, " +
                 "autoCompaction=${request.options.autoCompaction != null}, " +
+                "responseFormat=${request.options.responseFormat.logName()}, " +
                 "payloadChars=${payloadChars ?: -1}"
         )
     }
+
+    private fun JsonObject.messageContentShapeForLog(): String {
+        val role = this["role"]?.jsonPrimitive?.contentOrNull ?: "unknown"
+        val content = this["content"]
+        val shape = when (content) {
+            is JsonArray -> {
+                val types = content.mapNotNull { item ->
+                    item.jsonObject["type"]?.jsonPrimitive?.contentOrNull
+                }.groupingBy { it }.eachCount()
+
+                "array:$types"
+            }
+            is JsonPrimitive -> "primitive:${if (content.isString) "string" else "non_string"}"
+            JsonNull, null -> "null"
+            else -> "object"
+        }
+
+        return "$role/$shape"
+    }
+
+    private fun AiResponseFormat.logName(): String =
+        when (this) {
+            AiResponseFormat.Text -> "text"
+            is AiResponseFormat.JsonSchema -> "json_schema:$name"
+        }
 
     private data class ReplayWindow(
         val messages: List<Conversation.Message>,

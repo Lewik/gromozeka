@@ -1,0 +1,100 @@
+{
+  "id": "memory-repair-duplicate-notes",
+  "category": "maintenance_memory",
+  "description": "Manual memory repair should merge duplicate notes and leave one useful note for rationale recall.",
+  "timeoutSeconds": 900,
+  "preloadedMemory": [
+    {
+      "type": "duplicate_notes",
+      "subjectName": "Repair trace reporter",
+      "subjectType": "SERVICE",
+      "scopeText": "Memory maintenance observability",
+      "noteType": "DECISION",
+      "noteTitle": "Repair trace reporting rule",
+      "noteSummary": "Repair trace reports should show candidate clusters, chosen actions, and materialized operations.",
+      "firstText": "Repair trace reports should show candidate clusters, chosen actions, and materialized operations.",
+      "secondText": "Repeated note: repair trace reports should show candidate clusters, chosen actions, and materialized operations."
+    }
+  ],
+  "maintenanceAfterSeeds": ["repair_memory"],
+  "maintenanceTraceExpectations": [
+    {
+      "present": true,
+      "stageIn": ["MEMORY_REPAIR"],
+      "tracesMin": 1,
+      "repairCandidateClustersMin": 1,
+      "repairSuspiciousHitsMin": 2,
+      "repairActionsMin": 1,
+      "repairMaterializedNotesMin": 1,
+      "repairMaterializedRunsMin": 1,
+      "repairAppliedOpsMin": 1,
+      "containsAll": ["DUPLICATE_NOTES", "MERGE_DUPLICATES", "candidate clusters", "materialized operations"]
+    }
+  ],
+  "recallSessions": [
+    {
+      "id": "recall-b",
+      "turns": [
+        {
+          "text": "What should repair trace reports show? Answer with a short phrase.",
+          "answerExpectation": {
+            "containsAnyGroups": [
+              ["candidate clusters", "clusters"],
+              ["chosen actions", "actions"],
+              ["materialized operations", "materialized ops"]
+            ]
+          },
+          "memoryTraceExpectation": {
+            "needMemory": true,
+            "injectedPromptPresent": true,
+            "selectedHitsMin": 1,
+            "selectedContainsAll": ["candidate clusters"],
+            "injectedPromptContainsAll": ["candidate clusters", "materialized operations"]
+          }
+        }
+      ]
+    }
+  ],
+  "expectedAfterSeeds": {
+    "notesMin": 1,
+    "notesMax": 1,
+    "sourcesMin": 2,
+    "userSourcesMin": 2,
+    "runsMin": 1,
+    "requiredNotes": [
+      {
+        "containsAll": ["candidate clusters", "materialized operations"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      }
+    ],
+    "requiredRuns": [
+      {
+        "runTypeIn": ["REPAIR_MEMORY"],
+        "statusIn": ["SUCCESS"],
+        "containsAll": ["merge_duplicate_note"],
+        "appliedOpsMin": 1
+      }
+    ]
+  },
+  "expectedFinal": {
+    "notesMin": 1,
+    "notesMax": 1,
+    "sourcesMin": 3,
+    "userSourcesMin": 3,
+    "runsMin": 1,
+    "requiredNotes": [
+      {
+        "containsAll": ["candidate clusters", "materialized operations"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      }
+    ],
+    "requiredRuns": [
+      {
+        "runTypeIn": ["REPAIR_MEMORY"],
+        "statusIn": ["SUCCESS"],
+        "containsAll": ["merge_duplicate_note"],
+        "appliedOpsMin": 1
+      }
+    ]
+  }
+}

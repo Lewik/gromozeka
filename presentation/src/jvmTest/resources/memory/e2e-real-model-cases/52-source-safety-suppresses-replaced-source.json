@@ -1,0 +1,103 @@
+{
+  "id": "source-safety-suppresses-replaced-source",
+  "category": "read_source_safety",
+  "description": "Runtime recall should suppress an old raw source selected during conflict/evidence recall when an active typed replacement exists.",
+  "timeoutSeconds": 900,
+  "preloadedMemory": [
+    {
+      "type": "source_safety_replacement",
+      "subjectName": "BookNest",
+      "subjectType": "PROJECT",
+      "predicate": "primary_export_format",
+      "predicateDescription": "The single current primary export format for a project.",
+      "scopeText": "BookNest current implementation facts",
+      "olderValue": "CSV",
+      "olderText": "BookNest primary export format is CSV.",
+      "newerValue": "Parquet",
+      "newerText": "BookNest primary export format is now Parquet."
+    }
+  ],
+  "recallSessions": [
+    {
+      "id": "recall-b",
+      "turns": [
+        {
+          "text": "Use source-level recall/provenance for this check. Why is the old raw source line `BookNest primary export format is CSV.` no longer current? Explain briefly which current memory overrides it.",
+          "memoryRoutingFailFast": false,
+          "answerExpectation": {
+            "containsAll": ["Parquet"],
+            "containsNone": ["SQLite", "MongoDB"]
+          },
+          "memoryTraceExpectation": {
+            "needMemory": true,
+            "injectedPromptPresent": true,
+            "selectedClaimsMin": 1,
+            "selectedClaimsMax": 1,
+            "requiredSelectedClaims": [
+              {
+                "predicateIn": ["primary_export_format"],
+                "normalizedContainsAll": ["BookNest", "Parquet"],
+                "evidenceSourceSpeakerRoleIn": ["USER"]
+              }
+            ],
+            "forbiddenSelectedClaims": [
+              {
+                "predicateIn": ["primary_export_format"],
+                "normalizedContainsAll": ["BookNest", "CSV"],
+                "statusIn": ["ACTIVE"]
+              }
+            ],
+            "selectedContainsAll": ["BookNest", "Parquet"],
+            "selectedContainsNone": ["BookNest primary export format is CSV."],
+            "sourceSafetySuppressedSourcesMin": 1,
+            "sourceSafetySuppressedSourcesMax": 1,
+            "sourceSafetyRestoredTypedHitsMax": 0,
+            "sourceSafetySuppressedContainsAll": ["SOURCE", "BookNest", "CSV"],
+            "injectedPromptContainsAll": ["BookNest", "Parquet"],
+            "injectedPromptContainsNone": ["BookNest primary export format is CSV."]
+          }
+        }
+      ]
+    }
+  ],
+  "expectedAfterSeeds": {
+    "activeClaimsMin": 1,
+    "activeClaimsMax": 1,
+    "sourcesMin": 2,
+    "userSourcesMin": 2,
+    "requiredClaims": [
+      {
+        "predicateIn": ["primary_export_format"],
+        "normalizedContainsAll": ["BookNest", "Parquet"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      }
+    ],
+    "forbiddenClaims": [
+      {
+        "predicateIn": ["primary_export_format"],
+        "normalizedContainsAll": ["BookNest", "CSV"],
+        "statusIn": ["ACTIVE"]
+      }
+    ]
+  },
+  "expectedFinal": {
+    "activeClaimsMin": 1,
+    "activeClaimsMax": 1,
+    "sourcesMin": 2,
+    "userSourcesMin": 2,
+    "requiredClaims": [
+      {
+        "predicateIn": ["primary_export_format"],
+        "normalizedContainsAll": ["BookNest", "Parquet"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      }
+    ],
+    "forbiddenClaims": [
+      {
+        "predicateIn": ["primary_export_format"],
+        "normalizedContainsAll": ["BookNest", "CSV"],
+        "statusIn": ["ACTIVE"]
+      }
+    ]
+  }
+}

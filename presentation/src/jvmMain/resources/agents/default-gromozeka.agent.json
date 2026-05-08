@@ -7,6 +7,7 @@
     "builtin:common.knowledge.md",
     "builtin:common.multi-agent.knowledge.md",
     "builtin:knowledge-graph.knowledge.md",
+    "builtin:memory.knowledge.md",
     "builtin:default.role.md",
     "env"
   ],

@@ -1,0 +1,102 @@
+{
+  "id": "project-temporal-update",
+  "category": "temporal_reasoning",
+  "description": "A dated project update should preserve historical database context while current recall uses the latest dated fact.",
+  "timeoutSeconds": 900,
+  "seedSessions": [
+    {
+      "id": "seed-a",
+      "turns": [
+        "For Gromozeka project context: on 2026-01-10, the memory store database used SQLite during the prototype.",
+        "Project update: as of 2026-05-03, the Gromozeka memory store database now uses MongoDB instead of SQLite."
+      ]
+    }
+  ],
+  "recallSessions": [
+    {
+      "id": "recall-b",
+      "turns": [
+        {
+          "text": "What database does the Gromozeka memory store currently use? Answer with only the database name.",
+          "answerExpectation": {
+            "containsAll": ["MongoDB"],
+            "containsNone": ["SQLite", "PostgreSQL", "Neo4j"]
+          },
+          "memoryTraceExpectation": {
+            "needMemory": true,
+            "injectedPromptPresent": true,
+            "selectedClaimsMin": 1,
+            "selectedContainsNone": ["SQLite"],
+            "selectorSelectedContainsAll": ["SELECT CLAIM", "MongoDB"],
+            "selectorRejectedContainsAll": ["REJECT CLAIM", "SQLite", "prototype"],
+            "requiredSelectedClaims": [
+              {
+                "predicateIn": ["primary_storage_backend"],
+                "statusIn": ["ACTIVE"],
+                "objectEntityCanonicalNameIn": ["MongoDB"],
+                "normalizedContainsAll": ["MongoDB"]
+              }
+            ],
+            "forbiddenSelectedClaims": [
+              {
+                "normalizedContainsAll": ["SQLite", "prototype"]
+              }
+            ],
+            "injectedPromptContainsAll": ["Gromozeka", "MongoDB"],
+            "injectedPromptContainsNone": ["SQLite", "prototype"]
+          }
+        }
+      ]
+    }
+  ],
+  "expectedAfterSeeds": {
+    "activeClaimsMin": 2,
+    "activeClaimsMax": 2,
+    "userSourcesMin": 2,
+    "requiredEntities": [
+      {
+        "canonicalNameIn": ["MongoDB"],
+        "containsAll": ["MongoDB"]
+      }
+    ],
+    "requiredClaims": [
+      {
+        "normalizedContainsAll": ["SQLite", "prototype"],
+        "evidenceQuoteContainsAll": ["2026-01-10"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      },
+      {
+        "normalizedContainsAll": ["MongoDB"],
+        "evidenceQuoteContainsAll": ["as of 2026-05-03"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      }
+    ],
+    "allActiveClaimsEvidenceSpeakerRoleIn": ["USER"]
+  },
+  "expectedFinal": {
+    "activeClaimsMin": 2,
+    "activeClaimsMax": 2,
+    "userSourcesMin": 3,
+    "requiredClaims": [
+      {
+        "normalizedContainsAll": ["SQLite", "prototype"],
+        "evidenceQuoteContainsAll": ["2026-01-10"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      },
+      {
+        "normalizedContainsAll": ["MongoDB"],
+        "evidenceQuoteContainsAll": ["as of 2026-05-03"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      }
+    ],
+    "forbiddenClaims": [
+      {
+        "containsAll": ["PostgreSQL"]
+      },
+      {
+        "containsAll": ["Neo4j"]
+      }
+    ],
+    "allActiveClaimsEvidenceSpeakerRoleIn": ["USER"]
+  }
+}

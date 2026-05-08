@@ -1,0 +1,123 @@
+{
+  "id": "memory-repair-conflicting-claims",
+  "category": "maintenance_memory",
+  "description": "Manual memory repair should detect conflicting replacement-style claims, ask the real repair planner for an action, supersede the older claim, and recall only the current value.",
+  "timeoutSeconds": 900,
+  "preloadedMemory": [
+    {
+      "type": "conflicting_claims",
+      "subjectName": "Orion memory sandbox",
+      "subjectType": "PROJECT",
+      "predicate": "current_approved_database",
+      "predicateDescription": "The single current database approved for a project or sandbox.",
+      "scopeText": "Orion memory sandbox current implementation facts",
+      "olderValue": "SQLite",
+      "olderText": "The current approved database for the Orion memory sandbox is SQLite.",
+      "newerValue": "MongoDB",
+      "newerText": "Correction: the current approved database for the Orion memory sandbox is MongoDB."
+    }
+  ],
+  "maintenanceAfterSeeds": ["repair_memory"],
+  "maintenanceTraceExpectations": [
+    {
+      "present": true,
+      "stageIn": ["MEMORY_REPAIR"],
+      "tracesMin": 1,
+      "repairCandidateClustersMin": 1,
+      "repairSuspiciousHitsMin": 2,
+      "repairActionsMin": 1,
+      "repairMaterializedClaimsMin": 1,
+      "repairMaterializedRunsMin": 1,
+      "repairAppliedOpsMin": 1,
+      "containsAll": ["CONFLICTING_CLAIMS", "supersede_item", "SQLite", "MongoDB"]
+    }
+  ],
+  "recallSessions": [
+    {
+      "id": "recall-b",
+      "turns": [
+        {
+          "text": "What is the current approved database for the Orion memory sandbox? Answer with only the database name.",
+          "answerExpectation": {
+            "containsAll": ["MongoDB"],
+            "containsNone": ["SQLite"]
+          },
+          "memoryTraceExpectation": {
+            "needMemory": true,
+            "injectedPromptPresent": true,
+            "selectedClaimsMin": 1,
+            "selectedClaimsMax": 1,
+            "selectedContainsAll": ["MongoDB"],
+            "selectedContainsNone": ["SQLite"],
+            "requiredSelectedClaims": [
+              {
+                "containsAll": ["MongoDB"]
+              }
+            ],
+            "forbiddenSelectedClaims": [
+              {
+                "containsAll": ["SQLite"]
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "expectedAfterSeeds": {
+    "activeClaimsMin": 1,
+    "activeClaimsMax": 1,
+    "sourcesMin": 2,
+    "userSourcesMin": 2,
+    "runsMin": 1,
+    "requiredClaims": [
+      {
+        "predicateIn": ["current_approved_database"],
+        "containsAll": ["MongoDB"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      }
+    ],
+    "forbiddenClaims": [
+      {
+        "predicateIn": ["current_approved_database"],
+        "containsAll": ["SQLite"]
+      }
+    ],
+    "requiredRuns": [
+      {
+        "runTypeIn": ["REPAIR_MEMORY"],
+        "statusIn": ["SUCCESS"],
+        "containsAll": ["supersede_claim"],
+        "appliedOpsMin": 1
+      }
+    ]
+  },
+  "expectedFinal": {
+    "activeClaimsMin": 1,
+    "activeClaimsMax": 1,
+    "sourcesMin": 3,
+    "userSourcesMin": 3,
+    "runsMin": 1,
+    "requiredClaims": [
+      {
+        "predicateIn": ["current_approved_database"],
+        "containsAll": ["MongoDB"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      }
+    ],
+    "forbiddenClaims": [
+      {
+        "predicateIn": ["current_approved_database"],
+        "containsAll": ["SQLite"]
+      }
+    ],
+    "requiredRuns": [
+      {
+        "runTypeIn": ["REPAIR_MEMORY"],
+        "statusIn": ["SUCCESS"],
+        "containsAll": ["supersede_claim"],
+        "appliedOpsMin": 1
+      }
+    ]
+  }
+}

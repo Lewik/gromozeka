@@ -1,0 +1,167 @@
+{
+    "version": 1,
+    "hash": "65315bf9641da0191edc5456c1433630c0d2f6c40a25b0fa667369e27d2ee264",
+    "provider": "OPEN_AI_SUBSCRIPTION",
+    "model": "gpt-5.3-codex",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>/projects/cross-language-current-update-recall",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "content": "MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            Use the retrieved memory below only if it is relevant to the immediately following user request.\n            If retrieved memory is irrelevant or insufficient, ignore it or say that memory is insufficient.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and tasks for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n\n            Namespace: project:<0>\n            Answer mode: FACTUAL\n            Require evidence fallback: false\n\n            Retrieved profile:\n            none\n\n            Retrieved tasks:\n            none\n\n            Retrieved claims:\n            - claim hot-path:claim:<0> [ACTIVE] primary_analytics_export_format family=primary_analytics_export_format: RiverLedger's current primary analytics export format is ORC.; scope=Applies to the RiverLedger project entity.\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            not requested for this answer mode\n\n            Retrieved entities:\n            - entity entity:<0> [PROJECT]: RiverLedger; Project named RiverLedger.\n- entity entity:<1> [TECHNOLOGY]: ORC; Technology named ORC.\n\n            Retrieved episodes:\n            none",
+                        "level": "INFO",
+                        "state": "COMPLETE",
+                        "toolUseId": null,
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.System"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "SYSTEM"
+            },
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "Какой сейчас основной формат аналитического экспорта у RiverLedger? Ответь только форматом.",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "autoCompactionThreshold": 12000,
+            "maxTokens": 2048,
+            "outputConfig": null,
+            "responseFormat": {
+                "type": "text"
+            },
+            "thinking": null,
+            "toolChoice": {
+                "type": "auto"
+            },
+            "toolContext": {
+                "aiProvider": "OPEN_AI_SUBSCRIPTION",
+                "conversationId": "<conversation-key>",
+                "modelName": "gpt-5.3-codex",
+                "planId": null,
+                "projectPath": "gromozeka-e2e-<id>/projects/cross-language-current-update-recall"
+            }
+        },
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "SYSTEM",
+                "content": [
+                    {
+                        "content": "MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            Use the retrieved memory below only if it is relevant to the immediately following user request.\n            If retrieved memory is irrelevant or insufficient, ignore it or say that memory is insufficient.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and tasks for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n\n            Namespace: project:<0>\n            Answer mode: FACTUAL\n            Require evidence fallback: false\n\n            Retrieved profile:\n            none\n\n            Retrieved tasks:\n            none\n\n            Retrieved claims:\n            - claim hot-path:claim:<0> [ACTIVE] primary_analytics_export_format family=primary_analytics_export_format: RiverLedger's current primary analytics export format is ORC.; scope=Applies to the RiverLedger project entity.\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            not requested for this answer mode\n\n            Retrieved entities:\n            - entity entity:<0> [PROJECT]: RiverLedger; Project named RiverLedger.\n- entity entity:<1> [TECHNOLOGY]: ORC; Technology named ORC.\n\n            Retrieved episodes:\n            none",
+                        "level": "INFO",
+                        "state": "COMPLETE",
+                        "toolUseId": null,
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.System"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "Какой сейчас основной формат аналитического экспорта у RiverLedger? Ответь только форматом.",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxTokens": 2048,
+            "thinking": null,
+            "outputConfig": null,
+            "autoCompactionThreshold": 12000,
+            "toolChoice": {
+                "type": "auto"
+            },
+            "responseFormat": {
+                "type": "text"
+            },
+            "toolContext": {
+                "aiProvider": "OPEN_AI_SUBSCRIPTION",
+                "conversationId": "<conversation-key>",
+                "modelName": "gpt-5.3-codex",
+                "planId": null,
+                "projectPath": "gromozeka-e2e-<id>/projects/cross-language-current-update-recall"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "ORC",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 423,
+                "completionTokens": 6,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

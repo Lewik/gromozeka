@@ -1,0 +1,167 @@
+{
+    "version": 1,
+    "hash": "8439ce85d96d64770d67c6d3edf19f4d9a6f4f06acafc4c2326982ea2895d7a3",
+    "provider": "OPEN_AI_SUBSCRIPTION",
+    "model": "gpt-5.3-codex",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>/projects/memory-repair-duplicate-episodes",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "content": "MEMORY-ONLY CONTEXT\nThis message is not part of the real conversation and must not be stored as evidence.\nUse the retrieved memory below only if it is relevant to the immediately following user request.\nIf retrieved memory is irrelevant or insufficient, ignore it or say that memory is insufficient.\nDo not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and tasks for commitments.\nIf raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\nIf the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n\nNamespace: project:<0>\nAnswer mode: RATIONALE\nRequire evidence fallback: true\n\nRetrieved profile:\nnone\n\nRetrieved tasks:\nnone\n\nRetrieved claims:\nnone\n\nRetrieved notes:\nnone\n\nRetrieved evidence:\n- source memory-repair-duplicate-episodes-fixture-1-source-second [chat_turn role=USER observedAt=1970-01-01T00:00:00Z]: Repeated lesson: prefer model-based no-memory verification over hard-coded substring matching.\n\nRetrieved entities:\n- entity memory-repair-duplicate-episodes-fixture-1-subject [SERVICE]: NoMemoryVerifier; no summary\n\nRetrieved episodes:\n- episode memory-repair-duplicate-episodes-fixture-1-episode-second: owner=NoMemoryVerifier; situation=Read-time planner sometimes returns no memory for ambiguous recall questions.; action=Run a short model-based verifier before accepting the no-memory plan.; result=Recall questions avoid brittle substring heuristics.; lesson=Prefer model-based no-memory verification over hard-coded substring matching.",
+                        "level": "INFO",
+                        "state": "COMPLETE",
+                        "toolUseId": null,
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.System"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "SYSTEM"
+            },
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "What lesson did we learn for NoMemoryVerifier about ambiguous no-memory decisions? One sentence.",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "autoCompactionThreshold": 12000,
+            "maxTokens": 2048,
+            "outputConfig": null,
+            "responseFormat": {
+                "type": "text"
+            },
+            "thinking": null,
+            "toolChoice": {
+                "type": "auto"
+            },
+            "toolContext": {
+                "aiProvider": "OPEN_AI_SUBSCRIPTION",
+                "conversationId": "<conversation-key>",
+                "modelName": "gpt-5.3-codex",
+                "planId": null,
+                "projectPath": "gromozeka-e2e-<id>/projects/memory-repair-duplicate-episodes"
+            }
+        },
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "SYSTEM",
+                "content": [
+                    {
+                        "content": "MEMORY-ONLY CONTEXT\nThis message is not part of the real conversation and must not be stored as evidence.\nUse the retrieved memory below only if it is relevant to the immediately following user request.\nIf retrieved memory is irrelevant or insufficient, ignore it or say that memory is insufficient.\nDo not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and tasks for commitments.\nIf raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\nIf the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\n\nNamespace: project:<0>\nAnswer mode: RATIONALE\nRequire evidence fallback: true\n\nRetrieved profile:\nnone\n\nRetrieved tasks:\nnone\n\nRetrieved claims:\nnone\n\nRetrieved notes:\nnone\n\nRetrieved evidence:\n- source memory-repair-duplicate-episodes-fixture-1-source-second [chat_turn role=USER observedAt=1970-01-01T00:00:00Z]: Repeated lesson: prefer model-based no-memory verification over hard-coded substring matching.\n\nRetrieved entities:\n- entity memory-repair-duplicate-episodes-fixture-1-subject [SERVICE]: NoMemoryVerifier; no summary\n\nRetrieved episodes:\n- episode memory-repair-duplicate-episodes-fixture-1-episode-second: owner=NoMemoryVerifier; situation=Read-time planner sometimes returns no memory for ambiguous recall questions.; action=Run a short model-based verifier before accepting the no-memory plan.; result=Recall questions avoid brittle substring heuristics.; lesson=Prefer model-based no-memory verification over hard-coded substring matching.",
+                        "level": "INFO",
+                        "state": "COMPLETE",
+                        "toolUseId": null,
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.System"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "What lesson did we learn for NoMemoryVerifier about ambiguous no-memory decisions? One sentence.",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxTokens": 2048,
+            "thinking": null,
+            "outputConfig": null,
+            "autoCompactionThreshold": 12000,
+            "toolChoice": {
+                "type": "auto"
+            },
+            "responseFormat": {
+                "type": "text"
+            },
+            "toolContext": {
+                "aiProvider": "OPEN_AI_SUBSCRIPTION",
+                "conversationId": "<conversation-key>",
+                "modelName": "gpt-5.3-codex",
+                "planId": null,
+                "projectPath": "gromozeka-e2e-<id>/projects/memory-repair-duplicate-episodes"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "We learned to prefer a short model-based no-memory verification step over brittle hard-coded substring matching when ambiguous recall questions might incorrectly yield no memory.",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 425,
+                "completionTokens": 32,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

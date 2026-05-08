@@ -65,6 +65,10 @@ fun SessionScreen(
     // Memory
     onRememberThread: (() -> Unit)? = null,
     onAddToGraph: (() -> Unit)? = null,
+    onConsolidateMemory: (() -> Unit)? = null,
+    onRepairMemory: (() -> Unit)? = null,
+    onMaintainMemoryEntities: (() -> Unit)? = null,
+    onApplyMemoryRetention: (() -> Unit)? = null,
     onIndexDomain: (() -> Unit)? = null,
 
     // Dev mode
@@ -557,7 +561,7 @@ fun SessionScreen(
                                         rememberCallback()
                                     }
                                 },
-                                tooltip = "Remember this conversation to vector memory"
+                                tooltip = "Remember this conversation in typed memory"
                             ) {
                                 Icon(
                                     Icons.Default.Psychology,
@@ -566,7 +570,7 @@ fun SessionScreen(
                             }
                         }
 
-                        // Add to Graph button (if graph storage is enabled and callback provided)
+                        // Add to Memory button (legacy callback name kept in UI plumbing)
                         onAddToGraph?.let { addToGraphCallback ->
                             CompactButton(
                                 onClick = {
@@ -574,11 +578,75 @@ fun SessionScreen(
                                         addToGraphCallback()
                                     }
                                 },
-                                tooltip = "Add this conversation to knowledge graph"
+                                tooltip = "Add this conversation to typed memory"
                             ) {
                                 Icon(
                                     Icons.Default.AccountTree,
-                                    contentDescription = "Add to Graph"
+                                    contentDescription = "Add to Memory"
+                                )
+                            }
+                        }
+
+                        onConsolidateMemory?.let { consolidateCallback ->
+                            CompactButton(
+                                onClick = {
+                                    coroutineScope.launch {
+                                        consolidateCallback()
+                                    }
+                                },
+                                tooltip = "Run note consolidation"
+                            ) {
+                                Icon(
+                                    Icons.AutoMirrored.Filled.MergeType,
+                                    contentDescription = "Consolidate Memory"
+                                )
+                            }
+                        }
+
+                        onRepairMemory?.let { repairCallback ->
+                            CompactButton(
+                                onClick = {
+                                    coroutineScope.launch {
+                                        repairCallback()
+                                    }
+                                },
+                                tooltip = "Run memory repair"
+                            ) {
+                                Icon(
+                                    Icons.Default.Build,
+                                    contentDescription = "Repair Memory"
+                                )
+                            }
+                        }
+
+                        onMaintainMemoryEntities?.let { maintainEntitiesCallback ->
+                            CompactButton(
+                                onClick = {
+                                    coroutineScope.launch {
+                                        maintainEntitiesCallback()
+                                    }
+                                },
+                                tooltip = "Run entity maintenance"
+                            ) {
+                                Icon(
+                                    Icons.Default.AccountTree,
+                                    contentDescription = "Entity Maintenance"
+                                )
+                            }
+                        }
+
+                        onApplyMemoryRetention?.let { retentionCallback ->
+                            CompactButton(
+                                onClick = {
+                                    coroutineScope.launch {
+                                        retentionCallback()
+                                    }
+                                },
+                                tooltip = "Apply memory retention"
+                            ) {
+                                Icon(
+                                    Icons.Default.Inventory2,
+                                    contentDescription = "Memory Retention"
                                 )
                             }
                         }

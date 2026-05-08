@@ -1,0 +1,71 @@
+{
+  "id": "preference-paraphrase-russian",
+  "category": "preference_following",
+  "description": "A Russian preference paraphrase should produce the same user preference memory as the English canonical form.",
+  "timeoutSeconds": 600,
+  "seedSessions": [
+    {
+      "id": "seed-a",
+      "turns": [
+        "Для рекомендаций по автомобилям запомни: я предпочитаю Mazda."
+      ]
+    }
+  ],
+  "recallSessions": [
+    {
+      "id": "recall-b",
+      "turns": [
+        {
+          "text": "Which car brand should you remember that I prefer? Answer with only the brand name.",
+          "answerExpectation": {
+            "containsAll": ["Mazda"],
+            "containsNone": ["Toyota", "Honda", "BMW", "Ford"]
+          },
+          "memoryTraceExpectation": {
+            "needMemory": true,
+            "injectedPromptPresent": true,
+            "selectedClaimsMin": 1,
+            "requiredSelectedClaims": [
+              {
+                "predicateIn": ["prefers"],
+                "objectEntityCanonicalNameIn": ["Mazda", "Mazda cars"],
+                "normalizedContainsAll": ["Mazda"]
+              }
+            ],
+            "injectedPromptContainsAll": ["Mazda"]
+          }
+        }
+      ]
+    }
+  ],
+  "expectedAfterSeeds": {
+    "activeClaimsMin": 1,
+    "activeClaimsMax": 1,
+    "userSourcesMin": 1,
+    "requiredClaims": [
+      {
+        "predicateIn": ["prefers"],
+        "subjectEntityTypeIn": ["USER"],
+        "containsAll": ["Mazda"],
+        "evidenceQuoteContainsAll": ["предпочитаю Mazda"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      }
+    ],
+    "allActiveClaimsEvidenceSpeakerRoleIn": ["USER"]
+  },
+  "expectedFinal": {
+    "activeClaimsMin": 1,
+    "activeClaimsMax": 1,
+    "userSourcesMin": 2,
+    "requiredClaims": [
+      {
+        "predicateIn": ["prefers"],
+        "subjectEntityTypeIn": ["USER"],
+        "containsAll": ["Mazda"],
+        "evidenceQuoteContainsAll": ["предпочитаю Mazda"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      }
+    ],
+    "allActiveClaimsEvidenceSpeakerRoleIn": ["USER"]
+  }
+}

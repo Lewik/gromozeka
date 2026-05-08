@@ -1,0 +1,84 @@
+{
+  "id": "multi-session-composition",
+  "category": "multi_session_reasoning",
+  "description": "Recall should combine two facts stored in different conversations under the same project namespace.",
+  "timeoutSeconds": 900,
+  "seedSessions": [
+    {
+      "id": "seed-a",
+      "turns": [
+        "For Aurora project context: the API token expires on 2026-06-01."
+      ]
+    },
+    {
+      "id": "seed-b",
+      "turns": [
+        "For Aurora project context: Mira owns the token rotation."
+      ]
+    }
+  ],
+  "recallSessions": [
+    {
+      "id": "recall-c",
+      "turns": [
+        {
+          "text": "Who owns the Aurora token rotation, and when does the API token expire? Answer with the name and date.",
+          "answerExpectation": {
+            "containsAll": ["Mira", "2026-06-01"],
+            "containsNone": ["Lina", "Pavel", "2026-05-01"]
+          },
+          "memoryTraceExpectation": {
+            "needMemory": true,
+            "injectedPromptPresent": true,
+            "selectedClaimsMin": 2,
+            "requiredSelectedClaims": [
+              {
+                "containsAll": ["Aurora", "2026-06-01"]
+              },
+              {
+                "containsAll": ["Aurora", "Mira", "token rotation"]
+              }
+            ],
+            "injectedPromptContainsAll": ["Mira", "2026-06-01"]
+          }
+        }
+      ]
+    }
+  ],
+  "expectedAfterSeeds": {
+    "activeClaimsMin": 2,
+    "activeClaimsMax": 2,
+    "userSourcesMin": 2,
+    "requiredClaims": [
+      {
+        "containsAll": ["Aurora", "2026-06-01"],
+        "evidenceQuoteContainsAll": ["API token expires on 2026-06-01"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      },
+      {
+        "containsAll": ["Aurora", "Mira", "token rotation"],
+        "evidenceQuoteContainsAll": ["Mira owns the token rotation"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      }
+    ],
+    "allActiveClaimsEvidenceSpeakerRoleIn": ["USER"]
+  },
+  "expectedFinal": {
+    "activeClaimsMin": 2,
+    "activeClaimsMax": 2,
+    "userSourcesMin": 3,
+    "requiredClaims": [
+      {
+        "containsAll": ["Aurora", "2026-06-01"],
+        "evidenceQuoteContainsAll": ["API token expires on 2026-06-01"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      },
+      {
+        "containsAll": ["Aurora", "Mira", "token rotation"],
+        "evidenceQuoteContainsAll": ["Mira owns the token rotation"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      }
+    ],
+    "allActiveClaimsEvidenceSpeakerRoleIn": ["USER"]
+  }
+}

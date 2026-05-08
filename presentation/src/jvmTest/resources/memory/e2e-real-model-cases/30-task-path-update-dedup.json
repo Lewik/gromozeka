@@ -1,0 +1,117 @@
+{
+  "id": "task-path-update-dedup",
+  "category": "task_memory",
+  "description": "Repeated follow-ups should not create duplicate tasks, while later durable details should update the existing task.",
+  "timeoutSeconds": 900,
+  "seedSessions": [
+    {
+      "id": "seed-a",
+      "turns": [
+        {
+          "text": "Memory MVP follow-up: keep an open task to add task memory lifecycle e2e coverage before declaring the memory MVP stable.",
+          "memoryWriteTraceExpectation": {
+            "routeDecisionIn": ["DIRECT_STRUCTURED_WRITE"],
+            "rawTaskOpsMin": 1,
+            "rawTaskOpsMax": 1,
+            "taskOpsMin": 1,
+            "taskOpsMax": 1,
+            "materializedTasksMin": 1,
+            "materializedTasksMax": 1,
+            "rawTaskOpsContainsAll": ["INSERT", "task memory lifecycle"],
+            "taskOpsContainsAll": ["INSERT", "task memory lifecycle"]
+          }
+        },
+        {
+          "text": "Same Memory MVP follow-up, no new task: keep the task memory lifecycle e2e coverage task open.",
+          "memoryWriteTraceExpectation": {
+            "routeDecisionIn": ["DIRECT_STRUCTURED_WRITE"],
+            "rawTaskOpsMin": 1,
+            "rawTaskOpsMax": 1,
+            "taskOpsMin": 1,
+            "taskOpsMax": 1,
+            "materializedTasksMax": 0,
+            "rawTaskOpsContainsAll": ["NOOP"],
+            "taskOpsContainsAll": ["NOOP"]
+          }
+        },
+        {
+          "text": "Update that Memory MVP follow-up: it should verify duplicate follow-ups, task updates, and closing completed tasks.",
+          "memoryWriteTraceExpectation": {
+            "routeDecisionIn": ["DIRECT_STRUCTURED_WRITE"],
+            "rawTaskOpsMin": 1,
+            "rawTaskOpsMax": 1,
+            "taskOpsMin": 1,
+            "taskOpsMax": 1,
+            "materializedTasksMin": 1,
+            "materializedTasksMax": 1,
+            "rawTaskOpsContainsAll": ["UPDATE", "duplicate follow-up", "task updates", "closing completed tasks"],
+            "taskOpsContainsAll": ["UPDATE", "duplicate follow-up", "task updates", "closing completed tasks"]
+          }
+        }
+      ]
+    }
+  ],
+  "recallSessions": [
+    {
+      "id": "recall-b",
+      "turns": [
+        {
+          "text": "What should the task memory lifecycle e2e follow-up verify? Keep it short.",
+          "answerExpectation": {
+            "containsAnyGroups": [
+              ["duplicate follow-ups", "duplicate follow-up", "duplicates", "dedup"],
+              ["task updates", "updates"],
+              ["closing completed tasks", "closing", "completed tasks"]
+            ]
+          },
+          "memoryTraceExpectation": {
+            "needMemory": true,
+            "injectedPromptPresent": true,
+            "selectedTasksMin": 1,
+            "selectedTasksMax": 1,
+            "selectorSelectedContainsAll": ["SELECT TASK", "task memory lifecycle"],
+            "selectorSelectedContainsNone": ["SOURCE", "CLAIM"],
+            "requiredSelectedTasks": [
+              {
+                "statusIn": ["OPEN"],
+                "containsAll": ["task memory lifecycle", "duplicate", "updates", "closing"],
+                "evidenceSourceSpeakerRoleIn": ["USER"]
+              }
+            ],
+            "injectedPromptContainsAll": ["task memory lifecycle", "duplicate", "updates", "closing"]
+          }
+        }
+      ]
+    }
+  ],
+  "expectedAfterSeeds": {
+    "activeClaimsMax": 2,
+    "notesMax": 1,
+    "tasksMin": 1,
+    "tasksMax": 1,
+    "userSourcesMin": 3,
+    "requiredTasks": [
+      {
+        "statusIn": ["OPEN"],
+        "containsAll": ["task memory lifecycle", "duplicate", "updates", "closing"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      }
+    ],
+    "allActiveClaimsEvidenceSpeakerRoleIn": ["USER"]
+  },
+  "expectedFinal": {
+    "activeClaimsMax": 2,
+    "notesMax": 1,
+    "tasksMin": 1,
+    "tasksMax": 1,
+    "userSourcesMin": 4,
+    "requiredTasks": [
+      {
+        "statusIn": ["OPEN"],
+        "containsAll": ["task memory lifecycle", "duplicate", "updates", "closing"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      }
+    ],
+    "allActiveClaimsEvidenceSpeakerRoleIn": ["USER"]
+  }
+}

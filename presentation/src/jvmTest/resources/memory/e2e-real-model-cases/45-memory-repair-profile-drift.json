@@ -1,0 +1,111 @@
+{
+  "id": "memory-repair-profile-drift",
+  "category": "maintenance_memory",
+  "description": "Manual memory repair should detect a stale profile projection, refresh it from active profile-synced memory, and keep recall aligned with the refreshed profile.",
+  "timeoutSeconds": 900,
+  "preloadedMemory": [
+    {
+      "type": "profile_drift",
+      "subjectName": "Helios memory sandbox",
+      "subjectType": "PROJECT",
+      "predicate": "preferred_memory_database",
+      "predicateDescription": "Preferred database for a memory sandbox.",
+      "scopeText": "Helios memory sandbox storage facts",
+      "newerValue": "MongoDB",
+      "newerText": "The Helios memory sandbox prefers MongoDB for typed memory storage.",
+      "profileText": "Profile for Helios memory sandbox (PROJECT).\nNo active profile-synced memory."
+    }
+  ],
+  "maintenanceAfterSeeds": ["repair_memory"],
+  "maintenanceTraceExpectations": [
+    {
+      "present": true,
+      "stageIn": ["MEMORY_REPAIR"],
+      "tracesMin": 1,
+      "repairCandidateClustersMin": 1,
+      "repairSuspiciousHitsMin": 1,
+      "repairActionsMin": 1,
+      "repairMaterializedProfilesMin": 1,
+      "repairMaterializedRunsMin": 1,
+      "repairAppliedOpsMin": 1,
+      "containsAll": ["PROFILE_DRIFT", "REFRESH_PROFILE", "MongoDB"]
+    }
+  ],
+  "recallSessions": [
+    {
+      "id": "recall-b",
+      "turns": [
+        {
+          "text": "What database does the Helios memory sandbox prefer for typed memory storage? Answer with only the database name.",
+          "answerExpectation": {
+            "containsAll": ["MongoDB"],
+            "containsNone": ["No active"]
+          },
+          "memoryTraceExpectation": {
+            "needMemory": true,
+            "injectedPromptPresent": true,
+            "selectedHitsMin": 1,
+            "selectedContainsAll": ["MongoDB"],
+            "injectedPromptContainsAll": ["MongoDB"]
+          }
+        }
+      ]
+    }
+  ],
+  "expectedAfterSeeds": {
+    "activeClaimsMin": 1,
+    "profilesMin": 1,
+    "sourcesMin": 1,
+    "userSourcesMin": 1,
+    "runsMin": 1,
+    "requiredClaims": [
+      {
+        "predicateIn": ["preferred_memory_database"],
+        "containsAll": ["MongoDB"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      }
+    ],
+    "requiredProfiles": [
+      {
+        "ownerNameIn": ["Helios memory sandbox"],
+        "textContainsAll": ["MongoDB"]
+      }
+    ],
+    "requiredRuns": [
+      {
+        "runTypeIn": ["REPAIR_MEMORY"],
+        "statusIn": ["SUCCESS"],
+        "containsAll": ["refresh_profile"],
+        "appliedOpsMin": 1
+      }
+    ]
+  },
+  "expectedFinal": {
+    "activeClaimsMin": 1,
+    "profilesMin": 1,
+    "sourcesMin": 2,
+    "userSourcesMin": 2,
+    "runsMin": 1,
+    "requiredClaims": [
+      {
+        "predicateIn": ["preferred_memory_database"],
+        "containsAll": ["MongoDB"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      }
+    ],
+    "requiredProfiles": [
+      {
+        "ownerNameIn": ["Helios memory sandbox"],
+        "textContainsAll": ["MongoDB"]
+      }
+    ],
+    "requiredRuns": [
+      {
+        "runTypeIn": ["REPAIR_MEMORY"],
+        "statusIn": ["SUCCESS"],
+        "containsAll": ["refresh_profile"],
+        "appliedOpsMin": 1
+      }
+    ]
+  }
+}

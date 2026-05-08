@@ -1,0 +1,167 @@
+{
+    "version": 1,
+    "hash": "d462ad95fd96573c0c8e9f61c20c11e0e552ff419340fc75dce302ad0fe5c01f",
+    "provider": "OPEN_AI_SUBSCRIPTION",
+    "model": "gpt-5.3-codex",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>/projects/task-path-commitment",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "content": "MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            Use the retrieved memory below only if it is relevant to the immediately following user request.\n            If retrieved memory is irrelevant or insufficient, ignore it or say that memory is insufficient.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and tasks for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n\n            Namespace: project:<0>\n            Answer mode: MIXED\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved tasks:\n            - task hot-path:task:<0> [OPEN]: Add real-model end-to-end coverage for task memory; Keep this as an open follow-up task for Memory MVP: add real-model end-to-end test coverage for task memory before declaring Memory MVP stable.\n\n            Retrieved claims:\n            none\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source chat:<0> [chat_turn role=USER observedAt=2026-05-08T14:03:00.831639Z]: Memory MVP follow-up: keep an open task to add real-model e2e coverage for task memory before we call the memory MVP stable.\n\n            Retrieved entities:\n            - entity entity:<0> [PROJECT]: Memory MVP; Project named Memory MVP.\n- entity entity:<1> [CONCEPT]: Task memory; Concept named Task memory.\n- entity entity:<2> [CONCEPT]: Real-model end-to-end coverage; Concept named Real-model end-to-end coverage.\n- entity project:<0> [PROJECT]: project:<0>; Project named project:<1>\n\n            Retrieved episodes:\n            none",
+                        "level": "INFO",
+                        "state": "COMPLETE",
+                        "toolUseId": null,
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.System"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "SYSTEM"
+            },
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "What open follow-up remains before we call the memory MVP stable? Keep it short.",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "autoCompactionThreshold": 12000,
+            "maxTokens": 2048,
+            "outputConfig": null,
+            "responseFormat": {
+                "type": "text"
+            },
+            "thinking": null,
+            "toolChoice": {
+                "type": "auto"
+            },
+            "toolContext": {
+                "aiProvider": "OPEN_AI_SUBSCRIPTION",
+                "conversationId": "<conversation-key>",
+                "modelName": "gpt-5.3-codex",
+                "planId": null,
+                "projectPath": "gromozeka-e2e-<id>/projects/task-path-commitment"
+            }
+        },
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "SYSTEM",
+                "content": [
+                    {
+                        "content": "MEMORY-ONLY CONTEXT\n            This message is not part of the real conversation and must not be stored as evidence.\n            Use the retrieved memory below only if it is relevant to the immediately following user request.\n            If retrieved memory is irrelevant or insufficient, ignore it or say that memory is insufficient.\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and tasks for commitments.\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\n\n            Namespace: project:<0>\n            Answer mode: MIXED\n            Require evidence fallback: true\n\n            Retrieved profile:\n            none\n\n            Retrieved tasks:\n            - task hot-path:task:<0> [OPEN]: Add real-model end-to-end coverage for task memory; Keep this as an open follow-up task for Memory MVP: add real-model end-to-end test coverage for task memory before declaring Memory MVP stable.\n\n            Retrieved claims:\n            none\n\n            Retrieved notes:\n            none\n\n            Retrieved evidence:\n            - source chat:<0> [chat_turn role=USER observedAt=2026-05-08T14:03:00.831639Z]: Memory MVP follow-up: keep an open task to add real-model e2e coverage for task memory before we call the memory MVP stable.\n\n            Retrieved entities:\n            - entity entity:<0> [PROJECT]: Memory MVP; Project named Memory MVP.\n- entity entity:<1> [CONCEPT]: Task memory; Concept named Task memory.\n- entity entity:<2> [CONCEPT]: Real-model end-to-end coverage; Concept named Real-model end-to-end coverage.\n- entity project:<0> [PROJECT]: project:<0>; Project named project:<1>\n\n            Retrieved episodes:\n            none",
+                        "level": "INFO",
+                        "state": "COMPLETE",
+                        "toolUseId": null,
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.System"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "What open follow-up remains before we call the memory MVP stable? Keep it short.",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxTokens": 2048,
+            "thinking": null,
+            "outputConfig": null,
+            "autoCompactionThreshold": 12000,
+            "toolChoice": {
+                "type": "auto"
+            },
+            "responseFormat": {
+                "type": "text"
+            },
+            "toolContext": {
+                "aiProvider": "OPEN_AI_SUBSCRIPTION",
+                "conversationId": "<conversation-key>",
+                "modelName": "gpt-5.3-codex",
+                "planId": null,
+                "projectPath": "gromozeka-e2e-<id>/projects/task-path-commitment"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "Add real-model end-to-end test coverage for task memory.",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 585,
+                "completionTokens": 16,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}
