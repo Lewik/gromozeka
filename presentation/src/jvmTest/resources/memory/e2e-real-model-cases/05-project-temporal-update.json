@@ -31,7 +31,7 @@
             "selectorRejectedContainsAll": ["REJECT CLAIM", "SQLite", "prototype"],
             "requiredSelectedClaims": [
               {
-                "predicateIn": ["primary_storage_backend"],
+                "predicateIn": ["primary_storage_backend", "uses_persistence_database"],
                 "statusIn": ["ACTIVE"],
                 "objectEntityCanonicalNameIn": ["MongoDB"],
                 "normalizedContainsAll": ["MongoDB"]

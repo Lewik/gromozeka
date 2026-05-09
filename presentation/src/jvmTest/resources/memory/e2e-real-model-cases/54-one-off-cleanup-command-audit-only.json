@@ -1,0 +1,72 @@
+{
+  "id": "one-off-cleanup-command-audit-only",
+  "category": "command_memory_policy",
+  "description": "A terse implementation command should not become a durable task or project goal unless it explicitly asks for tracking.",
+  "timeoutSeconds": 500,
+  "seedSessions": [
+    {
+      "id": "seed-a",
+      "turns": [
+        {
+          "text": "Дочисти оставшиеся ссылки на obsolete graph prompt прямо сейчас.",
+          "memoryWriteTraceExpectation": {
+            "routeDecisionIn": ["NOOP"],
+            "materializedClaimsMax": 0,
+            "materializedNotesMax": 0,
+            "materializedTasksMax": 0,
+            "rawClaimOpsMax": 0,
+            "rawNoteOpsMax": 0,
+            "rawTaskOpsMax": 0
+          }
+        }
+      ]
+    }
+  ],
+  "expectedAfterSeeds": {
+    "activeClaimsMax": 0,
+    "notesMax": 0,
+    "tasksMax": 0,
+    "profilesMax": 0,
+    "userSourcesMin": 1,
+    "requiredSources": [
+      {
+        "roleIn": ["USER"],
+        "textContainsAll": ["obsolete graph prompt"],
+        "allowStructuredExtraction": false,
+        "allowRecall": false,
+        "allowEvidenceHydration": false
+      }
+    ],
+    "forbiddenClaims": [
+      {
+        "containsAll": ["obsolete graph prompt"]
+      }
+    ],
+    "forbiddenTasks": [
+      {
+        "containsAll": ["obsolete graph prompt"]
+      }
+    ],
+    "forbiddenProfiles": [
+      {
+        "containsAll": ["obsolete graph prompt"]
+      }
+    ]
+  },
+  "expectedFinal": {
+    "activeClaimsMax": 0,
+    "notesMax": 0,
+    "tasksMax": 0,
+    "profilesMax": 0,
+    "userSourcesMin": 1,
+    "requiredSources": [
+      {
+        "roleIn": ["USER"],
+        "textContainsAll": ["obsolete graph prompt"],
+        "allowStructuredExtraction": false,
+        "allowRecall": false,
+        "allowEvidenceHydration": false
+      }
+    ]
+  }
+}

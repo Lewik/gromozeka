@@ -216,7 +216,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"repair_actions\":[{\"action\":\"merge_duplicates\",\"reason\":\"Open tasks are near-exact duplicates in title, scope, and status; merging preserves intent while removing redundancy.\",\"target_ids\":[\"memory-repair-duplicate-tasks-fixture-1-task-first\",\"memory-repair-duplicate-tasks-fixture-1-task-second\"],\"target_type\":\"task\"}],\"summary\":\"Merged the duplicate open task pair into a single consolidated task record to improve hygiene while preserving history.\"}",
+                                "fullText": "{\"repair_actions\":[{\"action\":\"merge_duplicates\",\"reason\":\"Both open tasks have the same title, scope, and status, with supporting sources indicating duplicate follow-ups.\",\"target_ids\":[\"memory-repair-duplicate-tasks-fixture-1-task-first\",\"memory-repair-duplicate-tasks-fixture-1-task-second\"],\"target_type\":\"task\"}],\"summary\":\"Merged the duplicate open tasks into a single canonical task record while preserving history.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -231,8 +231,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 852,
-                "completionTokens": 106,
+                "promptTokens": 859,
+                "completionTokens": 101,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

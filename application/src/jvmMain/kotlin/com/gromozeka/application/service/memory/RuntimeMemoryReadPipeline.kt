@@ -235,6 +235,45 @@ class RuntimeMemoryReadPipeline(
             }
         }
 
+        if (plan.shouldTrySourceFallback(hits)) {
+            val sourceFallbackQuery = request.sourceFallbackSearchQuery(plan)
+            val sourceFallbackLimit = (plan.retrievalBudget.sources.takeIf { it > 0 } ?: 3).coerceIn(1, 8)
+            val sourceFallbackSearchLimit = (sourceFallbackLimit + request.threadContext.messages.size + 4).coerceAtMost(50)
+            val rawSourceFallbackHits = store.search(
+                MemoryStore.SearchRequest(
+                    query = sourceFallbackQuery,
+                    namespace = request.namespace,
+                    scopes = setOf(MemoryStore.SearchScope.SOURCES),
+                    filters = MemoryStore.SearchFilters(),
+                    limit = sourceFallbackSearchLimit,
+                )
+            )
+            val sourceFallbackSelection = rawSourceFallbackHits
+                .excludeCurrentThreadSources(request)
+                .applySourceRetrievalPolicyFor(MemorySemanticType.SOURCE)
+            val sourceFallbackHits = sourceFallbackSelection.hits.take(sourceFallbackLimit)
+            hits += sourceFallbackHits
+            searchSteps += MemoryReadTrace.SearchStep(
+                stage = "fallback:${MemorySemanticType.SOURCE.name}",
+                query = sourceFallbackQuery,
+                scope = MemoryStore.SearchScope.SOURCES.name,
+                requestedLimit = sourceFallbackLimit,
+                rawCount = rawSourceFallbackHits.size,
+                candidateCount = sourceFallbackSelection.hits.size,
+                selectedCount = sourceFallbackHits.size,
+                rawTopHits = rawSourceFallbackHits.toTraceHits(limit = 5),
+                selectedTopHits = sourceFallbackHits.toTraceHits(limit = 5),
+            )
+            log.info {
+                "Memory read source fallback search: namespace=${request.namespace.value} " +
+                    "topK=$sourceFallbackLimit searchLimit=$sourceFallbackSearchLimit " +
+                    "query=${sourceFallbackQuery.oneLineForRuntimeMemoryLog(160)} " +
+                    "rawHits=${rawSourceFallbackHits.size} hits=${sourceFallbackHits.size} " +
+                    "currentThreadSourcesDropped=${rawSourceFallbackHits.countCurrentThreadSources(request)} " +
+                    "sourcePolicy=${sourceFallbackSelection.summaryForLog()} top=${sourceFallbackHits.summaryForRuntimeMemoryLog()}"
+            }
+        }
+
         val distinctHits = hits
             .distinctBy { it.toItemRef() }
             .excludeCurrentThreadSources(request)
@@ -253,7 +292,9 @@ class RuntimeMemoryReadPipeline(
             }
         }
         val budgetedHits = rawSourceDeferral.hits.enforceBudget(plan)
-        val selectorCandidateHits = budgetedHits.withActiveTypedReplacementsForSourceCandidates(snapshot)
+        val selectorCandidateHits = budgetedHits
+            .withActiveTypedSupportForSourceCandidates(snapshot)
+            .withActiveTypedReplacementsForSourceCandidates(snapshot)
         val selectionResult = selector.select(
             MemoryReadSelectionRequest(
                 readRequest = request,
@@ -262,7 +303,20 @@ class RuntimeMemoryReadPipeline(
                 snapshot = snapshot,
             )
         )
-        val selectedHitsBeforeSafety = selectionResult.selectedHits
+        val coreProfileSelection = selectionResult.selectedHits.keepPlannerRequestedProfiles(
+            plan = plan,
+            candidateHits = selectorCandidateHits,
+        )
+        if (coreProfileSelection.changed) {
+            log.info {
+                "Memory read core profile restored: namespace=${request.namespace.value} " +
+                    "restoredProfiles=${coreProfileSelection.addedHits.joinToString("|") { it.profile.id.value }}"
+            }
+        }
+        val selectedHitsBeforeSafety = coreProfileSelection.hits
+        val selectorDecisions = selectionResult.decisions
+            .filterNot { decision -> decision.ref in coreProfileSelection.addedRefs }
+            .let { decisions -> decisions + coreProfileSelection.decisions }
         val sourceFilteredHits = selectedHitsBeforeSafety.filterNonRequiredSourcesWhenTypedMemoryAnswers(plan)
         if (sourceFilteredHits.changed) {
             log.info {
@@ -322,7 +376,7 @@ class RuntimeMemoryReadPipeline(
         return RuntimeMemoryRetrievedHits(
             hits = entityHydratedHits,
             selectorCandidateHits = selectorCandidateHits,
-            selectorDecisions = selectionResult.decisions,
+            selectorDecisions = selectorDecisions,
             sourceSafety = sourceSafety,
         )
     }
@@ -419,6 +473,15 @@ private data class RuntimeMemoryRetrievedHits(
     val sourceSafety: RuntimeMemorySourceSafetyResult,
 )
 
+private data class RuntimeMemoryCoreProfileSelection(
+    val hits: List<MemoryStore.SearchHit>,
+    val addedHits: List<MemoryStore.SearchHit.ProfileHit>,
+    val decisions: List<MemoryReadSelectionResult.Decision>,
+) {
+    val addedRefs: Set<MemoryItemRef> = addedHits.mapTo(mutableSetOf()) { it.toItemRef() }
+    val changed: Boolean = addedHits.isNotEmpty()
+}
+
 private data class RuntimeMemorySourceSafetyResult(
     val hits: List<MemoryStore.SearchHit>,
     val suppressedSourceHits: List<MemoryStore.SearchHit.SourceHit> = emptyList(),
@@ -467,12 +530,13 @@ object RuntimeMemoryPromptComposer {
         return """
             MEMORY-ONLY CONTEXT
             This message is not part of the real conversation and must not be stored as evidence.
-            Use the retrieved memory below only if it is relevant to the immediately following user request.
-            If retrieved memory is irrelevant or insufficient, ignore it or say that memory is insufficient.
+            The retrieved memory below was selected for the immediately following user request.
+            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.
+            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.
             Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and tasks for commitments.
             If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.
             If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.
-            If the user asks for an exact quote, exact wording, source, or when something was said, copy the relevant wording exactly from Retrieved evidence or quoted evidence; do not shorten or paraphrase it.
+            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.
             If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.
 
             Namespace: ${request.namespace.value}
@@ -770,6 +834,35 @@ private fun MemoryReadPlan.RetrievalRequest.searchQuery(
     }.joinToString("\n")
 }
 
+private fun MemoryReadPlan.shouldTrySourceFallback(hits: List<MemoryStore.SearchHit>): Boolean =
+    needMemory &&
+        retrievalRequests.none { it.memoryType == MemorySemanticType.SOURCE } &&
+        hits.none { it.isAnswerCandidateForRecall() }
+
+private fun MemoryStore.SearchHit.isAnswerCandidateForRecall(): Boolean =
+    when (this) {
+        is MemoryStore.SearchHit.ClaimHit,
+        is MemoryStore.SearchHit.NoteHit,
+        is MemoryStore.SearchHit.TaskHit,
+        is MemoryStore.SearchHit.ProfileHit,
+        is MemoryStore.SearchHit.EpisodeHit,
+        is MemoryStore.SearchHit.SourceHit,
+        -> true
+
+        is MemoryStore.SearchHit.EntityHit,
+        is MemoryStore.SearchHit.RunHit,
+        -> false
+    }
+
+private fun MemoryReadRequest.sourceFallbackSearchQuery(plan: MemoryReadPlan): String =
+    buildList {
+        add(targetQueryText())
+        plan.retrievalRequests
+            .map { it.query }
+            .distinct()
+            .forEach(::add)
+    }.joinToString("\n").trim()
+
 private fun MemoryStore.SearchHit.claimPredicatePriority(retrievalRequest: MemoryReadPlan.RetrievalRequest): Int {
     if (this !is MemoryStore.SearchHit.ClaimHit) return 0
 
@@ -837,6 +930,37 @@ private fun List<MemoryStore.SearchHit>.enforceBudget(plan: MemoryReadPlan): Lis
         addAll(episodes.take(plan.retrievalBudget.episodes.takeIf { it > 0 } ?: 2))
         addAll(entities.take(4))
     }
+}
+
+private fun List<MemoryStore.SearchHit>.keepPlannerRequestedProfiles(
+    plan: MemoryReadPlan,
+    candidateHits: List<MemoryStore.SearchHit>,
+): RuntimeMemoryCoreProfileSelection {
+    if (MemoryReadPlan.CoreBlock.PROFILE !in plan.coreBlocks) {
+        return RuntimeMemoryCoreProfileSelection(
+            hits = this,
+            addedHits = emptyList(),
+            decisions = emptyList(),
+        )
+    }
+
+    val selectedRefs = mapTo(mutableSetOf()) { it.toItemRef() }
+    val profileHits = candidateHits
+        .filterIsInstance<MemoryStore.SearchHit.ProfileHit>()
+        .filterNot { it.toItemRef() in selectedRefs }
+
+    return RuntimeMemoryCoreProfileSelection(
+        hits = this + profileHits,
+        addedHits = profileHits,
+        decisions = profileHits.mapIndexed { index, hit ->
+            MemoryReadSelectionResult.Decision(
+                ref = hit.toItemRef(),
+                selected = true,
+                rank = size + index + 1,
+                reason = "Planner requested PROFILE core block; keeping projection as compact adaptation context.",
+            )
+        },
+    )
 }
 
 private fun List<MemoryStore.SearchHit>.renderProfiles(): String =
@@ -1021,6 +1145,51 @@ private fun List<MemoryStore.SearchHit>.withActiveTypedReplacementsForSourceCand
 
     return this + replacements
 }
+
+private fun List<MemoryStore.SearchHit>.withActiveTypedSupportForSourceCandidates(
+    snapshot: MemoryNamespaceSnapshot,
+): List<MemoryStore.SearchHit> {
+    val sourceIds = filterIsInstance<MemoryStore.SearchHit.SourceHit>()
+        .mapTo(mutableSetOf()) { it.source.id }
+    if (sourceIds.isEmpty()) return this
+
+    val existingRefs = mapTo(mutableSetOf()) { it.toItemRef() }
+    val supportedHits = snapshot.activeTypedSupportHitsForSources(sourceIds)
+        .filterNot { it.toItemRef() in existingRefs }
+    if (supportedHits.isEmpty()) return this
+
+    return this + supportedHits
+}
+
+private fun MemoryNamespaceSnapshot.activeTypedSupportHitsForSources(
+    sourceIds: Set<MemorySource.Id>,
+): List<MemoryStore.SearchHit> =
+    buildList {
+        claims
+            .filter { claim ->
+                claim.status == MemoryClaim.Status.ACTIVE &&
+                    claim.evidenceRefs.any { it.sourceId in sourceIds }
+            }
+            .mapTo(this) { MemoryStore.SearchHit.ClaimHit(it, score = 1.0) }
+        notes
+            .filter { note ->
+                note.status == MemoryNote.Status.ACTIVE &&
+                    note.evidenceRefs.any { it.sourceId in sourceIds }
+            }
+            .mapTo(this) { MemoryStore.SearchHit.NoteHit(it, score = 1.0) }
+        tasks
+            .filter { task ->
+                task.archivedAt == null &&
+                    task.evidenceRefs.any { it.sourceId in sourceIds }
+            }
+            .mapTo(this) { MemoryStore.SearchHit.TaskHit(it, score = 1.0) }
+        episodes
+            .filter { episode ->
+                episode.archivedAt == null &&
+                    episode.evidenceRefs.any { it.sourceId in sourceIds }
+            }
+            .mapTo(this) { MemoryStore.SearchHit.EpisodeHit(it, score = 1.0) }
+    }.distinctBy { it.toItemRef() }
 
 private fun MemoryNamespaceSnapshot.sourceIdsWithActiveTypedReplacement(): Set<MemorySource.Id> =
     buildSet {

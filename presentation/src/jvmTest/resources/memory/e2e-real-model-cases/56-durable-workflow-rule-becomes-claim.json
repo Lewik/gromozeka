@@ -1,0 +1,53 @@
+{
+  "id": "durable-workflow-rule-becomes-claim",
+  "category": "command_memory_policy",
+  "description": "A reusable workflow rule should become structured memory, not be discarded as an immediate command.",
+  "timeoutSeconds": 700,
+  "seedSessions": [
+    {
+      "id": "seed-a",
+      "turns": [
+        {
+          "text": "For the Gromozeka workflow, normally edit only gromozeka/dev and update gromozeka/beta by pulling repository changes into beta; do not edit beta directly.",
+          "memoryWriteTraceExpectation": {
+            "routeDecisionIn": ["DIRECT_STRUCTURED_WRITE", "MIXED"],
+            "materializedClaimsMin": 1,
+            "materializedClaimsMax": 4,
+            "materializedTasksMax": 0
+          }
+        }
+      ]
+    }
+  ],
+  "expectedAfterSeeds": {
+    "activeClaimsMin": 1,
+    "activeClaimsMax": 4,
+    "tasksMax": 0,
+    "userSourcesMin": 1,
+    "requiredClaims": [
+      {
+        "containsAll": ["Gromozeka", "gromozeka/dev", "gromozeka/beta"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      }
+    ],
+    "forbiddenTasks": [
+      {
+        "containsAll": ["gromozeka/dev", "gromozeka/beta"]
+      }
+    ],
+    "allActiveClaimsEvidenceSpeakerRoleIn": ["USER"]
+  },
+  "expectedFinal": {
+    "activeClaimsMin": 1,
+    "activeClaimsMax": 4,
+    "tasksMax": 0,
+    "userSourcesMin": 1,
+    "requiredClaims": [
+      {
+        "containsAll": ["Gromozeka", "gromozeka/dev", "gromozeka/beta"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      }
+    ],
+    "allActiveClaimsEvidenceSpeakerRoleIn": ["USER"]
+  }
+}

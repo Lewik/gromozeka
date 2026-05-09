@@ -216,7 +216,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"repair_actions\":[{\"action\":\"supersede_item\",\"reason\":\"Older active claim conflicts with newer correction for the same subject/predicate/scope; supersede older claim to preserve history and keep latest fact active.\",\"target_ids\":[\"memory-repair-conflicting-claims-fixture-1-claim-older\"],\"target_type\":\"claim\"}],\"summary\":\"Superseded the older conflicting claim in favor of the newer corrected claim, preserving historical trace.\"}",
+                                "fullText": "{\"repair_actions\":[{\"action\":\"supersede_item\",\"reason\":\"Older active claim is explicitly corrected by newer active claim with same subject/predicate/scope.\",\"target_ids\":[\"memory-repair-conflicting-claims-fixture-1-claim-older\"],\"target_type\":\"claim\"}],\"summary\":\"Supersede the older conflicting claim in favor of the newer corrected claim, preserving history while resolving the active conflict.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -231,8 +231,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 937,
-                "completionTokens": 103,
+                "promptTokens": 934,
+                "completionTokens": 96,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

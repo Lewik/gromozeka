@@ -35,15 +35,18 @@
           "memoryTraceExpectation": {
             "needMemory": true,
             "injectedPromptPresent": true,
-            "selectedClaimsMin": 2,
+            "selectedClaimsMin": 1,
+            "selectedProfilesMin": 1,
             "requiredSelectedClaims": [
               {
-                "predicateIn": ["prefers_response_language"],
-                "containsAll": ["Russian", "implementation"]
-              },
-              {
-                "predicateIn": ["prefers_answer_detail"],
+                "predicateIn": ["prefers_answer_detail", "prefers_tone"],
                 "containsAll": ["concise", "implementation"]
+              }
+            ],
+            "requiredSelectedProfiles": [
+              {
+                "ownerEntityTypeIn": ["USER"],
+                "textContainsAll": ["Russian", "concise"]
               }
             ],
             "injectedPromptContainsAll": ["Russian", "concise"]

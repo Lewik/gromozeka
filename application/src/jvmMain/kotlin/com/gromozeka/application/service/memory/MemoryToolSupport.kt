@@ -101,6 +101,10 @@ object MemoryToolResultRenderer {
             put("need_memory", result.plan.needMemory)
             put("answer_mode", result.plan.answerMode.name)
             put("retrieved_count", result.retrievedHits.size)
+            put(
+                "usage_guidance",
+                "Selected memory is the strongest available remembered context for the target message. Use it unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message. Do not replace selected memory with guesses or general defaults. For exact quote, exact wording, source, or when-said questions, prefer complete source text from memory_context over shorter evidence excerpts."
+            )
             put("memory_context", result.runtimePrompt ?: "No relevant persisted memory was retrieved for the target message.")
             putJsonArray("selected_refs") {
                 result.trace.selectedHits.take(16).forEach { hit ->

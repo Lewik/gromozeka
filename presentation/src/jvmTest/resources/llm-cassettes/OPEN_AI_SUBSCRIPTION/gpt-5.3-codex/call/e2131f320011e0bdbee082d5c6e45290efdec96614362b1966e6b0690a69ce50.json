@@ -216,7 +216,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"repair_actions\":[{\"action\":\"merge_duplicates\",\"reason\":\"Both active claims are exact duplicates (same subject, predicate, object, and text) with identical supporting evidence.\",\"target_ids\":[\"memory-repair-duplicate-claims-fixture-1-claim-first\",\"memory-repair-duplicate-claims-fixture-1-claim-second\"],\"target_type\":\"claim\"}],\"summary\":\"Merged the exact duplicate active claims in repair-cluster-1 to reduce redundancy while preserving claim history.\"}",
+                                "fullText": "{\"repair_actions\":[{\"action\":\"merge_duplicates\",\"reason\":\"Exact duplicate active claims with identical subject, predicate, object, and text; safe to merge while preserving history.\",\"target_ids\":[\"memory-repair-duplicate-claims-fixture-1-claim-first\",\"memory-repair-duplicate-claims-fixture-1-claim-second\"],\"target_type\":\"claim\"}],\"summary\":\"Merged the duplicate claims in repair-cluster-1 to remove redundancy conservatively.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -231,8 +231,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 919,
-                "completionTokens": 109,
+                "promptTokens": 922,
+                "completionTokens": 105,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

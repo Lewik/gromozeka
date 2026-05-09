@@ -411,6 +411,7 @@ class LlmMemoryReadPlanner(
             - Leave predicate priority arrays empty when no predicate ranking is needed.
             - Keep retrieval bounded.
             - Include source retrieval when conflicts, uncertainty, or quotation-quality grounding is needed.
+            - Include source retrieval when the target asks what the user said, what wording was used, or asks about a weak/uncertain observation that may intentionally exist only as source memory.
             - For ordinary factual/task answers, especially when the target asks for "only" a value or task title, set require_evidence_fallback=false and sources=0 unless exact quote/source/provenance is explicitly requested.
             - Prefer note retrieval over raw source retrieval for rationale questions. Use sources as evidence fallback, not as the primary rationale memory.
             - Return valid JSON only.

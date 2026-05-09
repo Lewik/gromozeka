@@ -12,6 +12,7 @@ import com.gromozeka.domain.model.memory.MemoryNote
 import com.gromozeka.domain.model.memory.MemoryNoteCandidate
 import com.gromozeka.domain.model.memory.MemoryNoteConstructor
 import com.gromozeka.domain.model.memory.MemoryRouteDecision
+import com.gromozeka.domain.model.memory.MemorySemanticType
 import com.gromozeka.domain.model.memory.MemoryScope
 import com.gromozeka.domain.model.memory.MemorySource
 import com.gromozeka.domain.model.memory.MemoryStore
@@ -312,8 +313,8 @@ class LlmMemoryNoteConstructor(
 }
 
 private fun MemoryRouteDecision.shouldConstructNotes(): Boolean =
-    decision == MemoryRouteDecision.Decision.NOTE_WRITE ||
-        decision == MemoryRouteDecision.Decision.MIXED
+    decision != MemoryRouteDecision.Decision.NOOP &&
+        MemorySemanticType.NOTE in memoryTypes
 
 private fun List<MemoryStore.SearchHit>.renderRelevantNotesAndClaims(): String {
     val rendered = mapNotNull { hit ->

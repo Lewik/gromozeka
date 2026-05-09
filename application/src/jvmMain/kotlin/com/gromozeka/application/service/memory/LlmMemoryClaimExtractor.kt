@@ -12,6 +12,7 @@ import com.gromozeka.domain.model.memory.MemoryEntityCanonicalizationOp
 import com.gromozeka.domain.model.memory.MemoryEvidenceRef
 import com.gromozeka.domain.model.memory.MemoryPredicateCatalog
 import com.gromozeka.domain.model.memory.MemoryRouteDecision
+import com.gromozeka.domain.model.memory.MemorySemanticType
 import com.gromozeka.domain.model.memory.MemoryScope
 import com.gromozeka.domain.model.memory.MemorySource
 import com.gromozeka.domain.model.memory.MemoryStore
@@ -334,8 +335,12 @@ class LlmMemoryClaimExtractor(
             - Do not use Relevant persisted memory as evidence for a new claim; it is only dedup/context.
             - Do not emit lifecycle/reconciliation predicates such as "supersedes", "replaces", "updates", "retracts", or "corrects" as semantic claims. Emit the current semantic fact only; reconciliation handles old claim status.
             - If TARGET_MESSAGE only asks a question, asks for provenance, doubts prior memory, or discusses memory mechanics without asserting the fact, return zero claims.
+            - A current-turn execution command such as "edit it", "clean it up", "run tests", "commit", "push", "do it now", or "finish it" is not a claim about user/project preferences or goals.
+            - Do not create "has_goal", "has_constraint", or similar broad claims from a one-off instruction to the assistant. Create a claim only when the target states a reusable rule, stable constraint, preference, current project fact, or durable workflow.
             - If TARGET_MESSAGE explicitly creates, updates, closes, cancels, or asks to keep a follow-up/task/todo, do not duplicate that task as a generic "has_goal" or commitment claim; TaskUpdater owns task lifecycle memory.
             - Emit a claim near a task only when TARGET_MESSAGE also asserts a durable fact independent of the task lifecycle.
+            - Example zero-claim targets: "Сотредактируй, я потом посмотрю diff", "Дочисти", "Run the tests", "Commit and push".
+            - Example claim target: "For this project, normally edit only gromozeko.dev and update gromozeko.beta by pulling changes into beta."
             - If you cannot quote target text that supports the claim, return zero claims.
             - Do not force soft rationale into claims.
             - Prefer zero claims over low-quality claims.
@@ -345,8 +350,8 @@ class LlmMemoryClaimExtractor(
 }
 
 private fun MemoryRouteDecision.shouldExtractClaims(): Boolean {
-    return decision == MemoryRouteDecision.Decision.DIRECT_STRUCTURED_WRITE ||
-        decision == MemoryRouteDecision.Decision.MIXED
+    return decision != MemoryRouteDecision.Decision.NOOP &&
+        (MemorySemanticType.CLAIM in memoryTypes || MemorySemanticType.PROFILE in memoryTypes)
 }
 
 private fun List<MemoryStore.SearchHit>.renderRelevantMemory(): String {

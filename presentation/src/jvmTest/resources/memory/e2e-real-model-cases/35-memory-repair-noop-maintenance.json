@@ -14,22 +14,24 @@
   "maintenanceAfterSeeds": ["repair_memory"],
   "recallSessions": [],
   "expectedAfterSeeds": {
-    "notesMin": 1,
+    "activeClaimsMin": 1,
     "runsMin": 2,
     "userSourcesMin": 1,
-    "requiredNotes": [
+    "requiredClaims": [
       {
+        "predicateIn": ["has_constraint"],
         "containsAll": ["repair", "conservative", "audit"],
         "evidenceSourceSpeakerRoleIn": ["USER"]
       }
     ]
   },
   "expectedFinal": {
-    "notesMin": 1,
+    "activeClaimsMin": 1,
     "runsMin": 2,
     "userSourcesMin": 1,
-    "requiredNotes": [
+    "requiredClaims": [
       {
+        "predicateIn": ["has_constraint"],
         "containsAll": ["repair", "conservative", "audit"],
         "evidenceSourceSpeakerRoleIn": ["USER"]
       }

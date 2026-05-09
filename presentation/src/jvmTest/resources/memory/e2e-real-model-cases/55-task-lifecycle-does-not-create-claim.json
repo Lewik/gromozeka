@@ -1,0 +1,83 @@
+{
+  "id": "task-lifecycle-does-not-create-claim",
+  "category": "command_memory_policy",
+  "description": "A durable task lifecycle command should update Task memory without creating broad goal/constraint claims.",
+  "timeoutSeconds": 900,
+  "seedSessions": [
+    {
+      "id": "seed-a",
+      "turns": [
+        {
+          "text": "Memory policy follow-up: keep an open task to review command-vs-memory routing before we call the write policy stable.",
+          "memoryWriteTraceExpectation": {
+            "routeDecisionIn": ["DIRECT_STRUCTURED_WRITE", "MIXED"],
+            "rawTaskOpsMin": 1,
+            "taskOpsMin": 1,
+            "materializedTasksMin": 1,
+            "materializedTasksMax": 1,
+            "materializedClaimsMax": 0
+          }
+        },
+        {
+          "text": "Close the command-vs-memory routing follow-up: it is done now.",
+          "memoryWriteTraceExpectation": {
+            "routeDecisionIn": ["DIRECT_STRUCTURED_WRITE", "MIXED"],
+            "rawTaskOpsMin": 1,
+            "taskOpsMin": 1,
+            "materializedTasksMin": 1,
+            "materializedTasksMax": 1,
+            "materializedClaimsMax": 0
+          }
+        }
+      ]
+    }
+  ],
+  "expectedAfterSeeds": {
+    "activeClaimsMax": 0,
+    "notesMax": 1,
+    "tasksMin": 1,
+    "tasksMax": 1,
+    "profilesMax": 1,
+    "userSourcesMin": 2,
+    "requiredTasks": [
+      {
+        "statusIn": ["DONE"],
+        "containsAll": ["command-vs-memory routing"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      }
+    ],
+    "forbiddenClaims": [
+      {
+        "containsAll": ["command-vs-memory routing"]
+      },
+      {
+        "predicateIn": ["has_goal"],
+        "containsAll": ["write policy stable"]
+      },
+      {
+        "predicateIn": ["has_constraint"],
+        "containsAll": ["write policy stable"]
+      }
+    ],
+    "forbiddenProfiles": [
+      {
+        "containsAll": ["command-vs-memory routing"]
+      }
+    ]
+  },
+  "expectedFinal": {
+    "activeClaimsMax": 0,
+    "notesMax": 1,
+    "tasksMin": 1,
+    "tasksMax": 1,
+    "profilesMax": 1,
+    "userSourcesMin": 2,
+    "requiredTasks": [
+      {
+        "statusIn": ["DONE"],
+        "containsAll": ["command-vs-memory routing"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      }
+    ]
+  }
+}

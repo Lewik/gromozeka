@@ -115,6 +115,7 @@ class MemoryRealModelE2eTest {
             enableBraveSearch = false,
             enableJinaReader = false,
             knowledgeMemoryEnabled = true,
+            memoryAutoCall = true,
             autoRememberThreads = true,
         )
 

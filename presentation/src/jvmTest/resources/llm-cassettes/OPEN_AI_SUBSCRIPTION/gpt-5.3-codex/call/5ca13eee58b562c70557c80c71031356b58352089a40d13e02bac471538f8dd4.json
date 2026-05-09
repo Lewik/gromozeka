@@ -216,7 +216,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"repair_actions\":[{\"action\":\"merge_duplicates\",\"reason\":\"Episodes are near-exact duplicates with same situation and lesson; safe to consolidate while preserving content.\",\"target_ids\":[\"memory-repair-duplicate-episodes-fixture-1-episode-first\",\"memory-repair-duplicate-episodes-fixture-1-episode-second\"],\"target_type\":\"episode\"}],\"summary\":\"Merged the duplicate episode pair into a single consolidated memory record to reduce redundancy conservatively.\"}",
+                                "fullText": "{\"repair_actions\":[{\"action\":\"merge_duplicates\",\"reason\":\"Episodes are near-exact duplicates with same situation and lesson; safe to merge while preserving combined history.\",\"target_ids\":[\"memory-repair-duplicate-episodes-fixture-1-episode-first\",\"memory-repair-duplicate-episodes-fixture-1-episode-second\"],\"target_type\":\"episode\"}],\"summary\":\"Merged the duplicate episode pair in repair-cluster-1 to reduce redundancy while retaining the shared lesson.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -231,8 +231,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 882,
-                "completionTokens": 103,
+                "promptTokens": 887,
+                "completionTokens": 107,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0
