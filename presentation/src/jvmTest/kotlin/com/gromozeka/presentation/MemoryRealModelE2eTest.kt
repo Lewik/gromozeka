@@ -116,7 +116,6 @@ class MemoryRealModelE2eTest {
             enableJinaReader = false,
             knowledgeMemoryEnabled = true,
             autoRememberThreads = true,
-            graphStorageEnabled = false,
         )
 
         AppTestHarness(

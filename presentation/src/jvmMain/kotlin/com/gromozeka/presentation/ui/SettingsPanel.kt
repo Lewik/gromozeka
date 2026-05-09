@@ -489,12 +489,6 @@ fun SettingsPanel(
                             enabled = settings.knowledgeMemoryEnabled
                         )
 
-                        SwitchSettingItem(
-                            label = "Enable Code Graph",
-                            description = "Allow separate code graph features such as domain indexing",
-                            value = settings.graphStorageEnabled,
-                            onValueChange = { onSettingsChange(settings.copy(graphStorageEnabled = it)) }
-                        )
                     }
 
                     // API Keys

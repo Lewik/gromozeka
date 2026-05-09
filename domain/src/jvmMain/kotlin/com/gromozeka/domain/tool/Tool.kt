@@ -107,7 +107,7 @@ package com.gromozeka.domain.tool
  * @see com.gromozeka.domain.tool.filesystem.GrzExecuteCommandTool Execute shell commands
  * 
  * **Knowledge Memory Tools:**
- * @see com.gromozeka.domain.tool.memory.UnifiedSearchTool Search the graph-native knowledge memory
+ * @see com.gromozeka.domain.tool.memory.UnifiedSearchTool Search the typed long-term memory
  * 
  * **Web Tools (3):**
  * @see com.gromozeka.domain.tool.web.BraveWebSearchTool Web search via Brave API

@@ -346,16 +346,6 @@ fun GromozekaAppContent(
                                                             }
                                                         }
                                                     } else null,
-                                                    onAddToGraph = if (currentSettings.knowledgeMemoryEnabled) {
-                                                        {
-                                                            coroutineScope.launch {
-                                                                runCatching { appComponents.appViewModel.addToGraphCurrentThread() }
-                                                                    .onFailure { error ->
-                                                                        log.warn(error) { "Add to typed memory failed: ${error.message}" }
-                                                                    }
-                                                            }
-                                                        }
-                                                    } else null,
                                                     onConsolidateMemory = if (currentSettings.knowledgeMemoryEnabled) {
                                                         {
                                                             coroutineScope.launch {
@@ -392,16 +382,6 @@ fun GromozekaAppContent(
                                                                 runCatching { appComponents.appViewModel.applyCurrentMemoryRetention() }
                                                                     .onFailure { error ->
                                                                         log.warn(error) { "Memory retention failed: ${error.message}" }
-                                                                    }
-                                                            }
-                                                        }
-                                                    } else null,
-                                                    onIndexDomain = if (currentSettings.graphStorageEnabled) {
-                                                        {
-                                                            coroutineScope.launch {
-                                                                runCatching { appComponents.appViewModel.indexDomainToGraph() }
-                                                                    .onFailure { error ->
-                                                                        log.warn(error) { "Index domain failed: ${error.message}" }
                                                                     }
                                                             }
                                                         }

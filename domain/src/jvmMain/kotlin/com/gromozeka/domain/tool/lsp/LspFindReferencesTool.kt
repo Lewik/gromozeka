@@ -282,7 +282,7 @@ data class LspFindReferencesRequest(
  *
  * **Alternative approaches:**
  * - `grz_execute_command` with grep/rg - Fast but less accurate (text-based)
- * - `index_domain_to_graph` - Build full codebase graph for complex analysis
+ * - `lsp_get_document_symbols` - Inspect file-level symbol structure before chasing usages
  *
  * # Performance Characteristics
  *

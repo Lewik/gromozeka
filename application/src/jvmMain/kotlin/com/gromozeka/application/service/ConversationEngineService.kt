@@ -8,10 +8,12 @@ import com.gromozeka.domain.model.Conversation.Message.ContentItem
 import com.gromozeka.domain.model.Plan
 import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.TokenUsageStatistics
+import com.gromozeka.application.service.memory.MEMORY_RECALL_TOOL_NAME
+import com.gromozeka.application.service.memory.MEMORY_REMEMBER_TOOL_NAME
 import com.gromozeka.application.service.memory.MemoryMessageRoutingApplicationService
+import com.gromozeka.application.service.memory.MemoryToolResultRenderer
+import com.gromozeka.application.service.memory.withoutMemoryManagementTools
 import com.gromozeka.domain.model.memory.DirectStructuredMemoryWriteResult
-import com.gromozeka.domain.model.memory.MemoryReadResult
-import com.gromozeka.domain.model.memory.MemoryUpdateBatch
 import com.gromozeka.domain.model.ai.AiRuntimeOptions
 import com.gromozeka.domain.model.ai.AiModelSpec
 import com.gromozeka.domain.model.ai.AiModelSpecs
@@ -116,13 +118,14 @@ class ConversationEngineService(
             null
         }
         val availableTools = aiToolProvider.getTools()
+        val memoryPipelineTools = availableTools.withoutMemoryManagementTools()
         val baseSystemPrompts = agentDomainService.assembleSystemPrompt(agent, project)
         val systemPrompts = baseSystemPrompts
 
         // Add user message
         conversationService.addMessage(conversationId, userMessage)
-        val writeResult = routeMessageThroughMemoryRouter(conversationId, conversation.currentThread, userMessage, agent, project, systemPrompts, availableTools)
-        if (settingsProvider.knowledgeMemoryEnabled) {
+        val writeResult = routeMessageThroughMemoryRouter(conversationId, conversation.currentThread, userMessage, agent, project, systemPrompts, memoryPipelineTools)
+        if (settingsProvider.knowledgeMemoryEnabled && settingsProvider.memoryAutoCall) {
             buildSyntheticMemoryToolPair(
                 conversationId = conversationId,
                 targetMessage = userMessage,
@@ -132,22 +135,22 @@ class ConversationEngineService(
                     put("target_message_id", userMessage.id.value)
                     put("mode", "automatic_hot_path")
                 },
-                resultText = writeResult.toMemoryRememberToolResult()
+                resultText = MemoryToolResultRenderer.rememberResultJsonString(writeResult)
             ).forEach { syntheticMessage ->
                 emit(syntheticMessage)
                 conversationService.addMessage(conversationId, syntheticMessage)
             }
         }
-        
+
         // Fix non-sequential ToolCall/ToolResult pairs AFTER adding user message
         // This ensures ToolResult appears IMMEDIATELY after ToolCall (Anthropic API requirement)
         val fixResult = toolCallSequenceFixerService.fixNonSequentialPairs(conversationId)
-        
+
         if (fixResult.fixed) {
-            log.info { 
+            log.info {
                 "Fixed non-sequential ToolCall/ToolResult pairs: " +
                 "added ${fixResult.addedResults} error results, " +
-                "converted ${fixResult.convertedResults} orphaned results" 
+                "converted ${fixResult.convertedResults} orphaned results"
             }
         }
 
@@ -163,7 +166,7 @@ class ConversationEngineService(
                     agent = agent,
                     project = project,
                     runtimeSystemPrompts = systemPrompts,
-                    runtimeTools = availableTools,
+                    runtimeTools = memoryPipelineTools,
                 )
             }.onFailure { error ->
                 log.warn(error) {
@@ -173,7 +176,7 @@ class ConversationEngineService(
         } else {
             null
         }
-        if (settingsProvider.knowledgeMemoryEnabled) {
+        if (settingsProvider.knowledgeMemoryEnabled && settingsProvider.memoryAutoCall) {
             buildSyntheticMemoryToolPair(
                 conversationId = conversationId,
                 targetMessage = userMessage,
@@ -183,7 +186,7 @@ class ConversationEngineService(
                     put("target_message_id", userMessage.id.value)
                     put("mode", "automatic_runtime_recall")
                 },
-                resultText = runtimeMemoryResult.toMemoryRecallToolResult()
+                resultText = MemoryToolResultRenderer.recallResultJsonString(runtimeMemoryResult)
             ).forEach { syntheticMessage ->
                 emit(syntheticMessage)
                 conversationService.addMessage(conversationId, syntheticMessage)
@@ -191,9 +194,9 @@ class ConversationEngineService(
         }
         val finalMessages = conversationService.loadCurrentMessages(conversationId)
         log.info {
-            "Memory runtime recall wiring: conversation=${conversationId.value} enabled=${settingsProvider.knowledgeMemoryEnabled} " +
+            "Memory runtime recall wiring: conversation=${conversationId.value} enabled=${settingsProvider.knowledgeMemoryEnabled} autoCall=${settingsProvider.memoryAutoCall} " +
                 "memoryPromptPresent=${!runtimeMemoryResult?.runtimePrompt.isNullOrBlank()} memoryPromptChars=${runtimeMemoryResult?.runtimePrompt?.length ?: 0} " +
-                "systemPrompts=${systemPrompts.size} injection=synthetic_tool_result"
+                "systemPrompts=${systemPrompts.size} injection=${if (settingsProvider.memoryAutoCall) "synthetic_tool_result" else "disabled"}"
         }
 
         var iterationCount = 0
@@ -314,7 +317,7 @@ class ConversationEngineService(
                 val errorMessage = AiConversationMessageMapper.createErrorMessage(conversationId, e.message ?: "Unknown error")
                 emit(errorMessage)
                 conversationService.addMessage(conversationId, errorMessage)
-                routeMessageThroughMemoryRouter(conversationId, conversation.currentThread, errorMessage, agent, project, systemPrompts, availableTools)
+                routeMessageThroughMemoryRouter(conversationId, conversation.currentThread, errorMessage, agent, project, systemPrompts, memoryPipelineTools)
                 break
             }
 
@@ -355,7 +358,7 @@ class ConversationEngineService(
                     )
                     emit(violationMessage)
                     conversationService.addMessage(conversationId, violationMessage)
-                    routeMessageThroughMemoryRouter(conversationId, conversation.currentThread, violationMessage, agent, project, systemPrompts, availableTools)
+                    routeMessageThroughMemoryRouter(conversationId, conversation.currentThread, violationMessage, agent, project, systemPrompts, memoryPipelineTools)
                 } catch (e: Exception) {
                     log.error(e) { "Failed to handle Stride violation: ${e.message}" }
                 }
@@ -407,7 +410,7 @@ class ConversationEngineService(
             assistantMessages.forEach { message ->
                 emit(message)
                 conversationService.addMessage(conversationId, message)
-                routeMessageThroughMemoryRouter(conversationId, conversation.currentThread, message, agent, project, systemPrompts, availableTools)
+                routeMessageThroughMemoryRouter(conversationId, conversation.currentThread, message, agent, project, systemPrompts, memoryPipelineTools)
             }
 
             if (allToolCalls.isNotEmpty()) {
@@ -455,7 +458,7 @@ class ConversationEngineService(
                 )
                 emit(toolResultMessage)
                 conversationService.addMessage(conversationId, toolResultMessage)
-                routeMessageThroughMemoryRouter(conversationId, conversation.currentThread, toolResultMessage, agent, project, systemPrompts, availableTools)
+                routeMessageThroughMemoryRouter(conversationId, conversation.currentThread, toolResultMessage, agent, project, systemPrompts, memoryPipelineTools)
 
                 if (executionResult.returnDirect) {
                     break
@@ -523,14 +526,6 @@ class ConversationEngineService(
         log.info { "Processed thread into typed memory for conversation $conversationId" }
     }
 
-    /**
-     * Manual alias for current-thread knowledge ingestion.
-     */
-    suspend fun addToGraphCurrentThread(conversationId: Conversation.Id) {
-        memoryApplicationService.ingestCurrentThread(conversationId)
-        log.info { "Added current thread to typed memory for conversation $conversationId" }
-    }
-
     suspend fun consolidateCurrentMemory(conversationId: Conversation.Id) {
         val conversation = conversationService.findById(conversationId)
             ?: throw IllegalStateException("Conversation not found: $conversationId")
@@ -545,13 +540,13 @@ class ConversationEngineService(
     ) {
         val project = conversationService.getProject(conversationId)
         val systemPrompts = agentDomainService.assembleSystemPrompt(agent, project)
-        val availableTools = aiToolProvider.getTools()
+        val memoryPipelineTools = aiToolProvider.getTools().withoutMemoryManagementTools()
         memoryApplicationService.runNoteConsolidation(
             conversationId = conversationId,
             agent = agent,
             project = project,
             runtimeSystemPrompts = systemPrompts,
-            runtimeTools = availableTools,
+            runtimeTools = memoryPipelineTools,
         )
         log.info { "Ran memory consolidation for conversation $conversationId" }
     }
@@ -570,13 +565,13 @@ class ConversationEngineService(
     ) {
         val project = conversationService.getProject(conversationId)
         val systemPrompts = agentDomainService.assembleSystemPrompt(agent, project)
-        val availableTools = aiToolProvider.getTools()
+        val memoryPipelineTools = aiToolProvider.getTools().withoutMemoryManagementTools()
         memoryApplicationService.runMemoryRepair(
             conversationId = conversationId,
             agent = agent,
             project = project,
             runtimeSystemPrompts = systemPrompts,
-            runtimeTools = availableTools,
+            runtimeTools = memoryPipelineTools,
         )
         log.info { "Ran memory repair for conversation $conversationId" }
     }
@@ -595,13 +590,13 @@ class ConversationEngineService(
     ) {
         val project = conversationService.getProject(conversationId)
         val systemPrompts = agentDomainService.assembleSystemPrompt(agent, project)
-        val availableTools = aiToolProvider.getTools()
+        val memoryPipelineTools = aiToolProvider.getTools().withoutMemoryManagementTools()
         memoryApplicationService.runEntityMaintenance(
             conversationId = conversationId,
             agent = agent,
             project = project,
             runtimeSystemPrompts = systemPrompts,
-            runtimeTools = availableTools,
+            runtimeTools = memoryPipelineTools,
         )
         log.info { "Ran memory entity maintenance for conversation $conversationId" }
     }
@@ -665,141 +660,5 @@ class ConversationEngineService(
         )
 
         return listOf(toolCallMessage, toolResultMessage)
-    }
-
-    private fun DirectStructuredMemoryWriteResult?.toMemoryRememberToolResult(): String {
-        if (this == null) {
-            return buildJsonObject {
-                put("status", "skipped")
-                put("reason", "No memory-worthy content was extracted from the target message, or memory write failed defensively.")
-            }.toString()
-        }
-
-        return buildJsonObject {
-            put("status", "completed")
-            put("decision", routeDecision.decision.name)
-            putJsonArray("memory_types") {
-                routeDecision.memoryTypes.map { it.name }.sorted().forEach { add(JsonPrimitive(it)) }
-            }
-            put("salience", routeDecision.salience)
-            put("reason", routeDecision.reason)
-            put("source_id", sourceBatch.sources.firstOrNull()?.id?.value ?: "")
-            put("counts", memoryBatch.toCountsJson())
-            putJsonArray("runs") {
-                memoryBatch.runs.forEach { run ->
-                    add(buildJsonObject {
-                        put("id", run.id.value)
-                        put("type", run.runType.name)
-                        put("summary", run.summary.shortForMemoryToolResult())
-                    })
-                }
-            }
-            putJsonArray("claims") {
-                memoryBatch.claims.take(8).forEach { claim ->
-                    add(buildJsonObject {
-                        put("id", claim.id.value)
-                        put("predicate", claim.predicate)
-                        put("status", claim.status.name)
-                        put("text", claim.normalizedText.shortForMemoryToolResult())
-                    })
-                }
-            }
-            putJsonArray("notes") {
-                memoryBatch.notes.take(8).forEach { note ->
-                    add(buildJsonObject {
-                        put("id", note.id.value)
-                        put("type", note.noteType.name)
-                        put("status", note.status.name)
-                        put("title", note.title.shortForMemoryToolResult())
-                        put("summary", note.summary.shortForMemoryToolResult())
-                    })
-                }
-            }
-            putJsonArray("tasks") {
-                memoryBatch.tasks.take(8).forEach { task ->
-                    add(buildJsonObject {
-                        put("id", task.id.value)
-                        put("status", task.status.name)
-                        put("priority", task.priority.name)
-                        put("title", task.title.shortForMemoryToolResult())
-                    })
-                }
-            }
-            putJsonArray("entities") {
-                memoryBatch.entities.take(12).forEach { entity ->
-                    add(buildJsonObject {
-                        put("id", entity.id.value)
-                        put("type", entity.entityType.name)
-                        put("name", entity.canonicalName.shortForMemoryToolResult())
-                    })
-                }
-            }
-        }.toString()
-    }
-
-    private fun MemoryReadResult?.toMemoryRecallToolResult(): String {
-        if (this == null) {
-            return buildJsonObject {
-                put("status", "failed")
-                put("reason", "Runtime memory recall failed defensively; answer without recalled memory.")
-            }.toString()
-        }
-
-        return buildJsonObject {
-            put("status", "completed")
-            put("need_memory", plan.needMemory)
-            put("answer_mode", plan.answerMode.name)
-            put("retrieved_count", retrievedHits.size)
-            put("memory_context", runtimePrompt ?: "No relevant persisted memory was retrieved for the target message.")
-            putJsonArray("selected_refs") {
-                trace.selectedHits.take(16).forEach { hit ->
-                    add(buildJsonObject {
-                        put("type", hit.ref.type.name)
-                        put("id", hit.ref.id)
-                        put("summary", hit.summary.shortForMemoryToolResult())
-                        hit.predicate?.let { put("predicate", it) }
-                        hit.status?.let { put("status", it) }
-                    })
-                }
-            }
-            putJsonArray("selector_decisions") {
-                trace.selectorDecisions.take(16).forEach { decision ->
-                    add(buildJsonObject {
-                        put("type", decision.ref.type.name)
-                        put("id", decision.ref.id)
-                        put("selected", decision.selected)
-                        put("rank", decision.rank)
-                        put("reason", decision.reason.shortForMemoryToolResult())
-                    })
-                }
-            }
-        }.toString()
-    }
-
-    private fun MemoryUpdateBatch.toCountsJson(): JsonObject =
-        buildJsonObject {
-            put("predicate_definitions", predicateDefinitions.size)
-            put("sources", sources.size)
-            put("runs", runs.size)
-            put("entities", entities.size)
-            put("claims", claims.size)
-            put("notes", notes.size)
-            put("tasks", tasks.size)
-            put("profiles", profiles.size)
-            put("episodes", episodes.size)
-        }
-
-    private fun String.shortForMemoryToolResult(maxLength: Int = 300): String {
-        val singleLine = replace(Regex("\\s+"), " ").trim()
-        return if (singleLine.length <= maxLength) {
-            singleLine
-        } else {
-            singleLine.take(maxLength - 3) + "..."
-        }
-    }
-
-    private companion object {
-        const val MEMORY_REMEMBER_TOOL_NAME = "memory_remember"
-        const val MEMORY_RECALL_TOOL_NAME = "memory_recall"
     }
 }

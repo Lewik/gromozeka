@@ -17,7 +17,7 @@ import kotlinx.coroutines.flow.StateFlow
  * - Track current tab selection and navigation
  * - Restore application state from previous session
  * - Coordinate tab operations (rename, duplicate, interrupt)
- * - Integrate with knowledge graph (remember thread, add to graph)
+ * - Integrate with long-term memory operations (remember thread, maintain memory)
  *
  * ## Tab Lifecycle Flow
  * ```
@@ -168,22 +168,13 @@ interface AppLogicVM {
     suspend fun resetTabName(tabIndex: Int)
     
     /**
-     * Remember current thread in vector memory.
-     * Stores conversation messages in vector database for RAG retrieval.
-     * This is a TRANSACTIONAL operation - adds all thread messages atomically.
+     * Remember current thread in typed long-term memory.
+     * Stores durable conversation facts, notes, tasks, and related memory objects.
+     * This is a TRANSACTIONAL operation from the caller perspective.
      *
      * Safe to call when no tab selected - operation is no-op.
      */
     suspend fun rememberCurrentThread()
-    
-    /**
-     * Add current thread to knowledge graph.
-     * Extracts entities and relationships from conversation via LLM.
-     * This is a TRANSACTIONAL operation - creates graph nodes/edges atomically.
-     *
-     * Safe to call when no tab selected - operation is no-op.
-     */
-    suspend fun addToGraphCurrentThread()
     
     /**
      * Cleanup all tabs and reset state.

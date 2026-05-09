@@ -75,7 +75,7 @@ import kotlinx.coroutines.flow.StateFlow
  * - **filesystem** - file read/write operations
  * - **git** - version control operations
  * - **brave-search** - web search capability
- * - **memory** - knowledge graph access
+ * - **memory** - long-term memory access
  * - Custom project-specific servers
  *
  * Each server started sequentially, progress tracked via callback.

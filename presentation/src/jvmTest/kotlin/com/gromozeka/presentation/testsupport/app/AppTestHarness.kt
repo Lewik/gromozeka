@@ -123,7 +123,6 @@ class AppTestHarness(
             enableBraveSearch = false,
             enableJinaReader = false,
             knowledgeMemoryEnabled = false,
-            graphStorageEnabled = false,
         )
 
         fun defaultSubscriptionSession(): OpenAiSubscriptionSession = OpenAiSubscriptionSession(

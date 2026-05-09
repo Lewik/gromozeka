@@ -26,7 +26,7 @@ package com.gromozeka.domain.repository
  *
  * ## Use Cases
  *
- * - IndexDomainToGraphTool reads domain_patterns for code indexing
+ * - Disabled code-indexing contracts may still read domain_patterns for compatibility
  * - ProjectRepository reads/writes full config during save()
  * - Other tools needing project-specific configuration
  */

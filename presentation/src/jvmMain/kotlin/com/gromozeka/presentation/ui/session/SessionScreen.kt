@@ -64,12 +64,10 @@ fun SessionScreen(
 
     // Memory
     onRememberThread: (() -> Unit)? = null,
-    onAddToGraph: (() -> Unit)? = null,
     onConsolidateMemory: (() -> Unit)? = null,
     onRepairMemory: (() -> Unit)? = null,
     onMaintainMemoryEntities: (() -> Unit)? = null,
     onApplyMemoryRetention: (() -> Unit)? = null,
-    onIndexDomain: (() -> Unit)? = null,
 
     // Dev mode
     isDev: Boolean = false,
@@ -570,23 +568,6 @@ fun SessionScreen(
                             }
                         }
 
-                        // Add to Memory button (legacy callback name kept in UI plumbing)
-                        onAddToGraph?.let { addToGraphCallback ->
-                            CompactButton(
-                                onClick = {
-                                    coroutineScope.launch {
-                                        addToGraphCallback()
-                                    }
-                                },
-                                tooltip = "Add this conversation to typed memory"
-                            ) {
-                                Icon(
-                                    Icons.Default.AccountTree,
-                                    contentDescription = "Add to Memory"
-                                )
-                            }
-                        }
-
                         onConsolidateMemory?.let { consolidateCallback ->
                             CompactButton(
                                 onClick = {
@@ -651,23 +632,6 @@ fun SessionScreen(
                             }
                         }
 
-                        // Index Domain button (if graph storage is enabled and callback provided)
-                        onIndexDomain?.let { indexDomainCallback ->
-                            Spacer(modifier = Modifier.width(8.dp))
-                            CompactButton(
-                                onClick = {
-                                    coroutineScope.launch {
-                                        indexDomainCallback()
-                                    }
-                                },
-                                tooltip = "Index domain layer to knowledge graph"
-                            ) {
-                                Icon(
-                                    Icons.Default.Schema,
-                                    contentDescription = "Index Domain"
-                                )
-                            }
-                        }
                     }
 
                     // Dev buttons only

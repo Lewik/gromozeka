@@ -280,7 +280,7 @@ data class LspFindDefinitionRequest(
  *
  * **Alternative approaches:**
  * - `grz_execute_command` with grep/rg - Text-based search (less accurate)
- * - `index_domain_to_graph` - Build knowledge graph of entire codebase
+ * - `lsp_get_document_symbols` - Inspect a whole file's symbol tree before navigating deeper
  *
  * # Performance Characteristics
  *

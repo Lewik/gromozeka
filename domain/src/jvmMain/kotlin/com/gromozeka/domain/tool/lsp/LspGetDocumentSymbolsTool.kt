@@ -56,7 +56,7 @@ data class LspGetDocumentSymbolsRequest(
  * # When to Use
  *
  * **Use lsp_get_document_symbols when:**
- * - Building code index or knowledge graph
+ * - Building a code index or structural map
  * - Generating file overview/documentation
  * - Analyzing code structure
  * - Finding all classes/functions in file
@@ -375,7 +375,6 @@ data class LspGetDocumentSymbolsRequest(
  * - **lsp_find_definition** - Find where symbol is defined
  * - **lsp_find_references** - Find all usages of symbol
  * - **lsp_get_diagnostics** - Get compilation errors/warnings
- * - **index_domain_to_graph** - Index symbols into knowledge graph (uses this tool)
  *
  * # Infrastructure Implementation
  *
@@ -402,7 +401,7 @@ interface LspGetDocumentSymbolsTool : Tool<LspGetDocumentSymbolsRequest, Map<Str
             - Fast and deterministic (pure LSP, no LLM)
 
             Use cases:
-            - Build code index or knowledge graph
+            - Build a code index or structural map
             - Generate file overview/documentation
             - Analyze code structure
             - Find all classes/functions in file

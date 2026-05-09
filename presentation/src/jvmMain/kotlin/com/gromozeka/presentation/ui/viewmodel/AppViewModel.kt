@@ -7,8 +7,6 @@ import com.gromozeka.domain.model.*
 import com.gromozeka.domain.service.ConversationDomainService
 import com.gromozeka.domain.repository.TabManager
 import com.gromozeka.domain.repository.TokenUsageStatisticsRepository
-import com.gromozeka.domain.tool.codebase.IndexDomainToGraphRequest
-import com.gromozeka.domain.tool.codebase.IndexDomainToGraphTool
 import com.gromozeka.infrastructure.ai.platform.ScreenCaptureController
 import com.gromozeka.presentation.services.SettingsService
 import com.gromozeka.presentation.services.SoundNotificationService
@@ -31,7 +29,6 @@ open class AppViewModel(
     private val screenCaptureController: ScreenCaptureController,
     private val defaultAgentProvider: DefaultAgentProvider,
     private val tokenUsageStatisticsRepository: TokenUsageStatisticsRepository,
-    private val indexDomainToGraphTool: IndexDomainToGraphTool,
 ) : TabManager {
     private val log = KLoggers.logger(this)
     private val mutex = Mutex()
@@ -290,38 +287,6 @@ open class AppViewModel(
             log.info { "Remembered current thread for conversation: ${current.conversationId}" }
         } catch (e: Exception) {
             log.error(e) { "Failed to remember current thread: ${e.message}" }
-        }
-    }
-
-    suspend fun addToGraphCurrentThread() {
-        val current = currentTab.value ?: return
-
-        try {
-            conversationEngineService.addToGraphCurrentThread(current.conversationId)
-            log.info { "Added current thread to typed memory for conversation: ${current.conversationId}" }
-        } catch (e: Exception) {
-            log.error(e) { "Failed to add current thread to typed memory: ${e.message}" }
-        }
-    }
-
-    suspend fun indexDomainToGraph() {
-        val current = currentTab.value ?: return
-
-        try {
-            val conversation = conversationService.findById(current.conversationId)
-                ?: error("Conversation not found: ${current.conversationId}")
-            
-            val result = indexDomainToGraphTool.execute(
-                IndexDomainToGraphRequest(
-                    project_path = current.projectPath,
-                    project_id = conversation.projectId.value
-                ),
-                context = null
-            )
-            log.info { "Indexed domain to graph: $result" }
-        } catch (e: Exception) {
-            log.error(e) { "Failed to index domain to graph: ${e.message}" }
-            throw e
         }
     }
 

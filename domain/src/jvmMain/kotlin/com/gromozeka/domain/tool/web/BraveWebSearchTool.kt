@@ -280,9 +280,9 @@ data class BraveWebSearchRequest(
  * 1. `brave_web_search("Topic overview", count=5)` - Get general understanding
  * 2. Select most promising URLs
  * 3. `jina_read_url(selectedUrl)` - Read detailed content
- * 4. Optionally write distilled assertions or relations to the knowledge graph
+ * 4. Optionally preserve distilled findings through memory tools when appropriate
  * 
- * Result: Deep research with knowledge retention
+ * Result: Deep research with durable memory retention
  * 
  * ## Pattern: Fact Verification
  * 
@@ -366,7 +366,7 @@ data class BraveWebSearchRequest(
  * 
  * - **brave_local_search** - For local businesses and places
  * - **jina_read_url** - Read content from search result URLs
- * - **unified_search** - Search the new knowledge graph after ingesting findings elsewhere
+ * - Memory tools or runtime memory context - Reuse or preserve durable findings across turns
  * 
  * # Infrastructure Implementation
  * 

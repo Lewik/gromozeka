@@ -112,12 +112,24 @@ interface SettingsProvider {
         get() = "http://localhost:11434"
 
     /**
-     * Enable graph-native knowledge memory.
+     * Enable typed long-term memory.
      *
-     * When false, conversation ingestion into the new knowledge graph is disabled.
+     * When false, conversation ingestion and runtime recall for the current memory
+     * subsystem are disabled.
      */
     val knowledgeMemoryEnabled: Boolean
         get() = true
+
+    /**
+     * Automatically inject synthetic memory tool call/result messages around a chat turn.
+     *
+     * When true, the conversation engine inserts synthetic `memory_remember` and
+     * `memory_recall` tool exchanges into thread history before the main model call.
+     * When false, typed memory may still work through real tools or manual flows.
+     * Only applies when [knowledgeMemoryEnabled] is true.
+     */
+    val memoryAutoCall: Boolean
+        get() = false
 
     /**
      * Auto-process threads into knowledge memory after each assistant response.

@@ -349,7 +349,7 @@ data class BraveLocalSearchRequest(
  * 
  * - **brave_web_search** - For general web searches
  * - **jina_read_url** - Read business website details
- * - **unified_search** - Search remembered places or assertions in the knowledge graph
+ * - Memory tools or runtime memory context - Reuse previously remembered places or assertions when available
  * 
  * # Infrastructure Implementation
  * 

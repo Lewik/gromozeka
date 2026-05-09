@@ -15,6 +15,6 @@ class IndexDomainToGraphToolImpl : IndexDomainToGraphTool {
         "disabled" to true,
         "project_id" to request.project_id,
         "project_path" to request.project_path,
-        "message" to "Code graph indexing is currently disabled. The new memory model uses only graph-native knowledge memory for now.",
+        "message" to "Code graph indexing is currently disabled.",
     )
 }

@@ -58,6 +58,7 @@ class SettingsService : SettingsProvider {
     override val openAiApiKey: String? get() = settings.openAiApiKey
     override val ollamaBaseUrl: String get() = settings.ollamaBaseUrl
     override val knowledgeMemoryEnabled: Boolean get() = settings.knowledgeMemoryEnabled
+    override val memoryAutoCall: Boolean get() = settings.memoryAutoCall
     override val autoRememberThreads: Boolean get() = settings.autoRememberThreads
 
     /**

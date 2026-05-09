@@ -5,7 +5,6 @@
     "builtin:common-prompt-prefix.md",
     "builtin:common.identity.md",
     "builtin:common.knowledge.md",
-    "builtin:knowledge-graph.knowledge.md",
     "builtin:memory.knowledge.md",
     "builtin:developer.role.md",
     "project:project-common.knowledge.md",

@@ -33,8 +33,8 @@ data class Settings(
     val responseFormat: ResponseFormat = ResponseFormat.XML_INLINE,
     val autoApproveAllTools: Boolean = true, // Auto-approve all tool requests without showing permission dialogs (affects new sessions only)
     val knowledgeMemoryEnabled: Boolean = false,
+    val memoryAutoCall: Boolean = false, // Inject synthetic memory tool call/result messages automatically before the model responds
     val autoRememberThreads: Boolean = true, // Auto-process threads into knowledge memory after each assistant response
-    val graphStorageEnabled: Boolean = true,
 
     // API Keys
     val openAiApiKey: String? = null,
