@@ -10,7 +10,7 @@ class AiModelSpecTest {
         val spec = AiModelSpecs.byProviderAndId[AiModelSpec.Provider.OPEN_AI_SUBSCRIPTION to "gpt-5.4"]
 
         assertEquals(1_050_000, spec?.contextWindowTokens)
-        assertEquals(945_000, spec?.autoCompactionThresholdTokens)
+        assertEquals(840_000, spec?.autoCompactionThresholdTokens)
     }
 
     @Test
