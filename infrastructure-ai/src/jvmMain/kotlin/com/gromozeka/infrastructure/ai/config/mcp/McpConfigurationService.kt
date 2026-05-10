@@ -239,21 +239,11 @@ class McpConfigurationService(
                 try {
                     val allTools = wrapper.listTools()
                     
-                    // Get excluded tools for this server
                     val serverConfig = cachedConfig?.mcpServers?.get(wrapper.name)
-                    val excludedTools = serverConfig?.excludedTools ?: emptyList()
-                    
-                    // Filter out excluded tools
-                    val tools = if (excludedTools.isNotEmpty()) {
-                        val filtered = allTools.filterNot { it.name in excludedTools }
-                        log.info { "MCP Server '${wrapper.name}': excluded ${allTools.size - filtered.size} tools (${excludedTools.joinToString(", ")})" }
-                        filtered
-                    } else {
-                        allTools
-                    }
+                    val tools = filterToolsForServer(wrapper.name, allTools, serverConfig)
                     
                     log.info { "=".repeat(80) }
-                    log.info { "MCP Server: ${wrapper.name} - ${tools.size} tools (${allTools.size} total, ${allTools.size - tools.size} excluded)" }
+                    log.info { "MCP Server: ${wrapper.name} - ${tools.size} tools (${allTools.size} total, ${allTools.size - tools.size} filtered out)" }
                     log.info { "=".repeat(80) }
 
                     tools.forEach { tool ->
@@ -288,6 +278,47 @@ class McpConfigurationService(
 
             callbacks
         }
+    }
+
+    internal fun filterToolsForServer(
+        serverName: String,
+        allTools: List<Tool>,
+        serverConfig: ServerConfig?
+    ): List<Tool> {
+        val allowedTools = serverConfig?.allowedTools
+        val excludedTools = serverConfig?.excludedTools.orEmpty()
+
+        val allowedFiltered = if (allowedTools == null) {
+            allTools
+        } else {
+            val allowedToolNames = allowedTools.toSet()
+            val filtered = allTools.filter { it.name in allowedToolNames }
+            val missingAllowedTools = allowedToolNames - allTools.map { it.name }.toSet()
+
+            log.info {
+                "MCP Server '$serverName': allowed ${filtered.size}/${allTools.size} tools (${allowedTools.joinToString(", ")})"
+            }
+
+            if (missingAllowedTools.isNotEmpty()) {
+                log.warn {
+                    "MCP Server '$serverName': allowedTools contains missing tools (${missingAllowedTools.joinToString(", ")})"
+                }
+            }
+
+            filtered
+        }
+
+        if (excludedTools.isEmpty()) {
+            return allowedFiltered
+        }
+
+        val excludedToolNames = excludedTools.toSet()
+        val filtered = allowedFiltered.filterNot { it.name in excludedToolNames }
+        log.info {
+            "MCP Server '$serverName': excluded ${allowedFiltered.size - filtered.size} tools (${excludedTools.joinToString(", ")})"
+        }
+
+        return filtered
     }
 
     suspend fun reloadClients() {

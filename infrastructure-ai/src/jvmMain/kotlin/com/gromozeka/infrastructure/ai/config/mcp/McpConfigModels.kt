@@ -32,6 +32,9 @@ data class ServerConfig(
     @JsonProperty("disabled")
     val disabled: Boolean = false,
 
+    @JsonProperty("allowedTools")
+    val allowedTools: List<String>? = null,
+
     @JsonProperty("excludedTools")
     val excludedTools: List<String>? = null
 ) {
