@@ -1,5 +1,6 @@
 package com.gromozeka.presentation.services
 
+import com.gromozeka.domain.service.SettingsService
 import com.gromozeka.presentation.ui.UiWindowState
 import klog.KLoggers
 
@@ -19,7 +20,7 @@ class WindowStateService(
     }
 
     private val windowStateFile: File by lazy {
-        File(settingsService.gromozekaHome, "window-state.json")
+        File(settingsService.homeDirectory, "window-state.json")
     }
 
     fun loadWindowState(): UiWindowState {

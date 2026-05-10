@@ -4,6 +4,7 @@ import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.repository.ConversationRepository
 import com.gromozeka.domain.repository.ProjectRepository
+import com.gromozeka.domain.service.ConversationNameSearchService
 import klog.KLoggers
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -19,10 +20,10 @@ import org.springframework.stereotype.Service
 class ConversationNameSearchService(
     private val conversationTreeRepository: ConversationRepository,
     private val projectRepository: ProjectRepository,
-) {
+) : ConversationNameSearchService {
     private val log = KLoggers.logger(this)
 
-    suspend fun searchConversations(query: String): List<Pair<Conversation, Project>> = withContext(Dispatchers.IO) {
+    override suspend fun searchConversations(query: String): List<Pair<Conversation, Project>> = withContext(Dispatchers.IO) {
         if (query.isBlank()) return@withContext emptyList()
 
         val lowerQuery = query.lowercase().trim()

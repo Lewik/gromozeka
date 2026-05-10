@@ -5,12 +5,12 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.input.key.*
-import com.gromozeka.presentation.services.PTTEventRouter
+import com.gromozeka.presentation.services.PttEventHandler
 import com.gromozeka.presentation.services.UnifiedGestureDetector
 import kotlinx.coroutines.launch
 
 fun Modifier.advancedEscape(
-    pttEventRouter: PTTEventRouter,
+    pttEventRouter: PttEventHandler,
 ): Modifier = composed {
     val coroutineScope = rememberCoroutineScope()
     val gestureDetector = remember { UnifiedGestureDetector(pttEventRouter, coroutineScope) }

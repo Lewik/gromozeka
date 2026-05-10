@@ -39,7 +39,7 @@ import com.gromozeka.domain.service.AiToolProvider
 import com.gromozeka.domain.service.ConversationDomainService
 import com.gromozeka.domain.service.PromptDomainService
 import com.gromozeka.domain.tool.AiToolCallback
-import com.gromozeka.presentation.model.Settings
+import com.gromozeka.domain.model.Settings
 import com.gromozeka.presentation.testsupport.app.AppTestHarness
 import com.gromozeka.presentation.testsupport.app.sanitizePathSegment
 import com.gromozeka.presentation.testsupport.llm.AiRuntimeCassetteSettings
@@ -114,9 +114,8 @@ class MemoryRealModelE2eTest {
             openAiModel = modelName,
             enableBraveSearch = false,
             enableJinaReader = false,
-            knowledgeMemoryEnabled = true,
-            memoryAutoCall = true,
-            autoRememberThreads = true,
+            memoryAutoRemember = true,
+            memoryAutoRecall = true,
         )
 
         AppTestHarness(

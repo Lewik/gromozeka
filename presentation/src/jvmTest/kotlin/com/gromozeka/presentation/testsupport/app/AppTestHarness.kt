@@ -8,7 +8,7 @@ import com.gromozeka.presentation.AppBootstrap
 import com.gromozeka.presentation.AppBootstrapOptions
 import com.gromozeka.presentation.AppInitializationOptions
 import com.gromozeka.presentation.StartedApp
-import com.gromozeka.presentation.model.Settings
+import com.gromozeka.domain.model.Settings
 import com.gromozeka.presentation.ui.GromozekaApp
 import com.gromozeka.presentation.testsupport.config.E2eSupportConfig
 import com.gromozeka.presentation.testsupport.network.OpenAiSubscriptionReplayServer
@@ -122,7 +122,6 @@ class AppTestHarness(
             openAiModel = "gpt-5.3-codex",
             enableBraveSearch = false,
             enableJinaReader = false,
-            knowledgeMemoryEnabled = false,
         )
 
         fun defaultSubscriptionSession(): OpenAiSubscriptionSession = OpenAiSubscriptionSession(

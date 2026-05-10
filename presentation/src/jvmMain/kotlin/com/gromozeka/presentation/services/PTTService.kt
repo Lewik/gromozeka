@@ -1,5 +1,6 @@
 package com.gromozeka.presentation.services
 
+import com.gromozeka.domain.service.SettingsService
 import klog.KLoggers
 
 import com.gromozeka.infrastructure.ai.platform.SystemAudioController
@@ -17,11 +18,11 @@ class PTTService(
     private val sttService: SttService,
     private val settingsService: SettingsService,
     private val systemAudioController: SystemAudioController,
-) {
+) : PttRecordingService {
     private val log = KLoggers.logger(this)
 
     private val _recordingState = MutableStateFlow(false)
-    val recordingState: StateFlow<Boolean> = _recordingState.asStateFlow()
+    override val recordingState: StateFlow<Boolean> = _recordingState.asStateFlow()
 
     // Current recording session
     private var currentRecordingSession: RecordingSession? = null

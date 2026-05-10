@@ -1,4 +1,4 @@
-package com.gromozeka.presentation.config
+package com.gromozeka.infrastructure.ai.config
 
 import com.gromozeka.domain.tool.AiToolCallback
 import com.gromozeka.domain.tool.AiToolDefinition
@@ -7,7 +7,9 @@ import io.modelcontextprotocol.kotlin.sdk.CallToolRequest
 import jakarta.annotation.PostConstruct
 import klog.KLoggers
 import kotlinx.coroutines.runBlocking
-import kotlinx.serialization.json.*
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.buildJsonObject
 import org.springframework.context.ApplicationContext
 import org.springframework.context.ConfigurableApplicationContext
 import org.springframework.stereotype.Component
@@ -91,8 +93,8 @@ class InternalMcpToolsRegistrar(
         }
     }
 
-    private fun parseToolInput(toolInput: String, toolName: String): JsonElement {
-        return if (toolInput.isBlank() || toolInput == "{}") {
+    private fun parseToolInput(toolInput: String, toolName: String) =
+        if (toolInput.isBlank() || toolInput == "{}") {
             buildJsonObject {}
         } else {
             try {
@@ -102,5 +104,4 @@ class InternalMcpToolsRegistrar(
                 buildJsonObject {}
             }
         }
-    }
 }

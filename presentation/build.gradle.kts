@@ -34,6 +34,7 @@ kotlin {
                 
                 // Dependencies on other modules
                 implementation(project(":domain"))  // Transitively provides :shared
+                implementation(project(":remote-client"))
                 implementation(project(":application"))
                 implementation(project(":infrastructure-db"))
                 implementation(project(":infrastructure-ai"))

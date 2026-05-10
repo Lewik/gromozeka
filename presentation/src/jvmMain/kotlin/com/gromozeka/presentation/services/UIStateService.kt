@@ -1,5 +1,6 @@
 package com.gromozeka.presentation.services
 
+import com.gromozeka.domain.service.SettingsService
 import com.gromozeka.presentation.ui.state.UIState
 import com.gromozeka.presentation.ui.viewmodel.AppViewModel
 import klog.KLoggers
@@ -34,7 +35,7 @@ class UIStateService(
     }
 
     private val stateFile: File by lazy {
-        File(settingsService.gromozekaHome, "ui-state.json")
+        File(settingsService.homeDirectory, "ui-state.json")
     }
 
     private lateinit var appViewModel: AppViewModel

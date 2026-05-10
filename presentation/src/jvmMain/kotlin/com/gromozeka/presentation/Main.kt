@@ -15,14 +15,18 @@ fun main() {
     val log = KLoggers.logger("ChatApplication")
     System.setProperty("java.awt.headless", "false")
 
+    val remoteUrl = System.getProperty("gromozeka.remote.url")
+        ?: System.getenv("GROMOZEKA_REMOTE_URL")
+        ?: "ws://127.0.0.1:8765/ws"
+
     var initializationError: Throwable? = null
-    var startedApp: StartedApp? = null
+    var remoteApp: RemoteStartedApp? = null
 
     try {
-        log.info("Initializing Spring context...")
-        startedApp = AppBootstrap.start()
+        log.info("Initializing remote UI client: $remoteUrl")
+        remoteApp = startRemotePresentation(remoteUrl)
     } catch (e: Throwable) {
-        log.error("Failed to initialize application: ${e.message}")
+        log.error("Failed to initialize remote UI client: ${e.message}")
         e.printStackTrace()
         initializationError = e
     }
@@ -37,11 +41,12 @@ fun main() {
                 )
             }
 
-            startedApp != null -> {
+            remoteApp != null -> {
                 ChatWindow(
-                    appComponents = startedApp!!.appComponents,
+                    appComponents = remoteApp.components,
+                    skipLoadingScreen = true,
                     onExitRequest = {
-                        startedApp?.close()
+                        remoteApp.close()
                         exitApplication()
                     }
                 )

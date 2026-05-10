@@ -1,5 +1,6 @@
 package com.gromozeka.presentation.services
 
+import com.gromozeka.domain.service.SettingsService
 import com.exceptionfactory.jagged.EncryptingChannelFactory
 import com.exceptionfactory.jagged.RecipientStanzaWriter
 import com.exceptionfactory.jagged.framework.stream.StandardEncryptingChannelFactory
@@ -8,7 +9,6 @@ import java.nio.ByteBuffer
 import java.nio.channels.ReadableByteChannel
 import java.nio.channels.WritableByteChannel
 import java.nio.file.StandardOpenOption
-import com.gromozeka.domain.model.AppMode
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.springframework.stereotype.Service
@@ -52,7 +52,7 @@ class LogEncryptor(
      */
     suspend fun encryptLogs(): EncryptionResult = withContext(Dispatchers.IO) {
         try {
-            val logsPath = settingsService.getLogsDirectory()
+            val logsPath = Path(settingsService.homeDirectory).resolve("logs")
             if (!logsPath.exists()) {
                 return@withContext EncryptionResult(false, error = "Logs directory not found: $logsPath")
             }
@@ -157,7 +157,7 @@ class LogEncryptor(
      * Move encrypted file to Gromozeka home directory
      */
     private fun moveToGromozemkaHome(encryptedFile: Path): Path {
-        val targetDir = settingsService.gromozekaHome.toPath()
+        val targetDir = Path(settingsService.homeDirectory)
             .resolve("encrypted-logs")
         
         // Ensure directory exists

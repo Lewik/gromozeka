@@ -8,13 +8,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
-import com.gromozeka.presentation.services.PTTEventRouter
+import com.gromozeka.presentation.services.PttEventHandler
 import com.gromozeka.presentation.services.UnifiedGestureDetector
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
 fun Modifier.advancedPttGestures(
-    pttEventRouter: PTTEventRouter,
+    pttEventRouter: PttEventHandler,
     coroutineScope: CoroutineScope,
 ): Modifier = composed {
     val gestureDetector = remember { UnifiedGestureDetector(pttEventRouter, coroutineScope) }

@@ -17,10 +17,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.gromozeka.domain.model.AIProvider
 import com.gromozeka.infrastructure.ai.service.OllamaModelService
-import com.gromozeka.presentation.model.ResponseFormat
-import com.gromozeka.presentation.model.Settings
+import com.gromozeka.domain.model.ResponseFormat
+import com.gromozeka.domain.model.Settings
 import com.gromozeka.presentation.services.LogEncryptor
-import com.gromozeka.presentation.services.SettingsService
+import com.gromozeka.domain.service.SettingsService
 import com.gromozeka.presentation.services.theming.AIThemeGenerator
 import com.gromozeka.presentation.services.theming.ThemeService
 import com.gromozeka.presentation.services.theming.data.Theme
@@ -30,6 +30,7 @@ import klog.KLoggers
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlin.io.path.exists
+import kotlin.io.path.Path
 
 private val log = KLoggers.logger("SettingsPanel")
 
@@ -540,18 +541,17 @@ fun SettingsPanel(
                         )
 
                         SwitchSettingItem(
-                            label = "Enable Knowledge Memory",
-                            description = "Process conversations into typed long-term memory",
-                            value = settings.knowledgeMemoryEnabled,
-                            onValueChange = { onSettingsChange(settings.copy(knowledgeMemoryEnabled = it)) }
+                            label = "Auto-remember threads",
+                            description = "Automatically write typed memory around each chat message",
+                            value = settings.memoryAutoRemember,
+                            onValueChange = { onSettingsChange(settings.copy(memoryAutoRemember = it)) }
                         )
 
                         SwitchSettingItem(
-                            label = "Auto-remember threads",
-                            description = "Automatically process conversations into knowledge memory after each assistant response",
-                            value = settings.autoRememberThreads,
-                            onValueChange = { onSettingsChange(settings.copy(autoRememberThreads = it)) },
-                            enabled = settings.knowledgeMemoryEnabled
+                            label = "Auto-recall memory",
+                            description = "Automatically recall typed memory before the main model response",
+                            value = settings.memoryAutoRecall,
+                            onValueChange = { onSettingsChange(settings.copy(memoryAutoRecall = it)) }
                         )
 
                     }
@@ -920,7 +920,7 @@ fun SettingsPanel(
                             onClick = {
                                 coroutineScope.launch {
                                     try {
-                                        val logsPath = settingsService.getLogsDirectory()
+                                        val logsPath = Path(settingsService.homeDirectory).resolve("logs")
                                         if (logsPath.exists()) {
                                             val osName = System.getProperty("os.name").lowercase()
                                             when {
@@ -1000,7 +1000,7 @@ fun SettingsPanel(
                             onClick = {
                                 coroutineScope.launch {
                                     try {
-                                        val logsPath = settingsService.getLogsDirectory()
+                                        val logsPath = Path(settingsService.homeDirectory).resolve("logs")
                                         if (logsPath.exists()) {
                                             var deletedCount = 0
                                             java.nio.file.Files.walk(logsPath)

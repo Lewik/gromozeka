@@ -1,5 +1,6 @@
 package com.gromozeka.presentation.services
 
+import com.gromozeka.domain.service.SettingsService
 import klog.KLoggers
 
 import com.gromozeka.presentation.ui.viewmodel.AppViewModel
@@ -19,10 +20,10 @@ enum class PTTEvent {
 
 class PTTEventRouter(
     private val pttService: PTTService,
-    private val ttsQueueService: TTSQueueService,
+    private val ttsQueueService: TtsQueue,
     private val appViewModel: AppViewModel,
     private val settingsService: SettingsService,
-) {
+) : PttEventHandler {
     private val log = KLoggers.logger(this)
 
     private val serviceScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
@@ -43,7 +44,7 @@ class PTTEventRouter(
     /**
      * Initialize PTT event router and start listening to interrupt commands
      */
-    fun initialize() {
+    override fun initialize() {
         serviceScope.launch {
             _interruptCommand.collect {
                 appViewModel.sendInterruptToCurrentSession()
@@ -52,7 +53,7 @@ class PTTEventRouter(
     }
 
 
-    suspend fun handlePTTEvent(event: PTTEvent) {
+    override suspend fun handlePTTEvent(event: PTTEvent) {
         _events.emit(event)
 
         when (event) {
@@ -91,7 +92,7 @@ class PTTEventRouter(
         }
     }
 
-    suspend fun handlePTTRelease() {
+    override suspend fun handlePTTRelease() {
         // Cancel current PTT recording job
         currentPTTJob?.cancel()
         currentPTTJob = null

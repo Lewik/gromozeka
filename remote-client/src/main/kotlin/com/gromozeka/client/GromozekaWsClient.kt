@@ -1,0 +1,160 @@
+package com.gromozeka.client
+
+import com.gromozeka.domain.model.AgentDefinition
+import com.gromozeka.domain.model.Conversation
+import com.gromozeka.remote.protocol.ClientPayload
+import com.gromozeka.remote.protocol.ClientRequest
+import com.gromozeka.remote.protocol.ErrorResponse
+import com.gromozeka.remote.protocol.GromozekaClientEnvelope
+import com.gromozeka.remote.protocol.GromozekaServerEnvelope
+import com.gromozeka.remote.protocol.MessageUpsertedEvent
+import com.gromozeka.remote.protocol.SendCompletedEvent
+import com.gromozeka.remote.protocol.SendFailedEvent
+import com.gromozeka.remote.protocol.SendMessageCommand
+import com.gromozeka.remote.protocol.ServerPayload
+import com.gromozeka.remote.protocol.ServerResponse
+import com.gromozeka.shared.uuid.uuid7
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.cio.CIO
+import io.ktor.client.plugins.websocket.WebSockets
+import io.ktor.client.plugins.websocket.webSocketSession
+import io.ktor.websocket.Frame
+import io.ktor.websocket.readText
+import klog.KLoggers
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.serialization.json.Json
+
+internal class GromozekaWsClient(
+    private val url: String = "ws://127.0.0.1:8765/ws",
+    private val httpClient: HttpClient = HttpClient(CIO) {
+        install(WebSockets)
+    },
+    private val scope: CoroutineScope = CoroutineScope(Dispatchers.IO + SupervisorJob()),
+) : AutoCloseable {
+    private val log = KLoggers.logger(this)
+    private val json = Json {
+        ignoreUnknownKeys = true
+        encodeDefaults = true
+        classDiscriminator = "payloadType"
+    }
+    private val connectMutex = Mutex()
+    private var session: io.ktor.client.plugins.websocket.DefaultClientWebSocketSession? = null
+    private var readerJob: Job? = null
+    private val pending = mutableMapOf<String, CompletableDeferred<ServerResponse>>()
+    private val streams = mutableMapOf<String, Channel<ServerPayload>>()
+
+    suspend fun request(payload: ClientRequest): ServerResponse {
+        val id = uuid7()
+        val deferred = CompletableDeferred<ServerResponse>()
+        pending[id] = deferred
+
+        try {
+            sendEnvelope(GromozekaClientEnvelope(id, payload))
+            return deferred.await()
+        } finally {
+            pending.remove(id)
+        }
+    }
+
+    fun sendMessage(
+        conversationId: Conversation.Id,
+        userMessage: Conversation.Message,
+        agent: AgentDefinition,
+    ): Flow<Conversation.Message> = flow {
+        val streamId = uuid7()
+        val channel = Channel<ServerPayload>(Channel.UNLIMITED)
+        streams[streamId] = channel
+        send(SendMessageCommand(streamId, conversationId, userMessage, agent))
+
+        try {
+            for (event in channel) {
+                when (event) {
+                    is MessageUpsertedEvent -> emit(event.message)
+                    is SendCompletedEvent -> break
+                    is SendFailedEvent -> error(event.message)
+                    else -> log.warn { "Ignoring unexpected stream event: $event" }
+                }
+            }
+        } finally {
+            streams.remove(streamId)
+            channel.close()
+        }
+    }
+
+    private suspend fun send(payload: ClientPayload) {
+        sendEnvelope(GromozekaClientEnvelope(uuid7(), payload))
+    }
+
+    private suspend fun sendEnvelope(envelope: GromozekaClientEnvelope) {
+        val activeSession = ensureConnected()
+        activeSession.outgoing.send(Frame.Text(json.encodeToString(GromozekaClientEnvelope.serializer(), envelope)))
+    }
+
+    private suspend fun ensureConnected(): io.ktor.client.plugins.websocket.DefaultClientWebSocketSession =
+        connectMutex.withLock {
+            val current = session
+            if (current != null && current.isActive) {
+                return@withLock current
+            }
+
+            val newSession = httpClient.webSocketSession(url)
+            session = newSession
+            readerJob?.cancel()
+            readerJob = scope.launch {
+                readLoop(newSession)
+            }
+            newSession
+        }
+
+    private suspend fun readLoop(activeSession: io.ktor.client.plugins.websocket.DefaultClientWebSocketSession) {
+        try {
+            for (frame in activeSession.incoming) {
+                if (frame !is Frame.Text) continue
+                val envelope = json.decodeFromString(GromozekaServerEnvelope.serializer(), frame.readText())
+                when (val payload = envelope.payload) {
+                    is ServerResponse -> pending.remove(envelope.id)?.complete(payload)
+                    is MessageUpsertedEvent -> streams[payload.streamId]?.send(payload)
+                    is SendCompletedEvent -> streams[payload.streamId]?.send(payload)
+                    is SendFailedEvent -> streams[payload.streamId]?.send(payload)
+                }
+            }
+        } catch (error: Throwable) {
+            pending.values.forEach { it.completeExceptionally(error) }
+            pending.clear()
+            streams.values.forEach { it.close(error) }
+            streams.clear()
+            if (session === activeSession) {
+                session = null
+            }
+        }
+    }
+
+    override fun close() {
+        readerJob?.cancel()
+        readerJob = null
+        session?.cancel()
+        session = null
+        httpClient.close()
+    }
+}
+
+internal suspend inline fun <reified TRequest : ClientRequest, reified TResponse : ServerResponse> GromozekaWsClient.requestTyped(
+    payload: TRequest,
+): TResponse =
+    when (val response = request(payload)) {
+        is ErrorResponse -> error(response.message)
+        is TResponse -> response
+        else -> error("Unexpected response type: ${response::class.qualifiedName}")
+    }

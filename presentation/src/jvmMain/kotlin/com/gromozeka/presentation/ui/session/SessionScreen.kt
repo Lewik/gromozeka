@@ -22,8 +22,8 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.TtsTask
-import com.gromozeka.presentation.model.Settings
-import com.gromozeka.presentation.services.TTSQueueService
+import com.gromozeka.domain.model.Settings
+import com.gromozeka.presentation.services.TtsQueue
 import com.gromozeka.presentation.ui.CompactButton
 import com.gromozeka.presentation.ui.LocalTranslation
 import com.gromozeka.presentation.ui.ToggleButtonGroup
@@ -43,7 +43,7 @@ fun SessionScreen(
     onCloseTab: (() -> Unit)? = null,
 
     // Services
-    ttsQueueService: TTSQueueService,
+    ttsQueueService: TtsQueue,
     coroutineScope: CoroutineScope,
     modifierWithPushToTalk: Modifier,
     isRecording: Boolean = false,

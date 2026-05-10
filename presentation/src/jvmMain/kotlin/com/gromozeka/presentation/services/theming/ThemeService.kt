@@ -1,8 +1,8 @@
 package com.gromozeka.presentation.services.theming
 
-import com.gromozeka.presentation.services.SettingsService
+import com.gromozeka.domain.service.SettingsService
 import com.gromozeka.presentation.services.theming.data.*
-import com.gromozeka.presentation.model.Settings
+import com.gromozeka.domain.model.Settings
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -129,7 +129,7 @@ class ThemeService {
     }
 
     private suspend fun applyThemeSettings(settings: Settings) {
-        val overrideFile = File(File(settingsService.gromozekaHome, "themes"), "override.json")
+        val overrideFile = File(File(settingsService.homeDirectory, "themes"), "override.json")
         val shouldUseOverride = settings.themeOverrideEnabled && overrideFile.exists()
         applyTheme(settings.currentThemeId, if (shouldUseOverride) overrideFile else null)
     }
@@ -159,7 +159,7 @@ class ThemeService {
         }
 
         // Scan AI-generated themes from themes directory
-        val themesDir = File(settingsService.gromozekaHome, "themes")
+        val themesDir = File(settingsService.homeDirectory, "themes")
         if (themesDir.exists() && themesDir.isDirectory) {
             themesDir.listFiles { file ->
                 file.isFile && file.extension == "json" && file.name.startsWith("ai_generated_")
@@ -255,7 +255,7 @@ class ThemeService {
     // === Export/Import functionality ===
 
     fun exportToFile(): Boolean {
-        val overrideFile = File(File(settingsService.gromozekaHome, "themes"), "override.json")
+        val overrideFile = File(File(settingsService.homeDirectory, "themes"), "override.json")
         val currentThemeId = _currentTheme.value.themeId
 
         // Export builtin theme by theme ID
@@ -274,7 +274,7 @@ class ThemeService {
     }
 
     fun removeOverrideFile(): Boolean {
-        val overrideFile = File(File(settingsService.gromozekaHome, "themes"), "override.json")
+        val overrideFile = File(File(settingsService.homeDirectory, "themes"), "override.json")
         return try {
             if (overrideFile.exists()) {
                 overrideFile.delete()

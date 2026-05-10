@@ -124,32 +124,18 @@ interface SettingsProvider {
         get() = "http://localhost:11434"
 
     /**
-     * Enable typed long-term memory.
+     * Automatically remember chat turns into typed long-term memory.
      *
-     * When false, conversation ingestion and runtime recall for the current memory
-     * subsystem are disabled.
+     * When false, typed memory may still be updated through real tools or manual flows.
      */
-    val knowledgeMemoryEnabled: Boolean
-        get() = true
-
-    /**
-     * Automatically inject synthetic memory tool call/result messages around a chat turn.
-     *
-     * When true, the conversation engine inserts synthetic `memory_remember` and
-     * `memory_recall` tool exchanges into thread history before the main model call.
-     * When false, typed memory may still work through real tools or manual flows.
-     * Only applies when [knowledgeMemoryEnabled] is true.
-     */
-    val memoryAutoCall: Boolean
+    val memoryAutoRemember: Boolean
         get() = false
 
     /**
-     * Auto-process threads into knowledge memory after each assistant response.
+     * Automatically recall typed long-term memory before the main model response.
      *
-     * When true, the conversation engine launches background memory ingestion
-     * after the final assistant message.
-     * Only applies when [knowledgeMemoryEnabled] is true.
+     * When false, typed memory may still be queried through real tools or manual flows.
      */
-    val autoRememberThreads: Boolean
-        get() = true
+    val memoryAutoRecall: Boolean
+        get() = false
 }

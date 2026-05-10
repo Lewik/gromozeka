@@ -1,8 +1,8 @@
 package com.gromozeka.presentation.ui.viewmodel
 
-import com.gromozeka.application.service.ConversationNameSearchService
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.Project
+import com.gromozeka.domain.service.ConversationNameSearchService
 import klog.KLoggers
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -13,7 +13,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 class ConversationSearchViewModel(
-    private val conversationSearchService: ConversationNameSearchService,
+    private val conversationNameSearchService: ConversationNameSearchService,
     private val scope: CoroutineScope,
 ) {
     private val log = KLoggers.logger(this)
@@ -59,7 +59,7 @@ class ConversationSearchViewModel(
             _showSearchResults.value = true
 
             try {
-                val results = conversationSearchService.searchConversations(query)
+                val results = conversationNameSearchService.searchConversations(query)
                 _searchResults.value = results
 
                 log.info("Found ${results.size} conversations matching '$query'")

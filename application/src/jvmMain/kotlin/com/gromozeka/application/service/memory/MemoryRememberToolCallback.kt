@@ -1,8 +1,6 @@
-package com.gromozeka.presentation.tool.memory
+package com.gromozeka.application.service.memory
 
 import com.gromozeka.application.service.MemoryToolApplicationService
-import com.gromozeka.application.service.memory.MEMORY_REMEMBER_TOOL_NAME
-import com.gromozeka.application.service.memory.MemoryToolResultRenderer
 import com.gromozeka.domain.tool.AiToolCallback
 import com.gromozeka.domain.tool.AiToolDefinition
 import com.gromozeka.domain.tool.ToolExecutionContext

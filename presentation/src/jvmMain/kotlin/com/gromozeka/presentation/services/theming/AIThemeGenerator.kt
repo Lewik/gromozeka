@@ -2,7 +2,7 @@ package com.gromozeka.presentation.services.theming
 
 import com.gromozeka.infrastructure.ai.platform.ScreenCaptureController
 import klog.KLoggers
-import com.gromozeka.presentation.services.SettingsService
+import com.gromozeka.domain.service.SettingsService
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.serialization.json.Json
 import java.io.File
@@ -38,7 +38,7 @@ class AIThemeGenerator(
             log.info(" Window screenshot saved to: $screenshotPath")
 
             // Step 2: Prepare working directory in gromozekaHome
-            val aiWorkingDir = File(settingsService.gromozekaHome, "ai-theme-generator")
+            val aiWorkingDir = File(settingsService.homeDirectory, "ai-theme-generator")
             if (!aiWorkingDir.exists()) {
                 aiWorkingDir.mkdirs()
             }
@@ -112,7 +112,7 @@ class AIThemeGenerator(
 
 
             // Prepare output directory path
-            val themesOutputDir = File(settingsService.gromozekaHome, "themes")
+            val themesOutputDir = File(settingsService.homeDirectory, "themes")
             if (!themesOutputDir.exists()) {
                 themesOutputDir.mkdirs()
             }
@@ -137,7 +137,7 @@ class AIThemeGenerator(
      * Get the working directory path for AI theme generation
      */
     fun getWorkingDirectory(): String {
-        return File(settingsService.gromozekaHome, "ai-theme-generator").absolutePath
+        return File(settingsService.homeDirectory, "ai-theme-generator").absolutePath
     }
 
     /**

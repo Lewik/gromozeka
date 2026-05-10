@@ -306,6 +306,7 @@ class RuntimeMemoryReadPipeline(
         val coreProfileSelection = selectionResult.selectedHits.keepPlannerRequestedProfiles(
             plan = plan,
             candidateHits = selectorCandidateHits,
+            selectorDecisions = selectionResult.decisions,
         )
         if (coreProfileSelection.changed) {
             log.info {
@@ -935,6 +936,7 @@ private fun List<MemoryStore.SearchHit>.enforceBudget(plan: MemoryReadPlan): Lis
 private fun List<MemoryStore.SearchHit>.keepPlannerRequestedProfiles(
     plan: MemoryReadPlan,
     candidateHits: List<MemoryStore.SearchHit>,
+    selectorDecisions: List<MemoryReadSelectionResult.Decision>,
 ): RuntimeMemoryCoreProfileSelection {
     if (MemoryReadPlan.CoreBlock.PROFILE !in plan.coreBlocks) {
         return RuntimeMemoryCoreProfileSelection(
@@ -945,9 +947,13 @@ private fun List<MemoryStore.SearchHit>.keepPlannerRequestedProfiles(
     }
 
     val selectedRefs = mapTo(mutableSetOf()) { it.toItemRef() }
+    val explicitlyRejectedRefs = selectorDecisions
+        .filterNot { it.selected }
+        .mapTo(mutableSetOf()) { it.ref }
     val profileHits = candidateHits
         .filterIsInstance<MemoryStore.SearchHit.ProfileHit>()
         .filterNot { it.toItemRef() in selectedRefs }
+        .filterNot { it.toItemRef() in explicitlyRejectedRefs }
 
     return RuntimeMemoryCoreProfileSelection(
         hits = this + profileHits,

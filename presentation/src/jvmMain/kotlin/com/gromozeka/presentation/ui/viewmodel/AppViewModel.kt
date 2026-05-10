@@ -1,15 +1,15 @@
 package com.gromozeka.presentation.ui.viewmodel
 
-import com.gromozeka.application.service.ConversationEngineService
-import com.gromozeka.application.service.DefaultAgentProvider
-import com.gromozeka.application.service.MessageSquashService
 import com.gromozeka.domain.model.*
-import com.gromozeka.domain.service.ConversationDomainService
 import com.gromozeka.domain.repository.TabManager
-import com.gromozeka.domain.repository.TokenUsageStatisticsRepository
+import com.gromozeka.domain.service.ConversationDomainService
+import com.gromozeka.domain.service.ConversationRuntimeService
+import com.gromozeka.domain.service.ConversationTokenStatsService
+import com.gromozeka.domain.service.DefaultAgentProvider
+import com.gromozeka.domain.service.MessageSquashGenerationService
+import com.gromozeka.domain.service.SettingsService
 import com.gromozeka.infrastructure.ai.platform.ScreenCaptureController
-import com.gromozeka.presentation.services.SettingsService
-import com.gromozeka.presentation.services.SoundNotificationService
+import com.gromozeka.presentation.services.SoundNotificationPlayer
 import com.gromozeka.presentation.ui.state.UIState
 import com.gromozeka.shared.uuid.uuid7
 import klog.KLoggers
@@ -19,16 +19,15 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
 open class AppViewModel(
-    private val conversationEngineService: ConversationEngineService,
+    private val conversationRuntimeService: ConversationRuntimeService,
     private val conversationService: ConversationDomainService,
-    private val messageSquashService: MessageSquashService,
-    private val soundNotificationService: SoundNotificationService,
-    private val agentDomainService: com.gromozeka.domain.service.AgentDomainService,
+    private val messageSquashGenerationService: MessageSquashGenerationService,
+    private val soundNotificationService: SoundNotificationPlayer,
     private val settingsService: SettingsService,
     private val scope: CoroutineScope,
     private val screenCaptureController: ScreenCaptureController,
     private val defaultAgentProvider: DefaultAgentProvider,
-    private val tokenUsageStatisticsRepository: TokenUsageStatisticsRepository,
+    private val tokenStatsService: ConversationTokenStatsService,
 ) : TabManager {
     private val log = KLoggers.logger(this)
     private val mutex = Mutex()
@@ -82,16 +81,15 @@ open class AppViewModel(
         val tabViewModel = TabViewModel(
             conversationId = conversation.id,
             projectPath = projectPath,
-            conversationEngineService = conversationEngineService,
+            conversationRuntimeService = conversationRuntimeService,
             conversationService = conversationService,
-            messageSquashService = messageSquashService,
+            messageSquashGenerationService = messageSquashGenerationService,
             soundNotificationService = soundNotificationService,
-            agentDomainService = agentDomainService,
-            settingsFlow = settingsService.settingsFlow,
+            settingsService = settingsService,
             scope = scope,
             initialTabUiState = initialTabUiState,
             screenCaptureController = screenCaptureController,
-            tokenUsageStatisticsRepository = tokenUsageStatisticsRepository,
+            tokenStatsService = tokenStatsService,
         )
 
         val updatedTabs = _tabs.value + tabViewModel
@@ -236,16 +234,15 @@ open class AppViewModel(
                 val tabViewModel = TabViewModel(
                     conversationId = conversation.id,
                     projectPath = tabUiState.projectPath,
-                    conversationEngineService = conversationEngineService,
+                    conversationRuntimeService = conversationRuntimeService,
                     conversationService = conversationService,
-                    messageSquashService = messageSquashService,
+                    messageSquashGenerationService = messageSquashGenerationService,
                     soundNotificationService = soundNotificationService,
-                    agentDomainService = agentDomainService,
-                    settingsFlow = settingsService.settingsFlow,
+                    settingsService = settingsService,
                     scope = scope,
                     initialTabUiState = tabUiState,
                     screenCaptureController = screenCaptureController,
-                    tokenUsageStatisticsRepository = tokenUsageStatisticsRepository,
+                    tokenStatsService = tokenStatsService,
                 )
 
                 restoredTabs.add(tabViewModel)
@@ -283,7 +280,7 @@ open class AppViewModel(
         val current = currentTab.value ?: return
 
         try {
-            conversationEngineService.rememberCurrentThread(current.conversationId)
+            conversationRuntimeService.rememberCurrentThread(current.conversationId)
             log.info { "Remembered current thread for conversation: ${current.conversationId}" }
         } catch (e: Exception) {
             log.error(e) { "Failed to remember current thread: ${e.message}" }
@@ -294,7 +291,7 @@ open class AppViewModel(
         val current = currentTab.value ?: return
 
         try {
-            conversationEngineService.consolidateCurrentMemory(current.conversationId)
+            conversationRuntimeService.consolidateCurrentMemory(current.conversationId)
             log.info { "Consolidated memory for conversation: ${current.conversationId}" }
         } catch (e: Exception) {
             log.error(e) { "Failed to consolidate memory: ${e.message}" }
@@ -306,7 +303,7 @@ open class AppViewModel(
         val current = currentTab.value ?: return
 
         try {
-            conversationEngineService.repairCurrentMemory(current.conversationId)
+            conversationRuntimeService.repairCurrentMemory(current.conversationId)
             log.info { "Repaired memory for conversation: ${current.conversationId}" }
         } catch (e: Exception) {
             log.error(e) { "Failed to repair memory: ${e.message}" }
@@ -318,7 +315,7 @@ open class AppViewModel(
         val current = currentTab.value ?: return
 
         try {
-            conversationEngineService.maintainMemoryEntities(current.conversationId)
+            conversationRuntimeService.maintainMemoryEntities(current.conversationId)
             log.info { "Maintained memory entities for conversation: ${current.conversationId}" }
         } catch (e: Exception) {
             log.error(e) { "Failed to maintain memory entities: ${e.message}" }
@@ -330,7 +327,7 @@ open class AppViewModel(
         val current = currentTab.value ?: return
 
         try {
-            conversationEngineService.applyCurrentMemoryRetention(current.conversationId)
+            conversationRuntimeService.applyCurrentMemoryRetention(current.conversationId)
             log.info { "Applied memory retention for conversation: ${current.conversationId}" }
         } catch (e: Exception) {
             log.error(e) { "Failed to apply memory retention: ${e.message}" }

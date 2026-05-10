@@ -1,5 +1,6 @@
 package com.gromozeka.presentation.services
 
+import com.gromozeka.domain.service.SettingsService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.springframework.stereotype.Service
@@ -9,24 +10,24 @@ import javax.sound.sampled.AudioSystem
 @Service
 class SoundNotificationService(
     private val settingsService: SettingsService,
-) {
+) : SoundNotificationPlayer {
     private val errorSoundPath = "/sounds/error.wav"
     private val messageSoundPath = "/sounds/message.wav"
     private val readySoundPath = "/sounds/ready.wav"
 
-    suspend fun playErrorSound() {
+    override suspend fun playErrorSound() {
         if (settingsService.settings.enableErrorSounds) {
             playSound(errorSoundPath)
         }
     }
 
-    suspend fun playMessageSound() {
+    override suspend fun playMessageSound() {
         if (settingsService.settings.enableMessageSounds) {
             playSound(messageSoundPath)
         }
     }
 
-    suspend fun playReadySound() {
+    override suspend fun playReadySound() {
         if (settingsService.settings.enableReadySounds) {
             playSound(readySoundPath)
         }

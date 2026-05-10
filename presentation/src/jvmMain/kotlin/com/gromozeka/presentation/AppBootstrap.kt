@@ -10,11 +10,11 @@ import com.gromozeka.infrastructure.ai.platform.GlobalHotkeyController
 import com.gromozeka.infrastructure.ai.platform.ScreenCaptureController
 import com.gromozeka.infrastructure.ai.service.OllamaModelService
 import com.gromozeka.presentation.services.LogEncryptor
-import com.gromozeka.presentation.services.PTTEventRouter
-import com.gromozeka.presentation.services.PTTService
-import com.gromozeka.presentation.services.SettingsService
+import com.gromozeka.presentation.services.PttEventHandler
+import com.gromozeka.presentation.services.PttRecordingService
+import com.gromozeka.application.service.SettingsService as ApplicationSettingsService
 import com.gromozeka.presentation.services.TTSAutoplayService
-import com.gromozeka.presentation.services.TTSQueueService
+import com.gromozeka.presentation.services.TtsQueue
 import com.gromozeka.presentation.services.UIStateService
 import com.gromozeka.presentation.services.WindowStateService
 import com.gromozeka.presentation.services.theming.AIThemeGenerator
@@ -55,11 +55,11 @@ data class AppBootstrapOptions(
 
 data class AppComponents(
     val appViewModel: AppViewModel,
-    val ttsQueueService: TTSQueueService,
-    val settingsService: SettingsService,
+    val ttsQueueService: TtsQueue,
+    val settingsService: com.gromozeka.domain.service.SettingsService,
     val globalHotkeyController: GlobalHotkeyController,
-    val pttEventRouter: PTTEventRouter,
-    val pttService: PTTService,
+    val pttEventRouter: PttEventHandler,
+    val pttService: PttRecordingService,
     val windowStateService: WindowStateService,
     val uiStateService: UIStateService,
     val translationService: TranslationService,
@@ -150,14 +150,14 @@ object AppBootstrap {
     ): AppComponents {
         log.info("Spring context initialized successfully")
 
-        val settingsService = context.getBean<SettingsService>()
+        val settingsService = context.getBean<ApplicationSettingsService>()
         log.info("Starting application in ${settingsService.mode.name} mode...")
 
-        val ttsQueueService = context.getBean<TTSQueueService>()
+        val ttsQueueService = context.getBean<TtsQueue>()
         val ttsAutoplayService = context.getBean<TTSAutoplayService>()
         val globalHotkeyController = context.getBean<GlobalHotkeyController>()
-        val pttEventRouter = context.getBean<PTTEventRouter>()
-        val pttService = context.getBean<PTTService>()
+        val pttEventRouter = context.getBean<PttEventHandler>()
+        val pttService = context.getBean<PttRecordingService>()
         val windowStateService = context.getBean<WindowStateService>()
         val uiStateService = context.getBean<UIStateService>()
         val appViewModel = context.getBean<AppViewModel>()
@@ -272,7 +272,7 @@ object AppBootstrap {
     ]
 )
 class ChatApplication(
-    private val settingsService: SettingsService,
+    private val settingsService: ApplicationSettingsService,
 ) {
 
     @PostConstruct

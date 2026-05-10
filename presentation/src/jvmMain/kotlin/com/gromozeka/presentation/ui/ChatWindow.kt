@@ -44,7 +44,7 @@ import com.gromozeka.domain.model.AppMode
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ConversationInitiator
 import com.gromozeka.presentation.AppComponents
-import com.gromozeka.presentation.model.Settings
+import com.gromozeka.domain.model.Settings
 import com.gromozeka.presentation.services.UnifiedGestureDetector
 import com.gromozeka.presentation.ui.agents.AgentConstructorScreen
 import com.gromozeka.presentation.ui.session.SessionScreen
@@ -59,6 +59,7 @@ import kotlinx.datetime.Clock
 fun ApplicationScope.ChatWindow(
     appComponents: AppComponents,
     onExitRequest: () -> Unit = {},
+    skipLoadingScreen: Boolean = false,
 ) {
     val settingsService = appComponents.settingsService
     val currentSettings by settingsService.settingsFlow.collectAsState()
@@ -104,7 +105,7 @@ fun ApplicationScope.ChatWindow(
         },
         icon = painterResource("logos/logo-256x256.png")
     ) {
-        GromozekaApp(appComponents = appComponents)
+        GromozekaApp(appComponents = appComponents, skipLoadingScreen = skipLoadingScreen)
     }
 }
 
@@ -336,56 +337,46 @@ fun GromozekaAppContent(
                                                     settings = currentSettings,
                                                     showSettingsPanel = showSettingsPanel,
                                                     onShowSettingsPanelChange = { showSettingsPanel = it },
-                                                    onRememberThread = if (currentSettings.knowledgeMemoryEnabled) {
-                                                        {
-                                                            coroutineScope.launch {
-                                                                runCatching { appComponents.appViewModel.rememberCurrentThread() }
-                                                                    .onFailure { error ->
-                                                                        log.warn(error) { "Remember thread failed: ${error.message}" }
-                                                                    }
-                                                            }
+                                                    onRememberThread = {
+                                                        coroutineScope.launch {
+                                                            runCatching { appComponents.appViewModel.rememberCurrentThread() }
+                                                                .onFailure { error ->
+                                                                    log.warn(error) { "Remember thread failed: ${error.message}" }
+                                                                }
                                                         }
-                                                    } else null,
-                                                    onConsolidateMemory = if (currentSettings.knowledgeMemoryEnabled) {
-                                                        {
-                                                            coroutineScope.launch {
-                                                                runCatching { appComponents.appViewModel.consolidateCurrentMemory() }
-                                                                    .onFailure { error ->
-                                                                        log.warn(error) { "Memory consolidation failed: ${error.message}" }
-                                                                    }
-                                                            }
+                                                    },
+                                                    onConsolidateMemory = {
+                                                        coroutineScope.launch {
+                                                            runCatching { appComponents.appViewModel.consolidateCurrentMemory() }
+                                                                .onFailure { error ->
+                                                                    log.warn(error) { "Memory consolidation failed: ${error.message}" }
+                                                                }
                                                         }
-                                                    } else null,
-                                                    onRepairMemory = if (currentSettings.knowledgeMemoryEnabled) {
-                                                        {
-                                                            coroutineScope.launch {
-                                                                runCatching { appComponents.appViewModel.repairCurrentMemory() }
-                                                                    .onFailure { error ->
-                                                                        log.warn(error) { "Memory repair failed: ${error.message}" }
-                                                                    }
-                                                            }
+                                                    },
+                                                    onRepairMemory = {
+                                                        coroutineScope.launch {
+                                                            runCatching { appComponents.appViewModel.repairCurrentMemory() }
+                                                                .onFailure { error ->
+                                                                    log.warn(error) { "Memory repair failed: ${error.message}" }
+                                                                }
                                                         }
-                                                    } else null,
-                                                    onMaintainMemoryEntities = if (currentSettings.knowledgeMemoryEnabled) {
-                                                        {
-                                                            coroutineScope.launch {
-                                                                runCatching { appComponents.appViewModel.maintainMemoryEntities() }
-                                                                    .onFailure { error ->
-                                                                        log.warn(error) { "Memory entity maintenance failed: ${error.message}" }
-                                                                    }
-                                                            }
+                                                    },
+                                                    onMaintainMemoryEntities = {
+                                                        coroutineScope.launch {
+                                                            runCatching { appComponents.appViewModel.maintainMemoryEntities() }
+                                                                .onFailure { error ->
+                                                                    log.warn(error) { "Memory entity maintenance failed: ${error.message}" }
+                                                                }
                                                         }
-                                                    } else null,
-                                                    onApplyMemoryRetention = if (currentSettings.knowledgeMemoryEnabled) {
-                                                        {
-                                                            coroutineScope.launch {
-                                                                runCatching { appComponents.appViewModel.applyCurrentMemoryRetention() }
-                                                                    .onFailure { error ->
-                                                                        log.warn(error) { "Memory retention failed: ${error.message}" }
-                                                                    }
-                                                            }
+                                                    },
+                                                    onApplyMemoryRetention = {
+                                                        coroutineScope.launch {
+                                                            runCatching { appComponents.appViewModel.applyCurrentMemoryRetention() }
+                                                                .onFailure { error ->
+                                                                    log.warn(error) { "Memory retention failed: ${error.message}" }
+                                                                }
                                                         }
-                                                    } else null,
+                                                    },
                                                     onShowPromptsPanelChange = { showPromptsPanel = it },
                                                     isDev = appComponents.settingsService.mode == AppMode.DEV
                                                 )

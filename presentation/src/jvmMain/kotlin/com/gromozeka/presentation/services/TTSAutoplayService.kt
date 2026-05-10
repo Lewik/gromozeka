@@ -1,5 +1,6 @@
 package com.gromozeka.presentation.services
 
+import com.gromozeka.domain.service.SettingsService
 import com.gromozeka.presentation.ui.viewmodel.AppViewModel
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.TtsTask
@@ -16,7 +17,7 @@ import kotlinx.datetime.Instant
 @Service
 class TTSAutoplayService(
     private val appViewModel: AppViewModel,
-    private val ttsQueueService: TTSQueueService,
+    private val ttsQueueService: TtsQueue,
     private val settingsService: SettingsService,
     @Qualifier("coroutineScope") private val scope: CoroutineScope,
 ) {

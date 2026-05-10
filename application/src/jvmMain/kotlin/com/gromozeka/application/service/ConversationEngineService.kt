@@ -23,6 +23,7 @@ import com.gromozeka.domain.service.AgentDomainService
 import com.gromozeka.domain.service.AiRuntimeProvider
 import com.gromozeka.domain.service.AiToolProvider
 import com.gromozeka.domain.service.ConversationDomainService
+import com.gromozeka.domain.service.ConversationRuntimeService
 import com.gromozeka.domain.repository.ThreadRepository
 import com.gromozeka.domain.repository.TokenUsageStatisticsRepository
 import com.gromozeka.domain.tool.AiToolCallback
@@ -39,6 +40,7 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
+import org.springframework.beans.factory.annotation.Qualifier
 
 /**
  * LLM-agnostic service for managing conversation with AI using User-Controlled Tool Execution.
@@ -63,23 +65,23 @@ class ConversationEngineService(
     private val threadRepository: ThreadRepository,
     private val threadMessageRepository: com.gromozeka.domain.repository.ThreadMessageRepository,
     private val tokenUsageStatisticsRepository: TokenUsageStatisticsRepository,
-    private val coroutineScope: CoroutineScope,
+    @Qualifier("supervisorScope") private val coroutineScope: CoroutineScope,
     private val memoryApplicationService: MemoryApplicationService,
     private val memoryMessageRoutingApplicationService: MemoryMessageRoutingApplicationService,
     private val toolCallSequenceFixerService: ToolCallSequenceFixerService,
     private val settingsProvider: com.gromozeka.domain.service.SettingsProvider,
     private val strideEngineService: com.gromozeka.domain.service.StrideEngineService,
     private val planRepository: com.gromozeka.domain.repository.PlanRepository
-) {
+) : ConversationRuntimeService {
     private val log = KLoggers.logger(this)
 
     /**
      * Send message and get response using blocking call().
      * LLM-agnostic - works with all providers (Anthropic, OpenAI, Google, etc.)
      *
-     * Automatically remembers thread to knowledge memory after final response if:
-     * - settings.autoRememberThreads is enabled
-     * - settings.knowledgeMemoryEnabled is enabled
+     * Automatically uses typed memory around a turn only when enabled by settings:
+     * - settings.memoryAutoRemember writes current turn memory
+     * - settings.memoryAutoRecall recalls memory before the main model call
      *
      * @param conversationId The conversation to append messages to
      * @param userMessage The user message to send
@@ -87,7 +89,7 @@ class ConversationEngineService(
      * @return Flow of Message objects (assistant responses, tool results).
      *         Flow completes when conversation turn is done.
      */
-    suspend fun sendMessage(
+    override suspend fun sendMessage(
         conversationId: Conversation.Id,
         userMessage: Conversation.Message,
         agent: AgentDefinition,
@@ -121,11 +123,17 @@ class ConversationEngineService(
         val memoryPipelineTools = availableTools.withoutMemoryManagementTools()
         val baseSystemPrompts = agentDomainService.assembleSystemPrompt(agent, project)
         val systemPrompts = baseSystemPrompts
+        val automaticMemoryRememberEnabled = settingsProvider.memoryAutoRemember
+        val automaticMemoryRecallEnabled = settingsProvider.memoryAutoRecall
 
         // Add user message
         conversationService.addMessage(conversationId, userMessage)
-        val writeResult = routeMessageThroughMemoryRouter(conversationId, conversation.currentThread, userMessage, agent, project, systemPrompts, memoryPipelineTools)
-        if (settingsProvider.knowledgeMemoryEnabled && settingsProvider.memoryAutoCall) {
+        val writeResult = if (automaticMemoryRememberEnabled) {
+            routeMessageThroughMemoryRouter(conversationId, conversation.currentThread, userMessage, agent, project, systemPrompts, memoryPipelineTools)
+        } else {
+            null
+        }
+        if (automaticMemoryRememberEnabled) {
             buildSyntheticMemoryToolPair(
                 conversationId = conversationId,
                 targetMessage = userMessage,
@@ -156,7 +164,7 @@ class ConversationEngineService(
 
         val activeConversationAfterWrite = conversationService.findById(conversationId) ?: conversation
         val messagesBeforeRecall = conversationService.loadCurrentMessages(conversationId)
-        val runtimeMemoryResult = if (settingsProvider.knowledgeMemoryEnabled) {
+        val runtimeMemoryResult = if (automaticMemoryRecallEnabled) {
             runCatching {
                 memoryApplicationService.buildRuntimeMemoryReadResult(
                     conversationId = conversationId,
@@ -176,7 +184,7 @@ class ConversationEngineService(
         } else {
             null
         }
-        if (settingsProvider.knowledgeMemoryEnabled && settingsProvider.memoryAutoCall) {
+        if (automaticMemoryRecallEnabled) {
             buildSyntheticMemoryToolPair(
                 conversationId = conversationId,
                 targetMessage = userMessage,
@@ -194,9 +202,9 @@ class ConversationEngineService(
         }
         val finalMessages = conversationService.loadCurrentMessages(conversationId)
         log.info {
-            "Memory runtime recall wiring: conversation=${conversationId.value} enabled=${settingsProvider.knowledgeMemoryEnabled} autoCall=${settingsProvider.memoryAutoCall} " +
+            "Memory auto wiring: conversation=${conversationId.value} autoRemember=${settingsProvider.memoryAutoRemember} autoRecall=${settingsProvider.memoryAutoRecall} " +
                 "memoryPromptPresent=${!runtimeMemoryResult?.runtimePrompt.isNullOrBlank()} memoryPromptChars=${runtimeMemoryResult?.runtimePrompt?.length ?: 0} " +
-                "systemPrompts=${systemPrompts.size} injection=${if (settingsProvider.memoryAutoCall) "synthetic_tool_result" else "disabled"}"
+                "systemPrompts=${systemPrompts.size} rememberTriggered=$automaticMemoryRememberEnabled recallTriggered=$automaticMemoryRecallEnabled"
         }
 
         var iterationCount = 0
@@ -317,7 +325,9 @@ class ConversationEngineService(
                 val errorMessage = AiConversationMessageMapper.createErrorMessage(conversationId, e.message ?: "Unknown error")
                 emit(errorMessage)
                 conversationService.addMessage(conversationId, errorMessage)
-                routeMessageThroughMemoryRouter(conversationId, conversation.currentThread, errorMessage, agent, project, systemPrompts, memoryPipelineTools)
+                if (automaticMemoryRememberEnabled) {
+                    routeMessageThroughMemoryRouter(conversationId, conversation.currentThread, errorMessage, agent, project, systemPrompts, memoryPipelineTools)
+                }
                 break
             }
 
@@ -358,7 +368,9 @@ class ConversationEngineService(
                     )
                     emit(violationMessage)
                     conversationService.addMessage(conversationId, violationMessage)
-                    routeMessageThroughMemoryRouter(conversationId, conversation.currentThread, violationMessage, agent, project, systemPrompts, memoryPipelineTools)
+                    if (automaticMemoryRememberEnabled) {
+                        routeMessageThroughMemoryRouter(conversationId, conversation.currentThread, violationMessage, agent, project, systemPrompts, memoryPipelineTools)
+                    }
                 } catch (e: Exception) {
                     log.error(e) { "Failed to handle Stride violation: ${e.message}" }
                 }
@@ -410,7 +422,9 @@ class ConversationEngineService(
             assistantMessages.forEach { message ->
                 emit(message)
                 conversationService.addMessage(conversationId, message)
-                routeMessageThroughMemoryRouter(conversationId, conversation.currentThread, message, agent, project, systemPrompts, memoryPipelineTools)
+                if (automaticMemoryRememberEnabled) {
+                    routeMessageThroughMemoryRouter(conversationId, conversation.currentThread, message, agent, project, systemPrompts, memoryPipelineTools)
+                }
             }
 
             if (allToolCalls.isNotEmpty()) {
@@ -458,7 +472,9 @@ class ConversationEngineService(
                 )
                 emit(toolResultMessage)
                 conversationService.addMessage(conversationId, toolResultMessage)
-                routeMessageThroughMemoryRouter(conversationId, conversation.currentThread, toolResultMessage, agent, project, systemPrompts, memoryPipelineTools)
+                if (automaticMemoryRememberEnabled) {
+                    routeMessageThroughMemoryRouter(conversationId, conversation.currentThread, toolResultMessage, agent, project, systemPrompts, memoryPipelineTools)
+                }
 
                 if (executionResult.returnDirect) {
                     break
@@ -491,13 +507,6 @@ class ConversationEngineService(
         systemPrompts: List<String>,
         tools: List<AiToolCallback>,
     ): DirectStructuredMemoryWriteResult? {
-        if (!settingsProvider.knowledgeMemoryEnabled) {
-            log.info {
-                "Memory router disabled by settings: conversation=${conversationId.value} message=${message.id.value}"
-            }
-            return null
-        }
-
         return runCatching {
             memoryMessageRoutingApplicationService.routeMessage(
                 conversationId = conversationId,
@@ -521,12 +530,12 @@ class ConversationEngineService(
     /**
      * Process current thread into the new knowledge memory.
      */
-    suspend fun rememberCurrentThread(conversationId: Conversation.Id) {
+    override suspend fun rememberCurrentThread(conversationId: Conversation.Id) {
         memoryApplicationService.ingestCurrentThread(conversationId)
         log.info { "Processed thread into typed memory for conversation $conversationId" }
     }
 
-    suspend fun consolidateCurrentMemory(conversationId: Conversation.Id) {
+    override suspend fun consolidateCurrentMemory(conversationId: Conversation.Id) {
         val conversation = conversationService.findById(conversationId)
             ?: throw IllegalStateException("Conversation not found: $conversationId")
         val agent = agentDomainService.findById(conversation.agentDefinitionId)
@@ -551,7 +560,7 @@ class ConversationEngineService(
         log.info { "Ran memory consolidation for conversation $conversationId" }
     }
 
-    suspend fun repairCurrentMemory(conversationId: Conversation.Id) {
+    override suspend fun repairCurrentMemory(conversationId: Conversation.Id) {
         val conversation = conversationService.findById(conversationId)
             ?: throw IllegalStateException("Conversation not found: $conversationId")
         val agent = agentDomainService.findById(conversation.agentDefinitionId)
@@ -576,7 +585,7 @@ class ConversationEngineService(
         log.info { "Ran memory repair for conversation $conversationId" }
     }
 
-    suspend fun maintainMemoryEntities(conversationId: Conversation.Id) {
+    override suspend fun maintainMemoryEntities(conversationId: Conversation.Id) {
         val conversation = conversationService.findById(conversationId)
             ?: throw IllegalStateException("Conversation not found: $conversationId")
         val agent = agentDomainService.findById(conversation.agentDefinitionId)
@@ -601,7 +610,7 @@ class ConversationEngineService(
         log.info { "Ran memory entity maintenance for conversation $conversationId" }
     }
 
-    suspend fun applyCurrentMemoryRetention(conversationId: Conversation.Id) {
+    override suspend fun applyCurrentMemoryRetention(conversationId: Conversation.Id) {
         val project = conversationService.getProject(conversationId)
         memoryApplicationService.runRetention(conversationId, project)
         log.info { "Ran memory retention for conversation $conversationId" }

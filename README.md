@@ -86,15 +86,19 @@ Start MongoDB:
 
 ```bash
 GROMOZEKA_HOME="$PWD/dev-data/client/.gromozeka" \
-docker compose -f "$PWD/presentation/src/jvmMain/resources/docker-compose.yml" up -d mongodb
+docker compose -f "$PWD/presentation/src/jvmMain/resources/docker-compose.yml" up
 ```
 
-Run the desktop app:
+Run the server:
 
 ```bash
-export GROMOZEKA_MODE=dev
-export GROMOZEKA_HOME="$PWD/dev-data/client/.gromozeka"
-./gradlew :presentation:run -q
+GROMOZEKA_MODE=dev ./gradlew :server:run
+```
+
+Run the desktop UI client:
+
+```bash
+./gradlew :presentation:run
 ```
 
 Stop MongoDB:

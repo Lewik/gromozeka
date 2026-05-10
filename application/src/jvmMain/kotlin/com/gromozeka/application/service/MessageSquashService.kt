@@ -10,6 +10,7 @@ import com.gromozeka.domain.service.PromptDomainService
 import com.gromozeka.domain.service.AiRuntimeProvider
 import com.gromozeka.domain.service.MessageSquashService as MessageSquashServiceSpec
 import com.gromozeka.domain.service.AgentDomainService
+import com.gromozeka.domain.service.MessageSquashGenerationService
 import com.gromozeka.domain.repository.ProjectRepository
 import klog.KLoggers
 import org.springframework.stereotype.Service
@@ -21,7 +22,7 @@ class MessageSquashService(
     private val promptDomainService: PromptDomainService,
     private val agentDomainService: AgentDomainService,
     private val projectRepository: ProjectRepository
-) : MessageSquashServiceSpec {
+) : MessageSquashServiceSpec, MessageSquashGenerationService {
     companion object {
         private val COMMON_PROMPT_PREFIX_ID = Prompt.Id("builtin:common-prompt-prefix.md")
     }
@@ -200,6 +201,23 @@ class MessageSquashService(
 
         return result
     }
+
+    override suspend fun squashWithAI(
+        conversationId: Conversation.Id,
+        selectedIds: List<Conversation.Message.Id>,
+        squashType: SquashType,
+        aiProvider: String,
+        modelName: String,
+        projectPath: String?,
+    ): String =
+        squashWithAI(
+            conversationId = conversationId,
+            selectedIds = selectedIds,
+            squashType = squashType,
+            aiProvider = AIProvider.valueOf(aiProvider),
+            modelName = modelName,
+            projectPath = projectPath,
+        )
 
     private fun wrapWithSelectionMarker(message: Conversation.Message): Conversation.Message {
         val wrappedContent = message.content.map { contentItem ->

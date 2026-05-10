@@ -11,7 +11,6 @@ import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.service.AgentDomainService
 import com.gromozeka.domain.service.AiToolProvider
 import com.gromozeka.domain.service.ConversationDomainService
-import com.gromozeka.domain.service.SettingsProvider
 import com.gromozeka.domain.tool.AiToolCallback
 import com.gromozeka.shared.uuid.uuid7
 import klog.KLoggers
@@ -29,7 +28,6 @@ class MemoryToolApplicationService(
     private val aiToolProvider: AiToolProvider,
     private val memoryApplicationService: MemoryApplicationService,
     private val memoryMessageRoutingApplicationService: MemoryMessageRoutingApplicationService,
-    private val settingsProvider: SettingsProvider,
 ) {
     private val log = KLoggers.logger(this)
 
@@ -57,10 +55,6 @@ class MemoryToolApplicationService(
         val normalizedText = text.trim()
         if (normalizedText.isBlank()) {
             return MemoryToolResultRenderer.failureJsonString("Provided memory text is blank.")
-        }
-
-        if (!settingsProvider.knowledgeMemoryEnabled) {
-            return MemoryToolResultRenderer.failureJsonString("Knowledge memory is disabled in settings.")
         }
 
         return runCatching {
@@ -121,10 +115,6 @@ class MemoryToolApplicationService(
         targetMessageId: String?,
         action: suspend (MemoryToolContext, Conversation.Message) -> String,
     ): String {
-        if (!settingsProvider.knowledgeMemoryEnabled) {
-            return MemoryToolResultRenderer.failureJsonString("Knowledge memory is disabled in settings.")
-        }
-
         return runCatching {
             val conversationId = Conversation.Id(conversationIdValue)
             val context = resolveContext(conversationId)

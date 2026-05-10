@@ -25,7 +25,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import com.gromozeka.domain.model.Conversation
-import com.gromozeka.presentation.model.Settings
+import com.gromozeka.domain.model.Settings
 import com.gromozeka.presentation.ui.GromozekaMarkdown
 import com.gromozeka.presentation.ui.LocalTranslation
 import com.gromozeka.presentation.ui.UiTestTag

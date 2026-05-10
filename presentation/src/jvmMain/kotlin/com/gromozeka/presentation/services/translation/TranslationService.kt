@@ -1,12 +1,12 @@
 package com.gromozeka.presentation.services.translation
 
-import com.gromozeka.presentation.services.SettingsService
+import com.gromozeka.domain.service.SettingsService
 import com.gromozeka.presentation.services.translation.data.EnglishTranslation
 import klog.KLoggers
 import com.gromozeka.presentation.services.translation.data.HebrewTranslation
 import com.gromozeka.presentation.services.translation.data.RussianTranslation
 import com.gromozeka.presentation.services.translation.data.Translation
-import com.gromozeka.presentation.model.Settings
+import com.gromozeka.domain.model.Settings
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -87,7 +87,7 @@ class TranslationService {
     }
 
     private suspend fun applyLanguageSettings(settings: Settings) {
-        val overrideFile = File(File(settingsService.gromozekaHome, "translations"), "override.json")
+        val overrideFile = File(File(settingsService.homeDirectory, "translations"), "override.json")
         applyTranslation(settings.currentLanguageCode, overrideFile)
     }
 
@@ -150,7 +150,7 @@ class TranslationService {
     // === Export/Import functionality ===
 
     fun exportToFile(): Boolean {
-        val overrideFile = File(File(settingsService.gromozekaHome, "translations"), "override.json")
+        val overrideFile = File(File(settingsService.homeDirectory, "translations"), "override.json")
         val currentLanguageCode = _currentTranslation.value.languageCode
 
         // Export builtin translation by language code

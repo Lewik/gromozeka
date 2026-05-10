@@ -11,7 +11,7 @@ import org.springframework.stereotype.Service
 @Service
 class TTSQueueService(
     private val ttsService: TtsService,
-) {
+) : TtsQueue {
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val ttsQueue = Channel<TtsTask>(Channel.UNLIMITED)
@@ -19,9 +19,9 @@ class TTSQueueService(
     private var actorJob: Job? = null
 
     private val _isPlaying = MutableStateFlow(false)
-    val isPlaying: StateFlow<Boolean> = _isPlaying
+    override val isPlaying: StateFlow<Boolean> = _isPlaying
 
-    fun start() {
+    override fun start() {
         check(actorJob == null) { "TTS queue service already started" }
 
         actorJob = serviceScope.launch {
@@ -45,7 +45,7 @@ class TTSQueueService(
         }
     }
 
-    suspend fun enqueue(task: TtsTask) {
+    override suspend fun enqueue(task: TtsTask) {
         require(task.text.isNotBlank()) { "TTS text cannot be blank" }
         check(actorJob != null) { "TTS service not started - call start() first" }
         check(serviceScope.isActive) { "TTS service is shut down" }
@@ -53,7 +53,7 @@ class TTSQueueService(
         ttsQueue.send(task)
     }
 
-    fun stopAndClear() {
+    override fun stopAndClear() {
         check(actorJob != null) { "TTS service not started" }
         check(serviceScope.isActive) { "TTS service is already shut down" }
 
@@ -71,7 +71,7 @@ class TTSQueueService(
         _isPlaying.value = false
     }
 
-    fun shutdown() {
+    override fun shutdown() {
         if (actorJob != null && serviceScope.isActive) {
             stopAndClear()
         }

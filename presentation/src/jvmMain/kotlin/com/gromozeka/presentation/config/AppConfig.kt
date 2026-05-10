@@ -3,25 +3,23 @@ package com.gromozeka.presentation.config
 import com.gromozeka.infrastructure.ai.platform.AudioPlayerController
 import com.gromozeka.infrastructure.ai.platform.ScreenCaptureController
 import com.gromozeka.infrastructure.ai.platform.SystemAudioController
-import com.gromozeka.presentation.services.SettingsService
 import com.gromozeka.presentation.services.WindowStateService
-import com.gromozeka.application.service.ConversationEngineService
-import com.gromozeka.application.service.ConversationNameSearchService
-import com.gromozeka.application.service.DefaultAgentProvider
-import com.gromozeka.application.service.MessageSquashService
 import com.gromozeka.infrastructure.ai.service.OllamaModelService
 import com.gromozeka.presentation.services.PTTEventRouter
 import com.gromozeka.presentation.services.PTTService
-import com.gromozeka.presentation.services.SoundNotificationService
 import com.gromozeka.application.service.ToolApprovalService
-import com.gromozeka.presentation.services.TTSQueueService
+import com.gromozeka.presentation.services.TtsQueue
 import com.gromozeka.presentation.services.theming.ThemeService
 import com.gromozeka.presentation.services.translation.TranslationService
 import com.gromozeka.presentation.ui.viewmodel.AppViewModel
 import com.gromozeka.presentation.ui.viewmodel.ConversationSearchViewModel
 import com.gromozeka.shared.audio.AudioRecorder
-import com.gromozeka.domain.repository.TokenUsageStatisticsRepository
 import com.gromozeka.domain.service.ConversationDomainService
+import com.gromozeka.domain.service.ConversationNameSearchService
+import com.gromozeka.domain.service.ConversationRuntimeService
+import com.gromozeka.domain.service.ConversationTokenStatsService
+import com.gromozeka.domain.service.DefaultAgentProvider
+import com.gromozeka.domain.service.MessageSquashGenerationService
 import com.gromozeka.infrastructure.ai.springai.SttService
 import com.gromozeka.infrastructure.ai.springai.TtsService
 import io.ktor.client.*
@@ -61,55 +59,46 @@ class Config {
     fun pttService(
         audioRecorder: AudioRecorder,
         sttService: SttService,
-        settingsService: SettingsService,
+        settingsService: com.gromozeka.domain.service.SettingsService,
         systemAudioController: SystemAudioController,
     ) = PTTService(audioRecorder, sttService, settingsService, systemAudioController)
 
     @Bean
     fun appViewModel(
-        conversationEngineService: ConversationEngineService,
+        conversationRuntimeService: ConversationRuntimeService,
         conversationService: ConversationDomainService,
-        messageSquashService: MessageSquashService,
-        soundNotificationService: SoundNotificationService,
-        agentDomainService: com.gromozeka.domain.service.AgentDomainService,
-        settingsService: SettingsService,
+        messageSquashGenerationService: MessageSquashGenerationService,
+        soundNotificationService: com.gromozeka.presentation.services.SoundNotificationPlayer,
+        settingsService: com.gromozeka.domain.service.SettingsService,
         @Qualifier("coroutineScope") scope: CoroutineScope,
         screenCaptureController: ScreenCaptureController,
         defaultAgentProvider: DefaultAgentProvider,
-        tokenUsageStatisticsRepository: TokenUsageStatisticsRepository,
+        tokenStatsService: ConversationTokenStatsService,
     ) = AppViewModel(
-        conversationEngineService,
+        conversationRuntimeService,
         conversationService,
-        messageSquashService,
+        messageSquashGenerationService,
         soundNotificationService,
-        agentDomainService,
         settingsService,
         scope,
         screenCaptureController,
         defaultAgentProvider,
-        tokenUsageStatisticsRepository,
+        tokenStatsService,
     )
 
     @Bean
     fun conversationSearchViewModel(
-        conversationSearchService: ConversationNameSearchService,
+        conversationNameSearchService: ConversationNameSearchService,
         @Qualifier("coroutineScope") scope: CoroutineScope,
-    ) = ConversationSearchViewModel(conversationSearchService, scope)
+    ) = ConversationSearchViewModel(conversationNameSearchService, scope)
 
     @Bean
     fun pttEventRouter(
         pttService: PTTService,
-        ttsQueueService: TTSQueueService,
+        ttsQueueService: TtsQueue,
         appViewModel: AppViewModel,
-        settingsService: SettingsService,
+        settingsService: com.gromozeka.domain.service.SettingsService,
     ) = PTTEventRouter(pttService, ttsQueueService, appViewModel, settingsService)
-
-    @Bean
-    fun settingsService(): SettingsService {
-        val service = SettingsService()
-        service.initialize()
-        return service
-    }
 
     @Bean
     fun coroutineScope(): CoroutineScope {
@@ -117,14 +106,14 @@ class Config {
     }
 
     @Bean
-    fun translationService(settingsService: SettingsService): TranslationService {
+    fun translationService(settingsService: com.gromozeka.domain.service.SettingsService): TranslationService {
         val service = TranslationService()
         service.init(settingsService)
         return service
     }
 
     @Bean
-    fun themeService(settingsService: SettingsService): ThemeService {
+    fun themeService(settingsService: com.gromozeka.domain.service.SettingsService): ThemeService {
         val service = ThemeService()
         service.init(settingsService)
         return service

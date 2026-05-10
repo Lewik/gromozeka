@@ -4,11 +4,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.gromozeka.infrastructure.ai.platform.ScreenCaptureController
-import com.gromozeka.application.service.ConversationEngineService
-import com.gromozeka.application.service.MessageSquashService
-import com.gromozeka.presentation.services.SoundNotificationService
-import com.gromozeka.domain.model.AIProvider
-import com.gromozeka.presentation.model.Settings
+import com.gromozeka.presentation.services.SoundNotificationPlayer
+import com.gromozeka.domain.model.Settings
 import com.gromozeka.presentation.ui.state.UIState
 import com.gromozeka.presentation.utils.ChatMessageSoundDetector
 import com.gromozeka.domain.model.AgentDefinition
@@ -16,8 +13,11 @@ import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.MessageTagDefinition
 import com.gromozeka.domain.model.SquashType
 import com.gromozeka.domain.model.TokenUsageStatistics
-import com.gromozeka.domain.repository.TokenUsageStatisticsRepository
 import com.gromozeka.domain.service.ConversationDomainService
+import com.gromozeka.domain.service.ConversationRuntimeService
+import com.gromozeka.domain.service.ConversationTokenStatsService
+import com.gromozeka.domain.service.MessageSquashGenerationService
+import com.gromozeka.domain.service.SettingsService
 import com.gromozeka.shared.uuid.uuid7
 import klog.KLoggers
 import kotlinx.coroutines.CoroutineScope
@@ -28,18 +28,18 @@ import kotlinx.datetime.Clock
 class TabViewModel(
     val conversationId: Conversation.Id,
     val projectPath: String,
-    private val conversationEngineService: ConversationEngineService,
+    private val conversationRuntimeService: ConversationRuntimeService,
     private val conversationService: ConversationDomainService,
-    private val messageSquashService: MessageSquashService,
-    private val soundNotificationService: SoundNotificationService,
-    private val agentDomainService: com.gromozeka.domain.service.AgentDomainService,
-    private val settingsFlow: StateFlow<Settings>,
+    private val messageSquashGenerationService: MessageSquashGenerationService,
+    private val soundNotificationService: SoundNotificationPlayer,
+    private val settingsService: SettingsService,
     private val scope: CoroutineScope,
     initialTabUiState: UIState.Tab,
     private val screenCaptureController: ScreenCaptureController,
-    private val tokenUsageStatisticsRepository: TokenUsageStatisticsRepository,
+    private val tokenStatsService: ConversationTokenStatsService,
 ) {
     private val log = KLoggers.logger(this)
+    private val settingsFlow: StateFlow<Settings> = settingsService.settingsFlow
 
     private val _uiState = MutableStateFlow(initialTabUiState)
     val uiState: StateFlow<UIState.Tab> = _uiState.asStateFlow()
@@ -154,14 +154,9 @@ class TabViewModel(
 
     private suspend fun loadTokenStats() {
         try {
-            val conversation = conversationService.findById(conversationId)
-            if (conversation != null) {
-                val stats = tokenUsageStatisticsRepository.getThreadTotals(conversation.currentThread)
-                _tokenStats.value = stats
-                log.debug { "Loaded token stats for conversation $conversationId: $stats" }
-            } else {
-                log.warn { "Conversation not found: $conversationId" }
-            }
+            val stats = tokenStatsService.getTokenStats(conversationId)
+            _tokenStats.value = stats
+            log.debug { "Loaded token stats for conversation $conversationId: $stats" }
         } catch (e: Exception) {
             log.error(e) { "Failed to load token stats for conversation $conversationId" }
         }
@@ -253,7 +248,6 @@ class TabViewModel(
             val currentValue = _strideEnabled.value
             val newValue = !currentValue
             
-            // Update conversation in repository
             val updatedConversation = conversationService.updateStrideEnabled(conversationId, newValue)
             
             if (updatedConversation != null) {
@@ -313,7 +307,7 @@ class TabViewModel(
 
                 var lastMessage: Conversation.Message? = null
 
-                conversationEngineService.sendMessage(conversationId, userMessage, currentState.agent)
+                conversationRuntimeService.sendMessage(conversationId, userMessage, currentState.agent)
                     .collect { message ->
                         val messages = _allMessages.value.toMutableList()
 
@@ -712,18 +706,13 @@ class TabViewModel(
         }
 
         try {
-            val conversation = conversationService.findById(conversationId)
-                ?: throw IllegalStateException("Conversation not found: $conversationId")
-
-            val agentDefinition = agentDomainService.findById(conversation.agentDefinitionId)
-                ?: throw IllegalStateException("Agent definition not found: ${conversation.agentDefinitionId}")
-                
-            val aiProvider = AIProvider.valueOf(agentDefinition.aiProvider)
+            val agentDefinition = _uiState.value.agent
+            val aiProvider = agentDefinition.aiProvider
             val modelName = agentDefinition.modelName
 
             log.info { "Starting AI squash: type=$squashType, provider=$aiProvider, model=$modelName" }
 
-            val result = messageSquashService.squashWithAI(
+            val result = messageSquashGenerationService.squashWithAI(
                 conversationId = conversationId,
                 selectedIds = selectedIds.toList(),
                 squashType = squashType,

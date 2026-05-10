@@ -9,7 +9,7 @@ import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.milliseconds
 
 class UnifiedGestureDetector(
-    private val pttEventRouter: PTTEventRouter,
+    private val pttEventRouter: PttEventHandler,
     private val coroutineScope: CoroutineScope,
 ) {
     private val log = KLoggers.logger(this)

@@ -1,24 +1,26 @@
-package com.gromozeka.presentation.services
+package com.gromozeka.application.service
 
-import com.gromozeka.presentation.model.Settings
 import com.gromozeka.domain.model.AIProvider
 import com.gromozeka.domain.model.AppMode
-import com.gromozeka.domain.service.SettingsProvider
+import com.gromozeka.domain.model.Settings
 import com.gromozeka.shared.utils.findRandomAvailablePort
+import jakarta.annotation.PostConstruct
 import klog.KLoggers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.serialization.json.*
+import kotlinx.serialization.json.Json
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.stereotype.Service
 import java.awt.GraphicsEnvironment
 import java.awt.Toolkit
 import java.io.File
 import java.nio.file.Path
-import java.util.*
+import java.util.Locale
 import kotlin.io.path.Path
 
-class SettingsService : SettingsProvider {
+@Service
+class SettingsService : com.gromozeka.domain.service.SettingsService {
 
     private val log = KLoggers.logger("SettingsService")
 
@@ -41,9 +43,8 @@ class SettingsService : SettingsProvider {
     private val settingsFile: File = File(gromozekaHome, "settings.json")
 
     private val _settingsFlow = MutableStateFlow(Settings())
-    val settingsFlow: StateFlow<Settings> = _settingsFlow.asStateFlow()
+    override val settingsFlow: StateFlow<Settings> = _settingsFlow.asStateFlow()
 
-    // SettingsProvider implementation - delegate to current settings
     override val sttMainLanguage: String get() = settings.sttMainLanguage
     override val ttsModel: String get() = settings.ttsModel
     override val ttsVoice: String get() = settings.ttsVoice
@@ -61,13 +62,10 @@ class SettingsService : SettingsProvider {
     override val anthropicBedrockProfile: String? get() = settings.anthropicBedrockProfile
     override val openAiApiKey: String? get() = settings.openAiApiKey
     override val ollamaBaseUrl: String get() = settings.ollamaBaseUrl
-    override val knowledgeMemoryEnabled: Boolean get() = settings.knowledgeMemoryEnabled
-    override val memoryAutoCall: Boolean get() = settings.memoryAutoCall
-    override val autoRememberThreads: Boolean get() = settings.autoRememberThreads
+    override val memoryAutoRemember: Boolean get() = settings.memoryAutoRemember
+    override val memoryAutoRecall: Boolean get() = settings.memoryAutoRecall
 
-    /**
-     * Initialize the service automatically after Spring bean creation
-     */
+    @PostConstruct
     fun initialize() {
         if (gromozekaHome.mkdirs()) {
             log.info("Created gromozeka home directory: ${gromozekaHome.absolutePath}")
@@ -107,11 +105,12 @@ class SettingsService : SettingsProvider {
             }
 
             mode == AppMode.DEV -> {
-                // Read project root from system property (set by Gradle in build.gradle.kts)
                 val projectRoot = System.getProperty("gromozeka.project.root")
-                    ?: error("DEV mode requires 'gromozeka.project.root' system property. " +
-                             "Ensure application is started via Gradle: ./gradlew :presentation:run")
-                
+                    ?: error(
+                        "DEV mode requires 'gromozeka.project.root' system property. " +
+                            "Ensure application is started via Gradle."
+                    )
+
                 val devDataDir = File(projectRoot, "dev-data/client/.gromozeka")
                 log.info("DEV mode - project root: $projectRoot")
                 log.info("DEV mode - using dev-data: ${devDataDir.absolutePath}")
@@ -157,7 +156,7 @@ class SettingsService : SettingsProvider {
             enableMessageSounds = false,
             enableReadySounds = false,
             soundVolume = 1.0f,
-            uiScale = detectedScale // Auto-detect once on first launch, then user controls manually
+            uiScale = detectedScale
         )
 
         settingsFile.writeText(json.encodeToString(defaults))
@@ -166,29 +165,26 @@ class SettingsService : SettingsProvider {
         return defaults
     }
 
-    fun saveSettings(settings: Settings) {
-        validateSettings(settings) // Fail fast on invalid settings
-        // Always save to file in both modes
+    override fun saveSettings(settings: Settings) {
+        validateSettings(settings)
         settingsFile.writeText(json.encodeToString(settings))
         _settingsFlow.value = settings
         log.info("Settings saved to: ${settingsFile.absolutePath}")
     }
 
-    fun saveSettings(block: Settings.() -> Settings) {
+    override fun saveSettings(block: Settings.() -> Settings) {
         val updated = settings.block()
         saveSettings(updated)
     }
 
-    fun reloadSettings() {
+    override fun reloadSettings() {
         _settingsFlow.value = loadSettings()
         log.info("Settings reloaded from file")
     }
 
-    // Utility methods
-    val settings: Settings
+    override val settings: Settings
         get() = _settingsFlow.value
 
-    // Utility methods for common paths
     fun getLogsDir(): File {
         return File(gromozekaHome, "logs").apply { mkdirs() }
     }
@@ -201,65 +197,46 @@ class SettingsService : SettingsProvider {
         return File(gromozekaHome, "sessions").apply { mkdirs() }
     }
 
-    // Log directory paths (single source of truth)
     fun getLogsDirectory(): Path = Path(logPath)
 
-    /**
-     * Validates settings for correctness and fail-fast behavior
-     */
     private fun validateSettings(settings: Settings) {
         validateLanguageCode(settings.sttMainLanguage)
         validateTtsSpeed(settings.ttsSpeed)
     }
 
-    /**
-     * Validates ISO 639-1 and 639-3 language codes
-     * Fail fast if invalid - OpenAI models won't understand invalid codes
-     */
     private fun validateLanguageCode(languageCode: String) {
         require(languageCode.isNotBlank()) {
             "STT language code cannot be blank"
         }
 
-        // Check if it's a valid ISO language code using Java's Locale
-        val isValidIso639_1 = try {
+        val isValidIso6391 = try {
             val locale = Locale.forLanguageTag(languageCode)
             locale.language.isNotBlank() && locale.language != "und"
         } catch (e: Exception) {
             false
         }
 
-        // Additional check for 2-letter and 3-letter codes (ISO 639-1 and 639-3)
         val isValidLength = languageCode.length in 2..3
         val isAlphabetic = languageCode.all { it.isLetter() }
 
-        require(isValidIso639_1 && isValidLength && isAlphabetic) {
+        require(isValidIso6391 && isValidLength && isAlphabetic) {
             "Invalid STT language code: '$languageCode'. " +
-                    "Must be a valid ISO 639-1 (2-letter) or ISO 639-3 (3-letter) code. " +
-                    "Examples: 'en', 'ru', 'zh', 'es', 'fra', 'deu'"
+                "Must be a valid ISO 639-1 (2-letter) or ISO 639-3 (3-letter) code. " +
+                "Examples: 'en', 'ru', 'zh', 'es', 'fra', 'deu'"
         }
-
     }
 
-    /**
-     * Validates TTS speed parameter for OpenAI API compatibility
-     */
     private fun validateTtsSpeed(speed: Float) {
         require(speed in 0.25f..4.0f) {
             "Invalid TTS speed: $speed. Must be between 0.25 (slowest) and 4.0 (fastest). Default: 1.0"
         }
-
     }
 
-    /**
-     * Auto-detect optimal UI scale based on platform and screen characteristics
-     */
     private fun detectOptimalUIScale(): Float {
         return try {
             val toolkit = Toolkit.getDefaultToolkit()
-            val screenResolution = toolkit.screenResolution // DPI
+            val screenResolution = toolkit.screenResolution
 
-            // Get system scaling from Java 2D
             val systemScale = try {
                 val gfxEnv = GraphicsEnvironment.getLocalGraphicsEnvironment()
                 val defaultScreen = gfxEnv.defaultScreenDevice
@@ -271,38 +248,33 @@ class SettingsService : SettingsProvider {
 
             val osName = System.getProperty("os.name").lowercase()
             val detectedScale = when {
-                // macOS - handle retina displays
                 osName.contains("mac") -> when {
-                    systemScale >= 2.0f -> 1.5f  // Retina: scale down from 2x
-                    screenResolution >= 150 -> 1.3f  // High DPI
-                    else -> 1.0f  // Standard DPI
+                    systemScale >= 2.0f -> 1.5f
+                    screenResolution >= 150 -> 1.3f
+                    else -> 1.0f
                 }
 
-                // Windows - handle high DPI scaling  
                 osName.contains("windows") -> when {
-                    systemScale >= 2.0f -> 1.7f  // 200% scaling
-                    systemScale >= 1.5f -> 1.4f  // 150% scaling  
-                    systemScale >= 1.25f -> 1.2f // 125% scaling
-                    else -> 1.0f  // 100% scaling
+                    systemScale >= 2.0f -> 1.7f
+                    systemScale >= 1.5f -> 1.4f
+                    systemScale >= 1.25f -> 1.2f
+                    else -> 1.0f
                 }
 
-                // Linux - conservative scaling
                 osName.contains("linux") -> when {
-                    screenResolution >= 180 -> 1.3f  // High DPI
-                    screenResolution >= 120 -> 1.1f  // Medium DPI
-                    else -> 1.0f  // Standard DPI
+                    screenResolution >= 180 -> 1.3f
+                    screenResolution >= 120 -> 1.1f
+                    else -> 1.0f
                 }
 
-                // Other platforms - safe default
                 else -> 1.0f
             }
 
             log.info("Auto-detected UI scale: $detectedScale (OS: $osName, DPI: $screenResolution, SystemScale: $systemScale)")
             detectedScale
-
         } catch (e: Exception) {
             log.info("Failed to auto-detect UI scale, using default: ${e.message}")
-            1.0f  // Safe fallback
+            1.0f
         }
     }
 
@@ -324,5 +296,4 @@ class SettingsService : SettingsProvider {
 
         log.info("Generated global config: ${mcpConfigFile.absolutePath}")
     }
-
 }
