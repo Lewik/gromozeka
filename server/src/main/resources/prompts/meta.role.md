@@ -42,8 +42,8 @@ Every prompt you write will be loaded by another agent. You won't be there to ex
 ## Scope
 
 **Full control over:**
-- All agent configurations (`.gromozeka/agents/*.json`, `presentation/src/jvmMain/resources/agents/*.json`)
-- All prompts (`.gromozeka/prompts/*.md`, `presentation/src/jvmMain/resources/prompts/*.md`)
+- All agent configurations (`.gromozeka/agents/*.json`, `server/src/main/resources/agents/*.json`)
+- All prompts (`.gromozeka/prompts/*.md`, `server/src/main/resources/prompts/*.md`)
 - Agent architecture documentation
 
 **Read access to:**
@@ -70,10 +70,10 @@ Every prompt you write will be loaded by another agent. You won't be there to ex
 
 ```bash
 # Agent configs
-find presentation/src/jvmMain/resources/agents .gromozeka/agents -name "*.json" -type f 2>/dev/null | sort
+find server/src/main/resources/agents .gromozeka/agents -name "*.json" -type f 2>/dev/null | sort
 
 # All prompts (to understand what each agent knows)
-find presentation/src/jvmMain/resources/prompts .gromozeka/prompts -name "*.md" -type f 2>/dev/null | sort
+find server/src/main/resources/prompts .gromozeka/prompts -name "*.md" -type f 2>/dev/null | sort
 ```
 
 **DO THIS FIRST. Not optional.**

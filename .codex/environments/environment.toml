@@ -33,7 +33,7 @@ command = '''
 bash -c 'set -euo pipefail
 ROOT_DIR="$(pwd)"
 export GROMOZEKA_HOME="${GROMOZEKA_HOME:-$ROOT_DIR/dev-data/client/.gromozeka}"
-docker compose -f "$ROOT_DIR/presentation/src/jvmMain/resources/docker-compose.yml" up -d mongodb'
+docker compose -f "$ROOT_DIR/server/src/main/resources/docker-compose.yml" up -d mongodb'
 '''
 
 [[actions]]
@@ -42,7 +42,7 @@ icon = "tool"
 command = '''
 bash -c 'set -euo pipefail
 ROOT_DIR="$(pwd)"
-docker compose -f "$ROOT_DIR/presentation/src/jvmMain/resources/docker-compose.yml" stop mongodb'
+docker compose -f "$ROOT_DIR/server/src/main/resources/docker-compose.yml" stop mongodb'
 '''
 
 [[actions]]
@@ -51,9 +51,9 @@ icon = "tool"
 command = "bash -c 'set -euo pipefail; export JAVA_HOME=\"${GROMOZEKA_JAVA_HOME:-$(/usr/libexec/java_home -v 21)}\"; export PATH=\"$JAVA_HOME/bin:$PATH\"; ./gradlew :presentation:build -q'"
 
 [[actions]]
-name = "App Context Test"
+name = "Server Tests"
 icon = "test"
-command = "bash -c 'set -euo pipefail; export JAVA_HOME=\"${GROMOZEKA_JAVA_HOME:-$(/usr/libexec/java_home -v 21)}\"; export PATH=\"$JAVA_HOME/bin:$PATH\"; ./gradlew :presentation:build :presentation:jvmTest --tests ApplicationContextTest -q'"
+command = "bash -c 'set -euo pipefail; export JAVA_HOME=\"${GROMOZEKA_JAVA_HOME:-$(/usr/libexec/java_home -v 21)}\"; export PATH=\"$JAVA_HOME/bin:$PATH\"; ./gradlew :server:test -q'"
 
 [[actions]]
 name = "Memory Unit Tests"
@@ -63,4 +63,4 @@ command = "bash -c 'set -euo pipefail; export JAVA_HOME=\"${GROMOZEKA_JAVA_HOME:
 [[actions]]
 name = "Memory Real E2E"
 icon = "test"
-command = "bash -c 'set -euo pipefail; export JAVA_HOME=\"${GROMOZEKA_JAVA_HOME:-$(/usr/libexec/java_home -v 21)}\"; export PATH=\"$JAVA_HOME/bin:$PATH\"; ./gradlew :presentation:jvmTest --tests '\\''com.gromozeka.presentation.MemoryRealModelE2eTest'\\'' -Dgromozeka.memory.e2e=true -Dgromozeka.llm.cassette.mode=replay-only -q'"
+command = "bash -c 'set -euo pipefail; export JAVA_HOME=\"${GROMOZEKA_JAVA_HOME:-$(/usr/libexec/java_home -v 21)}\"; export PATH=\"$JAVA_HOME/bin:$PATH\"; ./gradlew :server:test --tests '\\''com.gromozeka.server.MemoryRealModelE2eTest'\\'' -Dgromozeka.memory.e2e=true -Dgromozeka.llm.cassette.mode=replay-only -q'"

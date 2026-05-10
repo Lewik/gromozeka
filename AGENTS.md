@@ -16,7 +16,7 @@ Normal agent system isn't available. User will tell you what's broken. Your job:
 
 **Builtin prompts:**
 ```
-presentation/src/jvmMain/resources/prompts/*.md
+server/src/main/resources/prompts/*.md
 ```
 
 **Project prompts:**
@@ -48,8 +48,8 @@ cat .gromozeka/prompts/agents-roster.knowledge.md
 
 After any fix, verify:
 ```bash
-./gradlew :presentation:build :presentation:jvmTest --tests ApplicationContextTest -q || \
-  ./gradlew :presentation:build :presentation:jvmTest --tests ApplicationContextTest
+./gradlew :presentation:build :server:test -q || \
+  ./gradlew :presentation:build :server:test
 ```
 
 Pattern: `-q` first (saves tokens), full output only on error.
@@ -63,15 +63,15 @@ Current high-value commands:
 ```bash
 ./gradlew :presentation:run -q
 ./gradlew :presentation:build -q
-./gradlew :presentation:build :presentation:jvmTest --tests ApplicationContextTest -q
+./gradlew :server:test -q
 ./gradlew :application:jvmTest --tests 'com.gromozeka.application.service.memory.MemoryMaintenancePipelineTest' -q
-./gradlew :presentation:jvmTest --tests 'com.gromozeka.presentation.MemoryRealModelE2eTest' -Dgromozeka.memory.e2e=true -Dgromozeka.llm.cassette.mode=replay-only -q
+./gradlew :server:test --tests 'com.gromozeka.server.MemoryRealModelE2eTest' -Dgromozeka.memory.e2e=true -Dgromozeka.llm.cassette.mode=replay-only -q
 ```
 
 Mongo is intentionally explicit:
 ```bash
-GROMOZEKA_HOME="$PWD/dev-data/client/.gromozeka" docker compose -f "$PWD/presentation/src/jvmMain/resources/docker-compose.yml" up -d mongodb
-docker compose -f "$PWD/presentation/src/jvmMain/resources/docker-compose.yml" stop mongodb
+GROMOZEKA_HOME="$PWD/dev-data/client/.gromozeka" docker compose -f "$PWD/server/src/main/resources/docker-compose.yml" up -d mongodb
+docker compose -f "$PWD/server/src/main/resources/docker-compose.yml" stop mongodb
 ```
 
 ## Your Approach

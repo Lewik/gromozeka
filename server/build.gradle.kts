@@ -52,12 +52,6 @@ dependencies {
     testImplementation(kotlin("test"))
 }
 
-sourceSets {
-    main {
-        resources.srcDir(rootProject.file("presentation/src/jvmMain/resources"))
-    }
-}
-
 application {
     mainClass.set("com.gromozeka.server.GromozekaServerMainKt")
     applicationDefaultJvmArgs = listOf(

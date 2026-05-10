@@ -68,7 +68,7 @@ Rules:
 Builtin:
 
 ```text
-presentation/src/jvmMain/resources/
+server/src/main/resources/
 ├── agents/
 └── prompts/
 ```

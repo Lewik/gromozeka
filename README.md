@@ -11,7 +11,8 @@ The project is currently a local research/development application, not a polishe
 ## Current Runtime Reality
 
 - Main dogfooding runtime: `OPEN_AI_SUBSCRIPTION`.
-- Startup/composition root: `:presentation`.
+- Runtime composition root: `:server`.
+- Desktop UI entrypoint: `:presentation`.
 - Business workflows: `:application`.
 - Domain contracts and memory models: `:domain`.
 - AI integrations and tool implementations: `:infrastructure-ai`.
@@ -86,7 +87,7 @@ Start MongoDB:
 
 ```bash
 GROMOZEKA_HOME="$PWD/dev-data/client/.gromozeka" \
-docker compose -f "$PWD/presentation/src/jvmMain/resources/docker-compose.yml" up
+docker compose -f "$PWD/server/src/main/resources/docker-compose.yml" up
 ```
 
 Run the server:
@@ -104,7 +105,7 @@ Run the desktop UI client:
 Stop MongoDB:
 
 ```bash
-docker compose -f "$PWD/presentation/src/jvmMain/resources/docker-compose.yml" stop mongodb
+docker compose -f "$PWD/server/src/main/resources/docker-compose.yml" stop mongodb
 ```
 
 Codex desktop run actions are configured in:
@@ -113,7 +114,7 @@ Codex desktop run actions are configured in:
 .codex/environments/environment.toml
 ```
 
-The high-value actions are `Start Mongo`, `Run`, `Stop Mongo`, `Build`, `App Context Test`, `Memory Unit Tests`, and `Memory Real E2E`.
+The high-value actions are `Start Mongo`, `Run`, `Stop Mongo`, `Build`, `Server Tests`, `Memory Unit Tests`, and `Memory Real E2E`.
 
 ## Verification
 
@@ -126,7 +127,7 @@ Build:
 Application context smoke test:
 
 ```bash
-./gradlew :presentation:build :presentation:jvmTest --tests ApplicationContextTest -q
+./gradlew :server:test -q
 ```
 
 Memory maintenance unit tests:
@@ -138,8 +139,8 @@ Memory maintenance unit tests:
 Memory real-model E2E in deterministic replay mode:
 
 ```bash
-./gradlew :presentation:jvmTest \
-  --tests 'com.gromozeka.presentation.MemoryRealModelE2eTest' \
+./gradlew :server:test \
+  --tests 'com.gromozeka.server.MemoryRealModelE2eTest' \
   -Dgromozeka.memory.e2e=true \
   -Dgromozeka.llm.cassette.mode=replay-only \
   -q
@@ -148,8 +149,8 @@ Memory real-model E2E in deterministic replay mode:
 Record missing LLM cassettes intentionally:
 
 ```bash
-./gradlew :presentation:jvmTest \
-  --tests 'com.gromozeka.presentation.MemoryRealModelE2eTest' \
+./gradlew :server:test \
+  --tests 'com.gromozeka.server.MemoryRealModelE2eTest' \
   -Dgromozeka.memory.e2e=true \
   -Dgromozeka.llm.cassette.mode=record-missing \
   -q
@@ -164,7 +165,8 @@ domain/             Domain models, service contracts, tool contracts
 application/        Use cases and orchestration pipelines
 infrastructure-ai/  LLM runtimes, tools, MCP-related integrations
 infrastructure-db/  Mongo persistence, search, repository implementations
-presentation/       Compose Desktop UI, app bootstrap, runtime composition
+server/             Spring/server runtime composition and server-owned resources
+presentation/       Compose Desktop remote UI client and client-owned resources
 shared/             Shared utilities
 agent_memory_handoff/  Memory design handoff and reference architecture
 docs/               Architecture notes, diagrams, research, guides
