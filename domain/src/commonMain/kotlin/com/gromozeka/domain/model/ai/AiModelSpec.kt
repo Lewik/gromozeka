@@ -20,6 +20,7 @@ data class AiModelSpec(
 
     enum class Provider {
         ANTHROPIC,
+        ANTHROPIC_BEDROCK,
         CLAUDE_CODE,
         OPEN_AI,
         OPEN_AI_SUBSCRIPTION,
@@ -60,6 +61,8 @@ object AiModelSpecs {
         AiModelSpec("claude-3-5-sonnet-20241022", AiModelSpec.Provider.ANTHROPIC, 200_000, percent80),
         AiModelSpec("claude-3-5-haiku-20241022", AiModelSpec.Provider.ANTHROPIC, 200_000, percent80),
         AiModelSpec("claude-3-opus-20240229", AiModelSpec.Provider.ANTHROPIC, 200_000, percent80),
+        AiModelSpec("anthropic.claude-sonnet-4-20250514-v1:0", AiModelSpec.Provider.ANTHROPIC_BEDROCK, 200_000, percent80),
+        AiModelSpec("anthropic.claude-3-5-sonnet-20241022-v2:0", AiModelSpec.Provider.ANTHROPIC_BEDROCK, 200_000, percent80),
         AiModelSpec("claude-sonnet-4-5", AiModelSpec.Provider.CLAUDE_CODE, 200_000, percent80),
         AiModelSpec("sonnet", AiModelSpec.Provider.CLAUDE_CODE, 1_000_000, percent80),
         AiModelSpec("opus", AiModelSpec.Provider.CLAUDE_CODE, 1_000_000, percent80),

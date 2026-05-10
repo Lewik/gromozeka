@@ -32,7 +32,6 @@ kotlin {
                 
                 // Spring AI for embeddings and chat models
                 implementation(libs.spring.ai.openai)
-                implementation(libs.spring.ai.anthropic)
                 implementation(libs.spring.ai.google.genai)
                 
                 // Spring Boot

@@ -24,7 +24,7 @@ import kotlinx.serialization.Serializable
  * @property id unique agent identifier (hash of file path or generated for inline)
  * @property name agent role name displayed in UI (e.g., "Code Reviewer", "Researcher")
  * @property prompts ordered list of prompt IDs defining agent behavior
- * @property aiProvider AI provider identifier (e.g., "ANTHROPIC", "OPENAI", "GEMINI")
+ * @property aiProvider AI provider identifier (e.g., "ANTHROPIC", "ANTHROPIC_BEDROCK", "OPENAI", "GEMINI")
  * @property modelName model identifier (e.g., "claude-opus-4-6", "gpt-4")
  * @property maxTokens maximum output tokens (null = use SDK default). For Opus 4.6: 128000, Sonnet 4.6: 64000
  * @property thinking extended thinking configuration (Anthropic models only)

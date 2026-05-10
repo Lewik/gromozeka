@@ -76,7 +76,7 @@ class CreateAgentTool(
                 })
                 put("ai_provider", buildJsonObject {
                     put("type", "string")
-                    put("description", "AI provider identifier (e.g., 'ANTHROPIC', 'OPENAI', 'GEMINI')")
+                    put("description", "AI provider identifier (e.g., 'ANTHROPIC', 'ANTHROPIC_BEDROCK', 'OPENAI', 'GEMINI')")
                     put("default", "ANTHROPIC")
                 })
                 put("model_name", buildJsonObject {

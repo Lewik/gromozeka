@@ -6,12 +6,6 @@ import com.gromozeka.domain.service.SettingsProvider
 import com.gromozeka.infrastructure.ai.factory.AiApiFactory
 import io.micrometer.observation.ObservationRegistry
 import klog.KLoggers
-import org.springframework.ai.anthropic.AnthropicChatModel
-import org.springframework.ai.anthropic.AnthropicChatOptions
-import org.springframework.ai.anthropic.EnhancedAnthropicChatModel
-import org.springframework.ai.anthropic.PromptCachingFixedAnthropicChatModel
-import org.springframework.ai.anthropic.api.AnthropicCacheOptions
-import org.springframework.ai.anthropic.api.AnthropicCacheStrategy
 import org.springframework.ai.chat.model.ChatModel
 import org.springframework.ai.claudecode.ClaudeCodeChatModel
 import org.springframework.ai.claudecode.ClaudeCodeChatOptions
@@ -34,7 +28,6 @@ class ChatModelFactory(
     private val aiApiFactory: AiApiFactory,
     private val toolCallingManager: ToolCallingManager,
     private val settingsProvider: SettingsProvider,
-    private val oauthConfigService: com.gromozeka.infrastructure.ai.oauth.OAuthConfigService,
 ) {
     private val log = KLoggers.logger(this)
 
@@ -135,40 +128,11 @@ class ChatModelFactory(
             }
 
             AIProvider.ANTHROPIC -> {
-                val anthropicApi = aiApiFactory.createAnthropicApi()
+                error("ANTHROPIC is handled by AnthropicSdkRuntimeBackend, not Spring AI ChatModelFactory")
+            }
 
-                val thinkingBudget = 10000
-                val options = AnthropicChatOptions
-                    .builder()
-                    .model(modelName)
-                    // NOTE: temperature is NOT compatible with thinking mode
-                    // Using top_p instead (allowed range: 0.95-1.0 when thinking enabled)
-                    .topP(0.95)
-                    .maxTokens(64000)
-                    //TODO thinking should be enabled except tool_choice:any
-//                    .thinking(
-//                        org.springframework.ai.anthropic.api.AnthropicApi.ThinkingType.ENABLED,
-//                        thinkingBudget
-//                    )
-                    .cacheOptions(
-                        AnthropicCacheOptions.builder()
-                            .strategy(AnthropicCacheStrategy.CONVERSATION_HISTORY)
-                            .build()
-                    )
-                    .internalToolExecutionEnabled(false)
-                    .build()
-
-                log.info("Using prompt caching fixed Anthropic chat model with improved cache strategy")
-                log.info("Extended thinking ENABLED: budget_tokens=$thinkingBudget (min 1024, recommended 10k-32k)")
-                log.info("Using top_p=0.95 (temperature NOT compatible with thinking mode)")
-                log.info("Thinking will appear as separate content blocks before text responses")
-                PromptCachingFixedAnthropicChatModel(
-                    anthropicApi,
-                    options,
-                    toolCallingManager,
-                    retryTemplate,
-                    observationRegistry
-                )
+            AIProvider.ANTHROPIC_BEDROCK -> {
+                error("ANTHROPIC_BEDROCK is handled by AnthropicSdkRuntimeBackend, not Spring AI ChatModelFactory")
             }
 
             AIProvider.CLAUDE_CODE -> {

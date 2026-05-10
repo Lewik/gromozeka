@@ -27,7 +27,8 @@ data class Settings(
     val ollamaBaseUrl: String = "http://localhost:11434",
     val geminiModel: String = "gemini-2.0-flash-exp",
     val claudeModel: String = "claude-sonnet-4-5",
-    val anthropicModel: String = "sonnet",
+    val anthropicModel: String = "claude-sonnet-4-6",
+    val anthropicBedrockModel: String = "anthropic.claude-sonnet-4-20250514-v1:0",
     val openAiModel: String = "gpt-4o-mini",
     val includeCurrentTime: Boolean = true,
     val responseFormat: ResponseFormat = ResponseFormat.XML_INLINE,
@@ -39,6 +40,9 @@ data class Settings(
     // API Keys
     val openAiApiKey: String? = null,
     val anthropicApiKey: String? = null,
+    val anthropicBaseUrl: String = "https://api.anthropic.com",
+    val anthropicBedrockRegion: String? = null,
+    val anthropicBedrockBaseUrl: String? = null,
 
     // Built-in Tools API Keys
     val enableBraveSearch: Boolean = false,

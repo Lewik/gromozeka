@@ -39,6 +39,7 @@ neo4j-driver = "5.26.0"
 ktreesitter = "0.24.1"
 lsp4j = "0.23.1"
 openai-java = "4.13.0"
+anthropic-java = "2.30.0"
 mongodb-driver = "5.6.4"
 
 [libraries]
@@ -60,8 +61,10 @@ ktor-server-content-negotiation = { module = "io.ktor:ktor-server-content-negoti
 spring-ai-bom = { module = "org.springframework.ai:spring-ai-bom", version.ref = "spring-ai" }
 spring-boot-dependencies = { module = "org.springframework.boot:spring-boot-dependencies", version.ref = "spring-boot" }
 spring-ai-openai = { module = "org.springframework.ai:spring-ai-openai", version.ref = "spring-ai" }
-openai-java = { module = "com.openai:openai-java", version.ref = "openai-java" }
 spring-ai-anthropic = { module = "org.springframework.ai:spring-ai-anthropic", version.ref = "spring-ai" }
+openai-java = { module = "com.openai:openai-java", version.ref = "openai-java" }
+anthropic-java = { module = "com.anthropic:anthropic-java", version.ref = "anthropic-java" }
+anthropic-java-bedrock = { module = "com.anthropic:anthropic-java-bedrock", version.ref = "anthropic-java" }
 spring-ai-vertex-ai-gemini = { module = "org.springframework.ai:spring-ai-vertex-ai-gemini", version.ref = "spring-ai" }
 spring-ai-google-genai = { module = "org.springframework.ai:spring-ai-google-genai", version.ref = "spring-ai" }
 spring-ai-ollama = { module = "org.springframework.ai:spring-ai-ollama", version.ref = "spring-ai" }

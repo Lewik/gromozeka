@@ -6,8 +6,6 @@ import com.gromozeka.domain.service.AgentDomainService
 import com.gromozeka.domain.service.ConversationDomainService
 import com.gromozeka.domain.service.ProjectDomainService
 import com.gromozeka.domain.service.PromptDomainService
-import com.gromozeka.infrastructure.ai.oauth.OAuthConfigService
-import com.gromozeka.infrastructure.ai.oauth.OAuthService
 import com.gromozeka.infrastructure.ai.platform.GlobalHotkeyController
 import com.gromozeka.infrastructure.ai.platform.ScreenCaptureController
 import com.gromozeka.infrastructure.ai.service.OllamaModelService
@@ -69,8 +67,6 @@ data class AppComponents(
     val aiThemeGenerator: AIThemeGenerator,
     val logEncryptor: LogEncryptor,
     val ollamaModelService: OllamaModelService,
-    val oAuthService: OAuthService,
-    val oauthConfigService: OAuthConfigService,
     val projectService: ProjectDomainService,
     val conversationService: ConversationDomainService,
     val conversationSearchViewModel: ConversationSearchViewModel,
@@ -216,8 +212,6 @@ object AppBootstrap {
             aiThemeGenerator = aiThemeGenerator,
             logEncryptor = logEncryptor,
             ollamaModelService = context.getBean(),
-            oAuthService = context.getBean(),
-            oauthConfigService = context.getBean(),
             projectService = context.getBean(),
             conversationService = context.getBean(),
             conversationSearchViewModel = context.getBean(),

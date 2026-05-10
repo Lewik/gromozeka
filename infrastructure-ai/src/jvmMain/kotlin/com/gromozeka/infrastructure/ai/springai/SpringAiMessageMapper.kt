@@ -8,7 +8,6 @@ import klog.KLoggers
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import org.springframework.ai.anthropic.api.AnthropicApi
 import org.springframework.ai.chat.messages.AssistantMessage
 import org.springframework.ai.chat.messages.Message
 import org.springframework.ai.chat.messages.SystemMessage
@@ -194,17 +193,7 @@ class SpringAiMessageMapper {
     private fun toAiUsage(usage: org.springframework.ai.chat.metadata.Usage): AiUsage {
         val nativeUsage = usage.getNativeUsage()
 
-        val (cacheCreationTokens, cacheReadTokens) = when (nativeUsage) {
-            is AnthropicApi.Usage -> Pair(
-                nativeUsage.cacheCreationInputTokens() ?: 0,
-                nativeUsage.cacheReadInputTokens() ?: 0
-            )
-
-            else -> Pair(0, 0)
-        }
-
         val thinkingTokens = when (nativeUsage) {
-            is AnthropicApi.Usage -> nativeUsage.outputTokens()?.minus(usage.completionTokens ?: 0) ?: 0
             is GoogleGenAiUsage -> nativeUsage.thoughtsTokenCount ?: 0
             else -> 0
         }
@@ -213,8 +202,8 @@ class SpringAiMessageMapper {
             promptTokens = usage.promptTokens ?: 0,
             completionTokens = usage.completionTokens ?: 0,
             thinkingTokens = thinkingTokens,
-            cacheCreationTokens = cacheCreationTokens,
-            cacheReadTokens = cacheReadTokens
+            cacheCreationTokens = 0,
+            cacheReadTokens = 0
         )
     }
 }

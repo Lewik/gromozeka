@@ -457,8 +457,6 @@ fun GromozekaAppContent(
                                 logEncryptor = appComponents.logEncryptor,
                                 settingsService = appComponents.settingsService,
                                 ollamaModelService = appComponents.ollamaModelService,
-                                oAuthService = appComponents.oAuthService,
-                                oauthConfigService = appComponents.oauthConfigService,
                                 coroutineScope = coroutineScope,
                                 onOpenTab = createNewSession,
                                 onOpenTabWithMessage = createNewSessionWithMessage

@@ -25,7 +25,7 @@ interface AgentDomainService {
      *
      * @param name agent role name (e.g., "Code Reviewer", "Security Expert")
      * @param prompts ordered list of prompt IDs
-     * @param aiProvider AI provider identifier (e.g., "ANTHROPIC", "OPENAI", "GEMINI")
+     * @param aiProvider AI provider identifier (e.g., "ANTHROPIC", "ANTHROPIC_BEDROCK", "OPENAI", "GEMINI")
      * @param modelName model identifier (e.g., "claude-3-5-sonnet-20241022", "gpt-4")
      * @param tools list of tool names available to this agent (default: empty)
      * @param description optional human-readable agent description

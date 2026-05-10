@@ -1,0 +1,566 @@
+package com.gromozeka.infrastructure.ai.anthropic
+
+import com.anthropic.bedrock.backends.BedrockBackend
+import com.anthropic.backends.Backend
+import com.anthropic.client.AnthropicClient
+import com.anthropic.client.okhttp.AnthropicOkHttpClient
+import com.anthropic.core.JsonValue
+import com.anthropic.core.http.HttpRequest
+import com.anthropic.core.http.HttpResponse
+import com.anthropic.models.messages.CacheControlEphemeral
+import com.anthropic.models.messages.ContentBlockParam
+import com.anthropic.models.messages.JsonOutputFormat
+import com.anthropic.models.messages.Message
+import com.anthropic.models.messages.MessageCreateParams
+import com.anthropic.models.messages.MessageParam
+import com.anthropic.models.messages.OutputConfig
+import com.anthropic.models.messages.TextBlockParam
+import com.anthropic.models.messages.ThinkingBlockParam
+import com.anthropic.models.messages.ThinkingConfigAdaptive
+import com.anthropic.models.messages.ThinkingConfigDisabled
+import com.anthropic.models.messages.ThinkingConfigEnabled
+import com.anthropic.models.messages.Tool
+import com.anthropic.models.messages.ToolChoiceAny
+import com.anthropic.models.messages.ToolChoiceNone
+import com.anthropic.models.messages.ToolResultBlockParam
+import com.anthropic.models.messages.ToolUnion
+import com.anthropic.models.messages.ToolUseBlockParam
+import com.gromozeka.domain.model.AIProvider
+import com.gromozeka.domain.model.AgentDefinition
+import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.ai.AiAssistantMessage
+import com.gromozeka.domain.model.ai.AiResponseFormat
+import com.gromozeka.domain.model.ai.AiRuntimeOptions
+import com.gromozeka.domain.model.ai.AiRuntimeRequest
+import com.gromozeka.domain.model.ai.AiRuntimeResponse
+import com.gromozeka.domain.model.ai.AiToolChoice
+import com.gromozeka.domain.model.ai.AiUsage
+import com.gromozeka.domain.service.AiRuntime
+import com.gromozeka.domain.service.SettingsProvider
+import com.gromozeka.domain.tool.AiToolCallback
+import com.gromozeka.infrastructure.ai.runtime.AiRuntimeBackend
+import klog.KLoggers
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.booleanOrNull
+import kotlinx.serialization.json.doubleOrNull
+import kotlinx.serialization.json.longOrNull
+import org.springframework.stereotype.Service
+import software.amazon.awssdk.regions.Region
+import kotlin.jvm.optionals.getOrNull
+
+@Service
+internal class AnthropicSdkRuntimeBackend(
+    private val settingsProvider: SettingsProvider,
+) : AiRuntimeBackend {
+
+    override fun supports(provider: AIProvider): Boolean =
+        provider == AIProvider.ANTHROPIC || provider == AIProvider.ANTHROPIC_BEDROCK
+
+    override fun createRuntime(
+        provider: AIProvider,
+        modelName: String,
+        projectPath: String?
+    ): AiRuntime {
+        val client = when (provider) {
+            AIProvider.ANTHROPIC -> createDirectAnthropicClient()
+            AIProvider.ANTHROPIC_BEDROCK -> createBedrockAnthropicClient()
+            else -> error("Anthropic SDK runtime does not support provider $provider")
+        }
+
+        return AnthropicSdkRuntime(provider, modelName, client, AnthropicSdkMessageMapper(provider))
+    }
+
+    private fun createDirectAnthropicClient(): AnthropicClient {
+        val builder = AnthropicOkHttpClient.builder()
+            .maxRetries(0)
+
+        val apiKey = settingsProvider.anthropicApiKey?.takeIf { it.isNotBlank() }
+        if (apiKey != null) {
+            builder.apiKey(apiKey)
+        } else {
+            builder.fromEnv()
+        }
+
+        settingsProvider.anthropicBaseUrl
+            .takeIf { it.isNotBlank() }
+            ?.let(builder::baseUrl)
+
+        return builder.build()
+    }
+
+    private fun createBedrockAnthropicClient(): AnthropicClient {
+        val region = settingsProvider.anthropicBedrockRegion?.takeIf { it.isNotBlank() }
+        val baseUrl = settingsProvider.anthropicBedrockBaseUrl?.takeIf { it.isNotBlank() }
+        val builder = BedrockBackend.builder().fromEnv()
+        region?.let { builder.region(Region.of(it)) }
+        val standardBackend = builder.build()
+        val backend = baseUrl?.let { BaseUrlOverrideBackend(standardBackend, it) } ?: standardBackend
+
+        return AnthropicOkHttpClient.builder()
+            .maxRetries(0)
+            .backend(backend)
+            .build()
+    }
+}
+
+private class BaseUrlOverrideBackend(
+    private val delegate: Backend,
+    private val baseUrl: String,
+) : Backend {
+    override fun baseUrl(): String = baseUrl
+    override fun prepareRequest(request: HttpRequest): HttpRequest = delegate.prepareRequest(request)
+    override fun authorizeRequest(request: HttpRequest): HttpRequest = delegate.authorizeRequest(request)
+    override fun prepareResponse(response: HttpResponse): HttpResponse = delegate.prepareResponse(response)
+    override fun close() = delegate.close()
+}
+
+private class AnthropicSdkRuntime(
+    private val provider: AIProvider,
+    private val modelName: String,
+    private val client: AnthropicClient,
+    private val messageMapper: AnthropicSdkMessageMapper,
+) : AiRuntime {
+    private val log = KLoggers.logger(this)
+
+    override suspend fun call(request: AiRuntimeRequest): AiRuntimeResponse {
+        val params = messageMapper.toCreateParams(modelName, request)
+        log.info {
+            "Calling Anthropic SDK runtime: provider=$provider model=$modelName " +
+                "messages=${request.messages.size} tools=${request.tools.size} " +
+                "responseFormat=${request.options.responseFormat.logName()}"
+        }
+
+        val response = withContext(Dispatchers.IO) {
+            client.messages().create(params)
+        }
+
+        return messageMapper.toRuntimeResponse(response)
+    }
+
+    override fun stream(request: AiRuntimeRequest): Flow<AiRuntimeResponse> = flow {
+        emit(call(request))
+    }
+}
+
+private class AnthropicSdkMessageMapper(
+    private val provider: AIProvider,
+) {
+    private val json = Json { ignoreUnknownKeys = true }
+
+    fun toCreateParams(modelName: String, request: AiRuntimeRequest): MessageCreateParams {
+        val builder = MessageCreateParams.builder()
+            .model(modelName)
+            .maxTokens((request.options.maxTokens ?: DEFAULT_MAX_TOKENS).toLong())
+
+        val systemPrompt = request.systemPrompts
+            .filter { it.isNotBlank() }
+            .joinToString("\n\n")
+        if (systemPrompt.isNotBlank()) {
+            builder.system(systemPrompt)
+        }
+
+        val messages = request.messages.mapNotNull(::toMessageParam)
+        require(messages.isNotEmpty()) { "Anthropic request must contain at least one user or assistant message" }
+        builder.messages(messages)
+
+        if (provider == AIProvider.ANTHROPIC) {
+            builder.cacheControl(CacheControlEphemeral.builder().build())
+        }
+
+        applyTools(builder, request.tools, request.options.toolChoice)
+        applyThinking(builder, request.options.thinking)
+        applyOutputConfig(builder, request.options)
+
+        return builder.build()
+    }
+
+    fun toRuntimeResponse(message: Message): AiRuntimeResponse {
+        val content = message.content().flatMap(::toContentItems)
+        val assistantMessages = if (content.isEmpty()) {
+            emptyList()
+        } else {
+            listOf(
+                AiAssistantMessage(
+                    content = content,
+                    metadata = mapOf(
+                        "provider" to provider.name,
+                        "model" to message.model().asString(),
+                        "messageId" to message.id(),
+                    )
+                )
+            )
+        }
+
+        return AiRuntimeResponse(
+            messages = assistantMessages,
+            usage = toAiUsage(message.usage()),
+            finishReason = message.stopReason().getOrNull()?.asString(),
+            providerMetadata = mapOf(
+                "provider" to provider.name,
+                "model" to message.model().asString(),
+                "messageId" to message.id(),
+                "contentBlockCount" to message.content().size,
+            )
+        )
+    }
+
+    private fun toMessageParam(message: Conversation.Message): MessageParam? {
+        return when (message.role) {
+            Conversation.Message.Role.USER -> toUserMessageParam(message)
+            Conversation.Message.Role.ASSISTANT -> toAssistantMessageParam(message)
+            Conversation.Message.Role.SYSTEM -> null
+        }
+    }
+
+    private fun toUserMessageParam(message: Conversation.Message): MessageParam? {
+        val blocks = mutableListOf<ContentBlockParam>()
+        val text = userText(message)
+        if (text.isNotBlank()) {
+            blocks.add(textBlock(text))
+        }
+
+        message.content
+            .filterIsInstance<Conversation.Message.ContentItem.ToolResult>()
+            .forEach { toolResult ->
+                blocks.add(toolResultBlock(toolResult))
+            }
+
+        return blocks.takeIf { it.isNotEmpty() }?.let {
+            MessageParam.builder()
+                .role(MessageParam.Role.USER)
+                .contentOfBlockParams(it)
+                .build()
+        }
+    }
+
+    private fun toAssistantMessageParam(message: Conversation.Message): MessageParam? {
+        val toolResults = message.content.filterIsInstance<Conversation.Message.ContentItem.ToolResult>()
+        if (toolResults.isNotEmpty()) {
+            return MessageParam.builder()
+                .role(MessageParam.Role.USER)
+                .contentOfBlockParams(toolResults.map(::toolResultBlock))
+                .build()
+        }
+
+        val blocks = mutableListOf<ContentBlockParam>()
+
+        message.content
+            .filterIsInstance<Conversation.Message.ContentItem.Thinking>()
+            .mapNotNull(::thinkingBlock)
+            .forEach(blocks::add)
+
+        val text = message.content
+            .filterIsInstance<Conversation.Message.ContentItem.AssistantMessage>()
+            .joinToString("\n") { it.structured.fullText }
+        if (text.isNotBlank()) {
+            blocks.add(textBlock(text))
+        }
+
+        message.content
+            .filterIsInstance<Conversation.Message.ContentItem.ToolCall>()
+            .forEach { toolCall ->
+                blocks.add(toolUseBlock(toolCall))
+            }
+
+        return blocks.takeIf { it.isNotEmpty() }?.let {
+            MessageParam.builder()
+                .role(MessageParam.Role.ASSISTANT)
+                .contentOfBlockParams(it)
+                .build()
+        }
+    }
+
+    private fun userText(message: Conversation.Message): String {
+        val instructionsPrefix = message.instructions
+            .joinToString("\n") { it.toXmlLine() }
+        val text = message.content
+            .filterIsInstance<Conversation.Message.ContentItem.UserMessage>()
+            .joinToString("\n") { it.text }
+
+        return listOf(instructionsPrefix, text)
+            .filter { it.isNotBlank() }
+            .joinToString("\n")
+    }
+
+    private fun textBlock(text: String): ContentBlockParam =
+        ContentBlockParam.ofText(
+            TextBlockParam.builder()
+                .text(text)
+                .build()
+        )
+
+    private fun thinkingBlock(thinking: Conversation.Message.ContentItem.Thinking): ContentBlockParam? {
+        val signature = thinking.signature?.takeIf { it.isNotBlank() } ?: return null
+        if (thinking.thinking.isBlank()) {
+            return null
+        }
+
+        return ContentBlockParam.ofThinking(
+            ThinkingBlockParam.builder()
+                .thinking(thinking.thinking)
+                .signature(signature)
+                .build()
+        )
+    }
+
+    private fun toolUseBlock(toolCall: Conversation.Message.ContentItem.ToolCall): ContentBlockParam =
+        ContentBlockParam.ofToolUse(
+            ToolUseBlockParam.builder()
+                .id(toolCall.id.value)
+                .name(toolCall.call.name)
+                .input(toolUseInput(toolCall.call.input))
+                .build()
+        )
+
+    private fun toolResultBlock(toolResult: Conversation.Message.ContentItem.ToolResult): ContentBlockParam =
+        ContentBlockParam.ofToolResult(
+            ToolResultBlockParam.builder()
+                .toolUseId(toolResult.toolUseId.value)
+                .content(toolResultText(toolResult))
+                .isError(toolResult.isError)
+                .build()
+        )
+
+    private fun toolResultText(toolResult: Conversation.Message.ContentItem.ToolResult): String =
+        toolResult.result.joinToString("\n") { data ->
+            when (data) {
+                is Conversation.Message.ContentItem.ToolResult.Data.Text -> data.content
+                is Conversation.Message.ContentItem.ToolResult.Data.Base64Data -> "[base64 ${data.mediaType.value}, ${data.data.length} chars]"
+                is Conversation.Message.ContentItem.ToolResult.Data.UrlData -> "[url ${data.url}]"
+                is Conversation.Message.ContentItem.ToolResult.Data.FileData -> "[file ${data.fileId}]"
+            }
+        }
+
+    private fun toolUseInput(input: JsonElement): ToolUseBlockParam.Input {
+        val builder = ToolUseBlockParam.Input.builder()
+        if (input is JsonObject) {
+            builder.putAllAdditionalProperties(input.toAnthropicProperties())
+        } else {
+            builder.putAdditionalProperty("value", input.toAnthropicJsonValue())
+        }
+        return builder.build()
+    }
+
+    private fun applyTools(
+        builder: MessageCreateParams.Builder,
+        tools: List<AiToolCallback>,
+        toolChoice: AiToolChoice,
+    ) {
+        if (tools.isNotEmpty() && toolChoice !is AiToolChoice.None) {
+            builder.tools(tools.map(::toAnthropicTool))
+        }
+
+        when (toolChoice) {
+            AiToolChoice.Auto -> Unit
+            AiToolChoice.None -> builder.toolChoice(ToolChoiceNone.builder().build())
+            AiToolChoice.RequiredAny -> builder.toolChoice(ToolChoiceAny.builder().build())
+            is AiToolChoice.RequiredTool -> builder.toolToolChoice(toolChoice.name)
+        }
+    }
+
+    private fun toAnthropicTool(callback: AiToolCallback): ToolUnion {
+        val schema = json.parseToJsonElement(callback.definition.inputSchema)
+        require(schema is JsonObject) {
+            "Tool ${callback.definition.name} input schema must be a JSON object"
+        }
+
+        val inputSchema = Tool.InputSchema.builder()
+            .putAllAdditionalProperties(schema.toAnthropicProperties())
+            .build()
+
+        return ToolUnion.ofTool(
+            Tool.builder()
+                .name(callback.definition.name)
+                .description(callback.definition.description)
+                .inputSchema(inputSchema)
+                .build()
+        )
+    }
+
+    private fun applyThinking(
+        builder: MessageCreateParams.Builder,
+        thinking: AgentDefinition.ThinkingConfig?,
+    ) {
+        when (thinking?.type) {
+            null -> Unit
+            "adaptive" -> builder.thinking(
+                ThinkingConfigAdaptive.builder()
+                    .display(adaptiveDisplay(thinking.display))
+                    .build()
+            )
+            "enabled" -> builder.thinking(
+                ThinkingConfigEnabled.builder()
+                    .budgetTokens((thinking.budgetTokens ?: DEFAULT_THINKING_BUDGET_TOKENS).toLong())
+                    .display(enabledDisplay(thinking.display))
+                    .build()
+            )
+            "disabled" -> builder.thinking(ThinkingConfigDisabled.builder().build())
+            else -> error("Unsupported Anthropic thinking type: ${thinking.type}")
+        }
+    }
+
+    private fun applyOutputConfig(
+        builder: MessageCreateParams.Builder,
+        options: AiRuntimeOptions,
+    ) {
+        val outputConfigBuilder = OutputConfig.builder()
+        var hasOutputConfig = false
+
+        options.outputConfig?.effort?.takeIf { it.isNotBlank() }?.let { effort ->
+            outputConfigBuilder.effort(OutputConfig.Effort.of(effort.lowercase()))
+            hasOutputConfig = true
+        }
+
+        val responseFormat = options.responseFormat
+        if (responseFormat is AiResponseFormat.JsonSchema) {
+            outputConfigBuilder.format(
+                JsonOutputFormat.builder()
+                    .schema(
+                        JsonOutputFormat.Schema.builder()
+                            .putAllAdditionalProperties(responseFormat.schema.toAnthropicProperties())
+                            .build()
+                    )
+                    .build()
+            )
+            hasOutputConfig = true
+        }
+
+        if (hasOutputConfig) {
+            builder.outputConfig(outputConfigBuilder.build())
+        }
+    }
+
+    private fun adaptiveDisplay(display: String): ThinkingConfigAdaptive.Display =
+        when (display.lowercase()) {
+            "omitted" -> ThinkingConfigAdaptive.Display.OMITTED
+            "summarized", "summary", "full" -> ThinkingConfigAdaptive.Display.SUMMARIZED
+            else -> ThinkingConfigAdaptive.Display.SUMMARIZED
+        }
+
+    private fun enabledDisplay(display: String): ThinkingConfigEnabled.Display =
+        when (display.lowercase()) {
+            "omitted" -> ThinkingConfigEnabled.Display.OMITTED
+            "summarized", "summary", "full" -> ThinkingConfigEnabled.Display.SUMMARIZED
+            else -> ThinkingConfigEnabled.Display.SUMMARIZED
+        }
+
+    private fun toContentItems(block: com.anthropic.models.messages.ContentBlock): List<Conversation.Message.ContentItem> {
+        val items = mutableListOf<Conversation.Message.ContentItem>()
+
+        block.thinking().getOrNull()?.let { thinking ->
+            items.add(
+                Conversation.Message.ContentItem.Thinking(
+                    thinking = thinking.thinking(),
+                    signature = thinking.signature(),
+                    state = Conversation.Message.BlockState.COMPLETE
+                )
+            )
+        }
+
+        block.redactedThinking().getOrNull()?.let { redacted ->
+            items.add(
+                Conversation.Message.ContentItem.Thinking(
+                    thinking = "",
+                    signature = redacted.data(),
+                    state = Conversation.Message.BlockState.COMPLETE
+                )
+            )
+        }
+
+        block.text().getOrNull()?.let { text ->
+            items.add(
+                Conversation.Message.ContentItem.AssistantMessage(
+                    structured = Conversation.Message.StructuredText(fullText = text.text()),
+                    state = Conversation.Message.BlockState.COMPLETE
+                )
+            )
+        }
+
+        block.toolUse().getOrNull()?.let { toolUse ->
+            items.add(
+                Conversation.Message.ContentItem.ToolCall(
+                    id = Conversation.Message.ContentItem.ToolCall.Id(toolUse.id()),
+                    call = Conversation.Message.ContentItem.ToolCall.Data(
+                        name = toolUse.name(),
+                        input = toolUse._input().toKotlinxJsonElement()
+                    ),
+                    state = Conversation.Message.BlockState.COMPLETE
+                )
+            )
+        }
+
+        return items
+    }
+
+    private fun toAiUsage(usage: com.anthropic.models.messages.Usage): AiUsage =
+        AiUsage(
+            promptTokens = usage.inputTokens().toIntClamped(),
+            completionTokens = usage.outputTokens().toIntClamped(),
+            cacheCreationTokens = usage.cacheCreationInputTokens().orElse(0L).toIntClamped(),
+            cacheReadTokens = usage.cacheReadInputTokens().orElse(0L).toIntClamped(),
+        )
+
+    private fun JsonObject.toAnthropicProperties(): Map<String, JsonValue> =
+        mapValues { (_, value) -> value.toAnthropicJsonValue() }
+
+    private fun JsonElement.toAnthropicJsonValue(): JsonValue =
+        JsonValue.from(toJsonCompatibleValue())
+
+    private fun JsonElement.toJsonCompatibleValue(): Any? =
+        when (this) {
+            JsonNull -> null
+            is JsonObject -> mapValues { (_, value) -> value.toJsonCompatibleValue() }
+            is JsonArray -> map { it.toJsonCompatibleValue() }
+            is JsonPrimitive -> when {
+                isString -> content
+                booleanOrNull != null -> booleanOrNull
+                longOrNull != null -> longOrNull
+                doubleOrNull != null -> doubleOrNull
+                else -> content
+            }
+        }
+
+    private fun JsonValue.toKotlinxJsonElement(): JsonElement =
+        accept(
+            object : JsonValue.Visitor<JsonElement> {
+                override fun visitNull(): JsonElement = JsonNull
+                override fun visitMissing(): JsonElement = JsonNull
+                override fun visitBoolean(value: Boolean): JsonElement = JsonPrimitive(value)
+                override fun visitNumber(value: Number): JsonElement =
+                    when (value) {
+                        is Byte, is Short, is Int, is Long -> JsonPrimitive(value.toLong())
+                        else -> JsonPrimitive(value.toDouble())
+                    }
+
+                override fun visitString(value: String): JsonElement = JsonPrimitive(value)
+                override fun visitArray(values: List<JsonValue>): JsonElement =
+                    JsonArray(values.map { it.toKotlinxJsonElement() })
+
+                override fun visitObject(values: Map<String, JsonValue>): JsonElement =
+                    JsonObject(values.mapValues { (_, value) -> value.toKotlinxJsonElement() })
+            }
+        )
+
+    private fun Long.toIntClamped(): Int =
+        coerceIn(Int.MIN_VALUE.toLong(), Int.MAX_VALUE.toLong()).toInt()
+
+    companion object {
+        private const val DEFAULT_MAX_TOKENS = 8192
+        private const val DEFAULT_THINKING_BUDGET_TOKENS = 16_000
+    }
+}
+
+private fun AiResponseFormat.logName(): String =
+    when (this) {
+        AiResponseFormat.Text -> "text"
+        is AiResponseFormat.JsonSchema -> "json_schema:$name"
+    }

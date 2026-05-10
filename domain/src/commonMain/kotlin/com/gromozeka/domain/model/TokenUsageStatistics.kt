@@ -25,7 +25,7 @@ import kotlin.jvm.JvmInline
  * @property cacheCreationTokens tokens written to prompt cache (for repeated context)
  * @property cacheReadTokens tokens read from prompt cache (cost reduction)
  * @property thinkingTokens extended thinking tokens (Claude extended thinking mode)
- * @property provider AI provider name (e.g., "ANTHROPIC", "GEMINI", "OPEN_AI")
+ * @property provider AI provider name (e.g., "ANTHROPIC", "ANTHROPIC_BEDROCK", "GEMINI", "OPEN_AI")
  * @property modelId LLM model identifier (e.g., "claude-3-5-sonnet-20241022")
  */
 @Serializable

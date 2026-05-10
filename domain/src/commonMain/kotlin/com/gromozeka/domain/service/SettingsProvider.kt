@@ -105,6 +105,15 @@ interface SettingsProvider {
     val anthropicApiKey: String?
         get() = null
 
+    val anthropicBaseUrl: String
+        get() = "https://api.anthropic.com"
+
+    val anthropicBedrockRegion: String?
+        get() = null
+
+    val anthropicBedrockBaseUrl: String?
+        get() = null
+
     val openAiApiKey: String?
         get() = null
 

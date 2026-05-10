@@ -13,10 +13,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.withContext
-import org.springframework.ai.anthropic.AnthropicChatOptions
-import org.springframework.ai.anthropic.api.AnthropicApi
-import org.springframework.ai.anthropic.api.AnthropicCacheOptions
-import org.springframework.ai.anthropic.api.AnthropicCacheStrategy
 import org.springframework.ai.chat.model.ChatModel
 import org.springframework.ai.chat.prompt.ChatOptions
 import org.springframework.ai.chat.prompt.Prompt
@@ -31,7 +27,10 @@ internal class SpringAiRuntimeBackend(
     private val messageMapper: SpringAiMessageMapper,
 ) : AiRuntimeBackend {
 
-    override fun supports(provider: AIProvider): Boolean = provider != AIProvider.OPEN_AI_SUBSCRIPTION
+    override fun supports(provider: AIProvider): Boolean =
+        provider != AIProvider.OPEN_AI_SUBSCRIPTION &&
+            provider != AIProvider.ANTHROPIC &&
+            provider != AIProvider.ANTHROPIC_BEDROCK
 
     override fun createRuntime(
         provider: AIProvider,
@@ -81,48 +80,6 @@ private class SpringAiRuntime(
         }
 
         return when (provider) {
-            AIProvider.ANTHROPIC -> {
-                val builder = AnthropicChatOptions.builder()
-                    .toolCallbacks(toolCallbacks)
-                    .toolNames(toolNames)
-                    .internalToolExecutionEnabled(false)
-                    .toolContext(options.toolContext)
-                    .cacheOptions(
-                        AnthropicCacheOptions.builder()
-                            .strategy(AnthropicCacheStrategy.CONVERSATION_HISTORY)
-                            .build()
-                    )
-
-                options.maxTokens?.let(builder::maxTokens)
-
-                options.thinking?.let { thinking ->
-                    when (thinking.type) {
-                        "adaptive", "enabled" -> {
-                            val budgetTokens = thinking.budgetTokens ?: (options.maxTokens?.let { it / 2 } ?: 16_000)
-                            builder.thinking(AnthropicApi.ThinkingType.ENABLED, budgetTokens)
-                        }
-
-                        "disabled" -> builder.thinking(AnthropicApi.ThinkingType.DISABLED, null)
-                    }
-                }
-
-                val httpHeaders = mutableMapOf<String, String>()
-                options.thinking?.let { httpHeaders["X-Gromozeka-Thinking-Type"] = it.type }
-                options.outputConfig?.let { httpHeaders["X-Gromozeka-Effort"] = it.effort }
-                if (httpHeaders.isNotEmpty()) {
-                    builder.httpHeaders(httpHeaders)
-                }
-
-                when (val toolChoice = options.toolChoice) {
-                    AiToolChoice.Auto -> Unit
-                    AiToolChoice.None -> builder.toolChoice(AnthropicApi.ToolChoiceNone())
-                    AiToolChoice.RequiredAny -> builder.toolChoice(AnthropicApi.ToolChoiceAny())
-                    is AiToolChoice.RequiredTool -> builder.toolChoice(AnthropicApi.ToolChoiceTool(toolChoice.name))
-                }
-
-                builder.build()
-            }
-
             AIProvider.OPEN_AI -> {
                 val builder = OpenAiChatOptions.builder()
                     .toolCallbacks(toolCallbacks)
