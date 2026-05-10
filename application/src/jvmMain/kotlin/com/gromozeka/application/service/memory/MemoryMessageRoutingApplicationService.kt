@@ -39,6 +39,7 @@ class MemoryMessageRoutingApplicationService(
         project: Project,
         runtimeSystemPrompts: List<String>,
         runtimeTools: List<AiToolCallback>,
+        threadContextMessages: List<Conversation.Message>? = null,
     ): DirectStructuredMemoryWriteResult? {
         if (!message.isMemoryRouteableTarget()) {
             log.info {
@@ -66,6 +67,7 @@ class MemoryMessageRoutingApplicationService(
             conversationId = conversationId,
             threadId = threadId,
             targetMessage = message,
+            threadContextMessages = threadContextMessages,
         )
 
         log.info {
@@ -197,8 +199,9 @@ class MemoryMessageRoutingApplicationService(
         conversationId: Conversation.Id,
         threadId: Conversation.Thread.Id,
         targetMessage: Conversation.Message,
+        threadContextMessages: List<Conversation.Message>? = null,
     ): MemoryThreadContext {
-        val threadMessages = threadMessageRepository.getMessagesByThread(threadId)
+        val threadMessages = (threadContextMessages ?: threadMessageRepository.getMessagesByThread(threadId))
             .filterNot { it.isSyntheticMemoryRuntimeMessage() }
             .filter { it.isMemoryStageContextMessage() }
         val targetIndex = threadMessages.indexOfFirst { it.id == targetMessage.id }

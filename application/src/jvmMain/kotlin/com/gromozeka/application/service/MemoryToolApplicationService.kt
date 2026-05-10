@@ -13,9 +13,13 @@ import com.gromozeka.domain.service.AiToolProvider
 import com.gromozeka.domain.service.ConversationDomainService
 import com.gromozeka.domain.service.SettingsProvider
 import com.gromozeka.domain.tool.AiToolCallback
+import com.gromozeka.shared.uuid.uuid7
 import klog.KLoggers
+import kotlinx.datetime.Clock
+import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.put
 import org.springframework.stereotype.Service
 
 @Service
@@ -43,6 +47,55 @@ class MemoryToolApplicationService(
             runtimeTools = context.memoryTools,
         )
         MemoryToolResultRenderer.rememberResultJsonString(result)
+    }
+
+    suspend fun rememberProvidedText(
+        conversationIdValue: String,
+        text: String,
+        mode: String? = null,
+    ): String {
+        val normalizedText = text.trim()
+        if (normalizedText.isBlank()) {
+            return MemoryToolResultRenderer.failureJsonString("Provided memory text is blank.")
+        }
+
+        if (!settingsProvider.knowledgeMemoryEnabled) {
+            return MemoryToolResultRenderer.failureJsonString("Knowledge memory is disabled in settings.")
+        }
+
+        return runCatching {
+            val conversationId = Conversation.Id(conversationIdValue)
+            val context = resolveContext(conversationId)
+            val targetMessage = Conversation.Message(
+                id = Conversation.Message.Id(uuid7()),
+                conversationId = context.conversation.id,
+                role = Conversation.Message.Role.USER,
+                content = listOf(Conversation.Message.ContentItem.UserMessage(normalizedText)),
+                providerMetadata = buildJsonObject {
+                    put("memoryToolOrigin", "provided_text")
+                    put("userConsentConfirmed", true)
+                    mode?.takeIf { it.isNotBlank() }?.let { put("mode", it) }
+                },
+                createdAt = Clock.System.now(),
+            )
+            val result = memoryMessageRoutingApplicationService.routeMessage(
+                conversationId = context.conversation.id,
+                threadId = context.conversation.currentThread,
+                message = targetMessage,
+                agent = context.agent,
+                project = context.project,
+                runtimeSystemPrompts = context.systemPrompts,
+                runtimeTools = context.memoryTools,
+                threadContextMessages = context.threadMessages + targetMessage,
+            )
+            MemoryToolResultRenderer.rememberResultJsonString(result)
+        }.onFailure { error ->
+            log.warn(error) {
+                "Memory tool failed: tool=$MEMORY_REMEMBER_TOOL_NAME conversation=$conversationIdValue target=provided_text error=${error.message}"
+            }
+        }.getOrElse { error ->
+            MemoryToolResultRenderer.failureJsonString(error.message ?: "Memory tool failed.")
+        }
     }
 
     suspend fun recall(
