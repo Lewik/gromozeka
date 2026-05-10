@@ -54,7 +54,9 @@ import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.longOrNull
 import org.springframework.stereotype.Service
+import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider
 import software.amazon.awssdk.regions.Region
+import software.amazon.awssdk.regions.providers.DefaultAwsRegionProviderChain
 import kotlin.jvm.optionals.getOrNull
 
 @Service
@@ -100,16 +102,52 @@ internal class AnthropicSdkRuntimeBackend(
     private fun createBedrockAnthropicClient(): AnthropicClient {
         val region = settingsProvider.anthropicBedrockRegion?.takeIf { it.isNotBlank() }
         val baseUrl = settingsProvider.anthropicBedrockBaseUrl?.takeIf { it.isNotBlank() }
-        val builder = BedrockBackend.builder().fromEnv()
-        region?.let { builder.region(Region.of(it)) }
-        val standardBackend = builder.build()
+        val profile = settingsProvider.anthropicBedrockProfile?.takeIf { it.isNotBlank() }
+        val standardBackend = createBedrockBackend(region, profile)
         val backend = baseUrl?.let { BaseUrlOverrideBackend(standardBackend, it) } ?: standardBackend
+
+        KLoggers.logger(this).info {
+            "Creating Anthropic Bedrock client: " +
+                "region=${region ?: "default-chain"} profile=${profile ?: "default-chain"} " +
+                "baseUrlOverride=${baseUrl != null}"
+        }
 
         return AnthropicOkHttpClient.builder()
             .maxRetries(0)
             .backend(backend)
             .build()
     }
+
+    private fun createBedrockBackend(region: String?, profile: String?): BedrockBackend {
+        val apiKey = System.getenv("AWS_BEARER_TOKEN_BEDROCK")?.takeIf { it.isNotBlank() }
+        val resolvedRegion = resolveBedrockRegion(region, profile)
+        val builder = BedrockBackend.builder().region(resolvedRegion)
+
+        if (apiKey != null && profile == null) {
+            return builder.apiKey(apiKey).build()
+        }
+
+        val credentialsProvider = DefaultCredentialsProvider.builder()
+            .apply {
+                profile?.let(::profileName)
+                asyncCredentialUpdateEnabled(true)
+            }
+            .build()
+
+        credentialsProvider.resolveCredentials()
+
+        return builder
+            .awsCredentialsProvider(credentialsProvider)
+            .build()
+    }
+
+    private fun resolveBedrockRegion(region: String?, profile: String?): Region =
+        region
+            ?.let(Region::of)
+            ?: DefaultAwsRegionProviderChain.builder()
+                .apply { profile?.let(::profileName) }
+                .build()
+                .region
 }
 
 private class BaseUrlOverrideBackend(

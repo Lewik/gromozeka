@@ -319,6 +319,16 @@ fun SettingsPanel(
                                 )
 
                                 TextFieldSettingItem(
+                                    label = "AWS Profile",
+                                    description = "Optional. Use an AWS CLI/SSO profile, for example after aws sso login --profile work.",
+                                    value = settings.anthropicBedrockProfile ?: "",
+                                    placeholder = "work",
+                                    onValueChange = {
+                                        onSettingsChange(settings.copy(anthropicBedrockProfile = it.ifBlank { null }))
+                                    }
+                                )
+
+                                TextFieldSettingItem(
                                     label = "Bedrock Base URL",
                                     description = "Optional custom Bedrock runtime endpoint. Empty uses AWS default endpoint.",
                                     value = settings.anthropicBedrockBaseUrl ?: "",

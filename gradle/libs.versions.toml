@@ -40,6 +40,7 @@ ktreesitter = "0.24.1"
 lsp4j = "0.23.1"
 openai-java = "4.13.0"
 anthropic-java = "2.30.0"
+aws-sdk = "2.33.1"
 mongodb-driver = "5.6.4"
 
 [libraries]
@@ -65,6 +66,8 @@ spring-ai-anthropic = { module = "org.springframework.ai:spring-ai-anthropic", v
 openai-java = { module = "com.openai:openai-java", version.ref = "openai-java" }
 anthropic-java = { module = "com.anthropic:anthropic-java", version.ref = "anthropic-java" }
 anthropic-java-bedrock = { module = "com.anthropic:anthropic-java-bedrock", version.ref = "anthropic-java" }
+aws-sdk-sso = { module = "software.amazon.awssdk:sso", version.ref = "aws-sdk" }
+aws-sdk-ssooidc = { module = "software.amazon.awssdk:ssooidc", version.ref = "aws-sdk" }
 spring-ai-vertex-ai-gemini = { module = "org.springframework.ai:spring-ai-vertex-ai-gemini", version.ref = "spring-ai" }
 spring-ai-google-genai = { module = "org.springframework.ai:spring-ai-google-genai", version.ref = "spring-ai" }
 spring-ai-ollama = { module = "org.springframework.ai:spring-ai-ollama", version.ref = "spring-ai" }

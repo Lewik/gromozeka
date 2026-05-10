@@ -24,6 +24,8 @@ kotlin {
                 implementation(libs.spring.ai.ollama)
                 implementation(libs.anthropic.java)
                 implementation(libs.anthropic.java.bedrock)
+                implementation(libs.aws.sdk.sso)
+                implementation(libs.aws.sdk.ssooidc)
                 // Reactor Kotlin extensions for Flux/Flow conversion
                 implementation(libs.reactor.kotlin.extensions)
                 

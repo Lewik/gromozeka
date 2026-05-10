@@ -114,6 +114,9 @@ interface SettingsProvider {
     val anthropicBedrockBaseUrl: String?
         get() = null
 
+    val anthropicBedrockProfile: String?
+        get() = null
+
     val openAiApiKey: String?
         get() = null
 

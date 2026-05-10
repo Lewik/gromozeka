@@ -43,6 +43,7 @@ data class Settings(
     val anthropicBaseUrl: String = "https://api.anthropic.com",
     val anthropicBedrockRegion: String? = null,
     val anthropicBedrockBaseUrl: String? = null,
+    val anthropicBedrockProfile: String? = null,
 
     // Built-in Tools API Keys
     val enableBraveSearch: Boolean = false,

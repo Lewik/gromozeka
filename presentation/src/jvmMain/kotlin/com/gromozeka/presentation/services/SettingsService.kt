@@ -58,6 +58,7 @@ class SettingsService : SettingsProvider {
     override val anthropicBaseUrl: String get() = settings.anthropicBaseUrl
     override val anthropicBedrockRegion: String? get() = settings.anthropicBedrockRegion
     override val anthropicBedrockBaseUrl: String? get() = settings.anthropicBedrockBaseUrl
+    override val anthropicBedrockProfile: String? get() = settings.anthropicBedrockProfile
     override val openAiApiKey: String? get() = settings.openAiApiKey
     override val ollamaBaseUrl: String get() = settings.ollamaBaseUrl
     override val knowledgeMemoryEnabled: Boolean get() = settings.knowledgeMemoryEnabled
