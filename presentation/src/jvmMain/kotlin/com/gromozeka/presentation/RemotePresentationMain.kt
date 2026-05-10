@@ -27,7 +27,13 @@ import java.io.File
 
 internal fun startRemotePresentation(remoteUrl: String): RemoteStartedApp {
     val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
-    val remoteServices = GromozekaRemoteServices(url = remoteUrl, scope = scope)
+    val clientHomeDirectory = System.getProperty("GROMOZEKA_CLIENT_HOME")
+        ?: File(System.getProperty("user.home"), ".gromozeka-remote-client").absolutePath
+    val remoteServices = GromozekaRemoteServices(
+        url = remoteUrl,
+        scope = scope,
+        clientHomeDirectory = clientHomeDirectory,
+    )
 
     runBlocking {
         remoteServices.initialize()

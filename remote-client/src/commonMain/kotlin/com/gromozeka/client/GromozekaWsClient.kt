@@ -15,15 +15,13 @@ import com.gromozeka.remote.protocol.ServerPayload
 import com.gromozeka.remote.protocol.ServerResponse
 import com.gromozeka.shared.uuid.uuid7
 import io.ktor.client.HttpClient
-import io.ktor.client.engine.cio.CIO
 import io.ktor.client.plugins.websocket.WebSockets
+import io.ktor.client.plugins.websocket.DefaultClientWebSocketSession
 import io.ktor.client.plugins.websocket.webSocketSession
 import io.ktor.websocket.Frame
 import io.ktor.websocket.readText
-import klog.KLoggers
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
@@ -38,19 +36,18 @@ import kotlinx.serialization.json.Json
 
 internal class GromozekaWsClient(
     private val url: String = "ws://127.0.0.1:8765/ws",
-    private val httpClient: HttpClient = HttpClient(CIO) {
+    private val httpClient: HttpClient = HttpClient {
         install(WebSockets)
     },
-    private val scope: CoroutineScope = CoroutineScope(Dispatchers.IO + SupervisorJob()),
-) : AutoCloseable {
-    private val log = KLoggers.logger(this)
+    private val scope: CoroutineScope = CoroutineScope(SupervisorJob()),
+) {
     private val json = Json {
         ignoreUnknownKeys = true
         encodeDefaults = true
         classDiscriminator = "payloadType"
     }
     private val connectMutex = Mutex()
-    private var session: io.ktor.client.plugins.websocket.DefaultClientWebSocketSession? = null
+    private var session: DefaultClientWebSocketSession? = null
     private var readerJob: Job? = null
     private val pending = mutableMapOf<String, CompletableDeferred<ServerResponse>>()
     private val streams = mutableMapOf<String, Channel<ServerPayload>>()
@@ -84,7 +81,7 @@ internal class GromozekaWsClient(
                     is MessageUpsertedEvent -> emit(event.message)
                     is SendCompletedEvent -> break
                     is SendFailedEvent -> error(event.message)
-                    else -> log.warn { "Ignoring unexpected stream event: $event" }
+                    else -> Unit
                 }
             }
         } finally {
@@ -102,7 +99,7 @@ internal class GromozekaWsClient(
         activeSession.outgoing.send(Frame.Text(json.encodeToString(GromozekaClientEnvelope.serializer(), envelope)))
     }
 
-    private suspend fun ensureConnected(): io.ktor.client.plugins.websocket.DefaultClientWebSocketSession =
+    private suspend fun ensureConnected(): DefaultClientWebSocketSession =
         connectMutex.withLock {
             val current = session
             if (current != null && current.isActive) {
@@ -118,7 +115,7 @@ internal class GromozekaWsClient(
             newSession
         }
 
-    private suspend fun readLoop(activeSession: io.ktor.client.plugins.websocket.DefaultClientWebSocketSession) {
+    private suspend fun readLoop(activeSession: DefaultClientWebSocketSession) {
         try {
             for (frame in activeSession.incoming) {
                 if (frame !is Frame.Text) continue
@@ -141,7 +138,7 @@ internal class GromozekaWsClient(
         }
     }
 
-    override fun close() {
+    fun close() {
         readerJob?.cancel()
         readerJob = null
         session?.cancel()
@@ -156,5 +153,5 @@ internal suspend inline fun <reified TRequest : ClientRequest, reified TResponse
     when (val response = request(payload)) {
         is ErrorResponse -> error(response.message)
         is TResponse -> response
-        else -> error("Unexpected response type: ${response::class.qualifiedName}")
+        else -> error("Unexpected response type: $response")
     }

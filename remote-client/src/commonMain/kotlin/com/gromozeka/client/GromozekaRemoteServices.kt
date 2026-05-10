@@ -17,13 +17,14 @@ class GromozekaRemoteServices(
     url: String = "ws://127.0.0.1:8765/ws",
     httpClient: HttpClient? = null,
     scope: CoroutineScope,
-) : AutoCloseable {
+    clientHomeDirectory: String,
+) {
     private val client = if (httpClient == null) {
         GromozekaWsClient(url = url, scope = scope)
     } else {
         GromozekaWsClient(url = url, httpClient = httpClient, scope = scope)
     }
-    private val remoteSettingsService = RemoteSettingsService(client)
+    private val remoteSettingsService = RemoteSettingsService(client, clientHomeDirectory)
     private val remoteAgentService = RemoteAgentService(client)
 
     val settingsService: SettingsService = remoteSettingsService
@@ -41,7 +42,7 @@ class GromozekaRemoteServices(
         remoteSettingsService.refreshFromServer()
     }
 
-    override fun close() {
+    fun close() {
         client.close()
     }
 }

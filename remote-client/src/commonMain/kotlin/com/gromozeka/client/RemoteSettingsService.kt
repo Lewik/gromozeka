@@ -12,10 +12,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.runBlocking
-import java.io.File
 
 internal class RemoteSettingsService(
     private val client: GromozekaWsClient,
+    override val homeDirectory: String,
 ) : SettingsService {
     private val _settingsFlow = MutableStateFlow(Settings())
 
@@ -27,8 +27,6 @@ internal class RemoteSettingsService(
     override val ttsSpeed: Float get() = settings.ttsSpeed
     override val aiProvider: AIProvider get() = settings.defaultAiProvider
     override val mode: AppMode get() = AppMode.PRODUCTION
-    override val homeDirectory: String = System.getProperty("GROMOZEKA_CLIENT_HOME")
-        ?: File(System.getProperty("user.home"), ".gromozeka-remote-client").absolutePath
     override val enableBraveSearch: Boolean get() = settings.enableBraveSearch
     override val braveApiKey: String? get() = settings.braveApiKey
     override val enableJinaReader: Boolean get() = settings.enableJinaReader
