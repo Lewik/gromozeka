@@ -1,15 +1,15 @@
 package com.gromozeka.presentation
 
 import com.gromozeka.client.GromozekaRemoteServices
-import com.gromozeka.infrastructure.ai.config.mcp.McpConfigurationService
-import com.gromozeka.infrastructure.ai.platform.NoOpGlobalHotkeyController
-import com.gromozeka.infrastructure.ai.platform.ScreenCaptureController
-import com.gromozeka.infrastructure.ai.service.OllamaModelService
 import com.gromozeka.presentation.services.LogEncryptor
+import com.gromozeka.presentation.services.NoOpGlobalHotkeyController
 import com.gromozeka.presentation.services.NoOpPttEventHandler
 import com.gromozeka.presentation.services.NoOpPttRecordingService
 import com.gromozeka.presentation.services.NoOpSoundNotificationPlayer
 import com.gromozeka.presentation.services.NoOpTtsQueue
+import com.gromozeka.presentation.services.OllamaModelService
+import com.gromozeka.presentation.services.ScreenCaptureController
+import com.gromozeka.presentation.services.TabPromptService
 import com.gromozeka.presentation.services.UIStateService
 import com.gromozeka.presentation.services.WindowStateService
 import com.gromozeka.presentation.services.theming.AIThemeGenerator
@@ -77,7 +77,7 @@ internal fun startRemotePresentation(remoteUrl: String): RemoteStartedApp {
         appViewModel = appViewModel,
         ttsQueueService = NoOpTtsQueue(),
         settingsService = remoteServices.settingsService,
-        globalHotkeyController = NoOpGlobalHotkeyController(),
+        globalHotkeyController = NoOpGlobalHotkeyController,
         pttEventRouter = NoOpPttEventHandler,
         pttService = NoOpPttRecordingService(),
         windowStateService = windowStateService,
@@ -90,8 +90,8 @@ internal fun startRemotePresentation(remoteUrl: String): RemoteStartedApp {
         projectService = remoteServices.projectService,
         conversationService = remoteServices.conversationService,
         conversationSearchViewModel = conversationSearchViewModel,
-        loadingViewModel = LoadingViewModel(McpConfigurationService(remoteServices.settingsService.homeDirectory, scope)),
-        tabPromptService = com.gromozeka.application.service.TabPromptService(),
+        loadingViewModel = LoadingViewModel(),
+        tabPromptService = TabPromptService(),
         agentService = remoteServices.agentService,
         promptService = remoteServices.promptService,
     )

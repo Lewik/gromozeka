@@ -1,4 +1,4 @@
-package com.gromozeka.presentation.testsupport.llm
+package com.gromozeka.server.testsupport.llm
 
 import com.gromozeka.domain.model.AIProvider
 import com.gromozeka.domain.model.Conversation
@@ -36,7 +36,7 @@ class AiRuntimeCassetteProxyTest {
         ) {
             val settings = AiRuntimeCassetteSettings.fromSystemProperties()
 
-            assertEquals(Path.of("src", "jvmTest", "resources", "llm-cassettes"), settings.rootDirectory)
+            assertEquals(Path.of("server", "src", "test", "resources", "llm-cassettes"), settings.rootDirectory)
             assertEquals(AiRuntimeCassetteMode.REPLAY_ONLY, settings.mode)
         }
     }

@@ -12,8 +12,6 @@ import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.serialization.json.Json
-import org.springframework.beans.factory.annotation.Qualifier
-import org.springframework.stereotype.Service
 import java.io.File
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -21,10 +19,9 @@ import kotlin.time.Duration.Companion.milliseconds
  * Service responsible for saving and restoring Gromozeka UI state
  * Features debounced auto-save to prevent excessive I/O operations
  */
-@Service
 class UIStateService(
     private val settingsService: SettingsService,
-    @Qualifier("coroutineScope") private val scope: CoroutineScope,
+    private val scope: CoroutineScope,
 ) {
     private val log = KLoggers.logger(this)
 

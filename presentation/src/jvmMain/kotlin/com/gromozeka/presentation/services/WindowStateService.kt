@@ -5,10 +5,8 @@ import com.gromozeka.presentation.ui.UiWindowState
 import klog.KLoggers
 
 import kotlinx.serialization.json.Json
-import org.springframework.stereotype.Service
 import java.io.File
 
-@Service
 class WindowStateService(
     private val settingsService: SettingsService,
 ) {

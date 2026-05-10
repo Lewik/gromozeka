@@ -44,6 +44,12 @@ dependencies {
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.klog)
+
+    testImplementation(project(":remote-client"))
+    testImplementation(libs.spring.boot.starter.test)
+    testImplementation(libs.mongodb.driver.kotlin.coroutine)
+    testImplementation(libs.kotlinx.datetime)
+    testImplementation(kotlin("test"))
 }
 
 sourceSets {
@@ -57,4 +63,33 @@ application {
     applicationDefaultJvmArgs = listOf(
         "-Dgromozeka.project.root=${rootProject.projectDir.absolutePath}"
     )
+}
+
+tasks.withType<Test> {
+    useJUnitPlatform()
+
+    System.getProperty("gromozeka.memory.e2e")?.let {
+        systemProperty("gromozeka.memory.e2e", it)
+    }
+    System.getProperty("gromozeka.memory.e2e.subscriptionConfig")?.let {
+        systemProperty("gromozeka.memory.e2e.subscriptionConfig", it)
+    }
+    System.getProperty("gromozeka.memory.e2e.caseFilter")?.let {
+        systemProperty("gromozeka.memory.e2e.caseFilter", it)
+    }
+    System.getProperty("gromozeka.memory.e2e.modelName")?.let {
+        systemProperty("gromozeka.memory.e2e.modelName", it)
+    }
+    System.getProperty("gromozeka.llm.cassette.mode")?.let {
+        systemProperty("gromozeka.llm.cassette.mode", it)
+    }
+    System.getProperty("gromozeka.llm.cassette.dir")?.let {
+        systemProperty("gromozeka.llm.cassette.dir", it)
+    }
+    System.getProperty("gromozeka.llm.cassette.reportUnused")?.let {
+        systemProperty("gromozeka.llm.cassette.reportUnused", it)
+    }
+    System.getProperty("gromozeka.llm.cassette.deleteUnused")?.let {
+        systemProperty("gromozeka.llm.cassette.deleteUnused", it)
+    }
 }

@@ -16,10 +16,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.gromozeka.domain.model.AIProvider
-import com.gromozeka.infrastructure.ai.service.OllamaModelService
 import com.gromozeka.domain.model.ResponseFormat
 import com.gromozeka.domain.model.Settings
 import com.gromozeka.presentation.services.LogEncryptor
+import com.gromozeka.presentation.services.OllamaModelService
 import com.gromozeka.domain.service.SettingsService
 import com.gromozeka.presentation.services.theming.AIThemeGenerator
 import com.gromozeka.presentation.services.theming.ThemeService

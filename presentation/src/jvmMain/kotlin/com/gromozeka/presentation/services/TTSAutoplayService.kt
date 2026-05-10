@@ -9,17 +9,14 @@ import klog.KLoggers
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.*
-import org.springframework.beans.factory.annotation.Qualifier
-import org.springframework.stereotype.Service
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 
-@Service
 class TTSAutoplayService(
     private val appViewModel: AppViewModel,
     private val ttsQueueService: TtsQueue,
     private val settingsService: SettingsService,
-    @Qualifier("coroutineScope") private val scope: CoroutineScope,
+    private val scope: CoroutineScope,
 ) {
     private val log = KLoggers.logger(this)
 

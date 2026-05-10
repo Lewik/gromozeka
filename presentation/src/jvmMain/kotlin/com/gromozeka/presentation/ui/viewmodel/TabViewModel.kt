@@ -3,7 +3,7 @@ package com.gromozeka.presentation.ui.viewmodel
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import com.gromozeka.infrastructure.ai.platform.ScreenCaptureController
+import com.gromozeka.presentation.services.ScreenCaptureController
 import com.gromozeka.presentation.services.SoundNotificationPlayer
 import com.gromozeka.domain.model.Settings
 import com.gromozeka.presentation.ui.state.UIState

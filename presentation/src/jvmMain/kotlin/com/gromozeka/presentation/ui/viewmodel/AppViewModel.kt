@@ -8,7 +8,7 @@ import com.gromozeka.domain.service.ConversationTokenStatsService
 import com.gromozeka.domain.service.DefaultAgentProvider
 import com.gromozeka.domain.service.MessageSquashGenerationService
 import com.gromozeka.domain.service.SettingsService
-import com.gromozeka.infrastructure.ai.platform.ScreenCaptureController
+import com.gromozeka.presentation.services.ScreenCaptureController
 import com.gromozeka.presentation.services.SoundNotificationPlayer
 import com.gromozeka.presentation.ui.state.UIState
 import com.gromozeka.shared.uuid.uuid7

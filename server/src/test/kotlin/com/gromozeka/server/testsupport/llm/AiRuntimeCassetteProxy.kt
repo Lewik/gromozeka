@@ -1,4 +1,4 @@
-package com.gromozeka.presentation.testsupport.llm
+package com.gromozeka.server.testsupport.llm
 
 import com.gromozeka.domain.model.AIProvider
 import com.gromozeka.domain.model.AgentDefinition
@@ -96,7 +96,7 @@ internal data class AiRuntimeCassetteSettings(
         }
 
         private fun defaultRootDirectory(): Path {
-            if (isTestMode()) return Path.of("src", "jvmTest", "resources", "llm-cassettes")
+            if (isTestMode()) return Path.of("server", "src", "test", "resources", "llm-cassettes")
             return determineGromozekaHome().resolve("llm-cassettes")
         }
 

@@ -1,8 +1,8 @@
 package com.gromozeka.presentation.services.theming
 
-import com.gromozeka.infrastructure.ai.platform.ScreenCaptureController
-import klog.KLoggers
 import com.gromozeka.domain.service.SettingsService
+import com.gromozeka.presentation.services.ScreenCaptureController
+import klog.KLoggers
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.serialization.json.Json
 import java.io.File

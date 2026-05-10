@@ -3,19 +3,10 @@ import org.gradle.nativeplatform.platform.internal.DefaultNativePlatform
 
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
-    alias(libs.plugins.kotlin.spring)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.kotlin.compose)
-    alias(libs.plugins.spring.boot)
-    alias(libs.plugins.spring.dependency.management)
     alias(libs.plugins.jetbrains.compose)
 }
-
-// Force Kotlin version override for Spring Boot 3.4.4 (uses 1.9.25 by default)
-extra["kotlin.version"] = libs.versions.kotlin.get()
-
-// Override kotlinx-serialization version from Spring Boot BOM (1.6.3 -> 1.9.0)
-extra["kotlin-serialization.version"] = libs.versions.kotlinx.serialization.get()
 
 val javaVersion = libs.versions.java.get().toInt()
 
@@ -30,15 +21,10 @@ kotlin {
                 implementation(compose.desktop.currentOs)
                 implementation(compose.material3)
                 implementation(compose.materialIconsExtended)
-                implementation(libs.spring.boot.starter)
                 
                 // Dependencies on other modules
                 implementation(project(":domain"))  // Transitively provides :shared
                 implementation(project(":remote-client"))
-                implementation(project(":application"))
-                implementation(project(":infrastructure-db"))
-                implementation(project(":infrastructure-ai"))
-                implementation(project(":infrastructure-ai:openai-subscription"))
 
                 // klog - Kotlin logging framework
                 implementation(libs.klog)
@@ -89,10 +75,8 @@ kotlin {
             dependencies {
                 implementation(compose.desktop.currentOs)
                 implementation(libs.compose.ui.test)
-                implementation(libs.spring.boot.starter.test)
                 implementation(libs.mockk)
                 implementation(libs.kotlinx.serialization.json)
-                implementation(libs.mongodb.driver.kotlin.coroutine)
                 implementation(kotlin("test"))
                 
                 // Batik for SVG to PNG conversion (build-time only)
@@ -106,12 +90,6 @@ kotlin {
 java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(javaVersion)
-    }
-}
-
-dependencyManagement {
-    imports {
-        mavenBom(libs.spring.ai.bom.get().toString())
     }
 }
 

@@ -4,6 +4,24 @@ import com.gromozeka.domain.model.TtsTask
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
+interface ScreenCaptureController {
+    suspend fun captureWindow(): String?
+    suspend fun captureFullScreen(): String?
+    suspend fun captureArea(): String?
+}
+
+interface GlobalHotkeyController {
+    fun initializeService()
+    fun cleanup()
+    fun isSupported(): Boolean = false
+    fun getImplementationType(): String = "none"
+}
+
+object NoOpGlobalHotkeyController : GlobalHotkeyController {
+    override fun initializeService() = Unit
+    override fun cleanup() = Unit
+}
+
 interface SoundNotificationPlayer {
     suspend fun playErrorSound()
     suspend fun playMessageSound()
@@ -38,6 +56,14 @@ interface PttRecordingService {
 
 class NoOpPttRecordingService : PttRecordingService {
     override val recordingState: StateFlow<Boolean> = MutableStateFlow(false)
+}
+
+enum class PTTEvent {
+    BUTTON_DOWN,
+    SINGLE_CLICK,
+    DOUBLE_CLICK,
+    SINGLE_PUSH,
+    DOUBLE_PUSH
 }
 
 interface PttEventHandler {

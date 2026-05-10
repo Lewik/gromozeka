@@ -11,7 +11,6 @@ import java.nio.channels.WritableByteChannel
 import java.nio.file.StandardOpenOption
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import org.springframework.stereotype.Service
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.Path
@@ -32,7 +31,6 @@ import kotlin.io.path.*
  * 2. Age encrypt with X25519 + ChaCha20-Poly1305
  * 3. Save to Gromozeka home directory for user to share
  */
-@Service
 class LogEncryptor(
     private val settingsService: SettingsService
 ) {

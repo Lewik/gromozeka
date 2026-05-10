@@ -1,4 +1,4 @@
-package com.gromozeka.presentation
+package com.gromozeka.server
 
 import com.gromozeka.application.service.ConversationEngineService
 import com.gromozeka.application.service.memory.MemoryMaintenanceTraceEvent
@@ -40,11 +40,11 @@ import com.gromozeka.domain.service.ConversationDomainService
 import com.gromozeka.domain.service.PromptDomainService
 import com.gromozeka.domain.tool.AiToolCallback
 import com.gromozeka.domain.model.Settings
-import com.gromozeka.presentation.testsupport.app.AppTestHarness
-import com.gromozeka.presentation.testsupport.app.sanitizePathSegment
-import com.gromozeka.presentation.testsupport.llm.AiRuntimeCassetteSettings
-import com.gromozeka.presentation.testsupport.llm.AiRuntimeCassetteUsageRegistry
-import com.gromozeka.presentation.testsupport.llm.AiRuntimeCassetteUsageReporter
+import com.gromozeka.server.testsupport.app.ServerTestHarness
+import com.gromozeka.server.testsupport.app.sanitizePathSegment
+import com.gromozeka.server.testsupport.llm.AiRuntimeCassetteSettings
+import com.gromozeka.server.testsupport.llm.AiRuntimeCassetteUsageRegistry
+import com.gromozeka.server.testsupport.llm.AiRuntimeCassetteUsageReporter
 import com.gromozeka.shared.uuid.uuid7
 import com.mongodb.kotlin.client.coroutine.MongoDatabase
 import java.nio.file.Files
@@ -95,7 +95,7 @@ class MemoryRealModelE2eTest {
         }
 
         val subscriptionPath = resolveSubscriptionConfigPath()
-        val subscriptionSession = AppTestHarness.subscriptionSessionFromConfig(subscriptionPath)
+        val subscriptionSession = ServerTestHarness.subscriptionSessionFromConfig(subscriptionPath)
         assertNotNull(subscriptionSession, "OpenAI subscription config not found or incomplete: $subscriptionPath")
 
         val cases = loadCases()
@@ -118,7 +118,7 @@ class MemoryRealModelE2eTest {
             memoryAutoRecall = true,
         )
 
-        AppTestHarness(
+        ServerTestHarness(
             settings = settings,
             subscriptionSession = subscriptionSession,
             systemProperties = mapOf(
@@ -129,7 +129,7 @@ class MemoryRealModelE2eTest {
             ),
             additionalSources = listOf(MemoryRealModelE2eNoToolsConfig::class.java),
         ).use { harness ->
-            val context = harness.startedApp.context
+            val context = harness.context
             val conversationService = context.getBean(ConversationDomainService::class.java)
             val conversationEngineService = context.getBean(ConversationEngineService::class.java)
             val promptDomainService = context.getBean(PromptDomainService::class.java)
@@ -292,7 +292,7 @@ class MemoryRealModelE2eTest {
     }
 
     private suspend fun executeCase(
-        harness: AppTestHarness,
+        harness: ServerTestHarness,
         conversationService: ConversationDomainService,
         conversationEngineService: ConversationEngineService,
         promptDomainService: PromptDomainService,

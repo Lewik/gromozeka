@@ -20,14 +20,6 @@ kotlin {
             }
         }
         
-        val jvmMain by getting {
-            dependencies {
-                // Spring AI types for JVM-specific service interfaces
-                // Using openai module which brings spring-ai-core transitively
-                implementation(libs.spring.ai.openai)
-            }
-        }
-
         val jvmTest by getting {
             dependencies {
                 implementation(kotlin("test"))

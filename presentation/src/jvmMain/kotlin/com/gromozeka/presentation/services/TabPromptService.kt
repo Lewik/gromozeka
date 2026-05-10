@@ -1,14 +1,12 @@
-package com.gromozeka.application.service
+package com.gromozeka.presentation.services
 
 import klog.KLoggers
-import org.springframework.stereotype.Service
+import java.nio.file.FileSystemNotFoundException
 import java.nio.file.FileSystems
 import java.nio.file.Files
-import java.nio.file.FileSystemNotFoundException
 import java.nio.file.Paths
 import kotlin.io.path.name
 
-@Service
 class TabPromptService {
     private val log = KLoggers.logger {}
 
@@ -21,20 +19,20 @@ class TabPromptService {
 
     fun listAvailablePrompts(): List<String> {
         return try {
-            val uri = javaClass.getResource("/agents/")?.toURI() 
+            val uri = javaClass.getResource("/agents/")?.toURI()
                 ?: run {
                     log.warn { "Resource directory /agents/ not found" }
                     return emptyList()
                 }
-            
+
             val dirPath = try {
                 Paths.get(uri)
             } catch (e: FileSystemNotFoundException) {
                 FileSystems.newFileSystem(uri, emptyMap<String, String>()).getPath("/agents/")
             }
-            
+
             val excludedFiles = setOf("README.md") + DEFAULT_PROMPTS
-            
+
             Files.list(dirPath)
                 .filter { Files.isRegularFile(it) }
                 .filter { it.name.endsWith(".md") }
@@ -59,10 +57,10 @@ class TabPromptService {
             }
             .joinToString("\n\n---\n\n")
     }
-    
+
     fun loadPromptContent(fileName: String): String {
         val resourcePath = "/agents/$fileName"
-        
+
         return try {
             javaClass.getResourceAsStream(resourcePath)
                 ?.bufferedReader()
@@ -76,12 +74,12 @@ class TabPromptService {
             ""
         }
     }
-    
+
     fun buildAdditionalPrompt(customPrompts: List<String>): String {
         if (customPrompts.isEmpty()) {
             return ""
         }
-        
+
         return customPrompts
             .mapNotNull { fileName ->
                 val content = loadPromptContent(fileName)
