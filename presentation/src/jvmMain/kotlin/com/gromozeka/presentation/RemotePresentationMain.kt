@@ -91,7 +91,7 @@ internal fun startRemotePresentation(remoteUrl: String): RemoteStartedApp {
         conversationService = remoteServices.conversationService,
         conversationSearchViewModel = conversationSearchViewModel,
         loadingViewModel = LoadingViewModel(),
-        tabPromptService = TabPromptService(),
+        tabPromptService = TabPromptService(remoteServices.promptService),
         agentService = remoteServices.agentService,
         promptService = remoteServices.promptService,
     )

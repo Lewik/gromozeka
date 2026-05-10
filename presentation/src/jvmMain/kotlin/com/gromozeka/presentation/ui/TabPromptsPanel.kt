@@ -17,6 +17,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.gromozeka.presentation.services.TabPromptService
+import klog.KLoggers
+
+private val log = KLoggers.logger("TabPromptsPanel")
 
 @Composable
 fun TabPromptsPanel(
@@ -27,7 +30,25 @@ fun TabPromptsPanel(
     tabPromptService: TabPromptService,
     modifier: Modifier = Modifier,
 ) {
-    val availablePrompts = remember { tabPromptService.listAvailablePrompts() }
+    var availablePrompts by remember { mutableStateOf<List<TabPromptService.TabPromptOption>>(emptyList()) }
+    var isLoading by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(isVisible) {
+        if (!isVisible) return@LaunchedEffect
+
+        isLoading = true
+        error = null
+        runCatching {
+            tabPromptService.listAvailablePrompts()
+        }.onSuccess { prompts ->
+            availablePrompts = prompts
+        }.onFailure { throwable ->
+            error = throwable.message ?: throwable::class.simpleName ?: "Unknown error"
+            log.warn(throwable) { "Failed to load tab prompts: ${throwable.message}" }
+        }
+        isLoading = false
+    }
 
     AnimatedVisibility(
         visible = isVisible,
@@ -70,39 +91,68 @@ fun TabPromptsPanel(
                         .verticalScroll(scrollState),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    availablePrompts.forEach { fileName ->
-                        val isSelected = customPrompts.contains(fileName)
-                        val selectedIndex = if (isSelected) customPrompts.indexOf(fileName) else -1
-
-                        PromptFileItem(
-                            fileName = fileName,
-                            isSelected = isSelected,
-                            selectedIndex = selectedIndex,
-                            totalSelected = customPrompts.size,
-                            onToggle = { selected ->
-                                if (selected) {
-                                    onCustomPromptsChange(customPrompts + fileName)
-                                } else {
-                                    onCustomPromptsChange(customPrompts - fileName)
-                                }
-                            },
-                            onMoveUp = {
-                                if (selectedIndex > 0) {
-                                    val newList = customPrompts.toMutableList()
-                                    newList.removeAt(selectedIndex)
-                                    newList.add(selectedIndex - 1, fileName)
-                                    onCustomPromptsChange(newList)
-                                }
-                            },
-                            onMoveDown = {
-                                if (selectedIndex < customPrompts.size - 1) {
-                                    val newList = customPrompts.toMutableList()
-                                    newList.removeAt(selectedIndex)
-                                    newList.add(selectedIndex + 1, fileName)
-                                    onCustomPromptsChange(newList)
-                                }
+                    when {
+                        isLoading -> {
+                            Box(
+                                modifier = Modifier.fillMaxWidth().padding(24.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator()
                             }
-                        )
+                        }
+
+                        error != null -> {
+                            Text(
+                                text = "Failed to load prompts: $error",
+                                color = MaterialTheme.colorScheme.error,
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+
+                        availablePrompts.isEmpty() -> {
+                            Text(
+                                text = "No prompts available",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+
+                        else -> {
+                            availablePrompts.forEach { prompt ->
+                                val isSelected = customPrompts.contains(prompt.id)
+                                val selectedIndex = if (isSelected) customPrompts.indexOf(prompt.id) else -1
+
+                                PromptFileItem(
+                                    prompt = prompt,
+                                    isSelected = isSelected,
+                                    selectedIndex = selectedIndex,
+                                    totalSelected = customPrompts.size,
+                                    onToggle = { selected ->
+                                        if (selected) {
+                                            onCustomPromptsChange(customPrompts + prompt.id)
+                                        } else {
+                                            onCustomPromptsChange(customPrompts - prompt.id)
+                                        }
+                                    },
+                                    onMoveUp = {
+                                        if (selectedIndex > 0) {
+                                            val newList = customPrompts.toMutableList()
+                                            newList.removeAt(selectedIndex)
+                                            newList.add(selectedIndex - 1, prompt.id)
+                                            onCustomPromptsChange(newList)
+                                        }
+                                    },
+                                    onMoveDown = {
+                                        if (selectedIndex < customPrompts.size - 1) {
+                                            val newList = customPrompts.toMutableList()
+                                            newList.removeAt(selectedIndex)
+                                            newList.add(selectedIndex + 1, prompt.id)
+                                            onCustomPromptsChange(newList)
+                                        }
+                                    }
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -112,7 +162,7 @@ fun TabPromptsPanel(
 
 @Composable
 private fun PromptFileItem(
-    fileName: String,
+    prompt: TabPromptService.TabPromptOption,
     isSelected: Boolean,
     selectedIndex: Int,
     totalSelected: Int,
@@ -138,8 +188,13 @@ private fun PromptFileItem(
 
             Column {
                 Text(
-                    fileName,
+                    prompt.name,
                     style = MaterialTheme.typography.bodyMedium
+                )
+                Text(
+                    "${prompt.type} - ${prompt.id}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 if (isSelected) {
                     Text(
