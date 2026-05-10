@@ -207,7 +207,7 @@ interface AppLogicVM {
          *
          * @property projectPath Absolute path to project directory
          * @property conversationId ID of conversation to load
-         * @property activeMessageTags Set of active message tag IDs (e.g., "thinking_ultrathink")
+         * @property activeMessageTags Set of active message tag IDs (e.g., "mode_readonly")
          * @property userInput Unsent text in input field
          * @property customName Custom tab display name (null = use default)
          * @property tabId Stable tab identifier for MCP

@@ -53,23 +53,6 @@ class TabViewModel(
             MessageTagDefinition(
                 controls = listOf(
                     MessageTagDefinition.Control(
-                        data = Conversation.Message.Instruction.UserInstruction("thinking_off", "Off", "Обычный режим работы"),
-                        includeInMessage = false
-                    ),
-                    MessageTagDefinition.Control(
-                        data = Conversation.Message.Instruction.UserInstruction(
-                            "thinking_ultrathink",
-                            "Ultrathink",
-                            "Режим глубокого анализа с пошаговыми рассуждениями и детальной проработкой"
-                        ),
-                        includeInMessage = true
-                    )
-                ),
-                selectedByDefault = 0
-            ),
-            MessageTagDefinition(
-                controls = listOf(
-                    MessageTagDefinition.Control(
                         data = Conversation.Message.Instruction.UserInstruction(
                             "mode_readonly",
                             "Readonly",

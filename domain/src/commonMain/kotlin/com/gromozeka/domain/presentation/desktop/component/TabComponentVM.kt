@@ -37,7 +37,7 @@ import kotlinx.coroutines.flow.StateFlow
  * │ [Select All] [User] [Assistant] [Thinking] [Tools] [Plain]     │
  * │ Selected: 3 | [Squash] [Distill] [Summarize] [Delete]          │
  * ├─────────────────────────────────────────────────────────────────┤
- * │ Message Tags: [Ultrathink ▼] [Readonly ▼]                      │
+ * │ Message Tags: [Readonly ▼]                                      │
  * ├─────────────────────────────────────────────────────────────────┤
  * │ ┌─────────────────────────────────────────────────────────────┐ │
  * │ │ Type your message here...                                   │ │
@@ -58,7 +58,7 @@ import kotlinx.coroutines.flow.StateFlow
  *
  * ### Sending Messages
  * 1. User types in input field ([userInput])
- * 2. Optionally selects message tags (Ultrathink, Readonly)
+ * 2. Optionally selects message tags (Readonly)
  * 3. Clicks [Send] or presses Ctrl+Enter → [sendMessage]
  * 4. User message added to [allMessages] immediately
  * 5. Input field cleared
@@ -86,7 +86,6 @@ import kotlinx.coroutines.flow.StateFlow
  * - Active tags in [activeMessageTags]
  * - Tags are mutually exclusive within same group
  * - Example groups:
- *   - Thinking: [Off, Ultrathink]
  *   - Mode: [Readonly, Writable]
  * - Click tag → [toggleMessageTag]
  * - Active tags included in message instructions
@@ -446,12 +445,12 @@ interface TabComponentVM {
      * Definition of a message tag group.
      * Tags in same group are mutually exclusive.
      *
-     * Example: Thinking mode tag group
+     * Example: mode tag group
      * ```
      * MessageTagDefinition(
      *   controls = listOf(
-     *     Control(UserInstruction("thinking_off", "Off", "Normal mode"), includeInMessage = false),
-     *     Control(UserInstruction("thinking_ultrathink", "Ultrathink", "Deep analysis"), includeInMessage = true)
+     *     Control(UserInstruction("mode_readonly", "Readonly", "Readonly mode"), includeInMessage = true),
+     *     Control(UserInstruction("mode_writable", "Writable", "Writable mode"), includeInMessage = false)
      *   ),
      *   selectedByDefault = 1
      * )

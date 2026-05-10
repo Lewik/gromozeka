@@ -17,7 +17,7 @@ knowledge-graph:
 
 # Reranker Configuration
 reranker:
-  auto-start: true
+  auto-start: false
   url: http://localhost:7997
   model: mixedbread-ai/mxbai-rerank-xsmall-v1
   python-version: "3.12"
