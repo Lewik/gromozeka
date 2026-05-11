@@ -98,6 +98,9 @@ class TabViewModel(
     private val _strideEnabled = MutableStateFlow(false)
     val strideEnabled: StateFlow<Boolean> = _strideEnabled.asStateFlow()
 
+    private val _memoryTasksRefreshKey = MutableStateFlow(0)
+    val memoryTasksRefreshKey: StateFlow<Int> = _memoryTasksRefreshKey.asStateFlow()
+
     init {
         _uiState.update { it.copy(isWaitingForResponse = false) }
 
@@ -360,6 +363,7 @@ class TabViewModel(
 
                 soundNotificationService.playReadySound()
                 loadTokenStats()
+                notifyMemoryTasksMayHaveChanged()
                 log.debug { "Message sent successfully" }
             } catch (e: Exception) {
                 log.error(e) { "Failed to send message" }
@@ -369,6 +373,10 @@ class TabViewModel(
                 currentRequestJob = null
             }
         }
+    }
+
+    fun notifyMemoryTasksMayHaveChanged() {
+        _memoryTasksRefreshKey.update { it + 1 }
     }
 
     fun interrupt() {

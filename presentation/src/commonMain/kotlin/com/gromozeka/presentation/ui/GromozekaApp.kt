@@ -86,6 +86,7 @@ fun GromozekaAppContent(
     var isLoadingComplete by remember(skipLoadingScreen) { mutableStateOf(skipLoadingScreen) }
     var showSettingsPanel by remember { mutableStateOf(false) }
     var showPromptsPanel by remember(showPromptsPanelInitially) { mutableStateOf(showPromptsPanelInitially) }
+    var showMemoryTasksPanel by remember { mutableStateOf(false) }
     var refreshTrigger by remember { mutableStateOf(0) }
     var hoveredTabIndex by remember { mutableStateOf(-1) }
 
@@ -210,16 +211,33 @@ fun GromozekaAppContent(
                         val contentPadding = if (isCompactLayout) 8.dp else 16.dp
                         val setSettingsPanel: (Boolean) -> Unit = { visible ->
                             showSettingsPanel = visible
-                            if (visible && isCompactLayout) showPromptsPanel = false
+                            if (visible && isCompactLayout) {
+                                showPromptsPanel = false
+                                showMemoryTasksPanel = false
+                            }
                         }
                         val setPromptsPanel: (Boolean) -> Unit = { visible ->
                             showPromptsPanel = visible
-                            if (visible && isCompactLayout) showSettingsPanel = false
+                            if (visible && isCompactLayout) {
+                                showSettingsPanel = false
+                                showMemoryTasksPanel = false
+                            }
+                        }
+                        val setMemoryTasksPanel: (Boolean) -> Unit = { visible ->
+                            showMemoryTasksPanel = visible
+                            if (visible && isCompactLayout) {
+                                showSettingsPanel = false
+                                showPromptsPanel = false
+                            }
                         }
 
-                        LaunchedEffect(isCompactLayout, showSettingsPanel, showPromptsPanel) {
-                            if (isCompactLayout && showSettingsPanel && showPromptsPanel) {
-                                showPromptsPanel = false
+                        LaunchedEffect(isCompactLayout, showSettingsPanel, showPromptsPanel, showMemoryTasksPanel) {
+                            if (isCompactLayout) {
+                                when {
+                                    showSettingsPanel && showPromptsPanel -> showPromptsPanel = false
+                                    showSettingsPanel && showMemoryTasksPanel -> showMemoryTasksPanel = false
+                                    showPromptsPanel && showMemoryTasksPanel -> showMemoryTasksPanel = false
+                                }
                             }
                         }
 
@@ -308,6 +326,8 @@ fun GromozekaAppContent(
                                                         settings = currentSettings,
                                                         showSettingsPanel = showSettingsPanel,
                                                         onShowSettingsPanelChange = setSettingsPanel,
+                                                        showMemoryTasksPanel = showMemoryTasksPanel,
+                                                        onShowMemoryTasksPanelChange = setMemoryTasksPanel,
                                                         onRememberThread = {
                                                             coroutineScope.launch {
                                                                 runCatching { appComponents.appViewModel.rememberCurrentThread() }
@@ -427,6 +447,20 @@ fun GromozekaAppContent(
                                     onOpenTabWithMessage = createNewSessionWithMessage
                                 )
                             }
+
+                            if (!isCompactLayout) currentTab?.let { tabViewModel ->
+                                val refreshKey by tabViewModel.memoryTasksRefreshKey.collectAsState()
+                                Box(modifier = Modifier.testTag(UiTestTag.MemoryTasksPanel.value)) {
+                                    MemoryTasksPanel(
+                                        isVisible = showMemoryTasksPanel,
+                                        conversationId = tabViewModel.conversationId,
+                                        refreshKey = refreshKey,
+                                        memoryTaskService = appComponents.memoryTaskService,
+                                        coroutineScope = coroutineScope,
+                                        onClose = { setMemoryTasksPanel(false) }
+                                    )
+                                }
+                            }
                         }
 
                         if (isCompactLayout) {
@@ -479,6 +513,27 @@ fun GromozekaAppContent(
                                     fullScreen = true,
                                     slideFromRight = true
                                 )
+                            }
+
+                            currentTab?.let { tabViewModel ->
+                                val refreshKey by tabViewModel.memoryTasksRefreshKey.collectAsState()
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .zIndex(4f)
+                                        .testTag(UiTestTag.MemoryTasksPanel.value)
+                                ) {
+                                    MemoryTasksPanel(
+                                        isVisible = showMemoryTasksPanel,
+                                        conversationId = tabViewModel.conversationId,
+                                        refreshKey = refreshKey,
+                                        memoryTaskService = appComponents.memoryTaskService,
+                                        coroutineScope = coroutineScope,
+                                        onClose = { setMemoryTasksPanel(false) },
+                                        fullScreen = true,
+                                        slideFromRight = true
+                                    )
+                                }
                             }
                         }
                     }

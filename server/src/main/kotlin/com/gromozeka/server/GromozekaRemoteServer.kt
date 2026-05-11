@@ -1,6 +1,9 @@
 package com.gromozeka.server
 
 import com.gromozeka.domain.model.MemoryAction
+import com.gromozeka.domain.model.memory.MemoryNamespace
+import com.gromozeka.domain.model.memory.MemoryStore
+import com.gromozeka.domain.model.memory.MemoryTask
 import com.gromozeka.domain.service.AgentDomainService
 import com.gromozeka.domain.service.ConversationDomainService
 import com.gromozeka.domain.service.ConversationNameSearchService
@@ -21,6 +24,9 @@ import io.ktor.websocket.send
 import klog.KLoggers
 import org.springframework.stereotype.Service
 import java.io.ByteArrayOutputStream
+import java.security.MessageDigest
+import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.json.Json
 
 @Service
 class GromozekaRemoteServer(
@@ -35,8 +41,13 @@ class GromozekaRemoteServer(
     private val messageSquashGenerationService: MessageSquashGenerationService,
     private val conversationNameSearchService: ConversationNameSearchService,
     private val sttService: SttService,
+    private val memoryStore: MemoryStore,
 ) {
     private val log = KLoggers.logger(this)
+    private val memoryTaskRevisionJson = Json {
+        encodeDefaults = true
+        classDiscriminator = "memoryType"
+    }
 
     suspend fun handle(session: DefaultWebSocketServerSession) {
         for (frame in session.incoming) {
@@ -171,6 +182,8 @@ class GromozekaRemoteServer(
                     MemoryActionCompletedResponse
                 }
 
+                is GetMemoryTasksRequest -> loadMemoryTasks(request)
+
                 is TranscribeAudioRequest -> transcribeAudio(request.recording)
             }
         }.getOrElse { error ->
@@ -256,6 +269,44 @@ class GromozekaRemoteServer(
         }
     }
 
+    private suspend fun loadMemoryTasks(request: GetMemoryTasksRequest): MemoryTasksResponse {
+        val project = conversationDomainService.getProject(request.conversationId)
+        val namespace = MemoryNamespace("project:${project.id.value}")
+        val snapshot = memoryStore.loadNamespaceSnapshot(namespace)
+        val nonArchivedTasks = snapshot.tasks.filter { it.archivedAt == null }
+        val visibleTasks = nonArchivedTasks
+            .filter { request.includeClosed || it.status !in closedMemoryTaskStatuses }
+            .sortedWith(
+                compareBy<MemoryTask> { it.status.memoryTaskStatusRank() }
+                    .thenBy { it.priority.memoryTaskPriorityRank() }
+                    .thenByDescending { it.updatedAt }
+                    .thenBy { it.title.lowercase() }
+            )
+
+        log.info {
+            "Remote memory tasks loaded: conversation=${request.conversationId.value} namespace=${namespace.value} " +
+                "includeClosed=${request.includeClosed} visible=${visibleTasks.size} total=${nonArchivedTasks.size}"
+        }
+
+        return MemoryTasksResponse(
+            revision = visibleTasks.memoryTaskRevision(),
+            counts = MemoryTaskCounts(
+                open = nonArchivedTasks.count { it.status == MemoryTask.Status.OPEN },
+                inProgress = nonArchivedTasks.count { it.status == MemoryTask.Status.IN_PROGRESS },
+                blocked = nonArchivedTasks.count { it.status == MemoryTask.Status.BLOCKED },
+                done = nonArchivedTasks.count { it.status == MemoryTask.Status.DONE },
+                cancelled = nonArchivedTasks.count { it.status == MemoryTask.Status.CANCELLED },
+            ),
+            tasks = visibleTasks,
+        )
+    }
+
+    private fun List<MemoryTask>.memoryTaskRevision(): String {
+        val json = memoryTaskRevisionJson.encodeToString(ListSerializer(MemoryTask.serializer()), this)
+        val digest = MessageDigest.getInstance("SHA-256").digest(json.encodeToByteArray())
+        return digest.joinToString("") { byte -> "%02x".format(byte) }
+    }
+
     private fun resultResponse(result: Result<Unit>): OperationResultResponse =
         result.fold(
             onSuccess = { OperationResultResponse(success = true) },
@@ -267,4 +318,24 @@ class GromozekaRemoteServer(
             onSuccess = { OperationResultResponse(success = true, count = it) },
             onFailure = { OperationResultResponse(success = false, error = it.message ?: it::class.simpleName) }
         )
+
+    private companion object {
+        val closedMemoryTaskStatuses = setOf(MemoryTask.Status.DONE, MemoryTask.Status.CANCELLED)
+    }
 }
+
+private fun MemoryTask.Status.memoryTaskStatusRank(): Int =
+    when (this) {
+        MemoryTask.Status.BLOCKED -> 0
+        MemoryTask.Status.IN_PROGRESS -> 1
+        MemoryTask.Status.OPEN -> 2
+        MemoryTask.Status.DONE -> 3
+        MemoryTask.Status.CANCELLED -> 4
+    }
+
+private fun MemoryTask.Priority.memoryTaskPriorityRank(): Int =
+    when (this) {
+        MemoryTask.Priority.HIGH -> 0
+        MemoryTask.Priority.NORMAL -> 1
+        MemoryTask.Priority.LOW -> 2
+    }

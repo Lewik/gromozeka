@@ -57,6 +57,8 @@ fun SessionScreen(
     settings: Settings,
     showSettingsPanel: Boolean,
     onShowSettingsPanelChange: (Boolean) -> Unit,
+    showMemoryTasksPanel: Boolean,
+    onShowMemoryTasksPanelChange: (Boolean) -> Unit,
 
     // Tab Settings Panel
     onShowPromptsPanelChange: (Boolean) -> Unit,
@@ -243,6 +245,17 @@ fun SessionScreen(
                                     Text("$percentage%")
                                 }
                             }
+                        }
+
+                        Spacer(modifier = Modifier.width(8.dp))
+
+                        // Memory tasks button
+                        CompactButton(
+                            onClick = { onShowMemoryTasksPanelChange(!showMemoryTasksPanel) },
+                            modifier = Modifier.testTag(UiTestTag.MemoryTasksButton.value),
+                            tooltip = "Memory tasks"
+                        ) {
+                            Icon(Icons.Default.ListAlt, contentDescription = "Memory tasks")
                         }
 
                         Spacer(modifier = Modifier.width(8.dp))

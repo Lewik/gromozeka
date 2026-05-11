@@ -77,6 +77,7 @@ suspend fun createRemoteAppComponents(
             ttsQueueService = NoOpTtsQueue(),
             settingsService = remoteServices.settingsService,
             remoteClientSettingsService = remoteServices.clientSettingsService,
+            memoryTaskService = remoteServices.memoryTaskService,
             globalHotkeyController = NoOpGlobalHotkeyController,
             pttEventRouter = pttController,
             pttService = pttController,

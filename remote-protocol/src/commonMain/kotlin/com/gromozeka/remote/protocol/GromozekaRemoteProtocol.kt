@@ -10,6 +10,7 @@ import com.gromozeka.domain.model.Prompt
 import com.gromozeka.domain.model.Settings
 import com.gromozeka.domain.model.SquashType
 import com.gromozeka.domain.model.TokenUsageStatistics
+import com.gromozeka.domain.model.memory.MemoryTask
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonClassDiscriminator
@@ -296,6 +297,13 @@ data class MemoryActionRequest(
 ) : ClientRequest
 
 @Serializable
+@SerialName("get_memory_tasks")
+data class GetMemoryTasksRequest(
+    val conversationId: Conversation.Id,
+    val includeClosed: Boolean = false,
+) : ClientRequest
+
+@Serializable
 @SerialName("transcribe_audio")
 data class TranscribeAudioRequest(
     val recording: RemoteAudioRecording,
@@ -450,6 +458,23 @@ data class TextResponse(
 @Serializable
 @SerialName("memory_action_completed")
 data object MemoryActionCompletedResponse : ServerResponse
+
+@Serializable
+@SerialName("memory_tasks")
+data class MemoryTasksResponse(
+    val revision: String,
+    val counts: MemoryTaskCounts,
+    val tasks: List<MemoryTask>,
+) : ServerResponse
+
+@Serializable
+data class MemoryTaskCounts(
+    val open: Int = 0,
+    val inProgress: Int = 0,
+    val blocked: Int = 0,
+    val done: Int = 0,
+    val cancelled: Int = 0,
+)
 
 @Serializable
 @SerialName("audio_transcription")

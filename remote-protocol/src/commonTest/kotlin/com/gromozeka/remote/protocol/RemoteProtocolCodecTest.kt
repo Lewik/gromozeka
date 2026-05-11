@@ -1,6 +1,9 @@
 package com.gromozeka.remote.protocol
 
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.memory.MemoryNamespace
+import com.gromozeka.domain.model.memory.MemoryScope
+import com.gromozeka.domain.model.memory.MemoryTask
 import kotlinx.datetime.Instant
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -68,6 +71,39 @@ class RemoteProtocolCodecTest {
 
         assertEquals(JsonPrimitive("test"), message.providerMetadata["provider"])
         assertEquals(JsonPrimitive("toyota"), (toolCall.call.input as JsonObject)["query"])
+    }
+
+    @Test
+    fun cborRoundTripSupportsMemoryTasks() {
+        val task = MemoryTask(
+            id = MemoryTask.Id("task-1"),
+            namespace = MemoryNamespace("project:demo"),
+            title = "Check memory task UI",
+            description = "Render current memory tasks in a read-only panel.",
+            status = MemoryTask.Status.IN_PROGRESS,
+            priority = MemoryTask.Priority.HIGH,
+            scope = MemoryScope.Global("Demo project"),
+            acceptanceCriteria = listOf("Panel shows active tasks"),
+            blockers = listOf("No blocker"),
+            confidence = 0.9,
+            createdAt = Instant.parse("2026-05-11T00:00:00Z"),
+            updatedAt = Instant.parse("2026-05-11T01:00:00Z"),
+        )
+        val envelope = GromozekaServerEnvelope(
+            id = "response-2",
+            payload = MemoryTasksResponse(
+                revision = "revision-1",
+                counts = MemoryTaskCounts(inProgress = 1),
+                tasks = listOf(task)
+            )
+        )
+
+        val decoded = RemoteProtocolCodec.decodeServerBinary(RemoteProtocolCodec.encodeServerBinary(envelope))
+        val response = decoded.payload as MemoryTasksResponse
+
+        assertEquals("revision-1", response.revision)
+        assertEquals(MemoryTask.Status.IN_PROGRESS, response.tasks.single().status)
+        assertEquals("Check memory task UI", response.tasks.single().title)
     }
 
     private fun audioEnvelope(bytes: ByteArray): GromozekaClientEnvelope =

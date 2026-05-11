@@ -287,6 +287,7 @@ open class AppViewModel(
 
         try {
             conversationRuntimeService.rememberCurrentThread(current.conversationId)
+            current.notifyMemoryTasksMayHaveChanged()
             log.info { "Remembered current thread for conversation: ${current.conversationId}" }
         } catch (e: Exception) {
             log.error(e) { "Failed to remember current thread: ${e.message}" }
@@ -298,6 +299,7 @@ open class AppViewModel(
 
         try {
             conversationRuntimeService.consolidateCurrentMemory(current.conversationId)
+            current.notifyMemoryTasksMayHaveChanged()
             log.info { "Consolidated memory for conversation: ${current.conversationId}" }
         } catch (e: Exception) {
             log.error(e) { "Failed to consolidate memory: ${e.message}" }
@@ -310,6 +312,7 @@ open class AppViewModel(
 
         try {
             conversationRuntimeService.repairCurrentMemory(current.conversationId)
+            current.notifyMemoryTasksMayHaveChanged()
             log.info { "Repaired memory for conversation: ${current.conversationId}" }
         } catch (e: Exception) {
             log.error(e) { "Failed to repair memory: ${e.message}" }
@@ -322,6 +325,7 @@ open class AppViewModel(
 
         try {
             conversationRuntimeService.maintainMemoryEntities(current.conversationId)
+            current.notifyMemoryTasksMayHaveChanged()
             log.info { "Maintained memory entities for conversation: ${current.conversationId}" }
         } catch (e: Exception) {
             log.error(e) { "Failed to maintain memory entities: ${e.message}" }
@@ -334,6 +338,7 @@ open class AppViewModel(
 
         try {
             conversationRuntimeService.applyCurrentMemoryRetention(current.conversationId)
+            current.notifyMemoryTasksMayHaveChanged()
             log.info { "Applied memory retention for conversation: ${current.conversationId}" }
         } catch (e: Exception) {
             log.error(e) { "Failed to apply memory retention: ${e.message}" }
