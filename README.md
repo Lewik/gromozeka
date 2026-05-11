@@ -2,9 +2,9 @@
 
 <img src="presentation/src/jvmMain/resources/logos/logo-128x128.png" alt="Gromozeka Logo" width="64" height="64" align="left" />
 
-Gromozeka is an experimental Kotlin Multiplatform + Compose Desktop AI assistant.
+Gromozeka is an experimental Kotlin Multiplatform AI assistant.
 
-It is both a desktop agent UI and a dogfooding environment for building a more durable agent runtime: multi-tab conversations, tool execution, MCP integration, voice input, and typed long-term memory.
+It is both an agent UI and a dogfooding environment for building a more durable agent runtime: multi-tab conversations, tool execution, MCP integration, voice input, and typed long-term memory.
 
 The project is currently a local research/development application, not a polished packaged product.
 
@@ -12,18 +12,25 @@ The project is currently a local research/development application, not a polishe
 
 - Main dogfooding runtime: `OPEN_AI_SUBSCRIPTION`.
 - Runtime composition root: `:server`.
-- Desktop UI entrypoint: `:presentation`.
+- UI clients: `:presentation` JVM Desktop and Wasm web/PWA.
 - Business workflows: `:application`.
 - Domain contracts and memory models: `:domain`.
 - AI integrations and tool implementations: `:infrastructure-ai`.
 - Persistence and search implementations: `:infrastructure-db`.
 - Active long-term memory backend: MongoDB through `MemoryStore`.
 
+The current development shape is split:
+
+- `:server` owns Spring composition, LLM runtimes, tools, persistence, memory, and a Ktor remote endpoint.
+- `:presentation` owns UI code and can run either as a JVM desktop client or as a Wasm web client.
+- The server listens on `/ws` for remote UI traffic and serves already-built Wasm static files from `presentation/build/dist/wasmJs/developmentExecutable` by default.
+
 Legacy and auxiliary integrations still exist in the codebase, but the current default development path is the OpenAI subscription runtime plus Mongo-backed typed memory.
 
 ## What Gromozeka Does
 
-- Runs a native Compose Desktop chat UI with tabs and project-aware sessions.
+- Runs Compose chat UI with tabs and project-aware sessions.
+- Supports remote UI clients over WebSocket: JVM desktop locally, Wasm web/PWA in a browser.
 - Calls LLM runtimes through domain-level `AiRuntime` abstractions.
 - Exposes internal tools for filesystem, shell, web search, code navigation, planning, and inter-agent workflows.
 - Supports MCP configuration for external tools and servers.
@@ -83,6 +90,8 @@ Useful memory docs:
 
 MongoDB is intentionally explicit. The app should fail fast if Mongo is not available.
 
+The server and UI clients are separate processes. Start MongoDB first, then the server, then one of the UI clients.
+
 Start MongoDB:
 
 ```bash
@@ -93,13 +102,62 @@ docker compose -f "$PWD/server/src/main/resources/docker-compose.yml" up
 Run the server:
 
 ```bash
-GROMOZEKA_MODE=dev ./gradlew :server:run
+GROMOZEKA_HOME="$PWD/dev-data/client/.gromozeka" \
+GROMOZEKA_MODE=dev \
+./gradlew :server:run
 ```
 
-Run the desktop UI client:
+The server defaults to `127.0.0.1:8765`. It prints a line like:
 
 ```bash
+==== Gromozeka server started: ws://127.0.0.1:8765/ws ====
+```
+
+### JVM Desktop Client
+
+Run the desktop UI client against the local server:
+
+```bash
+GROMOZEKA_REMOTE_URL="ws://127.0.0.1:8765/ws" \
+GROMOZEKA_CLIENT_HOME="$PWD/dev-data/client/.gromozeka-remote-client" \
 ./gradlew :presentation:run
+```
+
+### Web/PWA Client
+
+Build the Wasm web client:
+
+```bash
+./gradlew :presentation:wasmJsBrowserDevelopmentExecutableDistribution
+```
+
+Then run the server and open:
+
+```text
+http://127.0.0.1:8765/
+```
+
+The web client resolves its WebSocket endpoint from the browser URL, so `http://127.0.0.1:8765/` uses `ws://127.0.0.1:8765/ws`.
+
+For phone testing through Tailscale or another LAN/VPN address, bind the server to all interfaces:
+
+```bash
+GROMOZEKA_HOME="$PWD/dev-data/client/.gromozeka" \
+GROMOZEKA_MODE=dev \
+GROMOZEKA_REMOTE_HOST=0.0.0.0 \
+./gradlew :server:run
+```
+
+Then open:
+
+```text
+http://<machine-tailscale-or-lan-ip>:8765/
+```
+
+If static files need to be served from a custom directory, set:
+
+```bash
+GROMOZEKA_WEB_STATIC_DIR="/absolute/path/to/web/dist"
 ```
 
 Stop MongoDB:
@@ -108,20 +166,24 @@ Stop MongoDB:
 docker compose -f "$PWD/server/src/main/resources/docker-compose.yml" stop mongodb
 ```
 
-Codex desktop run actions are configured in:
-
-```text
-.codex/environments/environment.toml
-```
-
-The high-value actions are `Start Mongo`, `Run`, `Stop Mongo`, `Build`, `Server Tests`, `Memory Unit Tests`, and `Memory Real E2E`.
-
 ## Verification
 
 Build:
 
 ```bash
 ./gradlew :presentation:build -q
+```
+
+Server build:
+
+```bash
+./gradlew :server:build -q
+```
+
+Web client distribution only:
+
+```bash
+./gradlew :presentation:wasmJsBrowserDevelopmentExecutableDistribution -q
 ```
 
 Application context smoke test:
@@ -165,8 +227,8 @@ domain/             Domain models, service contracts, tool contracts
 application/        Use cases and orchestration pipelines
 infrastructure-ai/  LLM runtimes, tools, MCP-related integrations
 infrastructure-db/  Mongo persistence, search, repository implementations
-server/             Spring/server runtime composition and server-owned resources
-presentation/       Compose Desktop remote UI client and client-owned resources
+server/             Spring/server runtime composition, Ktor remote endpoint, server-owned resources
+presentation/       Compose JVM Desktop and Wasm web UI clients
 shared/             Shared utilities
 agent_memory_handoff/  Memory design handoff and reference architecture
 docs/               Architecture notes, diagrams, research, guides
