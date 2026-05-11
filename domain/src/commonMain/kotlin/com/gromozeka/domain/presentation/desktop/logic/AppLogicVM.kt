@@ -5,6 +5,7 @@ import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.presentation.desktop.component.TabComponentVM
 import kotlinx.coroutines.flow.StateFlow
+import kotlin.jvm.JvmInline
 
 /**
  * ViewModel for main application orchestration and tab management.

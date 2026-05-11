@@ -9,12 +9,16 @@ kotlin {
     jvmToolchain(javaVersion)
 
     jvm {}
+    wasmJs {
+        browser()
+    }
     
     sourceSets {
         val commonMain by getting {
             dependencies {
                 implementation(libs.kotlinx.serialization.json)
                 implementation(libs.kotlinx.datetime)
+                implementation(libs.kotlinx.coroutines.core)
             }
         }
         
@@ -26,9 +30,6 @@ kotlin {
         
         val jvmMain by getting {
             dependencies {
-                implementation(libs.ktor.client.core)
-                implementation(libs.klog)
-                implementation(libs.kotlin.reflect)
                 implementation(libs.uuid.creator)
             }
         }

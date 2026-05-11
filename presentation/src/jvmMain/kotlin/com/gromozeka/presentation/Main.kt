@@ -6,11 +6,6 @@ import com.gromozeka.presentation.ui.ErrorDialog
 import klog.KLoggers
 import kotlin.system.exitProcess
 
-fun getTabDisplayName(tabUiState: com.gromozeka.presentation.ui.state.UIState.Tab, index: Int): String {
-    return tabUiState.customName?.takeIf { it.isNotBlank() }
-        ?: tabUiState.agent.name
-}
-
 fun main() {
     val log = KLoggers.logger("ChatApplication")
     System.setProperty("java.awt.headless", "false")
@@ -44,6 +39,7 @@ fun main() {
             remoteApp != null -> {
                 ChatWindow(
                     appComponents = remoteApp.components,
+                    windowStateService = remoteApp.windowStateService,
                     skipLoadingScreen = true,
                     onExitRequest = {
                         remoteApp.close()

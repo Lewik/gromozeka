@@ -2,6 +2,7 @@ package com.gromozeka.domain.model
 
 import kotlinx.datetime.Instant
 import kotlinx.serialization.Serializable
+import kotlin.jvm.JvmInline
 
 /**
  * Agent definition - reusable configuration template for AI agent behavior.

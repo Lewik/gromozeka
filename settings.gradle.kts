@@ -31,5 +31,53 @@ dependencyResolutionManagement {
             url = uri("https://central.sonatype.com/repository/maven-snapshots/")
         }
         maven { url = uri("https://jitpack.io") }
+
+        // Kotlin/Wasm tooling downloads Node.js through a Gradle Ivy configuration.
+        // Keep the repository here so FAIL_ON_PROJECT_REPOS still protects the build.
+        ivy {
+            name = "NodeJsDistributions"
+            url = uri("https://nodejs.org/dist")
+            patternLayout {
+                artifact("v[revision]/[artifact](-v[revision]-[classifier]).[ext]")
+            }
+            metadataSources {
+                artifact()
+            }
+            content {
+                includeModule("org.nodejs", "node")
+            }
+        }
+
+        // Kotlin/Wasm tooling downloads Yarn through a Gradle Ivy configuration.
+        // This mirrors Kotlin Gradle Plugin's built-in repository, but keeps it centralized.
+        ivy {
+            name = "YarnDistributions"
+            url = uri("https://github.com/yarnpkg/yarn/releases/download")
+            patternLayout {
+                artifact("v[revision]/[artifact](-v[revision]).[ext]")
+            }
+            metadataSources {
+                artifact()
+            }
+            content {
+                includeModule("com.yarnpkg", "yarn")
+            }
+        }
+
+        // Kotlin/Wasm executable production runs Binaryen's wasm-opt.
+        // The Kotlin plugin normally adds this repository dynamically; we declare it explicitly.
+        ivy {
+            name = "BinaryenDistributions"
+            url = uri("https://github.com/WebAssembly/binaryen/releases/download")
+            patternLayout {
+                artifact("version_[revision]/binaryen-version_[revision]-[classifier].[ext]")
+            }
+            metadataSources {
+                artifact()
+            }
+            content {
+                includeModule("com.github.webassembly", "binaryen")
+            }
+        }
     }
 }

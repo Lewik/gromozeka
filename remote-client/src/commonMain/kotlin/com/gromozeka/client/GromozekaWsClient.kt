@@ -58,8 +58,11 @@ internal class GromozekaWsClient(
         pending[id] = deferred
 
         try {
+            println("Gromozeka WS request id=$id type=${payload::class.simpleName}")
             sendEnvelope(GromozekaClientEnvelope(id, payload))
-            return deferred.await()
+            return deferred.await().also { response ->
+                println("Gromozeka WS response id=$id type=${response::class.simpleName}")
+            }
         } finally {
             pending.remove(id)
         }
@@ -107,6 +110,7 @@ internal class GromozekaWsClient(
             }
 
             val newSession = httpClient.webSocketSession(url)
+            println("Gromozeka WS connected url=$url")
             session = newSession
             readerJob?.cancel()
             readerJob = scope.launch {
@@ -120,6 +124,7 @@ internal class GromozekaWsClient(
             for (frame in activeSession.incoming) {
                 if (frame !is Frame.Text) continue
                 val envelope = json.decodeFromString(GromozekaServerEnvelope.serializer(), frame.readText())
+                println("Gromozeka WS incoming id=${envelope.id} type=${envelope.payload::class.simpleName}")
                 when (val payload = envelope.payload) {
                     is ServerResponse -> pending.remove(envelope.id)?.complete(payload)
                     is MessageUpsertedEvent -> streams[payload.streamId]?.send(payload)
@@ -128,6 +133,7 @@ internal class GromozekaWsClient(
                 }
             }
         } catch (error: Throwable) {
+            println("Gromozeka WS read loop failed: ${error.message ?: error.toString()}")
             pending.values.forEach { it.completeExceptionally(error) }
             pending.clear()
             streams.values.forEach { it.close(error) }

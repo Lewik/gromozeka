@@ -9,6 +9,9 @@ kotlin {
     jvmToolchain(javaVersion)
 
     jvm {}
+    wasmJs {
+        browser()
+    }
 
     sourceSets {
         val commonMain by getting {
@@ -26,6 +29,12 @@ kotlin {
         val jvmMain by getting {
             dependencies {
                 implementation(libs.ktor.client.cio)
+            }
+        }
+
+        val wasmJsMain by getting {
+            dependencies {
+                implementation(libs.ktor.client.js)
             }
         }
     }

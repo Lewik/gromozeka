@@ -9,6 +9,9 @@ kotlin {
     jvmToolchain(javaVersion)
     
     jvm {}
+    wasmJs {
+        browser()
+    }
     
     sourceSets {
         val commonMain by getting {

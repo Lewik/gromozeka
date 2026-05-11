@@ -9,13 +9,15 @@ kotlin {
     jvmToolchain(javaVersion)
 
     jvm {}
+    wasmJs {
+        browser()
+    }
 
     sourceSets {
         val commonMain by getting {
             dependencies {
                 api(project(":domain"))
                 implementation(libs.kotlinx.serialization.json)
-                implementation(libs.kotlinx.datetime)
             }
         }
     }

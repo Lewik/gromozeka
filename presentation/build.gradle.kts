@@ -14,74 +14,46 @@ kotlin {
     jvmToolchain(javaVersion)
 
     jvm {}
+    wasmJs {
+        outputModuleName = "gromozeka"
+        browser {
+            commonWebpackConfig {
+                outputFileName = "gromozeka.js"
+            }
+        }
+        binaries.executable()
+    }
     
     sourceSets {
+        val commonMain by getting {
+            dependencies {
+                implementation(project(":domain"))
+                implementation(project(":remote-client"))
+
+                implementation(compose.runtime)
+                implementation(compose.foundation)
+                implementation(compose.material3)
+                implementation(compose.materialIconsExtended)
+
+                implementation(libs.filekit.core)
+                implementation(libs.filekit.compose)
+                implementation(libs.multiplatform.markdown.renderer.m3)
+                implementation(libs.multiplatform.markdown.renderer.code)
+                implementation(libs.kotlinx.datetime)
+                implementation(libs.kotlinx.serialization.json)
+                implementation(libs.kotlinx.coroutines.core)
+            }
+        }
+
         val jvmMain by getting {
             dependencies {
                 implementation(compose.desktop.currentOs)
-                implementation(compose.material3)
-                implementation(compose.materialIconsExtended)
-                
-                // Dependencies on other modules
-                implementation(project(":domain"))  // Transitively provides :shared
-                implementation(project(":remote-client"))
-
-                // klog - Kotlin logging framework
-                implementation(libs.klog)
-                
-                // FileKit for file picker
-                implementation(libs.filekit.core)
-                implementation(libs.filekit.compose)
-                
-                // Markdown renderer
-                implementation(libs.multiplatform.markdown.renderer.m3)
-                implementation(libs.multiplatform.markdown.renderer.code)
-
-                implementation(libs.kotlin.reflect)
-                implementation(libs.kotlinx.datetime)
-                
-                // MCP SDK for internal tools
-                implementation(libs.mcp.kotlin.sdk)
-                
-                // Flyway (for DatabaseBackupCallback)
-                implementation(libs.flyway.core)
-                
-                // Ktor Client
-                implementation(libs.ktor.client.core)
-                implementation(libs.ktor.client.cio)
-                implementation(libs.ktor.client.auth)
-                implementation(libs.ktor.client.content.negotiation)
-                implementation(libs.ktor.serialization.kotlinx.json)
-                
-                implementation(libs.kotlinx.serialization.json)
-                implementation(libs.xmlutil.serialization)
-                implementation(libs.jackson.module.kotlin)
-
-                // Age encryption for secure log packaging
-                implementation(libs.jagged.api)
-                implementation(libs.jagged.x25519)
-                implementation(libs.jagged.framework)
-                
-                // Batik for logo generation task
-                implementation(libs.batik.transcoder)
-                implementation(libs.batik.codec)
-
-                // Apache PDFBox for PDF parsing
-                implementation(libs.pdfbox)
             }
         }
-        
-        val jvmTest by getting {
+
+        val wasmJsMain by getting {
             dependencies {
-                implementation(compose.desktop.currentOs)
-                implementation(libs.compose.ui.test)
-                implementation(libs.mockk)
-                implementation(libs.kotlinx.serialization.json)
-                implementation(kotlin("test"))
-                
-                // Batik for SVG to PNG conversion (build-time only)
-                implementation(libs.batik.transcoder)
-                implementation(libs.batik.codec)
+                implementation(libs.kotlinx.browser)
             }
         }
     }

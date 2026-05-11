@@ -8,13 +8,15 @@ import com.gromozeka.remote.protocol.GetSettingsRequest
 import com.gromozeka.remote.protocol.SaveSettingsRequest
 import com.gromozeka.remote.protocol.SavedResponse
 import com.gromozeka.remote.protocol.SettingsResponse
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.launch
 
 internal class RemoteSettingsService(
     private val client: GromozekaWsClient,
+    private val scope: CoroutineScope,
     override val homeDirectory: String,
 ) : SettingsService {
     private val _settingsFlow = MutableStateFlow(Settings())
@@ -38,9 +40,9 @@ internal class RemoteSettingsService(
         }
 
     override fun saveSettings(settings: Settings) {
-        runBlocking {
+        _settingsFlow.value = settings
+        scope.launch {
             client.requestTyped<SaveSettingsRequest, SavedResponse>(SaveSettingsRequest(settings))
-            _settingsFlow.value = settings
         }
     }
 
@@ -49,6 +51,6 @@ internal class RemoteSettingsService(
     }
 
     override fun reloadSettings() {
-        runBlocking { refreshFromServer() }
+        scope.launch { refreshFromServer() }
     }
 }

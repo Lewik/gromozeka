@@ -4,6 +4,12 @@
  */
 
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask
+import org.jetbrains.kotlin.gradle.targets.wasm.binaryen.BinaryenExtension
+import org.jetbrains.kotlin.gradle.targets.wasm.binaryen.BinaryenPlugin
+import org.jetbrains.kotlin.gradle.targets.wasm.nodejs.WasmNodeJsRootExtension
+import org.jetbrains.kotlin.gradle.targets.wasm.nodejs.WasmNodeJsRootPlugin
+import org.jetbrains.kotlin.gradle.targets.wasm.yarn.WasmYarnPlugin
+import org.jetbrains.kotlin.gradle.targets.wasm.yarn.WasmYarnRootExtension
 
 plugins {
     alias(libs.plugins.kotlin.multiplatform) apply false
@@ -43,6 +49,29 @@ allprojects {
             if (name.contains("Test", ignoreCase = true)) {
                 experimentalTestOptIns.forEach { optIn.add(it) }
             }
+        }
+    }
+
+    // Repositories for Kotlin/Wasm tooling are declared in settings.gradle.kts.
+    // Nulling these URLs prevents the Kotlin plugin from adding project repositories.
+    @Suppress("DEPRECATION_ERROR")
+    plugins.withType<WasmNodeJsRootPlugin> {
+        extensions.configure<WasmNodeJsRootExtension>(WasmNodeJsRootExtension.EXTENSION_NAME) {
+            downloadBaseUrl = null
+        }
+    }
+
+    @Suppress("DEPRECATION_ERROR")
+    plugins.withType<WasmYarnPlugin> {
+        extensions.configure<WasmYarnRootExtension>(WasmYarnRootExtension.YARN) {
+            downloadBaseUrl = null
+        }
+    }
+
+    @Suppress("DEPRECATION_ERROR")
+    plugins.withType<BinaryenPlugin> {
+        extensions.configure<BinaryenExtension>(BinaryenExtension.EXTENSION_NAME) {
+            downloadBaseUrl = null
         }
     }
 }

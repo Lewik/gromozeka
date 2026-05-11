@@ -4,6 +4,8 @@ import com.gromozeka.application.service.SettingsService
 import com.gromozeka.infrastructure.ai.config.InternalMcpToolsRegistrar
 import io.ktor.server.application.install
 import io.ktor.server.cio.CIO
+import io.ktor.server.http.content.default
+import io.ktor.server.http.content.staticFiles
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.routing.routing
 import io.ktor.server.websocket.WebSockets
@@ -20,6 +22,7 @@ import org.springframework.boot.builder.SpringApplicationBuilder
 import org.springframework.context.ApplicationListener
 import org.springframework.context.annotation.ComponentScan
 import org.springframework.context.annotation.FilterType
+import java.io.File
 import java.util.concurrent.atomic.AtomicBoolean
 
 private val log = KLoggers.logger("GromozekaServer")
@@ -37,13 +40,17 @@ fun main() {
     check(springReady.get()) { "Spring application did not publish ApplicationReadyEvent" }
 
     val remoteServer = context.getBean(GromozekaRemoteServer::class.java)
+    val host = System.getProperty("gromozeka.remote.host")
+        ?: System.getenv("GROMOZEKA_REMOTE_HOST")
+        ?: "127.0.0.1"
     val port = System.getProperty("gromozeka.remote.port")?.toIntOrNull()
         ?: System.getenv("GROMOZEKA_REMOTE_PORT")?.toIntOrNull()
         ?: 8765
+    val webRoot = resolveWebRoot()
 
-    log.info { "Starting Gromozeka remote server on ws://127.0.0.1:$port/ws" }
+    log.info { "Starting Gromozeka remote server on ws://$host:$port/ws" }
 
-    val ktorServer = embeddedServer(CIO, port = port, host = "127.0.0.1") {
+    val ktorServer = embeddedServer(CIO, port = port, host = host) {
         install(WebSockets) {
             maxFrameSize = Long.MAX_VALUE
             masking = false
@@ -51,6 +58,9 @@ fun main() {
         routing {
             webSocket("/ws") {
                 remoteServer.handle(this)
+            }
+            staticFiles("/", webRoot) {
+                default("index.html")
             }
         }
     }.start(wait = false)
@@ -61,6 +71,16 @@ fun main() {
     }
     println("==== Gromozeka server started: $endpoints ====")
     Thread.currentThread().join()
+}
+
+private fun resolveWebRoot(): File {
+    val configured = System.getProperty("gromozeka.web.static.dir")
+        ?: System.getenv("GROMOZEKA_WEB_STATIC_DIR")
+    if (configured != null) return File(configured)
+
+    val projectRoot = System.getProperty("gromozeka.project.root")
+        ?: File(".").absolutePath
+    return File(projectRoot, "presentation/build/dist/wasmJs/developmentExecutable")
 }
 
 private fun applyServerSystemProperties() {

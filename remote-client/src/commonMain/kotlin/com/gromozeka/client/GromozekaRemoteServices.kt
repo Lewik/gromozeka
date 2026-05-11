@@ -24,7 +24,7 @@ class GromozekaRemoteServices(
     } else {
         GromozekaWsClient(url = url, httpClient = httpClient, scope = scope)
     }
-    private val remoteSettingsService = RemoteSettingsService(client, clientHomeDirectory)
+    private val remoteSettingsService = RemoteSettingsService(client, scope, clientHomeDirectory)
     private val remoteAgentService = RemoteAgentService(client)
 
     val settingsService: SettingsService = remoteSettingsService

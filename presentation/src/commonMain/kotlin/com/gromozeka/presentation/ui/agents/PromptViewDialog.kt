@@ -1,0 +1,90 @@
+package com.gromozeka.presentation.ui.agents
+
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.*
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import com.gromozeka.domain.model.Prompt
+import com.gromozeka.presentation.ui.GromozekaMarkdown
+import com.gromozeka.presentation.ui.session.BasicGromozekaDialog
+
+@Composable
+fun PromptViewDialog(
+    prompt: Prompt,
+    onDismiss: () -> Unit,
+    onEdit: (() -> Unit)? = null
+) {
+    BasicGromozekaDialog(onDismissRequest = onDismiss) {
+        Surface(
+            shape = MaterialTheme.shapes.large,
+            tonalElevation = 8.dp,
+            modifier = Modifier
+                .fillMaxSize(0.95f)
+        ) {
+            Column(
+                modifier = Modifier.padding(24.dp)
+            ) {
+                Text(
+                    text = prompt.name,
+                    style = MaterialTheme.typography.headlineSmall
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text(
+                    text = when (val type = prompt.type) {
+                        is Prompt.Type.Builtin -> "Built-in prompt"
+                        is Prompt.Type.Global -> "Global prompt"
+                        is Prompt.Type.Project -> "Project prompt"
+                        is Prompt.Type.Environment -> "Inline prompt"
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Surface(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth(),
+                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    shape = MaterialTheme.shapes.medium
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .padding(16.dp)
+                            .verticalScroll(rememberScrollState())
+                    ) {
+                        GromozekaMarkdown(
+                            content = prompt.content,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    onEdit?.let { editAction ->
+                        Button(onClick = editAction) {
+                            Text("Open in IDEA")
+                        }
+                        
+                        Spacer(modifier = Modifier.width(8.dp))
+                    }
+
+                    TextButton(onClick = onDismiss) {
+                        Text("Close")
+                    }
+                }
+            }
+        }
+    }
+}

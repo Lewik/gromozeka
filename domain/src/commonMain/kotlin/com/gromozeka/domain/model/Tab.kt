@@ -2,6 +2,7 @@ package com.gromozeka.domain.model
 
 import com.gromozeka.domain.model.Conversation
 import kotlinx.serialization.Serializable
+import kotlin.jvm.JvmInline
 
 /**
  * Active conversation session with UI representation.

@@ -2,6 +2,7 @@ package com.gromozeka.domain.model
 
 import kotlinx.datetime.Instant
 import kotlinx.serialization.Serializable
+import kotlin.jvm.JvmInline
 
 // ════════════════════════════════════════════════════════════════════════════════
 // STRIDE ENGINE - EXECUTION PLAN

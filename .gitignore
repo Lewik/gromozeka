@@ -13,6 +13,9 @@ build/
 # Kotlin
 .kotlin/
 
+# Browser automation
+.playwright-cli/
+
 # IntelliJ IDEA
 .idea/
 *.iml

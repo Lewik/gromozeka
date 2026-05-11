@@ -1,6 +1,7 @@
 package com.gromozeka.shared.path
 
 import kotlinx.serialization.Serializable
+import kotlin.jvm.JvmInline
 
 /**
  * Type-safe file path wrapper.

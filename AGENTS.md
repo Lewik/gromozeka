@@ -63,6 +63,7 @@ Current high-value commands:
 ```bash
 ./gradlew :presentation:run -q
 ./gradlew :presentation:build -q
+./gradlew :presentation:wasmJsBrowserDevelopmentExecutableDistribution -q
 ./gradlew :server:test -q
 ./gradlew :application:jvmTest --tests 'com.gromozeka.application.service.memory.MemoryMaintenancePipelineTest' -q
 ./gradlew :server:test --tests 'com.gromozeka.server.MemoryRealModelE2eTest' -Dgromozeka.memory.e2e=true -Dgromozeka.llm.cassette.mode=replay-only -q
@@ -72,6 +73,43 @@ Mongo is intentionally explicit:
 ```bash
 GROMOZEKA_HOME="$PWD/dev-data/client/.gromozeka" docker compose -f "$PWD/server/src/main/resources/docker-compose.yml" up -d mongodb
 docker compose -f "$PWD/server/src/main/resources/docker-compose.yml" stop mongodb
+```
+
+## Local Logs
+
+IDEA dev run configurations save full output here:
+```bash
+logs/server-dev.log  # Gromozeka Server [dev], Gradle :server:run
+logs/client-dev.log  # Gromozeka Client JVM, Gradle :presentation:run
+```
+
+The IDEA server run configuration may build `:presentation:wasmJsBrowserDevelopmentExecutableDistribution`
+before `:server:run` for local web/PWA convenience, but keep that as run-configuration behavior.
+Do not make `:server:run` depend on the presentation Wasm build in Gradle: the server only serves
+already-built static artifacts and must stay independently runnable from the console.
+
+If Gradle fails before the JVM app starts, the failure is still in the same run-config log file.
+Older monolithic runs may still write to `logs/dev.log` or `presentation/logs/dev.log`, but do not treat those as the primary server/client logs.
+
+## Playwright Web UI Checks
+
+For mobile web UI checks, do not approximate iPhone with `resize`.
+Use Playwright device emulation so viewport, screen size, DPR, touch, and user agent match:
+```bash
+PLAYWRIGHT_MCP_DEVICE="iPhone 15" npx --yes @playwright/cli@latest -s=gromozeka-iphone15 open http://127.0.0.1:8765/
+```
+
+Compose/Wasm renders mostly into `canvas`, but text input can still work after a correct click because Compose creates a hidden `INPUT`.
+Use screenshot coordinates for canvas UI, then verify focus/value if typing is suspicious:
+```bash
+npx --yes @playwright/cli@latest -s=gromozeka-iphone15 run-code 'async page => {
+  await page.mouse.click(120, 82)
+  await page.keyboard.type("dev", { delay: 30 })
+  return await page.evaluate(() => ({
+    activeTag: document.activeElement?.tagName,
+    activeValue: document.activeElement?.value
+  }))
+}'
 ```
 
 ## Your Approach
