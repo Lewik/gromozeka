@@ -12,8 +12,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.pointer.PointerEventType
-import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.gromozeka.domain.model.AgentDefinition
@@ -100,10 +98,10 @@ fun CustomTabRow(
                         }
                     },
                     modifier = Modifier.Companion
-                        .onPointerEvent(PointerEventType.Companion.Enter) {
-                            onTabHover(index)
-                        }
-                        .onPointerEvent(PointerEventType.Companion.Exit) { onTabHoverExit() }
+                        .onTabHover(
+                            onEnter = { onTabHover(index) },
+                            onExit = onTabHoverExit
+                        )
                         .testTag(UiTestTag.SessionTab(index).value),
                     text = {
                         Box(

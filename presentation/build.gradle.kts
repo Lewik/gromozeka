@@ -6,6 +6,7 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.jetbrains.compose)
+    alias(libs.plugins.android.application)
 }
 
 val javaVersion = libs.versions.java.get().toInt()
@@ -14,6 +15,11 @@ kotlin {
     jvmToolchain(javaVersion)
 
     jvm {}
+    androidTarget {
+        compilerOptions {
+            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+        }
+    }
     wasmJs {
         outputModuleName = "gromozeka"
         browser {
@@ -57,6 +63,35 @@ kotlin {
                 implementation(libs.kotlinx.browser)
             }
         }
+
+        val androidMain by getting {
+            dependencies {
+                implementation(libs.androidx.activity.compose)
+            }
+        }
+    }
+}
+
+android {
+    namespace = "com.gromozeka.presentation"
+    compileSdk = 35
+
+    defaultConfig {
+        applicationId = "com.gromozeka.app"
+        minSdk = 24
+        targetSdk = 35
+        versionCode = 1
+        versionName = rootProject.version.toString()
+        buildConfigField("String", "DEFAULT_REMOTE_URL", "\"ws://10.0.2.2:8765/ws\"")
+    }
+
+    buildFeatures {
+        buildConfig = true
+    }
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
 }
 

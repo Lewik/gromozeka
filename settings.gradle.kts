@@ -3,6 +3,14 @@
  * Modified for Kotlin MPP project.
  */
 
+pluginManagement {
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+
 rootProject.name = "gromozeka"
 
 include(":shared")

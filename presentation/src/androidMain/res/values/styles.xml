@@ -1,0 +1,9 @@
+<resources>
+    <style name="GromozekaTheme" parent="android:style/Theme.Material.NoActionBar">
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowActionBar">false</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:statusBarColor">#080D14</item>
+        <item name="android:navigationBarColor">#080D14</item>
+    </style>
+</resources>
