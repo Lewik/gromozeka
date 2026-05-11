@@ -19,12 +19,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.window.ComposeViewport
+import com.gromozeka.presentation.services.BrowserUIStateStore
 import com.gromozeka.presentation.ui.GromozekaApp
 import kotlinx.browser.window
 
 private data class WebLayoutHints(
     val uiScaleMultiplier: Float,
     val showPromptsPanelInitially: Boolean,
+    val forceCompactLayout: Boolean,
 )
 
 @OptIn(ExperimentalComposeUiApi::class)
@@ -48,6 +50,7 @@ private fun GromozekaWebApp() {
                 remoteUrl = resolveRemoteUrl(),
                 scope = scope,
                 clientHomeDirectory = "browser",
+                uiStateStore = BrowserUIStateStore(),
             )
         }.onSuccess { app ->
             remoteApp = app
@@ -68,6 +71,7 @@ private fun GromozekaWebApp() {
             skipLoadingScreen = true,
             uiScaleMultiplier = layoutHints.uiScaleMultiplier,
             showPromptsPanelInitially = layoutHints.showPromptsPanelInitially,
+            forceCompactLayout = layoutHints.forceCompactLayout,
         )
         startupError != null -> StartupError(startupError!!)
         else -> StartupLoading()
@@ -85,17 +89,20 @@ private fun resolveWebLayoutHints(): WebLayoutHints {
     val tabletScreen = window.screen.width <= 820 || window.innerWidth <= 820
 
     return when {
-        hasTouch && compactScreen -> WebLayoutHints(
-            uiScaleMultiplier = 1.35f,
+        compactScreen -> WebLayoutHints(
+            uiScaleMultiplier = 1.25f,
             showPromptsPanelInitially = false,
+            forceCompactLayout = true,
         )
         hasTouch && tabletScreen -> WebLayoutHints(
             uiScaleMultiplier = 1.15f,
             showPromptsPanelInitially = false,
+            forceCompactLayout = true,
         )
         else -> WebLayoutHints(
             uiScaleMultiplier = 1.0f,
             showPromptsPanelInitially = true,
+            forceCompactLayout = false,
         )
     }
 }

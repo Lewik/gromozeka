@@ -2,6 +2,7 @@ package com.gromozeka.presentation.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -32,6 +33,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import com.gromozeka.domain.model.AppMode
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ConversationInitiator
@@ -52,6 +54,7 @@ fun GromozekaApp(
     skipLoadingScreen: Boolean = false,
     uiScaleMultiplier: Float = 1f,
     showPromptsPanelInitially: Boolean = true,
+    forceCompactLayout: Boolean = false,
 ) {
     val currentTheme by appComponents.themeService.currentTheme.collectAsState()
     GromozekaTheme(currentTheme = currentTheme) {
@@ -62,6 +65,7 @@ fun GromozekaApp(
                 skipLoadingScreen = skipLoadingScreen,
                 uiScaleMultiplier = uiScaleMultiplier,
                 showPromptsPanelInitially = showPromptsPanelInitially,
+                forceCompactLayout = forceCompactLayout,
             )
         }
     }
@@ -73,6 +77,7 @@ fun GromozekaAppContent(
     skipLoadingScreen: Boolean = false,
     uiScaleMultiplier: Float = 1f,
     showPromptsPanelInitially: Boolean = true,
+    forceCompactLayout: Boolean = false,
 ) {
     val log = KLoggers.logger("ChatWindow")
     val coroutineScope = rememberCoroutineScope()
@@ -198,205 +203,276 @@ fun GromozekaAppContent(
                 }
 
                 else -> {
-                    Row(modifier = Modifier.fillMaxSize()) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            val selectedTabIndex = when (val currentIndex = currentTabIndex) {
-                                null -> 0
-                                -1 -> 1
-                                else -> currentIndex + 2
-                            }
+                    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+                        val isCompactLayout = forceCompactLayout || maxWidth < 700.dp
+                        val contentPadding = if (isCompactLayout) 8.dp else 16.dp
+                        val setSettingsPanel: (Boolean) -> Unit = { visible ->
+                            showSettingsPanel = visible
+                            if (visible && isCompactLayout) showPromptsPanel = false
+                        }
+                        val setPromptsPanel: (Boolean) -> Unit = { visible ->
+                            showPromptsPanel = visible
+                            if (visible && isCompactLayout) showSettingsPanel = false
+                        }
 
-                            val tabRowComponent = @Composable {
-                                CustomTabRow(
-                                    selectedTabIndex = selectedTabIndex,
-                                    showTabsAtBottom = currentSettings.showTabsAtBottom,
-                                    tabs = tabs,
-                                    hoveredTabIndex = hoveredTabIndex,
-                                    onTabSelect = { tabIndex ->
-                                        coroutineScope.launch {
-                                            appComponents.appViewModel.selectTab(tabIndex)
-                                        }
-                                    },
-                                    onTabHover = { index -> hoveredTabIndex = index },
-                                    onTabHoverExit = { hoveredTabIndex = -1 },
-                                    onRenameTab = { tabIndexToRename, newName ->
-                                        coroutineScope.launch {
-                                            appComponents.appViewModel.renameTab(tabIndexToRename, newName)
-                                        }
-                                    },
-                                    coroutineScope = coroutineScope
-                                )
+                        LaunchedEffect(isCompactLayout, showSettingsPanel, showPromptsPanel) {
+                            if (isCompactLayout && showSettingsPanel && showPromptsPanel) {
+                                showPromptsPanel = false
                             }
+                        }
 
-                            if (!currentSettings.showTabsAtBottom) {
-                                tabRowComponent()
-                            }
-
+                        Row(modifier = Modifier.fillMaxSize()) {
                             Column(modifier = Modifier.weight(1f)) {
-                                Row(modifier = Modifier.weight(1f)) {
-                                    Column(modifier = Modifier.weight(1f).padding(16.dp)) {
-                                        Box(modifier = Modifier.weight(1f)) {
-                                            if (currentTab != null) {
-                                                val tabViewModel = currentTab!!
-                                                SessionScreen(
-                                                    viewModel = tabViewModel,
-                                                    onNewSession = { createNewSession(currentTab!!.projectPath) },
-                                                    onForkSession = {
-                                                        coroutineScope.launch {
-                                                            runCatching {
-                                                                val currentConversationId =
-                                                                    currentTab!!.uiState.first().conversationId
-                                                                val forkedConversation =
-                                                                    appComponents.conversationService.fork(currentConversationId)
-                                                                val tabIndex = appComponents.appViewModel.createTab(
-                                                                    projectPath = currentTab!!.projectPath,
-                                                                    conversationId = forkedConversation.id,
+                                val selectedTabIndex = when (val currentIndex = currentTabIndex) {
+                                    null -> 0
+                                    -1 -> 1
+                                    else -> currentIndex + 2
+                                }
+
+                                val tabRowComponent = @Composable {
+                                    CustomTabRow(
+                                        selectedTabIndex = selectedTabIndex,
+                                        showTabsAtBottom = currentSettings.showTabsAtBottom,
+                                        tabs = tabs,
+                                        hoveredTabIndex = hoveredTabIndex,
+                                        onTabSelect = { tabIndex ->
+                                            coroutineScope.launch {
+                                                appComponents.appViewModel.selectTab(tabIndex)
+                                            }
+                                        },
+                                        onTabHover = { index -> hoveredTabIndex = index },
+                                        onTabHoverExit = { hoveredTabIndex = -1 },
+                                        onRenameTab = { tabIndexToRename, newName ->
+                                            coroutineScope.launch {
+                                                appComponents.appViewModel.renameTab(tabIndexToRename, newName)
+                                            }
+                                        },
+                                        coroutineScope = coroutineScope
+                                    )
+                                }
+
+                                if (!currentSettings.showTabsAtBottom) {
+                                    tabRowComponent()
+                                }
+
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Row(modifier = Modifier.weight(1f)) {
+                                        Column(modifier = Modifier.weight(1f).padding(contentPadding)) {
+                                            Box(modifier = Modifier.weight(1f)) {
+                                                if (currentTab != null) {
+                                                    val tabViewModel = currentTab!!
+                                                    SessionScreen(
+                                                        viewModel = tabViewModel,
+                                                        onNewSession = { createNewSession(currentTab!!.projectPath) },
+                                                        onForkSession = {
+                                                            coroutineScope.launch {
+                                                                runCatching {
+                                                                    val currentConversationId =
+                                                                        currentTab!!.uiState.first().conversationId
+                                                                    val forkedConversation =
+                                                                        appComponents.conversationService.fork(currentConversationId)
+                                                                    val tabIndex = appComponents.appViewModel.createTab(
+                                                                        projectPath = currentTab!!.projectPath,
+                                                                        conversationId = forkedConversation.id,
+                                                                        initiator = ConversationInitiator.User
+                                                                    )
+                                                                    appComponents.appViewModel.selectTab(tabIndex)
+                                                                }.onFailure { error ->
+                                                                    log.warn(error) { "Failed to fork conversation: ${error.message}" }
+                                                                }
+                                                            }
+                                                        },
+                                                        onRestartSession = {
+                                                            coroutineScope.launch {
+                                                                val projectPath = currentTab!!.projectPath
+                                                                val oldIndex = currentTabIndex!!
+                                                                appComponents.appViewModel.createTab(
+                                                                    projectPath = projectPath,
                                                                     initiator = ConversationInitiator.User
                                                                 )
-                                                                appComponents.appViewModel.selectTab(tabIndex)
-                                                            }.onFailure { error ->
-                                                                log.warn(error) { "Failed to fork conversation: ${error.message}" }
+                                                                appComponents.appViewModel.closeTab(oldIndex)
                                                             }
-                                                        }
-                                                    },
-                                                    onRestartSession = {
-                                                        coroutineScope.launch {
-                                                            val projectPath = currentTab!!.projectPath
-                                                            val oldIndex = currentTabIndex!!
-                                                            appComponents.appViewModel.createTab(
-                                                                projectPath = projectPath,
-                                                                initiator = ConversationInitiator.User
-                                                            )
-                                                            appComponents.appViewModel.closeTab(oldIndex)
-                                                        }
-                                                    },
-                                                    onCloseTab = {
-                                                        coroutineScope.launch {
-                                                            currentTabIndex?.let { appComponents.appViewModel.closeTab(it) }
-                                                        }
-                                                    },
-                                                    ttsQueueService = appComponents.ttsQueueService,
-                                                    coroutineScope = coroutineScope,
-                                                    modifierWithPushToTalk = modifierWithPushToTalk,
-                                                    isRecording = isRecording,
-                                                    settings = currentSettings,
-                                                    showSettingsPanel = showSettingsPanel,
-                                                    onShowSettingsPanelChange = { showSettingsPanel = it },
-                                                    onRememberThread = {
-                                                        coroutineScope.launch {
-                                                            runCatching { appComponents.appViewModel.rememberCurrentThread() }
-                                                                .onFailure { error ->
-                                                                    log.warn(error) { "Remember thread failed: ${error.message}" }
-                                                                }
-                                                        }
-                                                    },
-                                                    onConsolidateMemory = {
-                                                        coroutineScope.launch {
-                                                            runCatching { appComponents.appViewModel.consolidateCurrentMemory() }
-                                                                .onFailure { error ->
-                                                                    log.warn(error) { "Memory consolidation failed: ${error.message}" }
-                                                                }
-                                                        }
-                                                    },
-                                                    onRepairMemory = {
-                                                        coroutineScope.launch {
-                                                            runCatching { appComponents.appViewModel.repairCurrentMemory() }
-                                                                .onFailure { error ->
-                                                                    log.warn(error) { "Memory repair failed: ${error.message}" }
-                                                                }
-                                                        }
-                                                    },
-                                                    onMaintainMemoryEntities = {
-                                                        coroutineScope.launch {
-                                                            runCatching { appComponents.appViewModel.maintainMemoryEntities() }
-                                                                .onFailure { error ->
-                                                                    log.warn(error) { "Memory entity maintenance failed: ${error.message}" }
-                                                                }
-                                                        }
-                                                    },
-                                                    onApplyMemoryRetention = {
-                                                        coroutineScope.launch {
-                                                            runCatching { appComponents.appViewModel.applyCurrentMemoryRetention() }
-                                                                .onFailure { error ->
-                                                                    log.warn(error) { "Memory retention failed: ${error.message}" }
-                                                                }
-                                                        }
-                                                    },
-                                                    onShowPromptsPanelChange = { showPromptsPanel = it },
-                                                    isDev = appComponents.settingsService.mode == AppMode.DEV
-                                                )
-                                            } else {
-                                                Box(modifier = Modifier.padding(16.dp)) {
-                                                    when (selectedTabIndex) {
-                                                        1 -> {
-                                                            AgentConstructorScreen(
-                                                                agentService = appComponents.agentService,
-                                                                promptService = appComponents.promptService,
-                                                                coroutineScope = coroutineScope,
-                                                                projectPath = currentTab?.uiState?.value?.projectPath
-                                                            )
-                                                        }
+                                                        },
+                                                        onCloseTab = {
+                                                            coroutineScope.launch {
+                                                                currentTabIndex?.let { appComponents.appViewModel.closeTab(it) }
+                                                            }
+                                                        },
+                                                        ttsQueueService = appComponents.ttsQueueService,
+                                                        coroutineScope = coroutineScope,
+                                                        modifierWithPushToTalk = modifierWithPushToTalk,
+                                                        isRecording = isRecording,
+                                                        settings = currentSettings,
+                                                        showSettingsPanel = showSettingsPanel,
+                                                        onShowSettingsPanelChange = setSettingsPanel,
+                                                        onRememberThread = {
+                                                            coroutineScope.launch {
+                                                                runCatching { appComponents.appViewModel.rememberCurrentThread() }
+                                                                    .onFailure { error ->
+                                                                        log.warn(error) { "Remember thread failed: ${error.message}" }
+                                                                    }
+                                                            }
+                                                        },
+                                                        onConsolidateMemory = {
+                                                            coroutineScope.launch {
+                                                                runCatching { appComponents.appViewModel.consolidateCurrentMemory() }
+                                                                    .onFailure { error ->
+                                                                        log.warn(error) { "Memory consolidation failed: ${error.message}" }
+                                                                    }
+                                                            }
+                                                        },
+                                                        onRepairMemory = {
+                                                            coroutineScope.launch {
+                                                                runCatching { appComponents.appViewModel.repairCurrentMemory() }
+                                                                    .onFailure { error ->
+                                                                        log.warn(error) { "Memory repair failed: ${error.message}" }
+                                                                    }
+                                                            }
+                                                        },
+                                                        onMaintainMemoryEntities = {
+                                                            coroutineScope.launch {
+                                                                runCatching { appComponents.appViewModel.maintainMemoryEntities() }
+                                                                    .onFailure { error ->
+                                                                        log.warn(error) { "Memory entity maintenance failed: ${error.message}" }
+                                                                    }
+                                                            }
+                                                        },
+                                                        onApplyMemoryRetention = {
+                                                            coroutineScope.launch {
+                                                                runCatching { appComponents.appViewModel.applyCurrentMemoryRetention() }
+                                                                    .onFailure { error ->
+                                                                        log.warn(error) { "Memory retention failed: ${error.message}" }
+                                                                    }
+                                                            }
+                                                        },
+                                                        onShowPromptsPanelChange = setPromptsPanel,
+                                                        isDev = appComponents.settingsService.mode == AppMode.DEV,
+                                                        isCompactLayout = isCompactLayout
+                                                    )
+                                                } else {
+                                                    Box(modifier = Modifier.padding(contentPadding)) {
+                                                        when (selectedTabIndex) {
+                                                            1 -> {
+                                                                AgentConstructorScreen(
+                                                                    agentService = appComponents.agentService,
+                                                                    promptService = appComponents.promptService,
+                                                                    coroutineScope = coroutineScope,
+                                                                    projectPath = currentTab?.uiState?.value?.projectPath
+                                                                )
+                                                            }
 
-                                                        else -> {
-                                                            SessionListScreen(
-                                                                onConversationSelected = { _, _ -> refreshTrigger++ },
-                                                                coroutineScope = coroutineScope,
-                                                                onNewSession = createNewSession,
-                                                                projectService = appComponents.projectService,
-                                                                conversationTreeService = appComponents.conversationService,
-                                                                appViewModel = appComponents.appViewModel,
-                                                                searchViewModel = appComponents.conversationSearchViewModel,
-                                                                showSettingsPanel = showSettingsPanel,
-                                                                onShowSettingsPanelChange = { showSettingsPanel = it },
-                                                                refreshTrigger = refreshTrigger
-                                                            )
+                                                            else -> {
+                                                                SessionListScreen(
+                                                                    onConversationSelected = { _, _ -> refreshTrigger++ },
+                                                                    coroutineScope = coroutineScope,
+                                                                    onNewSession = createNewSession,
+                                                                    projectService = appComponents.projectService,
+                                                                    conversationTreeService = appComponents.conversationService,
+                                                                    appViewModel = appComponents.appViewModel,
+                                                                    searchViewModel = appComponents.conversationSearchViewModel,
+                                                                    showSettingsPanel = showSettingsPanel,
+                                                                    onShowSettingsPanelChange = setSettingsPanel,
+                                                                    refreshTrigger = refreshTrigger
+                                                                )
+                                                            }
                                                         }
                                                     }
                                                 }
                                             }
                                         }
-                                    }
 
-                                    currentTab?.let { tabViewModel ->
-                                        val tabUiState by tabViewModel.uiState.collectAsState()
-                                        val tokenStats by tabViewModel.tokenStats.collectAsState()
-                                        Box(modifier = Modifier.testTag(UiTestTag.PromptsPanel.value)) {
-                                            AgentPanel(
-                                                projectPath = tabUiState.projectPath,
-                                                isVisible = showPromptsPanel,
-                                                currentAgent = tabUiState.agent,
-                                                onAgentChange = { tabViewModel.updateAgent(it) },
-                                                onClose = { showPromptsPanel = false },
-                                                agentService = appComponents.agentService,
-                                                coroutineScope = coroutineScope,
-                                                tokenStats = tokenStats
-                                            )
+                                        if (!isCompactLayout) currentTab?.let { tabViewModel ->
+                                            val tabUiState by tabViewModel.uiState.collectAsState()
+                                            val tokenStats by tabViewModel.tokenStats.collectAsState()
+                                            Box(modifier = Modifier.testTag(UiTestTag.PromptsPanel.value)) {
+                                                AgentPanel(
+                                                    projectPath = tabUiState.projectPath,
+                                                    isVisible = showPromptsPanel,
+                                                    currentAgent = tabUiState.agent,
+                                                    onAgentChange = { tabViewModel.updateAgent(it) },
+                                                    onClose = { setPromptsPanel(false) },
+                                                    agentService = appComponents.agentService,
+                                                    coroutineScope = coroutineScope,
+                                                    tokenStats = tokenStats
+                                                )
+                                            }
                                         }
                                     }
                                 }
+
+                                if (currentSettings.showTabsAtBottom) {
+                                    tabRowComponent()
+                                }
                             }
 
-                            if (currentSettings.showTabsAtBottom) {
-                                tabRowComponent()
+                            if (!isCompactLayout) Box(modifier = Modifier.testTag(UiTestTag.SettingsPanel.value)) {
+                                SettingsPanel(
+                                    isVisible = showSettingsPanel,
+                                    settings = currentSettings,
+                                    onSettingsChange = onSettingsChange,
+                                    onClose = { setSettingsPanel(false) },
+                                    translationService = appComponents.translationService,
+                                    themeService = appComponents.themeService,
+                                    aiThemeGenerator = appComponents.aiThemeGenerator,
+                                    logEncryptor = appComponents.logEncryptor,
+                                    settingsService = appComponents.settingsService,
+                                    ollamaModelService = appComponents.ollamaModelService,
+                                    coroutineScope = coroutineScope,
+                                    onOpenTab = createNewSession,
+                                    onOpenTabWithMessage = createNewSessionWithMessage
+                                )
                             }
                         }
 
-                        Box(modifier = Modifier.testTag(UiTestTag.SettingsPanel.value)) {
-                            SettingsPanel(
-                                isVisible = showSettingsPanel,
-                                settings = currentSettings,
-                                onSettingsChange = onSettingsChange,
-                                onClose = { showSettingsPanel = false },
-                                translationService = appComponents.translationService,
-                                themeService = appComponents.themeService,
-                                aiThemeGenerator = appComponents.aiThemeGenerator,
-                                logEncryptor = appComponents.logEncryptor,
-                                settingsService = appComponents.settingsService,
-                                ollamaModelService = appComponents.ollamaModelService,
-                                coroutineScope = coroutineScope,
-                                onOpenTab = createNewSession,
-                                onOpenTabWithMessage = createNewSessionWithMessage
-                            )
+                        if (isCompactLayout) {
+                            currentTab?.let { tabViewModel ->
+                                val tabUiState by tabViewModel.uiState.collectAsState()
+                                val tokenStats by tabViewModel.tokenStats.collectAsState()
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .zIndex(2f)
+                                        .testTag(UiTestTag.PromptsPanel.value)
+                                ) {
+                                    AgentPanel(
+                                        projectPath = tabUiState.projectPath,
+                                        isVisible = showPromptsPanel,
+                                        currentAgent = tabUiState.agent,
+                                        onAgentChange = { tabViewModel.updateAgent(it) },
+                                        onClose = { setPromptsPanel(false) },
+                                        agentService = appComponents.agentService,
+                                        coroutineScope = coroutineScope,
+                                        tokenStats = tokenStats,
+                                        fullScreen = true,
+                                        slideFromRight = true
+                                    )
+                                }
+                            }
+
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .zIndex(3f)
+                                    .testTag(UiTestTag.SettingsPanel.value)
+                            ) {
+                                SettingsPanel(
+                                    isVisible = showSettingsPanel,
+                                    settings = currentSettings,
+                                    onSettingsChange = onSettingsChange,
+                                    onClose = { setSettingsPanel(false) },
+                                    translationService = appComponents.translationService,
+                                    themeService = appComponents.themeService,
+                                    aiThemeGenerator = appComponents.aiThemeGenerator,
+                                    logEncryptor = appComponents.logEncryptor,
+                                    settingsService = appComponents.settingsService,
+                                    ollamaModelService = appComponents.ollamaModelService,
+                                    coroutineScope = coroutineScope,
+                                    onOpenTab = createNewSession,
+                                    onOpenTabWithMessage = createNewSessionWithMessage,
+                                    fullScreen = true,
+                                    slideFromRight = true
+                                )
+                            }
                         }
                     }
                 }

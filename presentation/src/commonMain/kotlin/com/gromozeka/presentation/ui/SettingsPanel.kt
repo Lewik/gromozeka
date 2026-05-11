@@ -3,6 +3,8 @@ package com.gromozeka.presentation.ui
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -48,6 +50,8 @@ fun SettingsPanel(
     onOpenTab: (String) -> Unit, // Callback to open new tab with project path
     onOpenTabWithMessage: ((String, String) -> Unit)? = null, // Callback to open new tab with initial message (uses default agent)
     modifier: Modifier = Modifier,
+    fullScreen: Boolean = false,
+    slideFromRight: Boolean = false,
 ) {
     val translation = LocalTranslation.current
 
@@ -78,14 +82,18 @@ fun SettingsPanel(
 
     AnimatedVisibility(
         visible = isVisible,
-        enter = expandHorizontally(),
-        exit = shrinkHorizontally(),
+        enter = if (slideFromRight) slideInHorizontally(initialOffsetX = { it }) else expandHorizontally(),
+        exit = if (slideFromRight) slideOutHorizontally(targetOffsetX = { it }) else shrinkHorizontally(),
         modifier = modifier // No external padding - panel goes to edge
     ) {
         Surface(
-            modifier = Modifier
-                .width(533.dp)
-                .fillMaxHeight(), // No corner radius for slide-out panel - it's part of the main interface
+            modifier = if (fullScreen) {
+                Modifier.fillMaxSize()
+            } else {
+                Modifier
+                    .width(533.dp)
+                    .fillMaxHeight()
+            },
             color = MaterialTheme.colorScheme.surface,
             tonalElevation = 8.dp
         ) {

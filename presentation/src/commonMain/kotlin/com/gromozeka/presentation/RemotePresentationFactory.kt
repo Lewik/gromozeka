@@ -11,6 +11,8 @@ import com.gromozeka.presentation.services.OllamaModelService
 import com.gromozeka.presentation.services.ScreenCaptureController
 import com.gromozeka.presentation.services.TabPromptService
 import com.gromozeka.presentation.services.UIStateService
+import com.gromozeka.presentation.services.UIStateStore
+import com.gromozeka.presentation.services.InMemoryUIStateStore
 import com.gromozeka.presentation.services.theming.AIThemeGenerator
 import com.gromozeka.presentation.services.theming.ThemeService
 import com.gromozeka.presentation.services.translation.TranslationService
@@ -23,6 +25,7 @@ suspend fun createRemoteAppComponents(
     remoteUrl: String,
     scope: CoroutineScope,
     clientHomeDirectory: String,
+    uiStateStore: UIStateStore = InMemoryUIStateStore(),
 ): RemoteAppComponents {
     val remoteServices = GromozekaRemoteServices(
         url = remoteUrl,
@@ -50,7 +53,7 @@ suspend fun createRemoteAppComponents(
         tokenStatsService = remoteServices.conversationTokenStatsService,
     )
 
-    val uiStateService = UIStateService(scope)
+    val uiStateService = UIStateService(scope, uiStateStore)
     uiStateService.initialize(appViewModel)
 
     val translationService = TranslationService().also { it.init(remoteServices.settingsService) }

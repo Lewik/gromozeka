@@ -260,6 +260,12 @@ open class AppViewModel(
         }
     }
 
+    fun snapshotUIState(): UIState =
+        UIState(
+            tabs = _tabs.value.map { it.uiState.value },
+            currentTabIndex = _currentTabIndex.value
+        )
+
     suspend fun renameTab(tabIndex: Int, newName: String?) = mutex.withLock {
         val tabList = _tabs.value
         val sessionViewModel = tabList.getOrNull(tabIndex) ?: return@withLock

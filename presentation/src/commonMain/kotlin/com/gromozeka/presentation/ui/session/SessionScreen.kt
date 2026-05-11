@@ -1,9 +1,11 @@
 package com.gromozeka.presentation.ui.session
 
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.selection.DisableSelection
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
@@ -72,6 +74,7 @@ fun SessionScreen(
 
     // Dev mode
     isDev: Boolean = false,
+    isCompactLayout: Boolean = false,
 ) {
     // UI state management - LazyColumn state instead of scroll state
     val lazyListState = rememberLazyListState()
@@ -87,6 +90,9 @@ fun SessionScreen(
     val jsonToShow = viewModel.jsonToShow
     val tokenStats by viewModel.tokenStats.collectAsState()
     val strideEnabled by viewModel.strideEnabled.collectAsState()
+    val topToolbarScrollState = rememberScrollState()
+    val editToolbarScrollState = rememberScrollState()
+    val bottomToolbarScrollState = rememberScrollState()
     
     // Context percentage calculation (used by Agent button and Send button)
     val contextPercentage = tokenStats?.currentContextSize?.let { currentContext ->
@@ -140,7 +146,12 @@ fun SessionScreen(
             Column(modifier = Modifier.fillMaxSize()) {
                 DisableSelection {
                     // Row 1: Navigation buttons (New, Fork, Restart) + Info buttons (Message count, Token stats, etc.)
-                    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .then(if (isCompactLayout) Modifier.horizontalScroll(topToolbarScrollState) else Modifier),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         // Navigation buttons (left side)
                         CompactButton(onClick = onNewSession) {
                             Text(LocalTranslation.current.newSessionShort)
@@ -158,7 +169,11 @@ fun SessionScreen(
                             Text(LocalTranslation.current.restartButton)
                         }
 
-                        Spacer(modifier = Modifier.weight(1f))
+                        if (isCompactLayout) {
+                            Spacer(modifier = Modifier.width(8.dp))
+                        } else {
+                            Spacer(modifier = Modifier.weight(1f))
+                        }
 
 //                        // Right-side buttons
 //                        if (uiState.editMode) {
@@ -277,7 +292,12 @@ fun SessionScreen(
                     Spacer(modifier = Modifier.height(4.dp))
 
                     // Row 2: Message editing tools (selection buttons + action buttons)
-                    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .then(if (isCompactLayout) Modifier.horizontalScroll(editToolbarScrollState) else Modifier),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         // Selection buttons
                         val selectionOptions = remember {
                             listOf(
@@ -378,7 +398,7 @@ fun SessionScreen(
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(Icons.AutoMirrored.Filled.MergeType, contentDescription = "Concat")
                                 Spacer(modifier = Modifier.width(4.dp))
-                                Text("Concat")
+                                if (!isCompactLayout) Text("Concat")
                             }
                         }
 
@@ -397,7 +417,7 @@ fun SessionScreen(
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(Icons.Default.Compress, contentDescription = "Distill")
                                 Spacer(modifier = Modifier.width(4.dp))
-                                Text("Distill")
+                                if (!isCompactLayout) Text("Distill")
                             }
                         }
 
@@ -416,7 +436,7 @@ fun SessionScreen(
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(Icons.AutoMirrored.Filled.Subject, contentDescription = "Summarize")
                                 Spacer(modifier = Modifier.width(4.dp))
-                                Text("Summarize")
+                                if (!isCompactLayout) Text("Summarize")
                             }
                         }
 
@@ -435,11 +455,15 @@ fun SessionScreen(
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(Icons.Default.Delete, contentDescription = "Delete")
                                 Spacer(modifier = Modifier.width(4.dp))
-                                Text("Delete")
+                                if (!isCompactLayout) Text("Delete")
                             }
                         }
 
-                        Spacer(modifier = Modifier.weight(1f))
+                        if (isCompactLayout) {
+                            Spacer(modifier = Modifier.width(8.dp))
+                        } else {
+                            Spacer(modifier = Modifier.weight(1f))
+                        }
 
                         // Selected count (right side)
                         Text("Selected: ${uiState.selectedMessageIds.size}")
@@ -510,7 +534,10 @@ fun SessionScreen(
                     // Message Tags and Screenshot button
                     Spacer(modifier = Modifier.height(4.dp))
                     Row(
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .then(if (isCompactLayout) Modifier.horizontalScroll(bottomToolbarScrollState) else Modifier)
+                            .padding(vertical = 4.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         // Message Tags

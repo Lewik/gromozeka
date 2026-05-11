@@ -3,6 +3,8 @@ package com.gromozeka.presentation.ui
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
@@ -40,6 +42,8 @@ fun AgentPanel(
     coroutineScope: CoroutineScope,
     tokenStats: TokenUsageStatistics.ThreadTotals?,
     modifier: Modifier = Modifier,
+    fullScreen: Boolean = false,
+    slideFromRight: Boolean = false,
 ) {
     var agents by remember { mutableStateOf<List<AgentDefinition>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
@@ -75,14 +79,18 @@ fun AgentPanel(
 
     AnimatedVisibility(
         visible = isVisible,
-        enter = expandHorizontally(),
-        exit = shrinkHorizontally(),
+        enter = if (slideFromRight) slideInHorizontally(initialOffsetX = { it }) else expandHorizontally(),
+        exit = if (slideFromRight) slideOutHorizontally(targetOffsetX = { it }) else shrinkHorizontally(),
         modifier = modifier
     ) {
         Surface(
-            modifier = Modifier
-                .width(400.dp)
-                .fillMaxHeight(),
+            modifier = if (fullScreen) {
+                Modifier.fillMaxSize()
+            } else {
+                Modifier
+                    .width(400.dp)
+                    .fillMaxHeight()
+            },
             color = MaterialTheme.colorScheme.surface,
             tonalElevation = 8.dp
         ) {
