@@ -25,23 +25,34 @@ class SttService(
     private val log = KLoggers.logger(this)
 
 
-    suspend fun transcribe(audioData: ByteArray): String = withContext(Dispatchers.IO) {
-        log.debug("Transcribing audio data (${audioData.size} bytes)")
+    suspend fun transcribe(
+        audioData: ByteArray,
+        fileExtension: String = "wav",
+        mediaType: String = "audio/wav",
+    ): String = withContext(Dispatchers.IO) {
+        log.debug("Transcribing audio data (${audioData.size} bytes, mediaType=$mediaType)")
 
-        // Check audio duration before sending to OpenAI
-        val audioConfig = AudioConfig(sampleRate = 16000, channels = 1, bitDepth = 16)
-        val audioDurationSeconds = audioData.getAudioDuration(AudioOutputFormat.WAV, audioConfig)
+        val isWav = mediaType.contains("wav", ignoreCase = true) ||
+            fileExtension.equals("wav", ignoreCase = true)
 
-        log.debug("Audio duration: ${audioDurationSeconds}s")
+        if (isWav) {
+            val audioConfig = AudioConfig(sampleRate = 16000, channels = 1, bitDepth = 16)
+            val audioDurationSeconds = audioData.getAudioDuration(AudioOutputFormat.WAV, audioConfig)
 
-        // OpenAI requires minimum 0.1 seconds of audio
-        if (!audioData.isAudioLongEnough(AudioOutputFormat.WAV, audioConfig, minSeconds = 0.1)) {
-            log.debug("Audio too short (${audioDurationSeconds}s < 0.1s), skipping transcription")
+            log.debug("Audio duration: ${audioDurationSeconds}s")
+
+            if (!audioData.isAudioLongEnough(AudioOutputFormat.WAV, audioConfig, minSeconds = 0.1)) {
+                log.debug("Audio too short (${audioDurationSeconds}s < 0.1s), skipping transcription")
+                return@withContext ""
+            }
+        } else if (audioData.size < 256) {
+            log.debug("Audio too small (${audioData.size} bytes), skipping transcription")
             return@withContext ""
         }
 
+        val normalizedExtension = fileExtension.trim().trimStart('.').ifBlank { "webm" }
+        val tempFile = File.createTempFile("recorded", ".$normalizedExtension")
         val text = try {
-            val tempFile = File.createTempFile("recorded", ".wav")
             tempFile.writeBytes(audioData)
 
             val transcriptionOptions = OpenAiAudioTranscriptionOptions.builder()
@@ -53,11 +64,12 @@ class SttService(
             val transcriptionRequest = AudioTranscriptionPrompt(FileSystemResource(tempFile), transcriptionOptions)
             val result = openAiAudioTranscriptionModel.call(transcriptionRequest).result.output
 
-            tempFile.delete()
             result
         } catch (e: Exception) {
             log.error("Transcription error: ${e.message}")
             ""
+        } finally {
+            tempFile.delete()
         }
         return@withContext text
     }

@@ -1,13 +1,14 @@
 package com.gromozeka.presentation
 
 import com.gromozeka.client.GromozekaRemoteServices
+import com.gromozeka.presentation.services.ClientAudioRecorder
 import com.gromozeka.presentation.services.LogEncryptor
 import com.gromozeka.presentation.services.NoOpGlobalHotkeyController
-import com.gromozeka.presentation.services.NoOpPttEventHandler
-import com.gromozeka.presentation.services.NoOpPttRecordingService
+import com.gromozeka.presentation.services.NoOpClientAudioRecorder
 import com.gromozeka.presentation.services.NoOpSoundNotificationPlayer
 import com.gromozeka.presentation.services.NoOpTtsQueue
 import com.gromozeka.presentation.services.OllamaModelService
+import com.gromozeka.presentation.services.RemotePttController
 import com.gromozeka.presentation.services.ScreenCaptureController
 import com.gromozeka.presentation.services.TabPromptService
 import com.gromozeka.presentation.services.UIStateService
@@ -26,6 +27,7 @@ suspend fun createRemoteAppComponents(
     scope: CoroutineScope,
     clientHomeDirectory: String,
     uiStateStore: UIStateStore = InMemoryUIStateStore(),
+    audioRecorder: ClientAudioRecorder = NoOpClientAudioRecorder,
 ): RemoteAppComponents {
     val remoteServices = GromozekaRemoteServices(
         url = remoteUrl,
@@ -58,6 +60,12 @@ suspend fun createRemoteAppComponents(
 
     val translationService = TranslationService().also { it.init(remoteServices.settingsService) }
     val themeService = ThemeService().also { it.init(remoteServices.settingsService) }
+    val pttController = RemotePttController(
+        appViewModel = appViewModel,
+        audioRecorder = audioRecorder,
+        audioTranscriptionService = remoteServices.audioTranscriptionService,
+        scope = scope
+    )
 
     return RemoteAppComponents(
         components = AppComponents(
@@ -65,8 +73,8 @@ suspend fun createRemoteAppComponents(
             ttsQueueService = NoOpTtsQueue(),
             settingsService = remoteServices.settingsService,
             globalHotkeyController = NoOpGlobalHotkeyController,
-            pttEventRouter = NoOpPttEventHandler,
-            pttService = NoOpPttRecordingService(),
+            pttEventRouter = pttController,
+            pttService = pttController,
             uiStateService = uiStateService,
             translationService = translationService,
             themeService = themeService,

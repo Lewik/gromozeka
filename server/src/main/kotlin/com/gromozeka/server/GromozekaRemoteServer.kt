@@ -11,6 +11,7 @@ import com.gromozeka.domain.service.MessageSquashGenerationService
 import com.gromozeka.domain.service.PromptDomainService
 import com.gromozeka.domain.service.ProjectDomainService
 import com.gromozeka.domain.service.SettingsService
+import com.gromozeka.infrastructure.ai.springai.SttService
 import com.gromozeka.remote.protocol.*
 import io.ktor.server.websocket.DefaultWebSocketServerSession
 import io.ktor.websocket.Frame
@@ -19,6 +20,8 @@ import io.ktor.websocket.send
 import klog.KLoggers
 import kotlinx.serialization.json.Json
 import org.springframework.stereotype.Service
+import java.io.ByteArrayOutputStream
+import java.util.Base64
 
 @Service
 class GromozekaRemoteServer(
@@ -32,6 +35,7 @@ class GromozekaRemoteServer(
     private val conversationTokenStatsService: ConversationTokenStatsService,
     private val messageSquashGenerationService: MessageSquashGenerationService,
     private val conversationNameSearchService: ConversationNameSearchService,
+    private val sttService: SttService,
 ) {
     private val log = KLoggers.logger(this)
     private val json = Json {
@@ -169,6 +173,8 @@ class GromozekaRemoteServer(
                     runMemoryAction(request.conversationId, request.action)
                     MemoryActionCompletedResponse
                 }
+
+                is TranscribeAudioRequest -> transcribeAudio(request.recording)
             }
         }.getOrElse { error ->
             log.warn(error) { "Remote request failed: ${request::class.simpleName}: ${error.message}" }
@@ -203,6 +209,36 @@ class GromozekaRemoteServer(
     ) {
         val text = json.encodeToString(GromozekaServerEnvelope.serializer(), GromozekaServerEnvelope(id, payload))
         session.send(text)
+    }
+
+    private suspend fun transcribeAudio(recording: RemoteAudioRecording): AudioTranscriptionResponse {
+        require(recording.chunks.isNotEmpty()) { "Audio recording has no chunks" }
+
+        val audioBytes = ByteArrayOutputStream().use { output ->
+            recording.chunks
+                .sortedBy { it.sequenceNumber }
+                .forEach { chunk ->
+                    output.write(Base64.getDecoder().decode(chunk.dataBase64))
+                }
+            output.toByteArray()
+        }
+
+        log.info {
+            "Remote audio transcription requested: session=${recording.sessionId} " +
+                "chunks=${recording.chunks.size} bytes=${audioBytes.size} mediaType=${recording.mediaType}"
+        }
+
+        val text = sttService.transcribe(
+            audioData = audioBytes,
+            fileExtension = recording.fileExtension,
+            mediaType = recording.mediaType
+        ).trim()
+
+        log.info {
+            "Remote audio transcription completed: session=${recording.sessionId} textChars=${text.length}"
+        }
+
+        return AudioTranscriptionResponse(text)
     }
 
     private suspend fun runMemoryAction(

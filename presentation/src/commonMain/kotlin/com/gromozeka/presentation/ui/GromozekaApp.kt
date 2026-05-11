@@ -94,7 +94,7 @@ fun GromozekaAppContent(
     val currentTabIndex by appComponents.appViewModel.currentTabIndex.collectAsState()
     val currentTab by appComponents.appViewModel.currentTab.collectAsState()
     val isRecording by appComponents.pttService.recordingState.collectAsState()
-    val modifierWithPushToTalk = Modifier.advancedPttGestures(appComponents.pttEventRouter, coroutineScope)
+    val pttStatusMessage by appComponents.pttService.statusMessage.collectAsState()
     val keyboardPttGestureDetector = remember {
         UnifiedGestureDetector(appComponents.pttEventRouter, coroutineScope)
     }
@@ -300,8 +300,9 @@ fun GromozekaAppContent(
                                                         },
                                                         ttsQueueService = appComponents.ttsQueueService,
                                                         coroutineScope = coroutineScope,
-                                                        modifierWithPushToTalk = modifierWithPushToTalk,
+                                                        pttEventHandler = appComponents.pttEventRouter,
                                                         isRecording = isRecording,
+                                                        pttStatusMessage = pttStatusMessage,
                                                         settings = currentSettings,
                                                         showSettingsPanel = showSettingsPanel,
                                                         onShowSettingsPanelChange = setSettingsPanel,

@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.TtsTask
 import com.gromozeka.domain.model.Settings
+import com.gromozeka.presentation.services.PttEventHandler
 import com.gromozeka.presentation.services.TtsQueue
 import com.gromozeka.presentation.ui.CompactButton
 import com.gromozeka.presentation.ui.LocalTranslation
@@ -48,8 +49,9 @@ fun SessionScreen(
     // Services
     ttsQueueService: TtsQueue,
     coroutineScope: CoroutineScope,
-    modifierWithPushToTalk: Modifier,
+    pttEventHandler: PttEventHandler,
     isRecording: Boolean = false,
+    pttStatusMessage: String? = null,
 
     // Settings - moved to ChatApplication level, but we still need settings for UI
     settings: Settings,
@@ -525,9 +527,10 @@ fun SessionScreen(
                             onSendMessage(message)
                         },
                         coroutineScope = coroutineScope,
-                        modifierWithPushToTalk = modifierWithPushToTalk,
+                        pttEventHandler = pttEventHandler,
                         isRecording = isRecording,
                         showPttButton = settings.enableStt,
+                        pttStatusMessage = pttStatusMessage,
                         contextPercentage = contextPercentage
                     )
 

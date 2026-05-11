@@ -52,10 +52,12 @@ class NoOpTtsQueue : TtsQueue {
 
 interface PttRecordingService {
     val recordingState: StateFlow<Boolean>
+    val statusMessage: StateFlow<String?>
 }
 
 class NoOpPttRecordingService : PttRecordingService {
     override val recordingState: StateFlow<Boolean> = MutableStateFlow(false)
+    override val statusMessage: StateFlow<String?> = MutableStateFlow(null)
 }
 
 enum class PTTEvent {

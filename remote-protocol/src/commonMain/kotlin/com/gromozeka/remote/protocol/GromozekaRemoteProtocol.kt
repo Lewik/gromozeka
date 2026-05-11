@@ -294,6 +294,29 @@ data class MemoryActionRequest(
 ) : ClientRequest
 
 @Serializable
+@SerialName("transcribe_audio")
+data class TranscribeAudioRequest(
+    val recording: RemoteAudioRecording,
+) : ClientRequest
+
+@Serializable
+data class RemoteAudioRecording(
+    val sessionId: String,
+    val mediaType: String,
+    val fileExtension: String,
+    val chunks: List<RemoteAudioChunk>,
+    val sampleRate: Int? = null,
+    val channels: Int? = null,
+    val bitDepth: Int? = null,
+)
+
+@Serializable
+data class RemoteAudioChunk(
+    val sequenceNumber: Int,
+    val dataBase64: String,
+)
+
+@Serializable
 @SerialName("send_message")
 data class SendMessageCommand(
     val streamId: String,
@@ -425,6 +448,12 @@ data class TextResponse(
 @Serializable
 @SerialName("memory_action_completed")
 data object MemoryActionCompletedResponse : ServerResponse
+
+@Serializable
+@SerialName("audio_transcription")
+data class AudioTranscriptionResponse(
+    val text: String,
+) : ServerResponse
 
 @Serializable
 @SerialName("error")

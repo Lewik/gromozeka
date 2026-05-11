@@ -2,6 +2,7 @@ package com.gromozeka.server
 
 import com.gromozeka.application.service.SettingsService
 import com.gromozeka.infrastructure.ai.config.InternalMcpToolsRegistrar
+import io.ktor.http.HttpHeaders
 import io.ktor.server.application.install
 import io.ktor.server.cio.CIO
 import io.ktor.server.http.content.default
@@ -60,6 +61,9 @@ fun main() {
                 remoteServer.handle(this)
             }
             staticFiles("/", webRoot) {
+                modify { _, call ->
+                    call.response.headers.append(HttpHeaders.CacheControl, "no-store")
+                }
                 default("index.html")
             }
         }

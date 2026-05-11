@@ -37,6 +37,7 @@ class GromozekaRemoteServices(
     val conversationNameSearchService: ConversationNameSearchService = RemoteConversationNameSearchService(client)
     val conversationTokenStatsService: ConversationTokenStatsService = RemoteConversationTokenStatsService(client)
     val messageSquashGenerationService: MessageSquashGenerationService = RemoteMessageSquashGenerationService(client)
+    val audioTranscriptionService: RemoteAudioTranscriptionService = RemoteAudioTranscriptionService(client)
 
     suspend fun initialize() {
         remoteSettingsService.refreshFromServer()
