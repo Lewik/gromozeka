@@ -14,7 +14,7 @@ interface ClientAudioRecordingSession {
 }
 
 data class ClientRecordedAudio(
-    val dataBase64: String,
+    val data: ByteArray,
     val mediaType: String,
     val fileExtension: String,
     val byteSize: Int,
@@ -30,7 +30,7 @@ data class ClientRecordedAudio(
             chunks = listOf(
                 RemoteAudioChunk(
                     sequenceNumber = 0,
-                    dataBase64 = dataBase64
+                    data = data
                 )
             ),
             sampleRate = sampleRate,

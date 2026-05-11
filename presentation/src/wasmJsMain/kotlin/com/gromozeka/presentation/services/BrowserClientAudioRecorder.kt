@@ -1,6 +1,8 @@
 package com.gromozeka.presentation.services
 
 import klog.KLoggers
+import kotlin.io.encoding.Base64
+import kotlin.io.encoding.ExperimentalEncodingApi
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.await
@@ -18,6 +20,7 @@ class BrowserClientAudioRecorder : ClientAudioRecorder {
     }
 }
 
+@OptIn(ExperimentalEncodingApi::class)
 private class BrowserClientAudioRecordingSession : ClientAudioRecordingSession {
     private val log = KLoggers.logger(this)
     private val started = CompletableDeferred<Unit>()
@@ -37,7 +40,7 @@ private class BrowserClientAudioRecordingSession : ClientAudioRecordingSession {
                     val base64 = dataUrl.substringAfter("base64,", "")
                     stopped.complete(
                         ClientRecordedAudio(
-                            dataBase64 = base64,
+                            data = Base64.Default.decode(base64),
                             mediaType = mediaType.ifBlank { "audio/webm" },
                             fileExtension = extensionForMediaType(mediaType),
                             byteSize = byteSize

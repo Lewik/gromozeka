@@ -1,5 +1,6 @@
 package com.gromozeka.presentation
 
+import com.gromozeka.client.RemoteClientSettingsService
 import com.gromozeka.domain.service.AgentDomainService
 import com.gromozeka.domain.service.ConversationDomainService
 import com.gromozeka.domain.service.ProjectDomainService
@@ -23,6 +24,7 @@ data class AppComponents(
     val appViewModel: AppViewModel,
     val ttsQueueService: TtsQueue,
     val settingsService: com.gromozeka.domain.service.SettingsService,
+    val remoteClientSettingsService: RemoteClientSettingsService,
     val globalHotkeyController: GlobalHotkeyController,
     val pttEventRouter: PttEventHandler,
     val pttService: PttRecordingService,

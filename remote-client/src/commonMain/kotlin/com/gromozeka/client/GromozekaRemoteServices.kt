@@ -18,12 +18,21 @@ class GromozekaRemoteServices(
     httpClient: HttpClient? = null,
     scope: CoroutineScope,
     clientHomeDirectory: String,
+    clientSettingsStore: RemoteClientSettingsStore = InMemoryRemoteClientSettingsStore(),
 ) {
+    private val initialClientSettings = clientSettingsStore.load() ?: RemoteClientSettings()
     private val client = if (httpClient == null) {
-        GromozekaWsClient(url = url, scope = scope)
+        GromozekaWsClient(url = url, encoding = initialClientSettings.protocolEncoding, scope = scope)
     } else {
-        GromozekaWsClient(url = url, httpClient = httpClient, scope = scope)
+        GromozekaWsClient(
+            url = url,
+            encoding = initialClientSettings.protocolEncoding,
+            httpClient = httpClient,
+            scope = scope
+        )
     }
+    val clientSettingsService: RemoteClientSettingsService =
+        RemoteClientSettingsService(client, clientSettingsStore, initialClientSettings)
     private val remoteSettingsService = RemoteSettingsService(client, scope, clientHomeDirectory)
     private val remoteAgentService = RemoteAgentService(client)
 

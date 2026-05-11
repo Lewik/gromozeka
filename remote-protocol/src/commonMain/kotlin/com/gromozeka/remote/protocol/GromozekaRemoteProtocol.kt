@@ -1,3 +1,5 @@
+@file:kotlinx.serialization.UseSerializers(com.gromozeka.remote.protocol.ProtocolByteArraySerializer::class)
+
 package com.gromozeka.remote.protocol
 
 import com.gromozeka.domain.model.AgentDefinition
@@ -313,7 +315,7 @@ data class RemoteAudioRecording(
 @Serializable
 data class RemoteAudioChunk(
     val sequenceNumber: Int,
-    val dataBase64: String,
+    val data: ByteArray,
 )
 
 @Serializable

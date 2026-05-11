@@ -20,6 +20,7 @@ import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.window.ComposeViewport
 import com.gromozeka.presentation.services.BrowserClientAudioRecorder
+import com.gromozeka.presentation.services.BrowserRemoteClientSettingsStore
 import com.gromozeka.presentation.services.BrowserUIStateStore
 import com.gromozeka.presentation.ui.GromozekaApp
 import kotlinx.browser.window
@@ -52,6 +53,7 @@ private fun GromozekaWebApp() {
                 scope = scope,
                 clientHomeDirectory = "browser",
                 uiStateStore = BrowserUIStateStore(),
+                remoteClientSettingsStore = BrowserRemoteClientSettingsStore(),
                 audioRecorder = BrowserClientAudioRecorder(),
             )
         }.onSuccess { app ->

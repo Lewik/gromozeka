@@ -15,13 +15,12 @@ import com.gromozeka.infrastructure.ai.springai.SttService
 import com.gromozeka.remote.protocol.*
 import io.ktor.server.websocket.DefaultWebSocketServerSession
 import io.ktor.websocket.Frame
+import io.ktor.websocket.readBytes
 import io.ktor.websocket.readText
 import io.ktor.websocket.send
 import klog.KLoggers
-import kotlinx.serialization.json.Json
 import org.springframework.stereotype.Service
 import java.io.ByteArrayOutputStream
-import java.util.Base64
 
 @Service
 class GromozekaRemoteServer(
@@ -38,20 +37,17 @@ class GromozekaRemoteServer(
     private val sttService: SttService,
 ) {
     private val log = KLoggers.logger(this)
-    private val json = Json {
-        ignoreUnknownKeys = true
-        encodeDefaults = true
-        classDiscriminator = "payloadType"
-    }
 
     suspend fun handle(session: DefaultWebSocketServerSession) {
         for (frame in session.incoming) {
-            if (frame !is Frame.Text) continue
-
-            val envelope = json.decodeFromString(GromozekaClientEnvelope.serializer(), frame.readText())
+            val (encoding, envelope) = when (frame) {
+                is Frame.Binary -> RemoteProtocolEncoding.CBOR to RemoteProtocolCodec.decodeClientBinary(frame.readBytes())
+                is Frame.Text -> RemoteProtocolEncoding.JSON to RemoteProtocolCodec.decodeClientText(frame.readText())
+                else -> continue
+            }
             when (val payload = envelope.payload) {
-                is ClientRequest -> handleRequest(session, envelope.id, payload)
-                is SendMessageCommand -> handleSendMessage(session, envelope.id, payload)
+                is ClientRequest -> handleRequest(session, envelope.id, payload, encoding)
+                is SendMessageCommand -> handleSendMessage(session, envelope.id, payload, encoding)
             }
         }
     }
@@ -60,6 +56,7 @@ class GromozekaRemoteServer(
         session: DefaultWebSocketServerSession,
         requestId: String,
         request: ClientRequest,
+        encoding: RemoteProtocolEncoding,
     ) {
         val response = runCatching {
             when (request) {
@@ -181,24 +178,25 @@ class GromozekaRemoteServer(
             ErrorResponse(error.message ?: "Unknown server error", error::class.simpleName)
         }
 
-        send(session, requestId, response)
+        send(session, requestId, response, encoding)
     }
 
     private suspend fun handleSendMessage(
         session: DefaultWebSocketServerSession,
         requestId: String,
         command: SendMessageCommand,
+        encoding: RemoteProtocolEncoding,
     ) {
         runCatching {
             conversationRuntimeService
                 .sendMessage(command.conversationId, command.userMessage, command.agent)
                 .collect { message ->
-                    send(session, requestId, MessageUpsertedEvent(command.streamId, message))
+                    send(session, requestId, MessageUpsertedEvent(command.streamId, message), encoding)
                 }
-            send(session, requestId, SendCompletedEvent(command.streamId))
+            send(session, requestId, SendCompletedEvent(command.streamId), encoding)
         }.onFailure { error ->
             log.warn(error) { "Remote send failed: conversation=${command.conversationId.value} error=${error.message}" }
-            send(session, requestId, SendFailedEvent(command.streamId, error.message ?: "Unknown send error"))
+            send(session, requestId, SendFailedEvent(command.streamId, error.message ?: "Unknown send error"), encoding)
         }
     }
 
@@ -206,9 +204,13 @@ class GromozekaRemoteServer(
         session: DefaultWebSocketServerSession,
         id: String,
         payload: ServerPayload,
+        encoding: RemoteProtocolEncoding,
     ) {
-        val text = json.encodeToString(GromozekaServerEnvelope.serializer(), GromozekaServerEnvelope(id, payload))
-        session.send(text)
+        val envelope = GromozekaServerEnvelope(id, payload)
+        when (encoding) {
+            RemoteProtocolEncoding.CBOR -> session.send(Frame.Binary(true, RemoteProtocolCodec.encodeServerBinary(envelope)))
+            RemoteProtocolEncoding.JSON -> session.send(RemoteProtocolCodec.encodeServerText(envelope))
+        }
     }
 
     private suspend fun transcribeAudio(recording: RemoteAudioRecording): AudioTranscriptionResponse {
@@ -218,7 +220,7 @@ class GromozekaRemoteServer(
             recording.chunks
                 .sortedBy { it.sequenceNumber }
                 .forEach { chunk ->
-                    output.write(Base64.getDecoder().decode(chunk.dataBase64))
+                    output.write(chunk.data)
                 }
             output.toByteArray()
         }

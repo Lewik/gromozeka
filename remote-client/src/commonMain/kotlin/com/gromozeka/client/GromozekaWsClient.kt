@@ -8,6 +8,8 @@ import com.gromozeka.remote.protocol.ErrorResponse
 import com.gromozeka.remote.protocol.GromozekaClientEnvelope
 import com.gromozeka.remote.protocol.GromozekaServerEnvelope
 import com.gromozeka.remote.protocol.MessageUpsertedEvent
+import com.gromozeka.remote.protocol.RemoteProtocolCodec
+import com.gromozeka.remote.protocol.RemoteProtocolEncoding
 import com.gromozeka.remote.protocol.SendCompletedEvent
 import com.gromozeka.remote.protocol.SendFailedEvent
 import com.gromozeka.remote.protocol.SendMessageCommand
@@ -19,6 +21,7 @@ import io.ktor.client.plugins.websocket.WebSockets
 import io.ktor.client.plugins.websocket.DefaultClientWebSocketSession
 import io.ktor.client.plugins.websocket.webSocketSession
 import io.ktor.websocket.Frame
+import io.ktor.websocket.readBytes
 import io.ktor.websocket.readText
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -27,25 +30,22 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import kotlinx.serialization.json.Json
 
 internal class GromozekaWsClient(
     private val url: String = "ws://127.0.0.1:8765/ws",
+    encoding: RemoteProtocolEncoding = RemoteProtocolEncoding.CBOR,
     private val httpClient: HttpClient = HttpClient {
         install(WebSockets)
     },
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob()),
 ) {
-    private val json = Json {
-        ignoreUnknownKeys = true
-        encodeDefaults = true
-        classDiscriminator = "payloadType"
-    }
+    private val encodingState = MutableStateFlow(encoding)
     private val connectMutex = Mutex()
     private var session: DefaultClientWebSocketSession? = null
     private var readerJob: Job? = null
@@ -99,7 +99,16 @@ internal class GromozekaWsClient(
 
     private suspend fun sendEnvelope(envelope: GromozekaClientEnvelope) {
         val activeSession = ensureConnected()
-        activeSession.outgoing.send(Frame.Text(json.encodeToString(GromozekaClientEnvelope.serializer(), envelope)))
+        val frame = when (encodingState.value) {
+            RemoteProtocolEncoding.CBOR -> Frame.Binary(true, RemoteProtocolCodec.encodeClientBinary(envelope))
+            RemoteProtocolEncoding.JSON -> Frame.Text(RemoteProtocolCodec.encodeClientText(envelope))
+        }
+        activeSession.outgoing.send(frame)
+    }
+
+    fun setEncoding(encoding: RemoteProtocolEncoding) {
+        encodingState.value = encoding
+        println("Gromozeka WS protocol encoding=${encoding.name}")
     }
 
     private suspend fun ensureConnected(): DefaultClientWebSocketSession =
@@ -122,8 +131,11 @@ internal class GromozekaWsClient(
     private suspend fun readLoop(activeSession: DefaultClientWebSocketSession) {
         try {
             for (frame in activeSession.incoming) {
-                if (frame !is Frame.Text) continue
-                val envelope = json.decodeFromString(GromozekaServerEnvelope.serializer(), frame.readText())
+                val envelope = when (frame) {
+                    is Frame.Binary -> RemoteProtocolCodec.decodeServerBinary(frame.readBytes())
+                    is Frame.Text -> RemoteProtocolCodec.decodeServerText(frame.readText())
+                    else -> continue
+                }
                 println("Gromozeka WS incoming id=${envelope.id} type=${envelope.payload::class.simpleName}")
                 when (val payload = envelope.payload) {
                     is ServerResponse -> pending.remove(envelope.id)?.complete(payload)

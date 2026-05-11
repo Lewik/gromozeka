@@ -90,6 +90,7 @@ fun GromozekaAppContent(
     var hoveredTabIndex by remember { mutableStateOf(-1) }
 
     val currentSettings by appComponents.settingsService.settingsFlow.collectAsState()
+    val remoteClientSettings by appComponents.remoteClientSettingsService.settingsFlow.collectAsState()
     val tabs by appComponents.appViewModel.tabs.collectAsState()
     val currentTabIndex by appComponents.appViewModel.currentTabIndex.collectAsState()
     val currentTab by appComponents.appViewModel.currentTab.collectAsState()
@@ -148,6 +149,7 @@ fun GromozekaAppContent(
     val onSettingsChange: (Settings) -> Unit = { newSettings ->
         appComponents.settingsService.saveSettings(newSettings)
     }
+    val onRemoteClientSettingsChange = appComponents.remoteClientSettingsService::saveSettings
 
     CompositionLocalProvider(
         LocalDensity provides Density(
@@ -411,6 +413,8 @@ fun GromozekaAppContent(
                                     isVisible = showSettingsPanel,
                                     settings = currentSettings,
                                     onSettingsChange = onSettingsChange,
+                                    remoteClientSettings = remoteClientSettings,
+                                    onRemoteClientSettingsChange = onRemoteClientSettingsChange,
                                     onClose = { setSettingsPanel(false) },
                                     translationService = appComponents.translationService,
                                     themeService = appComponents.themeService,
@@ -460,6 +464,8 @@ fun GromozekaAppContent(
                                     isVisible = showSettingsPanel,
                                     settings = currentSettings,
                                     onSettingsChange = onSettingsChange,
+                                    remoteClientSettings = remoteClientSettings,
+                                    onRemoteClientSettingsChange = onRemoteClientSettingsChange,
                                     onClose = { setSettingsPanel(false) },
                                     translationService = appComponents.translationService,
                                     themeService = appComponents.themeService,

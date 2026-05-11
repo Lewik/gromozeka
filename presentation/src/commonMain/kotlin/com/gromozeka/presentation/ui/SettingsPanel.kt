@@ -17,12 +17,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.gromozeka.client.RemoteClientSettings
 import com.gromozeka.domain.model.AIProvider
 import com.gromozeka.domain.model.ResponseFormat
 import com.gromozeka.domain.model.Settings
 import com.gromozeka.presentation.services.LogEncryptor
 import com.gromozeka.presentation.services.OllamaModelService
 import com.gromozeka.domain.service.SettingsService
+import com.gromozeka.remote.protocol.RemoteProtocolEncoding
 import com.gromozeka.presentation.services.theming.AIThemeGenerator
 import com.gromozeka.presentation.services.theming.ThemeService
 import com.gromozeka.presentation.services.theming.data.Theme
@@ -39,6 +41,8 @@ fun SettingsPanel(
     isVisible: Boolean,
     settings: Settings,
     onSettingsChange: (Settings) -> Unit,
+    remoteClientSettings: RemoteClientSettings,
+    onRemoteClientSettingsChange: (RemoteClientSettings) -> Unit,
     onClose: () -> Unit,
     translationService: TranslationService,
     themeService: ThemeService,
@@ -972,6 +976,18 @@ fun SettingsPanel(
                             description = translation.settings.showJsonDescription,
                             value = settings.showOriginalJson,
                             onValueChange = { onSettingsChange(settings.copy(showOriginalJson = it)) }
+                        )
+
+                        DropdownSettingItem(
+                            label = "Remote protocol",
+                            description = "CBOR is the normal binary transport. JSON is useful when debugging WebSocket frames.",
+                            value = remoteClientSettings.protocolEncoding.name,
+                            options = RemoteProtocolEncoding.entries.map { it.name },
+                            onValueChange = {
+                                onRemoteClientSettingsChange(
+                                    remoteClientSettings.copy(protocolEncoding = RemoteProtocolEncoding.valueOf(it))
+                                )
+                            }
                         )
                     }
                 }

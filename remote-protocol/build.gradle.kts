@@ -18,6 +18,14 @@ kotlin {
             dependencies {
                 api(project(":domain"))
                 implementation(libs.kotlinx.serialization.json)
+                implementation(libs.kotlinx.serialization.cbor)
+            }
+        }
+
+        val commonTest by getting {
+            dependencies {
+                implementation(kotlin("test"))
+                implementation(libs.kotlinx.datetime)
             }
         }
     }

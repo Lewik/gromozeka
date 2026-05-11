@@ -1,6 +1,8 @@
 package com.gromozeka.presentation
 
 import com.gromozeka.client.GromozekaRemoteServices
+import com.gromozeka.client.InMemoryRemoteClientSettingsStore
+import com.gromozeka.client.RemoteClientSettingsStore
 import com.gromozeka.presentation.services.ClientAudioRecorder
 import com.gromozeka.presentation.services.LogEncryptor
 import com.gromozeka.presentation.services.NoOpGlobalHotkeyController
@@ -27,12 +29,14 @@ suspend fun createRemoteAppComponents(
     scope: CoroutineScope,
     clientHomeDirectory: String,
     uiStateStore: UIStateStore = InMemoryUIStateStore(),
+    remoteClientSettingsStore: RemoteClientSettingsStore = InMemoryRemoteClientSettingsStore(),
     audioRecorder: ClientAudioRecorder = NoOpClientAudioRecorder,
 ): RemoteAppComponents {
     val remoteServices = GromozekaRemoteServices(
         url = remoteUrl,
         scope = scope,
         clientHomeDirectory = clientHomeDirectory,
+        clientSettingsStore = remoteClientSettingsStore,
     )
 
     remoteServices.initialize()
@@ -72,6 +76,7 @@ suspend fun createRemoteAppComponents(
             appViewModel = appViewModel,
             ttsQueueService = NoOpTtsQueue(),
             settingsService = remoteServices.settingsService,
+            remoteClientSettingsService = remoteServices.clientSettingsService,
             globalHotkeyController = NoOpGlobalHotkeyController,
             pttEventRouter = pttController,
             pttService = pttController,

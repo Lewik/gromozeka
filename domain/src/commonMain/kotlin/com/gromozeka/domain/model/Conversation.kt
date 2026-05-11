@@ -1,3 +1,8 @@
+@file:kotlinx.serialization.UseSerializers(
+    com.gromozeka.domain.model.serialization.JsonElementTransportSerializer::class,
+    com.gromozeka.domain.model.serialization.JsonObjectTransportSerializer::class,
+)
+
 package com.gromozeka.domain.model
 
 import kotlinx.datetime.Instant
