@@ -38,7 +38,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
 internal class GromozekaWsClient(
-    private val url: String = "ws://127.0.0.1:8765/ws",
+    private val url: String = GromozekaRemoteDefaults.REMOTE_URL,
     encoding: RemoteProtocolEncoding = RemoteProtocolEncoding.CBOR,
     private val httpClient: HttpClient = HttpClient {
         install(WebSockets)

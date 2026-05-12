@@ -113,12 +113,20 @@ The server defaults to `127.0.0.1:8765`. It prints a line like:
 ==== Gromozeka server started: ws://127.0.0.1:8765/ws ====
 ```
 
+The current private tailnet endpoint for remote clients is:
+
+```text
+wss://macbook-pro.tail05115b.ts.net/ws
+```
+
+The server also prints the matching Tailscale Serve command for the configured port.
+
 ### JVM Desktop Client
 
 Run the desktop UI client against the local server:
 
 ```bash
-GROMOZEKA_REMOTE_URL="ws://127.0.0.1:8765/ws" \
+GROMOZEKA_REMOTE_URL="wss://macbook-pro.tail05115b.ts.net/ws" \
 GROMOZEKA_CLIENT_HOME="$PWD/dev-data/client/.gromozeka-remote-client" \
 ./gradlew :presentation:run
 ```
@@ -131,7 +139,7 @@ Build the Wasm web client:
 ./gradlew :presentation:wasmJsBrowserDevelopmentExecutableDistribution
 ```
 
-Then run the server and open:
+Then run the server and open locally:
 
 ```text
 http://127.0.0.1:8765/
@@ -139,7 +147,7 @@ http://127.0.0.1:8765/
 
 The web client resolves its WebSocket endpoint from the browser URL, so `http://127.0.0.1:8765/` uses `ws://127.0.0.1:8765/ws`.
 
-For phone testing through Tailscale or another LAN/VPN address, bind the server to all interfaces:
+For raw HTTP testing through LAN/VPN without Tailscale Serve, bind the server to all interfaces:
 
 ```bash
 GROMOZEKA_HOME="$PWD/dev-data/client/.gromozeka" \
@@ -152,6 +160,51 @@ Then open:
 
 ```text
 http://<machine-tailscale-or-lan-ip>:8765/
+```
+
+### HTTPS Web/PWA through Tailscale
+
+For private phone/laptop access inside a tailnet, use Tailscale Serve instead of exposing Gromozeka publicly. The Wasm client does not need a separate HTTPS build. It resolves `/ws` from the page URL, so an `https://` page uses `wss://` automatically.
+
+Build the Wasm web client:
+
+```bash
+./gradlew :presentation:wasmJsBrowserDevelopmentExecutableDistribution
+```
+
+Run the server:
+
+```bash
+GROMOZEKA_HOME="$PWD/dev-data/client/.gromozeka" \
+GROMOZEKA_MODE=dev \
+./gradlew :server:run
+```
+
+Expose the local server through Tailscale Serve:
+
+```bash
+GROMOZEKA_REMOTE_PORT="${GROMOZEKA_REMOTE_PORT:-8765}"
+tailscale serve --bg "http://127.0.0.1:${GROMOZEKA_REMOTE_PORT}"
+```
+
+Then open:
+
+```text
+https://macbook-pro.tail05115b.ts.net/
+```
+
+If you run the server on a non-default port, rerun the `tailscale serve --bg ...` command with the same `GROMOZEKA_REMOTE_PORT`.
+
+Check the current Serve configuration:
+
+```bash
+tailscale serve status
+```
+
+Stop serving Gromozeka through Tailscale:
+
+```bash
+tailscale serve reset
 ```
 
 If static files need to be served from a custom directory, set:

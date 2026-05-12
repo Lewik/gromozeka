@@ -1,6 +1,7 @@
 package com.gromozeka.presentation
 
 import androidx.compose.ui.window.application
+import com.gromozeka.client.GromozekaRemoteDefaults
 import com.gromozeka.presentation.ui.ChatWindow
 import com.gromozeka.presentation.ui.ErrorDialog
 import klog.KLoggers
@@ -12,7 +13,7 @@ fun main() {
 
     val remoteUrl = System.getProperty("gromozeka.remote.url")
         ?: System.getenv("GROMOZEKA_REMOTE_URL")
-        ?: "ws://127.0.0.1:8765/ws"
+        ?: GromozekaRemoteDefaults.REMOTE_URL
 
     var initializationError: Throwable? = null
     var remoteApp: RemoteStartedApp? = null

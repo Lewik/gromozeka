@@ -74,6 +74,8 @@ fun main() {
             .joinToString { "ws://${it.host}:${it.port}/ws" }
     }
     println("==== Gromozeka server started: $endpoints ====")
+    println("==== Gromozeka tailnet web: https://${resolveTailnetHost()}/ ====")
+    println("==== Tailscale Serve: tailscale serve --bg http://127.0.0.1:$port ====")
     Thread.currentThread().join()
 }
 
@@ -86,6 +88,11 @@ private fun resolveWebRoot(): File {
         ?: File(".").absolutePath
     return File(projectRoot, "presentation/build/dist/wasmJs/developmentExecutable")
 }
+
+private fun resolveTailnetHost(): String =
+    System.getProperty("gromozeka.tailnet.host")
+        ?: System.getenv("GROMOZEKA_TAILNET_HOST")
+        ?: "macbook-pro.tail05115b.ts.net"
 
 private fun applyServerSystemProperties() {
     val mode = System.getProperty("GROMOZEKA_MODE")

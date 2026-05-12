@@ -14,7 +14,7 @@ import io.ktor.client.HttpClient
 import kotlinx.coroutines.CoroutineScope
 
 class GromozekaRemoteServices(
-    url: String = "ws://127.0.0.1:8765/ws",
+    url: String = GromozekaRemoteDefaults.REMOTE_URL,
     httpClient: HttpClient? = null,
     scope: CoroutineScope,
     clientHomeDirectory: String,

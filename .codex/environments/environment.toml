@@ -46,6 +46,24 @@ docker compose -f "$ROOT_DIR/server/src/main/resources/docker-compose.yml" stop 
 '''
 
 [[actions]]
+name = "Start Tailscale Web"
+icon = "tool"
+command = '''
+bash -c 'set -euo pipefail
+PORT="${GROMOZEKA_REMOTE_PORT:-8765}"
+tailscale serve --bg "http://127.0.0.1:${PORT}"
+tailscale serve status'
+'''
+
+[[actions]]
+name = "Stop Tailscale Web"
+icon = "tool"
+command = '''
+bash -c 'set -euo pipefail
+tailscale serve reset'
+'''
+
+[[actions]]
 name = "Build"
 icon = "tool"
 command = "bash -c 'set -euo pipefail; export JAVA_HOME=\"${GROMOZEKA_JAVA_HOME:-$(/usr/libexec/java_home -v 21)}\"; export PATH=\"$JAVA_HOME/bin:$PATH\"; ./gradlew :presentation:build -q'"

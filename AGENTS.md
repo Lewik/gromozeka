@@ -75,6 +75,32 @@ GROMOZEKA_HOME="$PWD/dev-data/client/.gromozeka" docker compose -f "$PWD/server/
 docker compose -f "$PWD/server/src/main/resources/docker-compose.yml" stop mongodb
 ```
 
+## Tailscale Web Access
+
+Current private web endpoint:
+```text
+https://macbook-pro.tail05115b.ts.net/
+```
+
+Current remote client WebSocket endpoint:
+```text
+wss://macbook-pro.tail05115b.ts.net/ws
+```
+
+Use Tailscale Serve for private HTTPS inside the tailnet. Do not add Caddy or Let's Encrypt for this mode unless the user explicitly asks for public internet access.
+
+Start/stop commands are available as Codex run actions:
+```text
+Start Tailscale Web
+Stop Tailscale Web
+```
+
+Manual start:
+```bash
+GROMOZEKA_REMOTE_PORT="${GROMOZEKA_REMOTE_PORT:-8765}"
+tailscale serve --bg "http://127.0.0.1:${GROMOZEKA_REMOTE_PORT}"
+```
+
 ## Local Logs
 
 IDEA dev run configurations save full output here:

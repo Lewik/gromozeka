@@ -78,12 +78,16 @@ android {
     compileSdk = 35
 
     defaultConfig {
+        val defaultRemoteUrl = providers.gradleProperty("gromozeka.defaultRemoteUrl")
+            .orElse("wss://macbook-pro.tail05115b.ts.net/ws")
+            .get()
+
         applicationId = "com.gromozeka.app"
         minSdk = 24
         targetSdk = 35
         versionCode = 1
         versionName = rootProject.version.toString()
-        buildConfigField("String", "DEFAULT_REMOTE_URL", "\"ws://10.0.2.2:8765/ws\"")
+        buildConfigField("String", "DEFAULT_REMOTE_URL", "\"${defaultRemoteUrl.replace("\"", "\\\"")}\"")
         buildConfigField(
             "boolean",
             "ENABLE_LOCATION_TELEMETRY",
