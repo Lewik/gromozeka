@@ -41,10 +41,31 @@ private fun MemoryThreadContext.toMemoryStageMessages(
     if (targetIndex < 0) return listOf(fallbackMessage)
 
     val target = messages[targetIndex]
-    return messages.take(targetIndex) +
+    return messages.take(targetIndex).withoutUnpairedToolItems() +
         memoryControlMessage(stageName, target, targetSourceLabel) +
         target +
         memoryTaskMessage(stageName, target, targetSourceLabel, taskPrompt)
+}
+
+private fun List<Conversation.Message>.withoutUnpairedToolItems(): List<Conversation.Message> {
+    val toolCallIds = flatMap { message ->
+        message.content.filterIsInstance<Conversation.Message.ContentItem.ToolCall>().map { it.id }
+    }.toSet()
+    val toolResultIds = flatMap { message ->
+        message.content.filterIsInstance<Conversation.Message.ContentItem.ToolResult>().map { it.toolUseId }
+    }.toSet()
+    val pairedToolIds = toolCallIds intersect toolResultIds
+
+    return mapNotNull { message ->
+        val content = message.content.filter { item ->
+            when (item) {
+                is Conversation.Message.ContentItem.ToolCall -> item.id in pairedToolIds
+                is Conversation.Message.ContentItem.ToolResult -> item.toolUseId in pairedToolIds
+                else -> true
+            }
+        }
+        message.takeIf { content.isNotEmpty() }?.copy(content = content)
+    }
 }
 
 internal fun DirectStructuredMemoryWriteRequest.memoryThreadContextSummaryForLog(): String {
