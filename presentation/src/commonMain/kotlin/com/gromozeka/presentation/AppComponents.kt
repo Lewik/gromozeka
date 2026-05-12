@@ -2,6 +2,7 @@ package com.gromozeka.presentation
 
 import com.gromozeka.client.RemoteClientSettingsService
 import com.gromozeka.client.RemoteMemoryTaskService
+import com.gromozeka.device.telemetry.DeviceLocationService
 import com.gromozeka.domain.service.AgentDomainService
 import com.gromozeka.domain.service.ConversationDomainService
 import com.gromozeka.domain.service.ProjectDomainService
@@ -43,4 +44,5 @@ data class AppComponents(
     val tabPromptService: TabPromptService,
     val agentService: AgentDomainService,
     val promptService: PromptDomainService,
+    val deviceLocationService: DeviceLocationService,
 )

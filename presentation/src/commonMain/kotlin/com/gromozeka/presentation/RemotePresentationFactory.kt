@@ -3,6 +3,8 @@ package com.gromozeka.presentation
 import com.gromozeka.client.GromozekaRemoteServices
 import com.gromozeka.client.InMemoryRemoteClientSettingsStore
 import com.gromozeka.client.RemoteClientSettingsStore
+import com.gromozeka.device.telemetry.DeviceLocationService
+import com.gromozeka.device.telemetry.NoOpDeviceLocationService
 import com.gromozeka.presentation.services.ClientAudioRecorder
 import com.gromozeka.presentation.services.LogEncryptor
 import com.gromozeka.presentation.services.NoOpGlobalHotkeyController
@@ -31,6 +33,7 @@ suspend fun createRemoteAppComponents(
     uiStateStore: UIStateStore = InMemoryUIStateStore(),
     remoteClientSettingsStore: RemoteClientSettingsStore = InMemoryRemoteClientSettingsStore(),
     audioRecorder: ClientAudioRecorder = NoOpClientAudioRecorder,
+    deviceLocationService: DeviceLocationService = NoOpDeviceLocationService,
 ): RemoteAppComponents {
     val remoteServices = GromozekaRemoteServices(
         url = remoteUrl,
@@ -94,6 +97,7 @@ suspend fun createRemoteAppComponents(
             tabPromptService = TabPromptService(remoteServices.promptService),
             agentService = remoteServices.agentService,
             promptService = remoteServices.promptService,
+            deviceLocationService = deviceLocationService,
         ),
         remoteServices = remoteServices,
     )

@@ -78,9 +78,16 @@ __pycache__/
 *.msi
 *.deb
 *.rpm
+*.apk
+*.aab
+*.ap_
 gromozeka-*/
 release-assets/
 release-notes.md
+
+# Android signing keys
+*.keystore
+*.jks
 
 /google-credentials.json
 

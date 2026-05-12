@@ -34,6 +34,8 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
+import com.gromozeka.device.telemetry.DeviceLocationResult
+import com.gromozeka.device.telemetry.DeviceLocationSnapshot
 import com.gromozeka.domain.model.AppMode
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ConversationInitiator
@@ -368,6 +370,25 @@ fun GromozekaAppContent(
                                                                     }
                                                             }
                                                         },
+                                                        onInsertCurrentLocation = if (appComponents.deviceLocationService.isSupported) {
+                                                            {
+                                                                coroutineScope.launch {
+                                                                    val locationText = appComponents.deviceLocationService
+                                                                        .getCurrentLocation()
+                                                                        .toInputText()
+                                                                    val currentInput = tabViewModel.userInput.trimEnd()
+                                                                    tabViewModel.updateUserInput(
+                                                                        if (currentInput.isBlank()) {
+                                                                            locationText
+                                                                        } else {
+                                                                            "$currentInput\n\n$locationText"
+                                                                        }
+                                                                    )
+                                                                }
+                                                            }
+                                                        } else {
+                                                            null
+                                                        },
                                                         onShowPromptsPanelChange = setPromptsPanel,
                                                         isDev = appComponents.settingsService.mode == AppMode.DEV,
                                                         isCompactLayout = isCompactLayout
@@ -542,3 +563,23 @@ fun GromozekaAppContent(
         }
     }
 }
+
+private fun DeviceLocationResult.toInputText(): String =
+    when (this) {
+        is DeviceLocationResult.Available -> snapshot.toInputText()
+        is DeviceLocationResult.Unavailable -> buildString {
+            append("Device location unavailable: ")
+            append(reason.name.lowercase().replace('_', ' '))
+            message?.takeIf { it.isNotBlank() }?.let { append(" ($it)") }
+        }
+    }
+
+private fun DeviceLocationSnapshot.toInputText(): String =
+    buildString {
+        append("Current device location: ")
+        append("latitude=$latitude, longitude=$longitude")
+        accuracyMeters?.let { append(", accuracyMeters=$it") }
+        altitudeMeters?.let { append(", altitudeMeters=$it") }
+        provider?.let { append(", provider=$it") }
+        append(", capturedAt=$capturedAt")
+    }

@@ -33,6 +33,7 @@ kotlin {
     sourceSets {
         val commonMain by getting {
             dependencies {
+                implementation(project(":device-telemetry"))
                 implementation(project(":domain"))
                 implementation(project(":remote-client"))
 
@@ -83,6 +84,15 @@ android {
         versionCode = 1
         versionName = rootProject.version.toString()
         buildConfigField("String", "DEFAULT_REMOTE_URL", "\"ws://10.0.2.2:8765/ws\"")
+        buildConfigField(
+            "boolean",
+            "ENABLE_LOCATION_TELEMETRY",
+            providers.gradleProperty("gromozeka.android.location")
+                .map { it.toBooleanStrictOrNull() ?: false }
+                .orElse(false)
+                .get()
+                .toString()
+        )
     }
 
     buildFeatures {

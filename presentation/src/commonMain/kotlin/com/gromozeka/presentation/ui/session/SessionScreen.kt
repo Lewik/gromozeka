@@ -75,6 +75,7 @@ fun SessionScreen(
     onRepairMemory: (() -> Unit)? = null,
     onMaintainMemoryEntities: (() -> Unit)? = null,
     onApplyMemoryRetention: (() -> Unit)? = null,
+    onInsertCurrentLocation: (() -> Unit)? = null,
 
     // Dev mode
     isDev: Boolean = false,
@@ -578,6 +579,18 @@ fun SessionScreen(
                                 Icons.Default.CameraAlt,
                                 contentDescription = LocalTranslation.current.screenshotTooltip
                             )
+                        }
+
+                        onInsertCurrentLocation?.let { insertCurrentLocation ->
+                            CompactButton(
+                                onClick = insertCurrentLocation,
+                                tooltip = "Insert current device location"
+                            ) {
+                                Icon(
+                                    Icons.Default.LocationOn,
+                                    contentDescription = "Insert location"
+                                )
+                            }
                         }
 
                         // Message count

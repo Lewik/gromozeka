@@ -14,6 +14,7 @@ pluginManagement {
 rootProject.name = "gromozeka"
 
 include(":shared")
+include(":device-telemetry")
 include(":domain")
 include(":remote-protocol")
 include(":remote-client")
