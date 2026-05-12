@@ -24,6 +24,12 @@ build/
 *.iws
 out/
 
+# Xcode
+**/xcuserdata/
+*.xcuserstate
+*.xcresult/
+DerivedData/
+
 # Database files
 *.db
 *.db-*

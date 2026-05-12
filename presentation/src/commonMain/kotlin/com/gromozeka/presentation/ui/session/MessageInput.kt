@@ -4,12 +4,20 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.FiberManualRecord
+import androidx.compose.material.icons.filled.KeyboardHide
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.key.*
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
@@ -35,6 +43,10 @@ fun MessageInput(
     pttStatusMessage: String? = null,
     contextPercentage: Int? = null,
 ) {
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val focusManager = LocalFocusManager.current
+    var inputFocused by remember { mutableStateOf(false) }
+
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -44,6 +56,7 @@ fun MessageInput(
                 value = userInput,
                 onValueChange = onUserInputChange,
                 modifier = Modifier
+                    .onFocusChanged { inputFocused = it.isFocused }
                     .onPreviewKeyEvent { event ->
                         when {
                             // Shift+Enter для отправки сообщения
@@ -65,6 +78,20 @@ fun MessageInput(
                 placeholder = { Text("") }
             )
             Spacer(modifier = Modifier.width(4.dp))
+
+            if (inputFocused) {
+                CompactButton(
+                    onClick = {
+                        keyboardController?.hide()
+                        focusManager.clearFocus(force = true)
+                    },
+                    modifier = Modifier.fillMaxHeight(),
+                    tooltip = "Hide keyboard"
+                ) {
+                    Icon(Icons.Default.KeyboardHide, contentDescription = "Hide keyboard")
+                }
+                Spacer(modifier = Modifier.width(4.dp))
+            }
 
             // Send button with queue badge
             BadgedBox(

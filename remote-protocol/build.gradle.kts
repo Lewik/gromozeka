@@ -10,6 +10,8 @@ kotlin {
     jvmToolchain(javaVersion)
 
     jvm {}
+    iosArm64()
+    iosSimulatorArm64()
     androidTarget {
         compilerOptions {
             jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
@@ -26,6 +28,16 @@ kotlin {
                 implementation(libs.kotlinx.serialization.json)
                 implementation(libs.kotlinx.serialization.cbor)
             }
+        }
+
+        val iosMain by creating {
+            dependsOn(commonMain)
+        }
+        val iosArm64Main by getting {
+            dependsOn(iosMain)
+        }
+        val iosSimulatorArm64Main by getting {
+            dependsOn(iosMain)
         }
 
         val commonTest by getting {

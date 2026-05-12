@@ -15,6 +15,18 @@ kotlin {
     jvmToolchain(javaVersion)
 
     jvm {}
+    iosArm64 {
+        binaries.framework {
+            baseName = "GromozekaPresentation"
+            binaryOption("bundleId", "com.gromozeka.presentation")
+        }
+    }
+    iosSimulatorArm64 {
+        binaries.framework {
+            baseName = "GromozekaPresentation"
+            binaryOption("bundleId", "com.gromozeka.presentation")
+        }
+    }
     androidTarget {
         compilerOptions {
             jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
@@ -50,6 +62,16 @@ kotlin {
                 implementation(libs.kotlinx.serialization.json)
                 implementation(libs.kotlinx.coroutines.core)
             }
+        }
+
+        val iosMain by creating {
+            dependsOn(commonMain)
+        }
+        val iosArm64Main by getting {
+            dependsOn(iosMain)
+        }
+        val iosSimulatorArm64Main by getting {
+            dependsOn(iosMain)
         }
 
         val jvmMain by getting {

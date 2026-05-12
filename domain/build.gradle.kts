@@ -10,6 +10,8 @@ kotlin {
     jvmToolchain(javaVersion)
     
     jvm {}
+    iosArm64()
+    iosSimulatorArm64()
     androidTarget {
         compilerOptions {
             jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
@@ -27,6 +29,16 @@ kotlin {
                 api(libs.kotlinx.serialization.json)
                 api(libs.kotlinx.coroutines.core)  // For StateFlow, SharedFlow
             }
+        }
+
+        val iosMain by creating {
+            dependsOn(commonMain)
+        }
+        val iosArm64Main by getting {
+            dependsOn(iosMain)
+        }
+        val iosSimulatorArm64Main by getting {
+            dependsOn(iosMain)
         }
         
         val jvmTest by getting {
