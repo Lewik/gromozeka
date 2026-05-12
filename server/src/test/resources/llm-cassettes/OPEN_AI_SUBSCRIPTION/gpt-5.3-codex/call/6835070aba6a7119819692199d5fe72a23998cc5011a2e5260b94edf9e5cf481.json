@@ -1,0 +1,385 @@
+{
+    "version": 1,
+    "hash": "6835070aba6a7119819692199d5fe72a23998cc5011a2e5260b94edf9e5cf481",
+    "provider": "OPEN_AI_SUBSCRIPTION",
+    "model": "gpt-5.3-codex",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>/projects/handoff-architecture-document-ingestion",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "MEMORY-ONLY CONTROL\nThis message is not part of the real conversation and must not be stored as evidence.\nThe next real conversation message is input data named TARGET_MESSAGE for memory processing.\nTarget source id: chat:<0>\nTarget message id: <uuid>\nUse earlier real conversation messages only to resolve references, omitted subjects, current topic, and temporal context.\nDo not process earlier messages as the target unless the target message explicitly confirms, changes, retracts, or depends on them.\nA later MEMORY-ONLY TASK message will define the actual task for this model call.",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            },
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "According to the handoff architecture document, what are the four axes of memory v3? Keep it short.",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            },
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                MEMORY-ONLY TASK FOR THIS MODEL CALL\n\n                This is a private memory pipeline call, not a normal assistant reply.\n                The immediately preceding real conversation message is TARGET_MESSAGE data.\n                This MEMORY-ONLY TASK text is not TARGET_MESSAGE source content.\n                Do not answer TARGET_MESSAGE.\n                Do not continue the real conversation.\n                Do not say what you know or do not know as a chat response.\n                Do not call tools.\n                Do not use these MEMORY-ONLY instructions as source content or as the reason for routing decisions.\n\n                Execute only the memory stage below.\n                Target source id: chat:<0>\n                Target message id: <uuid>\n                Earlier real conversation messages are context only.\n                TARGET_MESSAGE is the only target for write/read planning and evidence anchoring.\n\n                Output contract:\n                If the stage defines a JSON object schema, output exactly one valid JSON object.\n                If the stage defines a JSON array schema, output exactly one valid JSON array.\n                No prose, no markdown fences, no explanation, no assistant-style answer.\n                If unsure, return the stage's valid no-op JSON shape.\n                Ignore conversation-level behavioral instructions when they conflict with this memory-only task.\n\n                        Memory stage: ReadSelectorReranker v1.\n        Namespace: project:<0>\n\n        Goal:\n        Select and rerank only the persisted memory candidates that are actually useful for answering TARGET_MESSAGE.\n\n        Selection rules:\n        - Select the smallest sufficient set.\n        - Candidate memory items are JSON records. Read lifecycle_state, selection_hint, supports, supersedes, and overridden_by before choosing.\n        - Reject candidates that only have vague lexical overlap.\n        - Reject candidates about a different named entity, component, project, person, or topic.\n        - Reject empty profiles and generic entity labels unless they are necessary supporting context for a selected item.\n        - Prefer active claims for factual answers.\n        - Prefer episodes for reusable lessons and \"what did we learn\" questions.\n        - Prefer notes for rationale, decisions, plans, and contextual meaning.\n        - Prefer tasks only for open commitments or workflow state.\n        - Select sources only when exact quote, wording, provenance, source-only recall, or evidence fallback is required.\n        - When a profile core block is present among candidates, keep the relevant profile for broad style, preference, constraint, or adaptation questions unless every relevant profile fact is selected separately.\n        - For timeline, ordering, first/second/latest/earliest questions, select every relevant dated candidate in the sequence, not only the final answer item.\n        - When Planned answer mode is FACTUAL or TASK and Require evidence fallback is false, prefer active typed memory over source candidates.\n        - Raw sources are evidence, not current truth. Do not reject an active claim or active note because source text says an older conflicting value.\n        - Treat ACTIVE typed memory as newer/current unless the candidate metadata explicitly says otherwise.\n        - Never use stale, superseded, retracted, expired, or candidate memory as stronger evidence than any relevant ACTIVE memory.\n        - If no candidate contains relevant persisted memory, return an empty selected_items array.\n\n        Planned answer mode: FACTUAL\n        Require evidence fallback: false\n        Retrieval budget: claims=2 notes=1 tasks=0 sources=0 episodes=0\n        Target message:\n        According to the handoff architecture document, what are the four axes of memory v3? Keep it short.\n\n        Candidate memory items:\n        1. {\"type\":\"note\",\"id\":\"hot-path:note:<0>\",\"score\":1.5492857142857144,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed context. Prefer for rationale, decisions, plans, and contextual meaning.\",\"note_type\":\"DIRECTION\",\"title\":\"Memory v3 uses four-axis architecture\",\"text\":\"The handoff defines memory v3 as a four-axis system combining representation types, lifecycle operations, retrieval policy modes, and explicit scope/lineage metadata to avoid both transcript-dump and brittle fact-store failure modes.\",\"confidence\":0.95,\"importance\":5,\"valid_from\":\"1970-01-01T00:00:00Z\",\"evidence\":[{\"source_id\":\"chat:<1>\",\"kind\":\"DIRECT\",\"quote\":\"В `v3` у памяти четыре оси, а не одна:\"}]}\n2. {\"type\":\"note\",\"id\":\"hot-path:note:<1>\",\"score\":0.5970000000000001,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed context. Prefer for rationale, decisions, plans, and contextual meaning.\",\"note_type\":\"PLAN\",\"title\":\"Dual write semantics with consolidation and repair\",\"text\":\"The design separates semantic writes into direct structured path vs note path, and treats consolidation and repair as distinct maintenance workflows for promoting mature notes and fixing memory health issues.\",\"confidence\":0.94,\"importance\":5,\"valid_from\":\"1970-01-01T00:00:00Z\",\"evidence\":[{\"source_id\":\"chat:<1>\",\"kind\":\"DIRECT\",\"quote\":\"Теперь у системы два semantic path и два maintenance path.\"}]}\n3. {\"type\":\"note\",\"id\":\"hot-path:note:<2>\",\"score\":0.5850000000000001,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed context. Prefer for rationale, decisions, plans, and contextual meaning.\",\"note_type\":\"DECISION\",\"title\":\"Postgres plus pgvector is baseline, Neo4j deferred\",\"text\":\"The architecture indicates a preference for Postgres with JSONB, pgvector, and full-text indexes as sufficient graph-like semantics for memory, while deferring Neo4j unless traversal/path queries become product-critical.\",\"confidence\":0.9,\"importance\":4,\"valid_from\":\"1970-01-01T00:00:00Z\",\"evidence\":[{\"source_id\":\"chat:<1>\",\"kind\":\"DIRECT\",\"quote\":\"Почему не надо начинать с graph DB\"}]}\n4. {\"type\":\"note\",\"id\":\"hot-path:note:<3>\",\"score\":0.5372857142857143,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed context. Prefer for rationale, decisions, plans, and contextual meaning.\",\"note_type\":\"DIRECTION\",\"title\":\"Update must reconcile, not append-only\",\"text\":\"The write pipeline requires a decision to write, retrieval of related/conflicting memory, typed extraction, and policy-based operations (insert/update/supersede/retract/noop) to prevent duplicates, stale conflicts, and task or summary spam.\",\"confidence\":0.96,\"importance\":5,\"valid_from\":\"1970-01-01T00:00:00Z\",\"evidence\":[{\"source_id\":\"chat:<1>\",\"kind\":\"DIRECT\",\"quote\":\"Главная мысль: update не должен быть append-only\"}]}\n5. {\"type\":\"note\",\"id\":\"hot-path:note:<4>\",\"score\":0.44364285714285706,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed context. Prefer for rationale, decisions, plans, and contextual meaning.\",\"note_type\":\"LESSON\",\"title\":\"Truth state and retrieval state must remain separate\",\"text\":\"The model explicitly separates knowledge validity (truth state) from retrieval hotness (retrieval state), allowing items like resolved notes or superseded claims to remain retrievable for rationale and historical evidence.\",\"confidence\":0.93,\"importance\":4,\"valid_from\":\"1970-01-01T00:00:00Z\",\"evidence\":[{\"source_id\":\"chat:<1>\",\"kind\":\"DIRECT\",\"quote\":\"Это отдельные вещи, и их нельзя смешивать.\"}]}\n\n        Return JSON:\n        {\n          \"selected_items\": [\n            {\n              \"item_type\": \"claim | note | task | profile | source | episode | entity | run\",\n              \"item_id\": \"exact candidate id\",\n              \"rank\": 1,\n              \"relevance\": \"direct_answer | supporting_context | required_evidence\",\n              \"reason\": \"short reason\"\n            }\n          ],\n          \"rejected_items\": [\n            {\n              \"item_type\": \"claim | note | task | profile | source | episode | entity | run\",\n              \"item_id\": \"exact candidate id\",\n              \"reason\": \"short reason\"\n            }\n          ],\n          \"summary\": \"one short sentence\"\n        }",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "autoCompactionThreshold": null,
+            "maxTokens": 1200,
+            "outputConfig": null,
+            "responseFormat": {
+                "description": "Select and rerank retrieved memory candidates for the current target request.",
+                "name": "memory_read_selector",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "rejected_items": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "item_id": {
+                                        "type": "string"
+                                    },
+                                    "item_type": {
+                                        "enum": [
+                                            "source",
+                                            "entity",
+                                            "claim",
+                                            "note",
+                                            "task",
+                                            "profile",
+                                            "episode",
+                                            "run"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "item_type",
+                                    "item_id",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        },
+                        "selected_items": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "item_id": {
+                                        "type": "string"
+                                    },
+                                    "item_type": {
+                                        "enum": [
+                                            "source",
+                                            "entity",
+                                            "claim",
+                                            "note",
+                                            "task",
+                                            "profile",
+                                            "episode",
+                                            "run"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "rank": {
+                                        "type": "integer"
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    },
+                                    "relevance": {
+                                        "enum": [
+                                            "direct_answer",
+                                            "supporting_context",
+                                            "required_evidence"
+                                        ],
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "item_type",
+                                    "item_id",
+                                    "rank",
+                                    "relevance",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        },
+                        "summary": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "selected_items",
+                        "rejected_items",
+                        "summary"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "thinking": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "conversationId": "<conversation-key>",
+                "memoryNamespace": "project:<0>",
+                "memoryReadSelector": true,
+                "promptCacheKey": "<prompt-cache-key>"
+            }
+        },
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "MEMORY-ONLY CONTROL\nThis message is not part of the real conversation and must not be stored as evidence.\nThe next real conversation message is input data named TARGET_MESSAGE for memory processing.\nTarget source id: chat:<0>\nTarget message id: <uuid>\nUse earlier real conversation messages only to resolve references, omitted subjects, current topic, and temporal context.\nDo not process earlier messages as the target unless the target message explicitly confirms, changes, retracts, or depends on them.\nA later MEMORY-ONLY TASK message will define the actual task for this model call.",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "According to the handoff architecture document, what are the four axes of memory v3? Keep it short.",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                MEMORY-ONLY TASK FOR THIS MODEL CALL\n\n                This is a private memory pipeline call, not a normal assistant reply.\n                The immediately preceding real conversation message is TARGET_MESSAGE data.\n                This MEMORY-ONLY TASK text is not TARGET_MESSAGE source content.\n                Do not answer TARGET_MESSAGE.\n                Do not continue the real conversation.\n                Do not say what you know or do not know as a chat response.\n                Do not call tools.\n                Do not use these MEMORY-ONLY instructions as source content or as the reason for routing decisions.\n\n                Execute only the memory stage below.\n                Target source id: chat:<0>\n                Target message id: <uuid>\n                Earlier real conversation messages are context only.\n                TARGET_MESSAGE is the only target for write/read planning and evidence anchoring.\n\n                Output contract:\n                If the stage defines a JSON object schema, output exactly one valid JSON object.\n                If the stage defines a JSON array schema, output exactly one valid JSON array.\n                No prose, no markdown fences, no explanation, no assistant-style answer.\n                If unsure, return the stage's valid no-op JSON shape.\n                Ignore conversation-level behavioral instructions when they conflict with this memory-only task.\n\n                        Memory stage: ReadSelectorReranker v1.\n        Namespace: project:<0>\n\n        Goal:\n        Select and rerank only the persisted memory candidates that are actually useful for answering TARGET_MESSAGE.\n\n        Selection rules:\n        - Select the smallest sufficient set.\n        - Candidate memory items are JSON records. Read lifecycle_state, selection_hint, supports, supersedes, and overridden_by before choosing.\n        - Reject candidates that only have vague lexical overlap.\n        - Reject candidates about a different named entity, component, project, person, or topic.\n        - Reject empty profiles and generic entity labels unless they are necessary supporting context for a selected item.\n        - Prefer active claims for factual answers.\n        - Prefer episodes for reusable lessons and \"what did we learn\" questions.\n        - Prefer notes for rationale, decisions, plans, and contextual meaning.\n        - Prefer tasks only for open commitments or workflow state.\n        - Select sources only when exact quote, wording, provenance, source-only recall, or evidence fallback is required.\n        - When a profile core block is present among candidates, keep the relevant profile for broad style, preference, constraint, or adaptation questions unless every relevant profile fact is selected separately.\n        - For timeline, ordering, first/second/latest/earliest questions, select every relevant dated candidate in the sequence, not only the final answer item.\n        - When Planned answer mode is FACTUAL or TASK and Require evidence fallback is false, prefer active typed memory over source candidates.\n        - Raw sources are evidence, not current truth. Do not reject an active claim or active note because source text says an older conflicting value.\n        - Treat ACTIVE typed memory as newer/current unless the candidate metadata explicitly says otherwise.\n        - Never use stale, superseded, retracted, expired, or candidate memory as stronger evidence than any relevant ACTIVE memory.\n        - If no candidate contains relevant persisted memory, return an empty selected_items array.\n\n        Planned answer mode: FACTUAL\n        Require evidence fallback: false\n        Retrieval budget: claims=2 notes=1 tasks=0 sources=0 episodes=0\n        Target message:\n        According to the handoff architecture document, what are the four axes of memory v3? Keep it short.\n\n        Candidate memory items:\n        1. {\"type\":\"note\",\"id\":\"hot-path:note:<0>\",\"score\":1.5492857142857144,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed context. Prefer for rationale, decisions, plans, and contextual meaning.\",\"note_type\":\"DIRECTION\",\"title\":\"Memory v3 uses four-axis architecture\",\"text\":\"The handoff defines memory v3 as a four-axis system combining representation types, lifecycle operations, retrieval policy modes, and explicit scope/lineage metadata to avoid both transcript-dump and brittle fact-store failure modes.\",\"confidence\":0.95,\"importance\":5,\"valid_from\":\"1970-01-01T00:00:00Z\",\"evidence\":[{\"source_id\":\"chat:<1>\",\"kind\":\"DIRECT\",\"quote\":\"В `v3` у памяти четыре оси, а не одна:\"}]}\n2. {\"type\":\"note\",\"id\":\"hot-path:note:<1>\",\"score\":0.5970000000000001,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed context. Prefer for rationale, decisions, plans, and contextual meaning.\",\"note_type\":\"PLAN\",\"title\":\"Dual write semantics with consolidation and repair\",\"text\":\"The design separates semantic writes into direct structured path vs note path, and treats consolidation and repair as distinct maintenance workflows for promoting mature notes and fixing memory health issues.\",\"confidence\":0.94,\"importance\":5,\"valid_from\":\"1970-01-01T00:00:00Z\",\"evidence\":[{\"source_id\":\"chat:<1>\",\"kind\":\"DIRECT\",\"quote\":\"Теперь у системы два semantic path и два maintenance path.\"}]}\n3. {\"type\":\"note\",\"id\":\"hot-path:note:<2>\",\"score\":0.5850000000000001,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed context. Prefer for rationale, decisions, plans, and contextual meaning.\",\"note_type\":\"DECISION\",\"title\":\"Postgres plus pgvector is baseline, Neo4j deferred\",\"text\":\"The architecture indicates a preference for Postgres with JSONB, pgvector, and full-text indexes as sufficient graph-like semantics for memory, while deferring Neo4j unless traversal/path queries become product-critical.\",\"confidence\":0.9,\"importance\":4,\"valid_from\":\"1970-01-01T00:00:00Z\",\"evidence\":[{\"source_id\":\"chat:<1>\",\"kind\":\"DIRECT\",\"quote\":\"Почему не надо начинать с graph DB\"}]}\n4. {\"type\":\"note\",\"id\":\"hot-path:note:<3>\",\"score\":0.5372857142857143,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed context. Prefer for rationale, decisions, plans, and contextual meaning.\",\"note_type\":\"DIRECTION\",\"title\":\"Update must reconcile, not append-only\",\"text\":\"The write pipeline requires a decision to write, retrieval of related/conflicting memory, typed extraction, and policy-based operations (insert/update/supersede/retract/noop) to prevent duplicates, stale conflicts, and task or summary spam.\",\"confidence\":0.96,\"importance\":5,\"valid_from\":\"1970-01-01T00:00:00Z\",\"evidence\":[{\"source_id\":\"chat:<1>\",\"kind\":\"DIRECT\",\"quote\":\"Главная мысль: update не должен быть append-only\"}]}\n5. {\"type\":\"note\",\"id\":\"hot-path:note:<4>\",\"score\":0.44364285714285706,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed context. Prefer for rationale, decisions, plans, and contextual meaning.\",\"note_type\":\"LESSON\",\"title\":\"Truth state and retrieval state must remain separate\",\"text\":\"The model explicitly separates knowledge validity (truth state) from retrieval hotness (retrieval state), allowing items like resolved notes or superseded claims to remain retrievable for rationale and historical evidence.\",\"confidence\":0.93,\"importance\":4,\"valid_from\":\"1970-01-01T00:00:00Z\",\"evidence\":[{\"source_id\":\"chat:<1>\",\"kind\":\"DIRECT\",\"quote\":\"Это отдельные вещи, и их нельзя смешивать.\"}]}\n\n        Return JSON:\n        {\n          \"selected_items\": [\n            {\n              \"item_type\": \"claim | note | task | profile | source | episode | entity | run\",\n              \"item_id\": \"exact candidate id\",\n              \"rank\": 1,\n              \"relevance\": \"direct_answer | supporting_context | required_evidence\",\n              \"reason\": \"short reason\"\n            }\n          ],\n          \"rejected_items\": [\n            {\n              \"item_type\": \"claim | note | task | profile | source | episode | entity | run\",\n              \"item_id\": \"exact candidate id\",\n              \"reason\": \"short reason\"\n            }\n          ],\n          \"summary\": \"one short sentence\"\n        }",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxTokens": 1200,
+            "thinking": null,
+            "outputConfig": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "memory_read_selector",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "rejected_items": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "item_id": {
+                                        "type": "string"
+                                    },
+                                    "item_type": {
+                                        "enum": [
+                                            "source",
+                                            "entity",
+                                            "claim",
+                                            "note",
+                                            "task",
+                                            "profile",
+                                            "episode",
+                                            "run"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "item_type",
+                                    "item_id",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        },
+                        "selected_items": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "item_id": {
+                                        "type": "string"
+                                    },
+                                    "item_type": {
+                                        "enum": [
+                                            "source",
+                                            "entity",
+                                            "claim",
+                                            "note",
+                                            "task",
+                                            "profile",
+                                            "episode",
+                                            "run"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "rank": {
+                                        "type": "integer"
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    },
+                                    "relevance": {
+                                        "enum": [
+                                            "direct_answer",
+                                            "supporting_context",
+                                            "required_evidence"
+                                        ],
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "item_type",
+                                    "item_id",
+                                    "rank",
+                                    "relevance",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        },
+                        "summary": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "selected_items",
+                        "rejected_items",
+                        "summary"
+                    ],
+                    "type": "object"
+                },
+                "description": "Select and rerank retrieved memory candidates for the current target request.",
+                "strict": true
+            },
+            "toolContext": {
+                "conversationId": "<conversation-key>",
+                "memoryNamespace": "project:<0>",
+                "memoryReadSelector": true,
+                "promptCacheKey": "<prompt-cache-key>"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"rejected_items\":[{\"item_id\":\"hot-path:note:<1>\",\"item_type\":\"note\",\"reason\":\"About dual write/maintenance paths, not the four axes list.\"},{\"item_id\":\"hot-path:note:<2>\",\"item_type\":\"note\",\"reason\":\"Database technology decision, unrelated to four axes.\"},{\"item_id\":\"hot-path:note:<3>\",\"item_type\":\"note\",\"reason\":\"Update/reconciliation pipeline detail, not the requested axis enumeration.\"},{\"item_id\":\"hot-path:note:<4>\",\"item_type\":\"note\",\"reason\":\"General lesson on truth vs retrieval state, not the four-axis definition.\"}],\"selected_items\":[{\"item_id\":\"hot-path:note:<0>\",\"item_type\":\"note\",\"rank\":1,\"reason\":\"Directly states the four axes of memory v3 from the handoff document.\",\"relevance\":\"direct_answer\"}],\"summary\":\"Selected only the active note that explicitly enumerates memory v3’s four axes.\"}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 2402,
+                "completionTokens": 304,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

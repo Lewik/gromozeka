@@ -139,7 +139,7 @@ class LlmMemoryReadSelector(
         Require evidence fallback: ${request.plan.requireEvidenceFallback}
         Retrieval budget: ${request.plan.retrievalBudget.renderForReadSelector()}
         Target message:
-        ${request.readRequest.targetTextForReadSelector().limitForReadSelectorPrompt(4_000)}
+        ${request.readRequest.targetTextForReadSelector()}
 
         Candidate memory items:
         $renderedCandidates

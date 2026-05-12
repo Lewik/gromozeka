@@ -235,7 +235,7 @@ private fun MemoryStore.SearchHit.renderSuspiciousItemForRepair(): String =
         is MemoryStore.SearchHit.ProfileHit -> "- profile ${profile.id.value}: owner=${profile.ownerEntityId.value}; version=${profile.version}; updated=${profile.updatedAt}; text=${profile.profileText.oneLineForRepairPlannerLog(500)}"
         is MemoryStore.SearchHit.EpisodeHit -> "- episode ${episode.id.value}: situation=${episode.situation}; lesson=${episode.lesson}; updated=${episode.updatedAt}"
         is MemoryStore.SearchHit.EntityHit -> "- entity ${entity.id.value}: type=${entity.entityType.name}; name=${entity.canonicalName}; updated=${entity.updatedAt}"
-        is MemoryStore.SearchHit.SourceHit -> "- source ${source.id.value}: text=${source.contentText.oneLineForRepairPlannerLog(240)}"
+        is MemoryStore.SearchHit.SourceHit -> "- source ${source.id.value}: text=${source.contentText.trim()}"
         is MemoryStore.SearchHit.RunHit -> "- run ${run.id.value}: type=${run.runType.name}; summary=${run.summary}"
     }
 
@@ -256,7 +256,7 @@ private fun MemoryNamespaceSnapshot.renderRepairSupportingEvidence(candidateClus
         .filter { it.id in sourceIds }
         .take(12)
         .joinToString("\n") { source ->
-            "- source ${source.id.value}: ${source.contentText.oneLineForRepairPlannerLog(500)}"
+            "- source ${source.id.value}: ${source.contentText.trim()}"
         }
 
     val renderedProfiles = profiles

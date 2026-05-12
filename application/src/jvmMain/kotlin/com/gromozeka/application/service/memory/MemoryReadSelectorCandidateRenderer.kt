@@ -96,7 +96,7 @@ internal object MemoryReadSelectorCandidateRenderer {
             retentionClass = retentionClass.name,
             usagePolicy = usagePolicyForSelectorView(),
             lifecycleState = lifecycleState,
-            text = contentText.limitForSelectorView(900),
+            text = sourceTextForSelectorView(),
             supports = supports,
             overriddenBy = overriddenBy,
             selectionHint = when {
@@ -109,6 +109,12 @@ internal object MemoryReadSelectorCandidateRenderer {
             },
         )
     }
+
+    private fun MemorySource.sourceTextForSelectorView(): String =
+        listOfNotNull(
+            searchText?.trim()?.takeIf { it.isNotBlank() }?.let { "search_text:\n$it" },
+            "source_text:\n${contentText.trim()}",
+        ).joinToString("\n\n")
 
     private fun MemoryClaim.toClaimCandidateView(
         score: Double,

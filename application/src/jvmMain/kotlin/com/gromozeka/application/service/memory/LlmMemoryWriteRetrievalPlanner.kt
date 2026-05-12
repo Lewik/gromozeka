@@ -9,7 +9,6 @@ import com.gromozeka.domain.model.memory.MemoryPredicateCatalog
 import com.gromozeka.domain.model.memory.MemoryRetrievalBudget
 import com.gromozeka.domain.model.memory.MemoryRouteDecision
 import com.gromozeka.domain.model.memory.MemorySemanticType
-import com.gromozeka.domain.model.memory.MemorySource
 import com.gromozeka.domain.model.memory.MemoryTimeWindow
 import com.gromozeka.domain.model.memory.MemoryWriteRetrievalPlan
 import com.gromozeka.domain.model.memory.MemoryWriteRetrievalPlanner
@@ -115,25 +114,6 @@ class LlmMemoryWriteRetrievalPlanner(
         TARGET_MESSAGE source data:
         ${request.source.renderLatestTurn()}
     """.trimIndent()
-
-    private fun MemorySource.renderLatestTurn(): String {
-        val role = when (this) {
-            is MemorySource.ChatTurn -> speakerRole.name
-            is MemorySource.ToolOutput -> "TOOL"
-            is MemorySource.ImportedNote -> "IMPORT"
-            is MemorySource.ExternalRecord -> "EXTERNAL"
-        }
-
-        return "[${id.value}] $role\n${contentText.limitForPlannerPrompt()}"
-    }
-
-    private fun String.limitForPlannerPrompt(maxChars: Int = 8_000): String {
-        val trimmed = trim()
-        if (trimmed.length <= maxChars) {
-            return trimmed
-        }
-        return trimmed.take(maxChars) + "\n[truncated ${trimmed.length - maxChars} chars]"
-    }
 
     private fun extractJsonObject(rawText: String): String? {
         val fenced = Regex("```(?:json)?\\s*(\\{.*\\})\\s*```", setOf(RegexOption.DOT_MATCHES_ALL))

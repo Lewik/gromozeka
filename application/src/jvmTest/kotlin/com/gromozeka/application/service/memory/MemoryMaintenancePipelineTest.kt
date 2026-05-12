@@ -51,6 +51,7 @@ import com.gromozeka.domain.model.memory.MemoryWriteRetrievalPlan
 import com.gromozeka.domain.model.memory.NoteConsolidationResult
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -1805,7 +1806,7 @@ class MemoryMaintenancePipelineTest {
         assertTrue(result.retrievedHits.map { it.toTestItemRef() }.none { it.id == hydratorSource.id.value })
         assertTrue(prompt.contains("NoMemoryVerifier"))
         assertTrue(!prompt.contains("SourceHydrator"))
-        assertTrue(result.trace.searchSteps.any { it.stage == "selector" && it.rawCount == 2 && it.selectedCount == 1 })
+        assertTrue(result.trace.searchSteps.any { it.stage == "selector" && it.rawCount >= 2 && it.selectedCount == 1 })
         assertTrue(result.trace.selectorDecisions.any { it.selected && it.ref.id == verifierEpisode.id.value })
         assertTrue(result.trace.selectorDecisions.any { !it.selected && it.ref.id == hydratorEpisode.id.value })
     }
@@ -2018,6 +2019,98 @@ class MemoryMaintenancePipelineTest {
         assertTrue(capturedRefs.none { it == MemoryItemRef(MemoryItemRef.Type.CLAIM, ipadClaim.id.value) })
         assertTrue(capturedRefs.none { it == MemoryItemRef(MemoryItemRef.Type.NOTE, shelfLogNote.id.value) })
         assertTrue(result.trace.searchSteps.any { it.stage == "target_entities" && it.selectedCount == 1 })
+    }
+
+    @Test
+    fun runtimeReadLetsSelectorSeeMoreNoteCandidatesThanPlannerTopK() = runBlocking {
+        val atlasBridgeEntityId = MemoryEntity.Id("entity-atlasbridge")
+        val documentEntityId = MemoryEntity.Id("entity-atlasbridge-contract")
+        val nonGoalsSource = source(
+            "atlasbridge-nongoals-source",
+            "AtlasBridge does not define memory extraction, vector search, or mobile UI layout.",
+        )
+        val rolloutSource = source(
+            "atlasbridge-rollout-source",
+            "AtlasBridge rollout rules: Phase 1 uses snapshot replay, shadow mode compares deltas, and rollback disables live delta streaming.",
+        )
+        val nonGoalsNote = note(
+            id = "atlasbridge-nongoals-note",
+            title = "AtlasBridge non-goals",
+            summary = "AtlasBridge does not define memory extraction, vector search, or mobile UI layout.",
+            noteType = MemoryNote.Type.DIRECTION,
+            anchorEntityId = atlasBridgeEntityId,
+            entityRefs = listOf(
+                MemoryNote.EntityRef(atlasBridgeEntityId, MemoryNote.EntityRef.Role.PRIMARY),
+                MemoryNote.EntityRef(documentEntityId, MemoryNote.EntityRef.Role.MENTIONED),
+            ),
+            evidenceRefs = listOf(evidenceRef(nonGoalsSource.id.value, nonGoalsSource.contentText)),
+        )
+        val rolloutNote = note(
+            id = "atlasbridge-rollout-note",
+            title = "AtlasBridge rollout rules",
+            summary = "AtlasBridge rollout rules require snapshot replay first, shadow mode divergence checks, and rollback by disabling live delta streaming.",
+            noteType = MemoryNote.Type.PLAN,
+            anchorEntityId = atlasBridgeEntityId,
+            entityRefs = listOf(
+                MemoryNote.EntityRef(atlasBridgeEntityId, MemoryNote.EntityRef.Role.PRIMARY),
+                MemoryNote.EntityRef(documentEntityId, MemoryNote.EntityRef.Role.MENTIONED),
+            ),
+            evidenceRefs = listOf(evidenceRef(rolloutSource.id.value, rolloutSource.contentText)),
+        )
+        val store = InMemoryMemoryStore(
+            MemoryNamespaceSnapshot(
+                sources = listOf(nonGoalsSource, rolloutSource),
+                entities = listOf(
+                    entity(
+                        id = atlasBridgeEntityId,
+                        entityType = MemoryEntity.Type.PROJECT,
+                        canonicalName = "AtlasBridge",
+                        normalizedName = "atlasbridge",
+                    ),
+                    entity(
+                        id = documentEntityId,
+                        entityType = MemoryEntity.Type.DOCUMENT,
+                        canonicalName = "AtlasBridge Runtime Memory Contract",
+                        normalizedName = "atlasbridge runtime memory contract",
+                    ),
+                ),
+                notes = listOf(nonGoalsNote, rolloutNote),
+            )
+        )
+        val selector = CapturingReadSelector(
+            selectedRefs = listOf(MemoryItemRef(MemoryItemRef.Type.NOTE, rolloutNote.id.value))
+        )
+
+        val result = RuntimeMemoryReadPipeline(
+            store = store,
+            planner = FixedReadPlanner(
+                MemoryReadPlan(
+                    needMemory = true,
+                    answerMode = MemoryReadPlan.AnswerMode.FACTUAL,
+                    retrievalBudget = MemoryRetrievalBudget(notes = 1),
+                    retrievalRequests = listOf(
+                        MemoryReadPlan.RetrievalRequest(
+                            memoryType = MemorySemanticType.NOTE,
+                            why = "Retrieve rollout rules from the document digest.",
+                            query = "AtlasBridge rollout rules contract notes",
+                            topK = 1,
+                        )
+                    ),
+                )
+            ),
+            selector = selector,
+        ).read(memoryReadRequest("atlasbridge-rollout-read", "What are the AtlasBridge rollout rules?"))
+
+        val capturedRefs = selector.capturedRefs.toSet()
+        val retrievedNoteRefs = result.retrievedHits.map { it.toTestItemRef() }
+        val prompt = assertNotNull(result.runtimePrompt)
+
+        assertTrue(capturedRefs.contains(MemoryItemRef(MemoryItemRef.Type.NOTE, nonGoalsNote.id.value)))
+        assertTrue(capturedRefs.contains(MemoryItemRef(MemoryItemRef.Type.NOTE, rolloutNote.id.value)))
+        assertEquals(listOf(MemoryItemRef(MemoryItemRef.Type.NOTE, rolloutNote.id.value)), retrievedNoteRefs.filter { it.type == MemoryItemRef.Type.NOTE })
+        assertTrue(prompt.contains("snapshot replay"))
+        assertTrue(prompt.contains("rollback"))
+        assertTrue(!prompt.contains("mobile UI layout"))
     }
 
     @Test
@@ -2527,6 +2620,28 @@ class MemoryMaintenancePipelineTest {
         assertTrue(rendered.contains("\"overridden_by\":[{\"type\":\"claim\",\"id\":\"selector-active-export-claim\",\"status\":\"ACTIVE\""))
         assertTrue(rendered.contains("Do not select as current truth"))
         assertTrue(rendered.contains("\"lifecycle_state\":\"current\""))
+    }
+
+    @Test
+    fun readSelectorCandidateViewKeepsFullSourceText() {
+        val longSourceText = buildString {
+            appendLine("Source beginning")
+            append("x".repeat(1_200))
+            appendLine()
+            appendLine("selector-source-marker-after-old-limit")
+            append("Source end")
+        }
+        val longSource = source("selector-long-source", longSourceText, searchText = "short search paraphrase")
+
+        val rendered = MemoryReadSelectorCandidateRenderer.render(
+            hits = listOf(MemoryStore.SearchHit.SourceHit(longSource, score = 0.9)),
+            snapshot = MemoryNamespaceSnapshot(sources = listOf(longSource)),
+        )
+
+        assertTrue(rendered.contains("short search paraphrase"))
+        assertTrue(rendered.contains("selector-source-marker-after-old-limit"))
+        assertTrue(rendered.contains("source_text"))
+        assertFalse(rendered.contains("[truncated"))
     }
 
     @Test
@@ -3109,6 +3224,7 @@ private fun source(
     id: String = "source",
     text: String = "User prefers Toyota.",
     speakerRole: MemorySource.ActorRole = MemorySource.ActorRole.USER,
+    searchText: String? = text,
 ): MemorySource =
     MemorySource.ChatTurn(
         id = MemorySource.Id(id),
@@ -3118,7 +3234,7 @@ private fun source(
         sourceMessageId = Conversation.Message.Id("message-$id"),
         speakerRole = speakerRole,
         contentText = text,
-        searchText = text,
+        searchText = searchText,
         contentHash = "$id-hash",
         observedAt = EARLIER,
         createdAt = EARLIER,

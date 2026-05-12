@@ -182,7 +182,7 @@ class LlmMemoryClaimReconciler(
         - Return valid JSON only.
 
         TARGET_SOURCE:
-        ${request.source.contentText.limitForReconcilerPrompt()}
+        ${request.source.contentText.trim()}
 
         Candidate claims:
         ${claimCandidates.mapIndexed { index, claim -> claim.renderForReconciler(index) }.joinToString("\n")}
@@ -481,12 +481,6 @@ private val learnedPredicateStopWords = setOf(
 
 private fun MemoryPredicateDefinition.policyForReconcilerLog(): String =
     "cardinality=${cardinality.name},temporal=${temporalPolicy.name},conflict=${conflictPolicy.name}"
-
-private fun String.limitForReconcilerPrompt(maxChars: Int = 8_000): String {
-    val trimmed = trim()
-    if (trimmed.length <= maxChars) return trimmed
-    return trimmed.take(maxChars) + "\n[truncated ${trimmed.length - maxChars} chars]"
-}
 
 private fun String.oneLineForReconcilerMemoryLog(maxChars: Int): String {
     val normalized = replace('\n', ' ').replace(Regex("\\s+"), " ").trim()

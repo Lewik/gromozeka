@@ -7,7 +7,6 @@ import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.model.memory.DirectStructuredMemoryWriteRequest
 import com.gromozeka.domain.model.memory.MemoryRouteDecision
 import com.gromozeka.domain.model.memory.MemorySemanticType
-import com.gromozeka.domain.model.memory.MemorySource
 import com.gromozeka.domain.model.memory.MemorySourceUsagePolicy
 import com.gromozeka.domain.model.memory.MemoryWriteRouter
 import com.gromozeka.domain.service.AiRuntime
@@ -96,25 +95,6 @@ class LlmMemoryWriteRouter(
         TARGET_MESSAGE source data:
         ${request.source.renderLatestTurn()}
     """.trimIndent()
-
-    private fun MemorySource.renderLatestTurn(): String {
-        val role = when (this) {
-            is MemorySource.ChatTurn -> speakerRole.name
-            is MemorySource.ToolOutput -> "TOOL"
-            is MemorySource.ImportedNote -> "IMPORT"
-            is MemorySource.ExternalRecord -> "EXTERNAL"
-        }
-
-        return "[${id.value}] $role\n${contentText.limitForRouterPrompt()}"
-    }
-
-    private fun String.limitForRouterPrompt(maxChars: Int = 8_000): String {
-        val trimmed = trim()
-        if (trimmed.length <= maxChars) {
-            return trimmed
-        }
-        return trimmed.take(maxChars) + "\n[truncated ${trimmed.length - maxChars} chars]"
-    }
 
     private fun extractJsonObject(rawText: String): String? {
         val fenced = Regex("```(?:json)?\\s*(\\{.*\\})\\s*```", setOf(RegexOption.DOT_MATCHES_ALL))

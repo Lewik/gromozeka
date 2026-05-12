@@ -1,0 +1,100 @@
+{
+  "id": "large-document-note-ingestion",
+  "category": "document_memory",
+  "description": "A pasted architecture/Confluence-style document should be digested into note memory and recalled across sessions, not only kept as a raw source.",
+  "timeoutSeconds": 900,
+  "seedSessions": [
+    {
+      "id": "seed-a",
+      "turns": [
+        {
+          "text": "Memory ingestion source document. Treat the following as a pasted architecture page from Confluence, not as an immediate task.\n\nFile: confluence/AtlasBridge Runtime Memory Contract.md\n\n# AtlasBridge Runtime Memory Contract\n\n## Purpose\nAtlasBridge is the internal name for the runtime bridge that keeps long-running assistant conversations usable after reconnects. The bridge must preserve user-visible progress while avoiding duplicate side effects. The document is design context for future implementation work, not a request to implement anything right now.\n\n## Decisions\n1. Persisted assistant output is the source of truth. WebSocket delivery is only a projection of already accepted deltas.\n2. Deltas are numbered inside the runtime pipeline before they are written. The number is local to the assistant message and exists only to keep replay order deterministic.\n3. If writing a delta batch to storage fails, the run must fail loudly. Do not retry silently and do not pretend the stream is healthy.\n4. Client disconnect policy is explicit: DETACH keeps the server-side run alive, CANCEL stops model/tool work, and ASK is reserved for future UI behavior.\n\n## Rationale\nWe prefer durable replay over perfect stream recovery. Replaying the completed message from storage after reconnect is good enough for MVP and much simpler than resuming an arbitrary token stream. The bridge should optimize for debuggability first: every accepted batch should be visible in persistence before the client sees it.\n\n## Rollout rules\n- Phase 1 ships with snapshot replay only: on reconnect, send the current message state and continue with new deltas.\n- Phase 2 may add live stream resume, but only after snapshot replay is stable.\n- Shadow mode must compare persisted deltas with WebSocket deltas and report divergence.\n- Rollback rule: if divergence appears, disable live delta streaming and keep persisted replay enabled.\n\n## Non-goals\nAtlasBridge does not define memory extraction, vector search, or the mobile UI layout. Those belong to separate documents.",
+          "memoryWriteTraceExpectation": {
+            "routeDecisionIn": ["NOTE_WRITE", "MIXED"],
+            "materializedNotesMin": 1,
+            "materializedNotesMax": 5,
+            "materializedTasksMax": 0,
+            "containsAll": ["AtlasBridge", "snapshot replay", "delta"]
+          }
+        }
+      ]
+    }
+  ],
+  "recallSessions": [
+    {
+      "id": "recall-b",
+      "turns": [
+        {
+          "text": "What are the AtlasBridge rollout rules from the runtime memory contract? Keep it short.",
+          "answerExpectation": {
+            "containsAnyGroups": [
+              ["snapshot replay", "snapshot"],
+              ["shadow mode", "shadow"],
+              ["rollback", "disable live delta streaming"]
+            ]
+          },
+          "memoryTraceExpectation": {
+            "needMemory": true,
+            "injectedPromptPresent": true,
+            "selectedNotesMin": 1,
+            "selectedContainsAll": ["AtlasBridge", "snapshot"],
+            "requiredSelectedNotes": [
+              {
+                "typeIn": ["CONTEXT", "DIRECTION", "DECISION", "PLAN"],
+                "statusIn": ["ACTIVE"],
+                "containsAll": ["AtlasBridge", "snapshot", "rollback"],
+                "evidenceSourceSpeakerRoleIn": ["USER"]
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "expectedAfterSeeds": {
+    "activeClaimsMax": 4,
+    "notesMin": 1,
+    "notesMax": 5,
+    "tasksMax": 0,
+    "userSourcesMin": 1,
+    "requiredSources": [
+      {
+        "textContainsAll": ["AtlasBridge", "Runtime Memory Contract", "snapshot replay", "Rollback rule"],
+        "allowStructuredExtraction": true,
+        "allowRecall": true
+      }
+    ],
+    "requiredNotes": [
+      {
+        "typeIn": ["CONTEXT", "DIRECTION", "DECISION", "PLAN"],
+        "statusIn": ["ACTIVE"],
+        "containsAll": ["AtlasBridge", "snapshot", "rollback"],
+        "evidenceQuoteContainsAll": ["AtlasBridge"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      }
+    ],
+    "forbiddenTasks": [
+      {
+        "containsAll": ["AtlasBridge"]
+      }
+    ],
+    "allActiveClaimsEvidenceSpeakerRoleIn": ["USER"]
+  },
+  "expectedFinal": {
+    "activeClaimsMax": 4,
+    "notesMin": 1,
+    "notesMax": 5,
+    "tasksMax": 0,
+    "userSourcesMin": 2,
+    "requiredNotes": [
+      {
+        "typeIn": ["CONTEXT", "DIRECTION", "DECISION", "PLAN"],
+        "statusIn": ["ACTIVE"],
+        "containsAll": ["AtlasBridge", "snapshot", "rollback"],
+        "evidenceQuoteContainsAll": ["AtlasBridge"],
+        "evidenceSourceSpeakerRoleIn": ["USER"]
+      }
+    ],
+    "allActiveClaimsEvidenceSpeakerRoleIn": ["USER"]
+  }
+}

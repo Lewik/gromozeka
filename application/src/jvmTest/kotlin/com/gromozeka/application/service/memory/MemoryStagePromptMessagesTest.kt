@@ -63,9 +63,32 @@ class MemoryStagePromptMessagesTest {
         assertTrue("Context text." in contextTexts)
     }
 
+    @Test
+    fun sourceRenderingKeepsFullTargetSourceForMemoryStages() {
+        val conversationId = Conversation.Id("conversation")
+        val longText = buildString {
+            appendLine("start")
+            append("x".repeat(8_500))
+            appendLine()
+            appendLine("needle-after-eight-thousand")
+            append("end")
+        }
+
+        val rendered = source(
+            conversationId = conversationId,
+            sourceMessageId = Conversation.Message.Id("long-source"),
+            contentText = longText,
+        ).renderLatestTurn()
+
+        assertTrue("needle-after-eight-thousand" in rendered)
+        assertFalse("[truncated" in rendered)
+        assertTrue(rendered.endsWith(longText.trim()))
+    }
+
     private fun source(
         conversationId: Conversation.Id,
         sourceMessageId: Conversation.Message.Id,
+        contentText: String = "Remember this fact.",
     ): MemorySource =
         MemorySource.ChatTurn(
             id = MemorySource.Id("chat:${sourceMessageId.value}"),
@@ -74,7 +97,7 @@ class MemoryStagePromptMessagesTest {
             threadId = Conversation.Thread.Id("thread"),
             sourceMessageId = sourceMessageId,
             speakerRole = MemorySource.ActorRole.USER,
-            contentText = "Remember this fact.",
+            contentText = contentText,
             contentHash = "hash",
             observedAt = NOW,
             createdAt = NOW,

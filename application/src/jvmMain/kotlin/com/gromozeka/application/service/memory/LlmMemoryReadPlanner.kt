@@ -99,7 +99,7 @@ class LlmMemoryReadPlanner(
         $READ_TIME_RETRIEVAL_PLANNER_PROMPT
 
         TARGET_MESSAGE text:
-        ${request.targetMessageText().limitForMemoryPrompt(8_000)}
+        ${request.targetMessageText()}
     """.trimIndent()
 
     private suspend fun verifyNoMemoryDecision(
@@ -206,7 +206,7 @@ class LlmMemoryReadPlanner(
         If unsure, set needs_memory=true. False negatives are worse than a small extra recall.
 
         TARGET_MESSAGE text:
-        ${request.targetMessageText().limitForMemoryPrompt(8_000)}
+        ${request.targetMessageText()}
     """.trimIndent()
 
     @Serializable

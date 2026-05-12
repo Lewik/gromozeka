@@ -96,8 +96,16 @@ internal data class AiRuntimeCassetteSettings(
         }
 
         private fun defaultRootDirectory(): Path {
-            if (isTestMode()) return Path.of("server", "src", "test", "resources", "llm-cassettes")
+            if (isTestMode()) return resolveProjectRoot().resolve("server/src/test/resources/llm-cassettes")
             return determineGromozekaHome().resolve("llm-cassettes")
+        }
+
+        private fun resolveProjectRoot(): Path {
+            val cwd = Path.of("").toAbsolutePath().normalize()
+            if (cwd.resolve("settings.gradle.kts").exists()) return cwd
+            return cwd.parent
+                ?.takeIf { it.resolve("settings.gradle.kts").exists() }
+                ?: cwd
         }
 
         private fun isTestMode(): Boolean {

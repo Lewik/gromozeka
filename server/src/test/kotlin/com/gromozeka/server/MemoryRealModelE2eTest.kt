@@ -2709,20 +2709,20 @@ class MemoryRealModelE2eTest {
 
     private fun resolveCasesDirectory(): Path =
         Path.of(resolveProjectRoot())
-            .resolve("presentation")
+            .resolve("server")
             .resolve("src")
-            .resolve("jvmTest")
+            .resolve("test")
             .resolve("resources")
             .resolve("memory")
             .resolve("e2e-real-model-cases")
 
     private fun resolveProjectRoot(): String {
         val cwd = Path.of("").toAbsolutePath().normalize()
-        return if (cwd.name == "presentation") {
-            cwd.parent.absolutePathString()
-        } else {
-            cwd.absolutePathString()
-        }
+        if (cwd.resolve("settings.gradle.kts").exists()) return cwd.absolutePathString()
+        return cwd.parent
+            ?.takeIf { it.resolve("settings.gradle.kts").exists() }
+            ?.absolutePathString()
+            ?: cwd.absolutePathString()
     }
 
     private fun resolveSubscriptionConfigPath(): Path {

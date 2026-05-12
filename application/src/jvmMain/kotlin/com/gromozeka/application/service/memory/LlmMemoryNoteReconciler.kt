@@ -172,7 +172,7 @@ class LlmMemoryNoteReconciler(
         - Return valid JSON only.
 
         TARGET_SOURCE:
-        ${request.source.contentText.limitForMemoryPrompt(8_000)}
+        ${request.source.contentText.trim()}
 
         Candidate notes:
         ${noteCandidates.mapIndexed { index, note -> note.renderForNoteReconciler(index) }.joinToString("\n")}

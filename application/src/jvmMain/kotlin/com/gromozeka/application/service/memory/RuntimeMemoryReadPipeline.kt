@@ -193,11 +193,7 @@ class RuntimeMemoryReadPipeline(
                 ?: plan.retrievalBudget.limitFor(retrievalRequest.memoryType)
                 ?: 4
             val resultLimit = limit.coerceIn(1, 12)
-            val searchLimit = when (scope) {
-                MemoryStore.SearchScope.SOURCES -> (resultLimit + request.threadContext.messages.size + 4).coerceAtMost(50)
-                MemoryStore.SearchScope.CLAIMS -> (resultLimit * 3 + 4).coerceAtMost(50)
-                else -> resultLimit
-            }
+            val searchLimit = scope.selectorCandidateSearchLimit(resultLimit, request)
 
             val rawRequestHits = store.search(
                 MemoryStore.SearchRequest(
@@ -213,7 +209,6 @@ class RuntimeMemoryReadPipeline(
             val requestSourceSelection = currentThreadFilteredHits.applySourceRetrievalPolicyFor(retrievalRequest.memoryType)
             val requestHits = requestSourceSelection.hits
                 .prioritizeForReadRequest(retrievalRequest)
-                .take(resultLimit)
             hits += requestHits
             searchSteps += MemoryReadTrace.SearchStep(
                 stage = "retrieval:${retrievalRequest.memoryType.name}",
@@ -291,7 +286,7 @@ class RuntimeMemoryReadPipeline(
                     "droppedSourceIds=${rawSourceDeferral.droppedSources.joinToString("|") { it.source.id.value }}"
             }
         }
-        val budgetedHits = rawSourceDeferral.hits.enforceBudget(plan)
+        val budgetedHits = rawSourceDeferral.hits.enforceBudget(plan, expandForSelector = true)
         val selectorCandidateHits = budgetedHits
             .withActiveTypedSupportForSourceCandidates(snapshot)
             .withActiveTypedReplacementsForSourceCandidates(snapshot)
@@ -314,7 +309,7 @@ class RuntimeMemoryReadPipeline(
                     "restoredProfiles=${coreProfileSelection.addedHits.joinToString("|") { it.profile.id.value }}"
             }
         }
-        val selectedHitsBeforeSafety = coreProfileSelection.hits
+        val selectedHitsBeforeSafety = coreProfileSelection.hits.enforceBudget(plan)
         val selectorDecisions = selectionResult.decisions
             .filterNot { decision -> decision.ref in coreProfileSelection.addedRefs }
             .let { decisions -> decisions + coreProfileSelection.decisions }
@@ -557,7 +552,7 @@ object RuntimeMemoryPromptComposer {
             ${hits.renderNotes(includeEvidence = plan.shouldRenderEvidenceInPrompt())}
 
             Retrieved evidence:
-            ${hits.renderSources(includeEvidence = plan.shouldRenderEvidenceInPrompt())}
+            ${hits.renderSources(includeEvidence = plan.shouldRenderEvidenceInPrompt(), query = request.sourceFallbackSearchQuery(plan))}
 
             Retrieved entities:
             ${hits.renderEntities()}
@@ -687,6 +682,21 @@ private fun MemorySemanticType.toSearchScope(): MemoryStore.SearchScope? =
         MemorySemanticType.ENTITY -> MemoryStore.SearchScope.ENTITIES
         MemorySemanticType.EPISODE -> MemoryStore.SearchScope.EPISODES
     }
+
+private fun MemoryStore.SearchScope.selectorCandidateSearchLimit(
+    resultLimit: Int,
+    request: MemoryReadRequest,
+): Int =
+    when (this) {
+        MemoryStore.SearchScope.SOURCES -> (resultLimit + request.threadContext.messages.size + 4).coerceAtMost(50)
+        MemoryStore.SearchScope.CLAIMS,
+        MemoryStore.SearchScope.NOTES,
+        MemoryStore.SearchScope.TASKS,
+        MemoryStore.SearchScope.EPISODES,
+        -> resultLimit.expandedForSelectorCandidates()
+
+        else -> resultLimit
+    }.coerceAtLeast(resultLimit)
 
 private fun MemorySemanticType.defaultFilters(): MemoryStore.SearchFilters =
     when (this) {
@@ -838,7 +848,7 @@ private fun MemoryReadPlan.RetrievalRequest.searchQuery(
 private fun MemoryReadPlan.shouldTrySourceFallback(hits: List<MemoryStore.SearchHit>): Boolean =
     needMemory &&
         retrievalRequests.none { it.memoryType == MemorySemanticType.SOURCE } &&
-        hits.none { it.isAnswerCandidateForRecall() }
+        (requireEvidenceFallback || answerMode == MemoryReadPlan.AnswerMode.RATIONALE || hits.none { it.isAnswerCandidateForRecall() })
 
 private fun MemoryStore.SearchHit.isAnswerCandidateForRecall(): Boolean =
     when (this) {
@@ -900,7 +910,10 @@ private fun com.gromozeka.domain.model.memory.MemoryRetrievalBudget.tasksLimit(d
 
 private fun com.gromozeka.domain.model.memory.MemoryRetrievalBudget.profilesLimit(): Int = 2
 
-private fun List<MemoryStore.SearchHit>.enforceBudget(plan: MemoryReadPlan): List<MemoryStore.SearchHit> {
+private fun List<MemoryStore.SearchHit>.enforceBudget(
+    plan: MemoryReadPlan,
+    expandForSelector: Boolean = false,
+): List<MemoryStore.SearchHit> {
     val profiles = mutableListOf<MemoryStore.SearchHit.ProfileHit>()
     val claims = mutableListOf<MemoryStore.SearchHit.ClaimHit>()
     val notes = mutableListOf<MemoryStore.SearchHit.NoteHit>()
@@ -924,14 +937,20 @@ private fun List<MemoryStore.SearchHit>.enforceBudget(plan: MemoryReadPlan): Lis
 
     return buildList {
         addAll(profiles.take(plan.retrievalBudget.profilesLimit()))
-        addAll(claims.take(plan.retrievalBudget.claims.takeIf { it > 0 } ?: 6))
-        addAll(notes.take(plan.retrievalBudget.notes.takeIf { it > 0 } ?: 4))
-        addAll(tasks.take(plan.retrievalBudget.tasks.takeIf { it > 0 } ?: 3))
+        addAll(claims.take((plan.retrievalBudget.claims.takeIf { it > 0 } ?: 6).maybeExpandForSelector(expandForSelector)))
+        addAll(notes.take((plan.retrievalBudget.notes.takeIf { it > 0 } ?: 4).maybeExpandForSelector(expandForSelector)))
+        addAll(tasks.take((plan.retrievalBudget.tasks.takeIf { it > 0 } ?: 3).maybeExpandForSelector(expandForSelector)))
         addAll(sources.take(plan.retrievalBudget.sources.takeIf { it > 0 } ?: 3))
-        addAll(episodes.take(plan.retrievalBudget.episodes.takeIf { it > 0 } ?: 2))
+        addAll(episodes.take((plan.retrievalBudget.episodes.takeIf { it > 0 } ?: 2).maybeExpandForSelector(expandForSelector)))
         addAll(entities.take(4))
     }
 }
+
+private fun Int.maybeExpandForSelector(expand: Boolean): Int =
+    if (expand) expandedForSelectorCandidates() else this
+
+private fun Int.expandedForSelectorCandidates(): Int =
+    (this * 4 + 4).coerceAtMost(50)
 
 private fun List<MemoryStore.SearchHit>.keepPlannerRequestedProfiles(
     plan: MemoryReadPlan,
@@ -1035,7 +1054,7 @@ private fun List<MemoryStore.SearchHit>.renderNotes(includeEvidence: Boolean): S
         }
         .ifBlank { "none" }
 
-private fun List<MemoryStore.SearchHit>.renderSources(includeEvidence: Boolean): String {
+private fun List<MemoryStore.SearchHit>.renderSources(includeEvidence: Boolean, query: String): String {
     val selectedSources = filterIsInstance<MemoryStore.SearchHit.SourceHit>()
     if (selectedSources.isEmpty() && !includeEvidence) {
         return "not requested for this answer mode"
@@ -1046,8 +1065,59 @@ private fun List<MemoryStore.SearchHit>.renderSources(includeEvidence: Boolean):
         useCase = if (includeEvidence) MemorySourceRetrievalUseCase.READ_EVIDENCE else MemorySourceRetrievalUseCase.READ_RETRIEVAL,
     ).hits
         .filterIsInstance<MemoryStore.SearchHit.SourceHit>()
-        .joinToString("\n") { "- source ${it.source.id.value} [${it.source.sourceLabelForMemoryPrompt()}]: ${it.source.contentText.limitForMemoryPrompt(1_000)}" }
+        .joinToString("\n") {
+            "- source ${it.source.id.value} [${it.source.sourceLabelForMemoryPrompt()}]: ${it.source.contentText.queryFocusedExcerptForMemoryPrompt(query)}"
+        }
         .ifBlank { "none" }
+}
+
+private fun String.queryFocusedExcerptForMemoryPrompt(query: String, maxChars: Int = 4_000): String {
+    val text = trim()
+    if (text.length <= maxChars) return text
+
+    val terms = query
+        .split(Regex("[^\\p{L}\\p{N}_-]+"))
+        .map { it.trim() }
+        .filter { it.length >= 4 }
+        .distinctBy { it.lowercase() }
+        .take(16)
+    val windows = terms
+        .mapNotNull { term -> text.indexOf(term, ignoreCase = true).takeIf { it >= 0 } }
+        .map { index ->
+            val start = (index - 500).coerceAtLeast(0)
+            val end = (index + 900).coerceAtMost(text.length)
+            start to end
+        }
+        .sortedBy { it.first }
+        .fold(mutableListOf<Pair<Int, Int>>()) { acc, window ->
+            val previous = acc.lastOrNull()
+            if (previous != null && window.first <= previous.second + 120) {
+                acc[acc.lastIndex] = previous.first to maxOf(previous.second, window.second)
+            } else {
+                acc += window
+            }
+            acc
+        }
+
+    if (windows.isEmpty()) return text.limitForMemoryPrompt(maxChars)
+
+    val head = text.take(500)
+    val snippets = mutableListOf<String>()
+    var used = head.length
+    for ((start, end) in windows) {
+        val prefix = if (start > 0) "..." else ""
+        val suffix = if (end < text.length) "..." else ""
+        val snippet = "$prefix${text.substring(start, end).trim()}$suffix"
+        if (used + snippet.length + 32 > maxChars) break
+        snippets += snippet
+        used += snippet.length + 32
+    }
+
+    return buildList {
+        add(head)
+        add("...[matching excerpts]...")
+        addAll(snippets)
+    }.joinToString("\n")
 }
 
 private fun List<MemoryStore.SearchHit>.renderEntities(): String =

@@ -36,7 +36,7 @@ class AiRuntimeCassetteProxyTest {
         ) {
             val settings = AiRuntimeCassetteSettings.fromSystemProperties()
 
-            assertEquals(Path.of("server", "src", "test", "resources", "llm-cassettes"), settings.rootDirectory)
+            assertEquals(projectRoot().resolve("server/src/test/resources/llm-cassettes"), settings.rootDirectory)
             assertEquals(AiRuntimeCassetteMode.REPLAY_ONLY, settings.mode)
         }
     }
@@ -454,6 +454,14 @@ class AiRuntimeCassetteProxyTest {
                     }
                 }
             }
+        }
+
+        private fun projectRoot(): Path {
+            val cwd = Path.of("").toAbsolutePath().normalize()
+            if (cwd.resolve("settings.gradle.kts").toFile().exists()) return cwd
+            return cwd.parent
+                ?.takeIf { it.resolve("settings.gradle.kts").toFile().exists() }
+                ?: cwd
         }
     }
 }

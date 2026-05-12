@@ -356,7 +356,7 @@ private fun String.toMemoryEntityType(): MemoryEntity.Type =
         else -> MemoryEntity.Type.OTHER
     }
 
-internal fun MemorySource.renderLatestTurn(maxChars: Int = 8_000): String {
+internal fun MemorySource.renderLatestTurn(): String {
     val role = when (this) {
         is MemorySource.ChatTurn -> speakerRole.name
         is MemorySource.ToolOutput -> "TOOL"
@@ -364,7 +364,7 @@ internal fun MemorySource.renderLatestTurn(maxChars: Int = 8_000): String {
         is MemorySource.ExternalRecord -> "EXTERNAL"
     }
 
-    return "[${id.value}] $role\n${contentText.limitForMemoryPrompt(maxChars)}"
+    return "[${id.value}] $role\n${contentText.trim()}"
 }
 
 private fun List<MemoryStore.SearchHit>.renderCandidateEntities(): String {

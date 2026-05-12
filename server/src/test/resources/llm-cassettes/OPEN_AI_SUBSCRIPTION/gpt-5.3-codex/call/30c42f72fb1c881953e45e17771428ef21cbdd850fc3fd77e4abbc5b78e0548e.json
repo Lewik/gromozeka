@@ -1,0 +1,339 @@
+{
+    "version": 1,
+    "hash": "30c42f72fb1c881953e45e17771428ef21cbdd850fc3fd77e4abbc5b78e0548e",
+    "provider": "OPEN_AI_SUBSCRIPTION",
+    "model": "gpt-5.3-codex",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>/projects/handoff-data-model-document-ingestion",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "Memory ingestion source document. Treat the following as a pasted handoff data-model document, not as an immediate task.\n\nFile: agent_memory_handoff/02_data_model.md\n\n# 02. Data Model\n\n## 1. Общая идея\n\nМодель данных в `v3` должна одновременно поддерживать:\n\n- typed memory\n- lineage\n- temporal truth\n- reconcilable updates\n- richer semantic context\n- lifecycle / retention\n- repairability\n\nПоэтому модель делится на:\n\n- **evidence layer** — `Source`\n- **graph-shaped semantic layer** — `Entity`, `Claim`\n- **rich intermediate layer** — `Note`\n- **projections / operational memory** — `Profile`, `Task`, `Episode`\n- **audit layer** — `MemoryRun`\n\nПлюс у `v3` есть два cross-cutting concern:\n\n- `scope`\n- `retrieval lifecycle`\n\n## 2. Общие cross-cutting поля\n\n### 2.1 `scope_text` и `scope_json`\n\nПочти любой memory item, кроме сырого `Source`, выигрывает от двухслойного scope:\n\n- `scope_text`\n  - краткое человеческое описание области применения\n- `scope_json`\n  - машинно-читаемый envelope\n\nРекомендуемый shape:\n\n```json\n{\n  \"scope_kind\": \"global | project | conversation | entity | environment | document\",\n  \"project_id\": null,\n  \"conversation_id\": null,\n  \"subject_entity_id\": null,\n  \"environment\": null,\n  \"modality\": \"explicit | inferred | summarized | imported\",\n  \"audience\": \"runtime | memory_worker | user_model\"\n}\n```\n\n`scope_text` нужен для explainability.\n`scope_json` нужен для retrieval и reconciliation.\n\n### 2.2 `truth status` и `retrieval_state`\n\nЭто разные оси и не надо их смешивать.\n\n`truth status` отвечает:\n- актуально ли знание\n- вытеснено ли\n- опровергнуто ли\n- закончилось ли его временное окно\n\n`retrieval_state` отвечает:\n- как часто item должен участвовать в поиске\n- находится ли он в hot / warm / cold памяти\n- архивирован ли он\n- скрыт ли из обычного retrieval\n\nОбщий паттерн для retrieval lifecycle:\n- `active`\n- `warm`\n- `cold`\n- `archived`\n- `deleted`\n\n### 2.3 Usage fields\n\nДля notes / claims / tasks / episodes полезны:\n- `use_count`\n- `last_used_at`\n- `last_validated_at`\n\nЭто нужно для:\n- maturity\n- retention\n- repair\n\n## 3. Главные сущности\n\n### 3.1 `Source`\n\nСырой источник знания.\n\nНазначение:\n- хранить chat turns, tool outputs, imported notes, external records\n- быть первичным evidence layer\n- служить опорой для re-check и explainability\n\nРекомендуемые поля:\n- `source_id: uuid`\n- `namespace_id: text`\n- `source_type: chat_turn | tool_output | imported_note | external_record`\n- `conversation_id: text | null`\n- `turn_id: text | null`\n- `speaker_role: user | assistant | tool | system | external`\n- `author_label: text | null`\n- `content_text: text`\n- `content_hash: text`\n- `observed_at: timestamptz`\n- `created_at: timestamptz`\n- `metadata_json: jsonb`\n- `retention_class: standard | short_lived | sensitive | imported`\n- `expires_at: timestamptz | null`\n- `deleted_at: timestamptz | null`\n- `embedding: vector | null`\n\nИнварианты:\n- source не должен silently изменяться\n- `observed_at` хранится отдельно от ingestion time\n- `content_hash` полезен для dedupe\n- delete policy должна быть явной\n\n---\n\n### 3.2 `Entity`\n\nКанонический узел памяти.\n\nНазначение:\n- объединять разные упоминания одного и того же объекта\n- быть якорем для claims/tasks/notes/episodes\n- поддерживать aliases и merge\n\nРекомендуемые поля:\n- `entity_id: uuid`\n- `namespace_id`\n- `entity_type: person | agent | organization | project | repo | file | technology | product | location | concept | document | conversation | service`\n- `canonical_name: text`\n- `normalized_name: text`\n- `summary: text | null`\n- `status: active | merged | deleted`\n- `merged_into_entity_id: uuid | null`\n- `attributes_json: jsonb`\n- `first_seen_at: timestamptz`\n- `last_seen_at: timestamptz`\n- `created_at: timestamptz`\n- `updated_at: timestamptz`\n\nОтдельная таблица `entity_aliases`:\n- `alias_id`\n- `entity_id`\n- `alias_text`\n- `alias_normalized`\n- `source_id`\n- `confidence`\n- `created_at`\n\nИнварианты:\n- merge не удаляет историю\n- alias всегда указывает на текущий canonical entity\n- ошибочные merge должны быть обратимы через audit trail\n\n---\n\n### 3.3 `PredicateCatalog`\n\nЭто не memory item, а конфиг для reconciliation.\n\nПочему нужен:\n- у разных предикатов разная cardinality\n- у разных предикатов разная temporal semantics\n- одни факты заменяются, другие сосуществуют\n- часть facts идет в profile projection\n\nРекомендуемые поля:\n- `predicate: text primary key`\n- `description: text`\n- `subject_type: text`\n- `object_kind: entity | string | number | boolean | json`\n- `cardinality: single | multi`\n- `temporal_policy: atemporal | time_scoped | status_like`\n- `conflict_policy: replace | coexist | range_split`\n- `profile_sync: boolean`\n- `task_sync: boolean`\n- `default_importance: smallint`\n- `active: boolean`\n\nПримеры:\n- `preferred_name`\n- `speaks_language`\n- `prefers_response_language`\n- `prefers_code_comment_language`\n- `works_with`\n- `has_goal`\n- `works_on_project`\n- `uses_database`\n- `has_constraint`\n\n---\n\n### 3.4 `Note`\n\nПромежуточный semantic memory fragment.\n\nЭто:\n- не source\n- не final claim\n- не chain-of-thought\n\n`Note` нужен для вещей, которые:\n- уже важны\n- полезны для retrieval\n- но еще не должны быть зацементированы как hard fact\n\nТипичные кейсы:\n- design direction\n- decision rationale\n- evolving plans\n- hypotheses\n- lessons / tactics / patterns\n- doc digests\n- contextual framing\n\nРекомендуемые поля:\n- `note_id: uuid`\n- `namespace_id`\n- `note_type: decision | direction | hypothesis | plan | lesson | doc_digest | context`\n- `title: text`\n- `summary: text`\n- `scope_text: text | null`\n- `scope_json: jsonb`\n- `status: active | superseded | retracted | resolved | stale | candidate`\n- `retrieval_state: active | warm | cold | archived | deleted`\n- `maturity_state: fresh | stabilizing | mature | consolidated`\n- `maturity_score: numeric(4,3)`\n- `anchor_entity_id: uuid | null`\n- `keywords_json: jsonb`\n- `tags_json: jsonb`\n- `candidate_claims_json: jsonb`\n- `metadata_json: jsonb`\n- `confidence: numeric(4,3)`\n- `importance: smallint`\n- `valid_from: timestamptz | null`\n- `valid_to: timestamptz | null`\n- `supersedes_note_id: uuid | null`\n- `created_from_run_id: uuid | null`\n- `created_at: timestamptz`\n- `updated_at: timestamptz`\n- `embedding: vector | null`\n- `use_count: integer`\n- `last_used_at: timestamptz | null`\n- `last_validated_at: timestamptz | null`\n- `evidence_count: integer`\n- `archived_at: timestamptz | null`\n\nДополнительные таблицы:\n\n#### `note_entities`\n- `note_id`\n- `entity_id`\n- `entity_role: primary | secondary | mentioned | owner | subject`\n\n#### `note_sources`\n- `note_id`\n- `source_id`\n- `support_type: direct | summarized | imported`\n- `evidence_span`\n- `evidence_quote`\n- `support_confidence`\n\n#### `note_links`\n- `from_note_id`\n- `to_note_id`\n- `link_type: supports | contradicts | refines | related | supersedes | derived_from`\n- `link_weight`\n\nИнварианты `Note`:\n- одна note = один semantic fragment\n- note должна быть понятна без исходного чата\n- note не дублирует source без added value\n- `candidate_claims_json` — только hints\n- note может жить долго без превращения в claim, если полезен для retrieval\n\nПример:\n\n```json\n{\n  \"note_type\": \"decision\",\n  \"title\": \"Use Postgres as memory source of truth\",\n  \"summary\": \"The current direction is to keep Postgres with pgvector as the main memory store because it keeps structured memory, retrieval metadata, and transactions together. Neo4j is deferred until traversal-heavy use cases become core.\",\n  \"scope_text\": \"Agent memory layer for the current product iteration\",\n  \"scope_json\": {\n    \"scope_kind\": \"project\",\n    \"project_id\": \"agent_memory\",\n    \"modality\": \"explicit\"\n  },\n  \"status\": \"active\",\n  \"retrieval_state\": \"active\",\n  \"maturity_state\": \"stabilizing\",\n  \"maturity_score\": 0.62,\n  \"confidence\": 0.88,\n  \"importance\": 8\n}\n```\n\n---\n\n### 3.5 `Claim`\n\nАтомарный факт или relation edge.\n\nЭто ключевая таблица для:\n- точных factual answers\n- predicate-based reconciliation\n- explainable retrieval\n\nРекомендуемые поля:\n- `claim_id: uuid`\n- `namespace_id`\n- `subject_entity_id: uuid`\n- `predicate: text`\n- `object_entity_id: uuid | null`\n- `object_value_json: jsonb | null`\n- `normalized_text: text`\n- `context_text: text | null`\n- `scope_json: jsonb`\n- `qualifiers_json: jsonb`\n- `confidence: numeric(4,3)`\n- `importance: smallint`\n- `status: active | superseded | retracted | expired | candidate`\n- `retrieval_state: active | warm | cold | archived | deleted`\n- `valid_from: timestamptz | null`\n- `valid_to: timestamptz | null`\n- `origin_note_id: uuid | null`\n- `first_seen_at: timestamptz`\n- `last_seen_at: timestamptz`\n- `supersedes_claim_id: uuid | null`\n- `retracted_by_claim_id: uuid | null`\n- `created_from_run_id: uuid | null`\n- `created_at: timestamptz`\n- `updated_at: timestamptz`\n- `embedding: vector | null`\n- `use_count: integer`\n- `last_used_at: timestamptz | null`\n- `last_validated_at: timestamptz | null`\n- `archived_at: timestamptz | null`\n\nОтдельная таблица `claim_sources`:\n- `claim_id`\n- `source_id`\n- `support_type: direct | inferred | imported | derived_from_note`\n- `evidence_span`\n- `evidence_quote`\n- `support_confidence`\n\nИнварианты:\n- один claim = одно predicate application\n- claim должен иметь смысл без исходного чата\n- explicit statement > inference\n- relative time должен быть нормализован\n- если смысл еще слишком мягкий, лучше `Note`, чем плохой `Claim`\n\n---\n\n### 3.6 `Profile`\n\nКомпактная always-in-context проекция.\n\nЭто не source of truth, а projection layer поверх:\n- explicit user instructions\n- stable claims\n- selected long-lived context\n\nРекомендуемые поля:\n- `profile_id: uuid`\n- `namespace_id`\n- `owner_entity_id: uuid`\n- `profile_json: jsonb`\n- `profile_text: text`\n- `version: bigint`\n- `updated_from_run_id: uuid | null`\n- `last_compacted_at: timestamptz | null`\n- `created_at`\n- `updated_at`\n\nРекомендуемая структура:\n\n```json\n{\n  \"preferred_name\": null,\n  \"languages\": [],\n  \"timezone\": null,\n  \"response_preferences\": {\n    \"response_language\": null,\n    \"tone\": null,\n    \"detail_level\": null,\n    \"code_comment_language\": null\n  },\n  \"expertise\": [],\n  \"stable_preferences\": [],\n  \"constraints\": [],\n  \"current_goals\": [],\n  \"soft_signals\": []\n}\n```\n\nИнварианты:\n- profile должен быть коротким\n- explicit facts важнее inference\n- спорные facts лучше оставлять в claim/note, а не тащить в profile\n- profile должен быть пересобираем\n\n---\n\n### 3.7 `Task`\n\nOperational memory про будущее действие.\n\nЗадача нужна только когда реально требуется future action.\n\nРекомендуемые поля:\n- `task_id: uuid`\n- `namespace_id`\n- `owner_entity_id: uuid | null`\n- `assignee_entity_id: uuid | null`\n- `title: text`\n- `description: text | null`\n- `status: open | in_progress | blocked | done | cancelled`\n- `priority: low | normal | high`\n- `due_at: timestamptz | null`\n- `scope_json: jsonb`\n- `acceptance_criteria_json: jsonb`\n- `blockers_json: jsonb`\n- `related_entity_ids_json: jsonb`\n- `origin_note_id: uuid | null`\n- `created_from_run_id: uuid | null`\n- `confidence: numeric(4,3)`\n- `retrieval_state: active | warm | cold | archived | deleted`\n- `created_at`\n- `updated_at`\n- `closed_at`\n- `use_count`\n- `last_used_at`\n- `archived_at`\n\nОтдельная таблица `task_sources`:\n- `task_id`\n- `source_id`\n- `support_type: direct | derived_from_note | imported`\n- `evidence_span`\n- `evidence_quote`\n- `support_confidence`\n\nИнварианты:\n- plain question != task\n- request != commitment\n- один task = одно понятное обязательство\n- status должен обновляться, а не плодить дубликаты\n\n---\n\n### 3.8 `Episode`\n\nОпциональный тип памяти для переносимого опыта.\n\nНужен не в MVP, а позже — когда хочется хранить:\n- successful tactics\n- failure patterns\n- reusable lessons\n\nРекомендуемые поля:\n- `episode_id`\n- `namespace_id`\n- `owner_entity_id`\n- `situation`\n- `action`\n- `result`\n- `lesson`\n- `tags_json`\n- `success_score`\n- `origin_note_id`\n- `created_from_run_id`\n- `source_refs_json`\n- `retrieval_state`\n- `created_at`\n- `updated_at`\n- `embedding`\n- `use_count`\n- `last_used_at`\n- `archived_at`\n\nИнварианты:\n- не хранить raw chain-of-thought\n- episode — это lesson, а не полный reasoning trace\n\n---\n\n### 3.9 `MemoryRun`\n\nAudit trail и debug слой.\n\nНужен, чтобы видеть:\n- какой prompt сработал\n- на какой модели\n- что именно было retrieved\n- какой budget был выделен\n- какие ops были предложены\n- какие ops реально применились\n- где pipeline сломался\n\nРекомендуемые поля:\n- `run_id`\n- `namespace_id`\n- `run_type: route | retrieve_update | canonicalize | construct_notes | reconcile_notes | extract_claims | reconcile_claims | update_profile | update_tasks | consolidate_notes | repair_memory | apply_retention | read_plan | compose_answer | compact`\n- `trigger_mode: hot_path | background | manual | slow_path`\n- `source_ids_json`\n- `retrieved_item_ids_json`\n- `retrieval_budget_json`\n- `prompt_name`\n- `prompt_version`\n- `model_name`\n- `input_hash`\n- `output_json`\n- `applied_ops_json`\n- `repair_actions_json`\n- `latency_ms`\n- `token_input`\n- `token_output`\n- `status: success | failed | partial`\n- `error_text`\n- `created_at`\n\nИнварианты:\n- run log не должен исчезать silently\n- `input_hash` полезен для идемпотентности и retry safety\n\n## 4. Почему `Note` не заменяет `Claim`\n\nПотому что у них разная работа.\n\n### `Claim`\nНужен для:\n- точных factual answers\n- reconciliation через predicate rules\n- profile updates\n- time-aware status answers\n\n### `Note`\nНужен для:\n- richer retrieval\n- decision history\n- rationale\n- partial or evolving meaning\n- later consolidation\n\nЕсли хранить все как `Claim`, получится ложная точность.\nЕсли хранить все как `Note`, получится слишком мягкая память.\n\n## 5. Note maturity\n\n`Note` нельзя оставлять без модели зрелости.\n\nРекомендуемый паттерн:\n- `fresh`\n- `stabilizing`\n- `mature`\n- `consolidated`\n\nЧто может повышать maturity:\n- note использовался в retrieval\n- note поддержан несколькими sources\n- note пережил время без supersede\n- note покрывает recurring rationale questions\n\nЧто может понижать / обнулять:\n- contradiction\n- supersede\n- scope drift\n- long-term disuse\n\n## 6. Retention / forgetting\n\n`v3` требует явной retention policy.\n\nМинимум:\n- low-use notes можно переводить в `cold`\n- old resolved items — в `archived`\n- sensitive source data — soft/hard delete по request\n- historical claims могут оставаться explainable, но редко участвовать в top retrieval\n\nОтдельно полезно хранить:\n- `retention_class`\n- `expires_at`\n- `deleted_at`\n- `archived_at`\n\n## 7. Recommended field descriptions для schema / Pydantic\n\n### Для `Note`\n- `summary`: \"Self-contained semantic fragment. Keep uncertainty explicit and avoid pretending a provisional direction is a hard fact.\"\n- `scope_json`: \"Machine-readable scope boundaries. Use this to prevent over-generalization across projects, environments, or conversations.\"\n- `maturity_score`: \"How stable and reusable the note appears for later consolidation or repeated retrieval.\"\n\n### Для `Claim`\n- `normalized_text`: \"Stand-alone factual statement that can be shown without the original chat.\"\n- `scope_json`: \"Machine-readable scope and modality for conflict resolution and retrieval filtering.\"\n- `retrieval_state`: \"Search temperature, distinct from truth status.\"\n\n### Для `Task`\n- `acceptance_criteria_json`: \"Observable conditions for task completion.\"\n- `scope_json`: \"What this task applies to and where it should not leak.\"\n\n### Для `Profile`\n- `soft_signals`: \"Weakly inferred stable tendencies. Keep them low confidence or omit them.\"\n\n## 8. Модель данных в одной строке\n\n- `Source` = что было сказано / увидено\n- `Entity` = кто/что это вообще\n- `Note` = что уже важно и полезно, но еще не хочется цементировать как факт\n- `Claim` = что мы считаем нормализованным фактом\n- `Profile` = компактная проекция устойчивого контекста\n- `Task` = что должно быть сделано\n- `Episode` = чему система научилась\n- `MemoryRun` = как именно память обновлялась\n",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            },
+            {
+                "content": [
+                    {
+                        "call": {
+                            "input": {
+                                "mode": "automatic_hot_path",
+                                "target": "previous_user_message",
+                                "target_message_id": "<uuid>"
+                            },
+                            "name": "memory_remember"
+                        },
+                        "id": "<id>",
+                        "state": "COMPLETE",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolCall"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "ASSISTANT"
+            },
+            {
+                "content": [
+                    {
+                        "isError": false,
+                        "result": [
+                            {
+                                "content": "{\"status\":\"completed\",\"decision\":\"NOTE_WRITE\",\"memory_types\":[\"NOTE\"],\"salience\":0.9,\"reason\":\"TARGET_MESSAGE is a reusable design/specification digest with stable conceptual decisions and schema structure, best stored as note-level memory rather than isolated atomic claims.\",\"source_id\":\"chat:<0>\",\"counts\":{\"predicate_definitions\":0,\"sources\":0,\"runs\":1,\"entities\":10,\"claims\":0,\"notes\":4,\"tasks\":0,\"profiles\":0,\"episodes\":0},\"runs\":[{\"id\":\"hot-path:run:<0>\",\"type\":\"RECONCILE_NOTES\",\"summary\":\"Direct structured write applied: notes=4, claims=0, tasks=0, entities=10; noop ops: notes=0, claims=0, tasks=0\"}],\"claims\":[],\"notes\":[{\"id\":\"hot-path:note:<0>\",\"type\":\"DOC_DIGEST\",\"status\":\"ACTIVE\",\"title\":\"v3 memory model data architecture and layer boundaries\",\"summary\":\"The v3 memory model is defined as a layered architecture that combines evidence, semantic graph, intermediate note memory, operational projections, and audit logging to support typed memory, lineage, temporal truth, reconciliation, retention, and repairability.\"},{\"id\":\"hot-path:note:<1>\",\"type\":\"DIRECTION\",\"status\":\"ACTIVE\",\"title\":\"Cross-cutting separation of truth status and retrieval lifecycle\",\"summary\":\"The model explicitly separates factual validity from retrieval temperature, with truth status handling correctness over time and retrieval_state controlling participation in search tiers (active, warm, cold, archived, deleted).\"},{\"id\":\"hot-path:note:<2>\",\"type\":\"DECISION\",\"status\":\"ACTIVE\",\"title\":\"Note and Claim serve complementary roles to avoid false precision\",\"summary\":\"The specification defines Note for evolving or rationale-rich context and Claim for normalized atomic facts; using only claims causes false precision, while using only notes makes memory too soft.\"},{\"id\":\"hot-path:note:<3>\",\"type\":\"PLAN\",\"status\":\"ACTIVE\",\"title\":\"Retention and maturity are explicit operational mechanisms in v3\",\"summary\":\"The model requires explicit retention policy and note maturity tracking, including lifecycle demotion/archiving, sensitivity-driven deletion windows, and maturity changes based on reuse, corroboration, contradiction, and drift.\"}],\"tasks\":[],\"entities\":[{\"id\":\"entity:<0>\",\"type\":\"DOCUMENT\",\"name\":\"agent_memory_handoff/02_data_model.md\"},{\"id\":\"entity:<1>\",\"type\":\"PROJECT\",\"name\":\"v3 memory model\"},{\"id\":\"entity:<2>\",\"type\":\"CONCEPT\",\"name\":\"Source\"},{\"id\":\"entity:<3>\",\"type\":\"CONCEPT\",\"name\":\"Entity\"},{\"id\":\"entity:<4>\",\"type\":\"CONCEPT\",\"name\":\"Claim\"},{\"id\":\"entity:<5>\",\"type\":\"CONCEPT\",\"name\":\"Note\"},{\"id\":\"entity:<6>\",\"type\":\"CONCEPT\",\"name\":\"Profile\"},{\"id\":\"entity:<7>\",\"type\":\"CONCEPT\",\"name\":\"Task\"},{\"id\":\"entity:<8>\",\"type\":\"CONCEPT\",\"name\":\"Episode\"},{\"id\":\"entity:<9>\",\"type\":\"CONCEPT\",\"name\":\"MemoryRun\"}]}",
+                                "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult.Data.Text"
+                            }
+                        ],
+                        "state": "COMPLETE",
+                        "toolName": "memory_remember",
+                        "toolUseId": "tool-call",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            },
+            {
+                "content": [
+                    {
+                        "call": {
+                            "input": {
+                                "mode": "automatic_runtime_recall",
+                                "target": "previous_user_message",
+                                "target_message_id": "<uuid>"
+                            },
+                            "name": "memory_recall"
+                        },
+                        "id": "<id>",
+                        "state": "COMPLETE",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolCall"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "ASSISTANT"
+            },
+            {
+                "content": [
+                    {
+                        "isError": false,
+                        "result": [
+                            {
+                                "content": "{\"status\":\"completed\",\"need_memory\":false,\"answer_mode\":\"FACTUAL\",\"retrieved_count\":0,\"usage_guidance\":\"Selected memory is the strongest available remembered context for the target message. Use it unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message. Do not replace selected memory with guesses or general defaults. For exact quote, exact wording, source, or when-said questions, prefer complete source text from memory_context over shorter evidence excerpts.\",\"memory_context\":\"No relevant persisted memory was retrieved for the target message.\",\"selected_refs\":[],\"selector_decisions\":[]}",
+                                "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult.Data.Text"
+                            }
+                        ],
+                        "state": "COMPLETE",
+                        "toolName": "memory_recall",
+                        "toolUseId": "tool-call",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "autoCompactionThreshold": 320000,
+            "maxTokens": 2048,
+            "outputConfig": null,
+            "responseFormat": {
+                "type": "text"
+            },
+            "thinking": null,
+            "toolChoice": {
+                "type": "auto"
+            },
+            "toolContext": {
+                "aiProvider": "OPEN_AI_SUBSCRIPTION",
+                "conversationId": "<conversation-key>",
+                "modelName": "gpt-5.3-codex",
+                "planId": null,
+                "projectPath": "gromozeka-e2e-<id>/projects/handoff-data-model-document-ingestion"
+            }
+        },
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "Memory ingestion source document. Treat the following as a pasted handoff data-model document, not as an immediate task.\n\nFile: agent_memory_handoff/02_data_model.md\n\n# 02. Data Model\n\n## 1. Общая идея\n\nМодель данных в `v3` должна одновременно поддерживать:\n\n- typed memory\n- lineage\n- temporal truth\n- reconcilable updates\n- richer semantic context\n- lifecycle / retention\n- repairability\n\nПоэтому модель делится на:\n\n- **evidence layer** — `Source`\n- **graph-shaped semantic layer** — `Entity`, `Claim`\n- **rich intermediate layer** — `Note`\n- **projections / operational memory** — `Profile`, `Task`, `Episode`\n- **audit layer** — `MemoryRun`\n\nПлюс у `v3` есть два cross-cutting concern:\n\n- `scope`\n- `retrieval lifecycle`\n\n## 2. Общие cross-cutting поля\n\n### 2.1 `scope_text` и `scope_json`\n\nПочти любой memory item, кроме сырого `Source`, выигрывает от двухслойного scope:\n\n- `scope_text`\n  - краткое человеческое описание области применения\n- `scope_json`\n  - машинно-читаемый envelope\n\nРекомендуемый shape:\n\n```json\n{\n  \"scope_kind\": \"global | project | conversation | entity | environment | document\",\n  \"project_id\": null,\n  \"conversation_id\": null,\n  \"subject_entity_id\": null,\n  \"environment\": null,\n  \"modality\": \"explicit | inferred | summarized | imported\",\n  \"audience\": \"runtime | memory_worker | user_model\"\n}\n```\n\n`scope_text` нужен для explainability.\n`scope_json` нужен для retrieval и reconciliation.\n\n### 2.2 `truth status` и `retrieval_state`\n\nЭто разные оси и не надо их смешивать.\n\n`truth status` отвечает:\n- актуально ли знание\n- вытеснено ли\n- опровергнуто ли\n- закончилось ли его временное окно\n\n`retrieval_state` отвечает:\n- как часто item должен участвовать в поиске\n- находится ли он в hot / warm / cold памяти\n- архивирован ли он\n- скрыт ли из обычного retrieval\n\nОбщий паттерн для retrieval lifecycle:\n- `active`\n- `warm`\n- `cold`\n- `archived`\n- `deleted`\n\n### 2.3 Usage fields\n\nДля notes / claims / tasks / episodes полезны:\n- `use_count`\n- `last_used_at`\n- `last_validated_at`\n\nЭто нужно для:\n- maturity\n- retention\n- repair\n\n## 3. Главные сущности\n\n### 3.1 `Source`\n\nСырой источник знания.\n\nНазначение:\n- хранить chat turns, tool outputs, imported notes, external records\n- быть первичным evidence layer\n- служить опорой для re-check и explainability\n\nРекомендуемые поля:\n- `source_id: uuid`\n- `namespace_id: text`\n- `source_type: chat_turn | tool_output | imported_note | external_record`\n- `conversation_id: text | null`\n- `turn_id: text | null`\n- `speaker_role: user | assistant | tool | system | external`\n- `author_label: text | null`\n- `content_text: text`\n- `content_hash: text`\n- `observed_at: timestamptz`\n- `created_at: timestamptz`\n- `metadata_json: jsonb`\n- `retention_class: standard | short_lived | sensitive | imported`\n- `expires_at: timestamptz | null`\n- `deleted_at: timestamptz | null`\n- `embedding: vector | null`\n\nИнварианты:\n- source не должен silently изменяться\n- `observed_at` хранится отдельно от ingestion time\n- `content_hash` полезен для dedupe\n- delete policy должна быть явной\n\n---\n\n### 3.2 `Entity`\n\nКанонический узел памяти.\n\nНазначение:\n- объединять разные упоминания одного и того же объекта\n- быть якорем для claims/tasks/notes/episodes\n- поддерживать aliases и merge\n\nРекомендуемые поля:\n- `entity_id: uuid`\n- `namespace_id`\n- `entity_type: person | agent | organization | project | repo | file | technology | product | location | concept | document | conversation | service`\n- `canonical_name: text`\n- `normalized_name: text`\n- `summary: text | null`\n- `status: active | merged | deleted`\n- `merged_into_entity_id: uuid | null`\n- `attributes_json: jsonb`\n- `first_seen_at: timestamptz`\n- `last_seen_at: timestamptz`\n- `created_at: timestamptz`\n- `updated_at: timestamptz`\n\nОтдельная таблица `entity_aliases`:\n- `alias_id`\n- `entity_id`\n- `alias_text`\n- `alias_normalized`\n- `source_id`\n- `confidence`\n- `created_at`\n\nИнварианты:\n- merge не удаляет историю\n- alias всегда указывает на текущий canonical entity\n- ошибочные merge должны быть обратимы через audit trail\n\n---\n\n### 3.3 `PredicateCatalog`\n\nЭто не memory item, а конфиг для reconciliation.\n\nПочему нужен:\n- у разных предикатов разная cardinality\n- у разных предикатов разная temporal semantics\n- одни факты заменяются, другие сосуществуют\n- часть facts идет в profile projection\n\nРекомендуемые поля:\n- `predicate: text primary key`\n- `description: text`\n- `subject_type: text`\n- `object_kind: entity | string | number | boolean | json`\n- `cardinality: single | multi`\n- `temporal_policy: atemporal | time_scoped | status_like`\n- `conflict_policy: replace | coexist | range_split`\n- `profile_sync: boolean`\n- `task_sync: boolean`\n- `default_importance: smallint`\n- `active: boolean`\n\nПримеры:\n- `preferred_name`\n- `speaks_language`\n- `prefers_response_language`\n- `prefers_code_comment_language`\n- `works_with`\n- `has_goal`\n- `works_on_project`\n- `uses_database`\n- `has_constraint`\n\n---\n\n### 3.4 `Note`\n\nПромежуточный semantic memory fragment.\n\nЭто:\n- не source\n- не final claim\n- не chain-of-thought\n\n`Note` нужен для вещей, которые:\n- уже важны\n- полезны для retrieval\n- но еще не должны быть зацементированы как hard fact\n\nТипичные кейсы:\n- design direction\n- decision rationale\n- evolving plans\n- hypotheses\n- lessons / tactics / patterns\n- doc digests\n- contextual framing\n\nРекомендуемые поля:\n- `note_id: uuid`\n- `namespace_id`\n- `note_type: decision | direction | hypothesis | plan | lesson | doc_digest | context`\n- `title: text`\n- `summary: text`\n- `scope_text: text | null`\n- `scope_json: jsonb`\n- `status: active | superseded | retracted | resolved | stale | candidate`\n- `retrieval_state: active | warm | cold | archived | deleted`\n- `maturity_state: fresh | stabilizing | mature | consolidated`\n- `maturity_score: numeric(4,3)`\n- `anchor_entity_id: uuid | null`\n- `keywords_json: jsonb`\n- `tags_json: jsonb`\n- `candidate_claims_json: jsonb`\n- `metadata_json: jsonb`\n- `confidence: numeric(4,3)`\n- `importance: smallint`\n- `valid_from: timestamptz | null`\n- `valid_to: timestamptz | null`\n- `supersedes_note_id: uuid | null`\n- `created_from_run_id: uuid | null`\n- `created_at: timestamptz`\n- `updated_at: timestamptz`\n- `embedding: vector | null`\n- `use_count: integer`\n- `last_used_at: timestamptz | null`\n- `last_validated_at: timestamptz | null`\n- `evidence_count: integer`\n- `archived_at: timestamptz | null`\n\nДополнительные таблицы:\n\n#### `note_entities`\n- `note_id`\n- `entity_id`\n- `entity_role: primary | secondary | mentioned | owner | subject`\n\n#### `note_sources`\n- `note_id`\n- `source_id`\n- `support_type: direct | summarized | imported`\n- `evidence_span`\n- `evidence_quote`\n- `support_confidence`\n\n#### `note_links`\n- `from_note_id`\n- `to_note_id`\n- `link_type: supports | contradicts | refines | related | supersedes | derived_from`\n- `link_weight`\n\nИнварианты `Note`:\n- одна note = один semantic fragment\n- note должна быть понятна без исходного чата\n- note не дублирует source без added value\n- `candidate_claims_json` — только hints\n- note может жить долго без превращения в claim, если полезен для retrieval\n\nПример:\n\n```json\n{\n  \"note_type\": \"decision\",\n  \"title\": \"Use Postgres as memory source of truth\",\n  \"summary\": \"The current direction is to keep Postgres with pgvector as the main memory store because it keeps structured memory, retrieval metadata, and transactions together. Neo4j is deferred until traversal-heavy use cases become core.\",\n  \"scope_text\": \"Agent memory layer for the current product iteration\",\n  \"scope_json\": {\n    \"scope_kind\": \"project\",\n    \"project_id\": \"agent_memory\",\n    \"modality\": \"explicit\"\n  },\n  \"status\": \"active\",\n  \"retrieval_state\": \"active\",\n  \"maturity_state\": \"stabilizing\",\n  \"maturity_score\": 0.62,\n  \"confidence\": 0.88,\n  \"importance\": 8\n}\n```\n\n---\n\n### 3.5 `Claim`\n\nАтомарный факт или relation edge.\n\nЭто ключевая таблица для:\n- точных factual answers\n- predicate-based reconciliation\n- explainable retrieval\n\nРекомендуемые поля:\n- `claim_id: uuid`\n- `namespace_id`\n- `subject_entity_id: uuid`\n- `predicate: text`\n- `object_entity_id: uuid | null`\n- `object_value_json: jsonb | null`\n- `normalized_text: text`\n- `context_text: text | null`\n- `scope_json: jsonb`\n- `qualifiers_json: jsonb`\n- `confidence: numeric(4,3)`\n- `importance: smallint`\n- `status: active | superseded | retracted | expired | candidate`\n- `retrieval_state: active | warm | cold | archived | deleted`\n- `valid_from: timestamptz | null`\n- `valid_to: timestamptz | null`\n- `origin_note_id: uuid | null`\n- `first_seen_at: timestamptz`\n- `last_seen_at: timestamptz`\n- `supersedes_claim_id: uuid | null`\n- `retracted_by_claim_id: uuid | null`\n- `created_from_run_id: uuid | null`\n- `created_at: timestamptz`\n- `updated_at: timestamptz`\n- `embedding: vector | null`\n- `use_count: integer`\n- `last_used_at: timestamptz | null`\n- `last_validated_at: timestamptz | null`\n- `archived_at: timestamptz | null`\n\nОтдельная таблица `claim_sources`:\n- `claim_id`\n- `source_id`\n- `support_type: direct | inferred | imported | derived_from_note`\n- `evidence_span`\n- `evidence_quote`\n- `support_confidence`\n\nИнварианты:\n- один claim = одно predicate application\n- claim должен иметь смысл без исходного чата\n- explicit statement > inference\n- relative time должен быть нормализован\n- если смысл еще слишком мягкий, лучше `Note`, чем плохой `Claim`\n\n---\n\n### 3.6 `Profile`\n\nКомпактная always-in-context проекция.\n\nЭто не source of truth, а projection layer поверх:\n- explicit user instructions\n- stable claims\n- selected long-lived context\n\nРекомендуемые поля:\n- `profile_id: uuid`\n- `namespace_id`\n- `owner_entity_id: uuid`\n- `profile_json: jsonb`\n- `profile_text: text`\n- `version: bigint`\n- `updated_from_run_id: uuid | null`\n- `last_compacted_at: timestamptz | null`\n- `created_at`\n- `updated_at`\n\nРекомендуемая структура:\n\n```json\n{\n  \"preferred_name\": null,\n  \"languages\": [],\n  \"timezone\": null,\n  \"response_preferences\": {\n    \"response_language\": null,\n    \"tone\": null,\n    \"detail_level\": null,\n    \"code_comment_language\": null\n  },\n  \"expertise\": [],\n  \"stable_preferences\": [],\n  \"constraints\": [],\n  \"current_goals\": [],\n  \"soft_signals\": []\n}\n```\n\nИнварианты:\n- profile должен быть коротким\n- explicit facts важнее inference\n- спорные facts лучше оставлять в claim/note, а не тащить в profile\n- profile должен быть пересобираем\n\n---\n\n### 3.7 `Task`\n\nOperational memory про будущее действие.\n\nЗадача нужна только когда реально требуется future action.\n\nРекомендуемые поля:\n- `task_id: uuid`\n- `namespace_id`\n- `owner_entity_id: uuid | null`\n- `assignee_entity_id: uuid | null`\n- `title: text`\n- `description: text | null`\n- `status: open | in_progress | blocked | done | cancelled`\n- `priority: low | normal | high`\n- `due_at: timestamptz | null`\n- `scope_json: jsonb`\n- `acceptance_criteria_json: jsonb`\n- `blockers_json: jsonb`\n- `related_entity_ids_json: jsonb`\n- `origin_note_id: uuid | null`\n- `created_from_run_id: uuid | null`\n- `confidence: numeric(4,3)`\n- `retrieval_state: active | warm | cold | archived | deleted`\n- `created_at`\n- `updated_at`\n- `closed_at`\n- `use_count`\n- `last_used_at`\n- `archived_at`\n\nОтдельная таблица `task_sources`:\n- `task_id`\n- `source_id`\n- `support_type: direct | derived_from_note | imported`\n- `evidence_span`\n- `evidence_quote`\n- `support_confidence`\n\nИнварианты:\n- plain question != task\n- request != commitment\n- один task = одно понятное обязательство\n- status должен обновляться, а не плодить дубликаты\n\n---\n\n### 3.8 `Episode`\n\nОпциональный тип памяти для переносимого опыта.\n\nНужен не в MVP, а позже — когда хочется хранить:\n- successful tactics\n- failure patterns\n- reusable lessons\n\nРекомендуемые поля:\n- `episode_id`\n- `namespace_id`\n- `owner_entity_id`\n- `situation`\n- `action`\n- `result`\n- `lesson`\n- `tags_json`\n- `success_score`\n- `origin_note_id`\n- `created_from_run_id`\n- `source_refs_json`\n- `retrieval_state`\n- `created_at`\n- `updated_at`\n- `embedding`\n- `use_count`\n- `last_used_at`\n- `archived_at`\n\nИнварианты:\n- не хранить raw chain-of-thought\n- episode — это lesson, а не полный reasoning trace\n\n---\n\n### 3.9 `MemoryRun`\n\nAudit trail и debug слой.\n\nНужен, чтобы видеть:\n- какой prompt сработал\n- на какой модели\n- что именно было retrieved\n- какой budget был выделен\n- какие ops были предложены\n- какие ops реально применились\n- где pipeline сломался\n\nРекомендуемые поля:\n- `run_id`\n- `namespace_id`\n- `run_type: route | retrieve_update | canonicalize | construct_notes | reconcile_notes | extract_claims | reconcile_claims | update_profile | update_tasks | consolidate_notes | repair_memory | apply_retention | read_plan | compose_answer | compact`\n- `trigger_mode: hot_path | background | manual | slow_path`\n- `source_ids_json`\n- `retrieved_item_ids_json`\n- `retrieval_budget_json`\n- `prompt_name`\n- `prompt_version`\n- `model_name`\n- `input_hash`\n- `output_json`\n- `applied_ops_json`\n- `repair_actions_json`\n- `latency_ms`\n- `token_input`\n- `token_output`\n- `status: success | failed | partial`\n- `error_text`\n- `created_at`\n\nИнварианты:\n- run log не должен исчезать silently\n- `input_hash` полезен для идемпотентности и retry safety\n\n## 4. Почему `Note` не заменяет `Claim`\n\nПотому что у них разная работа.\n\n### `Claim`\nНужен для:\n- точных factual answers\n- reconciliation через predicate rules\n- profile updates\n- time-aware status answers\n\n### `Note`\nНужен для:\n- richer retrieval\n- decision history\n- rationale\n- partial or evolving meaning\n- later consolidation\n\nЕсли хранить все как `Claim`, получится ложная точность.\nЕсли хранить все как `Note`, получится слишком мягкая память.\n\n## 5. Note maturity\n\n`Note` нельзя оставлять без модели зрелости.\n\nРекомендуемый паттерн:\n- `fresh`\n- `stabilizing`\n- `mature`\n- `consolidated`\n\nЧто может повышать maturity:\n- note использовался в retrieval\n- note поддержан несколькими sources\n- note пережил время без supersede\n- note покрывает recurring rationale questions\n\nЧто может понижать / обнулять:\n- contradiction\n- supersede\n- scope drift\n- long-term disuse\n\n## 6. Retention / forgetting\n\n`v3` требует явной retention policy.\n\nМинимум:\n- low-use notes можно переводить в `cold`\n- old resolved items — в `archived`\n- sensitive source data — soft/hard delete по request\n- historical claims могут оставаться explainable, но редко участвовать в top retrieval\n\nОтдельно полезно хранить:\n- `retention_class`\n- `expires_at`\n- `deleted_at`\n- `archived_at`\n\n## 7. Recommended field descriptions для schema / Pydantic\n\n### Для `Note`\n- `summary`: \"Self-contained semantic fragment. Keep uncertainty explicit and avoid pretending a provisional direction is a hard fact.\"\n- `scope_json`: \"Machine-readable scope boundaries. Use this to prevent over-generalization across projects, environments, or conversations.\"\n- `maturity_score`: \"How stable and reusable the note appears for later consolidation or repeated retrieval.\"\n\n### Для `Claim`\n- `normalized_text`: \"Stand-alone factual statement that can be shown without the original chat.\"\n- `scope_json`: \"Machine-readable scope and modality for conflict resolution and retrieval filtering.\"\n- `retrieval_state`: \"Search temperature, distinct from truth status.\"\n\n### Для `Task`\n- `acceptance_criteria_json`: \"Observable conditions for task completion.\"\n- `scope_json`: \"What this task applies to and where it should not leak.\"\n\n### Для `Profile`\n- `soft_signals`: \"Weakly inferred stable tendencies. Keep them low confidence or omit them.\"\n\n## 8. Модель данных в одной строке\n\n- `Source` = что было сказано / увидено\n- `Entity` = кто/что это вообще\n- `Note` = что уже важно и полезно, но еще не хочется цементировать как факт\n- `Claim` = что мы считаем нормализованным фактом\n- `Profile` = компактная проекция устойчивого контекста\n- `Task` = что должно быть сделано\n- `Episode` = чему система научилась\n- `MemoryRun` = как именно память обновлялась\n",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "ASSISTANT",
+                "content": [
+                    {
+                        "call": {
+                            "input": {
+                                "mode": "automatic_hot_path",
+                                "target": "previous_user_message",
+                                "target_message_id": "<uuid>"
+                            },
+                            "name": "memory_remember"
+                        },
+                        "id": "<id>",
+                        "state": "COMPLETE",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolCall"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {
+                    "synthetic": true,
+                    "syntheticKind": "memory",
+                    "targetMessageId": "<uuid>"
+                },
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "isError": false,
+                        "result": [
+                            {
+                                "content": "{\"status\":\"completed\",\"decision\":\"NOTE_WRITE\",\"memory_types\":[\"NOTE\"],\"salience\":0.9,\"reason\":\"TARGET_MESSAGE is a reusable design/specification digest with stable conceptual decisions and schema structure, best stored as note-level memory rather than isolated atomic claims.\",\"source_id\":\"chat:<0>\",\"counts\":{\"predicate_definitions\":0,\"sources\":0,\"runs\":1,\"entities\":10,\"claims\":0,\"notes\":4,\"tasks\":0,\"profiles\":0,\"episodes\":0},\"runs\":[{\"id\":\"hot-path:run:<0>\",\"type\":\"RECONCILE_NOTES\",\"summary\":\"Direct structured write applied: notes=4, claims=0, tasks=0, entities=10; noop ops: notes=0, claims=0, tasks=0\"}],\"claims\":[],\"notes\":[{\"id\":\"hot-path:note:<0>\",\"type\":\"DOC_DIGEST\",\"status\":\"ACTIVE\",\"title\":\"v3 memory model data architecture and layer boundaries\",\"summary\":\"The v3 memory model is defined as a layered architecture that combines evidence, semantic graph, intermediate note memory, operational projections, and audit logging to support typed memory, lineage, temporal truth, reconciliation, retention, and repairability.\"},{\"id\":\"hot-path:note:<1>\",\"type\":\"DIRECTION\",\"status\":\"ACTIVE\",\"title\":\"Cross-cutting separation of truth status and retrieval lifecycle\",\"summary\":\"The model explicitly separates factual validity from retrieval temperature, with truth status handling correctness over time and retrieval_state controlling participation in search tiers (active, warm, cold, archived, deleted).\"},{\"id\":\"hot-path:note:<2>\",\"type\":\"DECISION\",\"status\":\"ACTIVE\",\"title\":\"Note and Claim serve complementary roles to avoid false precision\",\"summary\":\"The specification defines Note for evolving or rationale-rich context and Claim for normalized atomic facts; using only claims causes false precision, while using only notes makes memory too soft.\"},{\"id\":\"hot-path:note:<3>\",\"type\":\"PLAN\",\"status\":\"ACTIVE\",\"title\":\"Retention and maturity are explicit operational mechanisms in v3\",\"summary\":\"The model requires explicit retention policy and note maturity tracking, including lifecycle demotion/archiving, sensitivity-driven deletion windows, and maturity changes based on reuse, corroboration, contradiction, and drift.\"}],\"tasks\":[],\"entities\":[{\"id\":\"entity:<0>\",\"type\":\"DOCUMENT\",\"name\":\"agent_memory_handoff/02_data_model.md\"},{\"id\":\"entity:<1>\",\"type\":\"PROJECT\",\"name\":\"v3 memory model\"},{\"id\":\"entity:<2>\",\"type\":\"CONCEPT\",\"name\":\"Source\"},{\"id\":\"entity:<3>\",\"type\":\"CONCEPT\",\"name\":\"Entity\"},{\"id\":\"entity:<4>\",\"type\":\"CONCEPT\",\"name\":\"Claim\"},{\"id\":\"entity:<5>\",\"type\":\"CONCEPT\",\"name\":\"Note\"},{\"id\":\"entity:<6>\",\"type\":\"CONCEPT\",\"name\":\"Profile\"},{\"id\":\"entity:<7>\",\"type\":\"CONCEPT\",\"name\":\"Task\"},{\"id\":\"entity:<8>\",\"type\":\"CONCEPT\",\"name\":\"Episode\"},{\"id\":\"entity:<9>\",\"type\":\"CONCEPT\",\"name\":\"MemoryRun\"}]}",
+                                "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult.Data.Text"
+                            }
+                        ],
+                        "state": "COMPLETE",
+                        "toolName": "memory_remember",
+                        "toolUseId": "tool-call",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {
+                    "synthetic": true,
+                    "syntheticKind": "memory",
+                    "targetMessageId": "<uuid>"
+                },
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "ASSISTANT",
+                "content": [
+                    {
+                        "call": {
+                            "input": {
+                                "mode": "automatic_runtime_recall",
+                                "target": "previous_user_message",
+                                "target_message_id": "<uuid>"
+                            },
+                            "name": "memory_recall"
+                        },
+                        "id": "<id>",
+                        "state": "COMPLETE",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolCall"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {
+                    "synthetic": true,
+                    "syntheticKind": "memory",
+                    "targetMessageId": "<uuid>"
+                },
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "isError": false,
+                        "result": [
+                            {
+                                "content": "{\"status\":\"completed\",\"need_memory\":false,\"answer_mode\":\"FACTUAL\",\"retrieved_count\":0,\"usage_guidance\":\"Selected memory is the strongest available remembered context for the target message. Use it unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message. Do not replace selected memory with guesses or general defaults. For exact quote, exact wording, source, or when-said questions, prefer complete source text from memory_context over shorter evidence excerpts.\",\"memory_context\":\"No relevant persisted memory was retrieved for the target message.\",\"selected_refs\":[],\"selector_decisions\":[]}",
+                                "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult.Data.Text"
+                            }
+                        ],
+                        "state": "COMPLETE",
+                        "toolName": "memory_recall",
+                        "toolUseId": "tool-call",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {
+                    "synthetic": true,
+                    "syntheticKind": "memory",
+                    "targetMessageId": "<uuid>"
+                },
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxTokens": 2048,
+            "thinking": null,
+            "outputConfig": null,
+            "autoCompactionThreshold": 320000,
+            "toolChoice": {
+                "type": "auto"
+            },
+            "responseFormat": {
+                "type": "text"
+            },
+            "toolContext": {
+                "aiProvider": "OPEN_AI_SUBSCRIPTION",
+                "conversationId": "<conversation-key>",
+                "modelName": "gpt-5.3-codex",
+                "planId": null,
+                "projectPath": "gromozeka-e2e-<id>/projects/handoff-data-model-document-ingestion"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "Understood. I’ll treat this as an ingested handoff source document, not an immediate task.",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 5436,
+                "completionTokens": 25,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

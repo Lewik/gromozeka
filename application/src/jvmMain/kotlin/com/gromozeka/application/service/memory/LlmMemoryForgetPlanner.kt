@@ -186,7 +186,7 @@ class LlmMemoryForgetPlanner(
 private fun List<MemoryStore.SearchHit>.renderForgetCandidates(): String =
     joinToString("\n") { hit ->
         when (hit) {
-            is MemoryStore.SearchHit.SourceHit -> "- source ${hit.source.id.value}: ${hit.source.contentText.oneLineForForgetPlannerLog(500)}"
+            is MemoryStore.SearchHit.SourceHit -> "- source ${hit.source.id.value}: ${hit.source.contentText.trim()}"
             is MemoryStore.SearchHit.ClaimHit -> "- claim ${hit.claim.id.value}: status=${hit.claim.status.name}; predicate=${hit.claim.predicate}; text=${hit.claim.normalizedText}; evidence=${hit.claim.evidenceRefs.map { it.sourceId.value }.joinToString("|")}"
             is MemoryStore.SearchHit.NoteHit -> "- note ${hit.note.id.value}: status=${hit.note.status.name}; maturity=${hit.note.maturity.name}; title=${hit.note.title}; summary=${hit.note.summary}; evidence=${hit.note.evidenceRefs.map { it.sourceId.value }.joinToString("|")}"
             is MemoryStore.SearchHit.TaskHit -> "- task ${hit.task.id.value}: status=${hit.task.status.name}; title=${hit.task.title}; description=${hit.task.description.orEmpty()}; evidence=${hit.task.evidenceRefs.map { it.sourceId.value }.joinToString("|")}"
@@ -221,7 +221,7 @@ private fun MemoryNamespaceSnapshot.renderForgetSupportingSources(
         .filter { it.id in sourceIds && it.id != currentSourceId }
         .take(16)
         .joinToString("\n") { source ->
-            "- source ${source.id.value}: ${source.contentText.oneLineForForgetPlannerLog(700)}"
+            "- source ${source.id.value}: ${source.contentText.trim()}"
         }
         .ifBlank { "none" }
 }
