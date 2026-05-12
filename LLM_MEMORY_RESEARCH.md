@@ -561,7 +561,7 @@ Memory systems чаще всего ломаются из-за:
 
 - `Episode`
   - иммутабельное сырое событие
-  - chat turn, tool output, document chunk, observation, action result
+  - chat turn, tool output, imported note, external record, observation, action result
 - `Entity`
   - каноническая сущность с aliases
 - `Claim`

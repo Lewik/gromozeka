@@ -17,7 +17,7 @@ skinparam ConditionEndStyle hline
 
 |input|
 start
-:New turn / tool output / document chunk;
+:New turn / tool output / imported record;
 
 |evidence|
 :Persist `Source`;

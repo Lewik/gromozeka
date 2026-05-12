@@ -95,14 +95,14 @@
 Сырой источник знания.
 
 Назначение:
-- хранить chat turns, document chunks, tool outputs
+- хранить chat turns, tool outputs, imported notes, external records
 - быть первичным evidence layer
 - служить опорой для re-check и explainability
 
 Рекомендуемые поля:
 - `source_id: uuid`
 - `namespace_id: text`
-- `source_type: chat_turn | document_chunk | tool_output | imported_note | external_record`
+- `source_type: chat_turn | tool_output | imported_note | external_record`
 - `conversation_id: text | null`
 - `turn_id: text | null`
 - `speaker_role: user | assistant | tool | system | external`

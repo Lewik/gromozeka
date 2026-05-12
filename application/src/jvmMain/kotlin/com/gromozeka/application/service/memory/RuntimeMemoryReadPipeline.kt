@@ -1343,7 +1343,6 @@ private fun MemorySource.sourceLabelForMemoryPrompt(): String =
     when (this) {
         is MemorySource.ChatTurn -> "chat_turn role=${speakerRole.name} observedAt=$observedAt"
         is MemorySource.ToolOutput -> "tool_output tool=${toolName ?: "unknown"} observedAt=$observedAt"
-        is MemorySource.DocumentChunk -> "document_chunk ref=$documentRef observedAt=$observedAt"
         is MemorySource.ImportedNote -> "imported_note ref=${importRef ?: "unknown"} observedAt=$observedAt"
         is MemorySource.ExternalRecord -> "external_record ref=$recordRef observedAt=$observedAt"
     }

@@ -429,27 +429,6 @@ sealed interface MemorySource {
     ) : MemorySource
 
     /**
-     * Raw fragment of an imported document.
-     */
-    @Serializable
-    data class DocumentChunk(
-        override val id: Id,
-        override val namespace: MemoryNamespace,
-        val documentRef: String,
-        val chunkRef: String? = null,
-        override val contentText: String,
-        override val searchText: String? = null,
-        override val contentPayload: JsonElement? = null,
-        override val contentHash: String,
-        override val observedAt: Instant,
-        override val createdAt: Instant,
-        override val retentionClass: RetentionClass = RetentionClass.STANDARD,
-        override val usagePolicy: MemorySourceUsagePolicy = MemorySourceUsagePolicy.STANDARD,
-        override val expiresAt: Instant? = null,
-        override val deletedAt: Instant? = null,
-    ) : MemorySource
-
-    /**
      * Manually imported or migrated note kept as source evidence.
      */
     @Serializable

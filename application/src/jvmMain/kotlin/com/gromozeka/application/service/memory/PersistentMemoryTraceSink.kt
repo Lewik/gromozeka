@@ -561,7 +561,6 @@ class PersistentMemoryTraceSink(
         when (this) {
             is MemorySource.ChatTurn -> "CHAT_TURN:${speakerRole.name}"
             is MemorySource.ToolOutput -> "TOOL_OUTPUT:${toolName.orEmpty()}"
-            is MemorySource.DocumentChunk -> "DOCUMENT_CHUNK:$documentRef"
             is MemorySource.ImportedNote -> "IMPORTED_NOTE:${importRef.orEmpty()}"
             is MemorySource.ExternalRecord -> "EXTERNAL_RECORD:$recordRef"
         }

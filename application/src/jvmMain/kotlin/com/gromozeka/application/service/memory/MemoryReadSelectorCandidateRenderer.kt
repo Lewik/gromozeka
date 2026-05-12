@@ -336,7 +336,6 @@ internal object MemoryReadSelectorCandidateRenderer {
         when (this) {
             is MemorySource.ChatTurn -> "chat_turn"
             is MemorySource.ToolOutput -> "tool_output"
-            is MemorySource.DocumentChunk -> "document_chunk"
             is MemorySource.ImportedNote -> "imported_note"
             is MemorySource.ExternalRecord -> "external_record"
         }
@@ -346,9 +345,7 @@ internal object MemoryReadSelectorCandidateRenderer {
             is MemorySource.ChatTurn -> speakerRole.name
             is MemorySource.ImportedNote -> authorLabel
             is MemorySource.ExternalRecord -> authorLabel
-            is MemorySource.ToolOutput,
-            is MemorySource.DocumentChunk,
-            -> null
+            is MemorySource.ToolOutput -> null
         }
 
     private fun MemorySource.usagePolicyForSelectorView(): String =

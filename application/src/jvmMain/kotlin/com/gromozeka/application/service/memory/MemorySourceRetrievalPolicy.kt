@@ -78,7 +78,6 @@ internal object MemorySourceRetrievalPolicy {
                 MemorySource.ActorRole.SYSTEM -> SourceDecision.drop("system_${useCase.name.lowercase()}")
             }
 
-            is MemorySource.DocumentChunk,
             is MemorySource.ImportedNote,
             is MemorySource.ExternalRecord,
             -> SourceDecision.keep()

@@ -8,7 +8,7 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto;
 CREATE TABLE IF NOT EXISTS sources (
     source_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     namespace_id TEXT NOT NULL,
-    source_type TEXT NOT NULL CHECK (source_type IN ('chat_turn', 'document_chunk', 'tool_output', 'imported_note', 'external_record')),
+    source_type TEXT NOT NULL CHECK (source_type IN ('chat_turn', 'tool_output', 'imported_note', 'external_record')),
     conversation_id TEXT NULL,
     turn_id TEXT NULL,
     speaker_role TEXT NOT NULL CHECK (speaker_role IN ('user', 'assistant', 'tool', 'system', 'external')),

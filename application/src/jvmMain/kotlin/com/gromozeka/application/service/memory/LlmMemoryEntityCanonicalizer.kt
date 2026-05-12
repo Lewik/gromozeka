@@ -360,7 +360,6 @@ internal fun MemorySource.renderLatestTurn(maxChars: Int = 8_000): String {
     val role = when (this) {
         is MemorySource.ChatTurn -> speakerRole.name
         is MemorySource.ToolOutput -> "TOOL"
-        is MemorySource.DocumentChunk -> "DOCUMENT"
         is MemorySource.ImportedNote -> "IMPORT"
         is MemorySource.ExternalRecord -> "EXTERNAL"
     }

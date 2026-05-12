@@ -172,7 +172,6 @@ flowchart TD
 ### Tier D. Raw evidence
 Immutable или почти immutable слой:
 - chat turns
-- document chunks
 - tool outputs
 - imported records
 

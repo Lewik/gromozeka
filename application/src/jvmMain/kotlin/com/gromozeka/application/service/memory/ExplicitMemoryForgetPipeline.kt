@@ -326,7 +326,6 @@ private fun MemorySource.withDeletedAt(deletedAt: Instant): MemorySource =
     when (this) {
         is MemorySource.ChatTurn -> copy(deletedAt = deletedAt)
         is MemorySource.ToolOutput -> copy(deletedAt = deletedAt)
-        is MemorySource.DocumentChunk -> copy(deletedAt = deletedAt)
         is MemorySource.ImportedNote -> copy(deletedAt = deletedAt)
         is MemorySource.ExternalRecord -> copy(deletedAt = deletedAt)
     }

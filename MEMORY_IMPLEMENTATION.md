@@ -192,7 +192,7 @@
 - `namespace: Namespace`
   В каком пространстве памяти живет источник.
 - `type`
-  Что это такое: chat turn, document chunk, tool output, imported note, external record.
+  Что это такое: chat turn, tool output, imported note, external record.
 - `conversation`
   Из какого разговора это пришло, если источник чатовый.
 - `turn`

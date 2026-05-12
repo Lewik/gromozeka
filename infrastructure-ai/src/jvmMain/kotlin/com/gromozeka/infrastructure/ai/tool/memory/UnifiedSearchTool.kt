@@ -147,7 +147,6 @@ class UnifiedSearchTool(
         when (this) {
             is MemorySource.ChatTurn -> "chat_turn"
             is MemorySource.ToolOutput -> "tool_output"
-            is MemorySource.DocumentChunk -> "document_chunk"
             is MemorySource.ImportedNote -> "imported_note"
             is MemorySource.ExternalRecord -> "external_record"
         }

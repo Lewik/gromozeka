@@ -612,7 +612,6 @@ private fun MemorySource.withUsagePolicy(policy: MemorySourceUsagePolicy): Memor
     when (this) {
         is MemorySource.ChatTurn -> copy(usagePolicy = policy)
         is MemorySource.ToolOutput -> copy(usagePolicy = policy)
-        is MemorySource.DocumentChunk -> copy(usagePolicy = policy)
         is MemorySource.ImportedNote -> copy(usagePolicy = policy)
         is MemorySource.ExternalRecord -> copy(usagePolicy = policy)
     }
@@ -627,7 +626,6 @@ private fun MemorySource.withSearchText(searchText: String?): MemorySource {
     return when (this) {
         is MemorySource.ChatTurn -> copy(searchText = normalizedSearchText)
         is MemorySource.ToolOutput -> copy(searchText = normalizedSearchText)
-        is MemorySource.DocumentChunk -> copy(searchText = normalizedSearchText)
         is MemorySource.ImportedNote -> copy(searchText = normalizedSearchText)
         is MemorySource.ExternalRecord -> copy(searchText = normalizedSearchText)
     }
@@ -1083,7 +1081,6 @@ private fun MemorySource.sourceTypeForLog(): String =
     when (this) {
         is MemorySource.ChatTurn -> "chat_turn"
         is MemorySource.ToolOutput -> "tool_output"
-        is MemorySource.DocumentChunk -> "document_chunk"
         is MemorySource.ImportedNote -> "imported_note"
         is MemorySource.ExternalRecord -> "external_record"
     }
@@ -1092,7 +1089,6 @@ private fun MemorySource.sourceRoleForLog(): String =
     when (this) {
         is MemorySource.ChatTurn -> speakerRole.name
         is MemorySource.ToolOutput -> "TOOL"
-        is MemorySource.DocumentChunk -> "DOCUMENT"
         is MemorySource.ImportedNote -> "IMPORT"
         is MemorySource.ExternalRecord -> "EXTERNAL"
     }
