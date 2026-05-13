@@ -9,8 +9,10 @@ import io.ktor.server.http.content.default
 import io.ktor.server.http.content.staticFiles
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.routing.routing
+import io.ktor.server.sse.SSE
 import io.ktor.server.websocket.WebSockets
 import io.ktor.server.websocket.webSocket
+import io.modelcontextprotocol.kotlin.sdk.server.mcp
 import jakarta.annotation.PostConstruct
 import klog.KLoggers
 import kotlinx.coroutines.runBlocking
@@ -41,6 +43,7 @@ fun main() {
     check(springReady.get()) { "Spring application did not publish ApplicationReadyEvent" }
 
     val remoteServer = context.getBean(GromozekaRemoteServer::class.java)
+    val mcpServerFactory = context.getBean(GromozekaMcpServerFactory::class.java)
     val host = System.getProperty("gromozeka.remote.host")
         ?: System.getenv("GROMOZEKA_REMOTE_HOST")
         ?: "127.0.0.1"
@@ -52,6 +55,7 @@ fun main() {
     log.info { "Starting Gromozeka remote server on ws://$host:$port/ws" }
 
     val ktorServer = embeddedServer(CIO, port = port, host = host) {
+        install(SSE)
         install(WebSockets) {
             maxFrameSize = Long.MAX_VALUE
             masking = false
@@ -59,6 +63,9 @@ fun main() {
         routing {
             webSocket("/ws") {
                 remoteServer.handle(this)
+            }
+            mcp("/mcp") {
+                mcpServerFactory.create()
             }
             staticFiles("/", webRoot) {
                 modify { _, call ->
@@ -74,6 +81,7 @@ fun main() {
             .joinToString { "ws://${it.host}:${it.port}/ws" }
     }
     println("==== Gromozeka server started: $endpoints ====")
+    println("==== Gromozeka MCP SSE: http://$host:$port/mcp ====")
     println("==== Gromozeka tailnet web: https://${resolveTailnetHost()}/ ====")
     println("==== Tailscale Serve: tailscale serve --bg http://127.0.0.1:$port ====")
     Thread.currentThread().join()

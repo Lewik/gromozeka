@@ -39,9 +39,11 @@ dependencies {
     implementation(libs.spring.boot.starter)
     implementation(libs.ktor.server.core)
     implementation(libs.ktor.server.cio)
+    implementation(libs.ktor.server.sse)
     implementation(libs.ktor.server.websockets)
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.serialization.json)
+    implementation(libs.mcp.kotlin.sdk)
     implementation(libs.klog)
 
     testImplementation(project(":remote-client"))
