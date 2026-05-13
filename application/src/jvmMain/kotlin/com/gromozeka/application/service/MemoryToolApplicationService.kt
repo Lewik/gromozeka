@@ -165,6 +165,103 @@ class MemoryToolApplicationService(
         MemoryToolResultRenderer.recallResultJsonString(result)
     }
 
+    suspend fun recallProvidedText(
+        conversationIdValue: String?,
+        text: String,
+        mode: String? = null,
+    ): String {
+        val normalizedText = text.trim()
+        if (normalizedText.isBlank()) {
+            return MemoryToolResultRenderer.failureJsonString("Provided recall text is blank.")
+        }
+
+        if (conversationIdValue.isNullOrBlank()) {
+            return recallStandaloneProvidedText(normalizedText, mode)
+        }
+
+        return runCatching {
+            val conversationId = Conversation.Id(conversationIdValue)
+            val context = resolveContext(conversationId)
+            val targetMessage = syntheticRecallMessage(
+                conversationId = context.conversation.id,
+                text = normalizedText,
+                mode = mode,
+                standalone = false,
+            )
+            val result = memoryApplicationService.buildRuntimeMemoryReadResult(
+                conversationId = context.conversation.id,
+                threadId = context.conversation.currentThread,
+                targetMessage = targetMessage,
+                threadMessages = context.threadMessages + targetMessage,
+                agent = context.agent,
+                project = context.project,
+                runtimeSystemPrompts = context.systemPrompts,
+                runtimeTools = context.memoryTools,
+            )
+            MemoryToolResultRenderer.recallResultJsonString(result)
+        }.onFailure { error ->
+            log.warn(error) {
+                "Memory tool failed: tool=$MEMORY_RECALL_TOOL_NAME conversation=$conversationIdValue target=provided_text error=${error.message}"
+            }
+        }.getOrElse { error ->
+            MemoryToolResultRenderer.failureJsonString(error.message ?: "Memory tool failed.")
+        }
+    }
+
+    private suspend fun recallStandaloneProvidedText(
+        text: String,
+        mode: String?,
+    ): String {
+        return runCatching {
+            val agent = defaultAgentProvider.getDefault()
+            val project = projectService.getOrCreate(defaultStandaloneProjectPath())
+            val conversationId = Conversation.Id("memory_recall:standalone:${uuid7()}")
+            val threadId = Conversation.Thread.Id("memory_recall:standalone:${uuid7()}")
+            val targetMessage = syntheticRecallMessage(
+                conversationId = conversationId,
+                text = text,
+                mode = mode,
+                standalone = true,
+            )
+            val result = memoryApplicationService.buildRuntimeMemoryReadResult(
+                conversationId = conversationId,
+                threadId = threadId,
+                targetMessage = targetMessage,
+                threadMessages = listOf(targetMessage),
+                agent = agent,
+                project = project,
+                runtimeSystemPrompts = agentDomainService.assembleSystemPrompt(agent, project),
+                runtimeTools = aiToolProvider.getTools().withoutMemoryManagementTools(),
+            )
+            MemoryToolResultRenderer.recallResultJsonString(result)
+        }.onFailure { error ->
+            log.warn(error) {
+                "Memory tool failed: tool=$MEMORY_RECALL_TOOL_NAME target=provided_text standalone=true error=${error.message}"
+            }
+        }.getOrElse { error ->
+            MemoryToolResultRenderer.failureJsonString(error.message ?: "Memory tool failed.")
+        }
+    }
+
+    private fun syntheticRecallMessage(
+        conversationId: Conversation.Id,
+        text: String,
+        mode: String?,
+        standalone: Boolean,
+    ): Conversation.Message =
+        Conversation.Message(
+            id = Conversation.Message.Id(uuid7()),
+            conversationId = conversationId,
+            role = Conversation.Message.Role.USER,
+            content = listOf(Conversation.Message.ContentItem.UserMessage(text)),
+            providerMetadata = buildJsonObject {
+                put("memoryToolOrigin", "provided_text")
+                put("standalone", standalone)
+                mode?.takeIf { it.isNotBlank() }?.let { put("mode", it) }
+            },
+            createdAt = Clock.System.now(),
+        )
+
     private suspend fun runMemoryTool(
         toolName: String,
         conversationIdValue: String,
