@@ -236,7 +236,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"answer_mode\":\"factual\",\"needs_memory\":false,\"needs_source\":false,\"query\":\"memory MVP direction notes vs claims promotion of stable conclusions\",\"reason\":\"Target message is a standalone project-direction statement and is fully self-contained; no prior context is required to process or answer it.\"}",
+                                "fullText": "{\"answer_mode\":\"factual\",\"needs_memory\":false,\"needs_source\":false,\"query\":\"memory MVP direction notes first then promote stable conclusions\",\"reason\":\"Target message is self-contained and states the preference directly; no prior context is required to process it.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -251,8 +251,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 1002,
-                "completionTokens": 69,
+                "promptTokens": 1014,
+                "completionTokens": 63,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

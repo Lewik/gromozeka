@@ -416,7 +416,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"answer_mode\":\"rationale\",\"core_blocks\":[\"tasks\",\"session_summary\"],\"need_memory\":true,\"require_evidence_fallback\":false,\"retrieval_budget\":{\"claims\":1,\"episodes\":1,\"notes\":2,\"sources\":0,\"tasks\":0},\"retrieval_requests\":[{\"deprioritized_claim_predicates\":[],\"filters\":{},\"memory_type\":\"note\",\"preferred_claim_predicates\":[],\"query\":\"NoMemoryVerifier ambiguous no-memory decisions lesson learned\",\"top_k\":2,\"why\":\"Rationale question about a learned lesson; notes likely capture decision/lesson wording.\"},{\"deprioritized_claim_predicates\":[],\"filters\":{},\"memory_type\":\"episode\",\"preferred_claim_predicates\":[],\"query\":\"NoMemoryVerifier ambiguous no-memory decisions what did we learn\",\"top_k\":1,\"why\":\"Asked explicitly what we learned; episode memory captures situation-action-result lessons.\"},{\"deprioritized_claim_predicates\":[\"context\",\"status\"],\"filters\":{},\"memory_type\":\"claim\",\"preferred_claim_predicates\":[\"lesson_learned\",\"decision_rule\"],\"query\":\"NoMemoryVerifier lesson ambiguous no-memory decisions\",\"top_k\":1,\"why\":\"Potential concise canonical lesson statement tied to NoMemoryVerifier.\"}]}",
+                                "fullText": "{\"answer_mode\":\"rationale\",\"core_blocks\":[\"tasks\",\"session_summary\"],\"need_memory\":true,\"require_evidence_fallback\":false,\"retrieval_budget\":{\"claims\":2,\"episodes\":1,\"notes\":2,\"sources\":0,\"tasks\":0},\"retrieval_requests\":[{\"deprioritized_claim_predicates\":[],\"filters\":{},\"memory_type\":\"note\",\"preferred_claim_predicates\":[],\"query\":\"NoMemoryVerifier ambiguous no-memory decisions lesson learned\",\"top_k\":2,\"why\":\"Rationale/lesson question likely captured in decision notes.\"},{\"deprioritized_claim_predicates\":[],\"filters\":{},\"memory_type\":\"episode\",\"preferred_claim_predicates\":[],\"query\":\"NoMemoryVerifier ambiguous no-memory decisions lesson\",\"top_k\":1,\"why\":\"Asked specifically what we learned; episode memory should capture prior situation-action-result lesson.\"},{\"deprioritized_claim_predicates\":[\"preference\",\"style\"],\"filters\":{},\"memory_type\":\"claim\",\"preferred_claim_predicates\":[\"lesson_learned\",\"decision_rule\",\"memory_routing_policy\"],\"query\":\"NoMemoryVerifier lesson ambiguous no-memory decisions\",\"top_k\":2,\"why\":\"Retrieve concise factual statement of the learned lesson tied to NoMemoryVerifier.\"}]}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -431,8 +431,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 1676,
-                "completionTokens": 251,
+                "promptTokens": 1683,
+                "completionTokens": 254,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

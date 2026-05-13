@@ -236,7 +236,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"answer_mode\":\"task\",\"needs_memory\":false,\"needs_source\":false,\"query\":\"\",\"reason\":\"Target message is self-contained instruction/note content; no prior context is required to process it.\"}",
+                                "fullText": "{\"answer_mode\":\"task\",\"needs_memory\":false,\"needs_source\":false,\"query\":\"\",\"reason\":\"Target message is self-contained instruction/note content and does not ask to recall prior context before answering.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -251,8 +251,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 1066,
-                "completionTokens": 51,
+                "promptTokens": 1051,
+                "completionTokens": 52,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

@@ -190,6 +190,7 @@ class LlmMemoryReadPlanner(
         - "what did I say about ..."
         - "when did I say ..."
         - "what database does project X use?"
+        - "according to the handoff/document/prompt pack, what ..."
         - "who owns X?"
         - "what do I currently prefer?"
         - "which brand should you remember that I prefer?"
@@ -203,6 +204,7 @@ class LlmMemoryReadPlanner(
         - the target contains all facts needed to answer.
 
         Use needs_source=true only when exact quote, evidence, source, or wording-level grounding is needed.
+        Use needs_source=true when the target asks according to, from, or in a named/pasted/imported document and the target does not include the document content.
         If unsure, set needs_memory=true. False negatives are worse than a small extra recall.
 
         TARGET_MESSAGE text:
@@ -405,7 +407,10 @@ class LlmMemoryReadPlanner(
             - A request is not self-contained when it asks about user-specific, project-specific, team-specific, or prior-session context and the target message does not contain the answer.
             - Include the profile core block for broad user/project working style, language, tone, preferences, constraints, and "how should you adapt to me/us" questions.
             - For named local projects, repositories, products, agents, user preferences, or working agreements, plan memory retrieval instead of relying on model world knowledge.
+            - If the target asks according to, from, or in a named/pasted/imported document, handoff, prompt pack, architecture document, or data model, plan memory retrieval unless the target message includes the relevant document content.
+            - For named document questions that ask for exact definitions, fields, listed items, or specific component roles, include source retrieval; notes are useful for document digests and rationale, but raw source can be the best answer evidence.
             - If the target asks what order, procedure, workflow, policy, or working agreement "we should follow", and the target itself does not provide the steps, retrieve memory even if the wording sounds like a general advice question.
+            - For timeline, sequence, ordering, ordinal, "first/second/third/latest/previous/next", or "what happened before/after" questions, retrieve enough surrounding ordered items to establish the order. Do not set the claim budget/top_k equal to the requested ordinal only; use at least 4 claims when available, or source retrieval if the sequence likely lives in one document/source.
             - For remembered workflows, retrieve claim and note memory first. Retrieve source memory only when exact wording, provenance, conflict, or evidence fallback is required.
             - For claim retrieval, set preferred_claim_predicates to predicates that directly answer the target and deprioritized_claim_predicates to contextual predicates that may be useful but should not outrank direct answers.
             - Leave predicate priority arrays empty when no predicate ranking is needed.

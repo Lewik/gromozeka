@@ -416,7 +416,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"answer_mode\":\"factual\",\"core_blocks\":[\"profile\"],\"need_memory\":true,\"require_evidence_fallback\":false,\"retrieval_budget\":{\"claims\":3,\"episodes\":0,\"notes\":0,\"sources\":0,\"tasks\":0},\"retrieval_requests\":[{\"deprioritized_claim_predicates\":[\"uses_database\",\"worked_with_database\"],\"filters\":{},\"memory_type\":\"claim\",\"preferred_claim_predicates\":[\"prefers_tutorial_database\",\"prefers_database\",\"tutorial_database_preference\"],\"query\":\"Atlas preferred tutorial database\",\"top_k\":3,\"why\":\"Need stored user preference for Atlas person's tutorial database.\"}]}",
+                                "fullText": "{\"answer_mode\":\"factual\",\"core_blocks\":[\"profile\"],\"need_memory\":true,\"require_evidence_fallback\":false,\"retrieval_budget\":{\"claims\":3,\"episodes\":0,\"notes\":0,\"sources\":0,\"tasks\":0},\"retrieval_requests\":[{\"deprioritized_claim_predicates\":[\"uses_database\",\"mentioned_database\",\"tutorial_topic\"],\"filters\":{},\"memory_type\":\"claim\",\"preferred_claim_predicates\":[\"prefers_tutorial_database\",\"database_preference\",\"prefers\"],\"query\":\"Atlas preferred tutorial database\",\"top_k\":3,\"why\":\"Need Atlas's stated tutorial database preference.\"},{\"deprioritized_claim_predicates\":[],\"filters\":{},\"memory_type\":\"profile\",\"preferred_claim_predicates\":[],\"query\":\"Atlas profile tutorial database preference\",\"top_k\":1,\"why\":\"Check user/person profile for stable preference entry.\"}]}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -431,8 +431,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 1664,
-                "completionTokens": 137,
+                "promptTokens": 1670,
+                "completionTokens": 182,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

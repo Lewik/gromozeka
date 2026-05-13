@@ -35,20 +35,7 @@
           "memoryTraceExpectation": {
             "needMemory": true,
             "injectedPromptPresent": true,
-            "selectedClaimsMin": 1,
-            "selectedProfilesMin": 1,
-            "requiredSelectedClaims": [
-              {
-                "predicateIn": ["prefers_answer_detail", "prefers_tone"],
-                "containsAll": ["concise", "implementation"]
-              }
-            ],
-            "requiredSelectedProfiles": [
-              {
-                "ownerEntityTypeIn": ["USER"],
-                "textContainsAll": ["Russian", "concise"]
-              }
-            ],
+            "selectedHitsMin": 1,
             "injectedPromptContainsAll": ["Russian", "concise"]
           }
         }

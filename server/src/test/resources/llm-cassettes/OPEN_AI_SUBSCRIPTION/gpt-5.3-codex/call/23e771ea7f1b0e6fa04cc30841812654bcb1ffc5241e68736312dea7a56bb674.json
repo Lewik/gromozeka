@@ -380,7 +380,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"operations\":[{\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.98,\"entity_id\":null,\"mention\":\"I\",\"new_entity\":{\"canonical_name\":\"User\",\"entity_type\":\"user\",\"summary\":\"The human user interacting in this namespace.\"},\"reason\":\"First-person statement requires stable user subject entity.\"},{\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.94,\"entity_id\":null,\"mention\":\"Toyota\",\"new_entity\":{\"canonical_name\":\"Toyota\",\"entity_type\":\"organization\",\"summary\":\"Japanese multinational automotive manufacturer.\"},\"reason\":\"Concrete brand/manufacturer mentioned with no existing candidate.\"},{\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.94,\"entity_id\":null,\"mention\":\"Honda\",\"new_entity\":{\"canonical_name\":\"Honda\",\"entity_type\":\"organization\",\"summary\":\"Japanese multinational manufacturer of automobiles and motorcycles.\"},\"reason\":\"Concrete brand/manufacturer mentioned with no existing candidate.\"}]}",
+                                "fullText": "{\"operations\":[{\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.99,\"entity_id\":null,\"mention\":\"User\",\"new_entity\":{\"canonical_name\":\"User\",\"entity_type\":\"user\",\"summary\":\"The human user interacting in this namespace.\"},\"reason\":\"First-person preference statement requires stable USER subject entity.\"},{\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.94,\"entity_id\":null,\"mention\":\"Toyota\",\"new_entity\":{\"canonical_name\":\"Toyota\",\"entity_type\":\"organization\",\"summary\":\"A Japanese multinational automotive manufacturer.\"},\"reason\":\"Concrete car brand referent in user preference statement; no existing candidate.\"},{\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.94,\"entity_id\":null,\"mention\":\"Honda\",\"new_entity\":{\"canonical_name\":\"Honda\",\"entity_type\":\"organization\",\"summary\":\"A Japanese multinational manufacturer of automobiles and motorcycles.\"},\"reason\":\"Concrete car brand referent in user preference statement; no existing candidate.\"}]}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -395,8 +395,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 1271,
-                "completionTokens": 198,
+                "promptTokens": 1296,
+                "completionTokens": 209,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

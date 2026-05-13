@@ -416,7 +416,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"answer_mode\":\"task\",\"core_blocks\":[\"tasks\"],\"need_memory\":true,\"require_evidence_fallback\":false,\"retrieval_budget\":{\"claims\":0,\"episodes\":0,\"notes\":0,\"sources\":0,\"tasks\":3},\"retrieval_requests\":[{\"deprioritized_claim_predicates\":[],\"filters\":{},\"memory_type\":\"task\",\"preferred_claim_predicates\":[],\"query\":\"open follow-up for memory e2e trace reporting\",\"top_k\":3,\"why\":\"Find open follow-up task related to memory e2e trace reporting and return its title.\"}]}",
+                                "fullText": "{\"answer_mode\":\"task\",\"core_blocks\":[\"tasks\"],\"need_memory\":true,\"require_evidence_fallback\":false,\"retrieval_budget\":{\"claims\":0,\"episodes\":0,\"notes\":0,\"sources\":0,\"tasks\":3},\"retrieval_requests\":[{\"deprioritized_claim_predicates\":[],\"filters\":{},\"memory_type\":\"task\",\"preferred_claim_predicates\":[],\"query\":\"open follow-up memory e2e trace reporting\",\"top_k\":3,\"why\":\"Find open follow-up task related to memory e2e trace reporting and return its title.\"}]}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -431,8 +431,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 1684,
-                "completionTokens": 128,
+                "promptTokens": 1661,
+                "completionTokens": 127,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

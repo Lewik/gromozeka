@@ -236,7 +236,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"answer_mode\":\"task\",\"needs_memory\":false,\"needs_source\":false,\"query\":\"\",\"reason\":\"Сообщение само содержит новое предпочтение пользователя и не требует поиска в памяти перед обработкой.\"}",
+                                "fullText": "{\"answer_mode\":\"task\",\"needs_memory\":false,\"needs_source\":false,\"query\":\"предпочтения по автомобилям Mazda\",\"reason\":\"Сообщение само содержит новое предпочтение пользователя и не требует обращения к прошлой памяти для ответа/обработки.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -251,8 +251,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 987,
-                "completionTokens": 51,
+                "promptTokens": 993,
+                "completionTokens": 65,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

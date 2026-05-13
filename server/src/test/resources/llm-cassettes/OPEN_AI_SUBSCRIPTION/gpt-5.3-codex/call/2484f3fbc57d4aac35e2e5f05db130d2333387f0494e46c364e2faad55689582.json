@@ -236,7 +236,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"answer_mode\":\"factual\",\"needs_memory\":false,\"needs_source\":false,\"query\":\"NoMemoryVerifier ambiguous recall decision lesson model-based verification\",\"reason\":\"Target message is self-contained guidance text with explicit situation, action, result, and lesson; answering it does not require prior conversation recall.\"}",
+                                "fullText": "{\"answer_mode\":\"factual\",\"needs_memory\":false,\"needs_source\":false,\"query\":\"NoMemoryVerifier lesson ambiguous no-memory recall decisions model-based verifier\",\"reason\":\"Target message is self-contained informational content and does not request recalling prior context before answering.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -251,8 +251,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 1123,
-                "completionTokens": 71,
+                "promptTokens": 1122,
+                "completionTokens": 63,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

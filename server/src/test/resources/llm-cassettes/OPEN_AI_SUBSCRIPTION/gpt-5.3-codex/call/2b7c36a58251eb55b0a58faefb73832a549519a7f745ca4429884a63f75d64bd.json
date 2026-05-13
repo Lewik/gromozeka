@@ -310,7 +310,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"decision\":\"note_write\",\"memory_types\":[\"note\"],\"reason\":\"Contains a durable design lesson and rationale (situation-action-result) for evidence hydration strategy, best stored as reusable note.\",\"salience\":0.83,\"source_policy\":{\"allow_evidence_hydration\":true,\"allow_recall\":true,\"allow_structured_extraction\":true,\"reason\":\"Reusable architecture lesson for SourceHydrator evidence fallback and prompt-bounded quote hydration.\"},\"source_search_text\":\"Memory MVP SourceHydrator lesson: when factual answers need raw evidence after claim retrieval, fetch a small bounded set of source quotes only on evidence fallback request; prefer bounded quote hydration over dumping all sources into runtime prompt.\"}",
+                                "fullText": "{\"decision\":\"note_write\",\"memory_types\":[\"note\"],\"reason\":\"Contains a reusable architectural lesson and trade-off guidance, not a one-off command or task lifecycle update.\",\"salience\":0.84,\"source_policy\":{\"allow_evidence_hydration\":true,\"allow_recall\":true,\"allow_structured_extraction\":true,\"reason\":\"Durable design lesson for SourceHydrator with reusable rationale and procedure.\"},\"source_search_text\":\"Memory MVP SourceHydrator lesson: when factual answers need raw evidence after claims retrieval, fetch a small bounded set of source quotes only on evidence fallback request; prefer bounded quote hydration over dumping all raw sources into runtime prompt.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -325,8 +325,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 2643,
-                "completionTokens": 149,
+                "promptTokens": 2629,
+                "completionTokens": 144,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

@@ -236,7 +236,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"answer_mode\":\"task\",\"needs_memory\":false,\"needs_source\":false,\"query\":\"user editor default preference JetBrains IDEs\",\"reason\":\"Target message is a direct preference update to store; no prior context is required before processing.\"}",
+                                "fullText": "{\"answer_mode\":\"task\",\"needs_memory\":false,\"needs_source\":false,\"query\":\"editor default preference JetBrains IDEs\",\"reason\":\"Target message is a direct preference statement to store; no prior context lookup is required before handling it.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -251,8 +251,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 992,
-                "completionTokens": 59,
+                "promptTokens": 998,
+                "completionTokens": 60,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

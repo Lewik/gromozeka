@@ -310,7 +310,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"decision\":\"direct_structured_write\",\"memory_types\":[\"claim\"],\"reason\":\"States a stable procedural rule/workflow likely reusable across future debugging.\",\"salience\":0.72,\"source_policy\":{\"allow_evidence_hydration\":true,\"allow_recall\":true,\"allow_structured_extraction\":true,\"reason\":\"Durable troubleshooting workflow rule for memory issues.\"},\"source_search_text\":\"If a prompt change breaks memory behavior, troubleshoot in order: check logs, then database, then modify code.\"}",
+                                "fullText": "{\"decision\":\"direct_structured_write\",\"memory_types\":[\"claim\"],\"reason\":\"Explicit stable troubleshooting procedure, reusable project rule rather than a one-off execution command.\",\"salience\":0.78,\"source_policy\":{\"allow_evidence_hydration\":true,\"allow_recall\":true,\"allow_structured_extraction\":true,\"reason\":\"Durable workflow rule for debugging memory behavior after prompt changes.\"},\"source_search_text\":\"When a prompt change breaks memory behavior, debug in order: check logs first, then database, then modify code.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -325,8 +325,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 2505,
-                "completionTokens": 110,
+                "promptTokens": 2528,
+                "completionTokens": 117,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

@@ -5,7 +5,7 @@
     "model": "gpt-5.3-codex",
     "operation": "call",
     "recordedAt": "1970-01-01T00:00:00Z",
-    "projectPath": "gromozeka-e2e-<id>/projects/knowledge-update-latest-wins",
+    "projectPath": "gromozeka-e2e-<id>/projects/explicit-forget-memory",
     "canonicalRequest": {
         "messages": [
             {

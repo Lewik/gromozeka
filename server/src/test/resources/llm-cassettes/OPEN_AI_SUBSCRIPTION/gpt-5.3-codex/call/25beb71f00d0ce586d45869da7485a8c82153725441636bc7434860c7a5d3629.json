@@ -416,7 +416,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"answer_mode\":\"factual\",\"core_blocks\":[\"profile\"],\"need_memory\":true,\"require_evidence_fallback\":false,\"retrieval_budget\":{\"claims\":3,\"episodes\":0,\"notes\":0,\"sources\":0,\"tasks\":0},\"retrieval_requests\":[{\"deprioritized_claim_predicates\":[\"owns\",\"previous_preference\",\"considering\"],\"filters\":{},\"memory_type\":\"claim\",\"preferred_claim_predicates\":[\"prefers\",\"likes\",\"favorite\",\"current_preference\"],\"query\":\"current preferred car brand\",\"top_k\":3,\"why\":\"Retrieve the user’s stated current car brand preference.\"}]}",
+                                "fullText": "{\"answer_mode\":\"factual\",\"core_blocks\":[\"profile\"],\"need_memory\":true,\"require_evidence_fallback\":false,\"retrieval_budget\":{\"claims\":3,\"episodes\":0,\"notes\":0,\"sources\":0,\"tasks\":0},\"retrieval_requests\":[{\"deprioritized_claim_predicates\":[\"owns\",\"drove\",\"mentioned\",\"interested_in\"],\"filters\":{},\"memory_type\":\"claim\",\"preferred_claim_predicates\":[\"prefers\",\"likes\",\"favorite_brand\",\"car_brand_preference\"],\"query\":\"user currently preferred car brand\",\"top_k\":3,\"why\":\"Retrieve stored user preference for preferred car brand.\"}]}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -431,8 +431,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 1667,
-                "completionTokens": 135,
+                "promptTokens": 1663,
+                "completionTokens": 139,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

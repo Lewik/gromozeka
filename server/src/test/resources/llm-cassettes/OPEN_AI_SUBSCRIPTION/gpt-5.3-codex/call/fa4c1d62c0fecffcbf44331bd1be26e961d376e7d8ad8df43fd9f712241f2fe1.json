@@ -236,7 +236,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"answer_mode\":\"task\",\"needs_memory\":false,\"needs_source\":false,\"query\":\"memory write suppression for Project Mirage uses Cassandra\",\"reason\":\"Target is a direct instruction about not storing a stated fact; no prior context is needed before responding.\"}",
+                                "fullText": "{\"answer_mode\":\"task\",\"needs_memory\":false,\"needs_source\":false,\"query\":\"memory preference do not store fact Project Mirage uses Cassandra\",\"reason\":\"Target is a direct instruction about not storing a fact and is self-contained; no prior context is needed to answer.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -251,8 +251,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 959,
-                "completionTokens": 61,
+                "promptTokens": 967,
+                "completionTokens": 66,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

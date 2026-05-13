@@ -380,7 +380,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"operations\":[{\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.95,\"entity_id\":null,\"mention\":\"Vasya\",\"new_entity\":{\"canonical_name\":\"Vasya\",\"entity_type\":\"person\",\"summary\":\"A person referenced by name.\"},\"reason\":\"Named third-person individual with no existing candidate.\"},{\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.89,\"entity_id\":null,\"mention\":\"Tesla\",\"new_entity\":{\"canonical_name\":\"Tesla\",\"entity_type\":\"organization\",\"summary\":\"An automotive and energy company.\"},\"reason\":\"Recognizable proper noun used as preference target; no existing candidate.\"},{\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.9,\"entity_id\":null,\"mention\":\"Nissan\",\"new_entity\":{\"canonical_name\":\"Nissan\",\"entity_type\":\"organization\",\"summary\":\"A Japanese automobile manufacturer.\"},\"reason\":\"Recognizable proper noun used as preference target; no existing candidate.\"},{\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.98,\"entity_id\":null,\"mention\":\"I\",\"new_entity\":{\"canonical_name\":\"User\",\"entity_type\":\"user\",\"summary\":\"The stable end user in this namespace.\"},\"reason\":\"First-person statement should resolve to stable namespace-level USER entity.\"}]}",
+                                "fullText": "{\"operations\":[{\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.93,\"entity_id\":null,\"mention\":\"Vasya\",\"new_entity\":{\"canonical_name\":\"Vasya\",\"entity_type\":\"person\",\"summary\":\"Person mentioned in conversation context.\"},\"reason\":\"Concrete named individual with no existing candidate.\"},{\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.86,\"entity_id\":null,\"mention\":\"Tesla\",\"new_entity\":{\"canonical_name\":\"Tesla\",\"entity_type\":\"product\",\"summary\":\"Automotive brand and manufacturer.\"},\"reason\":\"Referenced as preference target; no existing candidate entity.\"},{\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.86,\"entity_id\":null,\"mention\":\"Nissan\",\"new_entity\":{\"canonical_name\":\"Nissan\",\"entity_type\":\"product\",\"summary\":\"Automotive brand and manufacturer.\"},\"reason\":\"Referenced as preference target; no existing candidate entity.\"},{\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.98,\"entity_id\":null,\"mention\":\"I\",\"new_entity\":{\"canonical_name\":\"User\",\"entity_type\":\"user\",\"summary\":\"The primary human user in this namespace.\"},\"reason\":\"First-person preference requires stable namespace-level USER entity.\"}]}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -395,8 +395,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 1304,
-                "completionTokens": 268,
+                "promptTokens": 1289,
+                "completionTokens": 260,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

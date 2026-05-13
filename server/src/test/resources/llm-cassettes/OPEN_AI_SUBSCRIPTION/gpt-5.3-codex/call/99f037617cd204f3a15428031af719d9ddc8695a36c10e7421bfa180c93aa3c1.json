@@ -416,7 +416,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"answer_mode\":\"task\",\"core_blocks\":[\"tasks\"],\"need_memory\":true,\"require_evidence_fallback\":false,\"retrieval_budget\":{\"claims\":0,\"episodes\":0,\"notes\":0,\"sources\":0,\"tasks\":3},\"retrieval_requests\":[{\"deprioritized_claim_predicates\":[],\"filters\":{},\"memory_type\":\"task\",\"preferred_claim_predicates\":[],\"query\":\"remaining links to obsolete graph prompt cleanup task open/in-progress\",\"top_k\":3,\"why\":\"Identify existing cleanup task(s) related to obsolete graph prompt links and current status/actionability.\"}]}",
+                                "fullText": "{\"answer_mode\":\"task\",\"core_blocks\":[\"tasks\"],\"need_memory\":true,\"require_evidence_fallback\":false,\"retrieval_budget\":{\"claims\":0,\"episodes\":0,\"notes\":0,\"sources\":0,\"tasks\":3},\"retrieval_requests\":[{\"deprioritized_claim_predicates\":[],\"filters\":{},\"memory_type\":\"task\",\"preferred_claim_predicates\":[],\"query\":\"obsolete graph prompt ссылки дочистить оставшиеся прямо сейчас\",\"top_k\":3,\"why\":\"Нужно найти связанные незавершённые задачи по удалению ссылок на obsolete graph prompt и понять, что осталось дочистить.\"}]}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -431,8 +431,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 1666,
-                "completionTokens": 129,
+                "promptTokens": 1664,
+                "completionTokens": 139,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

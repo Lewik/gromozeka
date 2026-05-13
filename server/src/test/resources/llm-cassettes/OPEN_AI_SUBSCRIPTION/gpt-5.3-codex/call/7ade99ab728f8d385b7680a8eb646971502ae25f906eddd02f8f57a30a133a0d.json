@@ -416,7 +416,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"answer_mode\":\"factual\",\"core_blocks\":[\"profile\",\"tasks\"],\"need_memory\":true,\"require_evidence_fallback\":false,\"retrieval_budget\":{\"claims\":5,\"episodes\":0,\"notes\":1,\"sources\":0,\"tasks\":0},\"retrieval_requests\":[{\"deprioritized_claim_predicates\":[\"preference\",\"tone\",\"workflow\"],\"filters\":{},\"memory_type\":\"claim\",\"preferred_claim_predicates\":[\"is\",\"about\",\"project_name\",\"description\",\"feature\",\"status\",\"owner\"],\"query\":\"PantryPilot\",\"top_k\":5,\"why\":\"Retrieve direct factual memories about PantryPilot.\"},{\"deprioritized_claim_predicates\":[],\"filters\":{},\"memory_type\":\"note\",\"preferred_claim_predicates\":[],\"query\":\"PantryPilot context summary\",\"top_k\":1,\"why\":\"Capture concise contextual summary if PantryPilot was discussed in notes.\"}]}",
+                                "fullText": "{\"answer_mode\":\"factual\",\"core_blocks\":[\"profile\",\"tasks\"],\"need_memory\":true,\"require_evidence_fallback\":false,\"retrieval_budget\":{\"claims\":5,\"episodes\":0,\"notes\":1,\"sources\":0,\"tasks\":0},\"retrieval_requests\":[{\"deprioritized_claim_predicates\":[\"preference\",\"tone\",\"workflow\"],\"filters\":{},\"memory_type\":\"claim\",\"preferred_claim_predicates\":[\"is\",\"about\",\"status\",\"goal\",\"feature\",\"repository\",\"owner\"],\"query\":\"PantryPilot\",\"top_k\":5,\"why\":\"Retrieve direct stored facts about the named project/product PantryPilot.\"},{\"deprioritized_claim_predicates\":[],\"filters\":{},\"memory_type\":\"note\",\"preferred_claim_predicates\":[],\"query\":\"PantryPilot\",\"top_k\":1,\"why\":\"Capture concise contextual summary if PantryPilot was discussed in narrative notes.\"}]}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -431,8 +431,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 1667,
-                "completionTokens": 186,
+                "promptTokens": 1664,
+                "completionTokens": 188,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

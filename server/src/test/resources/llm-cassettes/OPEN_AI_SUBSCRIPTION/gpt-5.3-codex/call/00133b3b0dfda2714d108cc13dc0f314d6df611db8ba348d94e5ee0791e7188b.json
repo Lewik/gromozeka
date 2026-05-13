@@ -236,7 +236,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"answer_mode\":\"task\",\"needs_memory\":false,\"needs_source\":false,\"query\":\"\",\"reason\":\"Сообщение само содержит новое указание на запоминание факта; для ответа/действия поиск в памяти не требуется.\"}",
+                                "fullText": "{\"answer_mode\":\"task\",\"needs_memory\":false,\"needs_source\":false,\"query\":\"RiverLedger основной формат аналитического экспорта Avro\",\"reason\":\"Сообщение само содержит полную новую информацию для запоминания; поиск в памяти перед ответом не требуется.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -251,8 +251,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 992,
-                "completionTokens": 59,
+                "promptTokens": 993,
+                "completionTokens": 66,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

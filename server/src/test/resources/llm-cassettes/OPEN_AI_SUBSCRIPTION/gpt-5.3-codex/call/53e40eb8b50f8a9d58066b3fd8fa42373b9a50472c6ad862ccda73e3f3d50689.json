@@ -440,7 +440,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"operations\":[{\"action\":\"insert\",\"candidate_index\":0,\"canonical_predicate\":\"primary_storage_backend\",\"cardinality\":\"single\",\"conflict_policy\":\"replace\",\"object_kind\":\"entity\",\"predicate_description\":\"Primary/default persistence backend for a project\",\"predicate_family\":\"primary_storage_backend\",\"reason\":\"Direct statement of Nimbus project's primary storage backend; matches catalog predicate exactly and no existing claim conflicts.\",\"target_claim_id\":null,\"temporal_policy\":\"status_like\"}]}",
+                                "fullText": "{\"operations\":[{\"action\":\"insert\",\"candidate_index\":0,\"canonical_predicate\":\"primary_storage_backend\",\"cardinality\":\"single\",\"conflict_policy\":\"replace\",\"object_kind\":\"entity\",\"predicate_description\":\"Primary storage backend for a project/service\",\"predicate_family\":\"project_storage_backend\",\"reason\":\"Explicitly states Nimbus project's primary storage backend; matches catalog predicate exactly and no existing claim conflicts.\",\"target_claim_id\":null,\"temporal_policy\":\"status_like\"}]}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -455,7 +455,7 @@
                 }
             ],
             "usage": {
-                "promptTokens": 2928,
+                "promptTokens": 2932,
                 "completionTokens": 102,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,

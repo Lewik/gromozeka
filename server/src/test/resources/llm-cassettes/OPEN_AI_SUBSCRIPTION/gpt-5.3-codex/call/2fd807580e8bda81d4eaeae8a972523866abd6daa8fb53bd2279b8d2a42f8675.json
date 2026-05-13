@@ -416,7 +416,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"answer_mode\":\"factual\",\"core_blocks\":[\"profile\",\"tasks\"],\"need_memory\":false,\"require_evidence_fallback\":false,\"retrieval_budget\":{\"claims\":0,\"episodes\":0,\"notes\":0,\"sources\":0,\"tasks\":0},\"retrieval_requests\":[]}",
+                                "fullText": "{\"answer_mode\":\"factual\",\"core_blocks\":[\"profile\"],\"need_memory\":false,\"require_evidence_fallback\":false,\"retrieval_budget\":{\"claims\":0,\"episodes\":0,\"notes\":0,\"sources\":0,\"tasks\":0},\"retrieval_requests\":[]}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -431,8 +431,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 1672,
-                "completionTokens": 69,
+                "promptTokens": 1678,
+                "completionTokens": 67,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

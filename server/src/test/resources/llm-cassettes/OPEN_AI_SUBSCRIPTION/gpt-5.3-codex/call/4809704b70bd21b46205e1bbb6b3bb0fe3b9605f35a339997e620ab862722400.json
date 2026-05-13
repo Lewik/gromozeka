@@ -416,7 +416,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"answer_mode\":\"factual\",\"core_blocks\":[\"profile\",\"tasks\"],\"need_memory\":true,\"require_evidence_fallback\":false,\"retrieval_budget\":{\"claims\":3,\"episodes\":0,\"notes\":0,\"sources\":0,\"tasks\":0},\"retrieval_requests\":[{\"deprioritized_claim_predicates\":[\"project.description\",\"project.stack\",\"reporting_preferences\"],\"filters\":{},\"memory_type\":\"claim\",\"preferred_claim_predicates\":[\"project.analytics_export_primary_format\",\"project.export_format\",\"product.analytics_export_format\"],\"query\":\"RiverLedger основной формат аналитического экспорта текущий\",\"top_k\":3,\"why\":\"Нужен текущий факт о формате аналитического экспорта для конкретного проекта RiverLedger.\"}]}",
+                                "fullText": "{\"answer_mode\":\"factual\",\"core_blocks\":[\"profile\",\"tasks\"],\"need_memory\":true,\"require_evidence_fallback\":false,\"retrieval_budget\":{\"claims\":3,\"episodes\":0,\"notes\":0,\"sources\":0,\"tasks\":0},\"retrieval_requests\":[{\"deprioritized_claim_predicates\":[\"reporting_tool\",\"integration\",\"file_delivery_method\"],\"filters\":{},\"memory_type\":\"claim\",\"preferred_claim_predicates\":[\"analytics_export_primary_format\",\"export_format\",\"primary_export_format\"],\"query\":\"RiverLedger основной формат аналитического экспорта сейчас\",\"top_k\":3,\"why\":\"Нужен актуальный проектный факт о формате аналитического экспорта RiverLedger.\"}]}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -431,8 +431,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 1670,
-                "completionTokens": 157,
+                "promptTokens": 1679,
+                "completionTokens": 151,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

@@ -315,7 +315,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"answer_mode\":\"task\",\"needs_memory\":false,\"needs_source\":false,\"query\":\"editor default preference update Zed instead of JetBrains\",\"reason\":\"Target message directly provides the new preference and requested update; no prior-memory lookup is required to answer or process it.\"}",
+                                "fullText": "{\"answer_mode\":\"task\",\"needs_memory\":false,\"needs_source\":false,\"query\":\"update user default editor family to Zed replacing JetBrains\",\"reason\":\"Target message is a direct self-contained preference update and does not require recalling prior memory to answer.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -330,8 +330,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 1038,
-                "completionTokens": 66,
+                "promptTokens": 1032,
+                "completionTokens": 63,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

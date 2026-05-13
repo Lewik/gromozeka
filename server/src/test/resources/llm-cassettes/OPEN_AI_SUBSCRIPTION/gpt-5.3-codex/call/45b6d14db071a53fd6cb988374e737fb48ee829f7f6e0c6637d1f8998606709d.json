@@ -380,7 +380,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"operations\":[{\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.9,\"entity_id\":null,\"mention\":\"Gromozeka\",\"new_entity\":{\"canonical_name\":\"Gromozeka\",\"entity_type\":\"project\",\"summary\":\"A project named Gromozeka.\"},\"reason\":\"Concrete named project mention with no existing candidates.\"},{\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.98,\"entity_id\":null,\"mention\":\"MongoDB\",\"new_entity\":{\"canonical_name\":\"MongoDB\",\"entity_type\":\"technology\",\"summary\":\"A document-oriented database technology.\"},\"reason\":\"Explicit technology/database product mention with no existing candidates.\"}]}",
+                                "fullText": "{\"operations\":[{\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.91,\"entity_id\":null,\"mention\":\"Gromozeka\",\"new_entity\":{\"canonical_name\":\"Gromozeka\",\"entity_type\":\"project\",\"summary\":\"A project context referenced by the user.\"},\"reason\":\"Named as a project context with no existing candidate entities.\"},{\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.98,\"entity_id\":null,\"mention\":\"MongoDB\",\"new_entity\":{\"canonical_name\":\"MongoDB\",\"entity_type\":\"technology\",\"summary\":\"A database technology product.\"},\"reason\":\"Explicitly named technology used by the project memory store; no existing candidate entities.\"}]}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -395,8 +395,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 1305,
-                "completionTokens": 145,
+                "promptTokens": 1312,
+                "completionTokens": 152,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

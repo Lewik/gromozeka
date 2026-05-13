@@ -416,7 +416,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"answer_mode\":\"factual\",\"core_blocks\":[],\"need_memory\":true,\"require_evidence_fallback\":true,\"retrieval_budget\":{\"claims\":3,\"episodes\":0,\"notes\":0,\"sources\":2,\"tasks\":0},\"retrieval_requests\":[{\"deprioritized_claim_predicates\":[\"general_preference\",\"tone_preference\"],\"filters\":{},\"memory_type\":\"claim\",\"preferred_claim_predicates\":[\"used_to_work_more_reliably\",\"system_reliability_preference\",\"uncertainty_marker\"],\"query\":\"system used to work more reliably uncertain wording\",\"top_k\":3,\"why\":\"Find prior statement about a system that used to work more reliably and any uncertainty qualifier.\"},{\"deprioritized_claim_predicates\":[],\"filters\":{},\"memory_type\":\"source\",\"preferred_claim_predicates\":[],\"query\":\"exact phrasing about system worked more reliably maybe/uncertain\",\"top_k\":2,\"why\":\"Need wording-level grounding because user asks what they said and requests uncertainty mention.\"}]}",
+                                "fullText": "{\"answer_mode\":\"factual\",\"core_blocks\":[],\"need_memory\":true,\"require_evidence_fallback\":true,\"retrieval_budget\":{\"claims\":2,\"episodes\":0,\"notes\":0,\"sources\":1,\"tasks\":0},\"retrieval_requests\":[{\"deprioritized_claim_predicates\":[\"general_preference\",\"tone_style\"],\"filters\":{},\"memory_type\":\"claim\",\"preferred_claim_predicates\":[\"preference.system_reliability_past\",\"experience.system_worked_more_reliably\",\"user_uncertainty_statement\"],\"query\":\"system used to work more reliably uncertain user said\",\"top_k\":2,\"why\":\"Find previously stated system that was said to work more reliably and capture uncertainty framing.\"},{\"deprioritized_claim_predicates\":[],\"filters\":{},\"memory_type\":\"source\",\"preferred_claim_predicates\":[],\"query\":\"\\\"used to work more reliably\\\" uncertain\",\"top_k\":1,\"why\":\"Need wording-level grounding because user asks what they said and to include uncertainty.\"}]}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -431,8 +431,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 1666,
-                "completionTokens": 212,
+                "promptTokens": 1668,
+                "completionTokens": 211,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

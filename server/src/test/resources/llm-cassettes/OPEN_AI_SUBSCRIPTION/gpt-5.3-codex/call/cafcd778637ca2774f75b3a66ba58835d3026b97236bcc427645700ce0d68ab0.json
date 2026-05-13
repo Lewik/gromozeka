@@ -236,7 +236,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"answer_mode\":\"task\",\"needs_memory\":false,\"needs_source\":false,\"query\":\"\",\"reason\":\"Target message is a self-contained instruction to track an open task; no prior context is required to answer or process it.\"}",
+                                "fullText": "{\"answer_mode\":\"task\",\"needs_memory\":false,\"needs_source\":false,\"query\":\"open task real-model e2e coverage for task memory before Memory MVP stable\",\"reason\":\"Target message is a self-contained instruction creating/updating a task; no prior context is required to answer or act.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -251,8 +251,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 1010,
-                "completionTokens": 56,
+                "promptTokens": 1003,
+                "completionTokens": 71,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

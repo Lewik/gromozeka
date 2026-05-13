@@ -310,7 +310,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"decision\":\"direct_structured_write\",\"memory_types\":[\"profile\"],\"reason\":\"Contains an explicit long-term preference to store for future recommendations.\",\"salience\":0.85,\"source_policy\":{\"allow_evidence_hydration\":true,\"allow_recall\":true,\"allow_structured_extraction\":true,\"reason\":\"Explicit user request to remember a durable personal preference.\"},\"source_search_text\":\"User preference for car recommendations: prefers Mazda.\"}",
+                                "fullText": "{\"decision\":\"direct_structured_write\",\"memory_types\":[\"profile\"],\"reason\":\"The user explicitly asks to remember a durable personal preference.\",\"salience\":0.88,\"source_policy\":{\"allow_evidence_hydration\":true,\"allow_recall\":true,\"allow_structured_extraction\":true,\"reason\":\"Explicit user preference to remember for future recommendations.\"},\"source_search_text\":\"User preference for car recommendations: prefers Mazda.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -325,8 +325,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 2508,
-                "completionTokens": 97,
+                "promptTokens": 2498,
+                "completionTokens": 95,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

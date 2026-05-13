@@ -236,7 +236,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"answer_mode\":\"factual\",\"needs_memory\":false,\"needs_source\":false,\"query\":\"NoMemoryVerifier MVP lesson ambiguous no-memory recall decisions use model-based verifier over substring matching\",\"reason\":\"Target message is self-contained and provides the full lesson content directly; no prior context is required to answer.\"}",
+                                "fullText": "{\"answer_mode\":\"factual\",\"needs_memory\":false,\"needs_source\":false,\"query\":\"NoMemoryVerifier lesson ambiguous no-memory recall decisions model-based verifier\",\"reason\":\"Target message is self-contained and provides the full lesson; answering does not require retrieving prior conversation context.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -251,8 +251,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 1125,
-                "completionTokens": 72,
+                "promptTokens": 1144,
+                "completionTokens": 66,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

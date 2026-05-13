@@ -310,7 +310,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"decision\":\"note_write\",\"memory_types\":[\"note\"],\"reason\":\"Contains a durable engineering lesson with situation-action-result guidance and a reusable rule, best stored as note.\",\"salience\":0.77,\"source_policy\":{\"allow_evidence_hydration\":true,\"allow_recall\":true,\"allow_structured_extraction\":true,\"reason\":\"Reusable implementation lesson and decision rationale for NoMemoryVerifier behavior.\"},\"source_search_text\":\"Memory MVP lesson for NoMemoryVerifier: ReadTimeRetrievalPlanner may wrongly set need_memory=false on ambiguous recall questions; add a short LLM verification before accepting no-memory; avoid hard-coded substring heuristics; prefer cheap model-based verifier to catch recall intent.\"}",
+                                "fullText": "{\"decision\":\"note_write\",\"memory_types\":[\"note\"],\"reason\":\"Contains a reusable engineering lesson with situation-action-result guidance, best stored as note/rationale rather than structured fact or task.\",\"salience\":0.81,\"source_policy\":{\"allow_evidence_hydration\":true,\"allow_recall\":true,\"allow_structured_extraction\":true,\"reason\":\"Durable implementation lesson and design rationale for memory routing behavior.\"},\"source_search_text\":\"Memory MVP NoMemoryVerifier lesson: ReadTimeRetrievalPlanner may return need_memory=false for ambiguous recall questions; add a short LLM verification step before accepting no-memory plan; avoid hard-coded substring heuristics; prefer cheap model-based verifier to catch recall intent and reduce brittle lexical hacks.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -325,8 +325,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 2645,
-                "completionTokens": 148,
+                "promptTokens": 2631,
+                "completionTokens": 157,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

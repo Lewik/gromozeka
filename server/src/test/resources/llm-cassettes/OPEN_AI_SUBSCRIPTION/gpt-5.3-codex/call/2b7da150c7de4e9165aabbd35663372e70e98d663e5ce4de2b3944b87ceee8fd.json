@@ -416,7 +416,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"answer_mode\":\"factual\",\"core_blocks\":[\"profile\"],\"need_memory\":true,\"require_evidence_fallback\":false,\"retrieval_budget\":{\"claims\":0,\"episodes\":0,\"notes\":0,\"sources\":0,\"tasks\":0},\"retrieval_requests\":[]}",
+                                "fullText": "{\"answer_mode\":\"factual\",\"core_blocks\":[\"profile\"],\"need_memory\":true,\"require_evidence_fallback\":false,\"retrieval_budget\":{\"claims\":1,\"episodes\":0,\"notes\":0,\"sources\":0,\"tasks\":0},\"retrieval_requests\":[{\"deprioritized_claim_predicates\":[\"vehicle.ownership\",\"vehicle.general_interest\"],\"filters\":{},\"memory_type\":\"claim\",\"preferred_claim_predicates\":[\"preference.dislike\",\"preference.avoid\",\"recommendation.exclude_brand\"],\"query\":\"User preference to avoid recommending BMW cars\",\"top_k\":1,\"why\":\"Check existing user preference about excluded car brands to apply/update recommendation constraints.\"}]}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -431,8 +431,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 1665,
-                "completionTokens": 67,
+                "promptTokens": 1683,
+                "completionTokens": 145,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

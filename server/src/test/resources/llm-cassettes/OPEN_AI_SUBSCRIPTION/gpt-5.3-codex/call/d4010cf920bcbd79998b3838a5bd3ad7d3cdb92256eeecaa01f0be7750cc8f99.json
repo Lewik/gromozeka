@@ -416,7 +416,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"answer_mode\":\"task\",\"core_blocks\":[\"tasks\"],\"need_memory\":true,\"require_evidence_fallback\":false,\"retrieval_budget\":{\"claims\":0,\"episodes\":0,\"notes\":0,\"sources\":0,\"tasks\":2},\"retrieval_requests\":[{\"deprioritized_claim_predicates\":[],\"filters\":{},\"memory_type\":\"task\",\"preferred_claim_predicates\":[],\"query\":\"task memory lifecycle e2e follow-up verify\",\"top_k\":2,\"why\":\"Find the specific follow-up task and its verification objective\"}]}",
+                                "fullText": "{\"answer_mode\":\"task\",\"core_blocks\":[\"tasks\"],\"need_memory\":true,\"require_evidence_fallback\":false,\"retrieval_budget\":{\"claims\":0,\"episodes\":0,\"notes\":0,\"sources\":0,\"tasks\":2},\"retrieval_requests\":[{\"deprioritized_claim_predicates\":[],\"filters\":{},\"memory_type\":\"task\",\"preferred_claim_predicates\":[],\"query\":\"task memory lifecycle e2e follow-up verify\",\"top_k\":2,\"why\":\"Find the referenced follow-up task and its expected verification criteria.\"}]}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -431,8 +431,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 1657,
-                "completionTokens": 120,
+                "promptTokens": 1673,
+                "completionTokens": 121,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

@@ -416,7 +416,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"answer_mode\":\"factual\",\"core_blocks\":[\"tasks\"],\"need_memory\":true,\"require_evidence_fallback\":false,\"retrieval_budget\":{\"claims\":4,\"episodes\":0,\"notes\":0,\"sources\":0,\"tasks\":2},\"retrieval_requests\":[{\"deprioritized_claim_predicates\":[\"mentioned_in\",\"related_to\",\"worked_on\"],\"filters\":{},\"memory_type\":\"claim\",\"preferred_claim_predicates\":[\"owns\",\"owner_of\",\"responsible_for\",\"token_rotation_owner\",\"api_token_expires_on\",\"expires_on\",\"expiration_date\"],\"query\":\"Aurora token rotation owner API token expire expiration date\",\"top_k\":4,\"why\":\"Find direct factual mappings for owner of Aurora token rotation and API token expiration date.\"},{\"deprioritized_claim_predicates\":[],\"filters\":{},\"memory_type\":\"task\",\"preferred_claim_predicates\":[],\"query\":\"Aurora token rotation owner API token expiry\",\"top_k\":2,\"why\":\"Cross-check operational ownership and due/expiry details if tracked as tasks.\"}]}",
+                                "fullText": "{\"answer_mode\":\"factual\",\"core_blocks\":[\"tasks\"],\"need_memory\":true,\"require_evidence_fallback\":false,\"retrieval_budget\":{\"claims\":4,\"episodes\":0,\"notes\":0,\"sources\":0,\"tasks\":1},\"retrieval_requests\":[{\"deprioritized_claim_predicates\":[\"project\",\"component\",\"status\"],\"filters\":{},\"memory_type\":\"claim\",\"preferred_claim_predicates\":[\"owner\",\"token_rotation_owner\",\"api_token_expiration\",\"expires_on\",\"expiration_date\"],\"query\":\"Aurora token rotation owner API token expire expiration date\",\"top_k\":4,\"why\":\"Need factual ownership and expiration details for Aurora/API token.\"},{\"deprioritized_claim_predicates\":[],\"filters\":{},\"memory_type\":\"task\",\"preferred_claim_predicates\":[],\"query\":\"Aurora token rotation owner assignee API token expiry\",\"top_k\":1,\"why\":\"Ownership may be tracked as an assigned task for token rotation.\"}]}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -431,8 +431,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 1667,
-                "completionTokens": 216,
+                "promptTokens": 1679,
+                "completionTokens": 200,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

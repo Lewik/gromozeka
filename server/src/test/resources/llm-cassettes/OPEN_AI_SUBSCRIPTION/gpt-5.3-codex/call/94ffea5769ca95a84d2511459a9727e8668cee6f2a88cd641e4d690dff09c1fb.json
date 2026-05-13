@@ -236,7 +236,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"answer_mode\":\"factual\",\"needs_memory\":false,\"needs_source\":false,\"query\":\"Vasya Yura graph memory layers opinions\",\"reason\":\"Target message is self-contained factual statements and does not require prior context lookup.\"}",
+                                "fullText": "{\"answer_mode\":\"factual\",\"needs_memory\":false,\"needs_source\":false,\"query\":\"\",\"reason\":\"Target message is self-contained factual statements and does not request prior context or retrieval.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -251,8 +251,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 987,
-                "completionTokens": 57,
+                "promptTokens": 1012,
+                "completionTokens": 49,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

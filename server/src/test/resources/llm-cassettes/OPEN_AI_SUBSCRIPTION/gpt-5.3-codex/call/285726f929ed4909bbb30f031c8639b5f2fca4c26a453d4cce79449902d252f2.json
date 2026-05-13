@@ -236,7 +236,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"answer_mode\":\"factual\",\"needs_memory\":false,\"needs_source\":false,\"query\":\"\",\"reason\":\"TARGET_MESSAGE is a self-contained factual statement and does not ask a question requiring prior memory lookup.\"}",
+                                "fullText": "{\"answer_mode\":\"factual\",\"needs_memory\":false,\"needs_source\":false,\"query\":\"Gromozeka project memory store database prototype SQLite 2026-01-10\",\"reason\":\"Target message is a standalone factual statement and does not request recalling prior context before answering.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -251,8 +251,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 1008,
-                "completionTokens": 52,
+                "promptTokens": 1018,
+                "completionTokens": 68,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

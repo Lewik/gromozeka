@@ -354,7 +354,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"rejected_items\":[{\"item_id\":\"memory-repair-profile-drift-fixture-1-profile\",\"item_type\":\"profile\",\"reason\":\"Projection profile is redundant since the active claim provides the needed fact.\"},{\"item_id\":\"memory-repair-profile-drift-fixture-1-subject\",\"item_type\":\"entity\",\"reason\":\"Entity anchor not needed to answer the direct factual question.\"}],\"selected_items\":[{\"item_id\":\"memory-repair-profile-drift-fixture-1-claim-fresh\",\"item_type\":\"claim\",\"rank\":1,\"reason\":\"Active factual claim directly states the preferred typed memory database.\",\"relevance\":\"direct_answer\"}],\"summary\":\"Use the active claim as the sole sufficient memory item for this factual database preference question.\"}",
+                                "fullText": "{\"rejected_items\":[{\"item_id\":\"memory-repair-profile-drift-fixture-1-profile\",\"item_type\":\"profile\",\"reason\":\"Projection profile is redundant because the active claim already provides the needed fact.\"},{\"item_id\":\"memory-repair-profile-drift-fixture-1-subject\",\"item_type\":\"entity\",\"reason\":\"Entity anchor not needed to answer this direct factual query.\"}],\"selected_items\":[{\"item_id\":\"memory-repair-profile-drift-fixture-1-claim-fresh\",\"item_type\":\"claim\",\"rank\":1,\"reason\":\"Active factual claim directly states preferred database.\",\"relevance\":\"direct_answer\"}],\"summary\":\"Select the active claim as the minimal sufficient memory for the database preference question.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -369,8 +369,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 1663,
-                "completionTokens": 159,
+                "promptTokens": 1667,
+                "completionTokens": 155,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

@@ -310,7 +310,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"decision\":\"direct_structured_write\",\"memory_types\":[\"claim\",\"profile\"],\"reason\":\"Contains a clear durable user preference/rule intended for future advice.\",\"salience\":0.9,\"source_policy\":{\"allow_evidence_hydration\":true,\"allow_recall\":true,\"allow_structured_extraction\":true,\"reason\":\"Explicit user preference to remember for future editor recommendations.\"},\"source_search_text\":\"User preference: default editor choice is JetBrains tools; suggest VS Code only when there is a strong plugin reason.\"}",
+                                "fullText": "{\"decision\":\"direct_structured_write\",\"memory_types\":[\"profile\",\"claim\"],\"reason\":\"Contains an explicit remember instruction and stable preference/rule for future recommendations.\",\"salience\":0.91,\"source_policy\":{\"allow_evidence_hydration\":true,\"allow_recall\":true,\"allow_structured_extraction\":true,\"reason\":\"Explicit durable user preference for editor recommendations.\"},\"source_search_text\":\"User preference for editor advice: default to JetBrains tools; suggest VS Code only when there is a strong plugin-related reason.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -325,8 +325,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 2525,
-                "completionTokens": 114,
+                "promptTokens": 2527,
+                "completionTokens": 115,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

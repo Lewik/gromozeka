@@ -236,7 +236,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"answer_mode\":\"task\",\"needs_memory\":false,\"needs_source\":false,\"query\":\"\",\"reason\":\"Target message is self-contained and requests exact repetition; no prior context or stored memory is needed.\"}",
+                                "fullText": "{\"answer_mode\":\"task\",\"needs_memory\":false,\"needs_source\":false,\"query\":\"repeat diagnostic sentence exactly\",\"reason\":\"The target message is fully self-contained and requests a direct repetition; no prior context or stored memory is needed.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -251,8 +251,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 996,
-                "completionTokens": 51,
+                "promptTokens": 1004,
+                "completionTokens": 59,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

@@ -416,7 +416,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"answer_mode\":\"factual\",\"core_blocks\":[\"profile\",\"tasks\"],\"need_memory\":true,\"require_evidence_fallback\":false,\"retrieval_budget\":{\"claims\":3,\"episodes\":0,\"notes\":0,\"sources\":0,\"tasks\":0},\"retrieval_requests\":[{\"deprioritized_claim_predicates\":[\"historical_format\",\"past_capability\",\"integration_detail\"],\"filters\":{},\"memory_type\":\"claim\",\"preferred_claim_predicates\":[\"uses_format\",\"current_export_format\",\"export_format\",\"supports_export_format\"],\"query\":\"BookNest current export format CSV still current\",\"top_k\":3,\"why\":\"Need latest known export format for BookNest and whether prior CSV format is still current.\"}]}",
+                                "fullText": "{\"answer_mode\":\"factual\",\"core_blocks\":[\"tasks\"],\"need_memory\":true,\"require_evidence_fallback\":false,\"retrieval_budget\":{\"claims\":3,\"episodes\":0,\"notes\":0,\"sources\":0,\"tasks\":0},\"retrieval_requests\":[{\"deprioritized_claim_predicates\":[\"historical_export_format\",\"considered_format\"],\"filters\":{},\"memory_type\":\"claim\",\"preferred_claim_predicates\":[\"uses_format\",\"exports_format\",\"current_export_format\"],\"query\":\"BookNest export format current CSV\",\"top_k\":3,\"why\":\"Need latest known export format for BookNest and whether CSV is still current.\"}]}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -431,8 +431,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 1674,
-                "completionTokens": 153,
+                "promptTokens": 1667,
+                "completionTokens": 141,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

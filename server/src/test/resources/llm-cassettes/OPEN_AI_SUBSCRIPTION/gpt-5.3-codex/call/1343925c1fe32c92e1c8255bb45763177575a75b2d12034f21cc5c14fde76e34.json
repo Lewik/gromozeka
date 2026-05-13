@@ -310,7 +310,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"decision\":\"noop\",\"memory_types\":[],\"reason\":\"This is a recall/probe question and does not add or update durable memory.\",\"salience\":0.0,\"source_policy\":{\"allow_evidence_hydration\":false,\"allow_recall\":false,\"allow_structured_extraction\":false,\"reason\":\"Probe question about existing memory; no new durable assertion.\"},\"source_search_text\":\"Question asking for the user's default tool family for editor advice, requesting only the tool family name.\"}",
+                                "fullText": "{\"decision\":\"noop\",\"memory_types\":[],\"reason\":\"This is a recall/probe question and does not add or update durable memory.\",\"salience\":0,\"source_policy\":{\"allow_evidence_hydration\":false,\"allow_recall\":false,\"allow_structured_extraction\":false,\"reason\":\"Probe question about existing memory; no new durable assertion.\"},\"source_search_text\":\"Question asking for user's default tool family for editor advice; request to answer with only the tool family name.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -325,7 +325,7 @@
                 }
             ],
             "usage": {
-                "promptTokens": 2509,
+                "promptTokens": 2526,
                 "completionTokens": 107,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,

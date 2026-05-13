@@ -5,7 +5,7 @@
     "model": "gpt-5.3-codex",
     "operation": "call",
     "recordedAt": "1970-01-01T00:00:00Z",
-    "projectPath": "gromozeka-e2e-<id>/projects/knowledge-update-latest-wins",
+    "projectPath": "gromozeka-e2e-<id>/projects/explicit-forget-memory",
     "canonicalRequest": {
         "messages": [
             {
@@ -380,7 +380,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"operations\":[{\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.99,\"entity_id\":null,\"mention\":\"I\",\"new_entity\":{\"canonical_name\":\"User\",\"entity_type\":\"user\",\"summary\":\"The human user interacting with the assistant.\"},\"reason\":\"First-person preference statement requires stable USER entity; no existing candidates provided.\"},{\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.97,\"entity_id\":null,\"mention\":\"Toyota\",\"new_entity\":{\"canonical_name\":\"Toyota\",\"entity_type\":\"organization\",\"summary\":\"Japanese multinational automotive manufacturer.\"},\"reason\":\"Concrete brand/manufacturer referent in user preference; no existing candidates provided.\"}]}",
+                                "fullText": "{\"operations\":[{\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.98,\"entity_id\":null,\"mention\":\"I\",\"new_entity\":{\"canonical_name\":\"User\",\"entity_type\":\"user\",\"summary\":\"The human user participating in this namespace's conversations.\"},\"reason\":\"First-person preference statement requires stable USER entity; no existing candidates.\"},{\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.93,\"entity_id\":null,\"mention\":\"Toyota\",\"new_entity\":{\"canonical_name\":\"Toyota\",\"entity_type\":\"organization\",\"summary\":\"Japanese multinational automotive manufacturer.\"},\"reason\":\"Concrete reusable referent in preference statement; no existing candidates.\"}]}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -395,8 +395,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 1286,
-                "completionTokens": 146,
+                "promptTokens": 1271,
+                "completionTokens": 144,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

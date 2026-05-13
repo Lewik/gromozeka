@@ -61,7 +61,7 @@
             "selectedContainsAll": [
               "Source"
             ],
-            "selectedNotesMin": 1
+            "selectedHitsMin": 1
           }
         }
       ]

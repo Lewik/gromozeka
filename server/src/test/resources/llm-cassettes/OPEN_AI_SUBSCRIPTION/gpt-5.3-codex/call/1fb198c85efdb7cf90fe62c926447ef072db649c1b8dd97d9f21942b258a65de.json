@@ -236,7 +236,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"answer_mode\":\"factual\",\"needs_memory\":false,\"needs_source\":false,\"query\":\"BookNest primary export format CSV\",\"reason\":\"Target message is a self-contained factual statement and does not request prior context to answer.\"}",
+                                "fullText": "{\"answer_mode\":\"factual\",\"needs_memory\":false,\"needs_source\":false,\"query\":\"BookNest primary export format\",\"reason\":\"Target message itself states the project fact directly; no prior context is needed to answer.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -251,8 +251,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 988,
-                "completionTokens": 57,
+                "promptTokens": 969,
+                "completionTokens": 56,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

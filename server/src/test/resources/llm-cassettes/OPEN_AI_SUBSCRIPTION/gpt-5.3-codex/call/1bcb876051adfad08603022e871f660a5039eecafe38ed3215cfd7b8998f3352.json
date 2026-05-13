@@ -495,7 +495,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"answer_mode\":\"factual\",\"core_blocks\":[\"profile\",\"tasks\"],\"need_memory\":true,\"require_evidence_fallback\":true,\"retrieval_budget\":{\"claims\":2,\"episodes\":0,\"notes\":0,\"sources\":2,\"tasks\":0},\"retrieval_requests\":[{\"deprioritized_claim_predicates\":[],\"filters\":{},\"memory_type\":\"claim\",\"preferred_claim_predicates\":[\"preference\",\"likes\",\"brand_preference\"],\"query\":\"user said they prefer Toyota cars; when said\",\"top_k\":2,\"why\":\"Find stored user preference statement about Toyota and any associated timestamp metadata.\"},{\"deprioritized_claim_predicates\":[],\"filters\":{},\"memory_type\":\"source\",\"preferred_claim_predicates\":[],\"query\":\"exact user quote about preferring Toyota cars and when it was said\",\"top_k\":2,\"why\":\"User asks for exact quote and timing, requiring provenance text and message timestamp.\"}]}",
+                                "fullText": "{\"answer_mode\":\"mixed\",\"core_blocks\":[\"profile\",\"tasks\"],\"need_memory\":true,\"require_evidence_fallback\":true,\"retrieval_budget\":{\"claims\":2,\"episodes\":0,\"notes\":0,\"sources\":2,\"tasks\":0},\"retrieval_requests\":[{\"deprioritized_claim_predicates\":[\"tone_preference\",\"language_preference\"],\"filters\":{},\"memory_type\":\"claim\",\"preferred_claim_predicates\":[\"preference\",\"likes\",\"brand_preference\"],\"query\":\"user prefers Toyota cars; when stated\",\"top_k\":2,\"why\":\"Find remembered user preference about Toyota and any linked timing metadata.\"},{\"deprioritized_claim_predicates\":[],\"filters\":{},\"memory_type\":\"source\",\"preferred_claim_predicates\":[],\"query\":\"exact message where user stated preference for Toyota cars\",\"top_k\":2,\"why\":\"User asks when they said it and requests exact quote; need original message text and timestamp.\"}]}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -510,8 +510,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 1698,
-                "completionTokens": 195,
+                "promptTokens": 1705,
+                "completionTokens": 198,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

@@ -416,7 +416,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"answer_mode\":\"rationale\",\"core_blocks\":[\"tasks\",\"session_summary\"],\"need_memory\":true,\"require_evidence_fallback\":true,\"retrieval_budget\":{\"claims\":2,\"episodes\":0,\"notes\":3,\"sources\":1,\"tasks\":0},\"retrieval_requests\":[{\"deprioritized_claim_predicates\":[],\"filters\":{},\"memory_type\":\"note\",\"preferred_claim_predicates\":[],\"query\":\"memory MVP decision on storing design rationale and trade-offs how decided\",\"top_k\":3,\"why\":\"Question asks how a prior decision was made (design rationale/trade-offs) for memory MVP.\"},{\"deprioritized_claim_predicates\":[\"preference\",\"style\"],\"filters\":{},\"memory_type\":\"claim\",\"preferred_claim_predicates\":[\"decision\",\"design_rationale\",\"tradeoff\",\"memory_mvp\"],\"query\":\"memory MVP store design rationale trade-offs decision\",\"top_k\":2,\"why\":\"Extract concise decided approach and decision method details tied to memory MVP.\"},{\"deprioritized_claim_predicates\":[],\"filters\":{},\"memory_type\":\"source\",\"preferred_claim_predicates\":[],\"query\":\"memory MVP rationale trade-offs storage discussion\",\"top_k\":1,\"why\":\"Fallback for grounding if notes/claims are sparse or conflicting.\"}]}",
+                                "fullText": "{\"answer_mode\":\"rationale\",\"core_blocks\":[\"tasks\",\"session_summary\"],\"need_memory\":true,\"require_evidence_fallback\":true,\"retrieval_budget\":{\"claims\":2,\"episodes\":0,\"notes\":3,\"sources\":1,\"tasks\":0},\"retrieval_requests\":[{\"deprioritized_claim_predicates\":[],\"filters\":{},\"memory_type\":\"note\",\"preferred_claim_predicates\":[],\"query\":\"memory MVP decision on storing design rationale and trade-offs; how we decided\",\"top_k\":3,\"why\":\"Rationale/trade-off decision is most likely captured in discussion notes.\"},{\"deprioritized_claim_predicates\":[\"background\",\"open_question\"],\"filters\":{},\"memory_type\":\"claim\",\"preferred_claim_predicates\":[\"decision\",\"architecture\",\"tradeoff\",\"rationale_storage\"],\"query\":\"agreed approach for storing design rationale and trade-offs in memory MVP\",\"top_k\":2,\"why\":\"Find concise decided approach statement for direct short answer.\"},{\"deprioritized_claim_predicates\":[],\"filters\":{},\"memory_type\":\"source\",\"preferred_claim_predicates\":[],\"query\":\"original wording about memory MVP rationale/trade-offs storage decision\",\"top_k\":1,\"why\":\"Fallback for exact grounding if note/claim are incomplete or conflicting.\"}]}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -432,7 +432,7 @@
             ],
             "usage": {
                 "promptTokens": 1668,
-                "completionTokens": 259,
+                "completionTokens": 261,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

@@ -416,7 +416,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"answer_mode\":\"factual\",\"core_blocks\":[],\"need_memory\":false,\"require_evidence_fallback\":false,\"retrieval_budget\":{\"claims\":0,\"episodes\":0,\"notes\":0,\"sources\":0,\"tasks\":0},\"retrieval_requests\":[]}",
+                                "fullText": "{\"answer_mode\":\"factual\",\"core_blocks\":[\"profile\",\"tasks\"],\"need_memory\":true,\"require_evidence_fallback\":true,\"retrieval_budget\":{\"claims\":3,\"episodes\":1,\"notes\":0,\"sources\":1,\"tasks\":0},\"retrieval_requests\":[{\"deprioritized_claim_predicates\":[\"general_preference\",\"tooling_context\"],\"filters\":{},\"memory_type\":\"claim\",\"preferred_claim_predicates\":[\"reliability\",\"stability\",\"performance_trend\"],\"query\":\"Strider reliability used to work more reliably uncertainty\",\"top_k\":3,\"why\":\"Check prior recorded observations about Strider reliability over time.\"},{\"deprioritized_claim_predicates\":[],\"filters\":{},\"memory_type\":\"episode\",\"preferred_claim_predicates\":[],\"query\":\"Strider worked reliably before degraded later what worked last time\",\"top_k\":1,\"why\":\"Find a concrete prior attempt/outcome comparing Strider reliability then vs now.\"},{\"deprioritized_claim_predicates\":[],\"filters\":{},\"memory_type\":\"source\",\"preferred_claim_predicates\":[],\"query\":\"\\\"Strider\\\" \\\"more reliably\\\"\",\"top_k\":1,\"why\":\"Fallback to verify exact prior wording because user expresses uncertainty.\"}]}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -431,8 +431,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 1661,
-                "completionTokens": 65,
+                "promptTokens": 1678,
+                "completionTokens": 253,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

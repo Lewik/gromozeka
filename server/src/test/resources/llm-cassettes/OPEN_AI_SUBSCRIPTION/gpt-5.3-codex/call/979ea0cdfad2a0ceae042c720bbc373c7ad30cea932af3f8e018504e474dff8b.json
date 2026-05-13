@@ -236,7 +236,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"answer_mode\":\"factual\",\"needs_memory\":false,\"needs_source\":false,\"query\":\"Aurora API token expiration date\",\"reason\":\"Target message is a standalone factual statement containing the needed detail; no prior context lookup is required before responding.\"}",
+                                "fullText": "{\"answer_mode\":\"factual\",\"needs_memory\":false,\"needs_source\":false,\"query\":\"Aurora API token expiry date\",\"reason\":\"Target message is a standalone factual statement and does not request prior context lookup before answering.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -252,7 +252,7 @@
             ],
             "usage": {
                 "promptTokens": 995,
-                "completionTokens": 61,
+                "completionTokens": 57,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

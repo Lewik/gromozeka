@@ -236,7 +236,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"answer_mode\":\"factual\",\"needs_memory\":false,\"needs_source\":false,\"query\":\"SourceHydrator lesson bounded quote hydration evidence fallback\",\"reason\":\"Target message is self-contained declarative content; no prior context is required to answer or process it.\"}",
+                                "fullText": "{\"answer_mode\":\"factual\",\"needs_memory\":false,\"needs_source\":false,\"query\":\"SourceHydrator memory MVP lesson bounded quote hydration evidence fallback\",\"reason\":\"Target message is self-contained factual content to store; no prior context is required to process it.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -251,8 +251,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 1119,
-                "completionTokens": 64,
+                "promptTokens": 1106,
+                "completionTokens": 65,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

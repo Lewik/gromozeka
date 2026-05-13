@@ -310,7 +310,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"decision\":\"noop\",\"memory_types\":[],\"reason\":\"This is a recall/probe question and does not assert any new preference or request to store/update memory.\",\"salience\":0.0,\"source_policy\":{\"allow_evidence_hydration\":false,\"allow_recall\":false,\"allow_structured_extraction\":false,\"reason\":\"Probe question about memory recall; no new durable assertion.\"},\"source_search_text\":\"User asks which car brand the assistant should remember as their preference, requesting brand-only answer.\"}",
+                                "fullText": "{\"decision\":\"noop\",\"memory_types\":[],\"reason\":\"Question/probe does not assert a preference or request a memory update.\",\"salience\":0.0,\"source_policy\":{\"allow_evidence_hydration\":false,\"allow_recall\":false,\"allow_structured_extraction\":false,\"reason\":\"Probe question about memory recall; no new durable assertion.\"},\"source_search_text\":\"User asks which car brand the assistant should remember as their preference; requests brand-only answer.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -325,8 +325,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 2510,
-                "completionTokens": 111,
+                "promptTokens": 2520,
+                "completionTokens": 104,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

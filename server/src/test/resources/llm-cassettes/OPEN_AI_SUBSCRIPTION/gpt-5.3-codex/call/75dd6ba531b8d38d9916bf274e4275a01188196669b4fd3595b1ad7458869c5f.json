@@ -389,7 +389,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"decision\":\"direct_structured_write\",\"memory_types\":[\"claim\"],\"reason\":\"Contains an explicit remember instruction with a stable project configuration fact.\",\"salience\":0.83,\"source_policy\":{\"allow_evidence_hydration\":true,\"allow_recall\":true,\"allow_structured_extraction\":true,\"reason\":\"Explicit user request to remember a durable project fact.\"},\"source_search_text\":\"FleetNorth project backend database is MongoDB\"}",
+                                "fullText": "{\"decision\":\"direct_structured_write\",\"memory_types\":[\"claim\"],\"reason\":\"Contains a clear, stable project-specific fact with an explicit remember instruction.\",\"salience\":0.86,\"source_policy\":{\"allow_evidence_hydration\":true,\"allow_recall\":true,\"allow_structured_extraction\":true,\"reason\":\"Explicit user request to remember a durable project fact.\"},\"source_search_text\":\"FleetNorth project backend database is MongoDB\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -404,8 +404,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 2552,
-                "completionTokens": 97,
+                "promptTokens": 2542,
+                "completionTokens": 99,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

@@ -389,7 +389,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"decision\":\"direct_structured_write\",\"memory_types\":[\"profile\",\"claim\"],\"reason\":\"TARGET_MESSAGE explicitly changes a stable user preference, suitable for structured long-term memory.\",\"salience\":0.92,\"source_policy\":{\"allow_evidence_hydration\":true,\"allow_recall\":true,\"allow_structured_extraction\":true,\"reason\":\"Explicit user preference update for default editor family; durable profile fact.\"},\"source_search_text\":\"User updates default editor family preference to Zed instead of JetBrains.\"}",
+                                "fullText": "{\"decision\":\"direct_structured_write\",\"memory_types\":[\"profile\"],\"reason\":\"Clear durable profile preference correction/replacement.\",\"salience\":0.88,\"source_policy\":{\"allow_evidence_hydration\":true,\"allow_recall\":true,\"allow_structured_extraction\":true,\"reason\":\"Explicit user preference update that should be stored and used going forward.\"},\"source_search_text\":\"User updates default editor family preference to Zed instead of JetBrains.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -404,8 +404,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 2559,
-                "completionTokens": 111,
+                "promptTokens": 2558,
+                "completionTokens": 101,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

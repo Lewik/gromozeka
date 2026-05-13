@@ -440,7 +440,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"operations\":[{\"action\":\"insert\",\"candidate_index\":0,\"canonical_predicate\":\"primary_export_format\",\"cardinality\":\"single\",\"conflict_policy\":\"replace\",\"object_kind\":\"string\",\"predicate_description\":\"Current primary export format for a project\",\"predicate_family\":\"project_primary_export_slot\",\"reason\":\"New explicit current primary slot value for BookNest project; no existing claim to reconcile.\",\"target_claim_id\":null,\"temporal_policy\":\"status_like\"}]}",
+                                "fullText": "{\"operations\":[{\"action\":\"insert\",\"candidate_index\":0,\"canonical_predicate\":\"primary_export_format\",\"cardinality\":\"single\",\"conflict_policy\":\"replace\",\"object_kind\":\"string\",\"predicate_description\":\"Current primary export format designated for a project\",\"predicate_family\":\"project_primary_export_slot\",\"reason\":\"Explicit named current primary slot for BookNest project export format; no existing claim to replace.\",\"target_claim_id\":null,\"temporal_policy\":\"status_like\"}]}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -455,8 +455,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 2923,
-                "completionTokens": 101,
+                "promptTokens": 2903,
+                "completionTokens": 103,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

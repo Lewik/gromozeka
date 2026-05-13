@@ -236,7 +236,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"answer_mode\":\"task\",\"needs_memory\":false,\"needs_source\":false,\"query\":\"Gromozeka workflow dev beta editing procedure\",\"reason\":\"Target message itself provides the full workflow instruction; no prior context needed before answering.\"}",
+                                "fullText": "{\"answer_mode\":\"task\",\"needs_memory\":false,\"needs_source\":false,\"query\":\"Gromozeka workflow dev beta edit policy\",\"reason\":\"Target message itself provides the workflow instruction directly; no prior context is required to answer.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -251,8 +251,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 1023,
-                "completionTokens": 58,
+                "promptTokens": 1027,
+                "completionTokens": 59,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

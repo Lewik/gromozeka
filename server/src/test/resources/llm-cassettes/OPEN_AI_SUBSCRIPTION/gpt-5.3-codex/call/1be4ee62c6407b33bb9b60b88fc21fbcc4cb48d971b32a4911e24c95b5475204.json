@@ -416,7 +416,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"answer_mode\":\"factual\",\"core_blocks\":[\"tasks\"],\"need_memory\":true,\"require_evidence_fallback\":false,\"retrieval_budget\":{\"claims\":3,\"episodes\":0,\"notes\":0,\"sources\":0,\"tasks\":0},\"retrieval_requests\":[{\"deprioritized_claim_predicates\":[\"backend_framework\",\"deployment_target\",\"programming_language\"],\"filters\":{},\"memory_type\":\"claim\",\"preferred_claim_predicates\":[\"uses_database\",\"backend_database\",\"tech_stack_backend_database\"],\"query\":\"Atlas project backend database used\",\"top_k\":3,\"why\":\"Retrieve the stored tech stack fact for Atlas backend database.\"}]}",
+                                "fullText": "{\"answer_mode\":\"factual\",\"core_blocks\":[\"profile\",\"tasks\"],\"need_memory\":true,\"require_evidence_fallback\":false,\"retrieval_budget\":{\"claims\":3,\"episodes\":0,\"notes\":0,\"sources\":0,\"tasks\":0},\"retrieval_requests\":[{\"deprioritized_claim_predicates\":[\"uses_backend_framework\",\"uses_hosting\",\"uses_language\"],\"filters\":{},\"memory_type\":\"claim\",\"preferred_claim_predicates\":[\"uses_database\",\"backend_database\",\"tech_stack_database\"],\"query\":\"Atlas project backend database name\",\"top_k\":3,\"why\":\"Need project-specific fact about Atlas backend database.\"}]}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -431,7 +431,7 @@
                 }
             ],
             "usage": {
-                "promptTokens": 1664,
+                "promptTokens": 1662,
                 "completionTokens": 138,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,

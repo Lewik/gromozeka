@@ -416,7 +416,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"answer_mode\":\"factual\",\"core_blocks\":[\"profile\",\"tasks\"],\"need_memory\":true,\"require_evidence_fallback\":false,\"retrieval_budget\":{\"claims\":2,\"episodes\":0,\"notes\":0,\"sources\":0,\"tasks\":0},\"retrieval_requests\":[{\"deprioritized_claim_predicates\":[\"has_working_style\",\"has_preference\"],\"filters\":{},\"memory_type\":\"claim\",\"preferred_claim_predicates\":[\"has_memory_consolidation_promotion_rule\",\"defines_promotion_rule\"],\"query\":\"memory consolidation promotion rule\",\"top_k\":2,\"why\":\"Need specific remembered rule definition\"}]}",
+                                "fullText": "{\"answer_mode\":\"factual\",\"core_blocks\":[\"profile\",\"tasks\"],\"need_memory\":true,\"require_evidence_fallback\":false,\"retrieval_budget\":{\"claims\":2,\"episodes\":0,\"notes\":0,\"sources\":0,\"tasks\":0},\"retrieval_requests\":[{\"deprioritized_claim_predicates\":[\"general_preference\",\"tone_preference\"],\"filters\":{},\"memory_type\":\"claim\",\"preferred_claim_predicates\":[\"has_memory_consolidation_promotion_rule\",\"memory_policy_rule\",\"working_agreement_rule\"],\"query\":\"memory consolidation promotion rule\",\"top_k\":2,\"why\":\"Need project-specific rule definition for memory consolidation promotion\"}]}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -431,8 +431,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 1656,
-                "completionTokens": 136,
+                "promptTokens": 1669,
+                "completionTokens": 143,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

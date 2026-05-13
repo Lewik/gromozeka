@@ -236,7 +236,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"answer_mode\":\"factual\",\"needs_memory\":false,\"needs_source\":false,\"query\":\"memory repair MVP workflow requirements conservative audit-friendly\",\"reason\":\"Target message is a standalone requirement statement with all needed facts; no prior context needed to answer.\"}",
+                                "fullText": "{\"answer_mode\":\"factual\",\"needs_memory\":false,\"needs_source\":false,\"query\":\"memory repair MVP repair workflow requirements\",\"reason\":\"Target message is self-contained and states the requirement directly; no prior context is needed to answer.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -251,8 +251,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 985,
-                "completionTokens": 61,
+                "promptTokens": 983,
+                "completionTokens": 59,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

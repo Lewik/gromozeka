@@ -416,7 +416,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"answer_mode\":\"factual\",\"core_blocks\":[\"profile\"],\"need_memory\":true,\"require_evidence_fallback\":false,\"retrieval_budget\":{\"claims\":3,\"episodes\":0,\"notes\":0,\"sources\":0,\"tasks\":0},\"retrieval_requests\":[{\"deprioritized_claim_predicates\":[\"likes\",\"owns\",\"general_preference\"],\"filters\":{},\"memory_type\":\"claim\",\"preferred_claim_predicates\":[\"dislikes\",\"avoid_recommending\",\"brand_anti_preference\",\"preference_negative\"],\"query\":\"car brand to avoid recommending; user anti-preference; disliked car brands\",\"top_k\":3,\"why\":\"Find explicit user anti-preference about car brands to avoid recommending.\"}]}",
+                                "fullText": "{\"answer_mode\":\"factual\",\"core_blocks\":[\"profile\"],\"need_memory\":true,\"require_evidence_fallback\":false,\"retrieval_budget\":{\"claims\":3,\"episodes\":0,\"notes\":0,\"sources\":0,\"tasks\":0},\"retrieval_requests\":[{\"deprioritized_claim_predicates\":[\"communication.style\",\"general.preference\"],\"filters\":{},\"memory_type\":\"claim\",\"preferred_claim_predicates\":[\"preference.dislike\",\"preference.avoid_recommendation\",\"brand.anti_preference\",\"automotive.preference\"],\"query\":\"user car brand anti-preference avoid recommending disliked brand\",\"top_k\":3,\"why\":\"Find explicit user anti-preference about car brands to avoid recommending.\"}]}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -431,8 +431,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 1694,
-                "completionTokens": 154,
+                "promptTokens": 1695,
+                "completionTokens": 153,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

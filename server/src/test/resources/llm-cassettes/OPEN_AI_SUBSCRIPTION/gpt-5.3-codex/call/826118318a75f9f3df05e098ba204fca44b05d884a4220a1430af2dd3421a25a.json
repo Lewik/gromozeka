@@ -310,7 +310,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"decision\":\"direct_structured_write\",\"memory_types\":[\"claim\"],\"reason\":\"Explicit stable project fact about current export format.\",\"salience\":0.73,\"source_policy\":{\"allow_evidence_hydration\":true,\"allow_recall\":true,\"allow_structured_extraction\":true,\"reason\":\"Contains a durable project state fact likely useful later.\"},\"source_search_text\":\"BookNest project current primary export format is CSV\"}",
+                                "fullText": "{\"decision\":\"direct_structured_write\",\"memory_types\":[\"claim\"],\"reason\":\"Explicit stable project fact (current primary export format) suitable as a reusable claim.\",\"salience\":0.72,\"source_policy\":{\"allow_evidence_hydration\":true,\"allow_recall\":true,\"allow_structured_extraction\":true,\"reason\":\"Contains a durable project-state fact likely useful for future reference.\"},\"source_search_text\":\"BookNest project current primary export format is CSV\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -325,8 +325,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 2510,
-                "completionTokens": 95,
+                "promptTokens": 2518,
+                "completionTokens": 104,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

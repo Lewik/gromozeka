@@ -416,7 +416,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"answer_mode\":\"factual\",\"core_blocks\":[\"profile\"],\"need_memory\":true,\"require_evidence_fallback\":false,\"retrieval_budget\":{\"claims\":3,\"episodes\":0,\"notes\":0,\"sources\":0,\"tasks\":0},\"retrieval_requests\":[{\"deprioritized_claim_predicates\":[\"owns\",\"purchased\",\"uses\"],\"filters\":{},\"memory_type\":\"claim\",\"preferred_claim_predicates\":[\"prefers\",\"likes\",\"device_preference\",\"laptop_brand_preference\"],\"query\":\"user preferred laptop brand\",\"top_k\":3,\"why\":\"Need stored user preference for laptop brand.\"},{\"deprioritized_claim_predicates\":[],\"filters\":{},\"memory_type\":\"profile\",\"preferred_claim_predicates\":[],\"query\":\"laptop brand preference\",\"top_k\":1,\"why\":\"Check consolidated user preferences if claim lookup is sparse.\"}]}",
+                                "fullText": "{\"answer_mode\":\"factual\",\"core_blocks\":[\"profile\"],\"need_memory\":true,\"require_evidence_fallback\":false,\"retrieval_budget\":{\"claims\":3,\"episodes\":0,\"notes\":0,\"sources\":0,\"tasks\":0},\"retrieval_requests\":[{\"deprioritized_claim_predicates\":[\"owns_device\",\"recent_purchase\",\"work_device\"],\"filters\":{},\"memory_type\":\"claim\",\"preferred_claim_predicates\":[\"prefers_brand\",\"prefers_laptop_brand\",\"device_brand_preference\"],\"query\":\"user preferred laptop brand\",\"top_k\":3,\"why\":\"Retrieve stored user preference for laptop brand.\"}]}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -431,8 +431,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 1698,
-                "completionTokens": 182,
+                "promptTokens": 1687,
+                "completionTokens": 137,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

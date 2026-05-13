@@ -495,7 +495,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"answer_mode\":\"factual\",\"core_blocks\":[\"profile\"],\"need_memory\":true,\"require_evidence_fallback\":false,\"retrieval_budget\":{\"claims\":3,\"episodes\":0,\"notes\":0,\"sources\":0,\"tasks\":0},\"retrieval_requests\":[{\"deprioritized_claim_predicates\":[\"prefers.tone\",\"prefers.response_length\"],\"filters\":{},\"memory_type\":\"claim\",\"preferred_claim_predicates\":[\"prefers.editor.default_tool_family\",\"prefers.editor.suggest_vs_code_when\",\"working_agreement.editor_recommendation_rules\"],\"query\":\"When to suggest VS Code to user; exceptions to default editor tool family recommendation\",\"top_k\":3,\"why\":\"Need user-specific preference rule for when to suggest VS Code versus default editor family.\"}]}",
+                                "fullText": "{\"answer_mode\":\"factual\",\"core_blocks\":[\"profile\"],\"need_memory\":true,\"require_evidence_fallback\":false,\"retrieval_budget\":{\"claims\":3,\"episodes\":0,\"notes\":0,\"sources\":0,\"tasks\":0},\"retrieval_requests\":[{\"deprioritized_claim_predicates\":[\"prefers.language\",\"prefers.tone\"],\"filters\":{},\"memory_type\":\"claim\",\"preferred_claim_predicates\":[\"prefers.editor.default_tool_family\",\"prefers.editor.suggest_vs_code_when\",\"prefers.editor.exceptions\"],\"query\":\"When to suggest VS Code to user; editor advice preferences and exceptions\",\"top_k\":3,\"why\":\"Retrieve stored editor preference conditions for when VS Code is appropriate for this user.\"}]}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -510,8 +510,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 1694,
-                "completionTokens": 167,
+                "promptTokens": 1689,
+                "completionTokens": 159,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

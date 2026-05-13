@@ -310,7 +310,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"decision\":\"noop\",\"memory_types\":[],\"reason\":\"Probe question only, no explicit memory update or durable fact to store.\",\"salience\":0.0,\"source_policy\":{\"allow_evidence_hydration\":false,\"allow_recall\":false,\"allow_structured_extraction\":false,\"reason\":\"Question/probe requesting guidance; no new durable assertion.\"},\"source_search_text\":\"Question about the order to follow when a prompt change breaks memory behavior; asks for a short answer.\"}",
+                                "fullText": "{\"decision\":\"noop\",\"memory_types\":[],\"reason\":\"A recall/probe question without explicit new memory content or task lifecycle update.\",\"salience\":0.0,\"source_policy\":{\"allow_evidence_hydration\":false,\"allow_recall\":false,\"allow_structured_extraction\":false,\"reason\":\"Probe question about procedure with no new durable assertion; audit-only.\"},\"source_search_text\":\"Question asking order to follow if a prompt change breaks memory behavior; asks for short answer.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -325,8 +325,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 2501,
-                "completionTokens": 106,
+                "promptTokens": 2509,
+                "completionTokens": 107,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

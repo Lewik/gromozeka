@@ -236,7 +236,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"answer_mode\":\"task\",\"needs_memory\":false,\"needs_source\":false,\"query\":\"\",\"reason\":\"Запрос на выполнение новой задачи (редактирование) без необходимости обращаться к прошлому контексту; сообщение само по себе не требует фактов из памяти.\"}",
+                                "fullText": "{\"answer_mode\":\"task\",\"needs_memory\":false,\"needs_source\":false,\"query\":\"редактирование текста по текущему сообщению\",\"reason\":\"Запрос на новое действие (отредактировать), не требует фактов из прошлых сообщений; контекст самодостаточен.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -251,8 +251,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 995,
-                "completionTokens": 64,
+                "promptTokens": 987,
+                "completionTokens": 70,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

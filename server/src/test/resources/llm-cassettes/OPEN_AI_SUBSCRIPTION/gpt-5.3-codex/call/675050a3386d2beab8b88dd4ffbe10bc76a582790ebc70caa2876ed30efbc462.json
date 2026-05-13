@@ -389,7 +389,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"decision\":\"direct_structured_write\",\"memory_types\":[\"profile\"],\"reason\":\"The message explicitly asks to remember a stable user preference, so it should be stored as profile memory.\",\"salience\":0.89,\"source_policy\":{\"allow_evidence_hydration\":true,\"allow_recall\":true,\"allow_structured_extraction\":true,\"reason\":\"Explicit user preference intended for future recommendations; durable profile memory.\"},\"source_search_text\":\"User prefers Toyota cars for future recommendations.\"}",
+                                "fullText": "{\"decision\":\"direct_structured_write\",\"memory_types\":[\"profile\"],\"reason\":\"TARGET_MESSAGE explicitly asks to store a durable user preference, which fits profile memory.\",\"salience\":0.88,\"source_policy\":{\"allow_evidence_hydration\":true,\"allow_recall\":true,\"allow_structured_extraction\":true,\"reason\":\"Explicit user request to remember a stable personal preference for future recommendations.\"},\"source_search_text\":\"User prefers Toyota cars for future recommendations.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -404,8 +404,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 2537,
-                "completionTokens": 106,
+                "promptTokens": 2517,
+                "completionTokens": 103,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

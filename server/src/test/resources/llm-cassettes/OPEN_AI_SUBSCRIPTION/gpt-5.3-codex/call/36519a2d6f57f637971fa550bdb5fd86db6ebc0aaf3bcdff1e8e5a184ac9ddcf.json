@@ -216,7 +216,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"repair_actions\":[{\"action\":\"merge_duplicates\",\"reason\":\"Both active decision notes are near-exact duplicates with identical title and summary; safe to merge while preserving history.\",\"target_ids\":[\"memory-repair-duplicate-notes-fixture-1-note-first\",\"memory-repair-duplicate-notes-fixture-1-note-second\"],\"target_type\":\"note\"}],\"summary\":\"Merged the duplicate decision notes in the cluster to reduce redundancy and keep one coherent memory record.\"}",
+                                "fullText": "{\"repair_actions\":[{\"action\":\"merge_duplicates\",\"reason\":\"Active notes are near-exact duplicates with same type, title, summary, and scope; merge preserves content while removing redundancy.\",\"target_ids\":[\"memory-repair-duplicate-notes-fixture-1-note-first\",\"memory-repair-duplicate-notes-fixture-1-note-second\"],\"target_type\":\"note\"}],\"summary\":\"Merged the duplicate decision notes in repair-cluster-1 to reduce redundancy while preserving history.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -231,8 +231,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 916,
-                "completionTokens": 105,
+                "promptTokens": 913,
+                "completionTokens": 108,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

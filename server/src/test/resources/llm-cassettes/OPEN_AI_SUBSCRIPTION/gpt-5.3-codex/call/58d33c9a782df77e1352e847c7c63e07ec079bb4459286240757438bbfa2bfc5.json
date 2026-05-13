@@ -236,7 +236,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"answer_mode\":\"task\",\"needs_memory\":false,\"needs_source\":false,\"query\":\"editor preference JetBrains default VS Code only for strong plugin reason\",\"reason\":\"Target message itself provides the preference to store; no prior context needed before handling it.\"}",
+                                "fullText": "{\"answer_mode\":\"task\",\"needs_memory\":false,\"needs_source\":false,\"query\":\"editor advice preference JetBrains default VS Code only for strong plugin reason\",\"reason\":\"The target message itself directly states a new preference to remember; no prior memory lookup is needed before processing it.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -251,8 +251,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 1005,
-                "completionTokens": 62,
+                "promptTokens": 1008,
+                "completionTokens": 68,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

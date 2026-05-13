@@ -310,7 +310,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"decision\":\"direct_structured_write\",\"memory_types\":[\"claim\"],\"reason\":\"States a stable reusable project configuration fact.\",\"salience\":0.72,\"source_policy\":{\"allow_evidence_hydration\":true,\"allow_recall\":true,\"allow_structured_extraction\":true,\"reason\":\"Explicit durable project fact about storage backend.\"},\"source_search_text\":\"Nimbus project primary storage backend is MongoDB\"}",
+                                "fullText": "{\"decision\":\"direct_structured_write\",\"memory_types\":[\"claim\"],\"reason\":\"Explicit stable project-level fact likely to be reused later.\",\"salience\":0.84,\"source_policy\":{\"allow_evidence_hydration\":true,\"allow_recall\":true,\"allow_structured_extraction\":true,\"reason\":\"Contains a durable project fact about infrastructure choice.\"},\"source_search_text\":\"Nimbus project primary storage backend is MongoDB\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -325,8 +325,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 2494,
-                "completionTokens": 91,
+                "promptTokens": 2504,
+                "completionTokens": 95,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

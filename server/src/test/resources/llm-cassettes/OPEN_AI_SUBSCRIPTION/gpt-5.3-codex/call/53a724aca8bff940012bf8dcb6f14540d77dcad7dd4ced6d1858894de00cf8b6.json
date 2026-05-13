@@ -389,7 +389,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"decision\":\"noop\",\"memory_types\":[],\"reason\":\"The target is a recall/probe question and does not assert or update any memory-worthy fact.\",\"salience\":0.0,\"source_policy\":{\"allow_evidence_hydration\":false,\"allow_recall\":false,\"allow_structured_extraction\":false,\"reason\":\"Probe question with no new durable assertion; audit-only.\"},\"source_search_text\":\"Question asking which car brand Vasya prefers; answer requested as brand name only.\"}",
+                                "fullText": "{\"decision\":\"noop\",\"memory_types\":[],\"reason\":\"This is a recall/probe question and does not introduce or update durable memory.\",\"salience\":0.0,\"source_policy\":{\"allow_evidence_hydration\":false,\"allow_recall\":false,\"allow_structured_extraction\":false,\"reason\":\"Probe question requesting recall format only; no new durable assertion.\"},\"source_search_text\":\"Question asks which car brand Vasya prefers, with instruction to answer using only the brand name.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -404,8 +404,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 2523,
-                "completionTokens": 107,
+                "promptTokens": 2519,
+                "completionTokens": 108,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

@@ -416,7 +416,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"answer_mode\":\"factual\",\"core_blocks\":[\"profile\"],\"need_memory\":true,\"require_evidence_fallback\":false,\"retrieval_budget\":{\"claims\":3,\"episodes\":0,\"notes\":0,\"sources\":0,\"tasks\":0},\"retrieval_requests\":[{\"deprioritized_claim_predicates\":[\"owns\",\"interested_in\"],\"filters\":{},\"memory_type\":\"claim\",\"preferred_claim_predicates\":[\"prefers\",\"likes\",\"favorite\"],\"query\":\"car brand user preferred from earlier list\",\"top_k\":3,\"why\":\"Need prior stated user preference from earlier list.\"}]}",
+                                "fullText": "{\"answer_mode\":\"factual\",\"core_blocks\":[\"profile\"],\"need_memory\":true,\"require_evidence_fallback\":false,\"retrieval_budget\":{\"claims\":3,\"episodes\":0,\"notes\":0,\"sources\":0,\"tasks\":0},\"retrieval_requests\":[{\"deprioritized_claim_predicates\":[\"owns\",\"interested_in\",\"dislikes\"],\"filters\":{},\"memory_type\":\"claim\",\"preferred_claim_predicates\":[\"prefers\",\"liked\",\"favorite\",\"selected_from_list\"],\"query\":\"car brand preferred from earlier list\",\"top_k\":3,\"why\":\"Need prior stated preference from earlier list.\"}]}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -431,8 +431,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 1677,
-                "completionTokens": 130,
+                "promptTokens": 1673,
+                "completionTokens": 135,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

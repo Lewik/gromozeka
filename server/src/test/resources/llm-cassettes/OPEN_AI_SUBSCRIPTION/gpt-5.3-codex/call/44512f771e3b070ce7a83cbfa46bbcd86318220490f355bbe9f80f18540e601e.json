@@ -416,7 +416,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"answer_mode\":\"rationale\",\"core_blocks\":[\"tasks\",\"session_summary\"],\"need_memory\":true,\"require_evidence_fallback\":true,\"retrieval_budget\":{\"claims\":3,\"episodes\":0,\"notes\":2,\"sources\":2,\"tasks\":0},\"retrieval_requests\":[{\"deprioritized_claim_predicates\":[\"integration_details\",\"historical_context\"],\"filters\":{},\"memory_type\":\"claim\",\"preferred_claim_predicates\":[\"primary_export_format\",\"export_format\",\"supersedes\",\"current_state\"],\"query\":\"BookNest primary export format current value override CSV\",\"top_k\":3,\"why\":\"Find current canonical fact about BookNest primary export format and supersession relation.\"},{\"deprioritized_claim_predicates\":[],\"filters\":{},\"memory_type\":\"note\",\"preferred_claim_predicates\":[],\"query\":\"decision/update note BookNest export format changed from CSV why\",\"top_k\":2,\"why\":\"Retrieve rationale/decision note indicating why CSV is outdated.\"},{\"deprioritized_claim_predicates\":[],\"filters\":{},\"memory_type\":\"source\",\"preferred_claim_predicates\":[],\"query\":\"raw/source line BookNest primary export format is CSV and newer overriding source\",\"top_k\":2,\"why\":\"User explicitly requests source-level provenance and asks which memory overrides old raw source line.\"}]}",
+                                "fullText": "{\"answer_mode\":\"rationale\",\"core_blocks\":[\"tasks\",\"session_summary\"],\"need_memory\":true,\"require_evidence_fallback\":true,\"retrieval_budget\":{\"claims\":3,\"episodes\":0,\"notes\":2,\"sources\":3,\"tasks\":0},\"retrieval_requests\":[{\"deprioritized_claim_predicates\":[\"integration\",\"reporting\",\"storage_format\"],\"filters\":{},\"memory_type\":\"claim\",\"preferred_claim_predicates\":[\"primary_export_format\",\"export_format\",\"data_export_format\"],\"query\":\"BookNest primary export format current\",\"top_k\":3,\"why\":\"Find current factual memory about BookNest export format and detect superseding fact.\"},{\"deprioritized_claim_predicates\":[],\"filters\":{},\"memory_type\":\"note\",\"preferred_claim_predicates\":[],\"query\":\"BookNest export format changed decision rationale superseded old CSV\",\"top_k\":2,\"why\":\"Retrieve rationale/decision note that explains why CSV line became outdated.\"},{\"deprioritized_claim_predicates\":[],\"filters\":{},\"memory_type\":\"source\",\"preferred_claim_predicates\":[],\"query\":\"raw source line BookNest primary export format is CSV and newer conflicting source\",\"top_k\":3,\"why\":\"User explicitly requests source-level provenance and override evidence.\"}]}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -431,8 +431,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 1718,
-                "completionTokens": 267,
+                "promptTokens": 1710,
+                "completionTokens": 258,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

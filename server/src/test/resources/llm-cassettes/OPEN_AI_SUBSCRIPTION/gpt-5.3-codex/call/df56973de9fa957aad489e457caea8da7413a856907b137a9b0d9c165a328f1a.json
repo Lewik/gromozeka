@@ -5,7 +5,7 @@
     "model": "gpt-5.3-codex",
     "operation": "call",
     "recordedAt": "1970-01-01T00:00:00Z",
-    "projectPath": "gromozeka-e2e-<id>/projects/knowledge-update-latest-wins",
+    "projectPath": "gromozeka-e2e-<id>/projects/explicit-forget-memory",
     "canonicalRequest": {
         "messages": [
             {
@@ -310,7 +310,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"decision\":\"direct_structured_write\",\"memory_types\":[\"profile\"],\"reason\":\"Contains a clear, stable user preference explicitly marked for future use.\",\"salience\":0.9,\"source_policy\":{\"allow_evidence_hydration\":true,\"allow_recall\":true,\"allow_structured_extraction\":true,\"reason\":\"Explicit user request to remember a durable preference for future recommendations.\"},\"source_search_text\":\"User preference: prefers Toyota cars for future recommendations.\"}",
+                                "fullText": "{\"decision\":\"direct_structured_write\",\"memory_types\":[\"profile\"],\"reason\":\"The user explicitly asks to remember a stable personal preference, which is durable profile information.\",\"salience\":0.9,\"source_policy\":{\"allow_evidence_hydration\":true,\"allow_recall\":true,\"allow_structured_extraction\":true,\"reason\":\"Explicit user preference intended for future recommendations; durable profile memory.\"},\"source_search_text\":\"User prefers Toyota cars for future recommendations.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -325,8 +325,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 2514,
-                "completionTokens": 101,
+                "promptTokens": 2499,
+                "completionTokens": 103,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

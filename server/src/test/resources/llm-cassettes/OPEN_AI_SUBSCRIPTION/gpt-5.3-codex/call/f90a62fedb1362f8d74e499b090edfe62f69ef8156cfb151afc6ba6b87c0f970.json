@@ -416,7 +416,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"answer_mode\":\"rationale\",\"core_blocks\":[],\"need_memory\":true,\"require_evidence_fallback\":false,\"retrieval_budget\":{\"claims\":1,\"episodes\":0,\"notes\":1,\"sources\":0,\"tasks\":0},\"retrieval_requests\":[{\"deprioritized_claim_predicates\":[],\"filters\":{},\"memory_type\":\"note\",\"preferred_claim_predicates\":[],\"query\":\"handoff prompt pack MemoryRouter v3 decide NoteConstructor v2 create responsibilities\",\"top_k\":2,\"why\":\"Question asks about handoff prompt pack component responsibilities; likely documented in notes.\"},{\"deprioritized_claim_predicates\":[\"context\",\"topic\"],\"filters\":{},\"memory_type\":\"claim\",\"preferred_claim_predicates\":[\"defines\",\"decides\",\"creates\",\"responsibility\"],\"query\":\"MemoryRouter v3 decides; NoteConstructor v2 creates\",\"top_k\":3,\"why\":\"Fetch concise factual mappings for the two named components.\"}]}",
+                                "fullText": "{\"answer_mode\":\"rationale\",\"core_blocks\":[\"tasks\"],\"need_memory\":true,\"require_evidence_fallback\":false,\"retrieval_budget\":{\"claims\":2,\"episodes\":0,\"notes\":2,\"sources\":0,\"tasks\":0},\"retrieval_requests\":[{\"deprioritized_claim_predicates\":[],\"filters\":{},\"memory_type\":\"note\",\"preferred_claim_predicates\":[],\"query\":\"handoff prompt pack MemoryRouter v3 decides NoteConstructor v2 create\",\"top_k\":2,\"why\":\"Question asks about definitions from a specific handoff prompt pack; likely captured in synthesized notes.\"},{\"deprioritized_claim_predicates\":[\"general_architecture\",\"background_context\"],\"filters\":{},\"memory_type\":\"claim\",\"preferred_claim_predicates\":[\"defines_component_role\",\"component_responsibility\",\"prompt_pack_spec\"],\"query\":\"MemoryRouter v3 decide NoteConstructor v2 create\",\"top_k\":2,\"why\":\"Retrieve concise factual mappings for the two named components.\"}]}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -432,7 +432,7 @@
             ],
             "usage": {
                 "promptTokens": 1695,
-                "completionTokens": 197,
+                "completionTokens": 206,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

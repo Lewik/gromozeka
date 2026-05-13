@@ -315,7 +315,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"answer_mode\":\"factual\",\"needs_memory\":false,\"needs_source\":false,\"query\":\"Acme project search service current production engine OpenSearch Elasticsearch timeline\",\"reason\":\"Target message is a self-contained factual update and does not ask a question requiring prior context lookup.\"}",
+                                "fullText": "{\"answer_mode\":\"factual\",\"needs_memory\":false,\"needs_source\":false,\"query\":\"Acme project search service current production engine OpenSearch vs Elasticsearch\",\"reason\":\"The target message is a self-contained factual update and does not ask a question requiring prior context lookup.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -330,8 +330,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 1032,
-                "completionTokens": 65,
+                "promptTokens": 1033,
+                "completionTokens": 66,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

@@ -416,7 +416,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"answer_mode\":\"factual\",\"core_blocks\":[\"tasks\"],\"need_memory\":true,\"require_evidence_fallback\":false,\"retrieval_budget\":{\"claims\":3,\"episodes\":0,\"notes\":0,\"sources\":0,\"tasks\":0},\"retrieval_requests\":[{\"deprioritized_claim_predicates\":[\"database\",\"infrastructure\",\"deployment\"],\"filters\":{},\"memory_type\":\"claim\",\"preferred_claim_predicates\":[\"primary_storage_backend\",\"storage_backend\",\"project_backend\",\"current_backend\"],\"query\":\"Nimbus project primary storage backend now\",\"top_k\":3,\"why\":\"Need project-specific fact for Nimbus primary storage backend.\"}]}",
+                                "fullText": "{\"answer_mode\":\"factual\",\"core_blocks\":[\"profile\",\"tasks\"],\"need_memory\":true,\"require_evidence_fallback\":false,\"retrieval_budget\":{\"claims\":3,\"episodes\":0,\"notes\":0,\"sources\":0,\"tasks\":0},\"retrieval_requests\":[{\"deprioritized_claim_predicates\":[\"historical_backend\",\"database_migration_plan\",\"infrastructure_general\"],\"filters\":{},\"memory_type\":\"claim\",\"preferred_claim_predicates\":[\"primary_storage_backend\",\"uses_storage_backend\",\"current_backend\"],\"query\":\"Nimbus project primary storage backend now\",\"top_k\":3,\"why\":\"Need project-specific fact about Nimbus primary storage backend\"}]}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -431,8 +431,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 1678,
-                "completionTokens": 137,
+                "promptTokens": 1673,
+                "completionTokens": 143,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

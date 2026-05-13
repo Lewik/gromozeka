@@ -416,7 +416,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"answer_mode\":\"factual\",\"core_blocks\":[],\"need_memory\":true,\"require_evidence_fallback\":false,\"retrieval_budget\":{\"claims\":3,\"episodes\":0,\"notes\":0,\"sources\":0,\"tasks\":0},\"retrieval_requests\":[{\"deprioritized_claim_predicates\":[\"team_member\",\"works_on\",\"location\",\"contact_info\"],\"filters\":{},\"memory_type\":\"claim\",\"preferred_claim_predicates\":[\"has_role\",\"role_in_organization\",\"sales_manager_for\",\"works_as\"],\"query\":\"Nimbus Sales Manager role holder\",\"top_k\":3,\"why\":\"Need a direct fact about the person holding the Sales Manager role for Nimbus.\"}]}",
+                                "fullText": "{\"answer_mode\":\"factual\",\"core_blocks\":[],\"need_memory\":true,\"require_evidence_fallback\":false,\"retrieval_budget\":{\"claims\":3,\"episodes\":0,\"notes\":0,\"sources\":0,\"tasks\":0},\"retrieval_requests\":[{\"deprioritized_claim_predicates\":[\"team_member\",\"works_at\",\"department\"],\"filters\":{},\"memory_type\":\"claim\",\"preferred_claim_predicates\":[\"has_role\",\"role_at_company\",\"sales_manager_of\",\"works_as\"],\"query\":\"Sales Manager for Nimbus\",\"top_k\":3,\"why\":\"Need specific role-holder mapping for Nimbus Sales Manager from prior memory.\"}]}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -431,8 +431,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 1679,
-                "completionTokens": 145,
+                "promptTokens": 1675,
+                "completionTokens": 138,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

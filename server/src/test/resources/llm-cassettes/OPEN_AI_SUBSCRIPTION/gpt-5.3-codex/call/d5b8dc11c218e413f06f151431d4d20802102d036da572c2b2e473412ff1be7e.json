@@ -416,7 +416,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"answer_mode\":\"factual\",\"core_blocks\":[],\"need_memory\":true,\"require_evidence_fallback\":false,\"retrieval_budget\":{\"claims\":2,\"episodes\":0,\"notes\":1,\"sources\":0,\"tasks\":0},\"retrieval_requests\":[{\"deprioritized_claim_predicates\":[\"general_memory_architecture\",\"background_context\"],\"filters\":{},\"memory_type\":\"claim\",\"preferred_claim_predicates\":[\"defines_axes\",\"memory_v3_axes\",\"handoff_architecture\"],\"query\":\"handoff architecture document four axes of memory v3\",\"top_k\":2,\"why\":\"Retrieve the specific four-axis definition for memory v3 from project knowledge.\"},{\"deprioritized_claim_predicates\":[],\"filters\":{},\"memory_type\":\"note\",\"preferred_claim_predicates\":[],\"query\":\"memory v3 four axes handoff architecture note\",\"top_k\":1,\"why\":\"Fallback for concise documented phrasing if claims are incomplete.\"}]}",
+                                "fullText": "{\"answer_mode\":\"factual\",\"core_blocks\":[],\"need_memory\":true,\"require_evidence_fallback\":false,\"retrieval_budget\":{\"claims\":2,\"episodes\":0,\"notes\":0,\"sources\":0,\"tasks\":0},\"retrieval_requests\":[{\"deprioritized_claim_predicates\":[\"general_memory_architecture\",\"implementation_detail\"],\"filters\":{},\"memory_type\":\"claim\",\"preferred_claim_predicates\":[\"defines_memory_v3_axes\",\"memory_v3_axis\"],\"query\":\"handoff architecture document four axes of memory v3\",\"top_k\":2,\"why\":\"Need project-specific factual recall of the four memory v3 axes from the handoff architecture document.\"}]}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -431,8 +431,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 1673,
-                "completionTokens": 197,
+                "promptTokens": 1680,
+                "completionTokens": 147,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

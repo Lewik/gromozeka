@@ -416,7 +416,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"answer_mode\":\"factual\",\"core_blocks\":[\"profile\",\"tasks\"],\"need_memory\":true,\"require_evidence_fallback\":false,\"retrieval_budget\":{\"claims\":3,\"episodes\":0,\"notes\":0,\"sources\":0,\"tasks\":0},\"retrieval_requests\":[{\"deprioritized_claim_predicates\":[\"language_preference\",\"communication_style\",\"meeting_notes\"],\"filters\":{},\"memory_type\":\"claim\",\"preferred_claim_predicates\":[\"uses_database\",\"tech_stack\",\"project_uses\",\"backend_database\"],\"query\":\"Project Mirage database used\",\"top_k\":3,\"why\":\"Need project-specific factual recall about Project Mirage tech stack/database.\"}]}",
+                                "fullText": "{\"answer_mode\":\"factual\",\"core_blocks\":[\"profile\",\"tasks\"],\"need_memory\":true,\"require_evidence_fallback\":false,\"retrieval_budget\":{\"claims\":3,\"episodes\":0,\"notes\":1,\"sources\":0,\"tasks\":0},\"retrieval_requests\":[{\"deprioritized_claim_predicates\":[\"uses_backend_framework\",\"uses_language\",\"owned_by\"],\"filters\":{},\"memory_type\":\"claim\",\"preferred_claim_predicates\":[\"uses_database\",\"has_database\",\"project_stack_database\"],\"query\":\"Project Mirage database used\",\"top_k\":3,\"why\":\"Find stored factual association between Project Mirage and its database technology.\"},{\"deprioritized_claim_predicates\":[],\"filters\":{},\"memory_type\":\"note\",\"preferred_claim_predicates\":[],\"query\":\"Project Mirage database\",\"top_k\":1,\"why\":\"Fallback for project-specific implementation detail if not normalized into claims.\"}]}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -431,8 +431,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 1683,
-                "completionTokens": 142,
+                "promptTokens": 1667,
+                "completionTokens": 187,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

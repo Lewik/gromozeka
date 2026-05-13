@@ -416,7 +416,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"answer_mode\":\"factual\",\"core_blocks\":[\"profile\",\"tasks\"],\"need_memory\":true,\"require_evidence_fallback\":false,\"retrieval_budget\":{\"claims\":2,\"episodes\":0,\"notes\":0,\"sources\":0,\"tasks\":0},\"retrieval_requests\":[{\"deprioritized_claim_predicates\":[\"repository\",\"owner\",\"status\"],\"filters\":{},\"memory_type\":\"claim\",\"preferred_claim_predicates\":[\"uses_runtime_language\",\"runtime_language\",\"implementation_language\"],\"query\":\"Atlas planner sandbox runtime language\",\"top_k\":2,\"why\":\"Need project-specific fact about Atlas planner sandbox runtime language.\"}]}",
+                                "fullText": "{\"answer_mode\":\"factual\",\"core_blocks\":[\"profile\",\"tasks\"],\"need_memory\":true,\"require_evidence_fallback\":false,\"retrieval_budget\":{\"claims\":2,\"episodes\":0,\"notes\":0,\"sources\":0,\"tasks\":0},\"retrieval_requests\":[{\"deprioritized_claim_predicates\":[\"framework\",\"repository\",\"owner\"],\"filters\":{},\"memory_type\":\"claim\",\"preferred_claim_predicates\":[\"runtime_language\",\"uses_language\",\"sandbox_runtime\"],\"query\":\"Atlas planner sandbox runtime language\",\"top_k\":2,\"why\":\"Need project-specific factual recall about Atlas planner sandbox runtime language.\"}]}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -431,7 +431,7 @@
                 }
             ],
             "usage": {
-                "promptTokens": 1667,
+                "promptTokens": 1660,
                 "completionTokens": 135,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,

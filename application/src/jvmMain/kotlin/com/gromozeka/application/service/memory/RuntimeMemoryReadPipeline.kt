@@ -781,14 +781,18 @@ private fun List<MemoryStore.SearchHit>.deferRawSourceCandidatesToEvidenceHydrat
 }
 
 private fun MemoryReadPlan.defersRawSourcesWhenTypedMemoryExists(): Boolean =
-    when (answerMode) {
-        MemoryReadPlan.AnswerMode.FACTUAL,
-        MemoryReadPlan.AnswerMode.TASK,
-        -> true
+    if (shouldRenderEvidenceInPrompt()) {
+        false
+    } else {
+        when (answerMode) {
+            MemoryReadPlan.AnswerMode.FACTUAL,
+            MemoryReadPlan.AnswerMode.TASK,
+            -> true
 
-        MemoryReadPlan.AnswerMode.MIXED,
-        MemoryReadPlan.AnswerMode.RATIONALE,
-        -> false
+            MemoryReadPlan.AnswerMode.MIXED,
+            MemoryReadPlan.AnswerMode.RATIONALE,
+            -> false
+        }
     }
 
 private fun MemoryStore.SearchHit.isCurrentTruthBearingTypedHit(): Boolean =
@@ -1010,7 +1014,7 @@ private data class RuntimeMemorySourcePruningResult(
 private fun List<MemoryStore.SearchHit>.filterNonRequiredSourcesWhenTypedMemoryAnswers(
     plan: MemoryReadPlan,
 ): RuntimeMemorySourcePruningResult {
-    if (plan.requireEvidenceFallback) {
+    if (plan.shouldRenderEvidenceInPrompt()) {
         return RuntimeMemorySourcePruningResult(hits = this)
     }
 
@@ -1157,11 +1161,14 @@ private fun MemoryStore.SearchHit.isEmptyProfileHit(): Boolean =
 private fun MemoryReadPlan.evidenceHydrationSourceLimit(): Int =
     when (answerMode) {
         MemoryReadPlan.AnswerMode.RATIONALE -> retrievalBudget.sources.takeIf { it > 0 } ?: 4
-        MemoryReadPlan.AnswerMode.MIXED -> if (requireEvidenceFallback) retrievalBudget.sources.takeIf { it > 0 } ?: 2 else 0
+        MemoryReadPlan.AnswerMode.MIXED -> if (shouldIncludeSourceEvidence()) retrievalBudget.sources.takeIf { it > 0 } ?: 2 else 0
         MemoryReadPlan.AnswerMode.FACTUAL,
         MemoryReadPlan.AnswerMode.TASK,
-        -> if (requireEvidenceFallback) retrievalBudget.sources.takeIf { it > 0 } ?: 2 else 0
+        -> if (shouldIncludeSourceEvidence()) retrievalBudget.sources.takeIf { it > 0 } ?: 2 else 0
     }
+
+private fun MemoryReadPlan.shouldIncludeSourceEvidence(): Boolean =
+    requireEvidenceFallback || retrievalRequests.any { it.memoryType == MemorySemanticType.SOURCE }
 
 private fun MemoryReadPlan.shouldRenderEvidenceInPrompt(): Boolean =
     evidenceHydrationSourceLimit() > 0

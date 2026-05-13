@@ -416,7 +416,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"answer_mode\":\"factual\",\"core_blocks\":[\"tasks\"],\"need_memory\":true,\"require_evidence_fallback\":false,\"retrieval_budget\":{\"claims\":3,\"episodes\":0,\"notes\":0,\"sources\":0,\"tasks\":0},\"retrieval_requests\":[{\"deprioritized_claim_predicates\":[\"preference\",\"style\"],\"filters\":{},\"memory_type\":\"claim\",\"preferred_claim_predicates\":[\"workflow_requirement\",\"reporting_requirement\",\"definition\"],\"query\":\"repair trace reports should show\",\"top_k\":3,\"why\":\"Need project-specific remembered guidance on repair trace report contents.\"}]}",
+                                "fullText": "{\"answer_mode\":\"factual\",\"core_blocks\":[\"tasks\"],\"need_memory\":true,\"require_evidence_fallback\":false,\"retrieval_budget\":{\"claims\":3,\"episodes\":0,\"notes\":0,\"sources\":0,\"tasks\":0},\"retrieval_requests\":[{\"deprioritized_claim_predicates\":[\"tone.preference\",\"general.writing_style\"],\"filters\":{},\"memory_type\":\"claim\",\"preferred_claim_predicates\":[\"workflow.rule\",\"reporting.requirement\",\"repair.trace_report_content\"],\"query\":\"repair trace reports should show\",\"top_k\":3,\"why\":\"Retrieve prior agreed guidance on repair trace report contents.\"}]}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -431,8 +431,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 1655,
-                "completionTokens": 131,
+                "promptTokens": 1653,
+                "completionTokens": 137,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

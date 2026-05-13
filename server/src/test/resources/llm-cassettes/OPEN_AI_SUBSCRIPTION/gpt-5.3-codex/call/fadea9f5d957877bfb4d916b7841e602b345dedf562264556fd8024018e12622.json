@@ -416,7 +416,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"answer_mode\":\"factual\",\"core_blocks\":[\"tasks\"],\"need_memory\":true,\"require_evidence_fallback\":false,\"retrieval_budget\":{\"claims\":3,\"episodes\":0,\"notes\":0,\"sources\":0,\"tasks\":0},\"retrieval_requests\":[{\"deprioritized_claim_predicates\":[\"uses_backend_framework\",\"uses_cache\",\"uses_queue\"],\"filters\":{},\"memory_type\":\"claim\",\"preferred_claim_predicates\":[\"uses_database\",\"backend_database\",\"tech_stack_database\"],\"query\":\"FleetNorth backend database\",\"top_k\":3,\"why\":\"Retrieve project-specific backend stack detail for FleetNorth.\"}]}",
+                                "fullText": "{\"answer_mode\":\"factual\",\"core_blocks\":[\"tasks\"],\"need_memory\":true,\"require_evidence_fallback\":false,\"retrieval_budget\":{\"claims\":3,\"episodes\":0,\"notes\":0,\"sources\":0,\"tasks\":0},\"retrieval_requests\":[{\"deprioritized_claim_predicates\":[\"uses_backend_framework\",\"uses_cloud_provider\",\"repository_name\"],\"filters\":{},\"memory_type\":\"claim\",\"preferred_claim_predicates\":[\"uses_database\",\"backend_database\",\"tech_stack_database\"],\"query\":\"FleetNorth backend database used\",\"top_k\":3,\"why\":\"Need project-specific fact about FleetNorth backend database.\"}]}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -431,8 +431,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 1673,
-                "completionTokens": 135,
+                "promptTokens": 1657,
+                "completionTokens": 137,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

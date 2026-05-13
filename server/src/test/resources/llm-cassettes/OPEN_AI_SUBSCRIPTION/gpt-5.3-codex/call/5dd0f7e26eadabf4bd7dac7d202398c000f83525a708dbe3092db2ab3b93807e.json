@@ -310,7 +310,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"decision\":\"direct_structured_write\",\"memory_types\":[\"task\"],\"reason\":\"The message explicitly creates/maintains an open durable follow-up task.\",\"salience\":0.85,\"source_policy\":{\"allow_evidence_hydration\":true,\"allow_recall\":true,\"allow_structured_extraction\":true,\"reason\":\"Explicit request to keep an open follow-up task; durable task lifecycle instruction.\"},\"source_search_text\":\"Memory MVP follow-up keep an open task to run a temporary task memory cancellation experiment\"}",
+                                "fullText": "{\"decision\":\"direct_structured_write\",\"memory_types\":[\"task\"],\"reason\":\"The message explicitly requests maintaining an open follow-up task, which is durable task memory.\",\"salience\":0.79,\"source_policy\":{\"allow_evidence_hydration\":true,\"allow_recall\":true,\"allow_structured_extraction\":true,\"reason\":\"Explicit durable follow-up task lifecycle instruction to keep an open task.\"},\"source_search_text\":\"Memory MVP follow-up: keep an open task to run a temporary task memory cancellation experiment\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -325,8 +325,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 2501,
-                "completionTokens": 112,
+                "promptTokens": 2511,
+                "completionTokens": 114,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

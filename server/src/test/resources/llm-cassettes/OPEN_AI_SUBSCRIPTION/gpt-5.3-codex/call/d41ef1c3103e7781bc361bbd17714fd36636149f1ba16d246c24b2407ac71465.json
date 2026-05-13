@@ -236,7 +236,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"answer_mode\":\"task\",\"needs_memory\":false,\"needs_source\":false,\"query\":\"user preference Toyota cars future advice\",\"reason\":\"Target message is a new preference statement to store; no prior context is needed before responding.\"}",
+                                "fullText": "{\"answer_mode\":\"task\",\"needs_memory\":false,\"needs_source\":false,\"query\":\"user preference for car brand\",\"reason\":\"The target message itself explicitly states the preference to remember (Toyota), so no prior memory lookup is required before handling it.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -251,8 +251,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 977,
-                "completionTokens": 57,
+                "promptTokens": 989,
+                "completionTokens": 62,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

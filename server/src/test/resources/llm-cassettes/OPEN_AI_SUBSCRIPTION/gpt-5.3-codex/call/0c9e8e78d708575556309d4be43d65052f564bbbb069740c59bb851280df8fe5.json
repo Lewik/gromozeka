@@ -416,7 +416,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"answer_mode\":\"factual\",\"core_blocks\":[\"profile\"],\"need_memory\":true,\"require_evidence_fallback\":false,\"retrieval_budget\":{\"claims\":2,\"episodes\":0,\"notes\":0,\"sources\":0,\"tasks\":0},\"retrieval_requests\":[{\"deprioritized_claim_predicates\":[\"general_database_preference\",\"infrastructure_database\",\"analytics_database\"],\"filters\":{},\"memory_type\":\"claim\",\"preferred_claim_predicates\":[\"prefers_database_for_typed_memory_storage\",\"uses_database_for_typed_memory_storage\",\"helios_memory_sandbox_database_preference\"],\"query\":\"Helios memory sandbox preferred database for typed memory storage\",\"top_k\":2,\"why\":\"Need the stored project-specific preference for Helios memory sandbox typed memory storage database.\"}]}",
+                                "fullText": "{\"answer_mode\":\"factual\",\"core_blocks\":[\"profile\"],\"need_memory\":true,\"require_evidence_fallback\":false,\"retrieval_budget\":{\"claims\":2,\"episodes\":0,\"notes\":0,\"sources\":0,\"tasks\":0},\"retrieval_requests\":[{\"deprioritized_claim_predicates\":[\"general_database_preference\",\"non_helios_storage\"],\"filters\":{},\"memory_type\":\"claim\",\"preferred_claim_predicates\":[\"prefers_database_for_typed_memory_storage\",\"uses_database\",\"memory_storage_backend\"],\"query\":\"Helios memory sandbox preferred database for typed memory storage\",\"top_k\":2,\"why\":\"Retrieve stored project-specific preference for Helios memory sandbox typed memory storage database.\"}]}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -431,8 +431,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 1676,
-                "completionTokens": 165,
+                "promptTokens": 1675,
+                "completionTokens": 153,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

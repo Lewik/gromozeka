@@ -310,7 +310,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"decision\":\"forget_request\",\"memory_types\":[\"source\"],\"reason\":\"User explicitly instructs to not remember a specific fact, which is a forget/delete memory request.\",\"salience\":0.93,\"source_policy\":{\"allow_evidence_hydration\":false,\"allow_recall\":false,\"allow_structured_extraction\":false,\"reason\":\"Explicit request to not remember this content; keep only audit trace of forget command\"},\"source_search_text\":\"Project Mirage uses Cassandra\"}",
+                                "fullText": "{\"decision\":\"forget_request\",\"memory_types\":[\"source\"],\"reason\":\"Explicit request to not remember/remove this fact from memory.\",\"salience\":0.8,\"source_policy\":{\"allow_evidence_hydration\":false,\"allow_recall\":false,\"allow_structured_extraction\":false,\"reason\":\"User explicitly requests not to remember this content as a fact.\"},\"source_search_text\":\"Project Mirage uses Cassandra\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -325,8 +325,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 2475,
-                "completionTokens": 104,
+                "promptTokens": 2490,
+                "completionTokens": 92,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

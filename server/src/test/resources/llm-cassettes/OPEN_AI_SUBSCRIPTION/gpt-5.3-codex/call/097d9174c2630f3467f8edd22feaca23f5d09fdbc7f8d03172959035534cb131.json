@@ -236,7 +236,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"answer_mode\":\"factual\",\"needs_memory\":false,\"needs_source\":false,\"query\":\"user vehicle ownership Toyota RunX\",\"reason\":\"Target message is self-contained declarative context and does not require recalling prior conversation to answer.\"}",
+                                "fullText": "{\"answer_mode\":\"factual\",\"needs_memory\":false,\"needs_source\":false,\"query\":\"user vehicle context ownership Toyota RunX\",\"reason\":\"Target message is self-contained declarative context and does not ask a question requiring prior conversation lookup.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -251,8 +251,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 969,
-                "completionTokens": 58,
+                "promptTokens": 981,
+                "completionTokens": 60,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

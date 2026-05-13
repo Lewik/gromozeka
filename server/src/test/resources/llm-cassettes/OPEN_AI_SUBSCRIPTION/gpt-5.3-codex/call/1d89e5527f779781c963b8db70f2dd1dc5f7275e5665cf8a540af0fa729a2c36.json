@@ -236,7 +236,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"answer_mode\":\"factual\",\"needs_memory\":false,\"needs_source\":false,\"query\":\"LedgerBox backend database MongoDB correction\",\"reason\":\"Target message itself provides the factual correction directly; no prior-memory lookup is needed to answer it.\"}",
+                                "fullText": "{\"answer_mode\":\"factual\",\"needs_memory\":false,\"needs_source\":false,\"query\":\"LedgerBox backend database MongoDB correction from Redis\",\"reason\":\"Target message itself provides the needed fact and correction; no prior memory lookup is required to answer it.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -251,8 +251,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 1006,
-                "completionTokens": 60,
+                "promptTokens": 1014,
+                "completionTokens": 63,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

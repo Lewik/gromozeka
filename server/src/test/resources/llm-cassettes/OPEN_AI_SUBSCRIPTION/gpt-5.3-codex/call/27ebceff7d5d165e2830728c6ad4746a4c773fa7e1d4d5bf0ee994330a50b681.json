@@ -236,7 +236,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"answer_mode\":\"factual\",\"needs_memory\":false,\"needs_source\":false,\"query\":\"\",\"reason\":\"Target message is self-contained factual timeline; answering does not require recalling prior context.\"}",
+                                "fullText": "{\"answer_mode\":\"factual\",\"needs_memory\":false,\"needs_source\":false,\"query\":\"memory timeline MongoDB storage evidence-backed recall deduplication dates\",\"reason\":\"Target message is self-contained and provides all needed facts directly; no prior context required.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -251,8 +251,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 1042,
-                "completionTokens": 49,
+                "promptTokens": 1056,
+                "completionTokens": 63,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

@@ -416,7 +416,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"answer_mode\":\"factual\",\"core_blocks\":[\"tasks\"],\"need_memory\":true,\"require_evidence_fallback\":false,\"retrieval_budget\":{\"claims\":3,\"episodes\":0,\"notes\":0,\"sources\":0,\"tasks\":0},\"retrieval_requests\":[{\"deprioritized_claim_predicates\":[\"uses_database\",\"uses_cache\",\"staging_search_backend\"],\"filters\":{},\"memory_type\":\"claim\",\"preferred_claim_predicates\":[\"uses_search_backend\",\"production_search_backend\",\"search_backend_in_production\"],\"query\":\"Acme project production search backend current\",\"top_k\":3,\"why\":\"Need project-specific current production search backend for Acme.\"}]}",
+                                "fullText": "{\"answer_mode\":\"factual\",\"core_blocks\":[],\"need_memory\":true,\"require_evidence_fallback\":false,\"retrieval_budget\":{\"claims\":3,\"episodes\":0,\"notes\":0,\"sources\":0,\"tasks\":0},\"retrieval_requests\":[{\"deprioritized_claim_predicates\":[\"staging_search_backend\",\"historical_search_backend\",\"planned_search_migration\"],\"filters\":{},\"memory_type\":\"claim\",\"preferred_claim_predicates\":[\"uses_search_backend_in_production\",\"production_search_backend\",\"search_backend\"],\"query\":\"Acme project production search backend currently used\",\"top_k\":3,\"why\":\"Need current project-specific production search backend for Acme.\"}]}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -431,8 +431,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 1669,
-                "completionTokens": 144,
+                "promptTokens": 1678,
+                "completionTokens": 147,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

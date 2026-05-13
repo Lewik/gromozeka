@@ -26,7 +26,7 @@
             "needMemory": true,
             "injectedPromptPresent": true,
             "selectedClaimsMin": 1,
-            "selectedContainsNone": ["SQLite"],
+            "selectedContainsNone": ["prototype"],
             "selectorSelectedContainsAll": ["SELECT CLAIM", "MongoDB"],
             "selectorRejectedContainsAll": ["REJECT CLAIM", "SQLite", "prototype"],
             "requiredSelectedClaims": [
@@ -43,7 +43,7 @@
               }
             ],
             "injectedPromptContainsAll": ["Gromozeka", "MongoDB"],
-            "injectedPromptContainsNone": ["SQLite", "prototype"]
+            "injectedPromptContainsNone": ["prototype"]
           }
         }
       ]

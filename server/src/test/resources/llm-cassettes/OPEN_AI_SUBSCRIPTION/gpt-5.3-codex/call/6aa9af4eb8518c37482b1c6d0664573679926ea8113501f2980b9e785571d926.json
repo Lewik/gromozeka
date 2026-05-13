@@ -354,7 +354,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"rejected_items\":[],\"selected_items\":[{\"item_id\":\"memory-repair-duplicate-tasks-fixture-1-task-second\",\"item_type\":\"task\",\"rank\":1,\"reason\":\"Open task directly matches memory e2e trace reporting follow-up request.\",\"relevance\":\"direct_answer\"}],\"summary\":\"Selected the single open task that is the requested follow-up title.\"}",
+                                "fullText": "{\"rejected_items\":[],\"selected_items\":[{\"item_id\":\"memory-repair-duplicate-tasks-fixture-1-task-second\",\"item_type\":\"task\",\"rank\":1,\"reason\":\"Open task directly matches follow-up about memory e2e trace reporting.\",\"relevance\":\"direct_answer\"}],\"summary\":\"Selected the single open task that directly answers the requested follow-up title.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -369,8 +369,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 1425,
-                "completionTokens": 85,
+                "promptTokens": 1448,
+                "completionTokens": 86,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

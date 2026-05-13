@@ -416,7 +416,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"answer_mode\":\"rationale\",\"core_blocks\":[\"tasks\"],\"need_memory\":true,\"require_evidence_fallback\":true,\"retrieval_budget\":{\"claims\":1,\"episodes\":1,\"notes\":1,\"sources\":0,\"tasks\":0},\"retrieval_requests\":[{\"deprioritized_claim_predicates\":[],\"filters\":{},\"memory_type\":\"episode\",\"preferred_claim_predicates\":[],\"query\":\"NoMemoryVerifier reusable lesson ambiguous no-memory recall decisions\",\"top_k\":1,\"why\":\"User asks for a reusable lesson tied to a specific component and prior outcome.\"},{\"deprioritized_claim_predicates\":[],\"filters\":{},\"memory_type\":\"note\",\"preferred_claim_predicates\":[],\"query\":\"recorded lesson NoMemoryVerifier ambiguous no-memory recall decisions\",\"top_k\":1,\"why\":\"Rationale-style phrasing ('what lesson did we record') is often captured in notes/decision summaries.\"},{\"deprioritized_claim_predicates\":[\"context\",\"preference\"],\"filters\":{},\"memory_type\":\"claim\",\"preferred_claim_predicates\":[\"reusable_lesson\",\"decision\",\"guideline\"],\"query\":\"NoMemoryVerifier ambiguous no-memory recall lesson\",\"top_k\":1,\"why\":\"Capture concise stated lesson if stored as a direct fact.\"}]}",
+                                "fullText": "{\"answer_mode\":\"rationale\",\"core_blocks\":[\"tasks\",\"session_summary\"],\"need_memory\":true,\"require_evidence_fallback\":false,\"retrieval_budget\":{\"claims\":1,\"episodes\":1,\"notes\":1,\"sources\":0,\"tasks\":0},\"retrieval_requests\":[{\"deprioritized_claim_predicates\":[],\"filters\":{},\"memory_type\":\"episode\",\"preferred_claim_predicates\":[],\"query\":\"NoMemoryVerifier reusable lesson ambiguous no-memory recall decisions\",\"top_k\":1,\"why\":\"Question asks for a reusable lesson learned for a specific named component; episode memory is best for prior lesson outcomes.\"},{\"deprioritized_claim_predicates\":[],\"filters\":{},\"memory_type\":\"note\",\"preferred_claim_predicates\":[],\"query\":\"recorded lesson about ambiguous no-memory recall decisions\",\"top_k\":1,\"why\":\"Rationale-style recall of what was recorded should check notes that summarize decisions/lessons.\"},{\"deprioritized_claim_predicates\":[\"context\",\"topic\"],\"filters\":{},\"memory_type\":\"claim\",\"preferred_claim_predicates\":[\"reusable_lesson\",\"lesson_learned\",\"decision_rule\"],\"query\":\"NoMemoryVerifier ambiguous no-memory recall reusable lesson\",\"top_k\":1,\"why\":\"Retrieve concise factual statement of the lesson if stored as a claim.\"}]}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -431,8 +431,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 1687,
-                "completionTokens": 258,
+                "promptTokens": 1678,
+                "completionTokens": 268,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

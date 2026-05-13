@@ -310,7 +310,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"decision\":\"direct_structured_write\",\"memory_types\":[\"claim\"],\"reason\":\"Explicit durable project fact with concrete expiration date; should be stored as structured claim.\",\"salience\":0.84,\"source_policy\":{\"allow_evidence_hydration\":true,\"allow_recall\":true,\"allow_structured_extraction\":true,\"reason\":\"Durable project-specific factual status with explicit date, useful for future operations.\"},\"source_search_text\":\"Aurora project API token expires on 2026-06-01\"}",
+                                "fullText": "{\"decision\":\"direct_structured_write\",\"memory_types\":[\"claim\"],\"reason\":\"Explicit stable project context fact (token expiration date) suitable for structured memory.\",\"salience\":0.82,\"source_policy\":{\"allow_evidence_hydration\":true,\"allow_recall\":true,\"allow_structured_extraction\":true,\"reason\":\"Durable project-specific fact with concrete expiry date useful for future operations.\"},\"source_search_text\":\"Aurora project API token expires on 2026-06-01.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -325,8 +325,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 2517,
-                "completionTokens": 112,
+                "promptTokens": 2524,
+                "completionTokens": 110,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

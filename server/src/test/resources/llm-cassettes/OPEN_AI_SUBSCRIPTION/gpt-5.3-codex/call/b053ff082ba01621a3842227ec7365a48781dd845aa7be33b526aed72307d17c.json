@@ -416,7 +416,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"answer_mode\":\"rationale\",\"core_blocks\":[\"tasks\",\"session_summary\"],\"need_memory\":true,\"require_evidence_fallback\":false,\"retrieval_budget\":{\"claims\":0,\"episodes\":1,\"notes\":1,\"sources\":0,\"tasks\":0},\"retrieval_requests\":[{\"deprioritized_claim_predicates\":[],\"filters\":{},\"memory_type\":\"episode\",\"preferred_claim_predicates\":[],\"query\":\"reusable lesson about ambiguous no-memory recall decisions\",\"top_k\":1,\"why\":\"The user asks for a previously recorded reusable lesson; episode memory best captures learned outcomes.\"},{\"deprioritized_claim_predicates\":[],\"filters\":{},\"memory_type\":\"note\",\"preferred_claim_predicates\":[],\"query\":\"ambiguous no-memory recall decisions lesson recorded\",\"top_k\":1,\"why\":\"Rationale-style 'what did we record/learn' should retrieve notes first for concise decision framing.\"}]}",
+                                "fullText": "{\"answer_mode\":\"rationale\",\"core_blocks\":[\"tasks\",\"session_summary\"],\"need_memory\":true,\"require_evidence_fallback\":false,\"retrieval_budget\":{\"claims\":2,\"episodes\":1,\"notes\":2,\"sources\":0,\"tasks\":0},\"retrieval_requests\":[{\"deprioritized_claim_predicates\":[],\"filters\":{},\"memory_type\":\"episode\",\"preferred_claim_predicates\":[],\"query\":\"reusable lesson about ambiguous no-memory recall decisions\",\"top_k\":1,\"why\":\"Question asks for a reusable lesson previously recorded, which maps to prior lesson/outcome memory.\"},{\"deprioritized_claim_predicates\":[],\"filters\":{},\"memory_type\":\"note\",\"preferred_claim_predicates\":[],\"query\":\"ambiguous no-memory recall decisions recorded lesson\",\"top_k\":2,\"why\":\"Rationale-style recall of what was recorded should prioritize summarized discussion/decision notes.\"},{\"deprioritized_claim_predicates\":[\"preference\",\"bio\"],\"filters\":{},\"memory_type\":\"claim\",\"preferred_claim_predicates\":[\"reusable_lesson\",\"decision_rule\",\"working_agreement\"],\"query\":\"lesson ambiguous no-memory recall decision\",\"top_k\":2,\"why\":\"Capture any canonicalized lesson statement stored as a direct fact.\"}]}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -431,8 +431,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 1681,
-                "completionTokens": 191,
+                "promptTokens": 1668,
+                "completionTokens": 256,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

@@ -416,7 +416,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"answer_mode\":\"factual\",\"core_blocks\":[\"profile\"],\"need_memory\":true,\"require_evidence_fallback\":false,\"retrieval_budget\":{\"claims\":3,\"episodes\":0,\"notes\":0,\"sources\":0,\"tasks\":0},\"retrieval_requests\":[{\"deprioritized_claim_predicates\":[\"owns\",\"interested_in\",\"mentioned\"],\"filters\":{},\"memory_type\":\"claim\",\"preferred_claim_predicates\":[\"prefers\",\"likes\",\"favorite_brand\"],\"query\":\"User preferred car brand\",\"top_k\":3,\"why\":\"Need stored user preference for car brand.\"},{\"deprioritized_claim_predicates\":[],\"filters\":{},\"memory_type\":\"profile\",\"preferred_claim_predicates\":[],\"query\":\"car brand preference\",\"top_k\":1,\"why\":\"Check profile-level preferences for explicit car brand preference.\"}]}",
+                                "fullText": "{\"answer_mode\":\"factual\",\"core_blocks\":[\"profile\"],\"need_memory\":true,\"require_evidence_fallback\":false,\"retrieval_budget\":{\"claims\":3,\"episodes\":0,\"notes\":0,\"sources\":0,\"tasks\":0},\"retrieval_requests\":[{\"deprioritized_claim_predicates\":[\"owns\",\"drives\",\"interested_in\"],\"filters\":{},\"memory_type\":\"claim\",\"preferred_claim_predicates\":[\"prefers\",\"likes\",\"favorite\"],\"query\":\"user preferred car brand\",\"top_k\":3,\"why\":\"Find stored user preference for car brand.\"}]}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -431,8 +431,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 1677,
-                "completionTokens": 175,
+                "promptTokens": 1689,
+                "completionTokens": 129,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

@@ -236,7 +236,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"answer_mode\":\"factual\",\"needs_memory\":false,\"needs_source\":false,\"query\":\"Nimbus project primary storage backend\",\"reason\":\"Target message is a self-contained factual statement and does not request recalling prior context before answering.\"}",
+                                "fullText": "{\"answer_mode\":\"factual\",\"needs_memory\":false,\"needs_source\":false,\"query\":\"Nimbus project primary storage backend\",\"reason\":\"Target message is a standalone factual statement and does not require prior context lookup to answer.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -251,8 +251,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 974,
-                "completionTokens": 57,
+                "promptTokens": 981,
+                "completionTokens": 56,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

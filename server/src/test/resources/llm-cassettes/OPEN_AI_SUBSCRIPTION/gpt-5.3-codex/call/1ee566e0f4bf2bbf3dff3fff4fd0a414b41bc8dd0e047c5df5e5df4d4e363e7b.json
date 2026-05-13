@@ -310,7 +310,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"decision\":\"noop\",\"memory_types\":[],\"reason\":\"One-off immediate action request, not a durable fact, preference, or task lifecycle update.\",\"salience\":0.09,\"source_policy\":{\"allow_evidence_hydration\":false,\"allow_recall\":false,\"allow_structured_extraction\":false,\"reason\":\"Current-turn execution command with no durable memory update; keep audit-only.\"},\"source_search_text\":\"Clean up remaining references to obsolete graph prompt right now.\"}",
+                                "fullText": "{\"decision\":\"noop\",\"memory_types\":[],\"reason\":\"One-off immediate action request, not a durable fact, preference, or tracked task lifecycle update.\",\"salience\":0.14,\"source_policy\":{\"allow_evidence_hydration\":false,\"allow_recall\":false,\"allow_structured_extraction\":false,\"reason\":\"Current-turn execution command without durable memory content; keep audit-only.\"},\"source_search_text\":\"Clean up remaining references to obsolete graph prompt right now.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -325,7 +325,7 @@
                 }
             ],
             "usage": {
-                "promptTokens": 2507,
+                "promptTokens": 2505,
                 "completionTokens": 104,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,

@@ -236,7 +236,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"answer_mode\":\"factual\",\"needs_memory\":true,\"needs_source\":false,\"query\":\"Gromozeka memory store database used\",\"reason\":\"Asks for a project-specific fact not contained in the target message; should check memory/context before answering.\"}",
+                                "fullText": "{\"answer_mode\":\"factual\",\"needs_memory\":true,\"needs_source\":false,\"query\":\"Gromozeka memory store database name\",\"reason\":\"Asks for a specific project fact likely stored in prior context, not contained in the target message itself.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -251,7 +251,7 @@
                 }
             ],
             "usage": {
-                "promptTokens": 992,
+                "promptTokens": 994,
                 "completionTokens": 63,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,

@@ -216,7 +216,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"repair_actions\":[{\"action\":\"refresh_profile\",\"reason\":\"Profile is flagged as drifted/stale; refreshing keeps profile aligned with current memory state while preserving history.\",\"target_ids\":[\"memory-repair-profile-drift-fixture-1-profile\"],\"target_type\":\"profile\"}],\"summary\":\"Refreshed the stale profile for the profile_drift cluster to improve alignment and memory hygiene conservatively.\"}",
+                                "fullText": "{\"repair_actions\":[{\"action\":\"refresh_profile\",\"reason\":\"Profile is flagged as drifted/stale; refreshing profile is the conservative repair for PROFILE_DRIFT.\",\"target_ids\":[\"memory-repair-profile-drift-fixture-1-profile\"],\"target_type\":\"profile\"}],\"summary\":\"Refreshed the stale profile to address profile drift while preserving history.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -231,8 +231,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 792,
-                "completionTokens": 91,
+                "promptTokens": 793,
+                "completionTokens": 83,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

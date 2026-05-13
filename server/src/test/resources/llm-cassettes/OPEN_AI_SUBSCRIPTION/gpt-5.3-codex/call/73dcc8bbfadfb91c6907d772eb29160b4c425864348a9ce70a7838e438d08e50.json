@@ -310,7 +310,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"decision\":\"direct_structured_write\",\"memory_types\":[\"claim\"],\"reason\":\"Explicit dated project-state facts are durable and reusable; store as structured claims.\",\"salience\":0.84,\"source_policy\":{\"allow_evidence_hydration\":true,\"allow_recall\":true,\"allow_structured_extraction\":true,\"reason\":\"Contains durable project timeline facts with specific dated milestones.\"},\"source_search_text\":\"Project memory timeline milestones: 2026-01-10 enabled MongoDB storage; 2026-02-15 added evidence-backed recall; 2026-03-20 added deduplication.\"}",
+                                "fullText": "{\"decision\":\"direct_structured_write\",\"memory_types\":[\"claim\"],\"reason\":\"The message states concrete, reusable project history milestones with dates, which are durable factual claims.\",\"salience\":0.88,\"source_policy\":{\"allow_evidence_hydration\":true,\"allow_recall\":true,\"allow_structured_extraction\":true,\"reason\":\"Contains explicit dated project timeline facts suitable for durable memory.\"},\"source_search_text\":\"Project memory timeline: 2026-01-10 enabled MongoDB storage; 2026-02-15 added evidence-backed recall; 2026-03-20 added deduplication.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -325,8 +325,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 2562,
-                "completionTokens": 132,
+                "promptTokens": 2566,
+                "completionTokens": 135,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

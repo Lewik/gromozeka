@@ -310,7 +310,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"decision\":\"direct_structured_write\",\"memory_types\":[\"claim\"],\"reason\":\"Explicit stable fact about a person's role in a specific account context.\",\"salience\":0.83,\"source_policy\":{\"allow_evidence_hydration\":true,\"allow_recall\":true,\"allow_structured_extraction\":true,\"reason\":\"Durable account-context role assignment suitable for structured memory and later recall.\"},\"source_search_text\":\"Nimbus account context: Alex is the Senior Sales Engineer.\"}",
+                                "fullText": "{\"decision\":\"direct_structured_write\",\"memory_types\":[\"claim\",\"profile\"],\"reason\":\"States a stable person-role fact tied to a specific account context.\",\"salience\":0.79,\"source_policy\":{\"allow_evidence_hydration\":true,\"allow_recall\":true,\"allow_structured_extraction\":true,\"reason\":\"Explicit durable role assignment in account context; suitable for structured memory and recall.\"},\"source_search_text\":\"Nimbus account context: Alex is the Senior Sales Engineer.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -325,8 +325,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 2500,
-                "completionTokens": 104,
+                "promptTokens": 2504,
+                "completionTokens": 107,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

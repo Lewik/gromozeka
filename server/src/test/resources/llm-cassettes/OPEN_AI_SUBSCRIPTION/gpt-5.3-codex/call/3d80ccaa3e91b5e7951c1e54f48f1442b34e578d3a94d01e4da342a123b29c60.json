@@ -236,7 +236,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"answer_mode\":\"task\",\"needs_memory\":false,\"needs_source\":false,\"query\":\"ShelfAudit primary export format CSV\",\"reason\":\"Target message is a direct instruction to store a fact and is fully self-contained; no prior context lookup is required.\"}",
+                                "fullText": "{\"answer_mode\":\"task\",\"needs_memory\":false,\"needs_source\":false,\"query\":\"ShelfAudit primary export format CSV\",\"reason\":\"Target message is a direct instruction to store a new fact and is self-contained; no prior context lookup is needed before handling it.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -251,8 +251,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 996,
-                "completionTokens": 62,
+                "promptTokens": 985,
+                "completionTokens": 65,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

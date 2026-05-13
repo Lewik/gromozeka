@@ -416,7 +416,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"answer_mode\":\"factual\",\"core_blocks\":[\"tasks\"],\"need_memory\":true,\"require_evidence_fallback\":false,\"retrieval_budget\":{\"claims\":3,\"episodes\":0,\"notes\":0,\"sources\":0,\"tasks\":0},\"retrieval_requests\":[{\"deprioritized_claim_predicates\":[\"historical_format\",\"legacy_format\"],\"filters\":{},\"memory_type\":\"claim\",\"preferred_claim_predicates\":[\"primary_export_format\",\"export_format\",\"current_format\"],\"query\":\"ShelfAudit current primary export format CSV still current\",\"top_k\":3,\"why\":\"Need current primary export format for ShelfAudit and whether CSV is still current.\"}]}",
+                                "fullText": "{\"answer_mode\":\"factual\",\"core_blocks\":[\"tasks\"],\"need_memory\":true,\"require_evidence_fallback\":false,\"retrieval_budget\":{\"claims\":3,\"episodes\":0,\"notes\":0,\"sources\":0,\"tasks\":0},\"retrieval_requests\":[{\"deprioritized_claim_predicates\":[\"historical_format\",\"legacy_format\",\"integration_format\"],\"filters\":{},\"memory_type\":\"claim\",\"preferred_claim_predicates\":[\"primary_export_format\",\"export_format\",\"current_format\"],\"query\":\"ShelfAudit current primary export format\",\"top_k\":3,\"why\":\"Need current project-specific fact for ShelfAudit primary export format and whether CSV is still current.\"}]}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -431,8 +431,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 1676,
-                "completionTokens": 142,
+                "promptTokens": 1677,
+                "completionTokens": 145,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

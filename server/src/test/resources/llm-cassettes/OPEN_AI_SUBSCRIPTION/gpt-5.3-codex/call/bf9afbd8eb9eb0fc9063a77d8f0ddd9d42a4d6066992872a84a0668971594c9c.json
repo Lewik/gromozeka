@@ -308,7 +308,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "I’m doing well, thanks for asking! How are you?",
+                                "fullText": "I’m doing well, thanks! How are you?",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -323,8 +323,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 438,
-                "completionTokens": 17,
+                "promptTokens": 444,
+                "completionTokens": 15,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

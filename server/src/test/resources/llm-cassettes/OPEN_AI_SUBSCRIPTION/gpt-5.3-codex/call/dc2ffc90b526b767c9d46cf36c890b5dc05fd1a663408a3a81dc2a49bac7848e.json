@@ -310,7 +310,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"decision\":\"noop\",\"memory_types\":[],\"reason\":\"This is a recall/probe question and does not create or update memory.\",\"salience\":0.0,\"source_policy\":{\"allow_evidence_hydration\":false,\"allow_recall\":false,\"allow_structured_extraction\":false,\"reason\":\"Probe question about existing memory status with no new durable assertion.\"},\"source_search_text\":\"Question asking whether the temporary task memory cancellation experiment follow-up status is CANCELLED or OPEN.\"}",
+                                "fullText": "{\"decision\":\"noop\",\"memory_types\":[],\"reason\":\"This is a recall/probe question with formatting instruction, not a memory update.\",\"salience\":0,\"source_policy\":{\"allow_evidence_hydration\":false,\"allow_recall\":false,\"allow_structured_extraction\":false,\"reason\":\"Probe question requesting status; no new durable assertion.\"},\"source_search_text\":\"Question asking status of temporary task memory cancellation experiment follow-up, answer constrained to CANCELLED or OPEN\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -326,7 +326,7 @@
             ],
             "usage": {
                 "promptTokens": 2519,
-                "completionTokens": 106,
+                "completionTokens": 105,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

@@ -416,7 +416,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"answer_mode\":\"rationale\",\"core_blocks\":[\"tasks\"],\"need_memory\":true,\"require_evidence_fallback\":false,\"retrieval_budget\":{\"claims\":2,\"episodes\":0,\"notes\":2,\"sources\":0,\"tasks\":0},\"retrieval_requests\":[{\"deprioritized_claim_predicates\":[],\"filters\":{},\"memory_type\":\"note\",\"preferred_claim_predicates\":[],\"query\":\"prompt change breaks memory behavior order should follow workflow\",\"top_k\":2,\"why\":\"Need prior agreed workflow/order for handling prompt changes that break memory behavior.\"},{\"deprioritized_claim_predicates\":[\"general_preference\",\"tone_preference\"],\"filters\":{},\"memory_type\":\"claim\",\"preferred_claim_predicates\":[\"has_workflow_order\",\"memory_debugging_order\",\"prompt_change_regression_process\"],\"query\":\"order to follow when prompt change breaks memory behavior\",\"top_k\":2,\"why\":\"Find concise canonical rule/sequence previously established.\"}]}",
+                                "fullText": "{\"answer_mode\":\"rationale\",\"core_blocks\":[\"tasks\"],\"need_memory\":true,\"require_evidence_fallback\":false,\"retrieval_budget\":{\"claims\":2,\"episodes\":0,\"notes\":2,\"sources\":0,\"tasks\":0},\"retrieval_requests\":[{\"deprioritized_claim_predicates\":[\"tone_preference\",\"format_preference\"],\"filters\":{},\"memory_type\":\"claim\",\"preferred_claim_predicates\":[\"working_agreement\",\"process_order\",\"memory_workflow\"],\"query\":\"prompt change breaks memory behavior order to follow workflow\",\"top_k\":2,\"why\":\"Find existing agreed workflow/order for handling prompt changes that break memory behavior.\"},{\"deprioritized_claim_predicates\":[],\"filters\":{},\"memory_type\":\"note\",\"preferred_claim_predicates\":[],\"query\":\"decision note memory behavior broke after prompt change what order should we follow\",\"top_k\":2,\"why\":\"Retrieve rationale/decision notes about the memory debugging or rollback procedure.\"}]}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -431,8 +431,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 1662,
-                "completionTokens": 199,
+                "promptTokens": 1673,
+                "completionTokens": 202,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

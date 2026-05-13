@@ -236,7 +236,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"answer_mode\":\"factual\",\"needs_memory\":false,\"needs_source\":false,\"query\":\"user and Vasya car brand preferences\",\"reason\":\"Target message directly states the preferences, so no prior memory lookup is needed to use this context.\"}",
+                                "fullText": "{\"answer_mode\":\"task\",\"needs_memory\":false,\"needs_source\":false,\"query\":\"user preferences Vasya Tesla user Nissan recommendation context\",\"reason\":\"The target message provides standalone preference facts and does not ask a question requiring prior context lookup.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -251,7 +251,7 @@
                 }
             ],
             "usage": {
-                "promptTokens": 998,
+                "promptTokens": 974,
                 "completionTokens": 60,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,

@@ -416,7 +416,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"answer_mode\":\"factual\",\"core_blocks\":[\"profile\",\"tasks\"],\"need_memory\":true,\"require_evidence_fallback\":false,\"retrieval_budget\":{\"claims\":3,\"episodes\":0,\"notes\":0,\"sources\":0,\"tasks\":0},\"retrieval_requests\":[{\"deprioritized_claim_predicates\":[\"preference\",\"tone\",\"working_style\"],\"filters\":{},\"memory_type\":\"claim\",\"preferred_claim_predicates\":[\"timeline.milestone\",\"milestone.order\",\"memory.timeline\"],\"query\":\"Memory timeline milestones order second milestone\",\"top_k\":3,\"why\":\"Find ordered Memory timeline milestones and identify the second one.\"}]}",
+                                "fullText": "{\"answer_mode\":\"factual\",\"core_blocks\":[\"profile\",\"tasks\"],\"need_memory\":true,\"require_evidence_fallback\":false,\"retrieval_budget\":{\"claims\":3,\"episodes\":0,\"notes\":0,\"sources\":0,\"tasks\":0},\"retrieval_requests\":[{\"deprioritized_claim_predicates\":[\"project.topic\",\"user.preference\"],\"filters\":{},\"memory_type\":\"claim\",\"preferred_claim_predicates\":[\"timeline.milestone.order\",\"timeline.milestone.index\",\"timeline.milestone.name\"],\"query\":\"Memory timeline milestones and their sequence/order\",\"top_k\":3,\"why\":\"Need ordered timeline milestone facts to identify the second event.\"}]}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -431,8 +431,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 1682,
-                "completionTokens": 140,
+                "promptTokens": 1668,
+                "completionTokens": 145,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

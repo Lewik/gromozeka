@@ -416,7 +416,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"answer_mode\":\"factual\",\"core_blocks\":[\"profile\",\"tasks\"],\"need_memory\":true,\"require_evidence_fallback\":false,\"retrieval_budget\":{\"claims\":4,\"episodes\":0,\"notes\":0,\"sources\":1,\"tasks\":0},\"retrieval_requests\":[{\"deprioritized_claim_predicates\":[\"general_graph_memory_opinion\",\"architecture_preference_general\"],\"filters\":{},\"memory_type\":\"claim\",\"preferred_claim_predicates\":[\"opinion_on_graph_memory_layering\",\"stance_on_graph_memory_layers\",\"believes_graph_memory_should_be_layered\",\"believes_graph_memory_does_not_need_layers\"],\"query\":\"graph memory layered vs does not need layers who thinks\",\"top_k\":4,\"why\":\"Find stored positions by person on whether graph memory should be layered.\"},{\"deprioritized_claim_predicates\":[],\"filters\":{},\"memory_type\":\"source\",\"preferred_claim_predicates\":[],\"query\":\"statements about graph memory layers and who said them\",\"top_k\":1,\"why\":\"Fallback to resolve attribution conflicts or missing explicit person-to-stance mapping.\"}]}",
+                                "fullText": "{\"answer_mode\":\"factual\",\"core_blocks\":[],\"need_memory\":true,\"require_evidence_fallback\":false,\"retrieval_budget\":{\"claims\":6,\"episodes\":0,\"notes\":0,\"sources\":0,\"tasks\":0},\"retrieval_requests\":[{\"deprioritized_claim_predicates\":[\"ownership\",\"status\",\"deadline\",\"summary\"],\"filters\":{},\"memory_type\":\"claim\",\"preferred_claim_predicates\":[\"believes\",\"opinion\",\"preference\",\"stance\"],\"query\":\"graph memory layered vs does not need layers who thinks what\",\"top_k\":6,\"why\":\"Identify stored opinions of individuals about whether graph memory should be layered.\"}]}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -431,8 +431,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 1675,
-                "completionTokens": 227,
+                "promptTokens": 1688,
+                "completionTokens": 142,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

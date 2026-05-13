@@ -416,7 +416,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"answer_mode\":\"factual\",\"core_blocks\":[\"profile\",\"tasks\"],\"need_memory\":true,\"require_evidence_fallback\":true,\"retrieval_budget\":{\"claims\":2,\"episodes\":0,\"notes\":1,\"sources\":2,\"tasks\":0},\"retrieval_requests\":[{\"deprioritized_claim_predicates\":[\"preference\",\"plan\",\"task_status\"],\"filters\":{},\"memory_type\":\"claim\",\"preferred_claim_predicates\":[\"observed\",\"mentioned_uncertain\",\"status_uncertain\"],\"query\":\"uncertain observation about Strider user mentioned\",\"top_k\":2,\"why\":\"Find previously stored uncertain observation related to Strider.\"},{\"deprioritized_claim_predicates\":[],\"filters\":{},\"memory_type\":\"source\",\"preferred_claim_predicates\":[],\"query\":\"Strider uncertain observation wording user said\",\"top_k\":2,\"why\":\"User asks what they mentioned and explicitly highlights uncertainty; source grounding may be needed for exact wording.\"},{\"deprioritized_claim_predicates\":[],\"filters\":{},\"memory_type\":\"note\",\"preferred_claim_predicates\":[],\"query\":\"note about Strider uncertain mention\",\"top_k\":1,\"why\":\"Fallback semantic summary if claim/source are sparse.\"}]}",
+                                "fullText": "{\"answer_mode\":\"factual\",\"core_blocks\":[],\"need_memory\":true,\"require_evidence_fallback\":true,\"retrieval_budget\":{\"claims\":2,\"episodes\":0,\"notes\":1,\"sources\":2,\"tasks\":0},\"retrieval_requests\":[{\"deprioritized_claim_predicates\":[\"general_pet_info\",\"preferences\"],\"filters\":{},\"memory_type\":\"claim\",\"preferred_claim_predicates\":[\"observation_uncertain\",\"mentioned_about\",\"strider\"],\"query\":\"uncertain observation about Strider mentioned by user\",\"top_k\":2,\"why\":\"Find previously stored fact about an uncertain observation related to Strider.\"},{\"deprioritized_claim_predicates\":[],\"filters\":{},\"memory_type\":\"source\",\"preferred_claim_predicates\":[],\"query\":\"message where user mentioned uncertain observation about Strider\",\"top_k\":2,\"why\":\"User asks what they mentioned and emphasizes uncertainty; source may be needed for exact wording and grounding.\"},{\"deprioritized_claim_predicates\":[],\"filters\":{},\"memory_type\":\"note\",\"preferred_claim_predicates\":[],\"query\":\"note about uncertain observation regarding Strider\",\"top_k\":1,\"why\":\"Capture concise remembered phrasing if summarized in notes.\"}]}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -431,8 +431,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 1649,
-                "completionTokens": 247,
+                "promptTokens": 1666,
+                "completionTokens": 249,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

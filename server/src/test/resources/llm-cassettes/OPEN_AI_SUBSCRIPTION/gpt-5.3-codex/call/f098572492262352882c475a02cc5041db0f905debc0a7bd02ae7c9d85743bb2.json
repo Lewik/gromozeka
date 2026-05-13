@@ -236,7 +236,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"answer_mode\":\"factual\",\"needs_memory\":false,\"needs_source\":false,\"query\":\"Nimbus account context Alex Senior Sales Engineer\",\"reason\":\"Target message is self-contained declarative fact; no prior context needed before answering.\"}",
+                                "fullText": "{\"answer_mode\":\"factual\",\"needs_memory\":false,\"needs_source\":false,\"query\":\"Nimbus account context Alex Senior Sales Engineer\",\"reason\":\"Target message is a standalone fact statement and does not request prior context lookup before responding.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -251,8 +251,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 979,
-                "completionTokens": 57,
+                "promptTokens": 971,
+                "completionTokens": 58,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

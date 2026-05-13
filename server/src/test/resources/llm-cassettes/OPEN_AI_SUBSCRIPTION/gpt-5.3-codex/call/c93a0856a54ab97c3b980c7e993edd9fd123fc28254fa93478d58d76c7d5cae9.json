@@ -310,7 +310,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"decision\":\"noop\",\"memory_types\":[],\"reason\":\"This is a recall/probe question and does not add or update durable memory.\",\"salience\":0.0,\"source_policy\":{\"allow_evidence_hydration\":false,\"allow_recall\":false,\"allow_structured_extraction\":false,\"reason\":\"Probe question about existing memory with no new durable assertion.\"},\"source_search_text\":\"User asks which car brand they previously said they prefer; instructs fallback response if memory lacks exact preference.\"}",
+                                "fullText": "{\"decision\":\"noop\",\"memory_types\":[],\"reason\":\"This is a recall/probe question and does not introduce new durable facts, tasks, or preferences.\",\"salience\":0.0,\"source_policy\":{\"allow_evidence_hydration\":false,\"allow_recall\":false,\"allow_structured_extraction\":false,\"reason\":\"Probe question about existing memory with no new durable assertion.\"},\"source_search_text\":\"User asks which car brand they previously said they prefer; instructs to reply 'I don't have enough information' if exact preference is missing.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -325,8 +325,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 2521,
-                "completionTokens": 109,
+                "promptTokens": 2525,
+                "completionTokens": 120,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

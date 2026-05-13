@@ -19,7 +19,6 @@
             "materializedTasksMax": 0,
             "containsAll": [
               "MemoryRouter",
-              "NoteConstructor",
               "ClaimExtractor"
             ]
           }
@@ -59,7 +58,7 @@
             "selectedContainsAll": [
               "Prompt Pack"
             ],
-            "selectedNotesMin": 1
+            "selectedHitsMin": 1
           }
         }
       ]

@@ -236,7 +236,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"answer_mode\":\"factual\",\"needs_memory\":false,\"needs_source\":false,\"query\":\"Atlas project database MongoDB; Atlas person preferred tutorial database PostgreSQL\",\"reason\":\"Target message is self-contained setup information and does not ask a question requiring prior context lookup.\"}",
+                                "fullText": "{\"answer_mode\":\"factual\",\"needs_memory\":false,\"needs_source\":false,\"query\":\"Atlas project database MongoDB; Atlas person preferred tutorial database PostgreSQL\",\"reason\":\"Target message is self-contained setup facts and does not require recalling prior context to answer.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -251,8 +251,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 1026,
-                "completionTokens": 65,
+                "promptTokens": 1040,
+                "completionTokens": 64,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

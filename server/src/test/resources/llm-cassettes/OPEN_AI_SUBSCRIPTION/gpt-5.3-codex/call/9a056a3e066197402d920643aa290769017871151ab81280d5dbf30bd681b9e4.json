@@ -236,7 +236,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"answer_mode\":\"factual\",\"needs_memory\":false,\"needs_source\":false,\"query\":\"user current car brand preference Honda\",\"reason\":\"Target message directly states the updated preference (now prefers Honda), so no prior memory lookup is needed to answer from this message alone.\"}",
+                                "fullText": "{\"answer_mode\":\"factual\",\"needs_memory\":false,\"needs_source\":false,\"query\":\"current car brand preference Honda\",\"reason\":\"Target message is a standalone user preference statement and does not require recalling prior context to handle.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -251,8 +251,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 973,
-                "completionTokens": 66,
+                "promptTokens": 985,
+                "completionTokens": 57,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

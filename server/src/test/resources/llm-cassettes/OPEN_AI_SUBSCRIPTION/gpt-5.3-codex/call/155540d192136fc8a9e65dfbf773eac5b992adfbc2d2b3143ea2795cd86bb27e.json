@@ -389,7 +389,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"decision\":\"direct_structured_write\",\"memory_types\":[\"claim\"],\"reason\":\"Explicit correction of a stable project-specific fact, suitable for structured claim update.\",\"salience\":0.84,\"source_policy\":{\"allow_evidence_hydration\":true,\"allow_recall\":true,\"allow_structured_extraction\":true,\"reason\":\"Durable project fact correction; should replace prior format claim.\"},\"source_search_text\":\"RiverLedger correction: current primary analytics export format is ORC, not Avro.\"}",
+                                "fullText": "{\"decision\":\"direct_structured_write\",\"memory_types\":[\"claim\"],\"reason\":\"The message provides a clear durable project-state correction that supersedes an earlier fact.\",\"salience\":0.86,\"source_policy\":{\"allow_evidence_hydration\":true,\"allow_recall\":true,\"allow_structured_extraction\":true,\"reason\":\"Explicit correction of a durable project fact; should update prior stored claim.\"},\"source_search_text\":\"RiverLedger correction: current primary analytics export format is ORC, not Avro.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -404,8 +404,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 2542,
-                "completionTokens": 110,
+                "promptTokens": 2541,
+                "completionTokens": 113,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

@@ -236,7 +236,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"answer_mode\":\"task\",\"needs_memory\":false,\"needs_source\":false,\"query\":\"open task temporary task memory cancellation experiment\",\"reason\":\"The message is a self-contained instruction to create/keep an open task; it does not require recalling prior context to answer.\"}",
+                                "fullText": "{\"answer_mode\":\"task\",\"needs_memory\":false,\"needs_source\":false,\"query\":\"open task temporary task memory cancellation experiment\",\"reason\":\"Target message is a self-contained new instruction to track an open task; no prior context is required to answer.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -251,8 +251,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 982,
-                "completionTokens": 65,
+                "promptTokens": 983,
+                "completionTokens": 62,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

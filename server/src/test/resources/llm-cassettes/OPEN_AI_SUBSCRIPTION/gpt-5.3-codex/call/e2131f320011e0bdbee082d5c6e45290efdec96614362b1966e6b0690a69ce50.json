@@ -216,7 +216,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"repair_actions\":[{\"action\":\"merge_duplicates\",\"reason\":\"Exact duplicate active claims with identical subject, predicate, object, and text; safe to merge while preserving history.\",\"target_ids\":[\"memory-repair-duplicate-claims-fixture-1-claim-first\",\"memory-repair-duplicate-claims-fixture-1-claim-second\"],\"target_type\":\"claim\"}],\"summary\":\"Merged the duplicate claims in repair-cluster-1 to remove redundancy conservatively.\"}",
+                                "fullText": "{\"repair_actions\":[{\"action\":\"merge_duplicates\",\"reason\":\"Exact duplicate active claims with same subject, predicate, object, and text; safe to merge while preserving history.\",\"target_ids\":[\"memory-repair-duplicate-claims-fixture-1-claim-first\",\"memory-repair-duplicate-claims-fixture-1-claim-second\"],\"target_type\":\"claim\"}],\"summary\":\"Merged the duplicate Kotlin runtime language claims into a single deduplicated claim record.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false

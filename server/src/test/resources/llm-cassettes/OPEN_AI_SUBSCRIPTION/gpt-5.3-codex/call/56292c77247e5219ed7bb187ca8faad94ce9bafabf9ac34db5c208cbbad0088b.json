@@ -354,7 +354,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"rejected_items\":[{\"item_id\":\"entity-scoped-project-recall-fixture-1-profile\",\"item_type\":\"profile\",\"reason\":\"Projection profile duplicates the same fact; active claim is preferred for factual mode.\"},{\"item_id\":\"entity-scoped-project-recall-fixture-1-subject\",\"item_type\":\"entity\",\"reason\":\"Entity label is not needed since selected claim already identifies PantryPilot.\"}],\"selected_items\":[{\"item_id\":\"entity-scoped-project-recall-fixture-1-claim-fresh\",\"item_type\":\"claim\",\"rank\":1,\"reason\":\"Active factual claim directly answers what is known about PantryPilot.\",\"relevance\":\"direct_answer\"}],\"summary\":\"Select the active claim stating PantryPilot’s weekly report primary format is XLSX; other candidates are redundant context.\"}",
+                                "fullText": "{\"rejected_items\":[{\"item_id\":\"entity-scoped-project-recall-fixture-1-profile\",\"item_type\":\"profile\",\"reason\":\"Projection profile duplicates the same fact and is weaker than active claim.\"},{\"item_id\":\"entity-scoped-project-recall-fixture-1-subject\",\"item_type\":\"entity\",\"reason\":\"Entity anchor not needed since selected claim already identifies PantryPilot.\"}],\"selected_items\":[{\"item_id\":\"entity-scoped-project-recall-fixture-1-claim-fresh\",\"item_type\":\"claim\",\"rank\":1,\"reason\":\"Active factual claim directly answers what is known about PantryPilot.\",\"relevance\":\"direct_answer\"}],\"summary\":\"Select the active claim stating PantryPilot's weekly report primary format is XLSX as the minimal sufficient memory.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -369,8 +369,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 1658,
-                "completionTokens": 169,
+                "promptTokens": 1644,
+                "completionTokens": 165,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

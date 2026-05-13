@@ -416,7 +416,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"answer_mode\":\"task\",\"core_blocks\":[\"tasks\"],\"need_memory\":false,\"require_evidence_fallback\":false,\"retrieval_budget\":{\"claims\":0,\"episodes\":0,\"notes\":0,\"sources\":0,\"tasks\":0},\"retrieval_requests\":[]}",
+                                "fullText": "{\"answer_mode\":\"task\",\"core_blocks\":[\"tasks\"],\"need_memory\":true,\"require_evidence_fallback\":false,\"retrieval_budget\":{\"claims\":0,\"episodes\":0,\"notes\":0,\"sources\":0,\"tasks\":3},\"retrieval_requests\":[{\"deprioritized_claim_predicates\":[],\"filters\":{},\"memory_type\":\"task\",\"preferred_claim_predicates\":[],\"query\":\"Memory MVP follow-up task to add task memory lifecycle e2e coverage before declaring memory MVP stable\",\"top_k\":3,\"why\":\"Check for an existing/open follow-up task and avoid duplicate creation while preserving task continuity.\"}]}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -431,8 +431,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 1677,
-                "completionTokens": 66,
+                "promptTokens": 1693,
+                "completionTokens": 136,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

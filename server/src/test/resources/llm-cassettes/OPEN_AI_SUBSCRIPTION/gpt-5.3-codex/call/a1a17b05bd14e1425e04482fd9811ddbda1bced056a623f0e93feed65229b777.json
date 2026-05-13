@@ -310,7 +310,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"decision\":\"note_write\",\"memory_types\":[\"note\"],\"reason\":\"States a stable design-direction rule about memory modeling and promotion workflow, best stored as note-level guidance.\",\"salience\":0.86,\"source_policy\":{\"allow_evidence_hydration\":true,\"allow_recall\":true,\"allow_structured_extraction\":true,\"reason\":\"Durable project memory-direction guidance with reusable rationale handling policy.\"},\"source_search_text\":\"Memory MVP direction: keep design rationale and trade-offs as notes first, do not force into claims; promote stable conclusions later.\"}",
+                                "fullText": "{\"decision\":\"note_write\",\"memory_types\":[\"note\"],\"reason\":\"States a reusable design-direction rule about how to represent evolving rationale in memory.\",\"salience\":0.8,\"source_policy\":{\"allow_evidence_hydration\":true,\"allow_recall\":true,\"allow_structured_extraction\":true,\"reason\":\"Durable project memory direction and trade-off handling guidance.\"},\"source_search_text\":\"Memory MVP direction: keep design rationale and trade-offs as notes first, do not force into claims; promote stable conclusions later.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -325,8 +325,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 2521,
-                "completionTokens": 121,
+                "promptTokens": 2532,
+                "completionTokens": 115,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

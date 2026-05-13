@@ -431,7 +431,7 @@
                 }
             ],
             "usage": {
-                "promptTokens": 1674,
+                "promptTokens": 1671,
                 "completionTokens": 65,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,

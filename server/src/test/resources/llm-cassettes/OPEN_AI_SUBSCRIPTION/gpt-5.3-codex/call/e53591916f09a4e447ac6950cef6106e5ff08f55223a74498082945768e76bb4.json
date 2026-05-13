@@ -236,7 +236,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"answer_mode\":\"factual\",\"needs_memory\":false,\"needs_source\":false,\"query\":\"Acme project timeline search service Elasticsearch prototype 2026-01-05\",\"reason\":\"Target message is a standalone factual statement and does not ask a question or require prior context to answer.\"}",
+                                "fullText": "{\"answer_mode\":\"factual\",\"needs_memory\":false,\"needs_source\":false,\"query\":\"Acme project timeline search service Elasticsearch prototype 2026-01-05\",\"reason\":\"Target message is a self-contained factual statement and does not ask a question or require prior context to answer.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -251,8 +251,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 985,
-                "completionTokens": 69,
+                "promptTokens": 1006,
+                "completionTokens": 70,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

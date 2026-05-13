@@ -440,7 +440,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"operations\":[{\"action\":\"insert\",\"candidate_index\":0,\"canonical_predicate\":\"primary_analytics_export_format\",\"cardinality\":\"single\",\"conflict_policy\":\"replace\",\"object_kind\":\"entity\",\"predicate_description\":\"Current primary/default analytics export format configured for a project\",\"predicate_family\":\"project_primary_analytics_export_format\",\"reason\":\"Explicitly states RiverLedger's primary analytics export format is now Avro; named primary slot with current-state semantics and no existing conflicting claim.\",\"target_claim_id\":null,\"temporal_policy\":\"status_like\"}]}",
+                                "fullText": "{\"operations\":[{\"action\":\"insert\",\"candidate_index\":0,\"canonical_predicate\":\"primary_analytics_export_format\",\"cardinality\":\"single\",\"conflict_policy\":\"replace\",\"object_kind\":\"entity\",\"predicate_description\":\"Primary/default analytics export format configured for a project\",\"predicate_family\":\"project_primary_analytics_export_format\",\"reason\":\"New explicit project configuration stating the current primary analytics export format is Avro; no existing active claim to replace.\",\"target_claim_id\":null,\"temporal_policy\":\"status_like\"}]}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -455,8 +455,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 2961,
-                "completionTokens": 119,
+                "promptTokens": 2958,
+                "completionTokens": 112,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

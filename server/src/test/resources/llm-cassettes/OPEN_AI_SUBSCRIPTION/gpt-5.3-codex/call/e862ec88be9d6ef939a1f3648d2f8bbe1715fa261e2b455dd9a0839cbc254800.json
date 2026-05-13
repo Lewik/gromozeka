@@ -416,7 +416,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"answer_mode\":\"factual\",\"core_blocks\":[\"profile\"],\"need_memory\":true,\"require_evidence_fallback\":false,\"retrieval_budget\":{\"claims\":3,\"episodes\":0,\"notes\":0,\"sources\":0,\"tasks\":0},\"retrieval_requests\":[{\"deprioritized_claim_predicates\":[\"language.preference\",\"tone.preference\",\"workflow.preference\"],\"filters\":{},\"memory_type\":\"claim\",\"preferred_claim_predicates\":[\"prefers.default_tool_family\",\"editor_advice.default_tool_family\",\"tooling.default_family\"],\"query\":\"default tool family for editor advice\",\"top_k\":3,\"why\":\"Retrieve the user's stored preference for default tool family used in editor advice.\"}]}",
+                                "fullText": "{\"answer_mode\":\"factual\",\"core_blocks\":[\"profile\"],\"need_memory\":true,\"require_evidence_fallback\":false,\"retrieval_budget\":{\"claims\":3,\"episodes\":0,\"notes\":0,\"sources\":0,\"tasks\":0},\"retrieval_requests\":[{\"deprioritized_claim_predicates\":[\"language.preference\",\"tone.preference\",\"workflow.preference\"],\"filters\":{},\"memory_type\":\"claim\",\"preferred_claim_predicates\":[\"preference.default_tool_family\",\"editor_advice.default_tool_family\",\"tooling.default_family\"],\"query\":\"default tool family for editor advice user preference\",\"top_k\":3,\"why\":\"Need stored user preference for default tool family used in editor advice.\"},{\"deprioritized_claim_predicates\":[],\"filters\":{},\"memory_type\":\"profile\",\"preferred_claim_predicates\":[],\"query\":\"editor advice default tools preference\",\"top_k\":1,\"why\":\"Fallback to profile-level preferences if claim predicates are sparse.\"}]}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -431,8 +431,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 1669,
-                "completionTokens": 148,
+                "promptTokens": 1668,
+                "completionTokens": 198,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

@@ -5,7 +5,7 @@
     "model": "gpt-5.3-codex",
     "operation": "call",
     "recordedAt": "1970-01-01T00:00:00Z",
-    "projectPath": "gromozeka-e2e-<id>/projects/explicit-forget-memory",
+    "projectPath": "gromozeka-e2e-<id>/projects/forget-specificity-keeps-related-project-fact",
     "canonicalRequest": {
         "messages": [
             {
@@ -354,7 +354,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"rejected_items\":[{\"item_id\":\"entity:<0>\",\"item_type\":\"entity\",\"reason\":\"Generic user anchor only; contains no car brand preference fact.\"}],\"selected_items\":[],\"summary\":\"No persisted memory candidate provides the user's preferred car brand.\"}",
+                                "fullText": "{\"rejected_items\":[{\"item_id\":\"entity:<0>\",\"item_type\":\"entity\",\"reason\":\"Generic user entity label only; contains no car brand preference memory.\"}],\"selected_items\":[],\"summary\":\"No persisted memory candidate provides the user's preferred car brand.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -369,8 +369,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 1380,
-                "completionTokens": 69,
+                "promptTokens": 1386,
+                "completionTokens": 72,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

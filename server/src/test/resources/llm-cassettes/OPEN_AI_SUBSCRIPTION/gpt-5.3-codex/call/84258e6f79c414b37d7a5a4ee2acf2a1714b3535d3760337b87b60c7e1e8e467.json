@@ -440,7 +440,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"operations\":[{\"action\":\"insert\",\"candidate_index\":0,\"canonical_predicate\":\"has_constraint\",\"cardinality\":\"multi\",\"conflict_policy\":\"coexist\",\"object_kind\":\"string\",\"predicate_description\":\"Stable project constraint on repair workflow behavior\",\"predicate_family\":\"constraints\",\"reason\":\"New explicit constraint for the memory repair MVP; no existing active claim to reconcile.\",\"target_claim_id\":null,\"temporal_policy\":\"status_like\"}]}",
+                                "fullText": "{\"operations\":[{\"action\":\"insert\",\"candidate_index\":0,\"canonical_predicate\":\"has_constraint\",\"cardinality\":\"multi\",\"conflict_policy\":\"coexist\",\"object_kind\":\"string\",\"predicate_description\":\"Stable project constraint or requirement\",\"predicate_family\":\"constraints\",\"reason\":\"Target message states a durable MVP workflow constraint; no existing active claims conflict.\",\"target_claim_id\":null,\"temporal_policy\":\"status_like\"}]}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -455,8 +455,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 2954,
-                "completionTokens": 97,
+                "promptTokens": 2950,
+                "completionTokens": 94,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

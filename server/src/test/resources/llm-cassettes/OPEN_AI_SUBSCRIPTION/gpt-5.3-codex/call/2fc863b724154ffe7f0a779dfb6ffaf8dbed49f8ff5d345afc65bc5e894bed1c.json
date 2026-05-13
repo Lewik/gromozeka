@@ -236,7 +236,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"answer_mode\":\"task\",\"needs_memory\":false,\"needs_source\":false,\"query\":\"memory retention MVP policy direction archive closed/resolved memory do not delete source evidence automatically\",\"reason\":\"Target message is self-contained new instruction to remember; no prior context is required before responding.\"}",
+                                "fullText": "{\"answer_mode\":\"task\",\"needs_memory\":false,\"needs_source\":false,\"query\":\"retention policy direction archive resolved memory do not auto-delete source evidence\",\"reason\":\"Target message is a direct instruction containing all needed details; no prior context is required to act on it.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -251,7 +251,7 @@
                 }
             ],
             "usage": {
-                "promptTokens": 1032,
+                "promptTokens": 1007,
                 "completionTokens": 67,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,

@@ -1,0 +1,339 @@
+{
+    "version": 1,
+    "hash": "a19235034040259aaa934c5ee5fb048b73846109ec111155248c677ae935f621",
+    "provider": "OPEN_AI_SUBSCRIPTION",
+    "model": "gpt-5.3-codex",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>/projects/profile-projection",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "How should you adapt your answer style for me in this project? Keep it short.",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            },
+            {
+                "content": [
+                    {
+                        "call": {
+                            "input": {
+                                "mode": "automatic_hot_path",
+                                "target": "previous_user_message",
+                                "target_message_id": "<uuid>"
+                            },
+                            "name": "memory_remember"
+                        },
+                        "id": "<id>",
+                        "state": "COMPLETE",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolCall"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "ASSISTANT"
+            },
+            {
+                "content": [
+                    {
+                        "isError": false,
+                        "result": [
+                            {
+                                "content": "{\"status\":\"completed\",\"decision\":\"NOOP\",\"memory_types\":[],\"salience\":0.1,\"reason\":\"Source policy blocked structured extraction: Question/probe only; per policy this is noop and audit-only.\",\"source_id\":\"chat:<0>\",\"counts\":{\"predicate_definitions\":0,\"sources\":0,\"runs\":0,\"entities\":0,\"claims\":0,\"notes\":0,\"tasks\":0,\"profiles\":0,\"episodes\":0},\"runs\":[],\"claims\":[],\"notes\":[],\"tasks\":[],\"entities\":[]}",
+                                "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult.Data.Text"
+                            }
+                        ],
+                        "state": "COMPLETE",
+                        "toolName": "memory_remember",
+                        "toolUseId": "tool-call",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            },
+            {
+                "content": [
+                    {
+                        "call": {
+                            "input": {
+                                "mode": "automatic_runtime_recall",
+                                "target": "previous_user_message",
+                                "target_message_id": "<uuid>"
+                            },
+                            "name": "memory_recall"
+                        },
+                        "id": "<id>",
+                        "state": "COMPLETE",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolCall"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "ASSISTANT"
+            },
+            {
+                "content": [
+                    {
+                        "isError": false,
+                        "result": [
+                            {
+                                "content": "{\"status\":\"completed\",\"need_memory\":true,\"answer_mode\":\"FACTUAL\",\"retrieved_count\":2,\"usage_guidance\":\"Selected memory is the strongest available remembered context for the target message. Use it unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message. Do not replace selected memory with guesses or general defaults. For exact quote, exact wording, source, or when-said questions, prefer complete source text from memory_context over shorter evidence excerpts.\",\"memory_context\":\"            MEMORY-ONLY CONTEXT\\n            This message is not part of the real conversation and must not be stored as evidence.\\n            The retrieved memory below was selected for the immediately following user request.\\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and tasks for commitments.\\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\\n\\n            Namespace: project:<0>\\n            Answer mode: FACTUAL\\n            Require evidence fallback: false\\n\\n            Retrieved profile:\\n            - profile project:<1> Profile for User (USER).\\nStable facts:\\n- The user prefers English as the language for code comments in Kotlin code for this project.\\n- The user prefers assistant responses in Russian for this project when discussing implementation decisions.\\n- The user wants comments to be added only when genuinely necessary in Kotlin code for this project.\\n- The user prefers concise answer detail for this project when discussing implementation decisions.\\n\\n            Retrieved tasks:\\n            none\\n\\n            Retrieved claims:\\n            none\\n\\n            Retrieved notes:\\n            none\\n\\n            Retrieved evidence:\\n            not requested for this answer mode\\n\\n            Retrieved entities:\\n            - entity entity:<0> [USER]: User; The user interacting with this agent.\\n\\n            Retrieved episodes:\\n            none\",\"selected_refs\":[{\"type\":\"PROFILE\",\"id\":\"project:<2>\",\"summary\":\"Profile for User (USER). Stable facts: - The user prefers English as the language for code comments in Kotlin code for this project. - The user prefers assistant responses in Russian for this project when discussing impl...[truncated 222 chars]\"},{\"type\":\"ENTITY\",\"id\":\"entity:<0>\",\"summary\":\"USER:User\"}],\"selector_decisions\":[{\"type\":\"PROFILE\",\"id\":\"project:<2>\",\"selected\":true,\"rank\":1,\"reason\":\"Contains explicit user style preference to keep answers concise in this project.\"},{\"type\":\"ENTITY\",\"id\":\"entity:<0>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Generic user anchor; not needed to answer style adaptation question.\"}]}",
+                                "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult.Data.Text"
+                            }
+                        ],
+                        "state": "COMPLETE",
+                        "toolName": "memory_recall",
+                        "toolUseId": "tool-call",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "autoCompactionThreshold": 320000,
+            "maxTokens": 2048,
+            "outputConfig": null,
+            "responseFormat": {
+                "type": "text"
+            },
+            "thinking": null,
+            "toolChoice": {
+                "type": "auto"
+            },
+            "toolContext": {
+                "aiProvider": "OPEN_AI_SUBSCRIPTION",
+                "conversationId": "<conversation-key>",
+                "modelName": "gpt-5.3-codex",
+                "planId": null,
+                "projectPath": "gromozeka-e2e-<id>/projects/profile-projection"
+            }
+        },
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "How should you adapt your answer style for me in this project? Keep it short.",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "ASSISTANT",
+                "content": [
+                    {
+                        "call": {
+                            "input": {
+                                "mode": "automatic_hot_path",
+                                "target": "previous_user_message",
+                                "target_message_id": "<uuid>"
+                            },
+                            "name": "memory_remember"
+                        },
+                        "id": "<id>",
+                        "state": "COMPLETE",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolCall"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {
+                    "synthetic": true,
+                    "syntheticKind": "memory",
+                    "targetMessageId": "<uuid>"
+                },
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "isError": false,
+                        "result": [
+                            {
+                                "content": "{\"status\":\"completed\",\"decision\":\"NOOP\",\"memory_types\":[],\"salience\":0.1,\"reason\":\"Source policy blocked structured extraction: Question/probe only; per policy this is noop and audit-only.\",\"source_id\":\"chat:<0>\",\"counts\":{\"predicate_definitions\":0,\"sources\":0,\"runs\":0,\"entities\":0,\"claims\":0,\"notes\":0,\"tasks\":0,\"profiles\":0,\"episodes\":0},\"runs\":[],\"claims\":[],\"notes\":[],\"tasks\":[],\"entities\":[]}",
+                                "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult.Data.Text"
+                            }
+                        ],
+                        "state": "COMPLETE",
+                        "toolName": "memory_remember",
+                        "toolUseId": "tool-call",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {
+                    "synthetic": true,
+                    "syntheticKind": "memory",
+                    "targetMessageId": "<uuid>"
+                },
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "ASSISTANT",
+                "content": [
+                    {
+                        "call": {
+                            "input": {
+                                "mode": "automatic_runtime_recall",
+                                "target": "previous_user_message",
+                                "target_message_id": "<uuid>"
+                            },
+                            "name": "memory_recall"
+                        },
+                        "id": "<id>",
+                        "state": "COMPLETE",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolCall"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {
+                    "synthetic": true,
+                    "syntheticKind": "memory",
+                    "targetMessageId": "<uuid>"
+                },
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "isError": false,
+                        "result": [
+                            {
+                                "content": "{\"status\":\"completed\",\"need_memory\":true,\"answer_mode\":\"FACTUAL\",\"retrieved_count\":2,\"usage_guidance\":\"Selected memory is the strongest available remembered context for the target message. Use it unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message. Do not replace selected memory with guesses or general defaults. For exact quote, exact wording, source, or when-said questions, prefer complete source text from memory_context over shorter evidence excerpts.\",\"memory_context\":\"            MEMORY-ONLY CONTEXT\\n            This message is not part of the real conversation and must not be stored as evidence.\\n            The retrieved memory below was selected for the immediately following user request.\\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and tasks for commitments.\\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\\n\\n            Namespace: project:<0>\\n            Answer mode: FACTUAL\\n            Require evidence fallback: false\\n\\n            Retrieved profile:\\n            - profile project:<1> Profile for User (USER).\\nStable facts:\\n- The user prefers English as the language for code comments in Kotlin code for this project.\\n- The user prefers assistant responses in Russian for this project when discussing implementation decisions.\\n- The user wants comments to be added only when genuinely necessary in Kotlin code for this project.\\n- The user prefers concise answer detail for this project when discussing implementation decisions.\\n\\n            Retrieved tasks:\\n            none\\n\\n            Retrieved claims:\\n            none\\n\\n            Retrieved notes:\\n            none\\n\\n            Retrieved evidence:\\n            not requested for this answer mode\\n\\n            Retrieved entities:\\n            - entity entity:<0> [USER]: User; The user interacting with this agent.\\n\\n            Retrieved episodes:\\n            none\",\"selected_refs\":[{\"type\":\"PROFILE\",\"id\":\"project:<2>\",\"summary\":\"Profile for User (USER). Stable facts: - The user prefers English as the language for code comments in Kotlin code for this project. - The user prefers assistant responses in Russian for this project when discussing impl...[truncated 222 chars]\"},{\"type\":\"ENTITY\",\"id\":\"entity:<0>\",\"summary\":\"USER:User\"}],\"selector_decisions\":[{\"type\":\"PROFILE\",\"id\":\"project:<2>\",\"selected\":true,\"rank\":1,\"reason\":\"Contains explicit user style preference to keep answers concise in this project.\"},{\"type\":\"ENTITY\",\"id\":\"entity:<0>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Generic user anchor; not needed to answer style adaptation question.\"}]}",
+                                "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult.Data.Text"
+                            }
+                        ],
+                        "state": "COMPLETE",
+                        "toolName": "memory_recall",
+                        "toolUseId": "tool-call",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {
+                    "synthetic": true,
+                    "syntheticKind": "memory",
+                    "targetMessageId": "<uuid>"
+                },
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxTokens": 2048,
+            "thinking": null,
+            "outputConfig": null,
+            "autoCompactionThreshold": 320000,
+            "toolChoice": {
+                "type": "auto"
+            },
+            "responseFormat": {
+                "type": "text"
+            },
+            "toolContext": {
+                "aiProvider": "OPEN_AI_SUBSCRIPTION",
+                "conversationId": "<conversation-key>",
+                "modelName": "gpt-5.3-codex",
+                "planId": null,
+                "projectPath": "gromozeka-e2e-<id>/projects/profile-projection"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "Коротко и по делу; по вопросам реализации — на русском.",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 1177,
+                "completionTokens": 18,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

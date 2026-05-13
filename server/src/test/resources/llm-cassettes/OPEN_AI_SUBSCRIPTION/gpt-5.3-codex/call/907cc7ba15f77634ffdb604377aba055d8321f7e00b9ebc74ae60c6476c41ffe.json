@@ -315,7 +315,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"answer_mode\":\"task\",\"needs_memory\":false,\"needs_source\":false,\"query\":\"RiverLedger primary analytics export format correction ORC instead of Avro\",\"reason\":\"Target message is a self-contained correction/update to store; no memory lookup is required before processing it.\"}",
+                                "fullText": "{\"answer_mode\":\"task\",\"needs_memory\":false,\"needs_source\":false,\"query\":\"RiverLedger primary analytics export format correction ORC instead of Avro\",\"reason\":\"The target message is a direct correction containing all needed information; no prior memory lookup is required to process it.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -330,8 +330,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 1022,
-                "completionTokens": 66,
+                "promptTokens": 1015,
+                "completionTokens": 68,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

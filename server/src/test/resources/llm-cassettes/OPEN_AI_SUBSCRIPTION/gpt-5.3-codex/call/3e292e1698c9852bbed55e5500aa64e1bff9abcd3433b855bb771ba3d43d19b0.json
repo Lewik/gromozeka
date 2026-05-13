@@ -310,7 +310,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"decision\":\"direct_structured_write\",\"memory_types\":[\"task\"],\"reason\":\"Explicit request to maintain an open durable task with clear lifecycle/state.\",\"salience\":0.85,\"source_policy\":{\"allow_evidence_hydration\":true,\"allow_recall\":true,\"allow_structured_extraction\":true,\"reason\":\"Explicit durable follow-up task to keep open and review before declaring policy stable\"},\"source_search_text\":\"Memory policy follow-up: keep an open task to review command-vs-memory routing before declaring the write policy stable\"}",
+                                "fullText": "{\"decision\":\"direct_structured_write\",\"memory_types\":[\"task\"],\"reason\":\"The message explicitly requests maintaining an open follow-up task, which is a durable task state update.\",\"salience\":0.85,\"source_policy\":{\"allow_evidence_hydration\":true,\"allow_recall\":true,\"allow_structured_extraction\":true,\"reason\":\"Explicit durable follow-up task lifecycle instruction to keep a task open.\"},\"source_search_text\":\"Memory policy follow-up: keep an open task to review command-vs-memory routing before declaring the write policy stable.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -325,8 +325,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 2518,
-                "completionTokens": 117,
+                "promptTokens": 2511,
+                "completionTokens": 121,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

@@ -310,7 +310,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"decision\":\"direct_structured_write\",\"memory_types\":[\"claim\"],\"reason\":\"User explicitly asks to remember a stable policy direction; this is a durable reusable rule.\",\"salience\":0.9,\"source_policy\":{\"allow_evidence_hydration\":true,\"allow_recall\":true,\"allow_structured_extraction\":true,\"reason\":\"Explicit request to remember a durable project policy rule for retention behavior.\"},\"source_search_text\":\"Memory retention MVP policy: retention may archive closed or resolved memory but must not automatically delete source evidence.\"}",
+                                "fullText": "{\"decision\":\"direct_structured_write\",\"memory_types\":[\"claim\"],\"reason\":\"User explicitly sets a stable retention policy direction to be remembered; this is a durable rule/constraint.\",\"salience\":0.87,\"source_policy\":{\"allow_evidence_hydration\":true,\"allow_recall\":true,\"allow_structured_extraction\":true,\"reason\":\"Explicit request to remember a durable project policy rule.\"},\"source_search_text\":\"Memory retention MVP policy: retention may archive closed or resolved memory, but must not automatically delete source evidence.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -326,7 +326,7 @@
             ],
             "usage": {
                 "promptTokens": 2558,
-                "completionTokens": 116,
+                "completionTokens": 117,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

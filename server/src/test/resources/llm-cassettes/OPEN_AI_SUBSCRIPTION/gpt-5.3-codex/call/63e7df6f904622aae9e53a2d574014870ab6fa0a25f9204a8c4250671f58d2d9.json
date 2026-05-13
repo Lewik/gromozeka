@@ -416,7 +416,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"answer_mode\":\"factual\",\"core_blocks\":[\"profile\"],\"need_memory\":true,\"require_evidence_fallback\":false,\"retrieval_budget\":{\"claims\":3,\"episodes\":0,\"notes\":0,\"sources\":0,\"tasks\":0},\"retrieval_requests\":[{\"deprioritized_claim_predicates\":[\"owns\",\"drives\",\"interested_in\"],\"filters\":{},\"memory_type\":\"claim\",\"preferred_claim_predicates\":[\"prefers\",\"likes\",\"favorite_brand\",\"preferred_brand\"],\"query\":\"user preferred car brand\",\"top_k\":3,\"why\":\"Retrieve stored user preference about preferred car brand.\"}]}",
+                                "fullText": "{\"answer_mode\":\"factual\",\"core_blocks\":[\"profile\"],\"need_memory\":true,\"require_evidence_fallback\":false,\"retrieval_budget\":{\"claims\":3,\"episodes\":0,\"notes\":0,\"sources\":0,\"tasks\":0},\"retrieval_requests\":[{\"deprioritized_claim_predicates\":[\"transport.owns_car_brand\",\"transport.past_car_brand\"],\"filters\":{},\"memory_type\":\"claim\",\"preferred_claim_predicates\":[\"preference.likes_brand\",\"preference.favorite_brand\",\"transport.car_preference_brand\"],\"query\":\"user preferred car brand\",\"top_k\":3,\"why\":\"Need user preference fact for preferred car brand.\"}]}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -431,8 +431,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 1664,
-                "completionTokens": 134,
+                "promptTokens": 1676,
+                "completionTokens": 142,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0
