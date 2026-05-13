@@ -12,7 +12,6 @@ import io.ktor.server.routing.routing
 import io.ktor.server.sse.SSE
 import io.ktor.server.websocket.WebSockets
 import io.ktor.server.websocket.webSocket
-import io.modelcontextprotocol.kotlin.sdk.server.mcp
 import jakarta.annotation.PostConstruct
 import klog.KLoggers
 import kotlinx.coroutines.runBlocking
@@ -64,9 +63,7 @@ fun main() {
             webSocket("/ws") {
                 remoteServer.handle(this)
             }
-            mcp("/mcp") {
-                mcpServerFactory.create()
-            }
+            gromozekaMcp("/mcp", mcpServerFactory)
             staticFiles("/", webRoot) {
                 modify { _, call ->
                     call.response.headers.append(HttpHeaders.CacheControl, "no-store")

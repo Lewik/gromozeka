@@ -1,6 +1,7 @@
 package com.gromozeka.server
 
 import com.gromozeka.domain.tool.AiToolCallback
+import com.gromozeka.domain.service.AiToolProvider
 import com.gromozeka.domain.tool.ToolExecutionContext
 import com.gromozeka.domain.tool.memory.SearchScope
 import com.gromozeka.domain.tool.memory.UnifiedSearchRequest
@@ -31,7 +32,7 @@ import com.gromozeka.domain.tool.memory.UnifiedSearchTool as DomainUnifiedSearch
 
 @Service
 class GromozekaMcpServerFactory(
-    private val toolCallbacks: List<AiToolCallback>,
+    private val aiToolProvider: AiToolProvider,
     private val unifiedSearchTool: DomainUnifiedSearchTool,
 ) {
     private val log = KLoggers.logger(this)
@@ -54,7 +55,7 @@ class GromozekaMcpServerFactory(
             )
         )
 
-        toolCallbacks
+        aiToolProvider.getTools()
             .filterNot { it.definition.name == UNIFIED_SEARCH_TOOL_NAME }
             .sortedBy { it.definition.name }
             .forEach { callback -> server.addAiToolCallback(callback) }
