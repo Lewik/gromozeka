@@ -1,7 +1,9 @@
 package com.gromozeka.server
 
-import com.gromozeka.domain.tool.AiToolCallback
+import com.gromozeka.application.service.memory.MEMORY_RECALL_TOOL_NAME
+import com.gromozeka.application.service.memory.MEMORY_REMEMBER_TOOL_NAME
 import com.gromozeka.domain.service.AiToolProvider
+import com.gromozeka.domain.tool.AiToolCallback
 import com.gromozeka.domain.tool.ToolExecutionContext
 import com.gromozeka.domain.tool.memory.SearchScope
 import com.gromozeka.domain.tool.memory.UnifiedSearchRequest
@@ -30,6 +32,8 @@ import kotlinx.serialization.json.put
 import org.springframework.stereotype.Service
 import com.gromozeka.domain.tool.memory.UnifiedSearchTool as DomainUnifiedSearchTool
 
+private const val UNIFIED_SEARCH_TOOL_NAME = "unified_search"
+
 @Service
 class GromozekaMcpServerFactory(
     private val aiToolProvider: AiToolProvider,
@@ -43,6 +47,14 @@ class GromozekaMcpServerFactory(
     }
 
     fun create(): Server {
+        val toolExposure = GromozekaMcpToolExposure.fromEnvironment()
+        val providedTools = aiToolProvider.getTools()
+        val availableToolNames = providedTools
+            .map { it.definition.name }
+            .plus(UNIFIED_SEARCH_TOOL_NAME)
+            .toSet()
+        toolExposure.validateAgainst(availableToolNames)
+
         val server = Server(
             serverInfo = Implementation(
                 name = "gromozeka",
@@ -55,28 +67,33 @@ class GromozekaMcpServerFactory(
             )
         )
 
-        aiToolProvider.getTools()
+        val exposedProvidedTools = providedTools
+            .filter { toolExposure.exposes(it.definition.name) }
             .filterNot { it.definition.name == UNIFIED_SEARCH_TOOL_NAME }
             .sortedBy { it.definition.name }
-            .forEach { callback -> server.addAiToolCallback(callback) }
+        exposedProvidedTools.forEach { callback -> server.addAiToolCallback(callback) }
 
-        server.addTool(
-            name = UNIFIED_SEARCH_TOOL_NAME,
-            description = unifiedSearchTool.description,
-            inputSchema = unifiedSearchInputSchema(),
-        ) { request ->
-            runCatching { callUnifiedSearch(request) }
-                .getOrElse { error ->
-                    log.warn(error) { "MCP unified_search failed: ${error.message}" }
-                    CallToolResult(
-                        content = listOf(TextContent("Error: ${error.message ?: "unified_search failed"}")),
-                        isError = true,
-                    )
-                }
+        if (toolExposure.exposes(UNIFIED_SEARCH_TOOL_NAME)) {
+            server.addTool(
+                name = UNIFIED_SEARCH_TOOL_NAME,
+                description = unifiedSearchTool.description,
+                inputSchema = unifiedSearchInputSchema(),
+            ) { request ->
+                runCatching { callUnifiedSearch(request) }
+                    .getOrElse { error ->
+                        log.warn(error) { "MCP unified_search failed: ${error.message}" }
+                        CallToolResult(
+                            content = listOf(TextContent("Error: ${error.message ?: "unified_search failed"}")),
+                            isError = true,
+                        )
+                    }
+            }
         }
 
+        val hiddenToolNames = availableToolNames - server.tools.keys
         log.info {
-            "Created Gromozeka MCP server with ${server.tools.size} tools: ${server.tools.keys.sorted()}"
+            "Created Gromozeka MCP server with ${server.tools.size}/${availableToolNames.size} tools: " +
+                "mode=${toolExposure.description} exposed=${server.tools.keys.sorted()} hidden=${hiddenToolNames.sorted()}"
         }
         return server
     }
@@ -226,7 +243,63 @@ class GromozekaMcpServerFactory(
             )
         }
 
-    private companion object {
-        const val UNIFIED_SEARCH_TOOL_NAME = "unified_search"
+}
+
+internal class GromozekaMcpToolExposure private constructor(
+    private val exposedToolNames: Set<String>?,
+    val description: String,
+) {
+    fun exposes(toolName: String): Boolean =
+        exposedToolNames == null || toolName in exposedToolNames
+
+    fun validateAgainst(availableToolNames: Set<String>) {
+        val unknownToolNames = exposedToolNames.orEmpty() - availableToolNames
+        require(unknownToolNames.isEmpty()) {
+            "Unknown Gromozeka MCP exposed tools: ${unknownToolNames.sorted()}. Available tools: ${availableToolNames.sorted()}"
+        }
+    }
+
+    companion object {
+        val DEFAULT_TOOL_NAMES = setOf(
+            MEMORY_RECALL_TOOL_NAME,
+            MEMORY_REMEMBER_TOOL_NAME,
+            UNIFIED_SEARCH_TOOL_NAME,
+        )
+
+        fun fromEnvironment(): GromozekaMcpToolExposure =
+            fromConfiguredValue(
+                System.getProperty("gromozeka.mcp.exposed.tools")
+                    ?: System.getenv("GROMOZEKA_MCP_EXPOSED_TOOLS")
+            )
+
+        fun fromConfiguredValue(value: String?): GromozekaMcpToolExposure {
+            val normalized = value?.trim().orEmpty()
+            if (normalized.isBlank()) {
+                return GromozekaMcpToolExposure(
+                    exposedToolNames = DEFAULT_TOOL_NAMES,
+                    description = "default:${DEFAULT_TOOL_NAMES.sorted().joinToString(",")}",
+                )
+            }
+
+            if (normalized.equals("all", ignoreCase = true) || normalized == "*") {
+                return GromozekaMcpToolExposure(
+                    exposedToolNames = null,
+                    description = "all",
+                )
+            }
+
+            val names = normalized
+                .split(',', ';', '\n', '\t', ' ')
+                .map { it.trim() }
+                .filter { it.isNotEmpty() }
+                .toSet()
+
+            require(names.isNotEmpty()) { "Gromozeka MCP exposed tools list is empty" }
+
+            return GromozekaMcpToolExposure(
+                exposedToolNames = names,
+                description = "allowlist:${names.sorted().joinToString(",")}",
+            )
+        }
     }
 }
