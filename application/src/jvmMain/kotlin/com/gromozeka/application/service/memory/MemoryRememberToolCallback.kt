@@ -26,7 +26,7 @@ class MemoryRememberToolCallback(
 
     override val definition: AiToolDefinition = AiToolDefinition(
         name = MEMORY_REMEMBER_TOOL_NAME,
-        description = "Persist memory-worthy information into typed memory. Use previous_user_message/message_id for normal conversation memory writes. The provided_text mode is only allowed when the user explicitly asks or consents to remember that exact arbitrary text; do not use it for assistant-generated summaries, guesses, rewritten content, or hidden compression unless the user approved that text.",
+        description = "Persist memory-worthy information into typed memory. Use previous_user_message/message_id for normal conversation memory writes. The provided_text mode can run without conversation context and is only allowed when the user explicitly asks or consents to remember that exact arbitrary text; do not use it for assistant-generated summaries, guesses, rewritten content, or hidden compression unless the user approved that text.",
         inputSchema = """
             {
               "type": "object",
@@ -57,11 +57,6 @@ class MemoryRememberToolCallback(
     )
 
     override fun call(toolInput: String, context: ToolExecutionContext?): String = runBlocking {
-        val conversationId = context?.getString("conversationId")
-            ?: return@runBlocking MemoryToolResultRenderer.failureJsonString(
-                "conversationId not found in ToolExecutionContext. Memory tools can only run inside a conversation turn."
-            )
-
         val input = parseInput(toolInput)
         val providedText = input.text?.trim().orEmpty()
         if (input.target == "provided_text" || providedText.isNotBlank()) {
@@ -74,11 +69,16 @@ class MemoryRememberToolCallback(
                 )
             }
             return@runBlocking memoryToolApplicationService.rememberProvidedText(
-                conversationIdValue = conversationId,
+                conversationIdValue = context?.getString("conversationId"),
                 text = providedText,
                 mode = input.mode,
             )
         }
+
+        val conversationId = context?.getString("conversationId")
+            ?: return@runBlocking MemoryToolResultRenderer.failureJsonString(
+                "conversationId not found in ToolExecutionContext. target='${input.target}' can only run inside a conversation turn. Use target='provided_text' with explicit consent for standalone text."
+            )
 
         if (input.target !in setOf("previous_user_message", "message_id")) {
             return@runBlocking MemoryToolResultRenderer.failureJsonString("Unsupported memory_remember target: ${input.target}")

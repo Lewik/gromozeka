@@ -8,11 +8,16 @@ import com.gromozeka.application.service.memory.withoutMemoryManagementTools
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.Project
+import com.gromozeka.domain.model.memory.MemoryNamespace
+import com.gromozeka.domain.model.memory.MemorySource
 import com.gromozeka.domain.service.AgentDomainService
 import com.gromozeka.domain.service.AiToolProvider
 import com.gromozeka.domain.service.ConversationDomainService
+import com.gromozeka.domain.service.DefaultAgentProvider
+import com.gromozeka.domain.service.ProjectDomainService
 import com.gromozeka.domain.tool.AiToolCallback
 import com.gromozeka.shared.uuid.uuid7
+import java.security.MessageDigest
 import klog.KLoggers
 import kotlinx.datetime.Clock
 import kotlinx.serialization.json.buildJsonObject
@@ -25,6 +30,9 @@ import org.springframework.stereotype.Service
 class MemoryToolApplicationService(
     private val conversationService: ConversationDomainService,
     private val agentDomainService: AgentDomainService,
+    private val defaultAgentProvider: DefaultAgentProvider,
+    private val projectService: ProjectDomainService,
+    private val settingsService: SettingsService,
     private val aiToolProvider: AiToolProvider,
     private val memoryApplicationService: MemoryApplicationService,
     private val memoryMessageRoutingApplicationService: MemoryMessageRoutingApplicationService,
@@ -48,13 +56,17 @@ class MemoryToolApplicationService(
     }
 
     suspend fun rememberProvidedText(
-        conversationIdValue: String,
+        conversationIdValue: String?,
         text: String,
         mode: String? = null,
     ): String {
         val normalizedText = text.trim()
         if (normalizedText.isBlank()) {
             return MemoryToolResultRenderer.failureJsonString("Provided memory text is blank.")
+        }
+
+        if (conversationIdValue.isNullOrBlank()) {
+            return rememberStandaloneProvidedText(normalizedText, mode)
         }
 
         return runCatching {
@@ -86,6 +98,50 @@ class MemoryToolApplicationService(
         }.onFailure { error ->
             log.warn(error) {
                 "Memory tool failed: tool=$MEMORY_REMEMBER_TOOL_NAME conversation=$conversationIdValue target=provided_text error=${error.message}"
+            }
+        }.getOrElse { error ->
+            MemoryToolResultRenderer.failureJsonString(error.message ?: "Memory tool failed.")
+        }
+    }
+
+    private suspend fun rememberStandaloneProvidedText(
+        text: String,
+        mode: String?,
+    ): String {
+        return runCatching {
+            val agent = defaultAgentProvider.getDefault()
+            val project = projectService.getOrCreate(defaultStandaloneProjectPath())
+            val namespace = MemoryNamespace("project:${project.id.value}")
+            val contentHash = text.sha256()
+            val now = Clock.System.now()
+            val source = MemorySource.ExternalRecord(
+                id = MemorySource.Id("external:provided-text:${contentHash.take(32)}"),
+                namespace = namespace,
+                recordRef = "memory_remember:provided_text:${contentHash.take(16)}",
+                authorLabel = "user-provided text",
+                contentText = text,
+                contentPayload = buildJsonObject {
+                    put("memoryToolOrigin", "provided_text")
+                    put("userConsentConfirmed", true)
+                    put("standalone", true)
+                    mode?.takeIf { it.isNotBlank() }?.let { put("mode", it) }
+                },
+                contentHash = contentHash,
+                observedAt = now,
+                createdAt = now,
+            )
+            val result = memoryMessageRoutingApplicationService.routeSource(
+                namespace = namespace,
+                source = source,
+                agent = agent,
+                project = project,
+                runtimeSystemPrompts = agentDomainService.assembleSystemPrompt(agent, project),
+                runtimeTools = aiToolProvider.getTools().withoutMemoryManagementTools(),
+            )
+            MemoryToolResultRenderer.rememberResultJsonString(result)
+        }.onFailure { error ->
+            log.warn(error) {
+                "Memory tool failed: tool=$MEMORY_REMEMBER_TOOL_NAME target=provided_text standalone=true error=${error.message}"
             }
         }.getOrElse { error ->
             MemoryToolResultRenderer.failureJsonString(error.message ?: "Memory tool failed.")
@@ -173,6 +229,15 @@ class MemoryToolApplicationService(
 
     private fun Conversation.Message.isSyntheticMemoryMessage(): Boolean =
         providerMetadata["syntheticKind"]?.jsonPrimitive?.contentOrNull == "memory"
+
+    private fun defaultStandaloneProjectPath(): String =
+        System.getProperty("gromozeka.project.root")
+            ?: settingsService.homeDirectory
+
+    private fun String.sha256(): String {
+        val digest = MessageDigest.getInstance("SHA-256").digest(toByteArray())
+        return digest.joinToString("") { "%02x".format(it) }
+    }
 
     private data class MemoryToolContext(
         val conversation: Conversation,

@@ -7,6 +7,7 @@ import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.memory.DirectStructuredMemoryWriteRequest
 import com.gromozeka.domain.model.memory.DirectStructuredMemoryWriteResult
 import com.gromozeka.domain.model.memory.MemoryNamespace
+import com.gromozeka.domain.model.memory.MemorySource
 import com.gromozeka.domain.model.memory.MemoryStore
 import com.gromozeka.domain.model.memory.MemoryThreadContext
 import com.gromozeka.domain.model.memory.MemoryWriteRetrievalPlan
@@ -77,6 +78,61 @@ class MemoryMessageRoutingApplicationService(
                 "runtimeSystemPrompts=${runtimeSystemPrompts.size} runtimeTools=${runtimeTools.size}"
         }
 
+        return routeSourceInternal(
+            namespace = namespace,
+            source = source,
+            threadContext = threadContext,
+            agent = agent,
+            project = project,
+            runtimeSystemPrompts = runtimeSystemPrompts,
+            runtimeTools = runtimeTools,
+            logContext = "conversation=${conversationId.value} message=${message.id.value} role=${message.role}",
+            traceContext = MemoryWriteTraceContext(
+                conversationId = conversationId,
+                threadId = threadId,
+                targetMessageId = message.id,
+            ),
+        )
+    }
+
+    suspend fun routeSource(
+        namespace: MemoryNamespace,
+        source: MemorySource,
+        agent: AgentDefinition,
+        project: Project,
+        runtimeSystemPrompts: List<String>,
+        runtimeTools: List<AiToolCallback>,
+    ): DirectStructuredMemoryWriteResult? {
+        log.info {
+            "Memory router trigger: namespace=${namespace.value} source=${source.id.value} " +
+                "sourceType=${source::class.simpleName} sourceChars=${source.contentText.length} " +
+                "runtimeSystemPrompts=${runtimeSystemPrompts.size} runtimeTools=${runtimeTools.size}"
+        }
+
+        return routeSourceInternal(
+            namespace = namespace,
+            source = source,
+            threadContext = null,
+            agent = agent,
+            project = project,
+            runtimeSystemPrompts = runtimeSystemPrompts,
+            runtimeTools = runtimeTools,
+            logContext = "namespace=${namespace.value} source=${source.id.value} sourceType=${source::class.simpleName}",
+            traceContext = null,
+        )
+    }
+
+    private suspend fun routeSourceInternal(
+        namespace: MemoryNamespace,
+        source: MemorySource,
+        threadContext: MemoryThreadContext?,
+        agent: AgentDefinition,
+        project: Project,
+        runtimeSystemPrompts: List<String>,
+        runtimeTools: List<AiToolCallback>,
+        logContext: String,
+        traceContext: MemoryWriteTraceContext?,
+    ): DirectStructuredMemoryWriteResult? {
         val runtime = aiRuntimeProvider.getRuntime(
             provider = AIProvider.valueOf(agent.aiProvider),
             modelName = agent.modelName,
@@ -157,8 +213,7 @@ class MemoryMessageRoutingApplicationService(
             )
         }.onSuccess { result ->
             log.info {
-                "Memory router routed: conversation=${conversationId.value} message=${message.id.value} " +
-                    "role=${message.role} decision=${result.routeDecision.decision.name} " +
+                "Memory router routed: $logContext decision=${result.routeDecision.decision.name} " +
                     "types=${result.routeDecision.memoryTypes.joinToString { it.name }} " +
                     "salience=${result.routeDecision.salience} reason=${result.routeDecision.reason} " +
                     "retrieval=${result.retrievalPlan?.describeForLog() ?: "none"} " +
@@ -168,32 +223,40 @@ class MemoryMessageRoutingApplicationService(
                     "claimCandidates=${result.claimCandidates.size} claimPredicates=${result.claimCandidates.claimPredicatesForLog()} " +
                     "taskOps=${result.taskOps.size}"
             }
-            writeTraceSinks.forEach { sink ->
-                runCatching {
-                    sink.onMemoryWrite(
-                        MemoryWriteTraceEvent(
-                            namespace = namespace,
-                            conversationId = conversationId,
-                            threadId = threadId,
-                            targetMessageId = message.id,
-                            result = result,
+            traceContext?.let { trace ->
+                writeTraceSinks.forEach { sink ->
+                    runCatching {
+                        sink.onMemoryWrite(
+                            MemoryWriteTraceEvent(
+                                namespace = namespace,
+                                conversationId = trace.conversationId,
+                                threadId = trace.threadId,
+                                targetMessageId = trace.targetMessageId,
+                                result = result,
+                            )
                         )
-                    )
-                }.onFailure { error ->
-                    log.warn(error) {
-                        "Memory write trace sink failed: conversation=${conversationId.value} " +
-                            "target=${message.id.value} sink=${sink::class.simpleName} error=${error.message}"
+                    }.onFailure { error ->
+                        log.warn(error) {
+                            "Memory write trace sink failed: conversation=${trace.conversationId.value} " +
+                                "target=${trace.targetMessageId.value} sink=${sink::class.simpleName} error=${error.message}"
+                        }
                     }
                 }
             }
         }.onFailure { error ->
-            val failed = "Memory router failed: conversation=${conversationId.value} message=${message.id.value} role=${message.role} error=${error.message}"
+            val failed = "Memory router failed: $logContext error=${error.message}"
             log.warn(error) { failed }
             if (failFastOnError) {
                 throw error
             }
         }.getOrNull()
     }
+
+    private data class MemoryWriteTraceContext(
+        val conversationId: Conversation.Id,
+        val threadId: Conversation.Thread.Id,
+        val targetMessageId: Conversation.Message.Id,
+    )
 
     private suspend fun buildThreadContext(
         conversationId: Conversation.Id,
