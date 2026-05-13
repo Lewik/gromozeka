@@ -189,7 +189,7 @@ private class AnthropicSdkRuntime(
     }
 }
 
-private class AnthropicSdkMessageMapper(
+internal class AnthropicSdkMessageMapper(
     private val provider: AIProvider,
 ) {
     private val json = Json { ignoreUnknownKeys = true }
@@ -459,7 +459,7 @@ private class AnthropicSdkMessageMapper(
         }
 
         val responseFormat = options.responseFormat
-        if (responseFormat is AiResponseFormat.JsonSchema) {
+        if (responseFormat is AiResponseFormat.JsonSchema && supportsNativeStructuredOutput()) {
             outputConfigBuilder.format(
                 JsonOutputFormat.builder()
                     .schema(
@@ -476,6 +476,9 @@ private class AnthropicSdkMessageMapper(
             builder.outputConfig(outputConfigBuilder.build())
         }
     }
+
+    private fun supportsNativeStructuredOutput(): Boolean =
+        provider == AIProvider.ANTHROPIC
 
     private fun adaptiveDisplay(display: String): ThinkingConfigAdaptive.Display =
         when (display.lowercase()) {
