@@ -54,7 +54,7 @@ class LlmMemoryForgetPlanner(
                 messages = stageMessages,
                 tools = runtimeTools,
                 options = AiRuntimeOptions(
-                    maxTokens = 1_800,
+                    maxTokens = 3_600,
                     toolChoice = AiToolChoice.None,
                     responseFormat = MemoryStructuredResponseFormats.ForgetPlanner,
                     toolContext = mapOf(

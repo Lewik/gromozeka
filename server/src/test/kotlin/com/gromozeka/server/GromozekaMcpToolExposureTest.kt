@@ -15,7 +15,7 @@ class GromozekaMcpToolExposureTest {
         assertTrue(exposure.exposes("memory_maintenance"))
         assertTrue(exposure.exposes("memory_remember"))
         assertTrue(exposure.exposes("memory_run_status"))
-        assertTrue(exposure.exposes("unified_search"))
+        assertFalse(exposure.exposes("unified_search"))
         assertFalse(exposure.exposes("grz_execute_command"))
     }
 
@@ -30,7 +30,7 @@ class GromozekaMcpToolExposureTest {
     @Test
     fun `explicit configuration accepts comma and whitespace separated tool names`() {
         val exposure = GromozekaMcpToolExposure.fromConfiguredValue(
-            "memory_enrich_context, memory_remember\nmemory_run_status memory_queue_status memory_maintenance unified_search"
+            "memory_enrich_context, memory_remember\nmemory_run_status memory_queue_status memory_maintenance"
         )
 
         assertTrue(exposure.exposes("memory_queue_status"))
@@ -38,7 +38,7 @@ class GromozekaMcpToolExposureTest {
         assertTrue(exposure.exposes("memory_maintenance"))
         assertTrue(exposure.exposes("memory_remember"))
         assertTrue(exposure.exposes("memory_run_status"))
-        assertTrue(exposure.exposes("unified_search"))
+        assertFalse(exposure.exposes("unified_search"))
         assertFalse(exposure.exposes("brave_web_search"))
     }
 
@@ -47,7 +47,7 @@ class GromozekaMcpToolExposureTest {
         val exposure = GromozekaMcpToolExposure.fromConfiguredValue("memory_enrich_context,missing_tool")
 
         assertFailsWith<IllegalArgumentException> {
-            exposure.validateAgainst(setOf("memory_enrich_context", "memory_remember", "unified_search"))
+            exposure.validateAgainst(setOf("memory_enrich_context", "memory_remember", "memory_maintenance"))
         }
     }
 }

@@ -62,7 +62,7 @@ class LlmMemoryClaimReconciler(
                 messages = stageMessages,
                 tools = runtimeTools,
                 options = AiRuntimeOptions(
-                    maxTokens = 1_500,
+                    maxTokens = 3_000,
                     toolChoice = AiToolChoice.None,
                     responseFormat = MemoryStructuredResponseFormats.ClaimReconciler,
                     toolContext = mapOf(

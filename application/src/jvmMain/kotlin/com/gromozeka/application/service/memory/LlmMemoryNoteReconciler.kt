@@ -76,7 +76,7 @@ class LlmMemoryNoteReconciler(
                 messages = stageMessages,
                 tools = runtimeTools,
                 options = AiRuntimeOptions(
-                    maxTokens = 1_500,
+                    maxTokens = 3_000,
                     toolChoice = AiToolChoice.None,
                     responseFormat = MemoryStructuredResponseFormats.NoteReconciler,
                     toolContext = mapOf(

@@ -52,7 +52,7 @@ class LlmMemoryWriteRouter(
                 messages = stageMessages,
                 tools = runtimeTools,
                 options = AiRuntimeOptions(
-                    maxTokens = 900,
+                    maxTokens = 1_800,
                     toolChoice = AiToolChoice.None,
                     responseFormat = MemoryStructuredResponseFormats.WriteRouter,
                     toolContext = mapOf(
