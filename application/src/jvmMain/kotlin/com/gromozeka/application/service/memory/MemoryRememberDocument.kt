@@ -232,6 +232,35 @@ internal object MarkdownDocumentSlicer {
             .mapIndexed { index, section -> section.copy(index = index + 1) }
     }
 
+    fun splitForRetry(section: MarkdownDocumentSection): List<MarkdownDocumentSection> {
+        val sectionLines = section.text.lines()
+        if (sectionLines.size < 2) return emptyList()
+
+        val splitIndex = sectionLines.headingSplitIndex()
+            ?: sectionLines.blankLineSplitIndex()
+            ?: sectionLines.lineSplitIndex()
+            ?: return emptyList()
+
+        return listOf(
+            section.createRetryPart(
+                partNumber = 1,
+                totalParts = 2,
+                sectionLines = sectionLines,
+                startIndex = 0,
+                endIndex = splitIndex - 1,
+            ),
+            section.createRetryPart(
+                partNumber = 2,
+                totalParts = 2,
+                sectionLines = sectionLines,
+                startIndex = splitIndex,
+                endIndex = sectionLines.lastIndex,
+            ),
+        ).filter { it.text.isNotBlank() }
+            .takeIf { parts -> parts.size == 2 && parts.sumOf { it.text.length } < section.text.length + 16 }
+            ?: emptyList()
+    }
+
     private fun MarkdownDocumentSection.splitOversized(maxSectionChars: Int): List<MarkdownDocumentSection> {
         if (text.length <= maxSectionChars) return listOf(this)
 
@@ -270,6 +299,38 @@ internal object MarkdownDocumentSlicer {
             endLine = startLine + endIndex,
             text = sectionLines.subList(startIndex, endIndex + 1).joinToString("\n").trim(),
         )
+
+    private fun MarkdownDocumentSection.createRetryPart(
+        partNumber: Int,
+        totalParts: Int,
+        sectionLines: List<String>,
+        startIndex: Int,
+        endIndex: Int,
+    ): MarkdownDocumentSection =
+        copy(
+            index = index * 10 + partNumber,
+            headingPath = headingPath + "retry part $partNumber/$totalParts",
+            startLine = startLine + startIndex,
+            endLine = startLine + endIndex,
+            text = sectionLines.subList(startIndex, endIndex + 1).joinToString("\n").trim(),
+        )
+
+    private fun List<String>.headingSplitIndex(): Int? =
+        indices
+            .drop(1)
+            .filter { index -> index < lastIndex && headingRegex.matches(get(index)) }
+            .minByOrNull { index -> kotlin.math.abs(index - size / 2) }
+
+    private fun List<String>.blankLineSplitIndex(): Int? =
+        indices
+            .drop(1)
+            .filter { index -> index < lastIndex && get(index).isBlank() }
+            .minByOrNull { index -> kotlin.math.abs(index - size / 2) }
+            ?.plus(1)
+            ?.takeIf { it in 1..lastIndex }
+
+    private fun List<String>.lineSplitIndex(): Int? =
+        (size / 2).takeIf { it in 1..lastIndex }
 
     private data class MarkdownTree(
         val lines: List<String>,

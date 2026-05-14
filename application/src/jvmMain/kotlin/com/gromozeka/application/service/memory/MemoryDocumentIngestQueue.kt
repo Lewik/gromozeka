@@ -110,6 +110,8 @@ class MemoryDocumentIngestQueue(
         val childRunIds = mutableListOf<MemoryRun.Id>()
         val sectionFailures = mutableListOf<SectionFailure>()
         var processedSections = 0
+        var totalSections = job.sections.size
+        var adaptiveSplits = 0
         persist(parentRun)
 
         log.info {
@@ -121,76 +123,63 @@ class MemoryDocumentIngestQueue(
             val sectionSource = job.toSectionSource(section)
             parentRun = parentRun.copy(
                 progress = MemoryRun.Progress(
-                    totalUnits = job.sections.size,
+                    totalUnits = totalSections,
                     completedUnits = processedSections + sectionFailures.size,
                     failedUnits = sectionFailures.size,
                     currentUnitLabel = section.headingLabel,
                     currentSourceId = sectionSource.id,
                 ),
-                summary = "Document ingest running: ${processedSections + sectionFailures.size}/${job.sections.size} sections",
+                summary = "Document ingest running: ${processedSections + sectionFailures.size}/$totalSections sections",
             )
             persist(parentRun)
 
-            runCatching {
+            val sectionResult = MemoryDocumentAdaptiveIngest.processSection(section) { effectiveSection ->
                 memoryMessageRoutingApplicationService.routeSource(
                     namespace = job.namespace,
-                    source = sectionSource,
+                    source = job.toSectionSource(effectiveSection),
                     agent = job.agent,
                     project = job.project,
                     runtimeSystemPrompts = job.runtimeSystemPrompts,
                     runtimeTools = job.runtimeTools,
                     parentRunId = parentRun.id,
-                )
-            }.onSuccess { result ->
-                if (result == null) {
-                    sectionFailures += SectionFailure(
-                        sectionIndex = section.index,
-                        heading = section.headingLabel,
-                        sourceId = sectionSource.id,
-                        message = "Section routing returned no result.",
-                    )
-                } else {
-                    processedSections += 1
-                    childRunIds += result.memoryBatch.runs.map { it.id }
-                }
-                parentRun = parentRun.copy(
-                    childRunIds = childRunIds.distinct(),
-                    progress = MemoryRun.Progress(
-                        totalUnits = job.sections.size,
-                        completedUnits = processedSections + sectionFailures.size,
-                        failedUnits = sectionFailures.size,
-                        currentUnitLabel = section.headingLabel,
-                        currentSourceId = sectionSource.id,
-                    ),
-                    summary = "Document ingest running: ${processedSections + sectionFailures.size}/${job.sections.size} sections",
-                    errorText = sectionFailures.lastOrNull()?.message,
-                )
-                persist(parentRun)
-            }.onFailure { error ->
+                    throwOnError = true,
+                ) ?: throw IllegalStateException("Section routing returned no result.")
+            }
+
+            totalSections += (sectionResult.attemptedSections - 1).coerceAtLeast(0)
+            adaptiveSplits += sectionResult.splitCount
+            processedSections += sectionResult.processedSections
+            sectionResult.results.forEach { result ->
+                childRunIds += result.memoryBatch.runs.map { it.id }
+            }
+            sectionResult.failedSections.forEach { failure ->
+                val failureSource = job.toSectionSource(failure.section)
                 sectionFailures += SectionFailure(
-                    sectionIndex = section.index,
-                    heading = section.headingLabel,
-                    sourceId = sectionSource.id,
-                    message = error.message ?: error::class.simpleName.orEmpty(),
+                    sectionIndex = failure.section.index,
+                    heading = failure.section.headingLabel,
+                    sourceId = failureSource.id,
+                    message = failure.message,
                 )
-                parentRun = parentRun.copy(
-                    childRunIds = childRunIds.distinct(),
-                    progress = MemoryRun.Progress(
-                        totalUnits = job.sections.size,
-                        completedUnits = processedSections + sectionFailures.size,
-                        failedUnits = sectionFailures.size,
-                        currentUnitLabel = section.headingLabel,
-                        currentSourceId = sectionSource.id,
-                    ),
-                    summary = "Document ingest running: ${processedSections + sectionFailures.size}/${job.sections.size} sections",
-                    errorText = sectionFailures.last().message,
-                )
-                persist(parentRun)
-                log.warn(error) {
+                log.warn(failure.error) {
                     "Memory document section failed: run=${parentRun.id.value} namespace=${job.namespace.value} " +
-                        "section=${section.index} heading=${section.headingLabel} source=${sectionSource.id.value} error=${error.message}"
+                        "section=${failure.section.index} heading=${failure.section.headingLabel} " +
+                        "source=${failureSource.id.value} error=${failure.message}"
                 }
             }
+
+            parentRun = parentRun.copy(
+                childRunIds = childRunIds.distinct(),
+                progress = MemoryRun.Progress(
+                    totalUnits = totalSections,
+                    completedUnits = processedSections + sectionFailures.size,
+                    failedUnits = sectionFailures.size,
+                    currentUnitLabel = section.headingLabel,
+                    currentSourceId = sectionSource.id,
+                ),
+                summary = "Document ingest running: ${processedSections + sectionFailures.size}/$totalSections sections",
+                errorText = sectionFailures.lastOrNull()?.message,
+            )
+            persist(parentRun)
         }
 
         val completedAt = Clock.System.now()
@@ -205,14 +194,16 @@ class MemoryDocumentIngestQueue(
             status = finalStatus,
             childRunIds = childRunIds.distinct(),
             progress = MemoryRun.Progress(
-                totalUnits = job.sections.size,
+                totalUnits = totalSections,
                 completedUnits = successfulSections + failedSections,
                 failedUnits = failedSections,
             ),
-            summary = "Document ingest ${finalStatus.name.lowercase()}: $successfulSections/${job.sections.size} sections",
+            summary = "Document ingest ${finalStatus.name.lowercase()}: $successfulSections/$totalSections sections",
             output = job.outputJson(
+                expandedSections = totalSections,
                 processedSections = successfulSections,
                 failedSections = failedSections,
+                adaptiveSplits = adaptiveSplits,
                 sectionFailures = sectionFailures,
             ),
             errorText = sectionFailures.firstOrNull()?.message,
@@ -224,6 +215,7 @@ class MemoryDocumentIngestQueue(
         log.info {
             "Memory document queue completed: run=${parentRun.id.value} namespace=${job.namespace.value} " +
                 "status=${finalStatus.name} processed=$successfulSections failed=$failedSections " +
+                "adaptiveSplits=$adaptiveSplits expandedSections=$totalSections " +
                 "childRuns=${childRunIds.size} latencyMs=${parentRun.latencyMs}"
         }
     }
@@ -292,8 +284,10 @@ class MemoryDocumentIngestQueue(
     }
 
     private fun MemoryDocumentIngestJob.outputJson(
+        expandedSections: Int,
         processedSections: Int,
         failedSections: Int,
+        adaptiveSplits: Int,
         sectionFailures: List<SectionFailure>,
     ) = buildJsonObject {
         put("document_type", documentType.name)
@@ -302,6 +296,8 @@ class MemoryDocumentIngestQueue(
         put("source_ref", sourceRef)
         put("parent_source_id", parentSource.id.value)
         put("sections_total", sections.size)
+        put("sections_expanded_total", expandedSections)
+        put("adaptive_splits", adaptiveSplits)
         put("sections_processed", processedSections)
         put("sections_failed", failedSections)
         putJsonArray("failures") {

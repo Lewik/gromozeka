@@ -169,6 +169,95 @@ class MemoryRememberDocumentTest {
     }
 
     @Test
+    fun markdownSlicerSplitsRetrySectionsNearNestedHeading() {
+        val section = MarkdownDocumentSection(
+            index = 7,
+            headingPath = listOf("Guide"),
+            startLine = 10,
+            endLine = 17,
+            text = """
+                # Guide
+                Intro.
+                ## Alpha
+                Alpha detail.
+                ## Beta
+                Beta detail.
+                ## Gamma
+                Gamma detail.
+            """.trimIndent(),
+        )
+
+        val parts = MarkdownDocumentSlicer.splitForRetry(section)
+
+        assertEquals(2, parts.size)
+        assertEquals(71, parts[0].index)
+        assertEquals(72, parts[1].index)
+        assertEquals(listOf("Guide", "retry part 1/2"), parts[0].headingPath)
+        assertEquals(listOf("Guide", "retry part 2/2"), parts[1].headingPath)
+        assertEquals(10, parts[0].startLine)
+        assertEquals(13, parts[0].endLine)
+        assertEquals(14, parts[1].startLine)
+        assertEquals(17, parts[1].endLine)
+        assertTrue(parts[1].text.startsWith("## Beta"))
+    }
+
+    @Test
+    fun adaptiveIngestSplitsRetryableJsonFailures() = runBlocking {
+        val section = MarkdownDocumentSection(
+            index = 5,
+            headingPath = listOf("Dense"),
+            startLine = 1,
+            endLine = 6,
+            text = """
+                # Dense
+                First paragraph.
+
+                Second paragraph.
+                Third paragraph.
+                Fourth paragraph.
+            """.trimIndent(),
+        )
+        val calls = mutableListOf<Int>()
+
+        val result = MemoryDocumentAdaptiveIngest.processSection(section) { effectiveSection ->
+            calls += effectiveSection.index
+            if (effectiveSection.index == section.index) {
+                throw IllegalStateException("Claim extractor did not return JSON: {\"claims\":[")
+            }
+            effectiveSection.headingLabel
+        }
+
+        assertEquals(listOf(5, 51, 52), calls)
+        assertEquals(2, result.results.size)
+        assertEquals(2, result.processedSections)
+        assertEquals(0, result.failedSections.size)
+        assertEquals(1, result.splitCount)
+    }
+
+    @Test
+    fun adaptiveIngestDoesNotSplitUnrelatedFailures() = runBlocking {
+        val section = MarkdownDocumentSection(
+            index = 3,
+            headingPath = listOf("Provider"),
+            startLine = 1,
+            endLine = 3,
+            text = "# Provider\n\nBody.",
+        )
+        val calls = mutableListOf<Int>()
+
+        val result = MemoryDocumentAdaptiveIngest.processSection(section) { effectiveSection ->
+            calls += effectiveSection.index
+            throw IllegalStateException("Unsupported output_config.format")
+        }
+
+        assertEquals(listOf(3), calls)
+        assertEquals(0, result.results.size)
+        assertEquals(0, result.processedSections)
+        assertEquals(1, result.failedSections.size)
+        assertEquals(0, result.splitCount)
+    }
+
+    @Test
     fun resolverTreatsFilePathAsMarkdownDocumentByDefault() = runBlocking {
         val file = Files.createTempFile("memory-doc", ".md")
         file.writeText("# Doc\n\nFact.")

@@ -179,27 +179,39 @@ class MemoryMessageRoutingApplicationService(
                 "parentRun=${parentRun.id.value} sections=${sections.size} title=${document.title.orEmpty()} sourceRef=${document.sourceRef}"
         }
 
-        val sectionResults = sections.map { section ->
-            routeSourceInternal(
-                namespace = namespace,
-                source = parentSource.toDocumentSectionSource(
-                    section = section,
-                    document = document,
-                    documentHash = documentHash,
-                    parentRun = parentRun,
-                ),
-                threadContext = null,
-                parentRunId = parentRun.id,
-                agent = agent,
-                project = project,
-                runtimeSystemPrompts = runtimeSystemPrompts,
-                runtimeTools = runtimeTools,
-                logContext = "$logContext documentSection=${section.index}/${sections.size}",
-                traceContext = null,
-            )
+        val processedSections = sections.map { section ->
+            MemoryDocumentAdaptiveIngest.processSection(section) { effectiveSection ->
+                routeSourceInternal(
+                    namespace = namespace,
+                    source = parentSource.toDocumentSectionSource(
+                        section = effectiveSection,
+                        document = document,
+                        documentHash = documentHash,
+                        parentRun = parentRun,
+                    ),
+                    threadContext = null,
+                    parentRunId = parentRun.id,
+                    agent = agent,
+                    project = project,
+                    runtimeSystemPrompts = runtimeSystemPrompts,
+                    runtimeTools = runtimeTools,
+                    logContext = "$logContext documentSection=${effectiveSection.index}/${sections.size}",
+                    traceContext = null,
+                    throwOnError = true,
+                ) ?: throw IllegalStateException("Section routing returned no result.")
+            }
         }
 
-        val completedResults = sectionResults.filterNotNull()
+        val sectionResults = processedSections.flatMap { it.results }
+        val sectionFailures = processedSections.flatMap { it.failedSections }
+        if (sectionFailures.isNotEmpty()) {
+            log.warn {
+                "Memory pasted document partial failures: $logContext parentRun=${parentRun.id.value} " +
+                    "failures=${sectionFailures.size} first=${sectionFailures.first().message}"
+            }
+        }
+
+        val completedResults = sectionResults
         val aggregate = completedResults.toDocumentAggregateResult(
             parentSource = parentSource,
             parentRun = parentRun,
@@ -228,6 +240,7 @@ class MemoryMessageRoutingApplicationService(
         log.info {
             "Memory pasted document routed: $logContext parentRun=${parentRun.id.value} " +
                 "sections=${sections.size} completed=${completedResults.size} " +
+                "adaptiveSplits=${processedSections.sumOf { it.splitCount }} failures=${sectionFailures.size} " +
                 "notes=${aggregate.memoryBatch.notes.size} claims=${aggregate.memoryBatch.claims.size} tasks=${aggregate.memoryBatch.tasks.size}"
         }
 
@@ -242,6 +255,7 @@ class MemoryMessageRoutingApplicationService(
         runtimeSystemPrompts: List<String>,
         runtimeTools: List<AiToolCallback>,
         parentRunId: MemoryRun.Id? = null,
+        throwOnError: Boolean = false,
     ): DirectStructuredMemoryWriteResult? {
         log.info {
             "Memory router trigger: namespace=${namespace.value} source=${source.id.value} " +
@@ -261,6 +275,7 @@ class MemoryMessageRoutingApplicationService(
             runtimeTools = runtimeTools,
             logContext = "namespace=${namespace.value} source=${source.id.value} sourceType=${source::class.simpleName}",
             traceContext = null,
+            throwOnError = throwOnError,
         )
     }
 
@@ -275,6 +290,7 @@ class MemoryMessageRoutingApplicationService(
         runtimeTools: List<AiToolCallback>,
         logContext: String,
         traceContext: MemoryWriteTraceContext?,
+        throwOnError: Boolean = false,
     ): DirectStructuredMemoryWriteResult? {
         val runtime = aiRuntimeProvider.getRuntime(
             provider = AIProvider.valueOf(agent.aiProvider),
@@ -390,7 +406,7 @@ class MemoryMessageRoutingApplicationService(
         }.onFailure { error ->
             val failed = "Memory router failed: $logContext error=${error.message}"
             log.warn(error) { failed }
-            if (failFastOnError) {
+            if (throwOnError || failFastOnError) {
                 throw error
             }
         }.getOrNull()
