@@ -1,15 +1,26 @@
 package com.gromozeka.application.service
 
-import com.gromozeka.application.service.memory.MEMORY_RECALL_TOOL_NAME
+import com.gromozeka.application.service.memory.MEMORY_ENRICH_CONTEXT_TOOL_NAME
 import com.gromozeka.application.service.memory.MEMORY_REMEMBER_TOOL_NAME
+import com.gromozeka.application.service.memory.MemoryDocumentIngestJob
+import com.gromozeka.application.service.memory.MemoryDocumentIngestQueue
 import com.gromozeka.application.service.memory.MemoryMessageRoutingApplicationService
+import com.gromozeka.application.service.memory.MarkdownDocumentSlicer
+import com.gromozeka.application.service.memory.MemoryRememberContentRequest
+import com.gromozeka.application.service.memory.MemoryRememberContentResolver
+import com.gromozeka.application.service.memory.MemoryRememberDocumentQueuedResult
+import com.gromozeka.application.service.memory.MemoryResolvedRememberContent
 import com.gromozeka.application.service.memory.MemoryToolResultRenderer
 import com.gromozeka.application.service.memory.withoutMemoryManagementTools
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.memory.MemoryNamespace
+import com.gromozeka.domain.model.memory.MemoryRun
 import com.gromozeka.domain.model.memory.MemorySource
+import com.gromozeka.domain.model.memory.MemorySourceUsagePolicy
+import com.gromozeka.domain.model.memory.MemoryStore
+import com.gromozeka.domain.model.memory.MemoryUpdateBatch
 import com.gromozeka.domain.service.AgentDomainService
 import com.gromozeka.domain.service.AiToolProvider
 import com.gromozeka.domain.service.ConversationDomainService
@@ -36,8 +47,11 @@ class MemoryToolApplicationService(
     private val aiToolProvider: AiToolProvider,
     private val memoryApplicationService: MemoryApplicationService,
     private val memoryMessageRoutingApplicationService: MemoryMessageRoutingApplicationService,
+    private val memoryDocumentIngestQueue: MemoryDocumentIngestQueue,
+    private val memoryStore: MemoryStore,
 ) {
     private val log = KLoggers.logger(this)
+    private val rememberContentResolver = MemoryRememberContentResolver()
 
     suspend fun remember(
         conversationIdValue: String,
@@ -57,10 +71,34 @@ class MemoryToolApplicationService(
 
     suspend fun rememberProvidedText(
         conversationIdValue: String?,
-        text: String,
+        text: String? = null,
+        filePath: String? = null,
+        rawUrl: String? = null,
+        documentType: String? = null,
+        title: String? = null,
+        sourceRef: String? = null,
         mode: String? = null,
     ): String {
-        val normalizedText = text.trim()
+        val resolvedContent = runCatching {
+            rememberContentResolver.resolve(
+                MemoryRememberContentRequest(
+                    text = text,
+                    filePath = filePath,
+                    rawUrl = rawUrl,
+                    documentType = documentType,
+                    title = title,
+                    sourceRef = sourceRef,
+                )
+            )
+        }.getOrElse { error ->
+            return MemoryToolResultRenderer.failureJsonString(error.message ?: "Failed to resolve memory input.")
+        }
+
+        if (resolvedContent.documentType != null) {
+            return rememberResolvedDocument(conversationIdValue, resolvedContent, mode)
+        }
+
+        val normalizedText = resolvedContent.text.trim()
         if (normalizedText.isBlank()) {
             return MemoryToolResultRenderer.failureJsonString("Provided memory text is blank.")
         }
@@ -80,6 +118,8 @@ class MemoryToolApplicationService(
                 providerMetadata = buildJsonObject {
                     put("memoryToolOrigin", "provided_text")
                     put("userConsentConfirmed", true)
+                    put("inputKind", resolvedContent.kind.name)
+                    put("sourceRef", resolvedContent.sourceRef)
                     mode?.takeIf { it.isNotBlank() }?.let { put("mode", it) }
                 },
                 createdAt = Clock.System.now(),
@@ -148,10 +188,149 @@ class MemoryToolApplicationService(
         }
     }
 
-    suspend fun recall(
+    private suspend fun rememberResolvedDocument(
+        conversationIdValue: String?,
+        resolvedContent: MemoryResolvedRememberContent,
+        mode: String?,
+    ): String =
+        runCatching {
+            val documentType = requireNotNull(resolvedContent.documentType)
+            val agent: AgentDefinition
+            val project: Project
+            val runtimeSystemPrompts: List<String>
+            val runtimeTools: List<AiToolCallback>
+
+            if (conversationIdValue.isNullOrBlank()) {
+                agent = defaultAgentProvider.getDefault()
+                project = projectService.getOrCreate(defaultStandaloneProjectPath())
+                runtimeSystemPrompts = agentDomainService.assembleSystemPrompt(agent, project)
+                runtimeTools = aiToolProvider.getTools().withoutMemoryManagementTools()
+            } else {
+                val context = resolveContext(Conversation.Id(conversationIdValue))
+                agent = context.agent
+                project = context.project
+                runtimeSystemPrompts = context.systemPrompts
+                runtimeTools = context.memoryTools
+            }
+
+            val namespace = MemoryNamespace("project:${project.id.value}")
+            val now = Clock.System.now()
+            val documentHash = resolvedContent.text.sha256()
+            val parentRecordRef = "memory_remember:document:${documentHash.take(16)}"
+            val parentSource = MemorySource.ExternalRecord(
+                id = MemorySource.Id("external:document:${documentHash.take(32)}"),
+                namespace = namespace,
+                recordRef = parentRecordRef,
+                authorLabel = "user-provided document",
+                contentText = resolvedContent.text,
+                contentPayload = buildJsonObject {
+                    put("memoryToolOrigin", "provided_document")
+                    put("userConsentConfirmed", true)
+                    put("inputKind", resolvedContent.kind.name)
+                    put("documentType", documentType.name)
+                    put("sourceRef", resolvedContent.sourceRef)
+                    resolvedContent.title?.let { put("title", it) }
+                    mode?.takeIf { it.isNotBlank() }?.let { put("mode", it) }
+                },
+                contentHash = documentHash,
+                observedAt = now,
+                createdAt = now,
+                retentionClass = MemorySource.RetentionClass.IMPORTED,
+                usagePolicy = MemorySourceUsagePolicy.AUDIT_ONLY.copy(
+                    reason = "parent document; section sources are processed"
+                ),
+            )
+
+            val sections = MarkdownDocumentSlicer.slice(resolvedContent.text)
+            require(sections.isNotEmpty()) { "Document has no non-blank markdown sections." }
+
+            val parentRun = MemoryRun(
+                id = MemoryRun.Id("document-ingest:run:${uuid7()}"),
+                namespace = namespace,
+                runType = MemoryRun.Type.DOCUMENT_INGEST,
+                triggerMode = MemoryRun.TriggerMode.MANUAL,
+                summary = "Document ingest queued: ${sections.size} sections",
+                sourceIds = listOf(parentSource.id),
+                progress = MemoryRun.Progress(totalUnits = sections.size),
+                inputHash = documentHash,
+                output = buildJsonObject {
+                    put("document_type", documentType.name)
+                    put("input_kind", resolvedContent.kind.name)
+                    put("title", resolvedContent.title.orEmpty())
+                    put("source_ref", resolvedContent.sourceRef)
+                    put("parent_source_id", parentSource.id.value)
+                    put("sections_total", sections.size)
+                },
+                metadata = buildJsonObject {
+                    put("memoryToolOrigin", "provided_document")
+                    put("inputKind", resolvedContent.kind.name)
+                    put("documentType", documentType.name)
+                    put("sourceRef", resolvedContent.sourceRef)
+                    resolvedContent.title?.let { put("title", it) }
+                    mode?.takeIf { it.isNotBlank() }?.let { put("mode", it) }
+                },
+                status = MemoryRun.Status.QUEUED,
+                createdAt = now,
+            )
+            log.info {
+                "Memory document remember: namespace=${namespace.value} documentType=${documentType.name} " +
+                    "inputKind=${resolvedContent.kind.name} parentRun=${parentRun.id.value} " +
+                    "parentSource=${parentSource.id.value} sections=${sections.size} " +
+                    "chars=${resolvedContent.text.length} sourceRef=${resolvedContent.sourceRef}"
+            }
+
+            memoryStore.apply(
+                MemoryUpdateBatch(
+                    sources = listOf(parentSource),
+                    runs = listOf(parentRun),
+                )
+            )
+
+            val queueSize = memoryDocumentIngestQueue.enqueue(
+                MemoryDocumentIngestJob(
+                    namespace = namespace,
+                    parentRun = parentRun,
+                    parentSource = parentSource,
+                    documentType = documentType,
+                    inputKind = resolvedContent.kind,
+                    title = resolvedContent.title,
+                    sourceRef = resolvedContent.sourceRef,
+                    documentHash = documentHash,
+                    parentRecordRef = parentRecordRef,
+                    sections = sections,
+                    mode = mode,
+                    agent = agent,
+                    project = project,
+                    runtimeSystemPrompts = runtimeSystemPrompts,
+                    runtimeTools = runtimeTools,
+                )
+            )
+
+            MemoryToolResultRenderer.rememberDocumentQueuedResultJsonString(
+                MemoryRememberDocumentQueuedResult(
+                    runId = parentRun.id.value,
+                    documentType = documentType,
+                    inputKind = resolvedContent.kind,
+                    title = resolvedContent.title,
+                    sourceRef = resolvedContent.sourceRef,
+                    parentSourceId = parentSource.id.value,
+                    sections = sections,
+                    queueSize = queueSize,
+                )
+            )
+        }.onFailure { error ->
+            log.warn(error) {
+                "Memory tool failed: tool=$MEMORY_REMEMBER_TOOL_NAME target=document " +
+                    "inputKind=${resolvedContent.kind.name} sourceRef=${resolvedContent.sourceRef} error=${error.message}"
+            }
+        }.getOrElse { error ->
+            MemoryToolResultRenderer.failureJsonString(error.message ?: "Memory document remember failed.")
+        }
+
+    suspend fun enrichContext(
         conversationIdValue: String,
         targetMessageId: String? = null,
-    ): String = runMemoryTool(MEMORY_RECALL_TOOL_NAME, conversationIdValue, targetMessageId) { context, targetMessage ->
+    ): String = runMemoryTool(MEMORY_ENRICH_CONTEXT_TOOL_NAME, conversationIdValue, targetMessageId) { context, targetMessage ->
         val result = memoryApplicationService.buildRuntimeMemoryReadResult(
             conversationId = context.conversation.id,
             threadId = context.conversation.currentThread,
@@ -162,29 +341,29 @@ class MemoryToolApplicationService(
             runtimeSystemPrompts = context.systemPrompts,
             runtimeTools = context.memoryTools,
         )
-        MemoryToolResultRenderer.recallResultJsonString(result)
+        MemoryToolResultRenderer.enrichContextResultJsonString(result)
     }
 
-    suspend fun recallProvidedText(
+    suspend fun enrichProvidedContext(
         conversationIdValue: String?,
-        text: String,
+        contextText: String,
         mode: String? = null,
     ): String {
-        val normalizedText = text.trim()
-        if (normalizedText.isBlank()) {
-            return MemoryToolResultRenderer.failureJsonString("Provided recall text is blank.")
+        val normalizedContext = contextText.trim()
+        if (normalizedContext.isBlank()) {
+            return MemoryToolResultRenderer.failureJsonString("Provided context is blank.")
         }
 
         if (conversationIdValue.isNullOrBlank()) {
-            return recallStandaloneProvidedText(normalizedText, mode)
+            return enrichStandaloneContext(normalizedContext, mode)
         }
 
         return runCatching {
             val conversationId = Conversation.Id(conversationIdValue)
             val context = resolveContext(conversationId)
-            val targetMessage = syntheticRecallMessage(
+            val targetMessage = syntheticEnrichmentTargetMessage(
                 conversationId = context.conversation.id,
-                text = normalizedText,
+                text = normalizedContext,
                 mode = mode,
                 standalone = false,
             )
@@ -198,26 +377,54 @@ class MemoryToolApplicationService(
                 runtimeSystemPrompts = context.systemPrompts,
                 runtimeTools = context.memoryTools,
             )
-            MemoryToolResultRenderer.recallResultJsonString(result)
+            MemoryToolResultRenderer.enrichContextResultJsonString(result)
         }.onFailure { error ->
             log.warn(error) {
-                "Memory tool failed: tool=$MEMORY_RECALL_TOOL_NAME conversation=$conversationIdValue target=provided_text error=${error.message}"
+                "Memory tool failed: tool=$MEMORY_ENRICH_CONTEXT_TOOL_NAME conversation=$conversationIdValue target=provided_context error=${error.message}"
             }
         }.getOrElse { error ->
             MemoryToolResultRenderer.failureJsonString(error.message ?: "Memory tool failed.")
         }
     }
 
-    private suspend fun recallStandaloneProvidedText(
+    suspend fun memoryRunStatus(
+        runIdValue: String,
+        includeChildren: Boolean = true,
+        maxDepth: Int = 4,
+    ): String =
+        runCatching {
+            val runId = MemoryRun.Id(runIdValue.trim())
+            require(runId.value.isNotBlank()) { "memory_run_status requires non-blank run_id." }
+            val rootRun = memoryStore.findRunById(runId)
+                ?: return MemoryToolResultRenderer.failureJsonString("Memory run not found: ${runId.value}")
+            val boundedDepth = maxDepth.coerceIn(0, 8)
+            val descendants = if (includeChildren) {
+                loadRunDescendants(rootRun, boundedDepth)
+            } else {
+                emptyList()
+            }
+            MemoryToolResultRenderer.runStatusJsonString(
+                rootRun = rootRun,
+                descendants = descendants,
+                maxDepth = boundedDepth,
+            )
+        }.getOrElse { error ->
+            MemoryToolResultRenderer.failureJsonString(error.message ?: "Memory run status failed.")
+        }
+
+    fun memoryQueueStatus(): String =
+        MemoryToolResultRenderer.queueStatusJsonString(memoryDocumentIngestQueue.status())
+
+    private suspend fun enrichStandaloneContext(
         text: String,
         mode: String?,
     ): String {
         return runCatching {
             val agent = defaultAgentProvider.getDefault()
             val project = projectService.getOrCreate(defaultStandaloneProjectPath())
-            val conversationId = Conversation.Id("memory_recall:standalone:${uuid7()}")
-            val threadId = Conversation.Thread.Id("memory_recall:standalone:${uuid7()}")
-            val targetMessage = syntheticRecallMessage(
+            val conversationId = Conversation.Id("memory_enrich_context:standalone:${uuid7()}")
+            val threadId = Conversation.Thread.Id("memory_enrich_context:standalone:${uuid7()}")
+            val targetMessage = syntheticEnrichmentTargetMessage(
                 conversationId = conversationId,
                 text = text,
                 mode = mode,
@@ -233,17 +440,17 @@ class MemoryToolApplicationService(
                 runtimeSystemPrompts = agentDomainService.assembleSystemPrompt(agent, project),
                 runtimeTools = aiToolProvider.getTools().withoutMemoryManagementTools(),
             )
-            MemoryToolResultRenderer.recallResultJsonString(result)
+            MemoryToolResultRenderer.enrichContextResultJsonString(result)
         }.onFailure { error ->
             log.warn(error) {
-                "Memory tool failed: tool=$MEMORY_RECALL_TOOL_NAME target=provided_text standalone=true error=${error.message}"
+                "Memory tool failed: tool=$MEMORY_ENRICH_CONTEXT_TOOL_NAME target=provided_context standalone=true error=${error.message}"
             }
         }.getOrElse { error ->
             MemoryToolResultRenderer.failureJsonString(error.message ?: "Memory tool failed.")
         }
     }
 
-    private fun syntheticRecallMessage(
+    private fun syntheticEnrichmentTargetMessage(
         conversationId: Conversation.Id,
         text: String,
         mode: String?,
@@ -255,7 +462,7 @@ class MemoryToolApplicationService(
             role = Conversation.Message.Role.USER,
             content = listOf(Conversation.Message.ContentItem.UserMessage(text)),
             providerMetadata = buildJsonObject {
-                put("memoryToolOrigin", "provided_text")
+                put("memoryToolOrigin", "provided_context")
                 put("standalone", standalone)
                 mode?.takeIf { it.isNotBlank() }?.let { put("mode", it) }
             },
@@ -326,6 +533,34 @@ class MemoryToolApplicationService(
 
     private fun Conversation.Message.isSyntheticMemoryMessage(): Boolean =
         providerMetadata["syntheticKind"]?.jsonPrimitive?.contentOrNull == "memory"
+
+    private suspend fun loadRunDescendants(
+        rootRun: MemoryRun,
+        maxDepth: Int,
+    ): List<MemoryRun> {
+        val visited = mutableSetOf(rootRun.id)
+        val descendants = mutableListOf<MemoryRun>()
+        var frontier = listOf(rootRun)
+
+        repeat(maxDepth) {
+            val next = frontier
+                .flatMap { run -> loadDirectRunChildren(run) }
+                .filter { run -> visited.add(run.id) }
+            if (next.isEmpty()) {
+                return descendants
+            }
+            descendants += next
+            frontier = next
+        }
+
+        return descendants
+    }
+
+    private suspend fun loadDirectRunChildren(run: MemoryRun): List<MemoryRun> =
+        (
+            memoryStore.findRunsByParentRunId(run.id) +
+                run.childRunIds.mapNotNull { childRunId -> memoryStore.findRunById(childRunId) }
+            ).distinctBy { it.id }
 
     private fun defaultStandaloneProjectPath(): String =
         System.getProperty("gromozeka.project.root")

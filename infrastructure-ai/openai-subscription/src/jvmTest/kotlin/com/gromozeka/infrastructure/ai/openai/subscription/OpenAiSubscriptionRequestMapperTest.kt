@@ -8,6 +8,8 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import kotlin.test.Test
@@ -104,6 +106,36 @@ class OpenAiSubscriptionRequestMapperTest {
         assertNull(request.contextManagement)
     }
 
+    @Test
+    fun mapsSystemMessagesAsDeveloperInputItemsForSubscriptionEndpoint() {
+        val request = mapper.toRequest(
+            request = AiRuntimeRequest(
+                systemPrompts = emptyList(),
+                messages = listOf(systemMessage(id = "system-note", text = "Runtime context.")),
+            ),
+            modelName = "gpt-5",
+            conversationKey = "test-conversation",
+        )
+
+        assertEquals(listOf("message"), request.input.map { it.string("type") })
+        assertEquals("developer", request.input.single().string("role"))
+        assertEquals("input_text", request.input.single().jsonArray("content").single().jsonObject.string("type"))
+    }
+
+    @Test
+    fun dropsErrorSystemMessagesFromSubscriptionReplayInput() {
+        val request = mapper.toRequest(
+            request = AiRuntimeRequest(
+                systemPrompts = emptyList(),
+                messages = listOf(systemMessage(id = "system-error", text = "Previous API error.", isError = true)),
+            ),
+            modelName = "gpt-5",
+            conversationKey = "test-conversation",
+        )
+
+        assertEquals(emptyList(), request.input)
+    }
+
     private fun assistantCompactionMessage(
         id: String,
         toolCallId: Conversation.Message.ContentItem.ToolCall.Id?,
@@ -164,9 +196,31 @@ class OpenAiSubscriptionRequestMapperTest {
             createdAt = createdAt,
         )
 
+    private fun systemMessage(
+        id: String,
+        text: String,
+        isError: Boolean = false,
+    ): Conversation.Message =
+        Conversation.Message(
+            id = Conversation.Message.Id(id),
+            conversationId = conversationId,
+            role = Conversation.Message.Role.SYSTEM,
+            content = listOf(
+                Conversation.Message.ContentItem.System(
+                    level = Conversation.Message.ContentItem.System.SystemLevel.INFO,
+                    content = text,
+                )
+            ),
+            error = if (isError) Conversation.Message.GenerationError(message = text, type = "api") else null,
+            createdAt = createdAt,
+        )
+
     private fun JsonObject.string(key: String): String? =
         this[key]?.jsonPrimitive?.contentOrNull
 
     private fun JsonObject.int(key: String): Int? =
         this[key]?.jsonPrimitive?.contentOrNull?.toIntOrNull()
+
+    private fun JsonObject.jsonArray(key: String): JsonArray =
+        this.getValue(key).jsonArray
 }

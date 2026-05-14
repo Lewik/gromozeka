@@ -98,7 +98,7 @@ class LlmMemoryReadPlanner(
         Stage instructions:
         $READ_TIME_RETRIEVAL_PLANNER_PROMPT
 
-        TARGET_MESSAGE text:
+        TARGET_CONTEXT text:
         ${request.targetMessageText()}
     """.trimIndent()
 
@@ -175,7 +175,8 @@ class LlmMemoryReadPlanner(
         Verify whether that no-memory decision is safe.
 
         You are NOT deciding whether the memory store contains the answer.
-        You are deciding whether the assistant should search memory before answering.
+        You are deciding whether the assistant should search memory to enrich the target context before answering or acting.
+        The target may be a question, task, fragment, topic, phrase, or work context.
 
         Return JSON:
         {
@@ -207,7 +208,7 @@ class LlmMemoryReadPlanner(
         Use needs_source=true when the target asks according to, from, or in a named/pasted/imported document and the target does not include the document content.
         If unsure, set needs_memory=true. False negatives are worse than a small extra recall.
 
-        TARGET_MESSAGE text:
+        TARGET_CONTEXT text:
         ${request.targetMessageText()}
     """.trimIndent()
 
@@ -364,7 +365,9 @@ class LlmMemoryReadPlanner(
             You are ReadTimeRetrievalPlanner v3.
 
             Goal:
-            Plan memory retrieval for the current user request.
+            Plan memory retrieval that enriches the target context before answer synthesis.
+            The target may be a question, task, fragment, topic, phrase, or work context.
+            Do not answer the target. Return only the retrieval plan.
 
             Return JSON:
             {
@@ -393,8 +396,8 @@ class LlmMemoryReadPlanner(
             }
 
             Rules:
-            - Use the full conversation only to understand the target request.
-            - Plan retrieval only for the target user request, not for older turns.
+            - Use the full conversation only to understand the target context.
+            - Plan retrieval only for the target context/current turn, not for older turns.
             - Use "factual" for preferences, status, or direct fact recall.
             - Use "rationale" for why/how/what-we-discussed questions.
             - For "rationale" answers, retrieve notes first. Rationale, design direction, trade-offs, and "what did we decide/how did we decide/why did we choose" questions should include at least one note retrieval request unless the target message already contains the answer.

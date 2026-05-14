@@ -1,0 +1,343 @@
+{
+    "version": 1,
+    "hash": "b806ae1326c53fd9a59755cf323ed7c6505b3d021b70ea06be82104313ea2851",
+    "provider": "OPEN_AI_SUBSCRIPTION",
+    "model": "gpt-5.3-codex",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>/projects/handoff-data-model-document-ingestion",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: EntityCanonicalizer v1.\n        Current time: <instant>\n        Namespace: project:<0>\n\n        Stage instructions:\n        You are EntityCanonicalizer v1.\n\nGoal:\nResolve entity mentions from the latest turns into canonical entities.\n\nReturn JSON object:\n{\n  \"operations\": [\n    {\n      \"mention\": \"text\",\n      \"action\": \"link_existing | create_new | add_alias | noop\",\n      \"entity_id\": \"uuid-or-null\",\n      \"new_entity\": {\n        \"entity_type\": \"user | person | agent | organization | project | repo | file | technology | product | location | concept | document | conversation | service | environment | other\",\n        \"canonical_name\": \"text\",\n        \"summary\": \"text-or-null\"\n      },\n      \"alias_text\": \"text-or-null\",\n      \"confidence\": 0.0,\n      \"reason\": \"short explanation\"\n    }\n  ]\n}\n\nRules:\n- Prefer precision over recall.\n- Do not merge distinct entities on weak evidence.\n- Create new entities only when no candidate is a safe match.\n- If a candidate safely matches the mention, use \"link_existing\" with that candidate id.\n- Use \"add_alias\" only when the mention is a new surface form for a safe existing candidate.\n- If several candidates share a name, pick by entity type and summary; do not create another same-name entity.\n- Prefer English for entity summaries; keep proper names, product names, repo names, and file names unchanged.\n- Entity summaries must describe identity only, not mutable facts, current status, preferences, ownership, formats, fields, versions, or decisions. Put those facts into claims/notes instead.\n- For USER first-person facts and preferences, resolve the user as the stable namespace-level USER entity named \"User\".\n- Never create chat-specific USER entities such as \"User of chat:...\"; a new chat is not a new user.\n- Return valid JSON only.\n\n        Detected raw mentions:\n        No deterministic mention detector is available in this MVP.\nInfer only concrete reusable referents from the latest turns.\nFor first-person USER statements, create or link a stable USER entity when claims need a subject.\n\n        Candidate existing entities:\n        none\n\n        Retrieval plan context:\n        entity_queries=v3 data model|Source|Entity|Claim|Note|Profile|Task|Episode|MemoryRun|scope_text|scope_json|truth status|retrieval_state\n        text_queries=02. Data Model|cross-cutting fields|scope_text and scope_json|truth status vs retrieval_state|retrieval lifecycle active warm cold archived deleted|usage fields use_count last_used_at last_validated_at|typed memory lineage temporal truth reconcilable updates\n        predicate_hints=has_constraint|believes\n\n        TARGET_MESSAGE source data:\n        [external:document-section:08ed79ab14c56e5328c3e22e3c36e4ac] EXTERNAL\nDocument title: 02. Data Model\nDocument source: agent_memory_handoff/02_data_model.md\nDocument section: 02. Data Model / 1. Общая идея .. 2. Общие cross-cutting поля\nDocument lines: 3-90\n\n## 1. Общая идея\n\nМодель данных в `v3` должна одновременно поддерживать:\n\n- typed memory\n- lineage\n- temporal truth\n- reconcilable updates\n- richer semantic context\n- lifecycle / retention\n- repairability\n\nПоэтому модель делится на:\n\n- **evidence layer** — `Source`\n- **graph-shaped semantic layer** — `Entity`, `Claim`\n- **rich intermediate layer** — `Note`\n- **projections / operational memory** — `Profile`, `Task`, `Episode`\n- **audit layer** — `MemoryRun`\n\nПлюс у `v3` есть два cross-cutting concern:\n\n- `scope`\n- `retrieval lifecycle`\n\n## 2. Общие cross-cutting поля\n\n### 2.1 `scope_text` и `scope_json`\n\nПочти любой memory item, кроме сырого `Source`, выигрывает от двухслойного scope:\n\n- `scope_text`\n  - краткое человеческое описание области применения\n- `scope_json`\n  - машинно-читаемый envelope\n\nРекомендуемый shape:\n\n```json\n{\n  \"scope_kind\": \"global | project | conversation | entity | environment | document\",\n  \"project_id\": null,\n  \"conversation_id\": null,\n  \"subject_entity_id\": null,\n  \"environment\": null,\n  \"modality\": \"explicit | inferred | summarized | imported\",\n  \"audience\": \"runtime | memory_worker | user_model\"\n}\n```\n\n`scope_text` нужен для explainability.\n`scope_json` нужен для retrieval и reconciliation.\n\n### 2.2 `truth status` и `retrieval_state`\n\nЭто разные оси и не надо их смешивать.\n\n`truth status` отвечает:\n- актуально ли знание\n- вытеснено ли\n- опровергнуто ли\n- закончилось ли его временное окно\n\n`retrieval_state` отвечает:\n- как часто item должен участвовать в поиске\n- находится ли он в hot / warm / cold памяти\n- архивирован ли он\n- скрыт ли из обычного retrieval\n\nОбщий паттерн для retrieval lifecycle:\n- `active`\n- `warm`\n- `cold`\n- `archived`\n- `deleted`\n\n### 2.3 Usage fields\n\nДля notes / claims / tasks / episodes полезны:\n- `use_count`\n- `last_used_at`\n- `last_validated_at`\n\nЭто нужно для:\n- maturity\n- retention\n- repair",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "autoCompactionThreshold": null,
+            "maxTokens": 2000,
+            "outputConfig": null,
+            "responseFormat": {
+                "description": "Resolve target message mentions into canonical memory entities.",
+                "name": "memory_entity_canonicalizer",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "operations": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "action": {
+                                        "enum": [
+                                            "link_existing",
+                                            "create_new",
+                                            "add_alias",
+                                            "noop"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "alias_text": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "confidence": {
+                                        "type": "number"
+                                    },
+                                    "entity_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "mention": {
+                                        "type": "string"
+                                    },
+                                    "new_entity": {
+                                        "anyOf": [
+                                            {
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "canonical_name": {
+                                                        "type": "string"
+                                                    },
+                                                    "entity_type": {
+                                                        "enum": [
+                                                            "user",
+                                                            "person",
+                                                            "agent",
+                                                            "organization",
+                                                            "project",
+                                                            "repo",
+                                                            "file",
+                                                            "technology",
+                                                            "product",
+                                                            "location",
+                                                            "concept",
+                                                            "document",
+                                                            "conversation",
+                                                            "service",
+                                                            "environment",
+                                                            "other"
+                                                        ],
+                                                        "type": "string"
+                                                    },
+                                                    "summary": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "entity_type",
+                                                    "canonical_name",
+                                                    "summary"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "mention",
+                                    "action",
+                                    "entity_id",
+                                    "new_entity",
+                                    "alias_text",
+                                    "confidence",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "operations"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "thinking": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "memoryEntityCanonicalizer": true,
+                "memoryNamespace": "project:<0>",
+                "memorySourceId": "external:document-section:08ed79ab14c56e5328c3e22e3c36e4ac"
+            }
+        },
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: EntityCanonicalizer v1.\n        Current time: <instant>\n        Namespace: project:<0>\n\n        Stage instructions:\n        You are EntityCanonicalizer v1.\n\nGoal:\nResolve entity mentions from the latest turns into canonical entities.\n\nReturn JSON object:\n{\n  \"operations\": [\n    {\n      \"mention\": \"text\",\n      \"action\": \"link_existing | create_new | add_alias | noop\",\n      \"entity_id\": \"uuid-or-null\",\n      \"new_entity\": {\n        \"entity_type\": \"user | person | agent | organization | project | repo | file | technology | product | location | concept | document | conversation | service | environment | other\",\n        \"canonical_name\": \"text\",\n        \"summary\": \"text-or-null\"\n      },\n      \"alias_text\": \"text-or-null\",\n      \"confidence\": 0.0,\n      \"reason\": \"short explanation\"\n    }\n  ]\n}\n\nRules:\n- Prefer precision over recall.\n- Do not merge distinct entities on weak evidence.\n- Create new entities only when no candidate is a safe match.\n- If a candidate safely matches the mention, use \"link_existing\" with that candidate id.\n- Use \"add_alias\" only when the mention is a new surface form for a safe existing candidate.\n- If several candidates share a name, pick by entity type and summary; do not create another same-name entity.\n- Prefer English for entity summaries; keep proper names, product names, repo names, and file names unchanged.\n- Entity summaries must describe identity only, not mutable facts, current status, preferences, ownership, formats, fields, versions, or decisions. Put those facts into claims/notes instead.\n- For USER first-person facts and preferences, resolve the user as the stable namespace-level USER entity named \"User\".\n- Never create chat-specific USER entities such as \"User of chat:...\"; a new chat is not a new user.\n- Return valid JSON only.\n\n        Detected raw mentions:\n        No deterministic mention detector is available in this MVP.\nInfer only concrete reusable referents from the latest turns.\nFor first-person USER statements, create or link a stable USER entity when claims need a subject.\n\n        Candidate existing entities:\n        none\n\n        Retrieval plan context:\n        entity_queries=v3 data model|Source|Entity|Claim|Note|Profile|Task|Episode|MemoryRun|scope_text|scope_json|truth status|retrieval_state\n        text_queries=02. Data Model|cross-cutting fields|scope_text and scope_json|truth status vs retrieval_state|retrieval lifecycle active warm cold archived deleted|usage fields use_count last_used_at last_validated_at|typed memory lineage temporal truth reconcilable updates\n        predicate_hints=has_constraint|believes\n\n        TARGET_MESSAGE source data:\n        [external:document-section:08ed79ab14c56e5328c3e22e3c36e4ac] EXTERNAL\nDocument title: 02. Data Model\nDocument source: agent_memory_handoff/02_data_model.md\nDocument section: 02. Data Model / 1. Общая идея .. 2. Общие cross-cutting поля\nDocument lines: 3-90\n\n## 1. Общая идея\n\nМодель данных в `v3` должна одновременно поддерживать:\n\n- typed memory\n- lineage\n- temporal truth\n- reconcilable updates\n- richer semantic context\n- lifecycle / retention\n- repairability\n\nПоэтому модель делится на:\n\n- **evidence layer** — `Source`\n- **graph-shaped semantic layer** — `Entity`, `Claim`\n- **rich intermediate layer** — `Note`\n- **projections / operational memory** — `Profile`, `Task`, `Episode`\n- **audit layer** — `MemoryRun`\n\nПлюс у `v3` есть два cross-cutting concern:\n\n- `scope`\n- `retrieval lifecycle`\n\n## 2. Общие cross-cutting поля\n\n### 2.1 `scope_text` и `scope_json`\n\nПочти любой memory item, кроме сырого `Source`, выигрывает от двухслойного scope:\n\n- `scope_text`\n  - краткое человеческое описание области применения\n- `scope_json`\n  - машинно-читаемый envelope\n\nРекомендуемый shape:\n\n```json\n{\n  \"scope_kind\": \"global | project | conversation | entity | environment | document\",\n  \"project_id\": null,\n  \"conversation_id\": null,\n  \"subject_entity_id\": null,\n  \"environment\": null,\n  \"modality\": \"explicit | inferred | summarized | imported\",\n  \"audience\": \"runtime | memory_worker | user_model\"\n}\n```\n\n`scope_text` нужен для explainability.\n`scope_json` нужен для retrieval и reconciliation.\n\n### 2.2 `truth status` и `retrieval_state`\n\nЭто разные оси и не надо их смешивать.\n\n`truth status` отвечает:\n- актуально ли знание\n- вытеснено ли\n- опровергнуто ли\n- закончилось ли его временное окно\n\n`retrieval_state` отвечает:\n- как часто item должен участвовать в поиске\n- находится ли он в hot / warm / cold памяти\n- архивирован ли он\n- скрыт ли из обычного retrieval\n\nОбщий паттерн для retrieval lifecycle:\n- `active`\n- `warm`\n- `cold`\n- `archived`\n- `deleted`\n\n### 2.3 Usage fields\n\nДля notes / claims / tasks / episodes полезны:\n- `use_count`\n- `last_used_at`\n- `last_validated_at`\n\nЭто нужно для:\n- maturity\n- retention\n- repair",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxTokens": 2000,
+            "thinking": null,
+            "outputConfig": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "memory_entity_canonicalizer",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "operations": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "action": {
+                                        "enum": [
+                                            "link_existing",
+                                            "create_new",
+                                            "add_alias",
+                                            "noop"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "alias_text": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "confidence": {
+                                        "type": "number"
+                                    },
+                                    "entity_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "mention": {
+                                        "type": "string"
+                                    },
+                                    "new_entity": {
+                                        "anyOf": [
+                                            {
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "canonical_name": {
+                                                        "type": "string"
+                                                    },
+                                                    "entity_type": {
+                                                        "enum": [
+                                                            "user",
+                                                            "person",
+                                                            "agent",
+                                                            "organization",
+                                                            "project",
+                                                            "repo",
+                                                            "file",
+                                                            "technology",
+                                                            "product",
+                                                            "location",
+                                                            "concept",
+                                                            "document",
+                                                            "conversation",
+                                                            "service",
+                                                            "environment",
+                                                            "other"
+                                                        ],
+                                                        "type": "string"
+                                                    },
+                                                    "summary": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "entity_type",
+                                                    "canonical_name",
+                                                    "summary"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "mention",
+                                    "action",
+                                    "entity_id",
+                                    "new_entity",
+                                    "alias_text",
+                                    "confidence",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "operations"
+                    ],
+                    "type": "object"
+                },
+                "description": "Resolve target message mentions into canonical memory entities.",
+                "strict": true
+            },
+            "toolContext": {
+                "memoryEntityCanonicalizer": true,
+                "memoryNamespace": "project:<0>",
+                "memorySourceId": "external:document-section:08ed79ab14c56e5328c3e22e3c36e4ac"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"operations\":[{\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.77,\"entity_id\":null,\"mention\":\"v3\",\"new_entity\":{\"canonical_name\":\"v3 data model\",\"entity_type\":\"concept\",\"summary\":\"A versioned memory data model architecture described in the document.\"},\"reason\":\"Core named model referenced as a distinct conceptual artifact.\"},{\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.83,\"entity_id\":null,\"mention\":\"Source\",\"new_entity\":{\"canonical_name\":\"Source\",\"entity_type\":\"concept\",\"summary\":\"The evidence-layer object type in the memory data model.\"},\"reason\":\"Explicitly defined model layer/type.\"},{\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.86,\"entity_id\":null,\"mention\":\"Entity\",\"new_entity\":{\"canonical_name\":\"Entity\",\"entity_type\":\"concept\",\"summary\":\"A graph semantic-layer object type representing canonical referents in memory.\"},\"reason\":\"Explicit schema type in the document.\"},{\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.86,\"entity_id\":null,\"mention\":\"Claim\",\"new_entity\":{\"canonical_name\":\"Claim\",\"entity_type\":\"concept\",\"summary\":\"A graph semantic-layer object type representing asserted information in memory.\"},\"reason\":\"Explicit schema type in the document.\"},{\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.84,\"entity_id\":null,\"mention\":\"Note\",\"new_entity\":{\"canonical_name\":\"Note\",\"entity_type\":\"concept\",\"summary\":\"An intermediate-layer memory object type for rich contextual information.\"},\"reason\":\"Explicit schema type in the document.\"},{\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.8,\"entity_id\":null,\"mention\":\"Profile\",\"new_entity\":{\"canonical_name\":\"Profile\",\"entity_type\":\"concept\",\"summary\":\"A projection/operational memory object type in the data model.\"},\"reason\":\"Named operational layer type.\"},{\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.82,\"entity_id\":null,\"mention\":\"Task\",\"new_entity\":{\"canonical_name\":\"Task\",\"entity_type\":\"concept\",\"summary\":\"A projection/operational memory object type representing actionable work items.\"},\"reason\":\"Named operational layer type.\"},{\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.79,\"entity_id\":null,\"mention\":\"Episode\",\"new_entity\":{\"canonical_name\":\"Episode\",\"entity_type\":\"concept\",\"summary\":\"A projection/operational memory object type for grouped interaction/event context.\"},\"reason\":\"Named operational layer type.\"},{\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.85,\"entity_id\":null,\"mention\":\"MemoryRun\",\"new_entity\":{\"canonical_name\":\"MemoryRun\",\"entity_type\":\"concept\",\"summary\":\"An audit-layer object type recording memory processing runs.\"},\"reason\":\"Explicitly identified audit layer type.\"},{\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.81,\"entity_id\":null,\"mention\":\"scope_text\",\"new_entity\":{\"canonical_name\":\"scope_text\",\"entity_type\":\"concept\",\"summary\":\"A human-readable field describing applicability scope for memory items.\"},\"reason\":\"Cross-cutting field explicitly defined.\"},{\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.84,\"entity_id\":null,\"mention\":\"scope_json\",\"new_entity\":{\"canonical_name\":\"scope_json\",\"entity_type\":\"concept\",\"summary\":\"A machine-readable scope envelope field used for retrieval and reconciliation.\"},\"reason\":\"Cross-cutting field explicitly defined.\"},{\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.82,\"entity_id\":null,\"mention\":\"truth status\",\"new_entity\":{\"canonical_name\":\"truth status\",\"entity_type\":\"concept\",\"summary\":\"A status axis indicating validity and temporal standing of knowledge.\"},\"reason\":\"Distinct conceptual axis in model semantics.\"},{\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.82,\"entity_id\":null,\"mention\":\"retrieval_state\",\"new_entity\":{\"canonical_name\":\"retrieval_state\",\"entity_type\":\"concept\",\"summary\":\"A lifecycle axis controlling retrieval participation and storage temperature of memory items.\"},\"reason\":\"Distinct conceptual axis in model semantics.\"},{\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.76,\"entity_id\":null,\"mention\":\"retrieval lifecycle\",\"new_entity\":{\"canonical_name\":\"retrieval lifecycle\",\"entity_type\":\"concept\",\"summary\":\"The state progression model governing memory item retrieval activity levels.\"},\"reason\":\"Named cross-cutting concern with defined states.\"}]}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 1442,
+                "completionTokens": 916,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

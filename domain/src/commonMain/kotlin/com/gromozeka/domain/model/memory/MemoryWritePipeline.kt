@@ -23,6 +23,7 @@ data class DirectStructuredMemoryWriteRequest(
     val source: MemorySource,
     val threadContext: MemoryThreadContext? = null,
     val triggerMode: MemoryRun.TriggerMode = MemoryRun.TriggerMode.HOT_PATH,
+    val parentRunId: MemoryRun.Id? = null,
 )
 
 /**

@@ -380,7 +380,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"operations\":[{\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.97,\"entity_id\":null,\"mention\":\"Atlas (project)\",\"new_entity\":{\"canonical_name\":\"Atlas\",\"entity_type\":\"project\",\"summary\":\"A project named Atlas.\"},\"reason\":\"Explicitly stated as a project named Atlas; distinct from person with same name.\"},{\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.97,\"entity_id\":null,\"mention\":\"Atlas (person)\",\"new_entity\":{\"canonical_name\":\"Atlas\",\"entity_type\":\"person\",\"summary\":\"A person named Atlas.\"},\"reason\":\"Explicitly stated as a person named Atlas; disambiguated from project.\"},{\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.93,\"entity_id\":null,\"mention\":\"MongoDB\",\"new_entity\":{\"canonical_name\":\"MongoDB\",\"entity_type\":\"technology\",\"summary\":\"A database technology.\"},\"reason\":\"Concrete reusable technology entity referenced as backend database.\"},{\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.93,\"entity_id\":null,\"mention\":\"PostgreSQL\",\"new_entity\":{\"canonical_name\":\"PostgreSQL\",\"entity_type\":\"technology\",\"summary\":\"A relational database technology.\"},\"reason\":\"Concrete reusable technology entity referenced as preferred tutorial database.\"}]}",
+                                "fullText": "{\"operations\":[{\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.97,\"entity_id\":null,\"mention\":\"Atlas (project)\",\"new_entity\":{\"canonical_name\":\"Atlas\",\"entity_type\":\"project\",\"summary\":\"A project named Atlas.\"},\"reason\":\"Explicitly stated as a project named Atlas; no existing candidates.\"},{\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.97,\"entity_id\":null,\"mention\":\"Atlas (person)\",\"new_entity\":{\"canonical_name\":\"Atlas\",\"entity_type\":\"person\",\"summary\":\"A person named Atlas.\"},\"reason\":\"Explicitly stated as a person named Atlas; distinct type disambiguates same name.\"},{\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.94,\"entity_id\":null,\"mention\":\"MongoDB\",\"new_entity\":{\"canonical_name\":\"MongoDB\",\"entity_type\":\"technology\",\"summary\":\"A database technology/product.\"},\"reason\":\"Concrete reusable technology entity referenced as backend database.\"},{\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.94,\"entity_id\":null,\"mention\":\"PostgreSQL\",\"new_entity\":{\"canonical_name\":\"PostgreSQL\",\"entity_type\":\"technology\",\"summary\":\"A relational database technology/product.\"},\"reason\":\"Concrete reusable technology entity referenced as preferred tutorial database.\"}]}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -395,8 +395,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 1345,
-                "completionTokens": 273,
+                "promptTokens": 1358,
+                "completionTokens": 274,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

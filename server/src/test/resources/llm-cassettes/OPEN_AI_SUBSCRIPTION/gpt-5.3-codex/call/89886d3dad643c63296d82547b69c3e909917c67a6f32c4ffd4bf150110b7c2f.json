@@ -310,7 +310,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"decision\":\"direct_structured_write\",\"memory_types\":[\"claim\"],\"reason\":\"Explicit attributed claims with conflicting positions are durable as attribution facts.\",\"salience\":0.7,\"source_policy\":{\"allow_evidence_hydration\":true,\"allow_recall\":true,\"allow_structured_extraction\":true,\"reason\":\"Contains durable attributed viewpoints that may be referenced later.\"},\"source_search_text\":\"Vasya thinks graph memory should be layered; Yura thinks graph memory does not need layers.\"}",
+                                "fullText": "{\"decision\":\"direct_structured_write\",\"memory_types\":[\"claim\"],\"reason\":\"Contains two explicit attributed claims that are durable as speaker-linked viewpoints, despite conflict.\",\"salience\":0.67,\"source_policy\":{\"allow_evidence_hydration\":true,\"allow_recall\":true,\"allow_structured_extraction\":true,\"reason\":\"Durable attributed viewpoints with named entities; suitable for structured claim storage and later recall.\"},\"source_search_text\":\"Vasya says graph memory should be layered; Yura says graph memory does not need layers (conflicting attributed views).\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -325,8 +325,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 2504,
-                "completionTokens": 107,
+                "promptTokens": 2530,
+                "completionTokens": 124,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

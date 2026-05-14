@@ -380,7 +380,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"operations\":[{\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.95,\"entity_id\":null,\"mention\":\"BookNest project\",\"new_entity\":{\"canonical_name\":\"BookNest\",\"entity_type\":\"project\",\"summary\":\"A project named BookNest.\"},\"reason\":\"Concrete named project mention with no existing candidates.\"},{\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.9,\"entity_id\":null,\"mention\":\"CSV\",\"new_entity\":{\"canonical_name\":\"CSV\",\"entity_type\":\"technology\",\"summary\":\"A tabular text data format using comma-separated values.\"},\"reason\":\"Specific reusable format/technology mentioned with no existing candidates.\"}]}",
+                                "fullText": "{\"operations\":[{\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.95,\"entity_id\":null,\"mention\":\"BookNest project\",\"new_entity\":{\"canonical_name\":\"BookNest\",\"entity_type\":\"project\",\"summary\":\"A project named BookNest.\"},\"reason\":\"Concrete named project mention with no existing candidates.\"},{\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.92,\"entity_id\":null,\"mention\":\"CSV\",\"new_entity\":{\"canonical_name\":\"CSV\",\"entity_type\":\"technology\",\"summary\":\"A plain-text tabular data format using comma-separated values.\"},\"reason\":\"Specific reusable format/technology mention with no existing candidates.\"}]}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -395,8 +395,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 1292,
-                "completionTokens": 144,
+                "promptTokens": 1275,
+                "completionTokens": 145,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

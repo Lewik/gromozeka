@@ -389,7 +389,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"decision\":\"direct_structured_write\",\"memory_types\":[\"claim\"],\"reason\":\"Durable factual correction about ShelfAudit export format; should update stored claim.\",\"salience\":0.83,\"source_policy\":{\"allow_evidence_hydration\":true,\"allow_recall\":true,\"allow_structured_extraction\":true,\"reason\":\"User provides an explicit correction updating a durable product fact.\"},\"source_search_text\":\"Correction: ShelfAudit current primary export format is JSON Lines, replacing CSV.\"}",
+                                "fullText": "{\"decision\":\"direct_structured_write\",\"memory_types\":[\"claim\"],\"reason\":\"Explicit correction that updates a previously stated stable fact about ShelfAudit export format.\",\"salience\":0.92,\"source_policy\":{\"allow_evidence_hydration\":true,\"allow_recall\":true,\"allow_structured_extraction\":true,\"reason\":\"Durable correction of a product fact; should update stored claim.\"},\"source_search_text\":\"Correction: ShelfAudit current primary export format is JSON Lines, replacing CSV.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -404,8 +404,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 2536,
-                "completionTokens": 107,
+                "promptTokens": 2537,
+                "completionTokens": 109,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

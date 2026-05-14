@@ -310,7 +310,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"decision\":\"note_write\",\"memory_types\":[\"note\"],\"reason\":\"The message is a document digest with durable rationale, process design, and reusable implementation guidance rather than a transient command.\",\"salience\":0.82,\"source_policy\":{\"allow_evidence_hydration\":true,\"allow_recall\":true,\"allow_structured_extraction\":true,\"reason\":\"Contains reusable design guidance and procedural prompt-pack content for memory system architecture.\"},\"source_search_text\":\"Memory ingestion handoff document: v3 prompt pack for long-term memory pipeline with stage-specific prompts (MemoryRouter, retrieval planners, claim/note/task/profile updaters, reconcilers, consolidator, repair planner), schema/validation rules, routing policies, and recommended phased rollout.\"}",
+                                "fullText": "{\"decision\":\"note_write\",\"memory_types\":[\"note\"],\"reason\":\"The message is an explicit document digest with durable procedural guidance and design direction, best stored as note memory rather than atomic claims or tasks.\",\"salience\":0.75,\"source_policy\":{\"allow_evidence_hydration\":true,\"allow_recall\":true,\"allow_structured_extraction\":true,\"reason\":\"Contains reusable document-level guidance and structured prompt-pack rationale for memory pipeline design.\"},\"source_search_text\":\"Memory ingestion handoff document: agent_memory_handoff/03_prompts.md with v3 prompt pack for memory lifecycle stages (router, retrieval planners, claim/note/task/profile updaters, reconciler, consolidator, repair planner), schema-first JSON outputs, noop bias, scope/time semantics, and release prioritization.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -325,8 +325,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 14685,
-                "completionTokens": 159,
+                "promptTokens": 14683,
+                "completionTokens": 171,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

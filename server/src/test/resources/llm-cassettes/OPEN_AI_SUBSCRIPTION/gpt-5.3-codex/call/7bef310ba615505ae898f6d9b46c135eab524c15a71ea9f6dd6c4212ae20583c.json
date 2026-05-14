@@ -389,7 +389,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"decision\":\"noop\",\"memory_types\":[],\"reason\":\"This is a recall/probe question and does not introduce new durable information to store.\",\"salience\":0.1,\"source_policy\":{\"allow_evidence_hydration\":false,\"allow_recall\":false,\"allow_structured_extraction\":false,\"reason\":\"Probe question about existing memory; no new durable assertion.\"},\"source_search_text\":\"User asks when they said they prefer Toyota cars and requests the exact quote if memory has it.\"}",
+                                "fullText": "{\"decision\":\"noop\",\"memory_types\":[],\"reason\":\"This is a recall/probe question and does not add or update durable memory.\",\"salience\":0.1,\"source_policy\":{\"allow_evidence_hydration\":false,\"allow_recall\":false,\"allow_structured_extraction\":false,\"reason\":\"Probe question about existing memory; no new durable assertion.\"},\"source_search_text\":\"User asks when they said they prefer Toyota cars and requests exact quote if memory has it.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -404,8 +404,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 2543,
-                "completionTokens": 108,
+                "promptTokens": 2545,
+                "completionTokens": 106,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

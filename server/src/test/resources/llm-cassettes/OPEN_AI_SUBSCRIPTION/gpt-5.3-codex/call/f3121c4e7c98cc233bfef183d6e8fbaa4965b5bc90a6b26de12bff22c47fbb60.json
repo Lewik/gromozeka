@@ -310,7 +310,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"decision\":\"direct_structured_write\",\"memory_types\":[\"profile\"],\"reason\":\"Explicit long-term preference constraint relevant to future advice; should be stored as user profile preference.\",\"salience\":0.71,\"source_policy\":{\"allow_evidence_hydration\":true,\"allow_recall\":true,\"allow_structured_extraction\":true,\"reason\":\"Contains a durable user preference context for future recommendations.\"},\"source_search_text\":\"User is choosing between Toyota, Honda, and Ford for future car recommendations.\"}",
+                                "fullText": "{\"decision\":\"direct_structured_write\",\"memory_types\":[\"profile\"],\"reason\":\"Explicit long-term preference constraint for recommendation scope.\",\"salience\":0.76,\"source_policy\":{\"allow_evidence_hydration\":true,\"allow_recall\":true,\"allow_structured_extraction\":true,\"reason\":\"Contains a durable user preference context for future recommendations.\"},\"source_search_text\":\"User preference for future car recommendations: choosing between Toyota, Honda, and Ford\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -325,8 +325,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 2500,
-                "completionTokens": 109,
+                "promptTokens": 2497,
+                "completionTokens": 101,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

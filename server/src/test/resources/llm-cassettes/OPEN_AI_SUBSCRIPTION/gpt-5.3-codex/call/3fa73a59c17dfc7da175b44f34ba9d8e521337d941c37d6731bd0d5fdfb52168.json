@@ -354,7 +354,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"rejected_items\":[{\"item_id\":\"project:<1>\",\"item_type\":\"profile\",\"reason\":\"Projection profile duplicates the claim and is weaker than active typed memory for factual answer.\"},{\"item_id\":\"entity:<0>\",\"item_type\":\"entity\",\"reason\":\"Generic entity anchor not needed to answer the brand preference.\"}],\"selected_items\":[{\"item_id\":\"hot-path:claim:<0>\",\"item_type\":\"claim\",\"rank\":1,\"reason\":\"Active current claim directly states the user's currently preferred car brand.\",\"relevance\":\"direct_answer\"}],\"summary\":\"Select the active preference claim as the sole sufficient memory for the current preferred car brand.\"}",
+                                "fullText": "{\"rejected_items\":[{\"item_id\":\"project:<1>\",\"item_type\":\"profile\",\"reason\":\"Projection profile is redundant because the active claim already provides the needed fact.\"},{\"item_id\":\"entity:<0>\",\"item_type\":\"entity\",\"reason\":\"Entity anchor is unnecessary for answering the factual brand preference.\"}],\"selected_items\":[{\"item_id\":\"hot-path:claim:<0>\",\"item_type\":\"claim\",\"rank\":1,\"reason\":\"Active current claim directly states the user's current preferred car brand.\",\"relevance\":\"direct_answer\"}],\"summary\":\"Select the single active preference claim as sufficient evidence for the current preferred car brand.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -369,8 +369,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 1884,
-                "completionTokens": 205,
+                "promptTokens": 1868,
+                "completionTokens": 203,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

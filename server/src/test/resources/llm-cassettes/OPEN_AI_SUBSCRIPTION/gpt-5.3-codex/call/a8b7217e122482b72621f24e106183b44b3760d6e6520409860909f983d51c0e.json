@@ -354,7 +354,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"rejected_items\":[],\"selected_items\":[{\"item_id\":\"memory-repair-duplicate-notes-fixture-1-note-second\",\"item_type\":\"note\",\"rank\":1,\"reason\":\"Active decision note directly states what repair trace reports should show.\",\"relevance\":\"direct_answer\"}],\"summary\":\"Selected the single active decision note because it directly answers the target question.\"}",
+                                "fullText": "{\"rejected_items\":[],\"selected_items\":[{\"item_id\":\"memory-repair-duplicate-notes-fixture-1-note-second\",\"item_type\":\"note\",\"rank\":1,\"reason\":\"Active decision note directly states what repair trace reports should show.\",\"relevance\":\"direct_answer\"}],\"summary\":\"Selected the single active note because it directly answers the target question.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -369,8 +369,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 1469,
-                "completionTokens": 84,
+                "promptTokens": 1473,
+                "completionTokens": 83,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

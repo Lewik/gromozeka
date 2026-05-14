@@ -354,7 +354,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"rejected_items\":[{\"item_id\":\"project:<1>\",\"item_type\":\"profile\",\"reason\":\"Projection profile is redundant because the active claim already provides the needed fact.\"},{\"item_id\":\"memory-repair-duplicate-claims-fixture-1-subject\",\"item_type\":\"entity\",\"reason\":\"Entity anchor is unnecessary without additional supporting typed memory selection.\"}],\"selected_items\":[{\"item_id\":\"memory-repair-duplicate-claims-fixture-1-claim-second\",\"item_type\":\"claim\",\"rank\":1,\"reason\":\"Active factual claim directly states the runtime language for Atlas planner sandbox.\",\"relevance\":\"direct_answer\"}],\"summary\":\"Selected the single active claim that directly answers the runtime language question.\"}",
+                                "fullText": "{\"rejected_items\":[{\"item_id\":\"project:<1>\",\"item_type\":\"profile\",\"reason\":\"Profile projection is redundant since the active claim already provides the needed fact.\"},{\"item_id\":\"memory-repair-duplicate-claims-fixture-1-subject\",\"item_type\":\"entity\",\"reason\":\"Entity anchor is unnecessary without additional supporting typed memory selection.\"}],\"selected_items\":[{\"item_id\":\"memory-repair-duplicate-claims-fixture-1-claim-second\",\"item_type\":\"claim\",\"rank\":1,\"reason\":\"Active factual claim directly states the runtime language for Atlas planner sandbox.\",\"relevance\":\"direct_answer\"}],\"summary\":\"Select the single active claim as sufficient factual memory to answer the runtime language question.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -369,8 +369,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 1720,
-                "completionTokens": 189,
+                "promptTokens": 1722,
+                "completionTokens": 191,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

@@ -310,7 +310,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"decision\":\"direct_structured_write\",\"memory_types\":[\"profile\"],\"reason\":\"The user explicitly asks to remember a durable recommendation preference (negative brand preference), which is profile memory.\",\"salience\":0.95,\"source_policy\":{\"allow_evidence_hydration\":true,\"allow_recall\":true,\"allow_structured_extraction\":true,\"reason\":\"Explicit long-term user preference for future recommendations.\"},\"source_search_text\":\"User preference: do not recommend BMW cars in future recommendations.\"}",
+                                "fullText": "{\"decision\":\"direct_structured_write\",\"memory_types\":[\"profile\"],\"reason\":\"The message explicitly asks to remember a stable recommendation preference (negative brand preference), which should be stored as profile memory.\",\"salience\":0.88,\"source_policy\":{\"allow_evidence_hydration\":true,\"allow_recall\":true,\"allow_structured_extraction\":true,\"reason\":\"Explicit user preference for future recommendations; durable and reusable.\"},\"source_search_text\":\"User preference: do not recommend BMW cars in future recommendations.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -325,8 +325,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 2508,
-                "completionTokens": 107,
+                "promptTokens": 2513,
+                "completionTokens": 112,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

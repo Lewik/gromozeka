@@ -380,7 +380,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"operations\":[{\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.88,\"entity_id\":null,\"mention\":\"Memory MVP\",\"new_entity\":{\"canonical_name\":\"Memory MVP\",\"entity_type\":\"project\",\"summary\":\"A project focused on delivering a minimum viable product for memory capabilities.\"},\"reason\":\"Named initiative referenced as a milestone context; no existing candidate provided.\"},{\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.8,\"entity_id\":null,\"mention\":\"task memory\",\"new_entity\":{\"canonical_name\":\"task memory\",\"entity_type\":\"concept\",\"summary\":\"A memory capability related to storing and tracking tasks.\"},\"reason\":\"Concrete reusable capability area mentioned as target of coverage work.\"},{\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.77,\"entity_id\":null,\"mention\":\"real-model e2e coverage\",\"new_entity\":{\"canonical_name\":\"real-model e2e coverage\",\"entity_type\":\"concept\",\"summary\":\"End-to-end test coverage executed with real models rather than mocked components.\"},\"reason\":\"Distinct testing concept referenced as work item scope.\"}]}",
+                                "fullText": "{\"operations\":[{\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.84,\"entity_id\":null,\"mention\":\"Memory MVP\",\"new_entity\":{\"canonical_name\":\"Memory MVP\",\"entity_type\":\"project\",\"summary\":\"A project focused on building and stabilizing memory capabilities.\"},\"reason\":\"Named initiative referenced as the subject to be stabilized.\"},{\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.72,\"entity_id\":null,\"mention\":\"task memory\",\"new_entity\":{\"canonical_name\":\"task memory\",\"entity_type\":\"concept\",\"summary\":\"A memory capability related to storing and retrieving task-related information.\"},\"reason\":\"Specific memory domain referenced for additional coverage.\"},{\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.7,\"entity_id\":null,\"mention\":\"real-model e2e coverage\",\"new_entity\":{\"canonical_name\":\"real-model e2e coverage\",\"entity_type\":\"concept\",\"summary\":\"End-to-end test coverage executed with real models rather than mocks.\"},\"reason\":\"Concrete testing concept mentioned as the target of an open task.\"}]}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -395,8 +395,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 1326,
-                "completionTokens": 232,
+                "promptTokens": 1316,
+                "completionTokens": 228,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

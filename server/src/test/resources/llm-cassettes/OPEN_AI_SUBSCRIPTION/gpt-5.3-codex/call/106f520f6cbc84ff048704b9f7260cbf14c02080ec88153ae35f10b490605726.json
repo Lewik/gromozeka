@@ -310,7 +310,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"decision\":\"noop\",\"memory_types\":[],\"reason\":\"This is a recall/probe question with no new durable fact, preference, or task update; route as noop audit-only.\",\"salience\":0.1,\"source_policy\":{\"allow_evidence_hydration\":false,\"allow_recall\":false,\"allow_structured_extraction\":false,\"reason\":\"Probe question about prompt-pack behavior; no new durable assertion.\"},\"source_search_text\":\"Question asks what MemoryRouter v3 decides and what NoteConstructor v2 creates, requesting a short answer.\"}",
+                                "fullText": "{\"decision\":\"noop\",\"memory_types\":[],\"reason\":\"Question/probe only, with style instruction; does not add durable memory.\",\"salience\":0.16,\"source_policy\":{\"allow_evidence_hydration\":false,\"allow_recall\":false,\"allow_structured_extraction\":false,\"reason\":\"Probe question about prompt-pack behavior; no new durable assertion.\"},\"source_search_text\":\"User asks what MemoryRouter v3 decides and what NoteConstructor v2 creates, requesting a short answer.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -325,8 +325,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 2533,
-                "completionTokens": 119,
+                "promptTokens": 2536,
+                "completionTokens": 109,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

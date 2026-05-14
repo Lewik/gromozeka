@@ -440,7 +440,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"operations\":[{\"action\":\"insert\",\"candidate_index\":0,\"canonical_predicate\":\"primary_storage_backend\",\"cardinality\":\"single\",\"conflict_policy\":\"replace\",\"object_kind\":\"entity\",\"predicate_description\":\"Primary persistence backend for a project/service\",\"predicate_family\":\"primary_storage_backend\",\"reason\":\"Explicit correction states LedgerBox backend uses MongoDB; no existing active claim to supersede.\",\"target_claim_id\":null,\"temporal_policy\":\"status_like\"}]}",
+                                "fullText": "{\"operations\":[{\"action\":\"insert\",\"candidate_index\":0,\"canonical_predicate\":\"primary_storage_backend\",\"cardinality\":\"single\",\"conflict_policy\":\"replace\",\"object_kind\":\"entity\",\"predicate_description\":\"Primary storage backend for a project/service.\",\"predicate_family\":\"project_backend_architecture\",\"reason\":\"Target message explicitly corrects prior wrong guess and states current LedgerBox backend is MongoDB; no existing active claim to supersede.\",\"target_claim_id\":null,\"temporal_policy\":\"status_like\"}]}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -455,8 +455,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 2954,
-                "completionTokens": 101,
+                "promptTokens": 2950,
+                "completionTokens": 110,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

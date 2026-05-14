@@ -459,7 +459,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"operations\":[{\"action\":\"link_existing\",\"alias_text\":null,\"confidence\":0.99,\"entity_id\":\"entity:<0>\",\"mention\":\"RiverLedger\",\"new_entity\":null,\"reason\":\"Exact name match to existing project entity.\"},{\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.95,\"entity_id\":null,\"mention\":\"ORC\",\"new_entity\":{\"canonical_name\":\"ORC\",\"entity_type\":\"technology\",\"summary\":\"Columnar storage file format and data serialization technology.\"},\"reason\":\"Concrete technology mention with no safe existing candidate.\"},{\"action\":\"link_existing\",\"alias_text\":null,\"confidence\":0.99,\"entity_id\":\"entity:<1>\",\"mention\":\"Avro\",\"new_entity\":null,\"reason\":\"Exact name match to existing technology entity.\"}]}",
+                                "fullText": "{\"operations\":[{\"action\":\"link_existing\",\"alias_text\":null,\"confidence\":0.99,\"entity_id\":\"entity:<0>\",\"mention\":\"RiverLedger\",\"new_entity\":null,\"reason\":\"Exact match to existing project entity.\"},{\"action\":\"link_existing\",\"alias_text\":null,\"confidence\":0.99,\"entity_id\":\"entity:<1>\",\"mention\":\"Avro\",\"new_entity\":null,\"reason\":\"Exact match to existing technology entity.\"},{\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.88,\"entity_id\":null,\"mention\":\"ORC\",\"new_entity\":{\"canonical_name\":\"ORC\",\"entity_type\":\"technology\",\"summary\":\"Columnar storage file format and data serialization technology.\"},\"reason\":\"Concrete technology mention with no safe existing candidate provided.\"}]}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -474,8 +474,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 1400,
-                "completionTokens": 185,
+                "promptTokens": 1407,
+                "completionTokens": 186,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

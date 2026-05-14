@@ -380,7 +380,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"operations\":[{\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.95,\"entity_id\":null,\"mention\":\"ShelfAudit\",\"new_entity\":{\"canonical_name\":\"ShelfAudit\",\"entity_type\":\"product\",\"summary\":\"A software product named ShelfAudit.\"},\"reason\":\"Target message introduces ShelfAudit as a concrete named product; no existing entity candidates are available.\"}]}",
+                                "fullText": "{\"operations\":[{\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.94,\"entity_id\":null,\"mention\":\"ShelfAudit\",\"new_entity\":{\"canonical_name\":\"ShelfAudit\",\"entity_type\":\"product\",\"summary\":\"A software product named ShelfAudit.\"},\"reason\":\"No existing candidates; mention clearly refers to a named product.\"}]}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -395,8 +395,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 1278,
-                "completionTokens": 87,
+                "promptTokens": 1274,
+                "completionTokens": 81,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

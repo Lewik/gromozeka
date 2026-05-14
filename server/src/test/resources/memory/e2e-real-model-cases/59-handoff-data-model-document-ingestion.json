@@ -15,7 +15,7 @@
               "MIXED"
             ],
             "materializedNotesMin": 1,
-            "materializedNotesMax": 12,
+            "materializedNotesMax": 20,
             "materializedTasksMax": 0,
             "containsAll": [
               "Source",
@@ -51,7 +51,9 @@
                 "intermediate",
                 "semantic",
                 "rationale",
-                "doc digest"
+                "doc digest",
+                "not yet solidified",
+                "not yet hard fact"
               ]
             ]
           },
@@ -70,7 +72,7 @@
   "expectedAfterSeeds": {
     "activeClaimsMax": 25,
     "notesMin": 1,
-    "notesMax": 12,
+    "notesMax": 20,
     "tasksMax": 0,
     "userSourcesMin": 1,
     "requiredSources": [
@@ -102,7 +104,7 @@
           "Source"
         ],
         "evidenceSourceSpeakerRoleIn": [
-          "USER"
+          "EXTERNAL"
         ]
       }
     ],
@@ -120,7 +122,7 @@
   "expectedFinal": {
     "activeClaimsMax": 25,
     "notesMin": 1,
-    "notesMax": 12,
+    "notesMax": 20,
     "tasksMax": 0,
     "userSourcesMin": 2,
     "requiredNotes": [
@@ -139,7 +141,7 @@
           "Source"
         ],
         "evidenceSourceSpeakerRoleIn": [
-          "USER"
+          "EXTERNAL"
         ]
       }
     ],

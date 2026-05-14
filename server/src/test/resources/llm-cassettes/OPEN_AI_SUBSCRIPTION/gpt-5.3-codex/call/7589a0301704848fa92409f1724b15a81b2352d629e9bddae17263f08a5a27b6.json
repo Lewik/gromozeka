@@ -310,7 +310,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"decision\":\"note_write\",\"memory_types\":[\"note\"],\"reason\":\"Contains durable design rationale and explicit instruction to store it as a note, not yet a stable claim.\",\"salience\":0.84,\"source_policy\":{\"allow_evidence_hydration\":true,\"allow_recall\":true,\"allow_structured_extraction\":true,\"reason\":\"Explicit request to keep a design rationale as a note; reusable memory policy guidance.\"},\"source_search_text\":\"Memory MVP design rationale: in Gromozeka, promote a note to a durable claim only when meaning is stable, precise, queryable, and evidence-backed; weak rationale remains a note.\"}",
+                                "fullText": "{\"decision\":\"note_write\",\"memory_types\":[\"note\"],\"reason\":\"Contains explicit remember-as-note instruction and reusable memory design rule/rationale.\",\"salience\":0.82,\"source_policy\":{\"allow_evidence_hydration\":true,\"allow_recall\":true,\"allow_structured_extraction\":true,\"reason\":\"Explicit request to keep reusable design rationale as a note.\"},\"source_search_text\":\"Memory MVP design rationale: in Gromozeka memory consolidation, promote a note to a durable claim only when meaning is stable, precise, queryable, and evidence-backed; weak rationale should remain a note.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -325,8 +325,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 2582,
-                "completionTokens": 139,
+                "promptTokens": 2571,
+                "completionTokens": 131,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

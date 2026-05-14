@@ -310,7 +310,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"decision\":\"direct_structured_write\",\"memory_types\":[\"claim\"],\"reason\":\"Explicit factual correction about technology stack is durable and reusable.\",\"salience\":0.86,\"source_policy\":{\"allow_evidence_hydration\":true,\"allow_recall\":true,\"allow_structured_extraction\":true,\"reason\":\"Durable correction of a concrete project fact (backend database) with explicit negation of prior wrong value.\"},\"source_search_text\":\"Correction: LedgerBox backend does not use Redis; it uses MongoDB.\"}",
+                                "fullText": "{\"decision\":\"direct_structured_write\",\"memory_types\":[\"claim\"],\"reason\":\"Contains a clear factual correction about project technology stack, which should be stored as a durable claim.\",\"salience\":0.8,\"source_policy\":{\"allow_evidence_hydration\":true,\"allow_recall\":true,\"allow_structured_extraction\":true,\"reason\":\"User provides an explicit correction of a project fact; durable and reusable.\"},\"source_search_text\":\"Correction: LedgerBox backend does not use Redis; it uses MongoDB.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -325,8 +325,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 2527,
-                "completionTokens": 113,
+                "promptTokens": 2510,
+                "completionTokens": 114,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

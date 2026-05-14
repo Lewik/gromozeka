@@ -440,7 +440,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"operations\":[{\"action\":\"insert\",\"candidate_index\":0,\"canonical_predicate\":\"prefers\",\"cardinality\":\"multi\",\"conflict_policy\":\"coexist\",\"object_kind\":\"entity\",\"predicate_description\":\"User's positive preference for an entity to guide future recommendations.\",\"predicate_family\":\"preference\",\"reason\":\"Explicitly stated durable preference ('I prefer Toyota cars') and no existing active claim conflicts.\",\"target_claim_id\":null,\"temporal_policy\":\"status_like\"}]}",
+                                "fullText": "{\"operations\":[{\"action\":\"insert\",\"candidate_index\":0,\"canonical_predicate\":\"prefers\",\"cardinality\":\"multi\",\"conflict_policy\":\"coexist\",\"object_kind\":\"entity\",\"predicate_description\":\"Generic positive preference for an entity to guide future recommendations.\",\"predicate_family\":\"preference\",\"reason\":\"Explicit user preference for Toyota cars; durable and matches catalog predicate prefers.\",\"target_claim_id\":null,\"temporal_policy\":\"status_like\"}]}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -455,8 +455,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 2926,
-                "completionTokens": 104,
+                "promptTokens": 2928,
+                "completionTokens": 99,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

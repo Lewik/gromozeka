@@ -15,7 +15,7 @@
               "MIXED"
             ],
             "materializedNotesMin": 1,
-            "materializedNotesMax": 14,
+            "materializedNotesMax": 20,
             "materializedTasksMax": 0,
             "containsAll": [
               "MemoryRouter",
@@ -40,7 +40,8 @@
               [
                 "write mode",
                 "memory write",
-                "whether to run"
+                "whether to run",
+                "which mode"
               ],
               [
                 "NoteConstructor"
@@ -67,7 +68,7 @@
   "expectedAfterSeeds": {
     "activeClaimsMax": 30,
     "notesMin": 1,
-    "notesMax": 14,
+    "notesMax": 20,
     "tasksMax": 0,
     "userSourcesMin": 1,
     "requiredSources": [
@@ -98,7 +99,7 @@
           "MemoryRouter"
         ],
         "evidenceSourceSpeakerRoleIn": [
-          "USER"
+          "EXTERNAL"
         ]
       }
     ],
@@ -116,7 +117,7 @@
   "expectedFinal": {
     "activeClaimsMax": 30,
     "notesMin": 1,
-    "notesMax": 14,
+    "notesMax": 20,
     "tasksMax": 0,
     "userSourcesMin": 2,
     "requiredNotes": [
@@ -135,7 +136,7 @@
           "MemoryRouter"
         ],
         "evidenceSourceSpeakerRoleIn": [
-          "USER"
+          "EXTERNAL"
         ]
       }
     ],

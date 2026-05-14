@@ -389,7 +389,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"decision\":\"direct_structured_write\",\"memory_types\":[\"claim\"],\"reason\":\"Explicit durable project fact and correction of prior stack state; suitable for structured claim memory.\",\"salience\":0.84,\"source_policy\":{\"allow_evidence_hydration\":true,\"allow_recall\":true,\"allow_structured_extraction\":true,\"reason\":\"Durable project state correction/update with explicit date and technology change.\"},\"source_search_text\":\"Acme project update as of 2026-04-15: search service uses OpenSearch in production instead of Elasticsearch.\"}",
+                                "fullText": "{\"decision\":\"direct_structured_write\",\"memory_types\":[\"claim\"],\"reason\":\"Explicit durable correction/update about production stack and date; useful as stable project fact.\",\"salience\":0.86,\"source_policy\":{\"allow_evidence_hydration\":true,\"allow_recall\":true,\"allow_structured_extraction\":true,\"reason\":\"Durable project state update with explicit date and technology change.\"},\"source_search_text\":\"Acme project update: as of 2026-04-15, the production search service uses OpenSearch instead of Elasticsearch.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -404,8 +404,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 2556,
-                "completionTokens": 121,
+                "promptTokens": 2561,
+                "completionTokens": 120,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

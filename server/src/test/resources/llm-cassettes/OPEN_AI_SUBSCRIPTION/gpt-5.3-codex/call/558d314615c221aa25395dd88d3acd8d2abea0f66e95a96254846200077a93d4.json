@@ -1,0 +1,913 @@
+{
+    "version": 1,
+    "hash": "558d314615c221aa25395dd88d3acd8d2abea0f66e95a96254846200077a93d4",
+    "provider": "OPEN_AI_SUBSCRIPTION",
+    "model": "gpt-5.3-codex",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>/projects/forget-specificity-keeps-related-project-fact",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "For future car advice, remember that I prefer Toyota cars.",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            },
+            {
+                "content": [
+                    {
+                        "call": {
+                            "input": {
+                                "mode": "automatic_hot_path",
+                                "target": "previous_user_message",
+                                "target_message_id": "<uuid>"
+                            },
+                            "name": "memory_remember"
+                        },
+                        "id": "<id>",
+                        "state": "COMPLETE",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolCall"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "ASSISTANT"
+            },
+            {
+                "content": [
+                    {
+                        "isError": false,
+                        "result": [
+                            {
+                                "content": "{\"status\":\"completed\",\"decision\":\"DIRECT_STRUCTURED_WRITE\",\"memory_types\":[\"PROFILE\"],\"salience\":0.88,\"reason\":\"Contains an explicit durable preference to store for future interactions.\",\"source_id\":\"chat:<0>\",\"counts\":{\"predicate_definitions\":1,\"sources\":0,\"runs\":1,\"entities\":2,\"claims\":1,\"notes\":0,\"tasks\":0,\"profiles\":1,\"episodes\":0},\"runs\":[{\"id\":\"hot-path:run:<0>\",\"type\":\"RECONCILE_CLAIMS\",\"summary\":\"Direct structured write applied: notes=0, claims=1, tasks=0, entities=2; noop ops: notes=0, claims=0, tasks=0\"}],\"claims\":[{\"id\":\"hot-path:claim:<0>\",\"predicate\":\"prefers\",\"status\":\"ACTIVE\",\"text\":\"The user prefers Toyota cars for future car advice.\"}],\"notes\":[],\"tasks\":[],\"entities\":[{\"id\":\"entity:<0>\",\"type\":\"USER\",\"name\":\"User\"},{\"id\":\"entity:<1>\",\"type\":\"ORGANIZATION\",\"name\":\"Toyota\"}]}",
+                                "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult.Data.Text"
+                            }
+                        ],
+                        "state": "COMPLETE",
+                        "toolName": "memory_remember",
+                        "toolUseId": "tool-call",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            },
+            {
+                "content": [
+                    {
+                        "call": {
+                            "input": {
+                                "mode": "automatic_runtime_context_enrichment",
+                                "target": "previous_user_message",
+                                "target_message_id": "<uuid>"
+                            },
+                            "name": "memory_enrich_context"
+                        },
+                        "id": "<id>",
+                        "state": "COMPLETE",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolCall"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "ASSISTANT"
+            },
+            {
+                "content": [
+                    {
+                        "isError": false,
+                        "result": [
+                            {
+                                "content": "{\"status\":\"completed\",\"need_memory\":true,\"answer_mode\":\"FACTUAL\",\"retrieved_count\":3,\"usage_guidance\":\"Selected memory is the strongest available remembered context for the target context. Use it unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message. Do not replace selected memory with guesses or general defaults. For exact quote, exact wording, source, or when-said questions, prefer complete source text from memory_context over shorter evidence excerpts.\",\"memory_context\":\"            MEMORY-ONLY CONTEXT\\n            This message is not part of the real conversation and must not be stored as evidence.\\n            The retrieved memory below was selected for the immediately following user request.\\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and tasks for commitments.\\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\\n\\n            Namespace: project:<0>\\n            Answer mode: FACTUAL\\n            Require evidence fallback: false\\n\\n            Retrieved profile:\\n            none\\n\\n            Retrieved tasks:\\n            none\\n\\n            Retrieved claims:\\n            - claim hot-path:claim:<0> [ACTIVE] prefers family=prefers: The user prefers Toyota cars for future car advice.; scope=Preference of the user for car advice contexts.\\n\\n            Retrieved notes:\\n            none\\n\\n            Retrieved evidence:\\n            not requested for this answer mode\\n\\n            Retrieved entities:\\n            - entity entity:<0> [USER]: User; The user interacting with this agent.\\n- entity entity:<1> [ORGANIZATION]: Toyota; Organization named Toyota.\\n\\n            Retrieved episodes:\\n            none\",\"selected_refs\":[{\"type\":\"CLAIM\",\"id\":\"hot-path:claim:<0>\",\"summary\":\"The user prefers Toyota cars for future car advice.\",\"predicate\":\"prefers\",\"status\":\"ACTIVE\"},{\"type\":\"ENTITY\",\"id\":\"entity:<0>\",\"summary\":\"USER:User\"},{\"type\":\"ENTITY\",\"id\":\"entity:<1>\",\"summary\":\"ORGANIZATION:Toyota\"}],\"selector_decisions\":[{\"type\":\"CLAIM\",\"id\":\"hot-path:claim:<0>\",\"selected\":true,\"rank\":1,\"reason\":\"Active factual preference directly matches target message.\"},{\"type\":\"PROFILE\",\"id\":\"project:<1>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Projection cache duplicates selected active claim; not needed for minimal sufficient set.\"},{\"type\":\"ENTITY\",\"id\":\"entity:<1>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Entity anchor not needed since claim is self-contained for factual preference.\"},{\"type\":\"ENTITY\",\"id\":\"entity:<0>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Entity anchor not needed since claim already identifies subject context.\"}]}",
+                                "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult.Data.Text"
+                            }
+                        ],
+                        "state": "COMPLETE",
+                        "toolName": "memory_enrich_context",
+                        "toolUseId": "tool-call",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            },
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "structured": {
+                            "failedToParse": false,
+                            "fullText": "Got it — I’ll remember that you prefer Toyota cars for future car advice.",
+                            "ttsText": null,
+                            "voiceTone": null
+                        },
+                        "type": "IntermediateMessage"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "ASSISTANT"
+            },
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "For the FleetNorth project, remember that the backend database is MongoDB.",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            },
+            {
+                "content": [
+                    {
+                        "call": {
+                            "input": {
+                                "mode": "automatic_hot_path",
+                                "target": "previous_user_message",
+                                "target_message_id": "<uuid>"
+                            },
+                            "name": "memory_remember"
+                        },
+                        "id": "<id>",
+                        "state": "COMPLETE",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolCall"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "ASSISTANT"
+            },
+            {
+                "content": [
+                    {
+                        "isError": false,
+                        "result": [
+                            {
+                                "content": "{\"status\":\"completed\",\"decision\":\"DIRECT_STRUCTURED_WRITE\",\"memory_types\":[\"CLAIM\"],\"salience\":0.86,\"reason\":\"Contains an explicit remember instruction with a stable project configuration fact.\",\"source_id\":\"chat:<1>\",\"counts\":{\"predicate_definitions\":1,\"sources\":0,\"runs\":1,\"entities\":2,\"claims\":1,\"notes\":0,\"tasks\":0,\"profiles\":0,\"episodes\":0},\"runs\":[{\"id\":\"hot-path:run:<1>\",\"type\":\"RECONCILE_CLAIMS\",\"summary\":\"Direct structured write applied: notes=0, claims=1, tasks=0, entities=2; noop ops: notes=0, claims=0, tasks=0\"}],\"claims\":[{\"id\":\"hot-path:claim:<1>\",\"predicate\":\"primary_storage_backend\",\"status\":\"ACTIVE\",\"text\":\"The FleetNorth project's backend database is MongoDB.\"}],\"notes\":[],\"tasks\":[],\"entities\":[{\"id\":\"entity:<2>\",\"type\":\"PROJECT\",\"name\":\"FleetNorth\"},{\"id\":\"entity:<3>\",\"type\":\"TECHNOLOGY\",\"name\":\"MongoDB\"}]}",
+                                "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult.Data.Text"
+                            }
+                        ],
+                        "state": "COMPLETE",
+                        "toolName": "memory_remember",
+                        "toolUseId": "tool-call",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            },
+            {
+                "content": [
+                    {
+                        "call": {
+                            "input": {
+                                "mode": "automatic_runtime_context_enrichment",
+                                "target": "previous_user_message",
+                                "target_message_id": "<uuid>"
+                            },
+                            "name": "memory_enrich_context"
+                        },
+                        "id": "<id>",
+                        "state": "COMPLETE",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolCall"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "ASSISTANT"
+            },
+            {
+                "content": [
+                    {
+                        "isError": false,
+                        "result": [
+                            {
+                                "content": "{\"status\":\"completed\",\"need_memory\":false,\"answer_mode\":\"FACTUAL\",\"retrieved_count\":0,\"usage_guidance\":\"Selected memory is the strongest available remembered context for the target context. Use it unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message. Do not replace selected memory with guesses or general defaults. For exact quote, exact wording, source, or when-said questions, prefer complete source text from memory_context over shorter evidence excerpts.\",\"memory_context\":\"No relevant persisted memory was retrieved for the target context.\",\"selected_refs\":[],\"selector_decisions\":[]}",
+                                "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult.Data.Text"
+                            }
+                        ],
+                        "state": "COMPLETE",
+                        "toolName": "memory_enrich_context",
+                        "toolUseId": "tool-call",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            },
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "structured": {
+                            "failedToParse": false,
+                            "fullText": "Understood — I’ll remember that for the FleetNorth project, the backend database is MongoDB.",
+                            "ttsText": null,
+                            "voiceTone": null
+                        },
+                        "type": "IntermediateMessage"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "ASSISTANT"
+            },
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "Forget only my Toyota car preference. Keep unrelated project facts.",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            },
+            {
+                "content": [
+                    {
+                        "call": {
+                            "input": {
+                                "mode": "automatic_hot_path",
+                                "target": "previous_user_message",
+                                "target_message_id": "<uuid>"
+                            },
+                            "name": "memory_remember"
+                        },
+                        "id": "<id>",
+                        "state": "COMPLETE",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolCall"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "ASSISTANT"
+            },
+            {
+                "content": [
+                    {
+                        "isError": false,
+                        "result": [
+                            {
+                                "content": "{\"status\":\"completed\",\"decision\":\"FORGET_REQUEST\",\"memory_types\":[\"SOURCE\"],\"salience\":0.97,\"reason\":\"User explicitly requests deletion of a specific stored preference while retaining unrelated facts.\",\"source_id\":\"chat:<2>\",\"counts\":{\"predicate_definitions\":0,\"sources\":2,\"runs\":1,\"entities\":0,\"claims\":1,\"notes\":0,\"tasks\":0,\"profiles\":1,\"episodes\":0},\"runs\":[{\"id\":\"hot-path-forget:run:<2>\",\"type\":\"FORGET_MEMORY\",\"summary\":\"Removed recall of the user’s Toyota preference by archiving the related claim and soft-deleting directly supporting preference-specific sources; unrelated project facts are preserved.\"}],\"claims\":[{\"id\":\"hot-path:claim:<0>\",\"predicate\":\"prefers\",\"status\":\"ACTIVE\",\"text\":\"The user prefers Toyota cars for future car advice.\"}],\"notes\":[],\"tasks\":[],\"entities\":[]}",
+                                "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult.Data.Text"
+                            }
+                        ],
+                        "state": "COMPLETE",
+                        "toolName": "memory_remember",
+                        "toolUseId": "tool-call",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            },
+            {
+                "content": [
+                    {
+                        "call": {
+                            "input": {
+                                "mode": "automatic_runtime_context_enrichment",
+                                "target": "previous_user_message",
+                                "target_message_id": "<uuid>"
+                            },
+                            "name": "memory_enrich_context"
+                        },
+                        "id": "<id>",
+                        "state": "COMPLETE",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolCall"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "ASSISTANT"
+            },
+            {
+                "content": [
+                    {
+                        "isError": false,
+                        "result": [
+                            {
+                                "content": "{\"status\":\"completed\",\"need_memory\":true,\"answer_mode\":\"FACTUAL\",\"retrieved_count\":3,\"usage_guidance\":\"Selected memory is the strongest available remembered context for the target context. Use it unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message. Do not replace selected memory with guesses or general defaults. For exact quote, exact wording, source, or when-said questions, prefer complete source text from memory_context over shorter evidence excerpts.\",\"memory_context\":\"            MEMORY-ONLY CONTEXT\\n            This message is not part of the real conversation and must not be stored as evidence.\\n            The retrieved memory below was selected for the immediately following user request.\\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and tasks for commitments.\\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\\n\\n            Namespace: project:<0>\\n            Answer mode: FACTUAL\\n            Require evidence fallback: false\\n\\n            Retrieved profile:\\n            none\\n\\n            Retrieved tasks:\\n            none\\n\\n            Retrieved claims:\\n            - claim hot-path:claim:<1> [ACTIVE] primary_storage_backend family=primary_storage_backend: The FleetNorth project's backend database is MongoDB.; scope=FleetNorth project\\n\\n            Retrieved notes:\\n            none\\n\\n            Retrieved evidence:\\n            not requested for this answer mode\\n\\n            Retrieved entities:\\n            - entity entity:<2> [PROJECT]: FleetNorth; Project named FleetNorth.\\n- entity entity:<3> [TECHNOLOGY]: MongoDB; Technology named MongoDB.\\n\\n            Retrieved episodes:\\n            none\",\"selected_refs\":[{\"type\":\"CLAIM\",\"id\":\"hot-path:claim:<1>\",\"summary\":\"The FleetNorth project's backend database is MongoDB.\",\"predicate\":\"primary_storage_backend\",\"status\":\"ACTIVE\"},{\"type\":\"ENTITY\",\"id\":\"entity:<2>\",\"summary\":\"PROJECT:FleetNorth\"},{\"type\":\"ENTITY\",\"id\":\"entity:<3>\",\"summary\":\"TECHNOLOGY:MongoDB\"}],\"selector_decisions\":[{\"type\":\"CLAIM\",\"id\":\"hot-path:claim:<1>\",\"selected\":true,\"rank\":1,\"reason\":\"Relevant project fact to keep while forgetting only the Toyota preference.\"},{\"type\":\"ENTITY\",\"id\":\"entity:<2>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Entity anchor not needed since claim already provides sufficient context.\"},{\"type\":\"ENTITY\",\"id\":\"entity:<1>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Toyota entity label alone does not represent a persisted preference fact to retain.\"},{\"type\":\"ENTITY\",\"id\":\"entity:<0>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Generic user entity is not needed for this request.\"}]}",
+                                "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult.Data.Text"
+                            }
+                        ],
+                        "state": "COMPLETE",
+                        "toolName": "memory_enrich_context",
+                        "toolUseId": "tool-call",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "autoCompactionThreshold": 320000,
+            "maxTokens": 2048,
+            "outputConfig": null,
+            "responseFormat": {
+                "type": "text"
+            },
+            "thinking": null,
+            "toolChoice": {
+                "type": "auto"
+            },
+            "toolContext": {
+                "aiProvider": "OPEN_AI_SUBSCRIPTION",
+                "conversationId": "<conversation-key>",
+                "modelName": "gpt-5.3-codex",
+                "planId": null,
+                "projectPath": "gromozeka-e2e-<id>/projects/forget-specificity-keeps-related-project-fact"
+            }
+        },
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "For future car advice, remember that I prefer Toyota cars.",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "ASSISTANT",
+                "content": [
+                    {
+                        "call": {
+                            "input": {
+                                "mode": "automatic_hot_path",
+                                "target": "previous_user_message",
+                                "target_message_id": "<uuid>"
+                            },
+                            "name": "memory_remember"
+                        },
+                        "id": "<id>",
+                        "state": "COMPLETE",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolCall"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {
+                    "synthetic": true,
+                    "syntheticKind": "memory",
+                    "targetMessageId": "<uuid>"
+                },
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "isError": false,
+                        "result": [
+                            {
+                                "content": "{\"status\":\"completed\",\"decision\":\"DIRECT_STRUCTURED_WRITE\",\"memory_types\":[\"PROFILE\"],\"salience\":0.88,\"reason\":\"Contains an explicit durable preference to store for future interactions.\",\"source_id\":\"chat:<0>\",\"counts\":{\"predicate_definitions\":1,\"sources\":0,\"runs\":1,\"entities\":2,\"claims\":1,\"notes\":0,\"tasks\":0,\"profiles\":1,\"episodes\":0},\"runs\":[{\"id\":\"hot-path:run:<0>\",\"type\":\"RECONCILE_CLAIMS\",\"summary\":\"Direct structured write applied: notes=0, claims=1, tasks=0, entities=2; noop ops: notes=0, claims=0, tasks=0\"}],\"claims\":[{\"id\":\"hot-path:claim:<0>\",\"predicate\":\"prefers\",\"status\":\"ACTIVE\",\"text\":\"The user prefers Toyota cars for future car advice.\"}],\"notes\":[],\"tasks\":[],\"entities\":[{\"id\":\"entity:<0>\",\"type\":\"USER\",\"name\":\"User\"},{\"id\":\"entity:<1>\",\"type\":\"ORGANIZATION\",\"name\":\"Toyota\"}]}",
+                                "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult.Data.Text"
+                            }
+                        ],
+                        "state": "COMPLETE",
+                        "toolName": "memory_remember",
+                        "toolUseId": "tool-call",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {
+                    "synthetic": true,
+                    "syntheticKind": "memory",
+                    "targetMessageId": "<uuid>"
+                },
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "ASSISTANT",
+                "content": [
+                    {
+                        "call": {
+                            "input": {
+                                "mode": "automatic_runtime_context_enrichment",
+                                "target": "previous_user_message",
+                                "target_message_id": "<uuid>"
+                            },
+                            "name": "memory_enrich_context"
+                        },
+                        "id": "<id>",
+                        "state": "COMPLETE",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolCall"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {
+                    "synthetic": true,
+                    "syntheticKind": "memory",
+                    "targetMessageId": "<uuid>"
+                },
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "isError": false,
+                        "result": [
+                            {
+                                "content": "{\"status\":\"completed\",\"need_memory\":true,\"answer_mode\":\"FACTUAL\",\"retrieved_count\":3,\"usage_guidance\":\"Selected memory is the strongest available remembered context for the target context. Use it unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message. Do not replace selected memory with guesses or general defaults. For exact quote, exact wording, source, or when-said questions, prefer complete source text from memory_context over shorter evidence excerpts.\",\"memory_context\":\"            MEMORY-ONLY CONTEXT\\n            This message is not part of the real conversation and must not be stored as evidence.\\n            The retrieved memory below was selected for the immediately following user request.\\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and tasks for commitments.\\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\\n\\n            Namespace: project:<0>\\n            Answer mode: FACTUAL\\n            Require evidence fallback: false\\n\\n            Retrieved profile:\\n            none\\n\\n            Retrieved tasks:\\n            none\\n\\n            Retrieved claims:\\n            - claim hot-path:claim:<0> [ACTIVE] prefers family=prefers: The user prefers Toyota cars for future car advice.; scope=Preference of the user for car advice contexts.\\n\\n            Retrieved notes:\\n            none\\n\\n            Retrieved evidence:\\n            not requested for this answer mode\\n\\n            Retrieved entities:\\n            - entity entity:<0> [USER]: User; The user interacting with this agent.\\n- entity entity:<1> [ORGANIZATION]: Toyota; Organization named Toyota.\\n\\n            Retrieved episodes:\\n            none\",\"selected_refs\":[{\"type\":\"CLAIM\",\"id\":\"hot-path:claim:<0>\",\"summary\":\"The user prefers Toyota cars for future car advice.\",\"predicate\":\"prefers\",\"status\":\"ACTIVE\"},{\"type\":\"ENTITY\",\"id\":\"entity:<0>\",\"summary\":\"USER:User\"},{\"type\":\"ENTITY\",\"id\":\"entity:<1>\",\"summary\":\"ORGANIZATION:Toyota\"}],\"selector_decisions\":[{\"type\":\"CLAIM\",\"id\":\"hot-path:claim:<0>\",\"selected\":true,\"rank\":1,\"reason\":\"Active factual preference directly matches target message.\"},{\"type\":\"PROFILE\",\"id\":\"project:<1>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Projection cache duplicates selected active claim; not needed for minimal sufficient set.\"},{\"type\":\"ENTITY\",\"id\":\"entity:<1>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Entity anchor not needed since claim is self-contained for factual preference.\"},{\"type\":\"ENTITY\",\"id\":\"entity:<0>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Entity anchor not needed since claim already identifies subject context.\"}]}",
+                                "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult.Data.Text"
+                            }
+                        ],
+                        "state": "COMPLETE",
+                        "toolName": "memory_enrich_context",
+                        "toolUseId": "tool-call",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {
+                    "synthetic": true,
+                    "syntheticKind": "memory",
+                    "targetMessageId": "<uuid>"
+                },
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "ASSISTANT",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "structured": {
+                            "failedToParse": false,
+                            "fullText": "Got it — I’ll remember that you prefer Toyota cars for future car advice.",
+                            "ttsText": null,
+                            "voiceTone": null
+                        },
+                        "type": "IntermediateMessage"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {
+                    "conversationKey": "<conversation-key>",
+                    "messageId": "msg_<id>",
+                    "phase": "final_answer",
+                    "responseId": "resp_<id>"
+                },
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "For the FleetNorth project, remember that the backend database is MongoDB.",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "ASSISTANT",
+                "content": [
+                    {
+                        "call": {
+                            "input": {
+                                "mode": "automatic_hot_path",
+                                "target": "previous_user_message",
+                                "target_message_id": "<uuid>"
+                            },
+                            "name": "memory_remember"
+                        },
+                        "id": "<id>",
+                        "state": "COMPLETE",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolCall"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {
+                    "synthetic": true,
+                    "syntheticKind": "memory",
+                    "targetMessageId": "<uuid>"
+                },
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "isError": false,
+                        "result": [
+                            {
+                                "content": "{\"status\":\"completed\",\"decision\":\"DIRECT_STRUCTURED_WRITE\",\"memory_types\":[\"CLAIM\"],\"salience\":0.86,\"reason\":\"Contains an explicit remember instruction with a stable project configuration fact.\",\"source_id\":\"chat:<1>\",\"counts\":{\"predicate_definitions\":1,\"sources\":0,\"runs\":1,\"entities\":2,\"claims\":1,\"notes\":0,\"tasks\":0,\"profiles\":0,\"episodes\":0},\"runs\":[{\"id\":\"hot-path:run:<1>\",\"type\":\"RECONCILE_CLAIMS\",\"summary\":\"Direct structured write applied: notes=0, claims=1, tasks=0, entities=2; noop ops: notes=0, claims=0, tasks=0\"}],\"claims\":[{\"id\":\"hot-path:claim:<1>\",\"predicate\":\"primary_storage_backend\",\"status\":\"ACTIVE\",\"text\":\"The FleetNorth project's backend database is MongoDB.\"}],\"notes\":[],\"tasks\":[],\"entities\":[{\"id\":\"entity:<2>\",\"type\":\"PROJECT\",\"name\":\"FleetNorth\"},{\"id\":\"entity:<3>\",\"type\":\"TECHNOLOGY\",\"name\":\"MongoDB\"}]}",
+                                "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult.Data.Text"
+                            }
+                        ],
+                        "state": "COMPLETE",
+                        "toolName": "memory_remember",
+                        "toolUseId": "tool-call",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {
+                    "synthetic": true,
+                    "syntheticKind": "memory",
+                    "targetMessageId": "<uuid>"
+                },
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "ASSISTANT",
+                "content": [
+                    {
+                        "call": {
+                            "input": {
+                                "mode": "automatic_runtime_context_enrichment",
+                                "target": "previous_user_message",
+                                "target_message_id": "<uuid>"
+                            },
+                            "name": "memory_enrich_context"
+                        },
+                        "id": "<id>",
+                        "state": "COMPLETE",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolCall"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {
+                    "synthetic": true,
+                    "syntheticKind": "memory",
+                    "targetMessageId": "<uuid>"
+                },
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "isError": false,
+                        "result": [
+                            {
+                                "content": "{\"status\":\"completed\",\"need_memory\":false,\"answer_mode\":\"FACTUAL\",\"retrieved_count\":0,\"usage_guidance\":\"Selected memory is the strongest available remembered context for the target context. Use it unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message. Do not replace selected memory with guesses or general defaults. For exact quote, exact wording, source, or when-said questions, prefer complete source text from memory_context over shorter evidence excerpts.\",\"memory_context\":\"No relevant persisted memory was retrieved for the target context.\",\"selected_refs\":[],\"selector_decisions\":[]}",
+                                "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult.Data.Text"
+                            }
+                        ],
+                        "state": "COMPLETE",
+                        "toolName": "memory_enrich_context",
+                        "toolUseId": "tool-call",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {
+                    "synthetic": true,
+                    "syntheticKind": "memory",
+                    "targetMessageId": "<uuid>"
+                },
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "ASSISTANT",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "structured": {
+                            "failedToParse": false,
+                            "fullText": "Understood — I’ll remember that for the FleetNorth project, the backend database is MongoDB.",
+                            "ttsText": null,
+                            "voiceTone": null
+                        },
+                        "type": "IntermediateMessage"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {
+                    "conversationKey": "<conversation-key>",
+                    "messageId": "msg_<id>",
+                    "phase": "final_answer",
+                    "responseId": "resp_<id>"
+                },
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "Forget only my Toyota car preference. Keep unrelated project facts.",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "ASSISTANT",
+                "content": [
+                    {
+                        "call": {
+                            "input": {
+                                "mode": "automatic_hot_path",
+                                "target": "previous_user_message",
+                                "target_message_id": "<uuid>"
+                            },
+                            "name": "memory_remember"
+                        },
+                        "id": "<id>",
+                        "state": "COMPLETE",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolCall"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {
+                    "synthetic": true,
+                    "syntheticKind": "memory",
+                    "targetMessageId": "<uuid>"
+                },
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "isError": false,
+                        "result": [
+                            {
+                                "content": "{\"status\":\"completed\",\"decision\":\"FORGET_REQUEST\",\"memory_types\":[\"SOURCE\"],\"salience\":0.97,\"reason\":\"User explicitly requests deletion of a specific stored preference while retaining unrelated facts.\",\"source_id\":\"chat:<2>\",\"counts\":{\"predicate_definitions\":0,\"sources\":2,\"runs\":1,\"entities\":0,\"claims\":1,\"notes\":0,\"tasks\":0,\"profiles\":1,\"episodes\":0},\"runs\":[{\"id\":\"hot-path-forget:run:<2>\",\"type\":\"FORGET_MEMORY\",\"summary\":\"Removed recall of the user’s Toyota preference by archiving the related claim and soft-deleting directly supporting preference-specific sources; unrelated project facts are preserved.\"}],\"claims\":[{\"id\":\"hot-path:claim:<0>\",\"predicate\":\"prefers\",\"status\":\"ACTIVE\",\"text\":\"The user prefers Toyota cars for future car advice.\"}],\"notes\":[],\"tasks\":[],\"entities\":[]}",
+                                "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult.Data.Text"
+                            }
+                        ],
+                        "state": "COMPLETE",
+                        "toolName": "memory_remember",
+                        "toolUseId": "tool-call",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {
+                    "synthetic": true,
+                    "syntheticKind": "memory",
+                    "targetMessageId": "<uuid>"
+                },
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "ASSISTANT",
+                "content": [
+                    {
+                        "call": {
+                            "input": {
+                                "mode": "automatic_runtime_context_enrichment",
+                                "target": "previous_user_message",
+                                "target_message_id": "<uuid>"
+                            },
+                            "name": "memory_enrich_context"
+                        },
+                        "id": "<id>",
+                        "state": "COMPLETE",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolCall"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {
+                    "synthetic": true,
+                    "syntheticKind": "memory",
+                    "targetMessageId": "<uuid>"
+                },
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "isError": false,
+                        "result": [
+                            {
+                                "content": "{\"status\":\"completed\",\"need_memory\":true,\"answer_mode\":\"FACTUAL\",\"retrieved_count\":3,\"usage_guidance\":\"Selected memory is the strongest available remembered context for the target context. Use it unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message. Do not replace selected memory with guesses or general defaults. For exact quote, exact wording, source, or when-said questions, prefer complete source text from memory_context over shorter evidence excerpts.\",\"memory_context\":\"            MEMORY-ONLY CONTEXT\\n            This message is not part of the real conversation and must not be stored as evidence.\\n            The retrieved memory below was selected for the immediately following user request.\\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and tasks for commitments.\\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\\n\\n            Namespace: project:<0>\\n            Answer mode: FACTUAL\\n            Require evidence fallback: false\\n\\n            Retrieved profile:\\n            none\\n\\n            Retrieved tasks:\\n            none\\n\\n            Retrieved claims:\\n            - claim hot-path:claim:<1> [ACTIVE] primary_storage_backend family=primary_storage_backend: The FleetNorth project's backend database is MongoDB.; scope=FleetNorth project\\n\\n            Retrieved notes:\\n            none\\n\\n            Retrieved evidence:\\n            not requested for this answer mode\\n\\n            Retrieved entities:\\n            - entity entity:<2> [PROJECT]: FleetNorth; Project named FleetNorth.\\n- entity entity:<3> [TECHNOLOGY]: MongoDB; Technology named MongoDB.\\n\\n            Retrieved episodes:\\n            none\",\"selected_refs\":[{\"type\":\"CLAIM\",\"id\":\"hot-path:claim:<1>\",\"summary\":\"The FleetNorth project's backend database is MongoDB.\",\"predicate\":\"primary_storage_backend\",\"status\":\"ACTIVE\"},{\"type\":\"ENTITY\",\"id\":\"entity:<2>\",\"summary\":\"PROJECT:FleetNorth\"},{\"type\":\"ENTITY\",\"id\":\"entity:<3>\",\"summary\":\"TECHNOLOGY:MongoDB\"}],\"selector_decisions\":[{\"type\":\"CLAIM\",\"id\":\"hot-path:claim:<1>\",\"selected\":true,\"rank\":1,\"reason\":\"Relevant project fact to keep while forgetting only the Toyota preference.\"},{\"type\":\"ENTITY\",\"id\":\"entity:<2>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Entity anchor not needed since claim already provides sufficient context.\"},{\"type\":\"ENTITY\",\"id\":\"entity:<1>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Toyota entity label alone does not represent a persisted preference fact to retain.\"},{\"type\":\"ENTITY\",\"id\":\"entity:<0>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Generic user entity is not needed for this request.\"}]}",
+                                "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult.Data.Text"
+                            }
+                        ],
+                        "state": "COMPLETE",
+                        "toolName": "memory_enrich_context",
+                        "toolUseId": "tool-call",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {
+                    "synthetic": true,
+                    "syntheticKind": "memory",
+                    "targetMessageId": "<uuid>"
+                },
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxTokens": 2048,
+            "thinking": null,
+            "outputConfig": null,
+            "autoCompactionThreshold": 320000,
+            "toolChoice": {
+                "type": "auto"
+            },
+            "responseFormat": {
+                "type": "text"
+            },
+            "toolContext": {
+                "aiProvider": "OPEN_AI_SUBSCRIPTION",
+                "conversationId": "<conversation-key>",
+                "modelName": "gpt-5.3-codex",
+                "planId": null,
+                "projectPath": "gromozeka-e2e-<id>/projects/forget-specificity-keeps-related-project-fact"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "Done. I’ve forgotten your Toyota car preference and kept unrelated project facts (including FleetNorth using MongoDB).",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 1519,
+                "completionTokens": 26,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 1792
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

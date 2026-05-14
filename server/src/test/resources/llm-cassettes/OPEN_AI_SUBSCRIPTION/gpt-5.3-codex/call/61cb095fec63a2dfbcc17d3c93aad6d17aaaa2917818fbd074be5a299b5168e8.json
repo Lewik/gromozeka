@@ -310,7 +310,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"decision\":\"direct_structured_write\",\"memory_types\":[\"claim\"],\"reason\":\"Target message provides explicit stable entity-specific facts useful for future disambiguation and retrieval.\",\"salience\":0.74,\"source_policy\":{\"allow_evidence_hydration\":true,\"allow_recall\":true,\"allow_structured_extraction\":true,\"reason\":\"Contains durable disambiguated facts about two entities named Atlas and their associated databases.\"},\"source_search_text\":\"Memory test setup: project named Atlas and person named Atlas; Atlas project backend database is MongoDB; Atlas person preferred tutorial database is PostgreSQL.\"}",
+                                "fullText": "{\"decision\":\"direct_structured_write\",\"memory_types\":[\"claim\"],\"reason\":\"Explicit stable facts with entity disambiguation are durable and reusable.\",\"salience\":0.8,\"source_policy\":{\"allow_evidence_hydration\":true,\"allow_recall\":true,\"allow_structured_extraction\":true,\"reason\":\"Contains durable disambiguated facts about two entities named Atlas and their associated databases.\"},\"source_search_text\":\"Project Atlas uses MongoDB as backend database; person Atlas prefers PostgreSQL for tutorials; disambiguation between project and person with same name.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -325,8 +325,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 2562,
-                "completionTokens": 128,
+                "promptTokens": 2558,
+                "completionTokens": 123,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

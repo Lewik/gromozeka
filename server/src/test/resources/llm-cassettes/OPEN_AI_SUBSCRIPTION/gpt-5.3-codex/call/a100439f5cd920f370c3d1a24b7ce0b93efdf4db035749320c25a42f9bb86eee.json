@@ -380,7 +380,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"operations\":[{\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.98,\"entity_id\":null,\"mention\":\"my\",\"new_entity\":{\"canonical_name\":\"User\",\"entity_type\":\"user\",\"summary\":\"The human user interacting with the assistant in this namespace.\"},\"reason\":\"First-person statement indicates a user preference; create stable namespace-level User entity.\"},{\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.9,\"entity_id\":null,\"mention\":\"JetBrains tools\",\"new_entity\":{\"canonical_name\":\"JetBrains tools\",\"entity_type\":\"product\",\"summary\":\"A suite of software development tools and IDEs by JetBrains.\"},\"reason\":\"Concrete product family referenced as a reusable entity in preference context.\"},{\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.95,\"entity_id\":null,\"mention\":\"VS Code\",\"new_entity\":{\"canonical_name\":\"VS Code\",\"entity_type\":\"product\",\"summary\":\"A source-code editor developed by Microsoft, also known as Visual Studio Code.\"},\"reason\":\"Concrete product referenced explicitly and reusable across future advice.\"}]}",
+                                "fullText": "{\"operations\":[{\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.98,\"entity_id\":null,\"mention\":\"my\",\"new_entity\":{\"canonical_name\":\"User\",\"entity_type\":\"user\",\"summary\":\"The human user interacting with the assistant.\"},\"reason\":\"First-person preference statement requires the stable USER entity as subject.\"},{\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.89,\"entity_id\":null,\"mention\":\"JetBrains tools\",\"new_entity\":{\"canonical_name\":\"JetBrains tools\",\"entity_type\":\"product\",\"summary\":\"A family of software development tools and IDEs made by JetBrains.\"},\"reason\":\"Concrete product-family referent in the stated editor preference.\"},{\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.95,\"entity_id\":null,\"mention\":\"VS Code\",\"new_entity\":{\"canonical_name\":\"VS Code\",\"entity_type\":\"product\",\"summary\":\"A source-code editor developed by Microsoft, also known as Visual Studio Code.\"},\"reason\":\"Concrete product referent used in the user’s editor recommendation constraint.\"}]}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -395,8 +395,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 1324,
-                "completionTokens": 230,
+                "promptTokens": 1315,
+                "completionTokens": 227,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

@@ -310,7 +310,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"decision\":\"direct_structured_write\",\"memory_types\":[\"profile\",\"claim\"],\"reason\":\"Contains a clear stable personal fact (vehicle ownership) useful for future context.\",\"salience\":0.84,\"source_policy\":{\"allow_evidence_hydration\":true,\"allow_recall\":true,\"allow_structured_extraction\":true,\"reason\":\"Explicit durable user-owned vehicle fact suitable for profile memory.\"},\"source_search_text\":\"User says they own a Toyota RunX vehicle.\"}",
+                                "fullText": "{\"decision\":\"direct_structured_write\",\"memory_types\":[\"claim\",\"profile\"],\"reason\":\"Stable personal ownership detail that is likely reusable for future vehicle-related context.\",\"salience\":0.82,\"source_policy\":{\"allow_evidence_hydration\":true,\"allow_recall\":true,\"allow_structured_extraction\":true,\"reason\":\"Explicit user-owned vehicle fact suitable for durable profile memory.\"},\"source_search_text\":\"User says they own a Toyota RunX vehicle.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -325,8 +325,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 2482,
-                "completionTokens": 104,
+                "promptTokens": 2490,
+                "completionTokens": 103,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

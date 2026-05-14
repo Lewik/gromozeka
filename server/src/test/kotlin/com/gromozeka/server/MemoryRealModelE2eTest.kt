@@ -2168,7 +2168,13 @@ class MemoryRealModelE2eTest {
         count { it is MemorySource.ChatTurn && it.speakerRole == MemorySource.ActorRole.ASSISTANT }
 
     private fun MemorySource.speakerRoleName(): String? =
-        (this as? MemorySource.ChatTurn)?.speakerRole?.name
+        when (this) {
+            is MemorySource.ChatTurn -> speakerRole.name
+            is MemorySource.ExternalRecord,
+            is MemorySource.ImportedNote,
+            is MemorySource.ToolOutput,
+            -> MemorySource.ActorRole.EXTERNAL.name
+        }
 
     private fun renderCaseReport(
         result: ExecutedMemoryE2eCase,

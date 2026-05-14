@@ -440,7 +440,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"operations\":[{\"action\":\"insert\",\"candidate_index\":0,\"canonical_predicate\":\"uses_persistence_database\",\"cardinality\":\"multi\",\"conflict_policy\":\"range_split\",\"object_kind\":\"entity\",\"predicate_description\":\"Persistence database used by the project memory store.\",\"predicate_family\":\"persistence_backend\",\"reason\":\"New explicit project-context fact; matches catalog predicate exactly and no existing claim conflicts.\",\"target_claim_id\":null,\"temporal_policy\":\"time_scoped\"}]}",
+                                "fullText": "{\"operations\":[{\"action\":\"insert\",\"candidate_index\":0,\"canonical_predicate\":\"uses_persistence_database\",\"cardinality\":\"multi\",\"conflict_policy\":\"range_split\",\"object_kind\":\"entity\",\"predicate_description\":\"Persistence database used by a project/service for a given environment or phase.\",\"predicate_family\":\"project_storage_backend\",\"reason\":\"New project-context infrastructure fact; matches catalog predicate exactly and no existing active claim to reconcile.\",\"target_claim_id\":null,\"temporal_policy\":\"time_scoped\"}]}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -455,8 +455,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 2935,
-                "completionTokens": 103,
+                "promptTokens": 2937,
+                "completionTokens": 110,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

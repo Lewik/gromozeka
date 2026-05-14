@@ -440,7 +440,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"operations\":[{\"action\":\"insert\",\"candidate_index\":0,\"canonical_predicate\":\"uses_search_backend\",\"cardinality\":\"single\",\"conflict_policy\":\"range_split\",\"object_kind\":\"entity\",\"predicate_description\":\"Search backend used by a service/project within a specific phase or time window.\",\"predicate_family\":\"search_backend_usage\",\"reason\":\"New historical time-scoped fact about Acme search service backend during prototype; no existing active claim to reconcile.\",\"target_claim_id\":null,\"temporal_policy\":\"time_scoped\"}]}",
+                                "fullText": "{\"operations\":[{\"action\":\"insert\",\"candidate_index\":0,\"canonical_predicate\":\"uses_search_backend\",\"cardinality\":\"single\",\"conflict_policy\":\"range_split\",\"object_kind\":\"entity\",\"predicate_description\":\"Search backend used by a project/service within a specific time or phase scope.\",\"predicate_family\":\"search_backend_usage\",\"reason\":\"Explicit dated prototype-phase backend usage fact; no existing active claim conflicts.\",\"target_claim_id\":null,\"temporal_policy\":\"time_scoped\"}]}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -455,8 +455,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 2976,
-                "completionTokens": 114,
+                "promptTokens": 2994,
+                "completionTokens": 106,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

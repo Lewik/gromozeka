@@ -310,7 +310,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"decision\":\"direct_structured_write\",\"memory_types\":[\"claim\"],\"reason\":\"Explicit dated project-state fact about technology used in prototype phase.\",\"salience\":0.71,\"source_policy\":{\"allow_evidence_hydration\":true,\"allow_recall\":true,\"allow_structured_extraction\":true,\"reason\":\"Contains a concrete project timeline fact suitable for structured memory and future recall.\"},\"source_search_text\":\"Acme project timeline: on 2026-01-05 the search service used Elasticsearch during the prototype.\"}",
+                                "fullText": "{\"decision\":\"direct_structured_write\",\"memory_types\":[\"claim\"],\"reason\":\"Explicit durable project fact (dated historical technology usage) suitable for structured claim memory.\",\"salience\":0.74,\"source_policy\":{\"allow_evidence_hydration\":true,\"allow_recall\":true,\"allow_structured_extraction\":true,\"reason\":\"Contains a concrete project timeline fact with date and technology used.\"},\"source_search_text\":\"Acme project timeline: on 2026-01-05, the search service used Elasticsearch during the prototype phase.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -325,8 +325,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 2493,
-                "completionTokens": 114,
+                "promptTokens": 2523,
+                "completionTokens": 118,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

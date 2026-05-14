@@ -781,18 +781,14 @@ private fun List<MemoryStore.SearchHit>.deferRawSourceCandidatesToEvidenceHydrat
 }
 
 private fun MemoryReadPlan.defersRawSourcesWhenTypedMemoryExists(): Boolean =
-    if (shouldRenderEvidenceInPrompt()) {
-        false
-    } else {
-        when (answerMode) {
-            MemoryReadPlan.AnswerMode.FACTUAL,
-            MemoryReadPlan.AnswerMode.TASK,
-            -> true
+    when (answerMode) {
+        MemoryReadPlan.AnswerMode.FACTUAL,
+        MemoryReadPlan.AnswerMode.TASK,
+        -> true
 
-            MemoryReadPlan.AnswerMode.MIXED,
-            MemoryReadPlan.AnswerMode.RATIONALE,
-            -> false
-        }
+        MemoryReadPlan.AnswerMode.MIXED,
+        MemoryReadPlan.AnswerMode.RATIONALE,
+        -> false
     }
 
 private fun MemoryStore.SearchHit.isCurrentTruthBearingTypedHit(): Boolean =

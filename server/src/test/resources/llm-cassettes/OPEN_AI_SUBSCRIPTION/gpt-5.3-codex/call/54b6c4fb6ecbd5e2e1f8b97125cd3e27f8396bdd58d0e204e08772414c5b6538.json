@@ -380,7 +380,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"operations\":[{\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.93,\"entity_id\":null,\"mention\":\"Aurora project\",\"new_entity\":{\"canonical_name\":\"Aurora\",\"entity_type\":\"project\",\"summary\":\"A project named Aurora.\"},\"reason\":\"Concrete named project referent in target message with no existing candidates.\"},{\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.72,\"entity_id\":null,\"mention\":\"API token\",\"new_entity\":{\"canonical_name\":\"API token\",\"entity_type\":\"concept\",\"summary\":\"A token used for authenticating API access.\"},\"reason\":\"Reusable generic referent mentioned in project context; no existing entity available.\"}]}",
+                                "fullText": "{\"operations\":[{\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.88,\"entity_id\":null,\"mention\":\"Aurora project\",\"new_entity\":{\"canonical_name\":\"Aurora\",\"entity_type\":\"project\",\"summary\":\"Project named Aurora.\"},\"reason\":\"Explicit reference to a project context with no existing candidate entities.\"},{\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.71,\"entity_id\":null,\"mention\":\"API token\",\"new_entity\":{\"canonical_name\":\"API token\",\"entity_type\":\"concept\",\"summary\":\"Authentication token used to access an API.\"},\"reason\":\"Concrete reusable referent in the message; no existing candidate entity available.\"}]}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -395,8 +395,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 1312,
-                "completionTokens": 150,
+                "promptTokens": 1297,
+                "completionTokens": 147,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

@@ -380,7 +380,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"operations\":[{\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.95,\"entity_id\":null,\"mention\":\"Vasya\",\"new_entity\":{\"canonical_name\":\"Vasya\",\"entity_type\":\"person\",\"summary\":\"A person mentioned in the conversation.\"},\"reason\":\"Named individual with no existing candidate entity.\"},{\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.95,\"entity_id\":null,\"mention\":\"Yura\",\"new_entity\":{\"canonical_name\":\"Yura\",\"entity_type\":\"person\",\"summary\":\"A person mentioned in the conversation.\"},\"reason\":\"Named individual with no existing candidate entity.\"},{\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.87,\"entity_id\":null,\"mention\":\"graph memory\",\"new_entity\":{\"canonical_name\":\"graph memory\",\"entity_type\":\"concept\",\"summary\":\"A concept referring to memory represented as a graph structure.\"},\"reason\":\"Concrete reusable technical concept referenced by both statements.\"}]}",
+                                "fullText": "{\"operations\":[{\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.95,\"entity_id\":null,\"mention\":\"Vasya\",\"new_entity\":{\"canonical_name\":\"Vasya\",\"entity_type\":\"person\",\"summary\":\"A person mentioned in the conversation.\"},\"reason\":\"Distinct named individual with no existing candidate entities.\"},{\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.95,\"entity_id\":null,\"mention\":\"Yura\",\"new_entity\":{\"canonical_name\":\"Yura\",\"entity_type\":\"person\",\"summary\":\"A person mentioned in the conversation.\"},\"reason\":\"Distinct named individual with no existing candidate entities.\"},{\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.87,\"entity_id\":null,\"mention\":\"graph memory\",\"new_entity\":{\"canonical_name\":\"graph memory\",\"entity_type\":\"concept\",\"summary\":\"A concept referring to a memory system organized as a graph.\"},\"reason\":\"Concrete reusable concept discussed by both people; no existing candidate entity.\"}]}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -395,8 +395,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 1278,
-                "completionTokens": 204,
+                "promptTokens": 1293,
+                "completionTokens": 211,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

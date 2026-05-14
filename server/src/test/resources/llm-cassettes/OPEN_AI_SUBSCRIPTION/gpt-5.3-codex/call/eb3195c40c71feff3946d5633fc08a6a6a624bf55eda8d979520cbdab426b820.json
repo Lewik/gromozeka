@@ -5,7 +5,7 @@
     "model": "gpt-5.3-codex",
     "operation": "call",
     "recordedAt": "1970-01-01T00:00:00Z",
-    "projectPath": "gromozeka-e2e-<id>/projects/knowledge-update-latest-wins",
+    "projectPath": "gromozeka-e2e-<id>/projects/preference-dedup-evidence",
     "canonicalRequest": {
         "messages": [
             {
@@ -440,7 +440,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"operations\":[{\"action\":\"insert\",\"candidate_index\":0,\"canonical_predicate\":\"prefers\",\"cardinality\":\"multi\",\"conflict_policy\":\"coexist\",\"object_kind\":\"entity\",\"predicate_description\":\"Generic positive user preference for recommendation choices\",\"predicate_family\":\"preference\",\"reason\":\"Explicitly stated durable preference for Toyota cars; no existing conflicting claim.\",\"target_claim_id\":null,\"temporal_policy\":\"status_like\"}]}",
+                                "fullText": "{\"operations\":[{\"action\":\"insert\",\"candidate_index\":0,\"canonical_predicate\":\"prefers\",\"cardinality\":\"multi\",\"conflict_policy\":\"coexist\",\"object_kind\":\"entity\",\"predicate_description\":\"Generic positive preference for an entity used in future recommendations\",\"predicate_family\":\"preference\",\"reason\":\"Explicit user preference for Toyota cars; matches catalog predicate prefers and no existing conflicting claim.\",\"target_claim_id\":null,\"temporal_policy\":\"status_like\"}]}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -455,8 +455,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 2919,
-                "completionTokens": 96,
+                "promptTokens": 2926,
+                "completionTokens": 102,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

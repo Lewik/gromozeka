@@ -389,7 +389,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"decision\":\"direct_structured_write\",\"memory_types\":[\"task\"],\"reason\":\"The message explicitly cancels an existing durable follow-up task, which is a task lifecycle change that should be stored.\",\"salience\":0.9,\"source_policy\":{\"allow_evidence_hydration\":true,\"allow_recall\":true,\"allow_structured_extraction\":true,\"reason\":\"Explicit durable task lifecycle update: cancel previously open follow-up task.\"},\"source_search_text\":\"Cancel the follow-up task for the temporary task memory cancellation experiment; decided not to do it.\"}",
+                                "fullText": "{\"decision\":\"direct_structured_write\",\"memory_types\":[\"task\"],\"reason\":\"The message explicitly cancels a previously tracked follow-up task, which is a durable task state change.\",\"salience\":0.86,\"source_policy\":{\"allow_evidence_hydration\":true,\"allow_recall\":true,\"allow_structured_extraction\":true,\"reason\":\"Explicit durable task lifecycle update: cancel an existing follow-up task.\"},\"source_search_text\":\"cancel temporary task memory cancellation experiment follow-up; decided not to do it\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -404,8 +404,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 2529,
-                "completionTokens": 121,
+                "promptTokens": 2558,
+                "completionTokens": 114,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

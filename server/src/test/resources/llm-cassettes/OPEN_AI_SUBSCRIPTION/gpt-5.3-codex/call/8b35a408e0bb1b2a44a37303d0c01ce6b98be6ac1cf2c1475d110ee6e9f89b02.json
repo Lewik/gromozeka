@@ -440,7 +440,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"operations\":[{\"action\":\"insert\",\"candidate_index\":0,\"canonical_predicate\":\"primary_export_format\",\"cardinality\":\"single\",\"conflict_policy\":\"replace\",\"object_kind\":\"string\",\"predicate_description\":\"Primary/default export format for a product or service.\",\"predicate_family\":\"export_format\",\"reason\":\"New durable product configuration fact; primary slot implies one current value.\",\"target_claim_id\":null,\"temporal_policy\":\"status_like\"}]}",
+                                "fullText": "{\"operations\":[{\"action\":\"insert\",\"candidate_index\":0,\"canonical_predicate\":\"primary_export_format\",\"cardinality\":\"single\",\"conflict_policy\":\"replace\",\"object_kind\":\"string\",\"predicate_description\":\"Primary/default export format for a product or service\",\"predicate_family\":\"export_format\",\"reason\":\"New explicit named primary slot fact for ShelfAudit; no existing active claim to reconcile.\",\"target_claim_id\":null,\"temporal_policy\":\"status_like\"}]}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -455,8 +455,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 2920,
-                "completionTokens": 97,
+                "promptTokens": 2922,
+                "completionTokens": 101,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

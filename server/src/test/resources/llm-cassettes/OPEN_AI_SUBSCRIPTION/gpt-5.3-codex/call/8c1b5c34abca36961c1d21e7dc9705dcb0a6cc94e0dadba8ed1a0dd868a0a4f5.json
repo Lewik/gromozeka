@@ -364,7 +364,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"entity_queries\":[\"Gromozeka\",\"SQLite\"],\"limits\":{\"claims\":20,\"notes\":10,\"sources\":8,\"tasks\":10},\"memory_types\":[\"claim\",\"source\",\"entity\"],\"need_retrieval\":true,\"predicate_hints\":[\"uses_persistence_database\",\"primary_storage_backend\"],\"text_queries\":[\"Gromozeka memory store database used SQLite during prototype on 2026-01-10\",\"Gromozeka prototype persistence database\",\"Gromozeka primary storage backend history\"],\"time_filters\":{\"from_iso\":\"2025-12-01T00:00:00Z\",\"to_iso\":\"2026-02-28T23:59:59Z\"}}",
+                                "fullText": "{\"entity_queries\":[\"Gromozeka\",\"SQLite\"],\"limits\":{\"claims\":20,\"notes\":10,\"sources\":8,\"tasks\":10},\"memory_types\":[\"claim\",\"source\",\"entity\"],\"need_retrieval\":true,\"predicate_hints\":[\"uses_persistence_database\",\"primary_storage_backend\"],\"text_queries\":[\"Gromozeka memory store database prototype\",\"on 2026-01-10 used SQLite\",\"primary storage backend Gromozeka\",\"uses persistence database Gromozeka\"],\"time_filters\":{\"from_iso\":\"2025-12-01T00:00:00Z\",\"to_iso\":\"2026-02-28T23:59:59Z\"}}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -379,8 +379,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 2188,
-                "completionTokens": 152,
+                "promptTokens": 2172,
+                "completionTokens": 151,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

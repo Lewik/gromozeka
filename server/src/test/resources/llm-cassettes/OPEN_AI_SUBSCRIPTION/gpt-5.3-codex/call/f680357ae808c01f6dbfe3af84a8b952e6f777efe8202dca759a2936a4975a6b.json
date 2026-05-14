@@ -310,7 +310,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"decision\":\"noop\",\"memory_types\":[],\"reason\":\"This is a recall/provenance query, not a new fact, preference, task, or lifecycle update.\",\"salience\":0.0,\"source_policy\":{\"allow_evidence_hydration\":false,\"allow_recall\":false,\"allow_structured_extraction\":false,\"reason\":\"Probe question about existing memory/provenance; no new durable assertion.\"},\"source_search_text\":\"Question asking why old raw source line 'BookNest primary export format is CSV' is outdated and which current memory overrides it, requesting source-level provenance check.\"}",
+                                "fullText": "{\"decision\":\"noop\",\"memory_types\":[],\"reason\":\"This is a recall/provenance query, not a request to store or update durable memory.\",\"salience\":0.2,\"source_policy\":{\"allow_evidence_hydration\":false,\"allow_recall\":false,\"allow_structured_extraction\":false,\"reason\":\"Probe question about existing memory/provenance; no new durable assertion.\"},\"source_search_text\":\"Question asking why prior source line 'BookNest primary export format is CSV' is outdated and which current memory overrides it, requesting source-level provenance.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -325,8 +325,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 2563,
-                "completionTokens": 128,
+                "promptTokens": 2543,
+                "completionTokens": 123,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

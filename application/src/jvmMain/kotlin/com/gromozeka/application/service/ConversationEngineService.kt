@@ -8,7 +8,7 @@ import com.gromozeka.domain.model.Conversation.Message.ContentItem
 import com.gromozeka.domain.model.Plan
 import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.TokenUsageStatistics
-import com.gromozeka.application.service.memory.MEMORY_RECALL_TOOL_NAME
+import com.gromozeka.application.service.memory.MEMORY_ENRICH_CONTEXT_TOOL_NAME
 import com.gromozeka.application.service.memory.MEMORY_REMEMBER_TOOL_NAME
 import com.gromozeka.application.service.memory.MemoryMessageRoutingApplicationService
 import com.gromozeka.application.service.memory.MemoryToolResultRenderer
@@ -188,13 +188,13 @@ class ConversationEngineService(
             buildSyntheticMemoryToolPair(
                 conversationId = conversationId,
                 targetMessage = userMessage,
-                toolName = MEMORY_RECALL_TOOL_NAME,
+                toolName = MEMORY_ENRICH_CONTEXT_TOOL_NAME,
                 arguments = buildJsonObject {
                     put("target", "previous_user_message")
                     put("target_message_id", userMessage.id.value)
-                    put("mode", "automatic_runtime_recall")
+                    put("mode", "automatic_runtime_context_enrichment")
                 },
-                resultText = MemoryToolResultRenderer.recallResultJsonString(runtimeMemoryResult)
+                resultText = MemoryToolResultRenderer.enrichContextResultJsonString(runtimeMemoryResult)
             ).forEach { syntheticMessage ->
                 emit(syntheticMessage)
                 conversationService.addMessage(conversationId, syntheticMessage)
@@ -623,7 +623,7 @@ class ConversationEngineService(
         arguments: JsonObject,
         resultText: String,
     ): List<Conversation.Message> {
-        val toolCallId = ContentItem.ToolCall.Id("memory:${toolName}:${uuid7()}")
+        val toolCallId = ContentItem.ToolCall.Id("mem_${uuid7().replace("-", "")}")
         val createdAt = Clock.System.now()
         val toolCallMessage = Conversation.Message(
             id = Conversation.Message.Id(uuid7()),

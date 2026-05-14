@@ -364,7 +364,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"entity_queries\":[\"user\",\"Memory MVP\",\"temporary task memory cancellation experiment\"],\"limits\":{\"claims\":10,\"notes\":10,\"sources\":8,\"tasks\":10},\"memory_types\":[\"task\",\"note\",\"source\",\"entity\"],\"need_retrieval\":true,\"predicate_hints\":[\"has_goal\"],\"text_queries\":[\"open task temporary task memory cancellation experiment\",\"Memory MVP follow-up task\",\"task memory cancellation experiment\"],\"time_filters\":{\"from_iso\":null,\"to_iso\":null}}",
+                                "fullText": "{\"entity_queries\":[\"user\",\"Memory MVP\"],\"limits\":{\"claims\":10,\"notes\":10,\"sources\":8,\"tasks\":10},\"memory_types\":[\"task\",\"note\",\"source\",\"entity\"],\"need_retrieval\":true,\"predicate_hints\":[\"has_goal\"],\"text_queries\":[\"temporary task memory cancellation experiment\",\"open task\",\"Memory MVP follow-up\",\"task memory cancellation\"],\"time_filters\":{\"from_iso\":null,\"to_iso\":null}}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -379,8 +379,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 2169,
-                "completionTokens": 109,
+                "promptTokens": 2173,
+                "completionTokens": 102,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

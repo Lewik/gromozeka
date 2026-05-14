@@ -310,7 +310,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"decision\":\"note_write\",\"memory_types\":[\"note\"],\"reason\":\"The target is an explicit document digest/handoff with durable design direction and detailed reusable specifications, best stored as note memory rather than atomic claims.\",\"salience\":0.86,\"source_policy\":{\"allow_evidence_hydration\":true,\"allow_recall\":true,\"allow_structured_extraction\":true,\"reason\":\"Pasted project handoff document containing reusable architecture, schema, and memory-model rationale for future retrieval.\"},\"source_search_text\":\"Agent memory handoff document for v3 data model: layered architecture (Source, Entity, Note, Claim, Profile, Task, Episode, MemoryRun), scope fields, truth vs retrieval lifecycle, predicate catalog, note maturity, and retention/forgetting policies.\"}",
+                                "fullText": "{\"decision\":\"note_write\",\"memory_types\":[\"note\"],\"reason\":\"The target is an explicit document digest/handoff containing durable design direction, terminology, and reusable implementation rules; best stored as note-level semantic memory rather than atomic claims.\",\"salience\":0.83,\"source_policy\":{\"allow_evidence_hydration\":true,\"allow_recall\":true,\"allow_structured_extraction\":true,\"reason\":\"Pasted project handoff document with reusable data-model rationale and schema guidance for memory system v3.\"},\"source_search_text\":\"Agent memory handoff document for v3 data model: layered architecture (Source, Entity, Claim, Note, Profile, Task, Episode, MemoryRun), scope_text/scope_json, truth status vs retrieval_state lifecycle, predicate catalog for reconciliation, note maturity model, retention/forgetting policy, and schema field recommendations.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -325,8 +325,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 11074,
-                "completionTokens": 164,
+                "promptTokens": 11079,
+                "completionTokens": 181,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

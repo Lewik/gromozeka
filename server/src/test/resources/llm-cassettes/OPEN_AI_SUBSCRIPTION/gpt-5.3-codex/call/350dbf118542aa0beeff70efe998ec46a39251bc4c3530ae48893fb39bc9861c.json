@@ -459,7 +459,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"operations\":[{\"action\":\"link_existing\",\"alias_text\":null,\"confidence\":0.99,\"entity_id\":\"entity:<0>\",\"mention\":\"I\",\"new_entity\":null,\"reason\":\"First-person preference statement; maps to stable namespace-level User entity.\"},{\"action\":\"link_existing\",\"alias_text\":null,\"confidence\":0.99,\"entity_id\":\"entity:<1>\",\"mention\":\"Toyota\",\"new_entity\":null,\"reason\":\"Explicit brand mention matches existing organization Toyota entity.\"}]}",
+                                "fullText": "{\"operations\":[{\"action\":\"link_existing\",\"alias_text\":null,\"confidence\":0.99,\"entity_id\":\"entity:<0>\",\"mention\":\"I\",\"new_entity\":null,\"reason\":\"First-person reference maps to the stable namespace-level User entity.\"},{\"action\":\"link_existing\",\"alias_text\":null,\"confidence\":0.99,\"entity_id\":\"entity:<1>\",\"mention\":\"Toyota\",\"new_entity\":null,\"reason\":\"Toyota explicitly matches the existing organization entity by exact name.\"}]}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -474,7 +474,7 @@
                 }
             ],
             "usage": {
-                "promptTokens": 1351,
+                "promptTokens": 1358,
                 "completionTokens": 124,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,

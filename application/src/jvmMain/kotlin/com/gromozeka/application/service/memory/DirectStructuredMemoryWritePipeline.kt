@@ -115,6 +115,7 @@ class DirectStructuredMemoryWritePipeline(
         log.info {
             "Memory write pipeline start: namespace=${request.namespace.value} source=${request.source.id.value} " +
                 "trigger=${request.triggerMode.name} sourceType=${request.source.sourceTypeForLog()} " +
+                "parentRun=${request.parentRunId?.value ?: "none"} " +
                 "sourceRole=${request.source.sourceRoleForLog()} contentChars=${request.source.contentText.length} " +
                 "contentPreview=${request.source.contentText.oneLineForLog(500)}"
         }
@@ -1232,6 +1233,7 @@ class DefaultDirectStructuredMemoryWriteMaterializer(
                 tasks = tasks,
             ),
             triggerMode = input.request.triggerMode,
+            parentRunId = input.request.parentRunId,
             summary = input.summary(
                 notes = notes,
                 claims = claims,
@@ -1242,8 +1244,10 @@ class DefaultDirectStructuredMemoryWriteMaterializer(
             retrievedItemRefs = input.retrievedHits.map { it.toItemRef() },
             retrievalBudget = input.retrievalPlan?.retrievalBudget,
             inputHash = input.inputHash(),
+            latencyMs = input.completedAt.toEpochMilliseconds() - input.startedAt.toEpochMilliseconds(),
             status = MemoryRun.Status.SUCCESS,
             createdAt = input.startedAt,
+            startedAt = input.startedAt,
             completedAt = input.completedAt,
         )
 

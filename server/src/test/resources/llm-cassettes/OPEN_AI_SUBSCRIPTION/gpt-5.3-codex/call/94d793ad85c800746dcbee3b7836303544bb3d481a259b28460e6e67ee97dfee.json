@@ -310,7 +310,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"decision\":\"note_write\",\"memory_types\":[\"note\"],\"reason\":\"This is a document digest with durable architecture guidance and trade-offs, better stored as note memory rather than immediate structured facts/tasks.\",\"salience\":0.89,\"source_policy\":{\"allow_evidence_hydration\":true,\"allow_recall\":true,\"allow_structured_extraction\":true,\"reason\":\"Pasted architecture handoff contains reusable design rationale and memory-system direction.\"},\"source_search_text\":\"Memory handoff architecture document for agent memory v3: four axes (representation, lifecycle, retrieval policy, scope/lineage), write paths (direct structured vs note), maintenance (consolidation, repair), storage tiers, scope_json/scope_text, claim-vs-note rules, truth vs retrieval states, retrieval-before-update reconciliation, read-path retrieval modes with budgets, note maturity lifecycle, retention/forgetting policy, optional fast/slow path, and rationale for Postgres-first over graph DB.\"}",
+                                "fullText": "{\"decision\":\"note_write\",\"memory_types\":[\"note\"],\"reason\":\"The target is a rich reusable document digest and design direction, not an immediate execution command; it should be stored as note memory.\",\"salience\":0.89,\"source_policy\":{\"allow_evidence_hydration\":true,\"allow_recall\":true,\"allow_structured_extraction\":true,\"reason\":\"Substantive architecture handoff document with reusable design rationale and memory-system guidance.\"},\"source_search_text\":\"Memory handoff architecture document for AI agent memory v3: multi-axis design (representation, lifecycle, retrieval policy, scope/lineage), dual write paths (direct structured and note), consolidation and repair workflows, storage tiers, structured scope_json, claim vs note rules, truth state vs retrieval state, retrieval-before-update reconciliation, write/read pipelines with budget caps, note maturity lifecycle, retention/forgetting policy, optional fast/slow paths, and rationale for Postgres+pgvector over graph DB initially.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -325,8 +325,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 8572,
-                "completionTokens": 203,
+                "promptTokens": 8576,
+                "completionTokens": 207,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

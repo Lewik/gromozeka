@@ -310,7 +310,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"decision\":\"direct_structured_write\",\"memory_types\":[\"claim\",\"profile\"],\"reason\":\"Clear durable preference change from Toyota to Honda; should update stored user profile/claim.\",\"salience\":0.84,\"source_policy\":{\"allow_evidence_hydration\":true,\"allow_recall\":true,\"allow_structured_extraction\":true,\"reason\":\"Explicit user preference update/correction suitable for durable profile memory.\"},\"source_search_text\":\"User preference update: previously preferred Toyota cars, now prefers Honda cars.\"}",
+                                "fullText": "{\"decision\":\"direct_structured_write\",\"memory_types\":[\"claim\",\"profile\"],\"reason\":\"Contains a clear long-term personal preference and correction/update of prior preference.\",\"salience\":0.86,\"source_policy\":{\"allow_evidence_hydration\":true,\"allow_recall\":true,\"allow_structured_extraction\":true,\"reason\":\"Explicit durable preference update from past Toyota to current Honda.\"},\"source_search_text\":\"User preference update: used to prefer Toyota cars, now prefers Honda cars.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -325,8 +325,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 2517,
-                "completionTokens": 111,
+                "promptTokens": 2503,
+                "completionTokens": 108,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

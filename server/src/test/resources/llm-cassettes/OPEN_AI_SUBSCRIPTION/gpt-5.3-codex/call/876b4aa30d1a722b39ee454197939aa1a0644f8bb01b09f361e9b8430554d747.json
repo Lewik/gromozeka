@@ -459,7 +459,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"operations\":[{\"action\":\"link_existing\",\"alias_text\":null,\"confidence\":0.99,\"entity_id\":\"entity:<0>\",\"mention\":\"I\",\"new_entity\":null,\"reason\":\"First-person reference maps to stable namespace-level User entity.\"},{\"action\":\"link_existing\",\"alias_text\":null,\"confidence\":0.99,\"entity_id\":\"entity:<1>\",\"mention\":\"Toyota\",\"new_entity\":null,\"reason\":\"Toyota explicitly mentioned and safely matches existing organization entity.\"}]}",
+                                "fullText": "{\"operations\":[{\"action\":\"link_existing\",\"alias_text\":null,\"confidence\":0.99,\"entity_id\":\"entity:<0>\",\"mention\":\"I\",\"new_entity\":null,\"reason\":\"First-person pronoun in user statement maps to stable namespace USER entity.\"},{\"action\":\"link_existing\",\"alias_text\":null,\"confidence\":0.98,\"entity_id\":\"entity:<1>\",\"mention\":\"Toyota\",\"new_entity\":null,\"reason\":\"Explicit brand mention safely matches existing organization entity Toyota.\"}]}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -474,8 +474,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 1359,
-                "completionTokens": 124,
+                "promptTokens": 1369,
+                "completionTokens": 130,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

@@ -354,7 +354,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"rejected_items\":[{\"item_id\":\"project:<1>\",\"item_type\":\"profile\",\"reason\":\"Projection profile is redundant since an ACTIVE claim provides the same fact.\"},{\"item_id\":\"memory-repair-duplicate-claims-fixture-1-subject\",\"item_type\":\"entity\",\"reason\":\"Entity anchor not needed to answer the factual question once claim is selected.\"}],\"selected_items\":[{\"item_id\":\"memory-repair-duplicate-claims-fixture-1-claim-second\",\"item_type\":\"claim\",\"rank\":1,\"reason\":\"Active factual claim directly states the sandbox runtime language.\",\"relevance\":\"direct_answer\"}],\"summary\":\"Select the single ACTIVE claim that directly answers the runtime language question.\"}",
+                                "fullText": "{\"rejected_items\":[{\"item_id\":\"project:<1>\",\"item_type\":\"profile\",\"reason\":\"Projection profile duplicates claim; claim is preferred current typed fact.\"},{\"item_id\":\"memory-repair-duplicate-claims-fixture-1-subject\",\"item_type\":\"entity\",\"reason\":\"Entity label is not needed once the direct claim is selected.\"}],\"selected_items\":[{\"item_id\":\"memory-repair-duplicate-claims-fixture-1-claim-second\",\"item_type\":\"claim\",\"rank\":1,\"reason\":\"Active factual claim directly states Atlas planner sandbox runtime language.\",\"relevance\":\"direct_answer\"}],\"summary\":\"Select the single active claim because it directly answers the runtime language question.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -369,8 +369,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 1728,
-                "completionTokens": 190,
+                "promptTokens": 1714,
+                "completionTokens": 188,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

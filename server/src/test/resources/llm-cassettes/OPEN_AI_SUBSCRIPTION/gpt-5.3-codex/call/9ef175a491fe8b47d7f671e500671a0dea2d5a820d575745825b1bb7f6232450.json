@@ -354,7 +354,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"rejected_items\":[{\"item_id\":\"project:<1>\",\"item_type\":\"profile\",\"reason\":\"Contains ownership fact, not an explicit car brand preference.\"},{\"item_id\":\"hot-path:claim:<0>\",\"item_type\":\"claim\",\"reason\":\"States owned vehicle, not stated preferred car brand.\"},{\"item_id\":\"entity:<0>\",\"item_type\":\"entity\",\"reason\":\"Generic entity anchor with no preference fact.\"}],\"selected_items\":[],\"summary\":\"No persisted memory candidate contains the user's explicit preferred car brand.\"}",
+                                "fullText": "{\"rejected_items\":[{\"item_id\":\"project:<1>\",\"item_type\":\"profile\",\"reason\":\"Contains ownership fact, not an explicit stated brand preference.\"},{\"item_id\":\"hot-path:claim:<0>\",\"item_type\":\"claim\",\"reason\":\"States owned vehicle (Toyota RunX), not that the user said they prefer a brand.\"},{\"item_id\":\"entity:<0>\",\"item_type\":\"entity\",\"reason\":\"Generic user anchor; no preference content.\"}],\"selected_items\":[],\"summary\":\"No persisted memory records an explicit car brand preference by the user.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -369,8 +369,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 1722,
-                "completionTokens": 180,
+                "promptTokens": 1723,
+                "completionTokens": 186,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

@@ -216,7 +216,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"repair_actions\":[{\"action\":\"supersede_item\",\"reason\":\"Older active claim is explicitly corrected by a newer active claim with same subject/predicate/scope.\",\"target_ids\":[\"memory-repair-conflicting-claims-fixture-1-claim-older\"],\"target_type\":\"claim\"}],\"summary\":\"Supersede the older conflicting claim to preserve history while keeping the newer MongoDB claim as current.\"}",
+                                "fullText": "{\"repair_actions\":[{\"action\":\"supersede_item\",\"reason\":\"Older active claim is explicitly corrected by newer active claim with same subject/predicate/scope.\",\"target_ids\":[\"memory-repair-conflicting-claims-fixture-1-claim-older\"],\"target_type\":\"claim\"}],\"summary\":\"Supersede the older conflicting claim and keep the newer MongoDB claim as the active current fact.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -231,8 +231,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 941,
-                "completionTokens": 94,
+                "promptTokens": 939,
+                "completionTokens": 93,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

@@ -10,8 +10,10 @@ class GromozekaMcpToolExposureTest {
     fun `blank configuration exposes only memory tools by default`() {
         val exposure = GromozekaMcpToolExposure.fromConfiguredValue(null)
 
-        assertTrue(exposure.exposes("memory_recall"))
+        assertTrue(exposure.exposes("memory_queue_status"))
+        assertTrue(exposure.exposes("memory_enrich_context"))
         assertTrue(exposure.exposes("memory_remember"))
+        assertTrue(exposure.exposes("memory_run_status"))
         assertTrue(exposure.exposes("unified_search"))
         assertFalse(exposure.exposes("grz_execute_command"))
     }
@@ -26,20 +28,24 @@ class GromozekaMcpToolExposureTest {
 
     @Test
     fun `explicit configuration accepts comma and whitespace separated tool names`() {
-        val exposure = GromozekaMcpToolExposure.fromConfiguredValue("memory_recall, memory_remember\nunified_search")
+        val exposure = GromozekaMcpToolExposure.fromConfiguredValue(
+            "memory_enrich_context, memory_remember\nmemory_run_status memory_queue_status unified_search"
+        )
 
-        assertTrue(exposure.exposes("memory_recall"))
+        assertTrue(exposure.exposes("memory_queue_status"))
+        assertTrue(exposure.exposes("memory_enrich_context"))
         assertTrue(exposure.exposes("memory_remember"))
+        assertTrue(exposure.exposes("memory_run_status"))
         assertTrue(exposure.exposes("unified_search"))
         assertFalse(exposure.exposes("brave_web_search"))
     }
 
     @Test
     fun `unknown explicit tool names fail fast`() {
-        val exposure = GromozekaMcpToolExposure.fromConfiguredValue("memory_recall,missing_tool")
+        val exposure = GromozekaMcpToolExposure.fromConfiguredValue("memory_enrich_context,missing_tool")
 
         assertFailsWith<IllegalArgumentException> {
-            exposure.validateAgainst(setOf("memory_recall", "memory_remember", "unified_search"))
+            exposure.validateAgainst(setOf("memory_enrich_context", "memory_remember", "unified_search"))
         }
     }
 }

@@ -2,6 +2,7 @@ package com.gromozeka.application.service.memory
 
 import com.gromozeka.domain.model.memory.DirectStructuredMemoryWriteResult
 import com.gromozeka.domain.model.memory.MemoryReadResult
+import com.gromozeka.domain.model.memory.MemoryRun
 import com.gromozeka.domain.model.memory.MemoryUpdateBatch
 import com.gromozeka.domain.tool.AiToolCallback
 import kotlinx.serialization.json.JsonPrimitive
@@ -10,12 +11,19 @@ import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
 
 const val MEMORY_REMEMBER_TOOL_NAME = "memory_remember"
-const val MEMORY_RECALL_TOOL_NAME = "memory_recall"
+const val MEMORY_ENRICH_CONTEXT_TOOL_NAME = "memory_enrich_context"
+const val MEMORY_RUN_STATUS_TOOL_NAME = "memory_run_status"
+const val MEMORY_QUEUE_STATUS_TOOL_NAME = "memory_queue_status"
 
 fun List<AiToolCallback>.withoutMemoryManagementTools(): List<AiToolCallback> =
-    filterNot { tool ->
-        tool.definition.name == MEMORY_REMEMBER_TOOL_NAME || tool.definition.name == MEMORY_RECALL_TOOL_NAME
-    }
+    filterNot { tool -> tool.definition.name in memoryManagementToolNames }
+
+private val memoryManagementToolNames = setOf(
+    MEMORY_REMEMBER_TOOL_NAME,
+    MEMORY_ENRICH_CONTEXT_TOOL_NAME,
+    MEMORY_RUN_STATUS_TOOL_NAME,
+    MEMORY_QUEUE_STATUS_TOOL_NAME,
+)
 
 object MemoryToolResultRenderer {
     fun rememberResultJsonString(result: DirectStructuredMemoryWriteResult?): String {
@@ -88,11 +96,11 @@ object MemoryToolResultRenderer {
         }.toString()
     }
 
-    fun recallResultJsonString(result: MemoryReadResult?): String {
+    fun enrichContextResultJsonString(result: MemoryReadResult?): String {
         if (result == null) {
             return buildJsonObject {
                 put("status", "failed")
-                put("reason", "Runtime memory recall failed defensively; answer without recalled memory.")
+                put("reason", "Runtime memory context enrichment failed defensively; answer without enriched memory.")
             }.toString()
         }
 
@@ -103,9 +111,9 @@ object MemoryToolResultRenderer {
             put("retrieved_count", result.retrievedHits.size)
             put(
                 "usage_guidance",
-                "Selected memory is the strongest available remembered context for the target message. Use it unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message. Do not replace selected memory with guesses or general defaults. For exact quote, exact wording, source, or when-said questions, prefer complete source text from memory_context over shorter evidence excerpts."
+                "Selected memory is the strongest available remembered context for the target context. Use it unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message. Do not replace selected memory with guesses or general defaults. For exact quote, exact wording, source, or when-said questions, prefer complete source text from memory_context over shorter evidence excerpts."
             )
-            put("memory_context", result.runtimePrompt ?: "No relevant persisted memory was retrieved for the target message.")
+            put("memory_context", result.runtimePrompt ?: "No relevant persisted memory was retrieved for the target context.")
             putJsonArray("selected_refs") {
                 result.trace.selectedHits.take(16).forEach { hit ->
                     add(buildJsonObject {
@@ -131,12 +139,187 @@ object MemoryToolResultRenderer {
         }.toString()
     }
 
+    internal fun rememberDocumentResultJsonString(result: MemoryRememberDocumentResult): String =
+        buildJsonObject {
+            put("status", if (result.sectionResults.size == result.sections.size) "completed" else "partial")
+            put("document_type", result.documentType.name)
+            put("input_kind", result.inputKind.name)
+            put("title", result.title.orEmpty())
+            put("source_ref", result.sourceRef)
+            put("parent_source_id", result.parentSourceId)
+            put("sections_total", result.sections.size)
+            put("sections_processed", result.sectionResults.size)
+            put("sections_failed", result.sections.size - result.sectionResults.size)
+            put("counts", result.sectionResults.map { it.memoryBatch }.aggregateCountsJson())
+            put("sections", result.sections.toSectionSummaryJson())
+            putJsonArray("section_results") {
+                result.sectionResults.take(24).forEach { sectionResult ->
+                    add(buildJsonObject {
+                        put("source_id", sectionResult.sourceBatch.sources.firstOrNull()?.id?.value.orEmpty())
+                        put("decision", sectionResult.routeDecision.decision.name)
+                        putJsonArray("memory_types") {
+                            sectionResult.routeDecision.memoryTypes.map { it.name }.sorted().forEach { add(JsonPrimitive(it)) }
+                        }
+                        put("counts", sectionResult.memoryBatch.toCountsJson())
+                        put("reason", sectionResult.routeDecision.reason.shortForMemoryToolResult())
+                    })
+                }
+            }
+        }.toString()
+
+    internal fun rememberDocumentQueuedResultJsonString(result: MemoryRememberDocumentQueuedResult): String =
+        buildJsonObject {
+            put("status", "queued")
+            put("run_id", result.runId)
+            put("document_type", result.documentType.name)
+            put("input_kind", result.inputKind.name)
+            put("title", result.title.orEmpty())
+            put("source_ref", result.sourceRef)
+            put("parent_source_id", result.parentSourceId)
+            put("sections_total", result.sections.size)
+            put("queue_size", result.queueSize)
+            put("message", "Document ingest was accepted and will continue in the memory document queue.")
+            put("sections", result.sections.toSectionSummaryJson())
+        }.toString()
+
+    fun runStatusJsonString(
+        rootRun: MemoryRun,
+        descendants: List<MemoryRun>,
+        maxDepth: Int,
+    ): String =
+        buildJsonObject {
+            put("status", "completed")
+            put("run_id", rootRun.id.value)
+            put("max_depth", maxDepth)
+            put("descendant_count", descendants.size)
+            put("run", rootRun.toStatusJson(descendants, maxDepth))
+        }.toString()
+
+    fun queueStatusJsonString(status: MemoryDocumentIngestQueueStatus): String =
+        buildJsonObject {
+            put("status", "completed")
+            put("kind", "memory_document_ingest_queue")
+            put("pending_jobs", status.pendingJobs)
+            put("has_active_job", status.activeJob != null)
+            status.activeJob?.let { active ->
+                put(
+                    "active_job",
+                    buildJsonObject {
+                        put("run_id", active.runId.value)
+                        put("parent_source_id", active.parentSourceId.value)
+                        put("source_ref", active.sourceRef)
+                        put("sections_total", active.sectionsTotal)
+                        put("started_at", active.startedAt.toString())
+                    }
+                )
+            }
+            put("total_enqueued_jobs", status.totalEnqueuedJobs)
+            put("total_started_jobs", status.totalStartedJobs)
+            put("total_completed_jobs", status.totalCompletedJobs)
+            put("total_fatally_failed_jobs", status.totalFatallyFailedJobs)
+            put("worker_count", 1)
+            put("process_local", true)
+            put("durable_resume", false)
+        }.toString()
+
     fun failureJsonString(reason: String): String =
         buildJsonObject {
             put("status", "failed")
             put("reason", reason)
         }.toString()
 }
+
+private fun MemoryRun.toStatusJson(
+    descendants: List<MemoryRun>,
+    maxDepth: Int,
+    depth: Int = 0,
+): kotlinx.serialization.json.JsonObject {
+    val descendantsById = descendants.associateBy { it.id }
+    val childrenByParent = descendants.groupBy { it.parentRunId }
+    val directChildren = (
+        childrenByParent[id].orEmpty() +
+            childRunIds.mapNotNull(descendantsById::get)
+        ).distinctBy { it.id }
+
+    return buildJsonObject {
+        put("id", id.value)
+        put("namespace", namespace.value)
+        put("type", runType.name)
+        put("trigger_mode", triggerMode.name)
+        put("run_status", status.name)
+        parentRunId?.let { put("parent_run_id", it.value) }
+        put("summary", summary.shortForMemoryToolResult())
+        putJsonArray("source_ids") {
+            sourceIds.forEach { add(JsonPrimitive(it.value)) }
+        }
+        putJsonArray("child_run_ids") {
+            childRunIds.forEach { add(JsonPrimitive(it.value)) }
+        }
+        progress?.let { progress ->
+            put(
+                "progress",
+                buildJsonObject {
+                    put("total_units", progress.totalUnits)
+                    put("completed_units", progress.completedUnits)
+                    put("failed_units", progress.failedUnits)
+                    progress.currentUnitLabel?.let { put("current_unit_label", it.shortForMemoryToolResult()) }
+                    progress.currentSourceId?.let { put("current_source_id", it.value) }
+                }
+            )
+        }
+        retrievalBudget?.let { budget ->
+            put(
+                "retrieval_budget",
+                buildJsonObject {
+                    put("claims", budget.claims)
+                    put("notes", budget.notes)
+                    put("tasks", budget.tasks)
+                    put("sources", budget.sources)
+                    put("episodes", budget.episodes)
+                }
+            )
+        }
+        promptName?.let { put("prompt_name", it) }
+        promptVersion?.let { put("prompt_version", it) }
+        modelName?.let { put("model_name", it) }
+        inputHash?.let { put("input_hash", it) }
+        if (metadata.isNotEmpty()) {
+            put("metadata", metadata)
+        }
+        output?.let { put("output", it) }
+        put("applied_ops_count", appliedOps.size)
+        put("repair_actions_count", repairActions.size)
+        latencyMs?.let { put("latency_ms", it) }
+        tokenInput?.let { put("token_input", it) }
+        tokenOutput?.let { put("token_output", it) }
+        errorText?.let { put("error_text", it.shortForMemoryToolResult(1_000)) }
+        put("created_at", createdAt.toString())
+        startedAt?.let { put("started_at", it.toString()) }
+        completedAt?.let { put("completed_at", it.toString()) }
+        if (depth < maxDepth) {
+            putJsonArray("children") {
+                directChildren.forEach { child ->
+                    add(child.toStatusJson(descendants, maxDepth, depth + 1))
+                }
+            }
+        } else if (directChildren.isNotEmpty()) {
+            put("children_truncated", directChildren.size)
+        }
+    }
+}
+
+private fun List<MemoryUpdateBatch>.aggregateCountsJson() =
+    buildJsonObject {
+        put("predicate_definitions", sumOf { it.predicateDefinitions.size })
+        put("sources", sumOf { it.sources.size })
+        put("runs", sumOf { it.runs.size })
+        put("entities", sumOf { it.entities.size })
+        put("claims", sumOf { it.claims.size })
+        put("notes", sumOf { it.notes.size })
+        put("tasks", sumOf { it.tasks.size })
+        put("profiles", sumOf { it.profiles.size })
+        put("episodes", sumOf { it.episodes.size })
+    }
 
 private fun MemoryUpdateBatch.toCountsJson() =
     buildJsonObject {

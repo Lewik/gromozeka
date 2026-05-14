@@ -459,7 +459,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"operations\":[{\"action\":\"link_existing\",\"alias_text\":null,\"confidence\":0.99,\"entity_id\":\"entity:<0>\",\"mention\":\"ShelfAudit\",\"new_entity\":null,\"reason\":\"Exact name match to existing product entity with no ambiguity.\"}]}",
+                                "fullText": "{\"operations\":[{\"action\":\"link_existing\",\"alias_text\":null,\"confidence\":0.99,\"entity_id\":\"entity:<0>\",\"mention\":\"ShelfAudit\",\"new_entity\":null,\"reason\":\"Exact name match to existing product entity with same identity.\"}]}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -474,8 +474,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 1378,
-                "completionTokens": 72,
+                "promptTokens": 1360,
+                "completionTokens": 71,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

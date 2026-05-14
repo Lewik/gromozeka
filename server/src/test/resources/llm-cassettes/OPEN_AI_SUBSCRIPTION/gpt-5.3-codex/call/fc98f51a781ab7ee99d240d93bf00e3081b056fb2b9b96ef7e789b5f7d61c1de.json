@@ -310,7 +310,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"decision\":\"noop\",\"memory_types\":[],\"reason\":\"This is a recall question/instruction, not a new memory to store.\",\"salience\":0.1,\"source_policy\":{\"allow_evidence_hydration\":false,\"allow_recall\":false,\"allow_structured_extraction\":false,\"reason\":\"Probe question asking for recall; no new durable assertion.\"},\"source_search_text\":\"User asks which system they previously said worked more reliably, noting uncertainty.\"}",
+                                "fullText": "{\"decision\":\"noop\",\"memory_types\":[],\"reason\":\"This is a question about prior conversation content, not a new durable fact or memory update.\",\"salience\":0.14,\"source_policy\":{\"allow_evidence_hydration\":false,\"allow_recall\":false,\"allow_structured_extraction\":false,\"reason\":\"Recall/probe question with no new durable assertion; audit-only.\"},\"source_search_text\":\"User asks which system they previously said worked more reliably, and asks to mention uncertainty.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -326,7 +326,7 @@
             ],
             "usage": {
                 "promptTokens": 2523,
-                "completionTokens": 101,
+                "completionTokens": 109,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

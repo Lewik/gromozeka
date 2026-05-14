@@ -214,6 +214,8 @@ class OpenAiSubscriptionRequestMapper {
     }
 
     private fun Conversation.Message.toSystemInputItems(): List<JsonObject> {
+        if (error != null) return emptyList()
+
         val text = content
             .filterIsInstance<Conversation.Message.ContentItem.System>()
             .joinToString("\n") { it.content }
@@ -221,17 +223,11 @@ class OpenAiSubscriptionRequestMapper {
 
         if (text.isBlank()) return emptyList()
 
-        val isRuntimeMemoryDeveloperMessage = id.value.startsWith("memory-runtime-developer:")
-        val role = if (isRuntimeMemoryDeveloperMessage) "developer" else "system"
-        val content = if (isRuntimeMemoryDeveloperMessage) {
-            buildJsonArray {
-                add(inputTextItem(text))
-            }
-        } else {
-            JsonPrimitive(text)
+        val content = buildJsonArray {
+            add(inputTextItem(text))
         }
 
-        return listOf(messageItem(role = role, content = content))
+        return listOf(messageItem(role = "developer", content = content))
     }
 
     private fun buildUserMessageText(message: Conversation.Message): String? {

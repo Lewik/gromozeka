@@ -389,7 +389,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"decision\":\"direct_structured_write\",\"memory_types\":[\"claim\"],\"reason\":\"Contains a clear durable project-state correction replacing a previous fact.\",\"salience\":0.88,\"source_policy\":{\"allow_evidence_hydration\":true,\"allow_recall\":true,\"allow_structured_extraction\":true,\"reason\":\"Explicit correction of a project fact; durable and reusable.\"},\"source_search_text\":\"BookNest correction: current primary export format is Parquet, CSV is outdated old value\"}",
+                                "fullText": "{\"decision\":\"direct_structured_write\",\"memory_types\":[\"claim\"],\"reason\":\"Explicit correction of a stable project fact; high reuse and should replace prior value.\",\"salience\":0.87,\"source_policy\":{\"allow_evidence_hydration\":true,\"allow_recall\":true,\"allow_structured_extraction\":true,\"reason\":\"User provides a durable project fact correction that should update stored state.\"},\"source_search_text\":\"BookNest correction: current primary export format is Parquet, CSV is old value\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -404,8 +404,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 2549,
-                "completionTokens": 107,
+                "promptTokens": 2554,
+                "completionTokens": 112,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

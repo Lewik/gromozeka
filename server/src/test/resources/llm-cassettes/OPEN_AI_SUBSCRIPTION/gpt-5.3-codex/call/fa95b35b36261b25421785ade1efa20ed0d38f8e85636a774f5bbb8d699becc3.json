@@ -310,7 +310,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"decision\":\"noop\",\"memory_types\":[],\"reason\":\"This is a recall/probe question with uncertainty, not a durable fact or memory update.\",\"salience\":0.12,\"source_policy\":{\"allow_evidence_hydration\":false,\"allow_recall\":false,\"allow_structured_extraction\":false,\"reason\":\"Probe question about current state; no new durable assertion.\"},\"source_search_text\":\"User asks whether ShelfAudit exporting CSV is still current and requests only the current primary export format.\"}",
+                                "fullText": "{\"decision\":\"noop\",\"memory_types\":[],\"reason\":\"Question/probe turn, not durable memory content.\",\"salience\":0.1,\"source_policy\":{\"allow_evidence_hydration\":false,\"allow_recall\":false,\"allow_structured_extraction\":false,\"reason\":\"Probe question about current state; no new durable assertion to store.\"},\"source_search_text\":\"User asks whether ShelfAudit export format is still CSV and requests only the current primary export format.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -325,8 +325,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 2533,
-                "completionTokens": 109,
+                "promptTokens": 2514,
+                "completionTokens": 103,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

@@ -63,8 +63,10 @@ private class Runtime(
         retryOnUnauthorized: Boolean,
     ): AiRuntimeResponse = withContext(Dispatchers.IO) {
         val session = authService.getValidSession()
-        val conversationKey = request.options.toolContext["conversationId"] as? String ?: fallbackConversationKey
-        val promptCacheKey = request.options.toolContext["promptCacheKey"] as? String ?: conversationKey
+        val rawConversationKey = request.options.toolContext["conversationId"] as? String ?: fallbackConversationKey
+        val conversationKey = rawConversationKey.toOpenAiSubscriptionKey()
+        val promptCacheKey = (request.options.toolContext["promptCacheKey"] as? String ?: rawConversationKey)
+            .toOpenAiSubscriptionKey()
         val requestBody = requestMapper.toRequest(
             request = request,
             modelName = modelName,

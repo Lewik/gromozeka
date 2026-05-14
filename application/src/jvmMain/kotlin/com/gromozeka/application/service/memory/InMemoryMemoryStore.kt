@@ -11,6 +11,7 @@ import com.gromozeka.domain.model.memory.MemoryPredicateCatalog
 import com.gromozeka.domain.model.memory.MemoryPredicateCatalogDefaults
 import com.gromozeka.domain.model.memory.MemoryPredicateDefinition
 import com.gromozeka.domain.model.memory.MemoryProfile
+import com.gromozeka.domain.model.memory.MemoryRun
 import com.gromozeka.domain.model.memory.MemorySource
 import com.gromozeka.domain.model.memory.MemoryStore
 import com.gromozeka.domain.model.memory.MemoryTask
@@ -160,6 +161,12 @@ class InMemoryMemoryStore(
         val ids = sourceIds.toSet()
         return sources.filter { it.id in ids }
     }
+
+    override suspend fun findRunById(runId: MemoryRun.Id): MemoryRun? =
+        runs.firstOrNull { it.id == runId }
+
+    override suspend fun findRunsByParentRunId(parentRunId: MemoryRun.Id): List<MemoryRun> =
+        runs.filter { it.parentRunId == parentRunId }
 
     override suspend fun findProfile(
         namespace: MemoryNamespace,

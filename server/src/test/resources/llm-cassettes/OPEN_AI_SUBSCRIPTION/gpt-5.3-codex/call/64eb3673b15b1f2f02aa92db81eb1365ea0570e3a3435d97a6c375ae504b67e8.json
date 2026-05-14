@@ -1,0 +1,343 @@
+{
+    "version": 1,
+    "hash": "64eb3673b15b1f2f02aa92db81eb1365ea0570e3a3435d97a6c375ae504b67e8",
+    "provider": "OPEN_AI_SUBSCRIPTION",
+    "model": "gpt-5.3-codex",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>/projects/handoff-data-model-document-ingestion",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: EntityCanonicalizer v1.\n        Current time: <instant>\n        Namespace: project:<0>\n\n        Stage instructions:\n        You are EntityCanonicalizer v1.\n\nGoal:\nResolve entity mentions from the latest turns into canonical entities.\n\nReturn JSON object:\n{\n  \"operations\": [\n    {\n      \"mention\": \"text\",\n      \"action\": \"link_existing | create_new | add_alias | noop\",\n      \"entity_id\": \"uuid-or-null\",\n      \"new_entity\": {\n        \"entity_type\": \"user | person | agent | organization | project | repo | file | technology | product | location | concept | document | conversation | service | environment | other\",\n        \"canonical_name\": \"text\",\n        \"summary\": \"text-or-null\"\n      },\n      \"alias_text\": \"text-or-null\",\n      \"confidence\": 0.0,\n      \"reason\": \"short explanation\"\n    }\n  ]\n}\n\nRules:\n- Prefer precision over recall.\n- Do not merge distinct entities on weak evidence.\n- Create new entities only when no candidate is a safe match.\n- If a candidate safely matches the mention, use \"link_existing\" with that candidate id.\n- Use \"add_alias\" only when the mention is a new surface form for a safe existing candidate.\n- If several candidates share a name, pick by entity type and summary; do not create another same-name entity.\n- Prefer English for entity summaries; keep proper names, product names, repo names, and file names unchanged.\n- Entity summaries must describe identity only, not mutable facts, current status, preferences, ownership, formats, fields, versions, or decisions. Put those facts into claims/notes instead.\n- For USER first-person facts and preferences, resolve the user as the stable namespace-level USER entity named \"User\".\n- Never create chat-specific USER entities such as \"User of chat:...\"; a new chat is not a new user.\n- Return valid JSON only.\n\n        Detected raw mentions:\n        No deterministic mention detector is available in this MVP.\nInfer only concrete reusable referents from the latest turns.\nFor first-person USER statements, create or link a stable USER entity when claims need a subject.\n\n        Candidate existing entities:\n        - id=entity:<0>; type=CONCEPT; name=v3 data model; aliases=none; summary=Concept named v3 data model.\n- id=entity:<1>; type=CONCEPT; name=Note maturity; aliases=none; summary=Concept named Note maturity.\n- id=entity:<2>; type=CONCEPT; name=truth status; aliases=none; summary=Concept named truth status.\n- id=entity:<3>; type=CONCEPT; name=Claim; aliases=none; summary=Concept named Claim.\n- id=entity:<4>; type=CONCEPT; name=Note; aliases=none; summary=Concept named Note.\n- id=entity:<5>; type=CONCEPT; name=retrieval_state; aliases=none; summary=Concept named retrieval_state.\n- id=entity:<6>; type=CONCEPT; name=scope_json; aliases=none; summary=Concept named scope_json.\n- id=entity:<7>; type=CONCEPT; name=retrieval lifecycle; aliases=none; summary=Concept named retrieval lifecycle.\n\n        Retrieval plan context:\n        entity_queries=project:<0>|02. Data Model|retention policy|Note schema|Claim schema|Task schema|Profile schema\n        text_queries=retention_class expires_at deleted_at archived_at|low-use notes cold old resolved archived sensitive source data soft delete hard delete|summary self-contained semantic fragment uncertainty explicit provisional direction hard fact|scope_json machine-readable scope boundaries prevent over-generalization|maturity_score stable reusable note consolidation retrieval|normalized_text stand-alone factual statement retrieval_state search temperature|acceptance_criteria_json observable conditions for task completion|soft_signals weakly inferred stable tendencies low confidence\n        predicate_hints=has_constraint|believes\n\n        TARGET_MESSAGE source data:\n        [external:document-section:fbd1b54cacb1c1eebae40d1bbb569fed] EXTERNAL\nDocument title: 02. Data Model\nDocument source: agent_memory_handoff/02_data_model.md\nDocument section: 02. Data Model / 6. Retention / forgetting .. 7. Recommended field descriptions для schema / Pydantic\nDocument lines: 584-618\n\n## 6. Retention / forgetting\n\n`v3` требует явной retention policy.\n\nМинимум:\n- low-use notes можно переводить в `cold`\n- old resolved items — в `archived`\n- sensitive source data — soft/hard delete по request\n- historical claims могут оставаться explainable, но редко участвовать в top retrieval\n\nОтдельно полезно хранить:\n- `retention_class`\n- `expires_at`\n- `deleted_at`\n- `archived_at`\n\n## 7. Recommended field descriptions для schema / Pydantic\n\n### Для `Note`\n- `summary`: \"Self-contained semantic fragment. Keep uncertainty explicit and avoid pretending a provisional direction is a hard fact.\"\n- `scope_json`: \"Machine-readable scope boundaries. Use this to prevent over-generalization across projects, environments, or conversations.\"\n- `maturity_score`: \"How stable and reusable the note appears for later consolidation or repeated retrieval.\"\n\n### Для `Claim`\n- `normalized_text`: \"Stand-alone factual statement that can be shown without the original chat.\"\n- `scope_json`: \"Machine-readable scope and modality for conflict resolution and retrieval filtering.\"\n- `retrieval_state`: \"Search temperature, distinct from truth status.\"\n\n### Для `Task`\n- `acceptance_criteria_json`: \"Observable conditions for task completion.\"\n- `scope_json`: \"What this task applies to and where it should not leak.\"\n\n### Для `Profile`\n- `soft_signals`: \"Weakly inferred stable tendencies. Keep them low confidence or omit them.\"",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "autoCompactionThreshold": null,
+            "maxTokens": 2000,
+            "outputConfig": null,
+            "responseFormat": {
+                "description": "Resolve target message mentions into canonical memory entities.",
+                "name": "memory_entity_canonicalizer",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "operations": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "action": {
+                                        "enum": [
+                                            "link_existing",
+                                            "create_new",
+                                            "add_alias",
+                                            "noop"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "alias_text": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "confidence": {
+                                        "type": "number"
+                                    },
+                                    "entity_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "mention": {
+                                        "type": "string"
+                                    },
+                                    "new_entity": {
+                                        "anyOf": [
+                                            {
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "canonical_name": {
+                                                        "type": "string"
+                                                    },
+                                                    "entity_type": {
+                                                        "enum": [
+                                                            "user",
+                                                            "person",
+                                                            "agent",
+                                                            "organization",
+                                                            "project",
+                                                            "repo",
+                                                            "file",
+                                                            "technology",
+                                                            "product",
+                                                            "location",
+                                                            "concept",
+                                                            "document",
+                                                            "conversation",
+                                                            "service",
+                                                            "environment",
+                                                            "other"
+                                                        ],
+                                                        "type": "string"
+                                                    },
+                                                    "summary": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "entity_type",
+                                                    "canonical_name",
+                                                    "summary"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "mention",
+                                    "action",
+                                    "entity_id",
+                                    "new_entity",
+                                    "alias_text",
+                                    "confidence",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "operations"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "thinking": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "memoryEntityCanonicalizer": true,
+                "memoryNamespace": "project:<0>",
+                "memorySourceId": "external:document-section:fbd1b54cacb1c1eebae40d1bbb569fed"
+            }
+        },
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: EntityCanonicalizer v1.\n        Current time: <instant>\n        Namespace: project:<0>\n\n        Stage instructions:\n        You are EntityCanonicalizer v1.\n\nGoal:\nResolve entity mentions from the latest turns into canonical entities.\n\nReturn JSON object:\n{\n  \"operations\": [\n    {\n      \"mention\": \"text\",\n      \"action\": \"link_existing | create_new | add_alias | noop\",\n      \"entity_id\": \"uuid-or-null\",\n      \"new_entity\": {\n        \"entity_type\": \"user | person | agent | organization | project | repo | file | technology | product | location | concept | document | conversation | service | environment | other\",\n        \"canonical_name\": \"text\",\n        \"summary\": \"text-or-null\"\n      },\n      \"alias_text\": \"text-or-null\",\n      \"confidence\": 0.0,\n      \"reason\": \"short explanation\"\n    }\n  ]\n}\n\nRules:\n- Prefer precision over recall.\n- Do not merge distinct entities on weak evidence.\n- Create new entities only when no candidate is a safe match.\n- If a candidate safely matches the mention, use \"link_existing\" with that candidate id.\n- Use \"add_alias\" only when the mention is a new surface form for a safe existing candidate.\n- If several candidates share a name, pick by entity type and summary; do not create another same-name entity.\n- Prefer English for entity summaries; keep proper names, product names, repo names, and file names unchanged.\n- Entity summaries must describe identity only, not mutable facts, current status, preferences, ownership, formats, fields, versions, or decisions. Put those facts into claims/notes instead.\n- For USER first-person facts and preferences, resolve the user as the stable namespace-level USER entity named \"User\".\n- Never create chat-specific USER entities such as \"User of chat:...\"; a new chat is not a new user.\n- Return valid JSON only.\n\n        Detected raw mentions:\n        No deterministic mention detector is available in this MVP.\nInfer only concrete reusable referents from the latest turns.\nFor first-person USER statements, create or link a stable USER entity when claims need a subject.\n\n        Candidate existing entities:\n        - id=entity:<0>; type=CONCEPT; name=v3 data model; aliases=none; summary=Concept named v3 data model.\n- id=entity:<1>; type=CONCEPT; name=Note maturity; aliases=none; summary=Concept named Note maturity.\n- id=entity:<2>; type=CONCEPT; name=truth status; aliases=none; summary=Concept named truth status.\n- id=entity:<3>; type=CONCEPT; name=Claim; aliases=none; summary=Concept named Claim.\n- id=entity:<4>; type=CONCEPT; name=Note; aliases=none; summary=Concept named Note.\n- id=entity:<5>; type=CONCEPT; name=retrieval_state; aliases=none; summary=Concept named retrieval_state.\n- id=entity:<6>; type=CONCEPT; name=scope_json; aliases=none; summary=Concept named scope_json.\n- id=entity:<7>; type=CONCEPT; name=retrieval lifecycle; aliases=none; summary=Concept named retrieval lifecycle.\n\n        Retrieval plan context:\n        entity_queries=project:<0>|02. Data Model|retention policy|Note schema|Claim schema|Task schema|Profile schema\n        text_queries=retention_class expires_at deleted_at archived_at|low-use notes cold old resolved archived sensitive source data soft delete hard delete|summary self-contained semantic fragment uncertainty explicit provisional direction hard fact|scope_json machine-readable scope boundaries prevent over-generalization|maturity_score stable reusable note consolidation retrieval|normalized_text stand-alone factual statement retrieval_state search temperature|acceptance_criteria_json observable conditions for task completion|soft_signals weakly inferred stable tendencies low confidence\n        predicate_hints=has_constraint|believes\n\n        TARGET_MESSAGE source data:\n        [external:document-section:fbd1b54cacb1c1eebae40d1bbb569fed] EXTERNAL\nDocument title: 02. Data Model\nDocument source: agent_memory_handoff/02_data_model.md\nDocument section: 02. Data Model / 6. Retention / forgetting .. 7. Recommended field descriptions для schema / Pydantic\nDocument lines: 584-618\n\n## 6. Retention / forgetting\n\n`v3` требует явной retention policy.\n\nМинимум:\n- low-use notes можно переводить в `cold`\n- old resolved items — в `archived`\n- sensitive source data — soft/hard delete по request\n- historical claims могут оставаться explainable, но редко участвовать в top retrieval\n\nОтдельно полезно хранить:\n- `retention_class`\n- `expires_at`\n- `deleted_at`\n- `archived_at`\n\n## 7. Recommended field descriptions для schema / Pydantic\n\n### Для `Note`\n- `summary`: \"Self-contained semantic fragment. Keep uncertainty explicit and avoid pretending a provisional direction is a hard fact.\"\n- `scope_json`: \"Machine-readable scope boundaries. Use this to prevent over-generalization across projects, environments, or conversations.\"\n- `maturity_score`: \"How stable and reusable the note appears for later consolidation or repeated retrieval.\"\n\n### Для `Claim`\n- `normalized_text`: \"Stand-alone factual statement that can be shown without the original chat.\"\n- `scope_json`: \"Machine-readable scope and modality for conflict resolution and retrieval filtering.\"\n- `retrieval_state`: \"Search temperature, distinct from truth status.\"\n\n### Для `Task`\n- `acceptance_criteria_json`: \"Observable conditions for task completion.\"\n- `scope_json`: \"What this task applies to and where it should not leak.\"\n\n### Для `Profile`\n- `soft_signals`: \"Weakly inferred stable tendencies. Keep them low confidence or omit them.\"",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxTokens": 2000,
+            "thinking": null,
+            "outputConfig": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "memory_entity_canonicalizer",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "operations": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "action": {
+                                        "enum": [
+                                            "link_existing",
+                                            "create_new",
+                                            "add_alias",
+                                            "noop"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "alias_text": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "confidence": {
+                                        "type": "number"
+                                    },
+                                    "entity_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "mention": {
+                                        "type": "string"
+                                    },
+                                    "new_entity": {
+                                        "anyOf": [
+                                            {
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "canonical_name": {
+                                                        "type": "string"
+                                                    },
+                                                    "entity_type": {
+                                                        "enum": [
+                                                            "user",
+                                                            "person",
+                                                            "agent",
+                                                            "organization",
+                                                            "project",
+                                                            "repo",
+                                                            "file",
+                                                            "technology",
+                                                            "product",
+                                                            "location",
+                                                            "concept",
+                                                            "document",
+                                                            "conversation",
+                                                            "service",
+                                                            "environment",
+                                                            "other"
+                                                        ],
+                                                        "type": "string"
+                                                    },
+                                                    "summary": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "entity_type",
+                                                    "canonical_name",
+                                                    "summary"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "mention",
+                                    "action",
+                                    "entity_id",
+                                    "new_entity",
+                                    "alias_text",
+                                    "confidence",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "operations"
+                    ],
+                    "type": "object"
+                },
+                "description": "Resolve target message mentions into canonical memory entities.",
+                "strict": true
+            },
+            "toolContext": {
+                "memoryEntityCanonicalizer": true,
+                "memoryNamespace": "project:<0>",
+                "memorySourceId": "external:document-section:fbd1b54cacb1c1eebae40d1bbb569fed"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"operations\":[{\"action\":\"add_alias\",\"alias_text\":\"v3\",\"confidence\":0.95,\"entity_id\":\"entity:<0>\",\"mention\":\"v3\",\"new_entity\":null,\"reason\":\"In retention section, `v3` clearly refers to existing concept `v3 data model` as shorthand.\"},{\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.89,\"entity_id\":null,\"mention\":\"retention policy\",\"new_entity\":{\"canonical_name\":\"retention policy\",\"entity_type\":\"concept\",\"summary\":\"Concept describing rules for data retention, archiving, and deletion lifecycle.\"},\"reason\":\"Concrete reusable concept in the document; no safe existing candidate with this name.\"},{\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.86,\"entity_id\":null,\"mention\":\"retention_class\",\"new_entity\":{\"canonical_name\":\"retention_class\",\"entity_type\":\"concept\",\"summary\":\"Schema field concept indicating retention category for stored information.\"},\"reason\":\"Explicit named schema field; no matching existing entity.\"},{\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.85,\"entity_id\":null,\"mention\":\"expires_at\",\"new_entity\":{\"canonical_name\":\"expires_at\",\"entity_type\":\"concept\",\"summary\":\"Schema field concept for expiration timestamp metadata.\"},\"reason\":\"Explicit named schema field; no matching existing entity.\"},{\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.85,\"entity_id\":null,\"mention\":\"deleted_at\",\"new_entity\":{\"canonical_name\":\"deleted_at\",\"entity_type\":\"concept\",\"summary\":\"Schema field concept for deletion timestamp metadata.\"},\"reason\":\"Explicit named schema field; no matching existing entity.\"},{\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.85,\"entity_id\":null,\"mention\":\"archived_at\",\"new_entity\":{\"canonical_name\":\"archived_at\",\"entity_type\":\"concept\",\"summary\":\"Schema field concept for archival timestamp metadata.\"},\"reason\":\"Explicit named schema field; no matching existing entity.\"},{\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.84,\"entity_id\":null,\"mention\":\"maturity_score\",\"new_entity\":{\"canonical_name\":\"maturity_score\",\"entity_type\":\"concept\",\"summary\":\"Schema field concept expressing perceived stability and reusability of a note.\"},\"reason\":\"Explicit named schema field; related to but distinct from existing `Note maturity` concept.\"},{\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.84,\"entity_id\":null,\"mention\":\"normalized_text\",\"new_entity\":{\"canonical_name\":\"normalized_text\",\"entity_type\":\"concept\",\"summary\":\"Schema field concept for a stand-alone factual statement representation.\"},\"reason\":\"Explicit named schema field; no matching existing entity.\"},{\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.84,\"entity_id\":null,\"mention\":\"acceptance_criteria_json\",\"new_entity\":{\"canonical_name\":\"acceptance_criteria_json\",\"entity_type\":\"concept\",\"summary\":\"Schema field concept defining observable completion conditions for a task.\"},\"reason\":\"Explicit named schema field; no matching existing entity.\"},{\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.83,\"entity_id\":null,\"mention\":\"soft_signals\",\"new_entity\":{\"canonical_name\":\"soft_signals\",\"entity_type\":\"concept\",\"summary\":\"Schema field concept for low-confidence inferred stable tendencies in a profile.\"},\"reason\":\"Explicit named schema field; no matching existing entity.\"}]}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 1575,
+                "completionTokens": 713,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

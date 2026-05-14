@@ -310,7 +310,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"decision\":\"direct_structured_write\",\"memory_types\":[\"claim\"],\"reason\":\"Contains an explicit remember request and a stable project-specific format update.\",\"salience\":0.84,\"source_policy\":{\"allow_evidence_hydration\":true,\"allow_recall\":true,\"allow_structured_extraction\":true,\"reason\":\"Explicit user request to remember a durable project rule/fact.\"},\"source_search_text\":\"RiverLedger project: remember that the primary analytics export format is now Avro.\"}",
+                                "fullText": "{\"decision\":\"direct_structured_write\",\"memory_types\":[\"claim\"],\"reason\":\"The message explicitly asks to store a stable project-specific configuration fact.\",\"salience\":0.86,\"source_policy\":{\"allow_evidence_hydration\":true,\"allow_recall\":true,\"allow_structured_extraction\":true,\"reason\":\"Explicit user request to remember a durable project rule/fact.\"},\"source_search_text\":\"RiverLedger project: remember that the primary analytics export format is now Avro.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -325,7 +325,7 @@
                 }
             ],
             "usage": {
-                "promptTokens": 2522,
+                "promptTokens": 2512,
                 "completionTokens": 107,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,

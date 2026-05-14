@@ -380,7 +380,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"operations\":[{\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.98,\"entity_id\":null,\"mention\":\"I\",\"new_entity\":{\"canonical_name\":\"User\",\"entity_type\":\"user\",\"summary\":\"The human user interacting with the assistant.\"},\"reason\":\"First-person statement requires stable namespace-level USER entity.\"},{\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.95,\"entity_id\":null,\"mention\":\"Toyota\",\"new_entity\":{\"canonical_name\":\"Toyota\",\"entity_type\":\"organization\",\"summary\":\"Japanese multinational automotive manufacturer.\"},\"reason\":\"Concrete car brand/company mention with no existing candidate.\"},{\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.95,\"entity_id\":null,\"mention\":\"Honda\",\"new_entity\":{\"canonical_name\":\"Honda\",\"entity_type\":\"organization\",\"summary\":\"Japanese multinational manufacturer of automobiles and motorcycles.\"},\"reason\":\"Concrete car brand/company mention with no existing candidate.\"},{\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.95,\"entity_id\":null,\"mention\":\"Ford\",\"new_entity\":{\"canonical_name\":\"Ford\",\"entity_type\":\"organization\",\"summary\":\"American multinational automobile manufacturer.\"},\"reason\":\"Concrete car brand/company mention with no existing candidate.\"}]}",
+                                "fullText": "{\"operations\":[{\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.99,\"entity_id\":null,\"mention\":\"I\",\"new_entity\":{\"canonical_name\":\"User\",\"entity_type\":\"user\",\"summary\":\"The human user interacting with the assistant.\"},\"reason\":\"First-person statement requires stable namespace-level USER entity.\"},{\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.95,\"entity_id\":null,\"mention\":\"Toyota\",\"new_entity\":{\"canonical_name\":\"Toyota\",\"entity_type\":\"organization\",\"summary\":\"Japanese multinational automotive manufacturer Toyota Motor Corporation.\"},\"reason\":\"Concrete car brand referent with no existing candidate.\"},{\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.95,\"entity_id\":null,\"mention\":\"Honda\",\"new_entity\":{\"canonical_name\":\"Honda\",\"entity_type\":\"organization\",\"summary\":\"Japanese multinational manufacturer known for automobiles and motorcycles, Honda Motor Co., Ltd.\"},\"reason\":\"Concrete car brand referent with no existing candidate.\"},{\"action\":\"create_new\",\"alias_text\":null,\"confidence\":0.95,\"entity_id\":null,\"mention\":\"Ford\",\"new_entity\":{\"canonical_name\":\"Ford\",\"entity_type\":\"organization\",\"summary\":\"American multinational automotive manufacturer Ford Motor Company.\"},\"reason\":\"Concrete car brand referent with no existing candidate.\"}]}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -395,8 +395,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 1282,
-                "completionTokens": 258,
+                "promptTokens": 1279,
+                "completionTokens": 271,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

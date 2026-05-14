@@ -310,7 +310,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"decision\":\"direct_structured_write\",\"memory_types\":[\"claim\"],\"reason\":\"Explicit stable workflow constraint for this project, reusable across future work.\",\"salience\":0.86,\"source_policy\":{\"allow_evidence_hydration\":true,\"allow_recall\":true,\"allow_structured_extraction\":true,\"reason\":\"Durable project workflow rule to follow in future turns.\"},\"source_search_text\":\"Gromozeka workflow rule: edit only gromozeka/dev; update gromozeka/beta by pulling repository changes into beta; do not edit beta directly.\"}",
+                                "fullText": "{\"decision\":\"direct_structured_write\",\"memory_types\":[\"claim\"],\"reason\":\"Explicit stable workflow constraint that should be reused across future tasks.\",\"salience\":0.85,\"source_policy\":{\"allow_evidence_hydration\":true,\"allow_recall\":true,\"allow_structured_extraction\":true,\"reason\":\"Durable project workflow rule for environments and update method.\"},\"source_search_text\":\"Gromozeka workflow rule: edit only gromozeka/dev; update gromozeka/beta by pulling repository changes into beta; do not edit beta directly.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -326,7 +326,7 @@
             ],
             "usage": {
                 "promptTokens": 2555,
-                "completionTokens": 125,
+                "completionTokens": 124,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

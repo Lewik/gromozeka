@@ -364,7 +364,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"entity_queries\":[\"user\",\"project:<0>\"],\"limits\":{\"claims\":20,\"notes\":10,\"sources\":8,\"tasks\":10},\"memory_types\":[\"profile\",\"claim\",\"source\",\"entity\"],\"need_retrieval\":true,\"predicate_hints\":[\"prefers_response_language\",\"prefers_answer_detail\",\"has_constraint\"],\"text_queries\":[\"concise Russian answers implementation decisions preference\",\"project-specific response language preference\",\"project communication style preference\"],\"time_filters\":{\"from_iso\":null,\"to_iso\":null}}",
+                                "fullText": "{\"entity_queries\":[\"user\",\"project:<0>\"],\"limits\":{\"claims\":20,\"notes\":10,\"sources\":8,\"tasks\":10},\"memory_types\":[\"profile\",\"claim\",\"source\",\"entity\"],\"need_retrieval\":true,\"predicate_hints\":[\"prefers_response_language\",\"prefers_answer_detail\",\"has_constraint\"],\"text_queries\":[\"concise Russian answers\",\"implementation decisions language preference\",\"for this project preference\"],\"time_filters\":{\"from_iso\":null,\"to_iso\":null}}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -379,8 +379,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 2176,
-                "completionTokens": 134,
+                "promptTokens": 2158,
+                "completionTokens": 132,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

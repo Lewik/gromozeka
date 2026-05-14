@@ -389,7 +389,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"decision\":\"direct_structured_write\",\"memory_types\":[\"claim\"],\"reason\":\"Durable correction of a core project fact (primary storage backend), suitable for structured claim memory.\",\"salience\":0.9,\"source_policy\":{\"allow_evidence_hydration\":true,\"allow_recall\":true,\"allow_structured_extraction\":true,\"reason\":\"Explicit project state update correcting primary database backend.\"},\"source_search_text\":\"Nimbus project update: PostgreSQL replaced MongoDB as the main persistence database.\"}",
+                                "fullText": "{\"decision\":\"direct_structured_write\",\"memory_types\":[\"claim\"],\"reason\":\"Explicit durable correction of a project fact (primary storage backend), suitable as structured claim memory.\",\"salience\":0.9,\"source_policy\":{\"allow_evidence_hydration\":true,\"allow_recall\":true,\"allow_structured_extraction\":true,\"reason\":\"Durable project-state correction/update about primary database backend.\"},\"source_search_text\":\"Nimbus project update: PostgreSQL replaced MongoDB as Nimbus main persistence database.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -404,8 +404,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 2536,
-                "completionTokens": 109,
+                "promptTokens": 2527,
+                "completionTokens": 110,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

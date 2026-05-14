@@ -364,7 +364,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"entity_queries\":[\"Gromozeka\",\"MongoDB\"],\"limits\":{\"claims\":20,\"notes\":10,\"sources\":8,\"tasks\":10},\"memory_types\":[\"claim\",\"source\",\"entity\"],\"need_retrieval\":true,\"predicate_hints\":[\"primary_storage_backend\",\"uses_persistence_database\"],\"text_queries\":[\"Gromozeka memory store uses MongoDB\",\"Gromozeka storage backend\",\"Gromozeka persistence database\"],\"time_filters\":{\"from_iso\":null,\"to_iso\":null}}",
+                                "fullText": "{\"entity_queries\":[\"Gromozeka\",\"MongoDB\"],\"limits\":{\"claims\":20,\"notes\":10,\"sources\":8,\"tasks\":10},\"memory_types\":[\"claim\",\"source\",\"entity\"],\"need_retrieval\":true,\"predicate_hints\":[\"primary_storage_backend\",\"uses_persistence_database\"],\"text_queries\":[\"Gromozeka project memory store uses MongoDB\",\"Gromozeka storage backend\",\"Gromozeka persistence database\"],\"time_filters\":{\"from_iso\":null,\"to_iso\":null}}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -379,8 +379,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 2168,
-                "completionTokens": 115,
+                "promptTokens": 2159,
+                "completionTokens": 116,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

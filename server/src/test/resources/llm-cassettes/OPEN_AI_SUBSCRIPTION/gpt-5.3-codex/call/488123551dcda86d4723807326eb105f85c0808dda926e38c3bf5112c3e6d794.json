@@ -364,7 +364,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"entity_queries\":[\"NoMemoryVerifier\",\"ReadTimeRetrievalPlanner\",\"Memory MVP\"],\"limits\":{\"claims\":20,\"notes\":10,\"sources\":8,\"tasks\":10},\"memory_types\":[\"note\",\"claim\",\"source\",\"entity\"],\"need_retrieval\":true,\"predicate_hints\":[\"has_constraint\",\"avoids\",\"believes\"],\"text_queries\":[\"ambiguous recall questions need_memory=false verification call\",\"cheap model-based verifier over substring matching\",\"do not use hard-coded substring heuristics no-memory plan\"],\"time_filters\":{\"from_iso\":null,\"to_iso\":null}}",
+                                "fullText": "{\"entity_queries\":[\"NoMemoryVerifier\",\"ReadTimeRetrievalPlanner\",\"Memory MVP\"],\"limits\":{\"claims\":20,\"notes\":10,\"sources\":8,\"tasks\":10},\"memory_types\":[\"note\",\"claim\",\"source\",\"entity\"],\"need_retrieval\":true,\"predicate_hints\":[\"avoids\",\"has_constraint\",\"believes\"],\"text_queries\":[\"ambiguous recall questions need_memory=false\",\"LLM verification call before accepting no-memory plan\",\"avoid hard-coded substring heuristics\",\"cheap model-based verifier over substring matching\",\"brittle lexical hacks recall intent\"],\"time_filters\":{\"from_iso\":null,\"to_iso\":null}}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -379,8 +379,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 2326,
-                "completionTokens": 128,
+                "promptTokens": 2288,
+                "completionTokens": 139,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

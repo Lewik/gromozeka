@@ -354,7 +354,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"rejected_items\":[{\"item_id\":\"project:<1>\",\"item_type\":\"profile\",\"reason\":\"Redundant projection; relevant fact already captured by selected active claim.\"},{\"item_id\":\"entity:<0>\",\"item_type\":\"entity\",\"reason\":\"Anchor entity not needed to answer the factual preference question.\"}],\"selected_items\":[{\"item_id\":\"hot-path:claim:<0>\",\"item_type\":\"claim\",\"rank\":1,\"reason\":\"Active claim directly states the user's preferred car brand.\",\"relevance\":\"direct_answer\"}],\"summary\":\"Select the active preference claim as the minimal sufficient memory for answering the brand question.\"}",
+                                "fullText": "{\"rejected_items\":[{\"item_id\":\"project:<1>\",\"item_type\":\"profile\",\"reason\":\"Projection profile duplicates the same fact; active claim is preferred for factual answer.\"},{\"item_id\":\"entity:<0>\",\"item_type\":\"entity\",\"reason\":\"Entity label is not needed to answer the brand preference.\"}],\"selected_items\":[{\"item_id\":\"hot-path:claim:<0>\",\"item_type\":\"claim\",\"rank\":1,\"reason\":\"Active claim directly states the user's preferred car brand.\",\"relevance\":\"direct_answer\"}],\"summary\":\"Select the active preference claim only, as it is sufficient to answer the target question.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -369,8 +369,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 1738,
-                "completionTokens": 188,
+                "promptTokens": 1710,
+                "completionTokens": 195,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

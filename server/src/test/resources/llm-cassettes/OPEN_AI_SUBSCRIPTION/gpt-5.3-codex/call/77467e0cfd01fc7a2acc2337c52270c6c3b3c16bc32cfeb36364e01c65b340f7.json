@@ -310,7 +310,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"decision\":\"direct_structured_write\",\"memory_types\":[\"claim\",\"profile\"],\"reason\":\"Explicit stable preferences and attributed viewpoint are durable and reusable for personalization.\",\"salience\":0.84,\"source_policy\":{\"allow_evidence_hydration\":true,\"allow_recall\":true,\"allow_structured_extraction\":true,\"reason\":\"Contains durable preference facts with explicit attribution for future recommendations.\"},\"source_search_text\":\"Recommendation context: Vasya prefers Tesla; user prefers Nissan.\"}",
+                                "fullText": "{\"decision\":\"direct_structured_write\",\"memory_types\":[\"claim\",\"profile\"],\"reason\":\"Explicit stable attributed preferences were provided and are useful for future personalization/recommendations.\",\"salience\":0.83,\"source_policy\":{\"allow_evidence_hydration\":true,\"allow_recall\":true,\"allow_structured_extraction\":true,\"reason\":\"Contains explicit durable preference facts for recommendation context.\"},\"source_search_text\":\"Recommendation context: Vasya prefers Tesla; user prefers Nissan.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -325,8 +325,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 2519,
-                "completionTokens": 104,
+                "promptTokens": 2490,
+                "completionTokens": 105,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

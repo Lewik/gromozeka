@@ -1,0 +1,86 @@
+package com.gromozeka.application.service.memory
+
+import com.gromozeka.domain.model.memory.MemoryNamespace
+import com.gromozeka.domain.model.memory.MemoryRun
+import com.gromozeka.domain.model.memory.MemorySource
+import kotlinx.datetime.Instant
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlin.test.Test
+import kotlin.test.assertEquals
+
+class MemoryStatusToolRendererTest {
+    private val namespace = MemoryNamespace("project:test")
+    private val createdAt = Instant.parse("2026-05-13T20:00:00Z")
+
+    @Test
+    fun runStatusRendersParentChildTree() {
+        val parent = MemoryRun(
+            id = MemoryRun.Id("document-ingest:run:parent"),
+            namespace = namespace,
+            runType = MemoryRun.Type.DOCUMENT_INGEST,
+            triggerMode = MemoryRun.TriggerMode.MANUAL,
+            childRunIds = listOf(MemoryRun.Id("hot-path:run:child")),
+            summary = "Document ingest running: 1/2 sections",
+            sourceIds = listOf(MemorySource.Id("external:document:parent")),
+            progress = MemoryRun.Progress(totalUnits = 2, completedUnits = 1, failedUnits = 0),
+            status = MemoryRun.Status.RUNNING,
+            createdAt = createdAt,
+            startedAt = createdAt,
+        )
+        val child = MemoryRun(
+            id = MemoryRun.Id("hot-path:run:child"),
+            namespace = namespace,
+            runType = MemoryRun.Type.CONSTRUCT_NOTES,
+            triggerMode = MemoryRun.TriggerMode.MANUAL,
+            parentRunId = parent.id,
+            summary = "Created note",
+            status = MemoryRun.Status.SUCCESS,
+            createdAt = createdAt,
+            completedAt = createdAt,
+        )
+
+        val json = Json.parseToJsonElement(
+            MemoryToolResultRenderer.runStatusJsonString(parent, listOf(child), maxDepth = 4)
+        ).jsonObject
+        val run = json.getValue("run").jsonObject
+        val children = run.getValue("children").jsonArray
+
+        assertEquals("completed", json.getValue("status").jsonPrimitive.content)
+        assertEquals("document-ingest:run:parent", json.getValue("run_id").jsonPrimitive.content)
+        assertEquals("RUNNING", run.getValue("run_status").jsonPrimitive.content)
+        assertEquals("2", run.getValue("progress").jsonObject.getValue("total_units").jsonPrimitive.content)
+        assertEquals("hot-path:run:child", children.single().jsonObject.getValue("id").jsonPrimitive.content)
+        assertEquals("document-ingest:run:parent", children.single().jsonObject.getValue("parent_run_id").jsonPrimitive.content)
+    }
+
+    @Test
+    fun queueStatusRendersProcessLocalCounters() {
+        val json = Json.parseToJsonElement(
+            MemoryToolResultRenderer.queueStatusJsonString(
+                MemoryDocumentIngestQueueStatus(
+                    pendingJobs = 2,
+                    activeJob = ActiveDocumentIngestJob(
+                        runId = MemoryRun.Id("document-ingest:run:active"),
+                        parentSourceId = MemorySource.Id("external:document:active"),
+                        sourceRef = "agent_memory_handoff/README.md",
+                        sectionsTotal = 7,
+                        startedAt = createdAt,
+                    ),
+                    totalEnqueuedJobs = 5,
+                    totalStartedJobs = 3,
+                    totalCompletedJobs = 2,
+                    totalFatallyFailedJobs = 1,
+                )
+            )
+        ).jsonObject
+
+        assertEquals("completed", json.getValue("status").jsonPrimitive.content)
+        assertEquals("2", json.getValue("pending_jobs").jsonPrimitive.content)
+        assertEquals("true", json.getValue("has_active_job").jsonPrimitive.content)
+        assertEquals("document-ingest:run:active", json.getValue("active_job").jsonObject.getValue("run_id").jsonPrimitive.content)
+        assertEquals("false", json.getValue("durable_resume").jsonPrimitive.content)
+    }
+}

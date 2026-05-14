@@ -310,7 +310,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"decision\":\"direct_structured_write\",\"memory_types\":[\"task\"],\"reason\":\"The message explicitly creates/updates a durable open follow-up task with a clear completion condition.\",\"salience\":0.82,\"source_policy\":{\"allow_evidence_hydration\":true,\"allow_recall\":true,\"allow_structured_extraction\":true,\"reason\":\"Explicit durable follow-up task to keep open until completion condition is met.\"},\"source_search_text\":\"Memory MVP follow-up task: keep open task to add task memory lifecycle end-to-end coverage before declaring memory MVP stable\"}",
+                                "fullText": "{\"decision\":\"direct_structured_write\",\"memory_types\":[\"task\"],\"reason\":\"The message explicitly creates/updates a durable open task with a completion condition.\",\"salience\":0.87,\"source_policy\":{\"allow_evidence_hydration\":true,\"allow_recall\":true,\"allow_structured_extraction\":true,\"reason\":\"Explicit durable follow-up task to keep open until completion criteria is met.\"},\"source_search_text\":\"Memory MVP follow-up: keep an open task to add task memory lifecycle end-to-end coverage before declaring the memory MVP stable.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -325,8 +325,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 2521,
-                "completionTokens": 122,
+                "promptTokens": 2509,
+                "completionTokens": 120,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

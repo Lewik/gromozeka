@@ -310,7 +310,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"decision\":\"noop\",\"memory_types\":[],\"reason\":\"Question/probe about memory, not a durable fact or update.\",\"salience\":0.0,\"source_policy\":{\"allow_evidence_hydration\":false,\"allow_recall\":false,\"allow_structured_extraction\":false,\"reason\":\"Probe question with no new durable assertion; audit-only.\"},\"source_search_text\":\"User asks which car brand should be avoided in recommendations and requests only the brand name.\"}",
+                                "fullText": "{\"decision\":\"noop\",\"memory_types\":[],\"reason\":\"Question/probe does not assert new memory or request remember/update/forget.\",\"salience\":0.0,\"source_policy\":{\"allow_evidence_hydration\":false,\"allow_recall\":false,\"allow_structured_extraction\":false,\"reason\":\"Probe question with no new durable assertion; audit-only.\"},\"source_search_text\":\"User asks which car brand should be avoided in recommendations and requests answer with only the brand name.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -325,8 +325,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 2500,
-                "completionTokens": 102,
+                "promptTokens": 2510,
+                "completionTokens": 106,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

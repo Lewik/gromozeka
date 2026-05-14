@@ -364,7 +364,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"entity_queries\":[\"RiverLedger\",\"Avro\"],\"limits\":{\"claims\":20,\"notes\":10,\"sources\":8,\"tasks\":10},\"memory_types\":[\"claim\",\"source\",\"entity\"],\"need_retrieval\":true,\"predicate_hints\":[\"has_constraint\"],\"text_queries\":[\"RiverLedger основной формат аналитического экспорта\",\"RiverLedger формат аналитического экспорта теперь Avro\"],\"time_filters\":{\"from_iso\":null,\"to_iso\":null}}",
+                                "fullText": "{\"entity_queries\":[\"RiverLedger\",\"Avro\"],\"limits\":{\"claims\":20,\"notes\":10,\"sources\":8,\"tasks\":10},\"memory_types\":[\"claim\",\"source\",\"entity\"],\"need_retrieval\":true,\"predicate_hints\":[\"has_constraint\"],\"text_queries\":[\"основной формат аналитического экспорта\",\"RiverLedger формат экспорта\",\"primary analytics export format RiverLedger\"],\"time_filters\":{\"from_iso\":null,\"to_iso\":null}}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -379,8 +379,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 2176,
-                "completionTokens": 103,
+                "promptTokens": 2171,
+                "completionTokens": 105,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

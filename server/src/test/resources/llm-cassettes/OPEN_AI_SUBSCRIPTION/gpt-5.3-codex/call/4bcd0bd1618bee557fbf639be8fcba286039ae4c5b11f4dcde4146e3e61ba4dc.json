@@ -440,7 +440,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"operations\":[{\"action\":\"insert\",\"candidate_index\":0,\"canonical_predicate\":\"primary_storage_backend\",\"cardinality\":\"single\",\"conflict_policy\":\"replace\",\"object_kind\":\"entity\",\"predicate_description\":\"Primary backend database for a project\",\"predicate_family\":\"project_storage_backend\",\"reason\":\"New explicit current backend slot for Atlas project; matches catalog predicate exactly.\",\"target_claim_id\":null,\"temporal_policy\":\"status_like\"},{\"action\":\"insert\",\"candidate_index\":1,\"canonical_predicate\":\"prefers_storage\",\"cardinality\":\"multi\",\"conflict_policy\":\"coexist\",\"object_kind\":\"entity\",\"predicate_description\":\"Person's preferred storage/database technology\",\"predicate_family\":\"person_storage_preference\",\"reason\":\"Explicit personal preference for tutorial database by Atlas (person); matches existing catalog predicate and is distinct from project backend slot.\",\"target_claim_id\":null,\"temporal_policy\":\"status_like\"}]}",
+                                "fullText": "{\"operations\":[{\"action\":\"insert\",\"candidate_index\":0,\"canonical_predicate\":\"primary_storage_backend\",\"cardinality\":\"single\",\"conflict_policy\":\"replace\",\"object_kind\":\"entity\",\"predicate_description\":\"Primary backend database for a project/service\",\"predicate_family\":\"project_storage_backend\",\"reason\":\"New explicit backend slot for Atlas project; no existing conflicting claim.\",\"target_claim_id\":null,\"temporal_policy\":\"status_like\"},{\"action\":\"insert\",\"candidate_index\":1,\"canonical_predicate\":\"prefers_storage\",\"cardinality\":\"multi\",\"conflict_policy\":\"coexist\",\"object_kind\":\"entity\",\"predicate_description\":\"Person's preferred storage/database choice\",\"predicate_family\":\"person_storage_preference\",\"reason\":\"New explicit personal preference for Atlas person tutorial database; no existing duplicate.\",\"target_claim_id\":null,\"temporal_policy\":\"status_like\"}]}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -455,8 +455,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 3054,
-                "completionTokens": 187,
+                "promptTokens": 3065,
+                "completionTokens": 178,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

@@ -54,7 +54,10 @@ class MongoMemoryStore(
     private val indexes = MongoIndexInitializer {
         createDomainIndexes(predicateDefinitions, listOf("namespace", "predicate", "active"))
         createDomainIndexes(sources, listOf("namespace", "contentHash", "conversationId", "searchText"))
-        createDomainIndexes(runs, listOf("namespace", "createdAt", "sourceIds", "inputHash"))
+        createDomainIndexes(
+            runs,
+            listOf("namespace", "createdAt", "sourceIds", "inputHash", "parentRunId", "childRunIds", "status", "runType"),
+        )
         createDomainIndexes(entities, listOf("namespace", "normalizedName", "aliases.normalizedText", "entityType"))
         createDomainIndexes(claims, listOf("namespace", "subjectEntityId", "predicate", "status"))
         createDomainIndexes(notes, listOf("namespace", "anchorEntityId", "status", "noteType"))
@@ -243,6 +246,16 @@ class MongoMemoryStore(
         indexes.ensure()
         if (sourceIds.isEmpty()) return emptyList()
         return sources.find(Filters.`in`("id", sourceIds.map { it.value })).toList()
+    }
+
+    override suspend fun findRunById(runId: MemoryRun.Id): MemoryRun? {
+        indexes.ensure()
+        return runs.findByDomainId(runId.value)
+    }
+
+    override suspend fun findRunsByParentRunId(parentRunId: MemoryRun.Id): List<MemoryRun> {
+        indexes.ensure()
+        return runs.find(Filters.eq("parentRunId", parentRunId.value)).toList()
     }
 
     override suspend fun findProfile(

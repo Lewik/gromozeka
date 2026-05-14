@@ -7,17 +7,28 @@ import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.memory.DirectStructuredMemoryWriteRequest
 import com.gromozeka.domain.model.memory.DirectStructuredMemoryWriteResult
 import com.gromozeka.domain.model.memory.MemoryNamespace
+import com.gromozeka.domain.model.memory.MemoryRun
+import com.gromozeka.domain.model.memory.MemoryRouteDecision
+import com.gromozeka.domain.model.memory.MemorySemanticType
 import com.gromozeka.domain.model.memory.MemorySource
+import com.gromozeka.domain.model.memory.MemorySourceUsagePolicy
 import com.gromozeka.domain.model.memory.MemoryStore
 import com.gromozeka.domain.model.memory.MemoryThreadContext
+import com.gromozeka.domain.model.memory.MemoryUpdateBatch
 import com.gromozeka.domain.model.memory.MemoryWriteRetrievalPlan
 import com.gromozeka.domain.repository.ThreadMessageRepository
 import com.gromozeka.domain.service.AiRuntimeProvider
 import com.gromozeka.domain.tool.AiToolCallback
+import java.security.MessageDigest
 import klog.KLoggers
+import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.put
+import kotlinx.serialization.json.putJsonArray
 import org.springframework.stereotype.Service
 
 @Service
@@ -78,10 +89,29 @@ class MemoryMessageRoutingApplicationService(
                 "runtimeSystemPrompts=${runtimeSystemPrompts.size} runtimeTools=${runtimeTools.size}"
         }
 
+        MarkdownDocumentImportDetector.detect(source.contentText)?.let { document ->
+            return routeImportedMarkdownDocument(
+                namespace = namespace,
+                parentSource = source,
+                document = document,
+                agent = agent,
+                project = project,
+                runtimeSystemPrompts = runtimeSystemPrompts,
+                runtimeTools = runtimeTools,
+                logContext = "conversation=${conversationId.value} message=${message.id.value} role=${message.role}",
+                traceContext = MemoryWriteTraceContext(
+                    conversationId = conversationId,
+                    threadId = threadId,
+                    targetMessageId = message.id,
+                ),
+            )
+        }
+
         return routeSourceInternal(
             namespace = namespace,
             source = source,
             threadContext = threadContext,
+            parentRunId = null,
             agent = agent,
             project = project,
             runtimeSystemPrompts = runtimeSystemPrompts,
@@ -95,6 +125,115 @@ class MemoryMessageRoutingApplicationService(
         )
     }
 
+    private suspend fun routeImportedMarkdownDocument(
+        namespace: MemoryNamespace,
+        parentSource: MemorySource.ChatTurn,
+        document: MarkdownDocumentImport,
+        agent: AgentDefinition,
+        project: Project,
+        runtimeSystemPrompts: List<String>,
+        runtimeTools: List<AiToolCallback>,
+        logContext: String,
+        traceContext: MemoryWriteTraceContext,
+    ): DirectStructuredMemoryWriteResult {
+        val now = Clock.System.now()
+        val documentHash = parentSource.contentHash
+        val sections = MarkdownDocumentSlicer.slice(document.markdown)
+        require(sections.isNotEmpty()) { "Imported markdown document has no non-blank sections." }
+
+        val parentRun = MemoryRun(
+            id = MemoryRun.Id("document-ingest:run:${com.gromozeka.shared.uuid.uuid7()}"),
+            namespace = namespace,
+            runType = MemoryRun.Type.DOCUMENT_INGEST,
+            triggerMode = MemoryRun.TriggerMode.HOT_PATH,
+            summary = "Pasted markdown document ingest: ${sections.size} sections",
+            sourceIds = listOf(parentSource.id),
+            progress = MemoryRun.Progress(
+                totalUnits = sections.size,
+                completedUnits = sections.size,
+            ),
+            inputHash = documentHash,
+            output = buildJsonObject {
+                put("document_type", MemoryDocumentType.MARKDOWN.name)
+                put("input_kind", "PASTED_CHAT_DOCUMENT")
+                put("title", document.title.orEmpty())
+                put("source_ref", document.sourceRef)
+                put("parent_source_id", parentSource.id.value)
+                put("sections_total", sections.size)
+            },
+            metadata = buildJsonObject {
+                put("memoryToolOrigin", "pasted_document")
+                put("documentType", MemoryDocumentType.MARKDOWN.name)
+                put("sourceRef", document.sourceRef)
+                document.title?.let { put("title", it) }
+            },
+            createdAt = now,
+            startedAt = now,
+            completedAt = now,
+        )
+
+        store.apply(MemoryUpdateBatch(sources = listOf(parentSource), runs = listOf(parentRun)))
+
+        log.info {
+            "Memory pasted document routing: $logContext parentSource=${parentSource.id.value} " +
+                "parentRun=${parentRun.id.value} sections=${sections.size} title=${document.title.orEmpty()} sourceRef=${document.sourceRef}"
+        }
+
+        val sectionResults = sections.map { section ->
+            routeSourceInternal(
+                namespace = namespace,
+                source = parentSource.toDocumentSectionSource(
+                    section = section,
+                    document = document,
+                    documentHash = documentHash,
+                    parentRun = parentRun,
+                ),
+                threadContext = null,
+                parentRunId = parentRun.id,
+                agent = agent,
+                project = project,
+                runtimeSystemPrompts = runtimeSystemPrompts,
+                runtimeTools = runtimeTools,
+                logContext = "$logContext documentSection=${section.index}/${sections.size}",
+                traceContext = null,
+            )
+        }
+
+        val completedResults = sectionResults.filterNotNull()
+        val aggregate = completedResults.toDocumentAggregateResult(
+            parentSource = parentSource,
+            parentRun = parentRun,
+            sections = sections,
+        )
+
+        writeTraceSinks.forEach { sink ->
+            runCatching {
+                sink.onMemoryWrite(
+                    MemoryWriteTraceEvent(
+                        namespace = namespace,
+                        conversationId = traceContext.conversationId,
+                        threadId = traceContext.threadId,
+                        targetMessageId = traceContext.targetMessageId,
+                        result = aggregate,
+                    )
+                )
+            }.onFailure { error ->
+                log.warn(error) {
+                    "Memory write trace sink failed: conversation=${traceContext.conversationId.value} " +
+                        "target=${traceContext.targetMessageId.value} sink=${sink::class.simpleName} error=${error.message}"
+                }
+            }
+        }
+
+        log.info {
+            "Memory pasted document routed: $logContext parentRun=${parentRun.id.value} " +
+                "sections=${sections.size} completed=${completedResults.size} " +
+                "notes=${aggregate.memoryBatch.notes.size} claims=${aggregate.memoryBatch.claims.size} tasks=${aggregate.memoryBatch.tasks.size}"
+        }
+
+        return aggregate
+    }
+
     suspend fun routeSource(
         namespace: MemoryNamespace,
         source: MemorySource,
@@ -102,10 +241,12 @@ class MemoryMessageRoutingApplicationService(
         project: Project,
         runtimeSystemPrompts: List<String>,
         runtimeTools: List<AiToolCallback>,
+        parentRunId: MemoryRun.Id? = null,
     ): DirectStructuredMemoryWriteResult? {
         log.info {
             "Memory router trigger: namespace=${namespace.value} source=${source.id.value} " +
                 "sourceType=${source::class.simpleName} sourceChars=${source.contentText.length} " +
+                "parentRun=${parentRunId?.value ?: "none"} " +
                 "runtimeSystemPrompts=${runtimeSystemPrompts.size} runtimeTools=${runtimeTools.size}"
         }
 
@@ -113,6 +254,7 @@ class MemoryMessageRoutingApplicationService(
             namespace = namespace,
             source = source,
             threadContext = null,
+            parentRunId = parentRunId,
             agent = agent,
             project = project,
             runtimeSystemPrompts = runtimeSystemPrompts,
@@ -126,6 +268,7 @@ class MemoryMessageRoutingApplicationService(
         namespace: MemoryNamespace,
         source: MemorySource,
         threadContext: MemoryThreadContext?,
+        parentRunId: MemoryRun.Id?,
         agent: AgentDefinition,
         project: Project,
         runtimeSystemPrompts: List<String>,
@@ -209,6 +352,7 @@ class MemoryMessageRoutingApplicationService(
                     namespace = namespace,
                     source = source,
                     threadContext = threadContext,
+                    parentRunId = parentRunId,
                 )
             )
         }.onSuccess { result ->
@@ -250,6 +394,82 @@ class MemoryMessageRoutingApplicationService(
                 throw error
             }
         }.getOrNull()
+    }
+
+    private fun MemorySource.ChatTurn.toDocumentSectionSource(
+        section: MarkdownDocumentSection,
+        document: MarkdownDocumentImport,
+        documentHash: String,
+        parentRun: MemoryRun,
+    ): MemorySource.ExternalRecord {
+        val now = Clock.System.now()
+        val sectionHash = "$documentHash:${section.index}:${section.text.sha256()}".sha256()
+        return MemorySource.ExternalRecord(
+            id = MemorySource.Id("external:document-section:${sectionHash.take(32)}"),
+            namespace = namespace,
+            recordRef = "${document.sourceRef}#section:${section.index}",
+            authorLabel = "pasted document section",
+            contentText = section.toMemorySourceText(
+                title = document.title,
+                sourceRef = document.sourceRef,
+            ),
+            contentPayload = buildJsonObject {
+                put("memoryToolOrigin", "pasted_document_section")
+                put("parentSourceId", id.value)
+                put("parentRunId", parentRun.id.value)
+                put("documentHash", documentHash)
+                put("documentType", MemoryDocumentType.MARKDOWN.name)
+                put("sourceRef", document.sourceRef)
+                document.title?.let { put("title", it) }
+                put("sectionIndex", section.index)
+                put("heading", section.headingLabel)
+                put("startLine", section.startLine)
+                put("endLine", section.endLine)
+                putJsonArray("headingPath") {
+                    section.headingPath.forEach { add(JsonPrimitive(it)) }
+                }
+            },
+            contentHash = sectionHash,
+            observedAt = observedAt,
+            createdAt = now,
+            retentionClass = MemorySource.RetentionClass.IMPORTED,
+        )
+    }
+
+    private fun List<DirectStructuredMemoryWriteResult>.toDocumentAggregateResult(
+        parentSource: MemorySource,
+        parentRun: MemoryRun,
+        sections: List<MarkdownDocumentSection>,
+    ): DirectStructuredMemoryWriteResult {
+        val aggregateBatch = fold(MemoryUpdateBatch(runs = listOf(parentRun))) { acc, result ->
+            acc + result.memoryBatch
+        }
+        return DirectStructuredMemoryWriteResult(
+            sourceBatch = fold(MemoryUpdateBatch(sources = listOf(parentSource))) { acc, result ->
+                acc + result.sourceBatch
+            },
+            routeDecision = MemoryRouteDecision(
+                decision = MemoryRouteDecision.Decision.NOTE_WRITE,
+                memoryTypes = setOf(MemorySemanticType.NOTE, MemorySemanticType.SOURCE),
+                salience = 1.0,
+                sourcePolicy = MemorySourceUsagePolicy.STANDARD,
+                sourceSearchText = parentSource.searchText,
+                reason = "Pasted markdown document was ingested through ${sections.size} structure-aware sections.",
+            ),
+            predicateCatalog = flatMap { it.predicateCatalog }.distinctBy { it.predicate },
+            retrievalPlan = firstNotNullOfOrNull { it.retrievalPlan },
+            retrievedHits = flatMap { it.retrievedHits },
+            entityOps = flatMap { it.entityOps },
+            noteCandidates = flatMap { it.noteCandidates },
+            rawNoteOps = flatMap { it.rawNoteOps },
+            noteOps = flatMap { it.noteOps },
+            claimCandidates = flatMap { it.claimCandidates },
+            rawClaimOps = flatMap { it.rawClaimOps },
+            claimOps = flatMap { it.claimOps },
+            rawTaskOps = flatMap { it.rawTaskOps },
+            taskOps = flatMap { it.taskOps },
+            memoryBatch = aggregateBatch,
+        )
     }
 
     private data class MemoryWriteTraceContext(
@@ -346,4 +566,22 @@ private fun List<com.gromozeka.domain.model.memory.MemoryClaimCandidate>.claimPr
         .entries
         .sortedBy { it.key }
         .joinToString(",") { "${it.key}=${it.value}" }
+}
+
+private operator fun MemoryUpdateBatch.plus(other: MemoryUpdateBatch): MemoryUpdateBatch =
+    MemoryUpdateBatch(
+        predicateDefinitions = predicateDefinitions + other.predicateDefinitions,
+        sources = sources + other.sources,
+        runs = runs + other.runs,
+        entities = entities + other.entities,
+        claims = claims + other.claims,
+        notes = notes + other.notes,
+        tasks = tasks + other.tasks,
+        profiles = profiles + other.profiles,
+        episodes = episodes + other.episodes,
+    )
+
+private fun String.sha256(): String {
+    val digest = MessageDigest.getInstance("SHA-256").digest(toByteArray())
+    return digest.joinToString("") { "%02x".format(it) }
 }

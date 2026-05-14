@@ -310,7 +310,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"decision\":\"noop\",\"memory_types\":[],\"reason\":\"Single weak, uncertain observation without durable fact, task, or reusable rationale.\",\"salience\":0.28,\"source_policy\":{\"allow_evidence_hydration\":true,\"allow_recall\":true,\"allow_structured_extraction\":false,\"reason\":\"Uncertain soft observation with concrete entity; keep as recallable source-only evidence, not structured memory.\"},\"source_search_text\":\"User uncertainly thinks Strider used to work more reliably.\"}",
+                                "fullText": "{\"decision\":\"noop\",\"memory_types\":[],\"reason\":\"Single uncertain soft observation without durable fact, task, or reusable rationale; avoid structured write.\",\"salience\":0.28,\"source_policy\":{\"allow_evidence_hydration\":true,\"allow_recall\":true,\"allow_structured_extraction\":false,\"reason\":\"Weak uncertain observation with concrete product mention; keep as recallable source-only evidence, not structured memory.\"},\"source_search_text\":\"User is unsure but thinks Strider used to work more reliably.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -325,8 +325,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 2509,
-                "completionTokens": 108,
+                "promptTokens": 2517,
+                "completionTokens": 112,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

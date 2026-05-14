@@ -1,7 +1,9 @@
 package com.gromozeka.server
 
-import com.gromozeka.application.service.memory.MEMORY_RECALL_TOOL_NAME
+import com.gromozeka.application.service.memory.MEMORY_QUEUE_STATUS_TOOL_NAME
+import com.gromozeka.application.service.memory.MEMORY_ENRICH_CONTEXT_TOOL_NAME
 import com.gromozeka.application.service.memory.MEMORY_REMEMBER_TOOL_NAME
+import com.gromozeka.application.service.memory.MEMORY_RUN_STATUS_TOOL_NAME
 import com.gromozeka.domain.service.AiToolProvider
 import com.gromozeka.domain.tool.AiToolCallback
 import com.gromozeka.domain.tool.ToolExecutionContext
@@ -261,8 +263,10 @@ internal class GromozekaMcpToolExposure private constructor(
 
     companion object {
         val DEFAULT_TOOL_NAMES = setOf(
-            MEMORY_RECALL_TOOL_NAME,
+            MEMORY_QUEUE_STATUS_TOOL_NAME,
+            MEMORY_ENRICH_CONTEXT_TOOL_NAME,
             MEMORY_REMEMBER_TOOL_NAME,
+            MEMORY_RUN_STATUS_TOOL_NAME,
             UNIFIED_SEARCH_TOOL_NAME,
         )
 

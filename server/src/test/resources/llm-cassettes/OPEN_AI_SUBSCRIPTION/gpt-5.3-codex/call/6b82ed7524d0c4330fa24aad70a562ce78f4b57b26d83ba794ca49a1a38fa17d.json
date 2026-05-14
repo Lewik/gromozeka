@@ -310,7 +310,7 @@
                         {
                             "type": "IntermediateMessage",
                             "structured": {
-                                "fullText": "{\"decision\":\"direct_structured_write\",\"memory_types\":[\"claim\"],\"reason\":\"States a stable project constraint for the memory repair MVP, not a transient command.\",\"salience\":0.78,\"source_policy\":{\"allow_evidence_hydration\":true,\"allow_recall\":true,\"allow_structured_extraction\":true,\"reason\":\"Durable project requirement/rule suitable for structured memory and later recall.\"},\"source_search_text\":\"Memory repair MVP requirement: repair workflow must be conservative and audit-friendly.\"}",
+                                "fullText": "{\"decision\":\"direct_structured_write\",\"memory_types\":[\"claim\"],\"reason\":\"Explicit stable constraint for project workflow; reusable beyond current turn.\",\"salience\":0.85,\"source_policy\":{\"allow_evidence_hydration\":true,\"allow_recall\":true,\"allow_structured_extraction\":true,\"reason\":\"Durable project requirement/rule for memory repair MVP workflow behavior.\"},\"source_search_text\":\"Memory repair MVP requirement: repair workflow must be conservative and audit-friendly.\"}",
                                 "ttsText": null,
                                 "voiceTone": null,
                                 "failedToParse": false
@@ -325,8 +325,8 @@
                 }
             ],
             "usage": {
-                "promptTokens": 2509,
-                "completionTokens": 110,
+                "promptTokens": 2521,
+                "completionTokens": 105,
                 "thinkingTokens": 0,
                 "cacheCreationTokens": 0,
                 "cacheReadTokens": 0

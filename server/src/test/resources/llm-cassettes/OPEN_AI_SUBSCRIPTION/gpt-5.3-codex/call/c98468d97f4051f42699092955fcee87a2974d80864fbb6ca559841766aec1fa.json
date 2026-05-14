@@ -1,0 +1,339 @@
+{
+    "version": 1,
+    "hash": "c98468d97f4051f42699092955fcee87a2974d80864fbb6ca559841766aec1fa",
+    "provider": "OPEN_AI_SUBSCRIPTION",
+    "model": "gpt-5.3-codex",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>/projects/handoff-prompts-document-ingestion",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "According to the handoff prompt pack, what does MemoryRouter v3 decide and what does NoteConstructor v2 create? Keep it short.",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            },
+            {
+                "content": [
+                    {
+                        "call": {
+                            "input": {
+                                "mode": "automatic_hot_path",
+                                "target": "previous_user_message",
+                                "target_message_id": "<uuid>"
+                            },
+                            "name": "memory_remember"
+                        },
+                        "id": "<id>",
+                        "state": "COMPLETE",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolCall"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "ASSISTANT"
+            },
+            {
+                "content": [
+                    {
+                        "isError": false,
+                        "result": [
+                            {
+                                "content": "{\"status\":\"completed\",\"decision\":\"NOOP\",\"memory_types\":[],\"salience\":0.16,\"reason\":\"Source policy blocked structured extraction: Question/probe only, with style instruction; does not add durable memory.\",\"source_id\":\"chat:<0>\",\"counts\":{\"predicate_definitions\":0,\"sources\":0,\"runs\":0,\"entities\":0,\"claims\":0,\"notes\":0,\"tasks\":0,\"profiles\":0,\"episodes\":0},\"runs\":[],\"claims\":[],\"notes\":[],\"tasks\":[],\"entities\":[]}",
+                                "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult.Data.Text"
+                            }
+                        ],
+                        "state": "COMPLETE",
+                        "toolName": "memory_remember",
+                        "toolUseId": "tool-call",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            },
+            {
+                "content": [
+                    {
+                        "call": {
+                            "input": {
+                                "mode": "automatic_runtime_context_enrichment",
+                                "target": "previous_user_message",
+                                "target_message_id": "<uuid>"
+                            },
+                            "name": "memory_enrich_context"
+                        },
+                        "id": "<id>",
+                        "state": "COMPLETE",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolCall"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "ASSISTANT"
+            },
+            {
+                "content": [
+                    {
+                        "isError": false,
+                        "result": [
+                            {
+                                "content": "{\"status\":\"completed\",\"need_memory\":true,\"answer_mode\":\"FACTUAL\",\"retrieved_count\":5,\"usage_guidance\":\"Selected memory is the strongest available remembered context for the target context. Use it unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message. Do not replace selected memory with guesses or general defaults. For exact quote, exact wording, source, or when-said questions, prefer complete source text from memory_context over shorter evidence excerpts.\",\"memory_context\":\"            MEMORY-ONLY CONTEXT\\n            This message is not part of the real conversation and must not be stored as evidence.\\n            The retrieved memory below was selected for the immediately following user request.\\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and tasks for commitments.\\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\\n\\n            Namespace: project:<0>\\n            Answer mode: FACTUAL\\n            Require evidence fallback: false\\n\\n            Retrieved profile:\\n            none\\n\\n            Retrieved tasks:\\n            none\\n\\n            Retrieved claims:\\n            none\\n\\n            Retrieved notes:\\n            - note hot-path:note:<0> [DIRECTION/ACTIVE]: Memory Router v3 decision policy and write modes; In section \\\"1. Memory Router v3\\\" of \\\"03. Prompt Pack\\\", the router decides whether to start memory writing and selects one of four modes: noop, direct_structured_write, note_write, or mixed, with mode-specific guidance for chatter, explicit facts, rationale-heavy context, or combined content.; scope=Applies to section \\\"03. Prompt Pack / 1. Memory Router v3\\\" in agent_memory_handoff/03_prompts.md; evidence=DIRECT source=external:document-section:ca6e67f173a774574043070409cd48a5 quote=\\\"Decision policy:\\n- \\\"noop\\\" for greetings, filler, repetition, low-value chatter, and transient content.\\n- \\\"direct_structured_write\\\" for explicit facts, stable preferences, clear status changes, deadlines, and commitments.\\n- \\\"note_write\\\" for rationale, trade-offs, design direction, evolving plans, loc\\n[truncated 141 chars]\\\"\\n\\n            Retrieved evidence:\\n            - source external:document-section:ca6e67f173a774574043070409cd48a5 [external_record ref=agent_memory_handoff/03_prompts.md#section:2 observedAt=1970-01-01T00:00:00Z]: Document title: 03. Prompt Pack\\nDocument source: agent_memory_handoff/03_prompts.md\\nDocument section: 03. Prompt Pack / 0. Общие правила для всех memory prompts .. 1. Memory Router v3\\nDocument lines: 8-92\\n\\n## 0. Общие правила для всех memory prompts\\n\\n### Что обязательно передавать\\n- `current_time_iso`\\n- `timezone`\\n- `namespace_id`\\n- `source_ids`\\n- `latest_turns` или selected sources\\n- только нужный retrieved context, а не весь лог\\n- `predicate_catalog_excerpt`, если prompt работает с claims\\n- `retrieval_budget`, если prompt планирует чтение\\n\\n### Технические правила\\n- structured output / JSON schema enforcement\\n- низкая температура\\n- строгая валидация результата\\n- invalid JSON -> retry с validator feedback\\n- every prompt versioned: `router_v3`, `claim_extract_v3`, etc.\\n\\n### Общие семантические правила\\n- лучше `noop`, чем мусорная память\\n- explicit statement > inference\\n- newer explicit statement > older inferred statement\\n- relative time must become absolute time\\n- один memory item = одна переиспользуемая единица\\n- не сохранять hypotheticals как facts\\n- requests и facts — не одно и то же\\n- `scope_json` должен ограничивать обобщение\\n- не выдавать provisional note за hard fact\\n\\n## 1. Memory Router v3\\n\\n### Когда вызывать\\nСразу после сохранения `Source`.\\n\\n### Цель\\nРешить, инициировать ли memory write pipeline и какой write mode выбрать.\\n\\n### Выход\\n\\n```json\\n{\\n  \\\"decision\\\": \\\"noop | direct_structured_write | note_write | mixed\\\",\\n  \\\"memory_types\\\": [\\\"claim\\\", \\\"note\\\", \\\"task\\\", \\\"profile\\\"],\\n  \\\"salience\\\": 0.0,\\n  \\\"reason\\\": \\\"short explanation\\\"\\n}\\n```\\n\\n### Prompt\\n\\n```text\\nYou are MemoryRouter v3 for a long-term AI agent.\\n\\nYour job is to decide whether the latest turns contain durable information worth storing in long-term memory, and if so, which write mode to use.\\n\\nCurrent time: {{current_time_iso}}\\nTimezone: {{timezone}}\\nNamespace: {{namespace_id}}\\n\\nLatest turns:\\n{{latest_turns}}\\n\\nReturn JSON:\\n{\\n  \\\"decision\\\": \\\"noop | direct_structured_write | note_write | mixed\\\",\\n  \\\"memory_types\\\": [\\\"claim\\\", \\\"note\\\", \\\"task\\\", \\\"profile\\\"],\\n  \\\"salience\\\": 0.0,\\n  \\\"reason\\\": \\\"short explanation\\\"\\n}\\n\\nDecision policy:\\n- \\\"noop\\\" for greetings, filler, repetition, low-value chatter, and transient content.\\n- \\\"direct_structured_write\\\" for explicit facts, stable preferences, clear status changes, deadlines, and commitments.\\n- \\\"note_write\\\" for rationale, trade-offs, design direction, evolving plans, local conclusions, lessons, and document digests.\\n- \\\"mixed\\\" when the material contains both structured facts/tasks and richer rationale/context.\\n\\nHard rules:\\n- Prefer \\\"noop\\\" over memory pollution.\\n- Do not treat every question as a task.\\n- Do not force rationale into claims.\\n- If the user explicitly asks to remember something, do not return \\\"noop\\\".\\n- Return valid JSON only.\\n```\\n\\n            Retrieved entities:\\n            - entity entity:<0> [DOCUMENT]: 03. Prompt Pack; Document named 03. Prompt Pack.\\n- entity entity:<1> [CONCEPT]: Memory Router v3; Concept named Memory Router v3.\\n- entity entity:<2> [FILE]: agent_memory_handoff/03_prompts.md; File named agent_memory_handoff/03_prompts.md.\\n\\n            Retrieved episodes:\\n            none\",\"selected_refs\":[{\"type\":\"NOTE\",\"id\":\"hot-path:note:<0>\",\"summary\":\"Memory Router v3 decision policy and write modes: In section \\\"1. Memory Router v3\\\" of \\\"03. Prompt Pack\\\", the router decides whether to start memory writing and selects one of four modes: noop, direct_structured_write, no...[truncated 122 chars]\",\"status\":\"ACTIVE\"},{\"type\":\"SOURCE\",\"id\":\"external:document-section:ca6e67f173a774574043070409cd48a5\",\"summary\":\"Document title: 03. Prompt Pack Document source: agent_memory_handoff/03_prompts.md Document section: 03. Prompt Pack / 0. Общие правила для всех memory prompts .. 1. Memory Router v3 Document lines: 8-92 ## 0. Общие пра...[truncated 2514 chars]\"},{\"type\":\"ENTITY\",\"id\":\"entity:<0>\",\"summary\":\"DOCUMENT:03. Prompt Pack\"},{\"type\":\"ENTITY\",\"id\":\"entity:<1>\",\"summary\":\"CONCEPT:Memory Router v3\"},{\"type\":\"ENTITY\",\"id\":\"entity:<2>\",\"summary\":\"FILE:agent_memory_handoff/03_prompts.md\"}],\"selector_decisions\":[{\"type\":\"NOTE\",\"id\":\"hot-path:note:<0>\",\"selected\":true,\"rank\":1,\"reason\":\"Directly states what Memory Router v3 decides in Prompt Pack section 1.\"},{\"type\":\"NOTE\",\"id\":\"hot-path:note:<1>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"About release prioritization; does not define NoteConstructor v2 behavior and only mentions deferral.\"},{\"type\":\"ENTITY\",\"id\":\"entity:<1>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Generic entity label; not needed since direct note is selected.\"},{\"type\":\"ENTITY\",\"id\":\"entity:<3>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Generic entity label; no typed memory here describing NoteConstructor v2 creation behavior.\"}]}",
+                                "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult.Data.Text"
+                            }
+                        ],
+                        "state": "COMPLETE",
+                        "toolName": "memory_enrich_context",
+                        "toolUseId": "tool-call",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "autoCompactionThreshold": 320000,
+            "maxTokens": 2048,
+            "outputConfig": null,
+            "responseFormat": {
+                "type": "text"
+            },
+            "thinking": null,
+            "toolChoice": {
+                "type": "auto"
+            },
+            "toolContext": {
+                "aiProvider": "OPEN_AI_SUBSCRIPTION",
+                "conversationId": "<conversation-key>",
+                "modelName": "gpt-5.3-codex",
+                "planId": null,
+                "projectPath": "gromozeka-e2e-<id>/projects/handoff-prompts-document-ingestion"
+            }
+        },
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "According to the handoff prompt pack, what does MemoryRouter v3 decide and what does NoteConstructor v2 create? Keep it short.",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "ASSISTANT",
+                "content": [
+                    {
+                        "call": {
+                            "input": {
+                                "mode": "automatic_hot_path",
+                                "target": "previous_user_message",
+                                "target_message_id": "<uuid>"
+                            },
+                            "name": "memory_remember"
+                        },
+                        "id": "<id>",
+                        "state": "COMPLETE",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolCall"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {
+                    "synthetic": true,
+                    "syntheticKind": "memory",
+                    "targetMessageId": "<uuid>"
+                },
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "isError": false,
+                        "result": [
+                            {
+                                "content": "{\"status\":\"completed\",\"decision\":\"NOOP\",\"memory_types\":[],\"salience\":0.16,\"reason\":\"Source policy blocked structured extraction: Question/probe only, with style instruction; does not add durable memory.\",\"source_id\":\"chat:<0>\",\"counts\":{\"predicate_definitions\":0,\"sources\":0,\"runs\":0,\"entities\":0,\"claims\":0,\"notes\":0,\"tasks\":0,\"profiles\":0,\"episodes\":0},\"runs\":[],\"claims\":[],\"notes\":[],\"tasks\":[],\"entities\":[]}",
+                                "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult.Data.Text"
+                            }
+                        ],
+                        "state": "COMPLETE",
+                        "toolName": "memory_remember",
+                        "toolUseId": "tool-call",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {
+                    "synthetic": true,
+                    "syntheticKind": "memory",
+                    "targetMessageId": "<uuid>"
+                },
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "ASSISTANT",
+                "content": [
+                    {
+                        "call": {
+                            "input": {
+                                "mode": "automatic_runtime_context_enrichment",
+                                "target": "previous_user_message",
+                                "target_message_id": "<uuid>"
+                            },
+                            "name": "memory_enrich_context"
+                        },
+                        "id": "<id>",
+                        "state": "COMPLETE",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolCall"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {
+                    "synthetic": true,
+                    "syntheticKind": "memory",
+                    "targetMessageId": "<uuid>"
+                },
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "isError": false,
+                        "result": [
+                            {
+                                "content": "{\"status\":\"completed\",\"need_memory\":true,\"answer_mode\":\"FACTUAL\",\"retrieved_count\":5,\"usage_guidance\":\"Selected memory is the strongest available remembered context for the target context. Use it unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message. Do not replace selected memory with guesses or general defaults. For exact quote, exact wording, source, or when-said questions, prefer complete source text from memory_context over shorter evidence excerpts.\",\"memory_context\":\"            MEMORY-ONLY CONTEXT\\n            This message is not part of the real conversation and must not be stored as evidence.\\n            The retrieved memory below was selected for the immediately following user request.\\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and tasks for commitments.\\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\\n\\n            Namespace: project:<0>\\n            Answer mode: FACTUAL\\n            Require evidence fallback: false\\n\\n            Retrieved profile:\\n            none\\n\\n            Retrieved tasks:\\n            none\\n\\n            Retrieved claims:\\n            none\\n\\n            Retrieved notes:\\n            - note hot-path:note:<0> [DIRECTION/ACTIVE]: Memory Router v3 decision policy and write modes; In section \\\"1. Memory Router v3\\\" of \\\"03. Prompt Pack\\\", the router decides whether to start memory writing and selects one of four modes: noop, direct_structured_write, note_write, or mixed, with mode-specific guidance for chatter, explicit facts, rationale-heavy context, or combined content.; scope=Applies to section \\\"03. Prompt Pack / 1. Memory Router v3\\\" in agent_memory_handoff/03_prompts.md; evidence=DIRECT source=external:document-section:ca6e67f173a774574043070409cd48a5 quote=\\\"Decision policy:\\n- \\\"noop\\\" for greetings, filler, repetition, low-value chatter, and transient content.\\n- \\\"direct_structured_write\\\" for explicit facts, stable preferences, clear status changes, deadlines, and commitments.\\n- \\\"note_write\\\" for rationale, trade-offs, design direction, evolving plans, loc\\n[truncated 141 chars]\\\"\\n\\n            Retrieved evidence:\\n            - source external:document-section:ca6e67f173a774574043070409cd48a5 [external_record ref=agent_memory_handoff/03_prompts.md#section:2 observedAt=1970-01-01T00:00:00Z]: Document title: 03. Prompt Pack\\nDocument source: agent_memory_handoff/03_prompts.md\\nDocument section: 03. Prompt Pack / 0. Общие правила для всех memory prompts .. 1. Memory Router v3\\nDocument lines: 8-92\\n\\n## 0. Общие правила для всех memory prompts\\n\\n### Что обязательно передавать\\n- `current_time_iso`\\n- `timezone`\\n- `namespace_id`\\n- `source_ids`\\n- `latest_turns` или selected sources\\n- только нужный retrieved context, а не весь лог\\n- `predicate_catalog_excerpt`, если prompt работает с claims\\n- `retrieval_budget`, если prompt планирует чтение\\n\\n### Технические правила\\n- structured output / JSON schema enforcement\\n- низкая температура\\n- строгая валидация результата\\n- invalid JSON -> retry с validator feedback\\n- every prompt versioned: `router_v3`, `claim_extract_v3`, etc.\\n\\n### Общие семантические правила\\n- лучше `noop`, чем мусорная память\\n- explicit statement > inference\\n- newer explicit statement > older inferred statement\\n- relative time must become absolute time\\n- один memory item = одна переиспользуемая единица\\n- не сохранять hypotheticals как facts\\n- requests и facts — не одно и то же\\n- `scope_json` должен ограничивать обобщение\\n- не выдавать provisional note за hard fact\\n\\n## 1. Memory Router v3\\n\\n### Когда вызывать\\nСразу после сохранения `Source`.\\n\\n### Цель\\nРешить, инициировать ли memory write pipeline и какой write mode выбрать.\\n\\n### Выход\\n\\n```json\\n{\\n  \\\"decision\\\": \\\"noop | direct_structured_write | note_write | mixed\\\",\\n  \\\"memory_types\\\": [\\\"claim\\\", \\\"note\\\", \\\"task\\\", \\\"profile\\\"],\\n  \\\"salience\\\": 0.0,\\n  \\\"reason\\\": \\\"short explanation\\\"\\n}\\n```\\n\\n### Prompt\\n\\n```text\\nYou are MemoryRouter v3 for a long-term AI agent.\\n\\nYour job is to decide whether the latest turns contain durable information worth storing in long-term memory, and if so, which write mode to use.\\n\\nCurrent time: {{current_time_iso}}\\nTimezone: {{timezone}}\\nNamespace: {{namespace_id}}\\n\\nLatest turns:\\n{{latest_turns}}\\n\\nReturn JSON:\\n{\\n  \\\"decision\\\": \\\"noop | direct_structured_write | note_write | mixed\\\",\\n  \\\"memory_types\\\": [\\\"claim\\\", \\\"note\\\", \\\"task\\\", \\\"profile\\\"],\\n  \\\"salience\\\": 0.0,\\n  \\\"reason\\\": \\\"short explanation\\\"\\n}\\n\\nDecision policy:\\n- \\\"noop\\\" for greetings, filler, repetition, low-value chatter, and transient content.\\n- \\\"direct_structured_write\\\" for explicit facts, stable preferences, clear status changes, deadlines, and commitments.\\n- \\\"note_write\\\" for rationale, trade-offs, design direction, evolving plans, local conclusions, lessons, and document digests.\\n- \\\"mixed\\\" when the material contains both structured facts/tasks and richer rationale/context.\\n\\nHard rules:\\n- Prefer \\\"noop\\\" over memory pollution.\\n- Do not treat every question as a task.\\n- Do not force rationale into claims.\\n- If the user explicitly asks to remember something, do not return \\\"noop\\\".\\n- Return valid JSON only.\\n```\\n\\n            Retrieved entities:\\n            - entity entity:<0> [DOCUMENT]: 03. Prompt Pack; Document named 03. Prompt Pack.\\n- entity entity:<1> [CONCEPT]: Memory Router v3; Concept named Memory Router v3.\\n- entity entity:<2> [FILE]: agent_memory_handoff/03_prompts.md; File named agent_memory_handoff/03_prompts.md.\\n\\n            Retrieved episodes:\\n            none\",\"selected_refs\":[{\"type\":\"NOTE\",\"id\":\"hot-path:note:<0>\",\"summary\":\"Memory Router v3 decision policy and write modes: In section \\\"1. Memory Router v3\\\" of \\\"03. Prompt Pack\\\", the router decides whether to start memory writing and selects one of four modes: noop, direct_structured_write, no...[truncated 122 chars]\",\"status\":\"ACTIVE\"},{\"type\":\"SOURCE\",\"id\":\"external:document-section:ca6e67f173a774574043070409cd48a5\",\"summary\":\"Document title: 03. Prompt Pack Document source: agent_memory_handoff/03_prompts.md Document section: 03. Prompt Pack / 0. Общие правила для всех memory prompts .. 1. Memory Router v3 Document lines: 8-92 ## 0. Общие пра...[truncated 2514 chars]\"},{\"type\":\"ENTITY\",\"id\":\"entity:<0>\",\"summary\":\"DOCUMENT:03. Prompt Pack\"},{\"type\":\"ENTITY\",\"id\":\"entity:<1>\",\"summary\":\"CONCEPT:Memory Router v3\"},{\"type\":\"ENTITY\",\"id\":\"entity:<2>\",\"summary\":\"FILE:agent_memory_handoff/03_prompts.md\"}],\"selector_decisions\":[{\"type\":\"NOTE\",\"id\":\"hot-path:note:<0>\",\"selected\":true,\"rank\":1,\"reason\":\"Directly states what Memory Router v3 decides in Prompt Pack section 1.\"},{\"type\":\"NOTE\",\"id\":\"hot-path:note:<1>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"About release prioritization; does not define NoteConstructor v2 behavior and only mentions deferral.\"},{\"type\":\"ENTITY\",\"id\":\"entity:<1>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Generic entity label; not needed since direct note is selected.\"},{\"type\":\"ENTITY\",\"id\":\"entity:<3>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Generic entity label; no typed memory here describing NoteConstructor v2 creation behavior.\"}]}",
+                                "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult.Data.Text"
+                            }
+                        ],
+                        "state": "COMPLETE",
+                        "toolName": "memory_enrich_context",
+                        "toolUseId": "tool-call",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {
+                    "synthetic": true,
+                    "syntheticKind": "memory",
+                    "targetMessageId": "<uuid>"
+                },
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxTokens": 2048,
+            "thinking": null,
+            "outputConfig": null,
+            "autoCompactionThreshold": 320000,
+            "toolChoice": {
+                "type": "auto"
+            },
+            "responseFormat": {
+                "type": "text"
+            },
+            "toolContext": {
+                "aiProvider": "OPEN_AI_SUBSCRIPTION",
+                "conversationId": "<conversation-key>",
+                "modelName": "gpt-5.3-codex",
+                "planId": null,
+                "projectPath": "gromozeka-e2e-<id>/projects/handoff-prompts-document-ingestion"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "MemoryRouter v3 decides **whether to start memory writing and which mode to use** (`noop`, `direct_structured_write`, `note_write`, `mixed`); NoteConstructor v2 creates **a note** (rationale/context summary).",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 2454,
+                "completionTokens": 53,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

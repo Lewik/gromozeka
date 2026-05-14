@@ -809,8 +809,8 @@ data class MemoryEpisode(
 /**
  * Audit trail for one memory pipeline execution.
  *
- * Runs make LLM calls, retrieval, applied operations, failures, and maintenance
- * actions inspectable after the fact.
+ * Runs make LLM calls, retrieval, applied operations, failures, maintenance
+ * actions, and parent-child pipeline progress inspectable after the fact.
  */
 @Serializable
 data class MemoryRun(
@@ -818,15 +818,19 @@ data class MemoryRun(
     val namespace: MemoryNamespace,
     val runType: Type,
     val triggerMode: TriggerMode = TriggerMode.HOT_PATH,
+    val parentRunId: Id? = null,
+    val childRunIds: List<Id> = emptyList(),
     val summary: String,
     val sourceIds: List<MemorySource.Id> = emptyList(),
     val retrievedItemRefs: List<MemoryItemRef> = emptyList(),
     val retrievalBudget: MemoryRetrievalBudget? = null,
+    val progress: Progress? = null,
     val promptName: String? = null,
     val promptVersion: String? = null,
     val modelName: String? = null,
     val inputHash: String? = null,
     val output: JsonElement? = null,
+    val metadata: JsonObject = JsonObject(emptyMap()),
     val appliedOps: JsonArray = JsonArray(emptyList()),
     val repairActions: JsonArray = JsonArray(emptyList()),
     val latencyMs: Long? = null,
@@ -835,6 +839,7 @@ data class MemoryRun(
     val status: Status = Status.SUCCESS,
     val errorText: String? = null,
     val createdAt: Instant,
+    val startedAt: Instant? = null,
     val completedAt: Instant? = null,
 ) {
     @Serializable
@@ -842,8 +847,18 @@ data class MemoryRun(
     value class Id(val value: String)
 
     @Serializable
+    data class Progress(
+        val totalUnits: Int = 0,
+        val completedUnits: Int = 0,
+        val failedUnits: Int = 0,
+        val currentUnitLabel: String? = null,
+        val currentSourceId: MemorySource.Id? = null,
+    )
+
+    @Serializable
     enum class Type {
         ROUTE,
+        DOCUMENT_INGEST,
         RETRIEVE_UPDATE,
         CANONICALIZE,
         CONSTRUCT_NOTES,
@@ -872,9 +887,12 @@ data class MemoryRun(
 
     @Serializable
     enum class Status {
+        QUEUED,
+        RUNNING,
         SUCCESS,
         FAILED,
         PARTIAL,
+        CANCELLED,
     }
 }
 

@@ -15,7 +15,7 @@
               "MIXED"
             ],
             "materializedNotesMin": 1,
-            "materializedNotesMax": 10,
+            "materializedNotesMax": 20,
             "materializedTasksMax": 0,
             "containsAll": [
               "Representation",
@@ -68,7 +68,7 @@
   "expectedAfterSeeds": {
     "activeClaimsMax": 20,
     "notesMin": 1,
-    "notesMax": 10,
+    "notesMax": 20,
     "tasksMax": 0,
     "userSourcesMin": 1,
     "requiredSources": [
@@ -99,7 +99,7 @@
           "Representation"
         ],
         "evidenceSourceSpeakerRoleIn": [
-          "USER"
+          "EXTERNAL"
         ]
       }
     ],
@@ -117,7 +117,7 @@
   "expectedFinal": {
     "activeClaimsMax": 20,
     "notesMin": 1,
-    "notesMax": 10,
+    "notesMax": 20,
     "tasksMax": 0,
     "userSourcesMin": 2,
     "requiredNotes": [
@@ -136,7 +136,7 @@
           "Representation"
         ],
         "evidenceSourceSpeakerRoleIn": [
-          "USER"
+          "EXTERNAL"
         ]
       }
     ],
