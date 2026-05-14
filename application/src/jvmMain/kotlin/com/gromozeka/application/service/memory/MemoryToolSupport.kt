@@ -1,10 +1,13 @@
 package com.gromozeka.application.service.memory
 
 import com.gromozeka.domain.model.memory.DirectStructuredMemoryWriteResult
+import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.memory.MemoryReadResult
+import com.gromozeka.domain.model.memory.MemoryNamespace
 import com.gromozeka.domain.model.memory.MemoryRun
 import com.gromozeka.domain.model.memory.MemoryUpdateBatch
 import com.gromozeka.domain.tool.AiToolCallback
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
@@ -14,6 +17,7 @@ const val MEMORY_REMEMBER_TOOL_NAME = "memory_remember"
 const val MEMORY_ENRICH_CONTEXT_TOOL_NAME = "memory_enrich_context"
 const val MEMORY_RUN_STATUS_TOOL_NAME = "memory_run_status"
 const val MEMORY_QUEUE_STATUS_TOOL_NAME = "memory_queue_status"
+const val MEMORY_MAINTENANCE_TOOL_NAME = "memory_maintenance"
 
 fun List<AiToolCallback>.withoutMemoryManagementTools(): List<AiToolCallback> =
     filterNot { tool -> tool.definition.name in memoryManagementToolNames }
@@ -23,6 +27,18 @@ private val memoryManagementToolNames = setOf(
     MEMORY_ENRICH_CONTEXT_TOOL_NAME,
     MEMORY_RUN_STATUS_TOOL_NAME,
     MEMORY_QUEUE_STATUS_TOOL_NAME,
+    MEMORY_MAINTENANCE_TOOL_NAME,
+)
+
+data class MemoryMaintenanceToolResult(
+    val action: String,
+    val targetKind: String,
+    val targetValue: String,
+    val namespace: MemoryNamespace,
+    val conversationId: Conversation.Id,
+    val summary: String,
+    val memoryBatch: MemoryUpdateBatch,
+    val details: JsonObject,
 )
 
 object MemoryToolResultRenderer {
@@ -220,6 +236,28 @@ object MemoryToolResultRenderer {
             put("worker_count", 1)
             put("process_local", true)
             put("durable_resume", false)
+        }.toString()
+
+    fun maintenanceResultJsonString(result: MemoryMaintenanceToolResult): String =
+        buildJsonObject {
+            put("status", "completed")
+            put("action", result.action)
+            put("target_kind", result.targetKind)
+            put("target_value", result.targetValue)
+            put("namespace", result.namespace.value)
+            put("conversation_id", result.conversationId.value)
+            put("summary", result.summary.shortForMemoryToolResult())
+            put("counts", result.memoryBatch.toCountsJson())
+            put("details", result.details)
+            putJsonArray("runs") {
+                result.memoryBatch.runs.forEach { run ->
+                    add(buildJsonObject {
+                        put("id", run.id.value)
+                        put("type", run.runType.name)
+                        put("summary", run.summary.shortForMemoryToolResult())
+                    })
+                }
+            }
         }.toString()
 
     fun failureJsonString(reason: String): String =

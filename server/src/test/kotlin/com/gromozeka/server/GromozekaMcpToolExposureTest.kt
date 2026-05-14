@@ -12,6 +12,7 @@ class GromozekaMcpToolExposureTest {
 
         assertTrue(exposure.exposes("memory_queue_status"))
         assertTrue(exposure.exposes("memory_enrich_context"))
+        assertTrue(exposure.exposes("memory_maintenance"))
         assertTrue(exposure.exposes("memory_remember"))
         assertTrue(exposure.exposes("memory_run_status"))
         assertTrue(exposure.exposes("unified_search"))
@@ -29,11 +30,12 @@ class GromozekaMcpToolExposureTest {
     @Test
     fun `explicit configuration accepts comma and whitespace separated tool names`() {
         val exposure = GromozekaMcpToolExposure.fromConfiguredValue(
-            "memory_enrich_context, memory_remember\nmemory_run_status memory_queue_status unified_search"
+            "memory_enrich_context, memory_remember\nmemory_run_status memory_queue_status memory_maintenance unified_search"
         )
 
         assertTrue(exposure.exposes("memory_queue_status"))
         assertTrue(exposure.exposes("memory_enrich_context"))
+        assertTrue(exposure.exposes("memory_maintenance"))
         assertTrue(exposure.exposes("memory_remember"))
         assertTrue(exposure.exposes("memory_run_status"))
         assertTrue(exposure.exposes("unified_search"))

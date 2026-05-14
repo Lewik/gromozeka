@@ -6,11 +6,15 @@ import com.gromozeka.application.service.memory.LlmMemoryEntityMaintenancePlanne
 import com.gromozeka.application.service.memory.LlmMemoryNoteConsolidator
 import com.gromozeka.application.service.memory.LlmMemoryRepairPlanner
 import com.gromozeka.application.service.memory.MemoryEntityMaintenancePipeline
+import com.gromozeka.application.service.memory.MemoryEntityMaintenancePipelineResult
 import com.gromozeka.application.service.memory.MemoryMaintenanceTraceEvent
 import com.gromozeka.application.service.memory.MemoryMaintenanceTraceSink
 import com.gromozeka.application.service.memory.MemoryNoteConsolidationPipeline
+import com.gromozeka.application.service.memory.MemoryNoteConsolidationPipelineResult
 import com.gromozeka.application.service.memory.MemoryRepairPipeline
+import com.gromozeka.application.service.memory.MemoryRepairPipelineResult
 import com.gromozeka.application.service.memory.MemoryRetentionPipeline
+import com.gromozeka.application.service.memory.MemoryRetentionPipelineResult
 import com.gromozeka.application.service.memory.MemoryReadTraceEvent
 import com.gromozeka.application.service.memory.MemoryReadTraceSink
 import com.gromozeka.application.service.memory.PolicyMemoryRetentionPlanner
@@ -163,7 +167,7 @@ class MemoryApplicationService(
         project: Project,
         runtimeSystemPrompts: List<String>,
         runtimeTools: List<AiToolCallback>,
-    ) {
+    ): MemoryNoteConsolidationPipelineResult {
         val namespace = MemoryNamespace("project:${project.id.value}")
         val runtime = aiRuntimeProvider.getRuntime(
             provider = AIProvider.valueOf(agent.aiProvider),
@@ -202,6 +206,7 @@ class MemoryApplicationService(
                 payload = MemoryMaintenanceTraceEvent.Payload.NoteConsolidation(result),
             )
         )
+        return result
     }
 
     suspend fun runMemoryRepair(
@@ -210,7 +215,7 @@ class MemoryApplicationService(
         project: Project,
         runtimeSystemPrompts: List<String>,
         runtimeTools: List<AiToolCallback>,
-    ) {
+    ): MemoryRepairPipelineResult {
         val namespace = MemoryNamespace("project:${project.id.value}")
         val runtime = aiRuntimeProvider.getRuntime(
             provider = AIProvider.valueOf(agent.aiProvider),
@@ -248,6 +253,7 @@ class MemoryApplicationService(
                 payload = MemoryMaintenanceTraceEvent.Payload.MemoryRepair(result),
             )
         )
+        return result
     }
 
     suspend fun runEntityMaintenance(
@@ -256,7 +262,7 @@ class MemoryApplicationService(
         project: Project,
         runtimeSystemPrompts: List<String>,
         runtimeTools: List<AiToolCallback>,
-    ) {
+    ): MemoryEntityMaintenancePipelineResult {
         val namespace = MemoryNamespace("project:${project.id.value}")
         val runtime = aiRuntimeProvider.getRuntime(
             provider = AIProvider.valueOf(agent.aiProvider),
@@ -295,12 +301,13 @@ class MemoryApplicationService(
                 payload = MemoryMaintenanceTraceEvent.Payload.EntityMaintenance(result),
             )
         )
+        return result
     }
 
     suspend fun runRetention(
         conversationId: Conversation.Id,
         project: Project,
-    ) {
+    ): MemoryRetentionPipelineResult {
         val namespace = MemoryNamespace("project:${project.id.value}")
         val pipeline = MemoryRetentionPipeline(
             store = store,
@@ -328,6 +335,7 @@ class MemoryApplicationService(
                 payload = MemoryMaintenanceTraceEvent.Payload.Retention(result),
             )
         )
+        return result
     }
 
     private fun emitMaintenanceTrace(event: MemoryMaintenanceTraceEvent) {
