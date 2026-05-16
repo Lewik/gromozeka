@@ -151,7 +151,7 @@ open class AppViewModel(
     }
 
     suspend fun selectTab(index: Int?) = mutex.withLock {
-        if (index != null && index != -1) {  // Allow -1 for Agents tab (system tab)
+        if (index != null && index !in systemTabIndexes) {
             require(index >= 0 && index < _tabs.value.size) {
                 "Tab index $index out of bounds (0..${_tabs.value.size - 1})"
             }
@@ -351,5 +351,9 @@ open class AppViewModel(
             _tabs.value = emptyList()
             _currentTabIndex.value = null
         }
+    }
+
+    private companion object {
+        val systemTabIndexes = setOf(-1, -2)
     }
 }

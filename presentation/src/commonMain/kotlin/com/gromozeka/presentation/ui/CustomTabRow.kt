@@ -8,6 +8,7 @@ import androidx.compose.material.icons.filled.Face
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -84,11 +85,30 @@ fun CustomTabRow(
                 )
             }
 
-            // Session tabs with loading indicators and edit button (index 2+)
+            OptionalTooltip("Настройки") {
+                Tab(
+                    selected = selectedTabIndex == 2,
+                    onClick = {
+                        coroutineScope.launch {
+                            onTabSelect(-2)
+                        }
+                    },
+                    modifier = Modifier.testTag(UiTestTag.SettingsTab.value),
+                    text = {
+                        Row(verticalAlignment = Alignment.Companion.CenterVertically) {
+                            Icon(Icons.Default.Settings, contentDescription = "Settings")
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Настройки")
+                        }
+                    }
+                )
+            }
+
+            // Session tabs with loading indicators and edit button (index 3+)
             tabs.forEachIndexed { index, tab ->
                 val isLoading = tab.isWaitingForResponse.collectAsState().value
                 val tabUiState = tab.uiState.collectAsState().value
-                val tabIndex = index + 2 // was index + 1, now +2 to account for Agents tab
+                val tabIndex = index + 3
 
                 Tab(
                     selected = selectedTabIndex == tabIndex,

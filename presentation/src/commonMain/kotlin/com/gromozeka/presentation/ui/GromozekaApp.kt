@@ -249,7 +249,8 @@ fun GromozekaAppContent(
                                 val selectedTabIndex = when (val currentIndex = currentTabIndex) {
                                     null -> 0
                                     -1 -> 1
-                                    else -> currentIndex + 2
+                                    -2 -> 2
+                                    else -> currentIndex + 3
                                 }
 
                                 val tabRowComponent = @Composable {
@@ -406,6 +407,29 @@ fun GromozekaAppContent(
                                                                 )
                                                             }
 
+                                                            2 -> {
+                                                                SettingsPanel(
+                                                                    isVisible = true,
+                                                                    settings = currentSettings,
+                                                                    onSettingsChange = onSettingsChange,
+                                                                    remoteClientSettings = remoteClientSettings,
+                                                                    onRemoteClientSettingsChange = onRemoteClientSettingsChange,
+                                                                    onClose = {},
+                                                                    translationService = appComponents.translationService,
+                                                                    themeService = appComponents.themeService,
+                                                                    aiThemeGenerator = appComponents.aiThemeGenerator,
+                                                                    logEncryptor = appComponents.logEncryptor,
+                                                                    settingsService = appComponents.settingsService,
+                                                                    ollamaModelService = appComponents.ollamaModelService,
+                                                                    coroutineScope = coroutineScope,
+                                                                    onOpenTab = createNewSession,
+                                                                    onOpenTabWithMessage = createNewSessionWithMessage,
+                                                                    fullScreen = true,
+                                                                    contentMode = SettingsPanelContentMode.AiRuntime,
+                                                                    showCloseButton = false
+                                                                )
+                                                            }
+
                                                             else -> {
                                                                 SessionListScreen(
                                                                     onConversationSelected = { _, _ -> refreshTrigger++ },
@@ -466,7 +490,8 @@ fun GromozekaAppContent(
                                     ollamaModelService = appComponents.ollamaModelService,
                                     coroutineScope = coroutineScope,
                                     onOpenTab = createNewSession,
-                                    onOpenTabWithMessage = createNewSessionWithMessage
+                                    onOpenTabWithMessage = createNewSessionWithMessage,
+                                    contentMode = SettingsPanelContentMode.Quick
                                 )
                             }
 
@@ -533,7 +558,8 @@ fun GromozekaAppContent(
                                     onOpenTab = createNewSession,
                                     onOpenTabWithMessage = createNewSessionWithMessage,
                                     fullScreen = true,
-                                    slideFromRight = true
+                                    slideFromRight = true,
+                                    contentMode = SettingsPanelContentMode.Quick
                                 )
                             }
 

@@ -40,6 +40,11 @@ import kotlinx.coroutines.launch
 
 private val log = KLoggers.logger("SettingsPanel")
 
+enum class SettingsPanelContentMode {
+    Quick,
+    AiRuntime,
+}
+
 @Composable
 fun SettingsPanel(
     isVisible: Boolean,
@@ -60,6 +65,8 @@ fun SettingsPanel(
     modifier: Modifier = Modifier,
     fullScreen: Boolean = false,
     slideFromRight: Boolean = false,
+    contentMode: SettingsPanelContentMode = SettingsPanelContentMode.Quick,
+    showCloseButton: Boolean = true,
 ) {
     val translation = LocalTranslation.current
     val userProfile = settings.userProfile
@@ -120,8 +127,10 @@ fun SettingsPanel(
                         fontWeight = FontWeight.Bold
                     )
 
-                    IconButton(onClick = onClose) {
-                        Icon(Icons.Default.Close, contentDescription = translation.settings.closeSettingsText)
+                    if (showCloseButton) {
+                        IconButton(onClick = onClose) {
+                            Icon(Icons.Default.Close, contentDescription = translation.settings.closeSettingsText)
+                        }
                     }
                 }
 
@@ -135,6 +144,7 @@ fun SettingsPanel(
                         .verticalScroll(scrollState),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
+                    if (contentMode == SettingsPanelContentMode.AiRuntime) {
                     // Audio Settings
                     // Voice Synthesis (TTS) Settings
                     SettingsGroup(title = translation.settings.voiceSynthesisTitle) {
@@ -157,25 +167,41 @@ fun SettingsPanel(
 
                         // Only show TTS settings if TTS is enabled
                         if (textToSpeech.enabled) {
-                            DropdownSettingItem(
-                                label = translation.settings.voiceModelLabel,
-                                description = translation.settings.ttsModelDescription,
-                                value = textToSpeech.modelConfigurationId.value,
-                                options = listOf("gpt-4o-mini-tts", "tts-1", "tts-1-hd"),
-                                onValueChange = {
-                                    onSettingsChange(
-                                        settings.updateUserProfile {
-                                            copy(
-                                                speechSettings = speechSettings.copy(
-                                                    textToSpeech = speechSettings.textToSpeech.copy(
-                                                        modelConfigurationId = AiModelConfiguration.Id(it)
+                            val textToSpeechModelOptions = userProfile.aiSettings.modelConfigurations.filter {
+                                AiModelConfiguration.Role.TEXT_TO_SPEECH in it.roles
+                            }
+                            val selectedTextToSpeechModel = textToSpeechModelOptions.firstOrNull {
+                                it.id == textToSpeech.modelConfigurationId
+                            } ?: textToSpeechModelOptions.firstOrNull()
+
+                            if (selectedTextToSpeechModel != null) {
+                                DropdownSettingItem(
+                                    label = translation.settings.voiceModelLabel,
+                                    description = translation.settings.ttsModelDescription,
+                                    value = selectedTextToSpeechModel,
+                                    options = textToSpeechModelOptions,
+                                    optionLabel = { "${it.displayName} · ${it.providerModelId}" },
+                                    onValueChange = {
+                                        onSettingsChange(
+                                            settings.updateUserProfile {
+                                                copy(
+                                                    speechSettings = speechSettings.copy(
+                                                        textToSpeech = speechSettings.textToSpeech.copy(
+                                                            modelConfigurationId = it.id
+                                                        )
                                                     )
                                                 )
-                                            )
-                                        }
-                                    )
-                                }
-                            )
+                                            }
+                                        )
+                                    }
+                                )
+                            } else {
+                                InfoSettingItem(
+                                    label = translation.settings.voiceModelLabel,
+                                    message = "No text-to-speech model configuration is available",
+                                    isError = true
+                                )
+                            }
 
                             DropdownSettingItem(
                                 label = translation.settings.voiceTypeLabel,
@@ -302,9 +328,10 @@ fun SettingsPanel(
                             }
                         }
                     }
+                    }
 
-                    // AI Settings
-                    SettingsGroup(title = translation.settings.aiSettingsTitle) {
+                    if (contentMode == SettingsPanelContentMode.AiRuntime) {
+                        SettingsGroup(title = translation.settings.aiSettingsTitle) {
                         val aiSettings = userProfile.aiSettings
                         val runtimeOptions = aiSettings.modelConfigurations.map { "${it.id.value} · ${it.displayName}" }
                         val selectedRuntimeOption = aiSettings.modelConfigurations
@@ -459,11 +486,11 @@ fun SettingsPanel(
                                 )
                             }
                         )
-
+                        }
                     }
 
-                    // API Keys
-                    SettingsGroup(title = translation.settings.apiKeysTitle) {
+                    if (contentMode == SettingsPanelContentMode.AiRuntime) {
+                        SettingsGroup(title = translation.settings.apiKeysTitle) {
                         // Brave Search
                         SwitchSettingItem(
                             label = translation.settings.enableBraveSearchLabel,
@@ -543,6 +570,9 @@ fun SettingsPanel(
                         }
                     }
 
+                    }
+
+                    if (contentMode == SettingsPanelContentMode.Quick) {
                     // UI Settings
                     SettingsGroup(title = translation.settings.interfaceSettingsTitle) {
                         SwitchSettingItem(
@@ -639,9 +669,10 @@ fun SettingsPanel(
                                         message = translation.settings.overrideFailureMessage.format(result.error),
                                         isError = true
                                     )
-                                }
                             }
                         }
+                        }
+                    }
 
                         ButtonSettingItem(
                             label = translation.settings.refreshTranslationsLabel,
@@ -861,6 +892,9 @@ fun SettingsPanel(
                         }
                     }
 
+                    }
+
+                    if (contentMode == SettingsPanelContentMode.AiRuntime) {
                     // Logs & Diagnostics
                     SettingsGroup(title = translation.settings.logsAndDiagnosticsTitle) {
                         ButtonSettingItem(
@@ -930,11 +964,11 @@ fun SettingsPanel(
                             }
                         )
                     }
+                    }
                 }
             }
         }
     }
-}
 
 @Composable
 private fun SettingsGroup(
