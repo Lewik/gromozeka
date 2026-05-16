@@ -11,17 +11,21 @@
     "project:architect.role.md",
     "env"
   ],
-  "aiProvider": "OPEN_AI_SUBSCRIPTION",
-  "modelName": "gpt-5.4",
-  "maxTokens": 128000,
-  "thinking": {
-    "type": "adaptive",
-    "display": "full"
+  "runtimeSelection": {
+    "modelConfigurationId": "openai-subscription-gpt-5.5"
   },
-  "outputConfig": {
-    "effort": "high"
+  "runtimeOverrides": {
+    "maxOutputTokens": 128000,
+    "reasoning": {
+      "mode": "ADAPTIVE",
+      "effort": "HIGH",
+      "display": "FULL"
+    }
   },
   "description": "Domain architect",
+  "type": {
+    "kind": "project"
+  },
   "createdAt": "2025-11-22T19:11:52Z",
   "updatedAt": "2026-03-18T00:00:00Z"
 }

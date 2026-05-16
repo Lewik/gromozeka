@@ -1,6 +1,7 @@
 package com.gromozeka.infrastructure.ai.openai.subscription
 
-import com.gromozeka.domain.model.AIProvider
+import com.gromozeka.domain.model.ai.AiConnection
+import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.model.ai.AiRuntimeCapabilities
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.model.ai.AiRuntimeResponse
@@ -21,15 +22,16 @@ class OpenAiSubscriptionRuntimeBackend(
     private val responseMapper: OpenAiSubscriptionResponseMapper,
 ) : AiRuntimeBackend {
 
-    override fun supports(provider: AIProvider): Boolean = provider == AIProvider.OPEN_AI_SUBSCRIPTION
+    override fun supports(connectionKind: AiConnection.Kind): Boolean =
+        connectionKind == AiConnection.Kind.OPENAI_SUBSCRIPTION
 
     override fun createRuntime(
-        provider: AIProvider,
-        modelName: String,
+        connection: AiConnection,
+        modelConfiguration: AiModelConfiguration,
         projectPath: String?,
     ): AiRuntime {
         return Runtime(
-            modelName = modelName,
+            modelName = modelConfiguration.providerModelId,
             authService = authService,
             responsesClient = responsesClient,
             requestMapper = requestMapper,

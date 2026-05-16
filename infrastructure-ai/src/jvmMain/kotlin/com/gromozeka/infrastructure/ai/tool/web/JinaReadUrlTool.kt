@@ -31,7 +31,9 @@ class JinaReadUrlTool(
         .build()
     
     override fun execute(request: JinaReadUrlRequest, context: ToolExecutionContext?): Map<String, Any> {
-        if (!settingsProvider.enableJinaReader || settingsProvider.jinaApiKey.isNullOrBlank()) {
+        val jinaReader = settingsProvider.userProfile.toolSettings.jinaReader
+        val apiKey = settingsProvider.resolveSecret(jinaReader.apiKey)
+        if (!jinaReader.enabled || apiKey.isNullOrBlank()) {
             return mapOf<String, Any>(
                 "success" to false,
                 "content" to "",
@@ -40,7 +42,6 @@ class JinaReadUrlTool(
         }
         
         return try {
-            val apiKey = settingsProvider.jinaApiKey!!
             val url = "https://r.jina.ai/${request.url}"
 
             val httpRequest = HttpRequest.newBuilder()

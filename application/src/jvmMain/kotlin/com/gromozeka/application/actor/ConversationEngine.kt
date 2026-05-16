@@ -2,16 +2,15 @@ package com.gromozeka.application.actor
 
 import com.gromozeka.application.service.AiConversationMessageMapper
 import com.gromozeka.application.service.ParallelToolExecutor
-import com.gromozeka.domain.model.AIProvider
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.repository.AiModelSpecRepository
 import com.gromozeka.domain.model.ai.AiRuntimeOptions
-import com.gromozeka.domain.model.ai.AiModelSpec
-import com.gromozeka.domain.model.ai.AiModelSpecs
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.service.AgentDomainService
 import com.gromozeka.domain.service.AiRuntimeProvider
 import com.gromozeka.domain.service.AiToolProvider
+import com.gromozeka.domain.service.SettingsProvider
 import com.gromozeka.domain.repository.ConversationRepository
 import com.gromozeka.domain.repository.MessageRepository
 import com.gromozeka.domain.repository.ThreadRepository
@@ -71,6 +70,8 @@ class ConversationEngine(
     private val agentDomainService: AgentDomainService,
     private val parallelToolExecutor: ParallelToolExecutor,
     private val aiToolProvider: AiToolProvider,
+    private val settingsProvider: SettingsProvider,
+    private val aiModelSpecRepository: AiModelSpecRepository,
     
     // Communication
     private val eventChannel: SendChannel<Event>,
@@ -505,16 +506,16 @@ class ConversationEngine(
             val project = projectRepository.findById(conversation.projectId)
                 ?: throw IllegalStateException("Project not found: ${conversation.projectId}")
             
-            val provider = AIProvider.valueOf(definition.aiProvider)
-            val modelName = definition.modelName
+            val resolvedRuntime = settingsProvider.resolveAiRuntime(definition.runtimeSelection)
+            val provider = resolvedRuntime.connection.kind.provider
+            val modelName = resolvedRuntime.modelConfiguration.providerModelId
             
-            log.info { "Agent config: name=${definition.name}, modelName=$modelName, provider=$provider, maxTokens=${definition.maxTokens}, thinking=${definition.thinking}, outputConfig=${definition.outputConfig}" }
+            log.info { "Agent config: name=${definition.name}, modelName=$modelName, provider=$provider, runtimeOverrides=${definition.runtimeOverrides}" }
             
             val systemPrompts = agentDomainService.assembleSystemPrompt(definition, project)
-            val runtime = aiRuntimeProvider.getRuntime(provider, modelName, project.path)
-            val modelProvider = AiModelSpec.Provider.valueOf(provider.name)
+            val runtime = aiRuntimeProvider.getRuntime(definition.runtimeSelection, project.path)
             val autoCompactionThresholdTokens = if (runtime.capabilities.supportsAutoCompaction) {
-                AiModelSpecs.byProviderAndId[modelProvider to modelName]?.autoCompactionThresholdTokens.also { threshold ->
+                aiModelSpecRepository.find(provider, modelName)?.autoCompactionThresholdTokens.also { threshold ->
                     if (threshold == null) {
                         log.warn { "Auto compaction disabled: context window is not configured for model=$modelName" }
                     } else {
@@ -539,9 +540,8 @@ class ConversationEngine(
                             messages = state.messages,
                             tools = availableTools,
                             options = AiRuntimeOptions(
-                                maxTokens = definition.maxTokens,
-                                thinking = definition.thinking,
-                                outputConfig = definition.outputConfig,
+                                maxOutputTokens = definition.runtimeOverrides.maxOutputTokens,
+                                reasoning = definition.runtimeOverrides.reasoning,
                                 autoCompactionThresholdTokens = autoCompactionThresholdTokens,
                                 toolContext = mapOf(
                                     "projectPath" to project.path,

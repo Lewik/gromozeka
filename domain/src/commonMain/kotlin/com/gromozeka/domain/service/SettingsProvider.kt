@@ -1,56 +1,25 @@
 package com.gromozeka.domain.service
 
-import com.gromozeka.domain.model.AIProvider
 import com.gromozeka.domain.model.AppMode
+import com.gromozeka.domain.model.AiProvider
+import com.gromozeka.domain.model.SecretRef
+import com.gromozeka.domain.model.UserDeviceSettings
+import com.gromozeka.domain.model.UserProfile
+import com.gromozeka.domain.model.ai.AiConnection
+import com.gromozeka.domain.model.ai.AiModelConfiguration
+import com.gromozeka.domain.model.ai.AiRuntimeSelection
 
 /**
- * Provides access to application configuration settings.
+ * Provides runtime environment settings and the current user/device settings.
  *
- * Centralized configuration for all Gromozeka modules.
- * Infrastructure layer implements this reading from config files, environment variables, or user preferences.
- *
- * Settings are read-only from domain perspective - modifications happen through UI settings panel.
+ * User preferences live in [userProfile]. Local machine or platform preferences
+ * live in [userDeviceSettings]. Environment values such as [mode] and
+ * [homeDirectory] stay here because they are not user profile data.
  */
 interface SettingsProvider {
-    /**
-     * Main language for speech-to-text recognition.
-     *
-     * ISO 639-1 language code (e.g., "en", "ru", "de").
-     * Used by STT service to configure recognition model.
-     */
-    val sttMainLanguage: String
+    val userProfile: UserProfile
 
-    /**
-     * Text-to-speech model identifier.
-     *
-     * Provider-specific model name (e.g., "tts-1", "tts-1-hd" for OpenAI).
-     * Determines voice quality and synthesis speed.
-     */
-    val ttsModel: String
-
-    /**
-     * Text-to-speech voice identifier.
-     *
-     * Provider-specific voice name (e.g., "alloy", "echo", "nova" for OpenAI).
-     * Determines voice characteristics (gender, accent, tone).
-     */
-    val ttsVoice: String
-
-    /**
-     * Text-to-speech playback speed multiplier.
-     *
-     * Range: 0.25 to 4.0 (typical: 1.0 = normal speed).
-     * Values < 1.0 slow down, > 1.0 speed up.
-     */
-    val ttsSpeed: Float
-
-    /**
-     * AI provider for chat completions.
-     *
-     * Determines which LLM is used for conversations (Claude, Gemini, OpenAI, etc.).
-     * See [AIProvider] for available options.
-     */
-    val aiProvider: AIProvider
+    val userDeviceSettings: UserDeviceSettings
 
     /**
      * Application operating mode.
@@ -68,74 +37,39 @@ interface SettingsProvider {
      */
     val homeDirectory: String
 
-    /**
-     * Enable Brave Search integration.
-     *
-     * When true, BraveWebSearchTool and BraveLocalSearchTool are available.
-     * Requires valid [braveApiKey].
-     */
-    val enableBraveSearch: Boolean
+    fun resolveAiRuntime(selection: AiRuntimeSelection): ResolvedAiRuntime {
+        val modelConfiguration = userProfile.aiSettings.modelConfigurations.firstOrNull {
+            it.id == selection.modelConfigurationId
+        } ?: error("AI model configuration not found: ${selection.modelConfigurationId.value}")
+        val connection = userProfile.aiSettings.connections.firstOrNull { it.id == modelConfiguration.connectionId }
+            ?: error("AI connection not found: ${modelConfiguration.connectionId.value}")
+        require(connection.enabled) { "AI connection is disabled: ${connection.id.value}" }
+        require(modelConfiguration.enabled) { "AI model configuration is disabled: ${modelConfiguration.id.value}" }
+        return ResolvedAiRuntime(connection, modelConfiguration)
+    }
 
-    /**
-     * API key for Brave Search.
-     *
-     * Required when [enableBraveSearch] is true.
-     * Null when Brave Search is disabled or key not configured.
-     * Obtained from: https://brave.com/search/api/
-     */
-    val braveApiKey: String?
+    fun resolveSecret(secretRef: SecretRef?): String? = null
 
-    /**
-     * Enable Jina Reader integration.
-     *
-     * When true, JinaReadUrlTool is available for URL-to-Markdown conversion.
-     * Requires valid [jinaApiKey].
-     */
-    val enableJinaReader: Boolean
-
-    /**
-     * API key for Jina Reader.
-     *
-     * Required when [enableJinaReader] is true.
-     * Null when Jina Reader is disabled or key not configured.
-     * Obtained from: https://jina.ai/reader/
-     */
-    val jinaApiKey: String?
-
-    val anthropicApiKey: String?
-        get() = null
-
-    val anthropicBaseUrl: String
-        get() = "https://api.anthropic.com"
-
-    val anthropicBedrockRegion: String?
-        get() = null
-
-    val anthropicBedrockBaseUrl: String?
-        get() = null
-
-    val anthropicBedrockProfile: String?
-        get() = null
-
-    val openAiApiKey: String?
-        get() = null
-
-    val ollamaBaseUrl: String
-        get() = "http://localhost:11434"
-
-    /**
-     * Automatically remember chat turns into typed long-term memory.
-     *
-     * When false, typed memory may still be updated through real tools or manual flows.
-     */
-    val memoryAutoRemember: Boolean
-        get() = false
-
-    /**
-     * Automatically recall typed long-term memory before the main model response.
-     *
-     * When false, typed memory may still be queried through real tools or manual flows.
-     */
-    val memoryAutoRecall: Boolean
-        get() = false
+    fun findFirstModelConfiguration(
+        role: AiModelConfiguration.Role,
+        provider: AiProvider? = null,
+        connectionKind: AiConnection.Kind? = null,
+    ): ResolvedAiRuntime? {
+        val configuration = userProfile.aiSettings.modelConfigurations.firstOrNull { configuration ->
+            configuration.enabled &&
+                role in configuration.roles &&
+                userProfile.aiSettings.connections.any { connection ->
+                    connection.id == configuration.connectionId &&
+                        connection.enabled &&
+                        (provider == null || connection.kind.provider == provider) &&
+                        (connectionKind == null || connection.kind == connectionKind)
+                }
+        } ?: return null
+        return resolveAiRuntime(AiRuntimeSelection(configuration.id))
+    }
 }
+
+data class ResolvedAiRuntime(
+    val connection: AiConnection,
+    val modelConfiguration: AiModelConfiguration,
+)

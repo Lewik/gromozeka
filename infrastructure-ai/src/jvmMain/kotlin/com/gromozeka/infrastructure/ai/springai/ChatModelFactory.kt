@@ -1,7 +1,8 @@
 package com.gromozeka.infrastructure.ai.springai
 
-import com.gromozeka.domain.model.AIProvider
 import com.gromozeka.domain.model.AppMode
+import com.gromozeka.domain.model.ai.AiConnection
+import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.service.SettingsProvider
 import com.gromozeka.infrastructure.ai.factory.AiApiFactory
 import io.micrometer.observation.ObservationRegistry
@@ -32,35 +33,33 @@ class ChatModelFactory(
     private val log = KLoggers.logger(this)
 
     private data class CacheKey(
-        val provider: AIProvider,
-        val modelName: String,
+        val connectionId: AiConnection.Id,
+        val modelConfigurationId: AiModelConfiguration.Id,
         val projectPath: String?,
     )
 
     private val cache = ConcurrentHashMap<CacheKey, ChatModel>()
 
-    fun getChatModel(provider: AIProvider, modelName: String, projectPath: String?): ChatModel {
-        val key = CacheKey(provider, modelName, projectPath)
+    fun getChatModel(connection: AiConnection, modelConfiguration: AiModelConfiguration, projectPath: String?): ChatModel {
+        val key = CacheKey(connection.id, modelConfiguration.id, projectPath)
         return cache.getOrPut(key) {
-            createChatModel(provider, modelName, projectPath)
+            createChatModel(connection, modelConfiguration, projectPath)
         }
     }
 
-    @Deprecated("Use getChatModel instead", ReplaceWith("getChatModel(provider, modelName, projectPath)"))
-    fun get(provider: AIProvider, modelName: String, projectPath: String?): ChatModel =
-        getChatModel(provider, modelName, projectPath)
-
     private fun createChatModel(
-        provider: AIProvider,
-        modelName: String,
+        connection: AiConnection,
+        modelConfiguration: AiModelConfiguration,
         projectPath: String?,
     ): ChatModel {
         val retryTemplate = RetryTemplate.builder().maxAttempts(3).build()
         val observationRegistry = ObservationRegistry.NOOP
+        val connectionKind = connection.kind
+        val modelName = modelConfiguration.providerModelId
         
-        return when (provider) {
-            AIProvider.OLLAMA -> {
-                val ollamaApi = aiApiFactory.createOllamaApi()
+        return when (connectionKind) {
+            AiConnection.Kind.OLLAMA -> {
+                val ollamaApi = aiApiFactory.createOllamaApi(connection)
 
                 val options = OllamaChatOptions.builder()
                     .model(modelName)
@@ -81,7 +80,7 @@ class ChatModelFactory(
                 )
             }
 
-            AIProvider.GEMINI -> {
+            AiConnection.Kind.GEMINI_API -> {
                 val geminiClient = aiApiFactory.createGeminiClient()
                 requireNotNull(geminiClient) {
                     "Gemini not configured - missing google-credentials.json file"
@@ -105,8 +104,9 @@ class ChatModelFactory(
                 )
             }
 
-            AIProvider.OPEN_AI -> {
-                val openAiApi = aiApiFactory.createOpenAiApi()
+            AiConnection.Kind.OPENAI_API,
+            AiConnection.Kind.OPENAI_COMPATIBLE -> {
+                val openAiApi = aiApiFactory.createOpenAiApi(connection)
 
                 OpenAiChatModel(
                     openAiApi,
@@ -123,19 +123,19 @@ class ChatModelFactory(
                     )
             }
 
-            AIProvider.OPEN_AI_SUBSCRIPTION -> {
+            AiConnection.Kind.OPENAI_SUBSCRIPTION -> {
                 error("OPEN_AI_SUBSCRIPTION is handled by a dedicated runtime backend, not Spring AI ChatModelFactory")
             }
 
-            AIProvider.ANTHROPIC -> {
+            AiConnection.Kind.ANTHROPIC_API -> {
                 error("ANTHROPIC is handled by AnthropicSdkRuntimeBackend, not Spring AI ChatModelFactory")
             }
 
-            AIProvider.ANTHROPIC_BEDROCK -> {
+            AiConnection.Kind.ANTHROPIC_BEDROCK -> {
                 error("ANTHROPIC_BEDROCK is handled by AnthropicSdkRuntimeBackend, not Spring AI ChatModelFactory")
             }
 
-            AIProvider.CLAUDE_CODE -> {
+            AiConnection.Kind.CLAUDE_CODE -> {
                 val workingDir = projectPath ?: System.getProperty("user.dir")
                 val claudePath = ClaudePathDetector.detectClaudePath()
 

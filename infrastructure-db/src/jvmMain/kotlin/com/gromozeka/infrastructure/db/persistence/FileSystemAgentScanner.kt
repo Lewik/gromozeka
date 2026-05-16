@@ -1,47 +1,15 @@
 package com.gromozeka.infrastructure.db.persistence
 
 import com.gromozeka.domain.model.AgentDefinition
-import com.gromozeka.domain.model.Prompt
 import klog.KLoggers
-import kotlinx.datetime.Instant
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import org.springframework.stereotype.Component
 import java.io.File
-import java.util.UUID
 
 @Component
 class FileSystemAgentScanner {
     private val log = KLoggers.logger("FileSystemAgentScanner")
-    private val json = Json { ignoreUnknownKeys = true }
-
-    @Serializable
-    private data class AgentDTO(
-        val id: String,
-        val name: String,
-        val prompts: List<String>,
-        val aiProvider: String = "ANTHROPIC",
-        val modelName: String = "claude-sonnet-4-6",
-        val maxTokens: Int? = null,
-        val thinking: ThinkingConfigDTO? = null,
-        val outputConfig: OutputConfigDTO? = null,
-        val tools: List<String> = emptyList(),
-        val description: String? = null,
-        val createdAt: Instant,
-        val updatedAt: Instant
-    )
-
-    @Serializable
-    private data class ThinkingConfigDTO(
-        val type: String = "adaptive",
-        val budgetTokens: Int? = null,
-        val display: String = "full"
-    )
-
-    @Serializable
-    private data class OutputConfigDTO(
-        val effort: String = "high"
-    )
+    private val json = Json
 
     fun scanGlobalAgents(): List<AgentDefinition> {
         val gromozekaHome = System.getProperty("GROMOZEKA_HOME") 
@@ -132,8 +100,6 @@ class FileSystemAgentScanner {
                 log.debug { "Loading agent from: ${file.name}" }
                 
                 val content = file.readText()
-                val dto = json.decodeFromString<AgentDTO>(content)
-                
                 val id = if (isGlobal) {
                     AgentDefinition.Id("global:${file.name}")
                 } else {
@@ -141,29 +107,8 @@ class FileSystemAgentScanner {
                 }
                 val type = if (isGlobal) AgentDefinition.Type.Global else AgentDefinition.Type.Project
                 
-                val agent = AgentDefinition(
-                    id = id,
-                    name = dto.name,
-                    prompts = dto.prompts.map { Prompt.Id(it) },
-                    aiProvider = dto.aiProvider,
-                    modelName = dto.modelName,
-                    maxTokens = dto.maxTokens ?: getDefaultMaxTokens(dto.modelName),
-                    thinking = dto.thinking?.let {
-                        AgentDefinition.ThinkingConfig(
-                            type = it.type,
-                            budgetTokens = it.budgetTokens,
-                            display = it.display
-                        )
-                    } ?: getDefaultThinking(dto.modelName),
-                    outputConfig = dto.outputConfig?.let {
-                        AgentDefinition.OutputConfig(effort = it.effort)
-                    } ?: getDefaultOutputConfig(dto.modelName),
-                    tools = dto.tools,
-                    description = dto.description,
-                    type = type,
-                    createdAt = dto.createdAt,
-                    updatedAt = dto.updatedAt
-                )
+                val agent = json.decodeFromString<AgentDefinition>(content)
+                    .validatedIdentity(id, type, file.absolutePath)
                 
                 log.info { "Loaded ${if (isGlobal) "GLOBAL" else "PROJECT"} agent: ${agent.name} (${agent.id.value})" }
                 agent
@@ -202,31 +147,8 @@ class FileSystemAgentScanner {
 
                 try {
                     val content = file.readText()
-                    val dto = json.decodeFromString<AgentDTO>(content)
-
-                    AgentDefinition(
-                        id = id,
-                        name = dto.name,
-                        prompts = dto.prompts.map { Prompt.Id(it) },
-                        aiProvider = dto.aiProvider,
-                        modelName = dto.modelName,
-                        maxTokens = dto.maxTokens ?: getDefaultMaxTokens(dto.modelName),
-                        thinking = dto.thinking?.let {
-                            AgentDefinition.ThinkingConfig(
-                                type = it.type,
-                                budgetTokens = it.budgetTokens,
-                                display = it.display
-                            )
-                        } ?: getDefaultThinking(dto.modelName),
-                        outputConfig = dto.outputConfig?.let {
-                            AgentDefinition.OutputConfig(effort = it.effort)
-                        } ?: getDefaultOutputConfig(dto.modelName),
-                        tools = dto.tools,
-                        description = dto.description,
-                        type = AgentDefinition.Type.Global,
-                        createdAt = dto.createdAt,
-                        updatedAt = dto.updatedAt
-                    )
+                    json.decodeFromString<AgentDefinition>(content)
+                        .validatedIdentity(id, AgentDefinition.Type.Global, file.absolutePath)
                 } catch (e: Exception) {
                     log.error(e) { "Failed to load global agent: ${file.absolutePath}" }
                     null
@@ -251,65 +173,14 @@ class FileSystemAgentScanner {
 
                 try {
                     val content = file.readText()
-                    val dto = json.decodeFromString<AgentDTO>(content)
-
-                    AgentDefinition(
-                        id = id,
-                        name = dto.name,
-                        prompts = dto.prompts.map { Prompt.Id(it) },
-                        aiProvider = dto.aiProvider,
-                        modelName = dto.modelName,
-                        maxTokens = dto.maxTokens ?: getDefaultMaxTokens(dto.modelName),
-                        thinking = dto.thinking?.let {
-                            AgentDefinition.ThinkingConfig(
-                                type = it.type,
-                                budgetTokens = it.budgetTokens,
-                                display = it.display
-                            )
-                        } ?: getDefaultThinking(dto.modelName),
-                        outputConfig = dto.outputConfig?.let {
-                            AgentDefinition.OutputConfig(effort = it.effort)
-                        } ?: getDefaultOutputConfig(dto.modelName),
-                        tools = dto.tools,
-                        description = dto.description,
-                        type = AgentDefinition.Type.Project,
-                        createdAt = dto.createdAt,
-                        updatedAt = dto.updatedAt
-                    )
+                    json.decodeFromString<AgentDefinition>(content)
+                        .validatedIdentity(id, AgentDefinition.Type.Project, file.absolutePath)
                 } catch (e: Exception) {
                     log.error(e) { "Failed to load project agent: ${file.absolutePath}" }
                     null
                 }
             }
 
-            else -> null
-        }
-    }
-
-    private fun getDefaultMaxTokens(modelName: String): Int? {
-        return when {
-            modelName.contains("opus-4-6") -> 128_000
-            modelName.contains("sonnet-4-6") -> 64_000
-            else -> null
-        }
-    }
-
-    private fun getDefaultThinking(modelName: String): AgentDefinition.ThinkingConfig? {
-        return when {
-            modelName.contains("claude") && modelName.contains("4-6") -> 
-                AgentDefinition.ThinkingConfig(type = "adaptive", display = "full")
-            modelName.contains("claude") -> 
-                AgentDefinition.ThinkingConfig(type = "enabled", budgetTokens = 16_000, display = "full")
-            else -> null
-        }
-    }
-
-    private fun getDefaultOutputConfig(modelName: String): AgentDefinition.OutputConfig? {
-        return when {
-            modelName.contains("opus-4-6") -> 
-                AgentDefinition.OutputConfig(effort = "max")
-            modelName.contains("sonnet-4-6") || modelName.contains("claude-4") -> 
-                AgentDefinition.OutputConfig(effort = "high")
             else -> null
         }
     }

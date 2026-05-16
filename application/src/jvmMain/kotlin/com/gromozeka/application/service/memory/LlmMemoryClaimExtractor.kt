@@ -82,7 +82,7 @@ class LlmMemoryClaimExtractor(
                 messages = stageMessages,
                 tools = runtimeTools,
                 options = AiRuntimeOptions(
-                    maxTokens = 6_000,
+                    maxOutputTokens = 6_000,
                     toolChoice = AiToolChoice.None,
                     responseFormat = MemoryStructuredResponseFormats.ClaimExtractor,
                     toolContext = mapOf(

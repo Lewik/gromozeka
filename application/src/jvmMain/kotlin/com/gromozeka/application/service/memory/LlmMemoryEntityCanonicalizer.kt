@@ -52,7 +52,7 @@ class LlmMemoryEntityCanonicalizer(
                 messages = stageMessages,
                 tools = runtimeTools,
                 options = AiRuntimeOptions(
-                    maxTokens = 4_000,
+                    maxOutputTokens = 4_000,
                     toolChoice = AiToolChoice.None,
                     responseFormat = MemoryStructuredResponseFormats.EntityCanonicalizer,
                     toolContext = mapOf(

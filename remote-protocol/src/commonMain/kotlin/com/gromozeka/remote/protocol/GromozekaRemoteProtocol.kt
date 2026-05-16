@@ -10,6 +10,7 @@ import com.gromozeka.domain.model.Prompt
 import com.gromozeka.domain.model.Settings
 import com.gromozeka.domain.model.SquashType
 import com.gromozeka.domain.model.TokenUsageStatistics
+import com.gromozeka.domain.model.ai.AiRuntimeSelection
 import com.gromozeka.domain.model.memory.MemoryTask
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -74,8 +75,7 @@ data class FindAgentsRequest(
 data class CreateAgentRequest(
     val name: String,
     val prompts: List<Prompt.Id>,
-    val aiProvider: String,
-    val modelName: String,
+    val runtimeSelection: AiRuntimeSelection,
     val tools: List<String> = emptyList(),
     val description: String? = null,
     val type: AgentDefinition.Type,
@@ -278,8 +278,7 @@ data class SquashMessagesWithAiRequest(
     val conversationId: Conversation.Id,
     val messageIds: List<Conversation.Message.Id>,
     val squashType: SquashType,
-    val aiProvider: String,
-    val modelName: String,
+    val runtimeSelection: AiRuntimeSelection,
     val projectPath: String?,
 ) : ClientRequest
 

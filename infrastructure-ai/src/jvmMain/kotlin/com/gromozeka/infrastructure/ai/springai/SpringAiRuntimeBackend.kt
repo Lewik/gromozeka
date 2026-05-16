@@ -1,6 +1,7 @@
 package com.gromozeka.infrastructure.ai.springai
 
-import com.gromozeka.domain.model.AIProvider
+import com.gromozeka.domain.model.ai.AiConnection
+import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.model.ai.AiResponseFormat
 import com.gromozeka.domain.model.ai.AiRuntimeOptions
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
@@ -27,26 +28,26 @@ internal class SpringAiRuntimeBackend(
     private val messageMapper: SpringAiMessageMapper,
 ) : AiRuntimeBackend {
 
-    override fun supports(provider: AIProvider): Boolean =
-        provider != AIProvider.OPEN_AI_SUBSCRIPTION &&
-            provider != AIProvider.ANTHROPIC &&
-            provider != AIProvider.ANTHROPIC_BEDROCK
+    override fun supports(connectionKind: AiConnection.Kind): Boolean =
+        connectionKind != AiConnection.Kind.OPENAI_SUBSCRIPTION &&
+            connectionKind != AiConnection.Kind.ANTHROPIC_API &&
+            connectionKind != AiConnection.Kind.ANTHROPIC_BEDROCK
 
     override fun createRuntime(
-        provider: AIProvider,
-        modelName: String,
+        connection: AiConnection,
+        modelConfiguration: AiModelConfiguration,
         projectPath: String?
     ): AiRuntime {
         return SpringAiRuntime(
-            provider = provider,
-            chatModel = chatModelFactory.getChatModel(provider, modelName, projectPath),
+            connectionKind = connection.kind,
+            chatModel = chatModelFactory.getChatModel(connection, modelConfiguration, projectPath),
             messageMapper = messageMapper
         )
     }
 }
 
 private class SpringAiRuntime(
-    private val provider: AIProvider,
+    private val connectionKind: AiConnection.Kind,
     private val chatModel: ChatModel,
     private val messageMapper: SpringAiMessageMapper,
 ) : AiRuntime {
@@ -76,18 +77,19 @@ private class SpringAiRuntime(
         val toolCallbacks = request.tools.map(::SpringAiToolCallbackAdapter)
         val toolNames = toolCallbacks.map { it.toolDefinition.name() }.toSet()
         if (options.responseFormat !is AiResponseFormat.Text) {
-            log.warn { "Provider $provider does not expose structured response format via Spring AI runtime options yet" }
+            log.warn { "Connection kind $connectionKind does not expose structured response format via Spring AI runtime options yet" }
         }
 
-        return when (provider) {
-            AIProvider.OPEN_AI -> {
+        return when (connectionKind) {
+            AiConnection.Kind.OPENAI_API,
+            AiConnection.Kind.OPENAI_COMPATIBLE -> {
                 val builder = OpenAiChatOptions.builder()
                     .toolCallbacks(toolCallbacks)
                     .toolNames(toolNames)
                     .internalToolExecutionEnabled(false)
                     .toolContext(options.toolContext)
 
-                options.maxTokens?.let(builder::maxCompletionTokens)
+                options.maxOutputTokens?.let(builder::maxCompletionTokens)
 
                 when (val toolChoice = options.toolChoice) {
                     AiToolChoice.Auto -> builder.toolChoice(OpenAiApi.ChatCompletionRequest.ToolChoiceBuilder.AUTO)
@@ -103,11 +105,11 @@ private class SpringAiRuntime(
 
             else -> {
                 if (options.toolChoice !is AiToolChoice.Auto && options.toolChoice !is AiToolChoice.None) {
-                    log.warn { "Provider $provider does not expose forced tool choice via Spring AI runtime options" }
+                    log.warn { "Connection kind $connectionKind does not expose forced tool choice via Spring AI runtime options" }
                 }
 
                 if (options.toolChoice is AiToolChoice.None && toolCallbacks.isNotEmpty()) {
-                    log.warn { "Provider $provider does not expose tool_choice=none via Spring AI runtime options; dropping tools for this call" }
+                    log.warn { "Connection kind $connectionKind does not expose tool_choice=none via Spring AI runtime options; dropping tools for this call" }
                 }
 
                 val builder = ToolCallingChatOptions.builder()

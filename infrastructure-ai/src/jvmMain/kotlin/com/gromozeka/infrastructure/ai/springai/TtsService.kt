@@ -3,6 +3,7 @@ package com.gromozeka.infrastructure.ai.springai
 import com.gromozeka.domain.service.AudioController
 import com.gromozeka.domain.service.SettingsProvider
 import com.gromozeka.domain.model.TtsTask
+import com.gromozeka.domain.model.ai.AiRuntimeSelection
 import klog.KLoggers
 
 import kotlinx.coroutines.Dispatchers
@@ -28,18 +29,22 @@ class TtsService(
             if (text.isBlank()) return@withContext null
 
             val outputFile = File.createTempFile("tts_output", ".mp3")
+            val textToSpeechSettings = settingsProvider.userProfile.speechSettings.textToSpeech
+            val modelName = settingsProvider.resolveAiRuntime(
+                AiRuntimeSelection(textToSpeechSettings.modelConfigurationId)
+            ).modelConfiguration.providerModelId
 
             val response = openAiAudioSpeechModel.call(
                 TextToSpeechPrompt(
                     text, OpenAiAudioSpeechOptions.builder()
-                        .model(settingsProvider.ttsModel)
+                        .model(modelName)
                         .voice(
                             OpenAiAudioApi.SpeechRequest.Voice.valueOf(
-                                settingsProvider.ttsVoice.uppercase()
+                                textToSpeechSettings.voice.uppercase()
                             )
                         )
                         .responseFormat(OpenAiAudioApi.SpeechRequest.AudioResponseFormat.MP3)
-                        .speed(settingsProvider.ttsSpeed.toDouble())
+                        .speed(textToSpeechSettings.speed.toDouble())
                         .build()
                 )
             ).result.output

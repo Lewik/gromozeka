@@ -1,7 +1,7 @@
 package com.gromozeka.client
 
-import com.gromozeka.domain.model.AIProvider
 import com.gromozeka.domain.model.AppMode
+import com.gromozeka.domain.model.SecretRef
 import com.gromozeka.domain.model.Settings
 import com.gromozeka.domain.service.SettingsService
 import com.gromozeka.remote.protocol.GetSettingsRequest
@@ -23,16 +23,15 @@ internal class RemoteSettingsService(
 
     override val settingsFlow: StateFlow<Settings> = _settingsFlow.asStateFlow()
     override val settings: Settings get() = _settingsFlow.value
-    override val sttMainLanguage: String get() = settings.sttMainLanguage
-    override val ttsModel: String get() = settings.ttsModel
-    override val ttsVoice: String get() = settings.ttsVoice
-    override val ttsSpeed: Float get() = settings.ttsSpeed
-    override val aiProvider: AIProvider get() = settings.defaultAiProvider
+    override val userProfile get() = settings.userProfile
+    override val userDeviceSettings get() = settings.userDeviceSettings
     override val mode: AppMode get() = AppMode.PRODUCTION
-    override val enableBraveSearch: Boolean get() = settings.enableBraveSearch
-    override val braveApiKey: String? get() = settings.braveApiKey
-    override val enableJinaReader: Boolean get() = settings.enableJinaReader
-    override val jinaApiKey: String? get() = settings.jinaApiKey
+
+    override fun resolveSecret(secretRef: SecretRef?): String? = when (secretRef) {
+        null -> null
+        is SecretRef.Inline -> secretRef.value
+        is SecretRef.EnvironmentVariable -> null
+    }
 
     suspend fun refreshFromServer(): Settings =
         client.requestTyped<GetSettingsRequest, SettingsResponse>(GetSettingsRequest).settings.also {

@@ -3,9 +3,11 @@ package com.gromozeka.application.actor
 import com.gromozeka.application.service.ParallelToolExecutor
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.repository.AiModelSpecRepository
 import com.gromozeka.domain.service.AgentDomainService
 import com.gromozeka.domain.service.AiRuntimeProvider
 import com.gromozeka.domain.service.AiToolProvider
+import com.gromozeka.domain.service.SettingsProvider
 import com.gromozeka.domain.repository.ConversationRepository
 import com.gromozeka.domain.repository.MessageRepository
 import com.gromozeka.domain.repository.ThreadMessageRepository
@@ -70,6 +72,8 @@ class ConversationSupervisor(
     private val agentDomainService: AgentDomainService,
     private val parallelToolExecutor: ParallelToolExecutor,
     private val aiToolProvider: AiToolProvider,
+    private val settingsProvider: SettingsProvider,
+    private val aiModelSpecRepository: AiModelSpecRepository,
     
     // Configuration
     private val maxIterations: Int = 200
@@ -314,6 +318,8 @@ class ConversationSupervisor(
                 agentDomainService = agentDomainService,
                 parallelToolExecutor = parallelToolExecutor,
                 aiToolProvider = aiToolProvider,
+                settingsProvider = settingsProvider,
+                aiModelSpecRepository = aiModelSpecRepository,
                 
                 // Communication
                 eventChannel = eventChannel,

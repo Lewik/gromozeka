@@ -17,6 +17,8 @@ import com.gromozeka.domain.service.AgentDomainService
 import com.gromozeka.domain.service.PromptDomainService
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Prompt
+import com.gromozeka.domain.model.ai.AiModelConfiguration
+import com.gromozeka.domain.model.ai.AiRuntimeSelection
 import com.gromozeka.presentation.ui.CompactButton
 import klog.KLoggers
 import kotlinx.coroutines.CoroutineScope
@@ -485,8 +487,9 @@ fun AgentConstructorScreen(
                             agentService.createAgent(
                                 name = name,
                                 prompts = selectedPrompts,
-                                aiProvider = "CLAUDE_CODE", // Default provider
-                                modelName = "claude-sonnet-4", // Default model
+                                runtimeSelection = AiRuntimeSelection(
+                                    AiModelConfiguration.Id("openai-subscription-gpt-5.5")
+                                ),
                                 description = description,
                                 type = AgentDefinition.Type.Inline
                             )

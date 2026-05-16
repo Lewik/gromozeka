@@ -1,7 +1,11 @@
 package com.gromozeka.domain.model
 
+import com.gromozeka.domain.model.ai.AiRuntimeOverrides
+import com.gromozeka.domain.model.ai.AiRuntimeSelection
 import kotlinx.datetime.Instant
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonClassDiscriminator
 import kotlin.jvm.JvmInline
 
 /**
@@ -22,17 +26,16 @@ import kotlin.jvm.JvmInline
  *
  * This is an immutable value type - use copy() to create modified versions.
  *
- * @property id unique agent identifier (hash of file path or generated for inline)
+ * @property id unique agent identifier. File-backed agents store it in JSON,
+ * and loaders verify it against the expected storage-derived id.
  * @property name agent role name displayed in UI (e.g., "Code Reviewer", "Researcher")
  * @property prompts ordered list of prompt IDs defining agent behavior
- * @property aiProvider AI provider identifier (e.g., "ANTHROPIC", "ANTHROPIC_BEDROCK", "OPENAI", "GEMINI")
- * @property modelName model identifier (e.g., "claude-opus-4-6", "gpt-4")
- * @property maxTokens maximum output tokens (null = use SDK default). For Opus 4.6: 128000, Sonnet 4.6: 64000
- * @property thinking extended thinking configuration (Anthropic models only)
- * @property outputConfig output configuration including effort level (Anthropic models only)
+ * @property runtimeSelection model configuration used to create the runtime for this agent.
+ * @property runtimeOverrides optional per-agent overrides on top of the selected model configuration.
  * @property tools list of available tool names for this agent
  * @property description optional human-readable explanation of agent's purpose
- * @property type agent location type with file path (or inline for dynamic agents)
+ * @property type agent location type. File-backed agents store it in JSON,
+ * and loaders verify it against the place where the file was found.
  * @property createdAt timestamp when agent was created (immutable)
  * @property updatedAt timestamp of last modification (name, prompts, or description change)
  */
@@ -41,11 +44,8 @@ data class AgentDefinition(
     val id: Id,
     val name: String,
     val prompts: List<Prompt.Id>,
-    val aiProvider: String, // TODO: make it AIProvider enum
-    val modelName: String,
-    val maxTokens: Int? = null,
-    val thinking: ThinkingConfig? = null,
-    val outputConfig: OutputConfig? = null,
+    val runtimeSelection: AiRuntimeSelection,
+    val runtimeOverrides: AiRuntimeOverrides = AiRuntimeOverrides(),
     val tools: List<String> = emptyList(), // tool names to resolve via ToolRegistry
     val description: String? = null,
     val type: Type,
@@ -53,7 +53,7 @@ data class AgentDefinition(
     val updatedAt: Instant,
 ) {
     /**
-     * Unique agent identifier (hash of file path or UUID for inline).
+     * Unique agent identifier.
      */
     @Serializable
     @JvmInline
@@ -65,6 +65,7 @@ data class AgentDefinition(
      * ID contains relative path specific to each type.
      */
     @Serializable
+    @JsonClassDiscriminator("kind")
     sealed class Type {
         /**
          * Builtin agent shipped with Gromozeka.
@@ -72,6 +73,7 @@ data class AgentDefinition(
          * ID format: "agents/architect.json" (relative to resources/)
          */
         @Serializable
+        @SerialName("builtin")
         object Builtin : Type()
 
         /**
@@ -80,6 +82,7 @@ data class AgentDefinition(
          * ID format: "agents/my-agent.json" (relative to ~/.gromozeka/)
          */
         @Serializable
+        @SerialName("global")
         object Global : Type()
 
         /**
@@ -88,6 +91,7 @@ data class AgentDefinition(
          * ID format: ".gromozeka/agents/architect.json" (relative to project root)
          */
         @Serializable
+        @SerialName("project")
         object Project : Type()
 
         /**
@@ -96,30 +100,8 @@ data class AgentDefinition(
          * ID format: UUID string
          */
         @Serializable
+        @SerialName("inline")
         object Inline : Type()
     }
 
-    /**
-     * Extended thinking configuration for Anthropic models.
-     * 
-     * @property type thinking mode: "adaptive" (recommended for Opus/Sonnet 4.6), "enabled" (manual budget), "disabled"
-     * @property budgetTokens thinking token budget (only for type="enabled", deprecated on Opus/Sonnet 4.6)
-     * @property display how thinking is displayed: "full" (complete thinking), "summarized" (brief summary), "omitted" (no text, signature only)
-     */
-    @Serializable
-    data class ThinkingConfig(
-        val type: String = "adaptive", // "adaptive", "enabled", "disabled"
-        val budgetTokens: Int? = null,
-        val display: String = "full" // "full", "summarized", "omitted"
-    )
-
-    /**
-     * Output configuration for Anthropic models.
-     * 
-     * @property effort thinking effort level (only for adaptive thinking): "max" (Opus 4.6 only), "high" (default), "medium", "low"
-     */
-    @Serializable
-    data class OutputConfig(
-        val effort: String = "high" // "max", "high", "medium", "low"
-    )
 }

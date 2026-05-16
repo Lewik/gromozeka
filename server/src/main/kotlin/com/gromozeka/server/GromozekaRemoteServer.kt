@@ -84,8 +84,7 @@ class GromozekaRemoteServer(
                     agentDomainService.createAgent(
                         request.name,
                         request.prompts,
-                        request.aiProvider,
-                        request.modelName,
+                        request.runtimeSelection,
                         request.tools,
                         request.description,
                         request.type
@@ -166,8 +165,7 @@ class GromozekaRemoteServer(
                         request.conversationId,
                         request.messageIds,
                         request.squashType,
-                        request.aiProvider,
-                        request.modelName,
+                        request.runtimeSelection,
                         request.projectPath
                     )
                 )

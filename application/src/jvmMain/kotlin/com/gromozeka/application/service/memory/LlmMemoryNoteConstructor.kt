@@ -74,7 +74,7 @@ class LlmMemoryNoteConstructor(
                 messages = stageMessages,
                 tools = runtimeTools,
                 options = AiRuntimeOptions(
-                    maxTokens = 4_800,
+                    maxOutputTokens = 4_800,
                     toolChoice = AiToolChoice.None,
                     responseFormat = MemoryStructuredResponseFormats.NoteConstructor,
                     toolContext = mapOf(

@@ -15,7 +15,6 @@ import klog.KLoggers
 import kotlinx.datetime.Clock
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 
@@ -46,7 +45,7 @@ class LlmMemoryReadPlanner(
                 messages = stageMessages,
                 tools = runtimeTools,
                 options = AiRuntimeOptions(
-                    maxTokens = 2_000,
+                    maxOutputTokens = 2_000,
                     toolChoice = AiToolChoice.None,
                     responseFormat = MemoryStructuredResponseFormats.ReadRetrievalPlanner,
                     toolContext = mapOf(
@@ -122,7 +121,7 @@ class LlmMemoryReadPlanner(
                 messages = stageMessages,
                 tools = runtimeTools,
                 options = AiRuntimeOptions(
-                    maxTokens = 1_200,
+                    maxOutputTokens = 1_200,
                     toolChoice = AiToolChoice.None,
                     responseFormat = MemoryStructuredResponseFormats.ReadNeedVerifier,
                     toolContext = mapOf(

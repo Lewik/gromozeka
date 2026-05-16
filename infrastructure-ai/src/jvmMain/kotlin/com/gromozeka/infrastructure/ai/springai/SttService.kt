@@ -58,7 +58,7 @@ class SttService(
             val transcriptionOptions = OpenAiAudioTranscriptionOptions.builder()
                 .responseFormat(TranscriptResponseFormat.TEXT)
                 .temperature(0f)
-                .language(settingsProvider.sttMainLanguage)
+                .language(settingsProvider.userProfile.speechSettings.speechToText.mainLanguageCode)
                 .build()
 
             val transcriptionRequest = AudioTranscriptionPrompt(FileSystemResource(tempFile), transcriptionOptions)

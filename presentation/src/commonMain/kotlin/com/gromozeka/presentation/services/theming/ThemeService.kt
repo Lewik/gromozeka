@@ -54,7 +54,7 @@ class ThemeService {
     fun removeOverrideFile(): Boolean = true
 
     private fun applyThemeSettings(settings: Settings) {
-        _currentTheme.value = Theme.builtIn[settings.currentThemeId]
+        _currentTheme.value = Theme.builtIn[settings.userDeviceSettings.uiSettings.theme.id]
             ?: Theme.builtIn[DarkTheme.THEME_ID]!!
         _lastOverrideResult.value = null
     }

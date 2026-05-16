@@ -1,6 +1,5 @@
 package com.gromozeka.application.service.memory
 
-import com.gromozeka.domain.model.AIProvider
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.Project
@@ -293,8 +292,7 @@ class MemoryMessageRoutingApplicationService(
         throwOnError: Boolean = false,
     ): DirectStructuredMemoryWriteResult? {
         val runtime = aiRuntimeProvider.getRuntime(
-            provider = AIProvider.valueOf(agent.aiProvider),
-            modelName = agent.modelName,
+            selection = agent.runtimeSelection,
             projectPath = project.path,
         )
 

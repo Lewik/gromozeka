@@ -19,7 +19,6 @@ import com.gromozeka.domain.tool.AiToolCallback
 import klog.KLoggers
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -76,7 +75,7 @@ class LlmMemoryNoteReconciler(
                 messages = stageMessages,
                 tools = runtimeTools,
                 options = AiRuntimeOptions(
-                    maxTokens = 3_000,
+                    maxOutputTokens = 3_000,
                     toolChoice = AiToolChoice.None,
                     responseFormat = MemoryStructuredResponseFormats.NoteReconciler,
                     toolContext = mapOf(

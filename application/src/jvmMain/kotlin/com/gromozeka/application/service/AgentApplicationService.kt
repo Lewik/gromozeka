@@ -2,6 +2,7 @@ package com.gromozeka.application.service
 
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Project
+import com.gromozeka.domain.model.ai.AiRuntimeSelection
 import com.gromozeka.domain.service.AgentDomainService
 import com.gromozeka.domain.repository.AgentRepository
 import com.gromozeka.shared.uuid.uuid7
@@ -33,8 +34,7 @@ class AgentApplicationService(
      *
      * @param name agent role or display name (e.g., "Code Reviewer")
      * @param prompts ordered list of prompt IDs defining agent behavior
-     * @param aiProvider AI provider identifier (e.g., "ANTHROPIC", "ANTHROPIC_BEDROCK", "OPENAI", "GEMINI")
-     * @param modelName model identifier (e.g., "claude-sonnet-4-6", "gpt-4")
+     * @param runtimeSelection model binding selected for this agent
      * @param tools list of tool names available to this agent
      * @param description optional human-readable description of capabilities
      * @param type agent scope type (builtin, global, or project-specific)
@@ -44,8 +44,7 @@ class AgentApplicationService(
     override suspend fun createAgent(
         name: String,
         prompts: List<com.gromozeka.domain.model.Prompt.Id>,
-        aiProvider: String,
-        modelName: String,
+        runtimeSelection: AiRuntimeSelection,
         tools: List<String>,
         description: String?,
         type: AgentDefinition.Type,
@@ -56,8 +55,7 @@ class AgentApplicationService(
             id = AgentDefinition.Id(uuid7()),
             name = name,
             prompts = prompts,
-            aiProvider = aiProvider,
-            modelName = modelName,
+            runtimeSelection = runtimeSelection,
             tools = tools,
             description = description,
             type = type,

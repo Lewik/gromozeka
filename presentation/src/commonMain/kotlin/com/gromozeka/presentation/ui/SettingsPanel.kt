@@ -18,9 +18,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.gromozeka.client.RemoteClientSettings
-import com.gromozeka.domain.model.AIProvider
-import com.gromozeka.domain.model.ResponseFormat
+import com.gromozeka.domain.model.SecretRef
 import com.gromozeka.domain.model.Settings
+import com.gromozeka.domain.model.UserDeviceSettings
+import com.gromozeka.domain.model.UserProfile
+import com.gromozeka.domain.model.ai.AiConnection
+import com.gromozeka.domain.model.ai.AiModelConfiguration
+import com.gromozeka.domain.model.ai.AiRuntimeSelection
 import com.gromozeka.presentation.services.LogEncryptor
 import com.gromozeka.presentation.services.OllamaModelService
 import com.gromozeka.domain.service.SettingsService
@@ -58,24 +62,19 @@ fun SettingsPanel(
     slideFromRight: Boolean = false,
 ) {
     val translation = LocalTranslation.current
-
-    // Ollama models state
-    var ollamaModels by remember { mutableStateOf<List<String>>(emptyList()) }
-    var ollamaModelsError by remember { mutableStateOf<String?>(null) }
-    var ollamaModelsLoading by remember { mutableStateOf(false) }
-
-    // Load Ollama models when panel opens and Ollama is selected
-    LaunchedEffect(isVisible, settings.defaultAiProvider) {
-        if (isVisible && settings.defaultAiProvider == AIProvider.OLLAMA) {
-            ollamaModelsLoading = true
-            coroutineScope.launch {
-                val result = ollamaModelService.listModels()
-                ollamaModels = result.models
-                ollamaModelsError = result.error
-                ollamaModelsLoading = false
-            }
-        }
-    }
+    val userProfile = settings.userProfile
+    val speechSettings = userProfile.speechSettings
+    val textToSpeech = speechSettings.textToSpeech
+    val speechToText = speechSettings.speechToText
+    val agentSettings = userProfile.agentSettings
+    val memorySettings = userProfile.memorySettings
+    val toolSettings = userProfile.toolSettings
+    val deviceSettings = settings.userDeviceSettings
+    val uiSettings = deviceSettings.uiSettings
+    val themeSettings = uiSettings.theme
+    val soundSettings = deviceSettings.soundSettings
+    val desktopInputSettings = settings.desktopInputSettings
+    val desktopWindowSettings = settings.desktopWindowSettings
 
     // Refresh themes when panel opens
     LaunchedEffect(isVisible) {
@@ -142,37 +141,79 @@ fun SettingsPanel(
                         SwitchSettingItem(
                             label = translation.settings.enableTtsLabel,
                             description = translation.settings.ttsDescription,
-                            value = settings.enableTts,
-                            onValueChange = { onSettingsChange(settings.copy(enableTts = it)) }
+                            value = textToSpeech.enabled,
+                            onValueChange = {
+                                onSettingsChange(
+                                    settings.updateUserProfile {
+                                        copy(
+                                            speechSettings = speechSettings.copy(
+                                                textToSpeech = speechSettings.textToSpeech.copy(enabled = it)
+                                            )
+                                        )
+                                    }
+                                )
+                            }
                         )
 
                         // Only show TTS settings if TTS is enabled
-                        if (settings.enableTts) {
+                        if (textToSpeech.enabled) {
                             DropdownSettingItem(
                                 label = translation.settings.voiceModelLabel,
                                 description = translation.settings.ttsModelDescription,
-                                value = settings.ttsModel,
+                                value = textToSpeech.modelConfigurationId.value,
                                 options = listOf("gpt-4o-mini-tts", "tts-1", "tts-1-hd"),
-                                onValueChange = { onSettingsChange(settings.copy(ttsModel = it)) }
+                                onValueChange = {
+                                    onSettingsChange(
+                                        settings.updateUserProfile {
+                                            copy(
+                                                speechSettings = speechSettings.copy(
+                                                    textToSpeech = speechSettings.textToSpeech.copy(
+                                                        modelConfigurationId = AiModelConfiguration.Id(it)
+                                                    )
+                                                )
+                                            )
+                                        }
+                                    )
+                                }
                             )
 
                             DropdownSettingItem(
                                 label = translation.settings.voiceTypeLabel,
                                 description = translation.settings.ttsVoiceDescription,
-                                value = settings.ttsVoice,
+                                value = textToSpeech.voice,
                                 options = listOf("alloy", "echo", "fable", "onyx", "nova", "shimmer"),
-                                onValueChange = { onSettingsChange(settings.copy(ttsVoice = it)) }
+                                onValueChange = {
+                                    onSettingsChange(
+                                        settings.updateUserProfile {
+                                            copy(
+                                                speechSettings = speechSettings.copy(
+                                                    textToSpeech = speechSettings.textToSpeech.copy(voice = it)
+                                                )
+                                            )
+                                        }
+                                    )
+                                }
                             )
 
                             SliderSettingItem(
                                 label = translation.settings.speechSpeedLabel,
                                 description = translation.settings.ttsSpeedDescription,
-                                value = settings.ttsSpeed,
+                                value = textToSpeech.speed,
                                 min = 0.25f,
                                 max = 4.0f,
                                 step = 0.25f,
                                 valueFormat = "%.2fx",
-                                onValueChange = { onSettingsChange(settings.copy(ttsSpeed = it)) }
+                                onValueChange = {
+                                    onSettingsChange(
+                                        settings.updateUserProfile {
+                                            copy(
+                                                speechSettings = speechSettings.copy(
+                                                    textToSpeech = speechSettings.textToSpeech.copy(speed = it)
+                                                )
+                                            )
+                                        }
+                                    )
+                                }
                             )
                         }
                     }
@@ -182,32 +223,60 @@ fun SettingsPanel(
                         SwitchSettingItem(
                             label = translation.settings.enableSttLabel,
                             description = translation.settings.sttDescription,
-                            value = settings.enableStt,
-                            onValueChange = { onSettingsChange(settings.copy(enableStt = it)) }
+                            value = speechToText.enabled,
+                            onValueChange = {
+                                onSettingsChange(
+                                    settings.updateUserProfile {
+                                        copy(
+                                            speechSettings = speechSettings.copy(
+                                                speechToText = speechSettings.speechToText.copy(enabled = it)
+                                            )
+                                        )
+                                    }
+                                )
+                            }
                         )
 
                         // Only show STT settings if STT is enabled
-                        if (settings.enableStt) {
+                        if (speechToText.enabled) {
                             DropdownSettingItem(
                                 label = translation.settings.recognitionLanguageLabel,
                                 description = translation.settings.sttLanguageDescription,
-                                value = settings.sttMainLanguage,
+                                value = speechToText.mainLanguageCode,
                                 options = listOf("en", "ru", "es", "fr", "de", "zh", "ja"),
-                                onValueChange = { onSettingsChange(settings.copy(sttMainLanguage = it)) }
+                                onValueChange = {
+                                    onSettingsChange(
+                                        settings.updateUserProfile {
+                                            copy(
+                                                speechSettings = speechSettings.copy(
+                                                    speechToText = speechSettings.speechToText.copy(mainLanguageCode = it)
+                                                )
+                                            )
+                                        }
+                                    )
+                                }
                             )
 
                             SwitchSettingItem(
                                 label = translation.settings.autoSendMessagesLabel,
                                 description = translation.settings.autoSendDescription,
-                                value = settings.autoSend,
-                                onValueChange = { onSettingsChange(settings.copy(autoSend = it)) }
+                                value = desktopInputSettings.autoSend,
+                                onValueChange = {
+                                    onSettingsChange(
+                                        settings.updateDesktopInputSettings { copy(autoSend = it) }
+                                    )
+                                }
                             )
 
                             SwitchSettingItem(
                                 label = translation.settings.globalPttHotkeyLabel,
                                 description = translation.settings.globalPttDescription,
-                                value = settings.globalPttHotkeyEnabled,
-                                onValueChange = { onSettingsChange(settings.copy(globalPttHotkeyEnabled = it)) }
+                                value = desktopInputSettings.globalPttHotkeyEnabled,
+                                onValueChange = {
+                                    onSettingsChange(
+                                        settings.updateDesktopInputSettings { copy(globalPttHotkeyEnabled = it) }
+                                    )
+                                }
                             )
 
                             // Warning about disabled global hotkeys
@@ -219,12 +288,16 @@ fun SettingsPanel(
                             )
 
                             // Only show mute option if global PTT is enabled
-                            if (settings.globalPttHotkeyEnabled) {
+                            if (desktopInputSettings.globalPttHotkeyEnabled) {
                                 SwitchSettingItem(
                                     label = translation.settings.muteAudioDuringPttLabel,
                                     description = translation.settings.muteAudioDescription,
-                                    value = settings.muteSystemAudioDuringPTT,
-                                    onValueChange = { onSettingsChange(settings.copy(muteSystemAudioDuringPTT = it)) }
+                                    value = desktopInputSettings.muteSystemAudioDuringPtt,
+                                    onValueChange = {
+                                        onSettingsChange(
+                                            settings.updateDesktopInputSettings { copy(muteSystemAudioDuringPtt = it) }
+                                        )
+                                    }
                                 )
                             }
                         }
@@ -232,293 +305,88 @@ fun SettingsPanel(
 
                     // AI Settings
                     SettingsGroup(title = translation.settings.aiSettingsTitle) {
-                        // AI Provider Selection
+                        val aiSettings = userProfile.aiSettings
+                        val runtimeOptions = aiSettings.modelConfigurations.map { "${it.id.value} · ${it.displayName}" }
+                        val selectedRuntimeOption = aiSettings.modelConfigurations
+                            .firstOrNull { it.id == aiSettings.defaultSelection.modelConfigurationId }
+                            ?.let { "${it.id.value} · ${it.displayName}" }
+                            ?: aiSettings.defaultSelection.modelConfigurationId.value
+
                         DropdownSettingItem(
-                            label = "Default AI Provider",
-                            description = "Choose the AI provider for new conversations",
-                            value = settings.defaultAiProvider.name,
-                            options = AIProvider.entries.map { it.name },
+                            label = "Default runtime model",
+                            description = "Server-side model configuration used by default when a new agent/session does not override it",
+                            value = selectedRuntimeOption,
+                            options = runtimeOptions,
                             onValueChange = {
-                                val provider = AIProvider.valueOf(it)
-                                onSettingsChange(settings.copy(defaultAiProvider = provider))
+                                val modelConfigurationId = it.substringBefore(" · ")
+                                onSettingsChange(
+                                    settings.copy(
+                                        userProfile = userProfile.copy(
+                                            aiSettings = aiSettings.copy(
+                                                defaultSelection = AiRuntimeSelection(
+                                                    AiModelConfiguration.Id(modelConfigurationId)
+                                                )
+                                            )
+                                        )
+                                    )
+                                )
                             }
                         )
 
                         Spacer(modifier = Modifier.height(8.dp))
 
-                        // Provider-specific settings
-                        when (settings.defaultAiProvider) {
-                            AIProvider.OPEN_AI -> {
-                                Text(
-                                    text = "OpenAI Settings",
-                                    style = MaterialTheme.typography.titleSmall,
-                                    fontWeight = FontWeight.SemiBold,
-                                    modifier = Modifier.padding(vertical = 8.dp)
-                                )
-                            }
+                        Text(
+                            text = "Connections",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.padding(vertical = 8.dp)
+                        )
 
-                            AIProvider.OPEN_AI_SUBSCRIPTION -> {
-                                Text(
-                                    text = "OpenAI Subscription Settings",
-                                    style = MaterialTheme.typography.titleSmall,
-                                    fontWeight = FontWeight.SemiBold,
-                                    modifier = Modifier.padding(vertical = 8.dp)
-                                )
-
-                                Text(
-                                    text = "Subscription-backed Codex integration is configured separately and does not use the regular OpenAI API key flow.",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-
-                            AIProvider.ANTHROPIC -> {
-                                Text(
-                                    text = "Anthropic Settings",
-                                    style = MaterialTheme.typography.titleSmall,
-                                    fontWeight = FontWeight.SemiBold,
-                                    modifier = Modifier.padding(vertical = 8.dp)
-                                )
-
-                                TextFieldSettingItem(
-                                    label = "Anthropic Model",
-                                    description = "Direct Anthropic Messages API model name",
-                                    value = settings.anthropicModel,
-                                    placeholder = "claude-sonnet-4-6",
-                                    onValueChange = {
-                                        onSettingsChange(settings.copy(anthropicModel = it))
-                                    }
-                                )
-
-                                TextFieldSettingItem(
-                                    label = "Anthropic Base URL",
-                                    description = "Override for direct Anthropic-compatible endpoints",
-                                    value = settings.anthropicBaseUrl,
-                                    placeholder = "https://api.anthropic.com",
-                                    onValueChange = {
-                                        onSettingsChange(settings.copy(anthropicBaseUrl = it.ifBlank { "https://api.anthropic.com" }))
-                                    }
-                                )
-                            }
-
-                            AIProvider.ANTHROPIC_BEDROCK -> {
-                                Text(
-                                    text = "Anthropic Bedrock Settings",
-                                    style = MaterialTheme.typography.titleSmall,
-                                    fontWeight = FontWeight.SemiBold,
-                                    modifier = Modifier.padding(vertical = 8.dp)
-                                )
-
-                                TextFieldSettingItem(
-                                    label = "Bedrock Model",
-                                    description = "Amazon Bedrock Anthropic model id",
-                                    value = settings.anthropicBedrockModel,
-                                    placeholder = "anthropic.claude-sonnet-4-20250514-v1:0",
-                                    onValueChange = {
-                                        onSettingsChange(settings.copy(anthropicBedrockModel = it))
-                                    }
-                                )
-
-                                TextFieldSettingItem(
-                                    label = "AWS Region",
-                                    description = "Optional. Empty uses AWS_REGION / default AWS region chain.",
-                                    value = settings.anthropicBedrockRegion ?: "",
-                                    placeholder = "us-east-1",
-                                    onValueChange = {
-                                        onSettingsChange(settings.copy(anthropicBedrockRegion = it.ifBlank { null }))
-                                    }
-                                )
-
-                                TextFieldSettingItem(
-                                    label = "AWS Profile",
-                                    description = "Optional. Use an AWS CLI/SSO profile, for example after aws sso login --profile work.",
-                                    value = settings.anthropicBedrockProfile ?: "",
-                                    placeholder = "work",
-                                    onValueChange = {
-                                        onSettingsChange(settings.copy(anthropicBedrockProfile = it.ifBlank { null }))
-                                    }
-                                )
-
-                                TextFieldSettingItem(
-                                    label = "Bedrock Base URL",
-                                    description = "Optional custom Bedrock runtime endpoint. Empty uses AWS default endpoint.",
-                                    value = settings.anthropicBedrockBaseUrl ?: "",
-                                    placeholder = "https://bedrock-runtime.us-east-1.amazonaws.com",
-                                    onValueChange = {
-                                        onSettingsChange(settings.copy(anthropicBedrockBaseUrl = it.ifBlank { null }))
-                                    }
-                                )
-                            }
-
-                            AIProvider.OLLAMA -> {
-                                Text(
-                                    text = "Ollama Settings",
-                                    style = MaterialTheme.typography.titleSmall,
-                                    fontWeight = FontWeight.SemiBold,
-                                    modifier = Modifier.padding(vertical = 8.dp)
-                                )
-
-                                // Ollama Model dropdown with refresh button
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    verticalAlignment = Alignment.Bottom,
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        when {
-                                            ollamaModelsError != null -> {
-                                                Text(
-                                                    text = "Ollama Model",
-                                                    style = MaterialTheme.typography.bodyMedium,
-                                                    fontWeight = FontWeight.Medium
-                                                )
-                                                Text(
-                                                    text = "Error: $ollamaModelsError",
-                                                    style = MaterialTheme.typography.bodySmall,
-                                                    color = MaterialTheme.colorScheme.error,
-                                                    modifier = Modifier.padding(top = 4.dp)
-                                                )
-                                                TextFieldSettingItem(
-                                                    label = "",
-                                                    description = "",
-                                                    value = settings.ollamaModel,
-                                                    placeholder = "llama3.2",
-                                                    onValueChange = {
-                                                        onSettingsChange(settings.copy(ollamaModel = it))
+                        aiSettings.connections.forEach { connection ->
+                            AiConnectionSettingsCard(
+                                connection = connection,
+                                onConnectionChange = { updated ->
+                                    onSettingsChange(
+                                        settings.copy(
+                                            userProfile = userProfile.copy(
+                                                aiSettings = aiSettings.copy(
+                                                    connections = aiSettings.connections.map {
+                                                        if (it.id == updated.id) updated else it
                                                     }
                                                 )
-                                            }
-
-                                            ollamaModelsLoading -> {
-                                                Text(
-                                                    text = "Ollama Model",
-                                                    style = MaterialTheme.typography.bodyMedium,
-                                                    fontWeight = FontWeight.Medium
-                                                )
-                                                Text(
-                                                    text = "Loading models...",
-                                                    style = MaterialTheme.typography.bodySmall,
-                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                    modifier = Modifier.padding(top = 4.dp)
-                                                )
-                                            }
-
-                                            ollamaModels.isNotEmpty() -> {
-                                                DropdownSettingItem(
-                                                    label = "Ollama Model",
-                                                    description = "Available models from 'ollama list'",
-                                                    value = settings.ollamaModel,
-                                                    options = ollamaModels,
-                                                    onValueChange = {
-                                                        onSettingsChange(settings.copy(ollamaModel = it))
-                                                    }
-                                                )
-                                            }
-
-                                            else -> {
-                                                TextFieldSettingItem(
-                                                    label = "Ollama Model",
-                                                    description = "Model name (e.g., llama3.2, mistral, qwen)",
-                                                    value = settings.ollamaModel,
-                                                    placeholder = "llama3.2",
-                                                    onValueChange = {
-                                                        onSettingsChange(settings.copy(ollamaModel = it))
-                                                    }
-                                                )
-                                            }
-                                        }
-                                    }
-
-                                    Button(
-                                        onClick = {
-                                            coroutineScope.launch {
-                                                ollamaModelsLoading = true
-                                                val result = ollamaModelService.listModels()
-                                                ollamaModels = result.models
-                                                ollamaModelsError = result.error
-                                                ollamaModelsLoading = false
-                                            }
-                                        },
-                                        modifier = Modifier.padding(top = 24.dp)
-                                    ) {
-                                        Icon(Icons.Default.Refresh, contentDescription = "Refresh models")
-                                    }
-                                }
-
-                                TextFieldSettingItem(
-                                    label = "Ollama Base URL",
-                                    description = "URL of Ollama server",
-                                    value = settings.ollamaBaseUrl,
-                                    placeholder = "http://localhost:11434",
-                                    onValueChange = {
-                                        onSettingsChange(settings.copy(ollamaBaseUrl = it))
-                                    }
-                                )
-                            }
-
-                            AIProvider.GEMINI -> {
-                                Text(
-                                    text = "Gemini Settings",
-                                    style = MaterialTheme.typography.titleSmall,
-                                    fontWeight = FontWeight.SemiBold,
-                                    modifier = Modifier.padding(vertical = 8.dp)
-                                )
-
-                                val geminiModels = remember {
-                                    listOf(
-                                        "gemini-2.5-pro",
-                                        "gemini-2.5-flash",
-                                        "gemini-2.0-flash",
-                                        "gemini-2.0-flash-lite",
-                                        "gemini-1.5-pro",
-                                        "gemini-1.5-flash"
+                                            )
+                                        )
                                     )
                                 }
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                        }
 
-                                EditableDropdownSettingItem(
-                                    label = "Gemini Model",
-                                    description = "Select predefined or enter custom model name",
-                                    value = settings.geminiModel,
-                                    predefinedOptions = geminiModels,
-                                    placeholder = "gemini-2.0-flash",
-                                    onValueChange = {
-                                        onSettingsChange(settings.copy(geminiModel = it))
-                                    }
-                                )
+                        Text(
+                            text = "Model configurations",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.padding(vertical = 8.dp)
+                        )
 
-                                Text(
-                                    text = "Note: Gemini credentials configured in application.yaml",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.secondary,
-                                    modifier = Modifier.padding(top = 4.dp)
-                                )
-                            }
-
-                            AIProvider.CLAUDE_CODE -> {
-                                Text(
-                                    text = "Claude Code Settings",
-                                    style = MaterialTheme.typography.titleSmall,
-                                    fontWeight = FontWeight.SemiBold,
-                                    modifier = Modifier.padding(vertical = 8.dp)
-                                )
-
-                                TextFieldSettingItem(
-                                    label = "Claude Model",
-                                    description = "Model name (e.g., claude-sonnet-4-5, claude-opus-4)",
-                                    value = settings.claudeModel,
-                                    placeholder = "claude-sonnet-4-5",
-                                    onValueChange = {
-                                        onSettingsChange(settings.copy(claudeModel = it))
-                                    }
-                                )
-
-                                Text(
-                                    text = "Note: Uses Claude Code CLI with your subscription",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.secondary,
-                                    modifier = Modifier.padding(top = 4.dp)
-                                )
-                            }
+                        aiSettings.modelConfigurations.forEach { configuration ->
+                            AiModelConfigurationSettingsCard(
+                                configuration = configuration,
+                                onConfigurationChange = { updated ->
+                                    onSettingsChange(
+                                        settings.copy(
+                                            userProfile = userProfile.copy(
+                                                aiSettings = aiSettings.copy(
+                                                    modelConfigurations = aiSettings.modelConfigurations.map {
+                                                        if (it.id == updated.id) updated else it
+                                                    }
+                                                )
+                                            )
+                                        )
+                                    )
+                                }
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
                         }
 
                         Spacer(modifier = Modifier.height(8.dp))
@@ -528,79 +396,109 @@ fun SettingsPanel(
                         DropdownSettingItem(
                             label = translation.settings.responseFormatLabel,
                             description = translation.settings.responseFormatDescription,
-                            value = settings.responseFormat.name,
-                            options = ResponseFormat.entries.map { it.name },
+                            value = agentSettings.responseFormat.name,
+                            options = UserProfile.AgentSettings.ResponseFormat.entries.map { it.name },
                             onValueChange = {
-                                val format = ResponseFormat.valueOf(it)
-                                onSettingsChange(settings.copy(responseFormat = format))
+                                val format = UserProfile.AgentSettings.ResponseFormat.valueOf(it)
+                                onSettingsChange(
+                                    settings.updateUserProfile {
+                                        copy(agentSettings = agentSettings.copy(responseFormat = format))
+                                    }
+                                )
                             }
                         )
 
                         SwitchSettingItem(
                             label = translation.settings.includeCurrentTimeLabel,
                             description = translation.settings.includeTimeDescription,
-                            value = settings.includeCurrentTime,
-                            onValueChange = { onSettingsChange(settings.copy(includeCurrentTime = it)) }
+                            value = agentSettings.includeCurrentTime,
+                            onValueChange = {
+                                onSettingsChange(
+                                    settings.updateUserProfile {
+                                        copy(agentSettings = agentSettings.copy(includeCurrentTime = it))
+                                    }
+                                )
+                            }
                         )
 
                         SwitchSettingItem(
                             label = "Auto-approve all tool requests",
                             description = "Automatically allow all tool executions without showing permission dialogs (affects new sessions only)",
-                            value = settings.autoApproveAllTools,
-                            onValueChange = { onSettingsChange(settings.copy(autoApproveAllTools = it)) }
+                            value = agentSettings.autoApproveAllTools,
+                            onValueChange = {
+                                onSettingsChange(
+                                    settings.updateUserProfile {
+                                        copy(agentSettings = agentSettings.copy(autoApproveAllTools = it))
+                                    }
+                                )
+                            }
                         )
 
                         SwitchSettingItem(
                             label = "Auto-remember threads",
                             description = "Automatically write typed memory around each chat message",
-                            value = settings.memoryAutoRemember,
-                            onValueChange = { onSettingsChange(settings.copy(memoryAutoRemember = it)) }
+                            value = memorySettings.autoRemember,
+                            onValueChange = {
+                                onSettingsChange(
+                                    settings.updateUserProfile {
+                                        copy(memorySettings = memorySettings.copy(autoRemember = it))
+                                    }
+                                )
+                            }
                         )
 
                         SwitchSettingItem(
                             label = "Auto-recall memory",
                             description = "Automatically recall typed memory before the main model response",
-                            value = settings.memoryAutoRecall,
-                            onValueChange = { onSettingsChange(settings.copy(memoryAutoRecall = it)) }
+                            value = memorySettings.autoRecall,
+                            onValueChange = {
+                                onSettingsChange(
+                                    settings.updateUserProfile {
+                                        copy(memorySettings = memorySettings.copy(autoRecall = it))
+                                    }
+                                )
+                            }
                         )
 
                     }
 
                     // API Keys
                     SettingsGroup(title = translation.settings.apiKeysTitle) {
-                        PasswordSettingItem(
-                            label = translation.settings.openaiApiKeyLabel,
-                            description = translation.settings.openaiKeyDescription,
-                            value = settings.openAiApiKey ?: "",
-                            onValueChange = {
-                                onSettingsChange(settings.copy(openAiApiKey = it.ifBlank { null }))
-                            }
-                        )
-
-                        PasswordSettingItem(
-                            label = "Anthropic API Key",
-                            description = "API key from console.anthropic.com",
-                            value = settings.anthropicApiKey ?: "",
-                            onValueChange = {
-                                onSettingsChange(settings.copy(anthropicApiKey = it.ifBlank { null }))
-                            }
-                        )
-
                         // Brave Search
                         SwitchSettingItem(
                             label = translation.settings.enableBraveSearchLabel,
                             description = translation.settings.braveSearchDescription,
-                            value = settings.enableBraveSearch,
-                            onValueChange = { onSettingsChange(settings.copy(enableBraveSearch = it)) }
+                            value = toolSettings.braveSearch.enabled,
+                            onValueChange = {
+                                onSettingsChange(
+                                    settings.updateUserProfile {
+                                        copy(
+                                            toolSettings = toolSettings.copy(
+                                                braveSearch = toolSettings.braveSearch.copy(enabled = it)
+                                            )
+                                        )
+                                    }
+                                )
+                            }
                         )
 
-                        if (settings.enableBraveSearch) {
+                        if (toolSettings.braveSearch.enabled) {
                             PasswordSettingItem(
                                 label = translation.settings.braveApiKeyLabel,
                                 description = translation.settings.braveApiKeyDescription,
-                                value = settings.braveApiKey ?: "",
+                                value = toolSettings.braveSearch.apiKey.secretText(),
                                 onValueChange = {
-                                    onSettingsChange(settings.copy(braveApiKey = it.ifBlank { null }))
+                                    onSettingsChange(
+                                        settings.updateUserProfile {
+                                            copy(
+                                                toolSettings = toolSettings.copy(
+                                                    braveSearch = toolSettings.braveSearch.copy(
+                                                        apiKey = it.inlineSecretOrNull()
+                                                    )
+                                                )
+                                            )
+                                        }
+                                    )
                                 }
                             )
                         }
@@ -609,17 +507,37 @@ fun SettingsPanel(
                         SwitchSettingItem(
                             label = translation.settings.enableJinaReaderLabel,
                             description = translation.settings.jinaReaderDescription,
-                            value = settings.enableJinaReader,
-                            onValueChange = { onSettingsChange(settings.copy(enableJinaReader = it)) }
+                            value = toolSettings.jinaReader.enabled,
+                            onValueChange = {
+                                onSettingsChange(
+                                    settings.updateUserProfile {
+                                        copy(
+                                            toolSettings = toolSettings.copy(
+                                                jinaReader = toolSettings.jinaReader.copy(enabled = it)
+                                            )
+                                        )
+                                    }
+                                )
+                            }
                         )
 
-                        if (settings.enableJinaReader) {
+                        if (toolSettings.jinaReader.enabled) {
                             PasswordSettingItem(
                                 label = translation.settings.jinaApiKeyLabel,
                                 description = translation.settings.jinaApiKeyDescription,
-                                value = settings.jinaApiKey ?: "",
+                                value = toolSettings.jinaReader.apiKey.secretText(),
                                 onValueChange = {
-                                    onSettingsChange(settings.copy(jinaApiKey = it.ifBlank { null }))
+                                    onSettingsChange(
+                                        settings.updateUserProfile {
+                                            copy(
+                                                toolSettings = toolSettings.copy(
+                                                    jinaReader = toolSettings.jinaReader.copy(
+                                                        apiKey = it.inlineSecretOrNull()
+                                                    )
+                                                )
+                                            )
+                                        }
+                                    )
                                 }
                             )
                         }
@@ -630,35 +548,39 @@ fun SettingsPanel(
                         SwitchSettingItem(
                             label = translation.settings.showSystemMessagesLabel,
                             description = translation.settings.showSystemDescription,
-                            value = settings.showSystemMessages,
-                            onValueChange = { onSettingsChange(settings.copy(showSystemMessages = it)) }
+                            value = deviceSettings.showSystemMessages,
+                            onValueChange = { onSettingsChange(settings.updateDeviceSettings { withShowSystemMessages(it) }) }
                         )
 
                         SwitchSettingItem(
                             label = translation.settings.alwaysOnTopLabel,
                             description = translation.settings.alwaysOnTopDescription,
-                            value = settings.alwaysOnTop,
-                            onValueChange = { onSettingsChange(settings.copy(alwaysOnTop = it)) }
+                            value = desktopWindowSettings.alwaysOnTop,
+                            onValueChange = {
+                                onSettingsChange(settings.updateDesktopWindowSettings { copy(alwaysOnTop = it) })
+                            }
                         )
 
                         SwitchSettingItem(
                             label = translation.settings.showTabsAtBottomLabel,
                             description = translation.settings.showTabsAtBottomDescription,
-                            value = settings.showTabsAtBottom,
-                            onValueChange = { onSettingsChange(settings.copy(showTabsAtBottom = it)) }
+                            value = uiSettings.showTabsAtBottom,
+                            onValueChange = {
+                                onSettingsChange(settings.updateUiSettings { copy(showTabsAtBottom = it) })
+                            }
                         )
 
                         // UI Scale slider
                         SliderSettingItem(
                             label = "UI Scale",
                             description = "Adjust interface size (0.5 = tiny, 1.0 = normal, 3.0 = huge). Auto-detected on first launch.",
-                            value = settings.uiScale,
+                            value = uiSettings.uiScale,
                             min = 0.5f,
                             max = 3.0f,
                             step = 0.1f,
-                            valueFormat = "${(settings.uiScale * 100).toInt()}%",
+                            valueFormat = "${(uiSettings.uiScale * 100).toInt()}%",
                             onValueChange = {
-                                onSettingsChange(settings.copy(uiScale = it))
+                                onSettingsChange(settings.updateUiSettings { copy(uiScale = it) })
                             }
                         )
 
@@ -666,13 +588,13 @@ fun SettingsPanel(
                         SliderSettingItem(
                             label = "Font Scale",
                             description = "Adjust text size (0.5 = small, 1.0 = normal, 2.0 = large)",
-                            value = settings.fontScale,
+                            value = uiSettings.fontScale,
                             min = 0.5f,
                             max = 2.0f,
                             step = 0.1f,
-                            valueFormat = "${(settings.fontScale * 100).toInt()}%",
+                            valueFormat = "${(uiSettings.fontScale * 100).toInt()}%",
                             onValueChange = {
-                                onSettingsChange(settings.copy(fontScale = it))
+                                onSettingsChange(settings.updateUiSettings { copy(fontScale = it) })
                             }
                         )
                     }
@@ -683,13 +605,13 @@ fun SettingsPanel(
                         DropdownSettingItem(
                             label = translation.switchLanguage,
                             description = translation.settings.languageSelectionDescription,
-                            value = settings.currentLanguageCode,
+                            value = uiSettings.languageCode,
                             options = Translation.builtIn.keys.toList(),
                             optionLabel = { languageCode ->
                                 Translation.builtIn[languageCode]!!.languageName
                             },
                             onValueChange = { newLanguageCode ->
-                                onSettingsChange(settings.copy(currentLanguageCode = newLanguageCode))
+                                onSettingsChange(settings.updateUiSettings { copy(languageCode = newLanguageCode) })
                             }
                         )
 
@@ -756,7 +678,7 @@ fun SettingsPanel(
                         DropdownSettingItem(
                             label = translation.settings.themeSelectionLabel,
                             description = translation.settings.themeSelectionDescription,
-                            value = settings.currentThemeId,
+                            value = themeSettings.id,
                             options = availableThemes.keys.toList(),
                             optionLabel = { themeId ->
                                 val themeInfo = availableThemes[themeId]
@@ -782,7 +704,11 @@ fun SettingsPanel(
                                 if (availableThemes.isEmpty()) {
                                     themeService.refreshThemes()
                                 }
-                                onSettingsChange(settings.copy(currentThemeId = newThemeId))
+                                onSettingsChange(
+                                    settings.updateUiSettings {
+                                        copy(theme = theme.copy(id = newThemeId))
+                                    }
+                                )
                             },
                             trailingContent = {
                                 CompactButton(
@@ -805,12 +731,18 @@ fun SettingsPanel(
                         SwitchSettingItem(
                             label = "Enable Theme Override",
                             description = "Allow custom theme colors from override.json file to modify the selected theme",
-                            value = settings.themeOverrideEnabled,
-                            onValueChange = { onSettingsChange(settings.copy(themeOverrideEnabled = it)) }
+                            value = themeSettings.overrideEnabled,
+                            onValueChange = {
+                                onSettingsChange(
+                                    settings.updateUiSettings {
+                                        copy(theme = theme.copy(overrideEnabled = it))
+                                    }
+                                )
+                            }
                         )
 
                         // Theme override info (only show when override is enabled)
-                        if (settings.themeOverrideEnabled) {
+                        if (themeSettings.overrideEnabled) {
                             InfoSettingItem(
                                 label = translation.settings.customThemeInfoLabel,
                                 message = translation.settings.customThemeInfoMessage,
@@ -819,7 +751,7 @@ fun SettingsPanel(
                         }
 
                         // Theme override status (only show when override is enabled)
-                        if (settings.themeOverrideEnabled) {
+                        if (themeSettings.overrideEnabled) {
                             val overrideResult by themeService.lastOverrideResult.collectAsState()
                             overrideResult?.let { result ->
                                 when (result) {
@@ -888,35 +820,43 @@ fun SettingsPanel(
                         SwitchSettingItem(
                             label = translation.settings.errorSoundsLabel,
                             description = translation.settings.errorSoundsDescription,
-                            value = settings.enableErrorSounds,
-                            onValueChange = { onSettingsChange(settings.copy(enableErrorSounds = it)) }
+                            value = soundSettings.errorSoundsEnabled,
+                            onValueChange = {
+                                onSettingsChange(settings.updateSoundSettings { copy(errorSoundsEnabled = it) })
+                            }
                         )
 
                         SwitchSettingItem(
                             label = translation.settings.messageSoundsLabel,
                             description = translation.settings.messageSoundsDescription,
-                            value = settings.enableMessageSounds,
-                            onValueChange = { onSettingsChange(settings.copy(enableMessageSounds = it)) }
+                            value = soundSettings.messageSoundsEnabled,
+                            onValueChange = {
+                                onSettingsChange(settings.updateSoundSettings { copy(messageSoundsEnabled = it) })
+                            }
                         )
 
                         SwitchSettingItem(
                             label = translation.settings.readySoundsLabel,
                             description = translation.settings.readySoundsDescription,
-                            value = settings.enableReadySounds,
-                            onValueChange = { onSettingsChange(settings.copy(enableReadySounds = it)) }
+                            value = soundSettings.readySoundsEnabled,
+                            onValueChange = {
+                                onSettingsChange(settings.updateSoundSettings { copy(readySoundsEnabled = it) })
+                            }
                         )
 
                         // Volume control (show only if any sound is enabled)
-                        if (settings.enableErrorSounds || settings.enableMessageSounds || settings.enableReadySounds) {
+                        if (soundSettings.errorSoundsEnabled || soundSettings.messageSoundsEnabled || soundSettings.readySoundsEnabled) {
                             SliderSettingItem(
                                 label = translation.settings.soundVolumeLabel,
                                 description = translation.settings.soundVolumeDescription,
-                                value = settings.soundVolume,
+                                value = soundSettings.volume,
                                 min = 0.0f,
                                 max = 1.0f,
                                 step = 0.1f,
-                                valueFormat = "${(settings.soundVolume * 100).toInt()}%",
-                                onValueChange = { onSettingsChange(settings.copy(soundVolume = it)) }
+                                valueFormat = "${(soundSettings.volume * 100).toInt()}%",
+                                onValueChange = {
+                                    onSettingsChange(settings.updateSoundSettings { copy(volume = it) })
+                                }
                             )
                         }
                     }
@@ -974,8 +914,8 @@ fun SettingsPanel(
                         SwitchSettingItem(
                             label = translation.settings.showOriginalJsonLabel,
                             description = translation.settings.showJsonDescription,
-                            value = settings.showOriginalJson,
-                            onValueChange = { onSettingsChange(settings.copy(showOriginalJson = it)) }
+                            value = deviceSettings.showOriginalJson,
+                            onValueChange = { onSettingsChange(settings.updateDeviceSettings { withShowOriginalJson(it) }) }
                         )
 
                         DropdownSettingItem(
@@ -1116,6 +1056,313 @@ private fun SliderSettingItem(
             steps = if (step > 0f) ((max - min) / step).toInt() - 1 else 0,
             enabled = enabled
         )
+    }
+}
+
+@Composable
+private fun AiConnectionSettingsCard(
+    connection: AiConnection,
+    onConnectionChange: (AiConnection) -> Unit,
+) {
+    val httpConnection = connection as? AiConnection.HttpAiConnection
+    val apiKeyConnection = connection as? AiConnection.ApiKeyAiConnection
+    val awsConnection = connection as? AiConnection.AwsAiConnection
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f))
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(connection.displayName, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                    Text(
+                        "${connection.kind.name} · ${connection.id.value}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Switch(
+                    checked = connection.enabled,
+                    onCheckedChange = { onConnectionChange(connection.withEnabled(it)) }
+                )
+            }
+
+            TextFieldSettingItem(
+                label = "Display name",
+                description = "",
+                value = connection.displayName,
+                onValueChange = { onConnectionChange(connection.withDisplayName(it)) }
+            )
+
+            if (httpConnection != null) {
+                TextFieldSettingItem(
+                    label = "Base URL",
+                    description = "Optional endpoint override for this connection",
+                    value = httpConnection.baseUrl ?: "",
+                    placeholder = "https://api.example.com/v1",
+                    onValueChange = { onConnectionChange(connection.withBaseUrl(it.ifBlank { null })) }
+                )
+            }
+
+            if (apiKeyConnection != null) {
+                TextFieldSettingItem(
+                    label = "Secret env var",
+                    description = "Server-side environment variable that contains the API key",
+                    value = (apiKeyConnection.apiKey as? SecretRef.EnvironmentVariable)?.name ?: "",
+                    placeholder = "OPENAI_API_KEY",
+                    onValueChange = {
+                        onConnectionChange(connection.withApiKey(it.ifBlank { null }?.let(SecretRef::EnvironmentVariable)))
+                    }
+                )
+
+                PasswordSettingItem(
+                    label = "Inline API key",
+                    description = "Stored in server settings. Prefer env var for shared machines.",
+                    value = (apiKeyConnection.apiKey as? SecretRef.Inline)?.value ?: "",
+                    onValueChange = {
+                        onConnectionChange(connection.withApiKey(it.ifBlank { null }?.let(SecretRef::Inline)))
+                    }
+                )
+            }
+
+            if (awsConnection != null) {
+                TextFieldSettingItem(
+                    label = "AWS region",
+                    description = "Only used by Bedrock-style connections",
+                    value = awsConnection.awsRegion ?: "",
+                    placeholder = "us-east-1",
+                    onValueChange = { onConnectionChange(connection.withAwsRegion(it.ifBlank { null })) }
+                )
+
+                TextFieldSettingItem(
+                    label = "AWS profile",
+                    description = "Only used by Bedrock-style connections",
+                    value = awsConnection.awsProfile ?: "",
+                    placeholder = "work",
+                    onValueChange = { onConnectionChange(connection.withAwsProfile(it.ifBlank { null })) }
+                )
+            }
+        }
+    }
+}
+
+private fun AiConnection.withEnabled(enabled: Boolean): AiConnection =
+    when (this) {
+        is AiConnection.OpenAiSubscription -> copy(enabled = enabled)
+        is AiConnection.OpenAiApi -> copy(enabled = enabled)
+        is AiConnection.OpenAiCompatible -> copy(enabled = enabled)
+        is AiConnection.AnthropicApi -> copy(enabled = enabled)
+        is AiConnection.AnthropicBedrock -> copy(enabled = enabled)
+        is AiConnection.ClaudeCode -> copy(enabled = enabled)
+        is AiConnection.GeminiApi -> copy(enabled = enabled)
+        is AiConnection.Ollama -> copy(enabled = enabled)
+    }
+
+private fun AiConnection.withDisplayName(displayName: String): AiConnection =
+    when (this) {
+        is AiConnection.OpenAiSubscription -> copy(displayName = displayName)
+        is AiConnection.OpenAiApi -> copy(displayName = displayName)
+        is AiConnection.OpenAiCompatible -> copy(displayName = displayName)
+        is AiConnection.AnthropicApi -> copy(displayName = displayName)
+        is AiConnection.AnthropicBedrock -> copy(displayName = displayName)
+        is AiConnection.ClaudeCode -> copy(displayName = displayName)
+        is AiConnection.GeminiApi -> copy(displayName = displayName)
+        is AiConnection.Ollama -> copy(displayName = displayName)
+    }
+
+private fun AiConnection.withBaseUrl(baseUrl: String?): AiConnection =
+    when (this) {
+        is AiConnection.OpenAiApi -> copy(baseUrl = baseUrl)
+        is AiConnection.OpenAiCompatible -> baseUrl?.let { copy(baseUrl = it) } ?: this
+        is AiConnection.AnthropicApi -> copy(baseUrl = baseUrl)
+        is AiConnection.AnthropicBedrock -> copy(baseUrl = baseUrl)
+        is AiConnection.GeminiApi -> copy(baseUrl = baseUrl)
+        is AiConnection.Ollama -> baseUrl?.let { copy(baseUrl = it) } ?: this
+        is AiConnection.OpenAiSubscription,
+        is AiConnection.ClaudeCode -> this
+    }
+
+private fun AiConnection.withApiKey(apiKey: SecretRef?): AiConnection =
+    when (this) {
+        is AiConnection.OpenAiApi -> copy(apiKey = apiKey)
+        is AiConnection.OpenAiCompatible -> copy(apiKey = apiKey)
+        is AiConnection.AnthropicApi -> copy(apiKey = apiKey)
+        is AiConnection.GeminiApi -> copy(apiKey = apiKey)
+        is AiConnection.OpenAiSubscription,
+        is AiConnection.AnthropicBedrock,
+        is AiConnection.ClaudeCode,
+        is AiConnection.Ollama -> this
+    }
+
+private fun AiConnection.withAwsRegion(awsRegion: String?): AiConnection =
+    when (this) {
+        is AiConnection.AnthropicBedrock -> copy(awsRegion = awsRegion)
+        is AiConnection.OpenAiSubscription,
+        is AiConnection.OpenAiApi,
+        is AiConnection.OpenAiCompatible,
+        is AiConnection.AnthropicApi,
+        is AiConnection.ClaudeCode,
+        is AiConnection.GeminiApi,
+        is AiConnection.Ollama -> this
+    }
+
+private fun AiConnection.withAwsProfile(awsProfile: String?): AiConnection =
+    when (this) {
+        is AiConnection.AnthropicBedrock -> copy(awsProfile = awsProfile)
+        is AiConnection.OpenAiSubscription,
+        is AiConnection.OpenAiApi,
+        is AiConnection.OpenAiCompatible,
+        is AiConnection.AnthropicApi,
+        is AiConnection.ClaudeCode,
+        is AiConnection.GeminiApi,
+        is AiConnection.Ollama -> this
+    }
+
+private fun Settings.updateUserProfile(update: UserProfile.() -> UserProfile): Settings =
+    copy(userProfile = userProfile.update())
+
+private fun Settings.updateDeviceSettings(update: UserDeviceSettings.() -> UserDeviceSettings): Settings =
+    copy(userDeviceSettings = userDeviceSettings.update())
+
+private fun Settings.updateUiSettings(update: UserDeviceSettings.UiSettings.() -> UserDeviceSettings.UiSettings): Settings =
+    updateDeviceSettings { withUiSettings(uiSettings.update()) }
+
+private fun Settings.updateSoundSettings(
+    update: UserDeviceSettings.SoundSettings.() -> UserDeviceSettings.SoundSettings,
+): Settings =
+    updateDeviceSettings { withSoundSettings(soundSettings.update()) }
+
+private fun Settings.updateDesktopInputSettings(
+    update: UserDeviceSettings.DesktopInputSettings.() -> UserDeviceSettings.DesktopInputSettings,
+): Settings =
+    updateDeviceSettings {
+        when (this) {
+            is UserDeviceSettings.Desktop -> copy(inputSettings = inputSettings.update())
+            else -> this
+        }
+    }
+
+private fun Settings.updateDesktopWindowSettings(
+    update: UserDeviceSettings.DesktopWindowSettings.() -> UserDeviceSettings.DesktopWindowSettings,
+): Settings =
+    updateDeviceSettings {
+        when (this) {
+            is UserDeviceSettings.Desktop -> copy(windowSettings = windowSettings.update())
+            else -> this
+        }
+    }
+
+private val Settings.desktopInputSettings: UserDeviceSettings.DesktopInputSettings
+    get() = (userDeviceSettings as? UserDeviceSettings.Desktop)?.inputSettings
+        ?: UserDeviceSettings.DesktopInputSettings()
+
+private val Settings.desktopWindowSettings: UserDeviceSettings.DesktopWindowSettings
+    get() = (userDeviceSettings as? UserDeviceSettings.Desktop)?.windowSettings
+        ?: UserDeviceSettings.DesktopWindowSettings()
+
+private fun UserDeviceSettings.withUiSettings(uiSettings: UserDeviceSettings.UiSettings): UserDeviceSettings =
+    when (this) {
+        is UserDeviceSettings.Desktop -> copy(uiSettings = uiSettings)
+        is UserDeviceSettings.Android -> copy(uiSettings = uiSettings)
+        is UserDeviceSettings.Ios -> copy(uiSettings = uiSettings)
+        is UserDeviceSettings.Web -> copy(uiSettings = uiSettings)
+    }
+
+private fun UserDeviceSettings.withSoundSettings(soundSettings: UserDeviceSettings.SoundSettings): UserDeviceSettings =
+    when (this) {
+        is UserDeviceSettings.Desktop -> copy(soundSettings = soundSettings)
+        is UserDeviceSettings.Android -> copy(soundSettings = soundSettings)
+        is UserDeviceSettings.Ios -> copy(soundSettings = soundSettings)
+        is UserDeviceSettings.Web -> copy(soundSettings = soundSettings)
+    }
+
+private fun UserDeviceSettings.withShowSystemMessages(showSystemMessages: Boolean): UserDeviceSettings =
+    when (this) {
+        is UserDeviceSettings.Desktop -> copy(showSystemMessages = showSystemMessages)
+        is UserDeviceSettings.Android -> copy(showSystemMessages = showSystemMessages)
+        is UserDeviceSettings.Ios -> copy(showSystemMessages = showSystemMessages)
+        is UserDeviceSettings.Web -> copy(showSystemMessages = showSystemMessages)
+    }
+
+private fun UserDeviceSettings.withShowOriginalJson(showOriginalJson: Boolean): UserDeviceSettings =
+    when (this) {
+        is UserDeviceSettings.Desktop -> copy(showOriginalJson = showOriginalJson)
+        is UserDeviceSettings.Android -> copy(showOriginalJson = showOriginalJson)
+        is UserDeviceSettings.Ios -> copy(showOriginalJson = showOriginalJson)
+        is UserDeviceSettings.Web -> copy(showOriginalJson = showOriginalJson)
+    }
+
+private fun SecretRef?.secretText(): String =
+    when (this) {
+        is SecretRef.Inline -> value
+        is SecretRef.EnvironmentVariable -> name
+        null -> ""
+    }
+
+private fun String.inlineSecretOrNull(): SecretRef? =
+    ifBlank { null }?.let(SecretRef::Inline)
+
+@Composable
+private fun AiModelConfigurationSettingsCard(
+    configuration: AiModelConfiguration,
+    onConfigurationChange: (AiModelConfiguration) -> Unit,
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f))
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(configuration.displayName, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                    Text(
+                        "${configuration.connectionId.value} · ${configuration.id.value}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Switch(
+                    checked = configuration.enabled,
+                    onCheckedChange = { onConfigurationChange(configuration.copy(enabled = it)) }
+                )
+            }
+
+            TextFieldSettingItem(
+                label = "Display name",
+                description = "",
+                value = configuration.displayName,
+                onValueChange = { onConfigurationChange(configuration.copy(displayName = it)) }
+            )
+
+            TextFieldSettingItem(
+                label = "Provider model id",
+                description = "Exact model id sent to the provider",
+                value = configuration.providerModelId,
+                placeholder = "gpt-5.4",
+                onValueChange = { onConfigurationChange(configuration.copy(providerModelId = it)) }
+            )
+
+            Text(
+                text = "Roles: ${configuration.roles.joinToString { it.name.lowercase() }}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
 }
 

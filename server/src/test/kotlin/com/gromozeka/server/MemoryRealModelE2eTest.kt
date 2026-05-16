@@ -7,9 +7,10 @@ import com.gromozeka.application.service.memory.MemoryReadTraceEvent
 import com.gromozeka.application.service.memory.MemoryReadTraceSink
 import com.gromozeka.application.service.memory.MemoryWriteTraceEvent
 import com.gromozeka.application.service.memory.MemoryWriteTraceSink
-import com.gromozeka.domain.model.AIProvider
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.UserProfile
+import com.gromozeka.domain.model.ai.AiRuntimeOverrides
 import com.gromozeka.domain.model.memory.MemoryClaim
 import com.gromozeka.domain.model.memory.MemoryClaimCandidate
 import com.gromozeka.domain.model.memory.MemoryClaimReconciliationOp
@@ -107,15 +108,12 @@ class MemoryRealModelE2eTest {
         val databaseName = "gromozeka_memory_e2e_${uuid7().replace("-", "_")}"
         val runId = "${Clock.System.now()}-$databaseName".sanitizePathSegment()
         val settings = Settings(
-            enableTts = false,
-            enableStt = false,
-            autoSend = false,
-            defaultAiProvider = AIProvider.OPEN_AI_SUBSCRIPTION,
-            openAiModel = modelName,
-            enableBraveSearch = false,
-            enableJinaReader = false,
-            memoryAutoRemember = true,
-            memoryAutoRecall = true,
+            userProfile = ServerTestHarness.openAiSubscriptionProfile(modelName).copy(
+                memorySettings = UserProfile.MemorySettings(
+                    autoRemember = true,
+                    autoRecall = true,
+                )
+            ),
         )
 
         ServerTestHarness(
@@ -1131,11 +1129,8 @@ class MemoryRealModelE2eTest {
             id = AgentDefinition.Id("memory-e2e-${uuid7()}"),
             name = "Memory E2E",
             prompts = listOf(promptId),
-            aiProvider = AIProvider.OPEN_AI_SUBSCRIPTION.name,
-            modelName = modelName,
-            maxTokens = 2_048,
-            thinking = null,
-            outputConfig = null,
+            runtimeSelection = ServerTestHarness.openAiSubscriptionRuntimeSelection(),
+            runtimeOverrides = AiRuntimeOverrides(maxOutputTokens = 2_048),
             tools = emptyList(),
             description = "Inline agent used only for real-model memory e2e tests",
             type = AgentDefinition.Type.Inline,

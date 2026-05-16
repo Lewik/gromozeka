@@ -58,9 +58,7 @@ fun TokenStatisticsTable(
                 Spacer(modifier = Modifier.height(8.dp))
 
             // Context Window
-            val contextWindow = tokenStats.modelId?.let {
-                com.gromozeka.domain.model.ai.AiModelSpecs.byProviderAndId.values.singleOrNull { spec -> spec.id == it }?.contextWindowTokens
-            }
+            val contextWindow = tokenStats.contextWindowTokens
             val currentContext = tokenStats.currentContextSize
 
             if (currentContext != null && contextWindow != null) {

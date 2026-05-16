@@ -175,7 +175,7 @@ class TabViewModel(
 
             if (containsOnlyToolResults) {
                 false
-            } else if (settings.showSystemMessages) {
+            } else if (settings.userDeviceSettings.showSystemMessages) {
                 true
             } else {
                 message.role != Conversation.Message.Role.SYSTEM ||
@@ -715,17 +715,15 @@ class TabViewModel(
 
         try {
             val agentDefinition = _uiState.value.agent
-            val aiProvider = agentDefinition.aiProvider
-            val modelName = agentDefinition.modelName
+            val runtimeSelection = agentDefinition.runtimeSelection
 
-            log.info { "Starting AI squash: type=$squashType, provider=$aiProvider, model=$modelName" }
+            log.info { "Starting AI squash: type=$squashType, runtimeSelection=${runtimeSelection.modelConfigurationId.value}" }
 
             val result = messageSquashGenerationService.squashWithAI(
                 conversationId = conversationId,
                 selectedIds = selectedIds.toList(),
                 squashType = squashType,
-                aiProvider = aiProvider,
-                modelName = modelName,
+                runtimeSelection = runtimeSelection,
                 projectPath = projectPath
             )
 

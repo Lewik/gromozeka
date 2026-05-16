@@ -153,11 +153,12 @@ fun GromozekaAppContent(
         appComponents.settingsService.saveSettings(newSettings)
     }
     val onRemoteClientSettingsChange = appComponents.remoteClientSettingsService::saveSettings
+    val currentUiSettings = currentSettings.userDeviceSettings.uiSettings
 
     CompositionLocalProvider(
         LocalDensity provides Density(
-            density = (currentSettings.uiScale * uiScaleMultiplier).coerceIn(0.5f, 3.0f),
-            fontScale = currentSettings.fontScale,
+            density = (currentUiSettings.uiScale * uiScaleMultiplier).coerceIn(0.5f, 3.0f),
+            fontScale = currentUiSettings.fontScale,
         ),
     ) {
         Box(
@@ -254,7 +255,7 @@ fun GromozekaAppContent(
                                 val tabRowComponent = @Composable {
                                     CustomTabRow(
                                         selectedTabIndex = selectedTabIndex,
-                                        showTabsAtBottom = currentSettings.showTabsAtBottom,
+                                        showTabsAtBottom = currentUiSettings.showTabsAtBottom,
                                         tabs = tabs,
                                         hoveredTabIndex = hoveredTabIndex,
                                         onTabSelect = { tabIndex ->
@@ -273,7 +274,7 @@ fun GromozekaAppContent(
                                     )
                                 }
 
-                                if (!currentSettings.showTabsAtBottom) {
+                                if (!currentUiSettings.showTabsAtBottom) {
                                     tabRowComponent()
                                 }
 
@@ -444,7 +445,7 @@ fun GromozekaAppContent(
                                     }
                                 }
 
-                                if (currentSettings.showTabsAtBottom) {
+                                if (currentUiSettings.showTabsAtBottom) {
                                     tabRowComponent()
                                 }
                             }

@@ -36,7 +36,9 @@ class BraveLocalSearchTool(
     private val json = Json { ignoreUnknownKeys = true }
     
     override fun execute(request: BraveLocalSearchRequest, context: ToolExecutionContext?): Map<String, Any> {
-        if (!settingsProvider.enableBraveSearch || settingsProvider.braveApiKey.isNullOrBlank()) {
+        val braveSearch = settingsProvider.userProfile.toolSettings.braveSearch
+        val apiKey = settingsProvider.resolveSecret(braveSearch.apiKey)
+        if (!braveSearch.enabled || apiKey.isNullOrBlank()) {
             return mapOf<String, Any>(
                 "success" to false,
                 "results" to emptyList<Map<String, Any>>(),
@@ -45,7 +47,6 @@ class BraveLocalSearchTool(
         }
         
         return try {
-            val apiKey = settingsProvider.braveApiKey!!
             val url = buildString {
                 append("https://api.search.brave.com/res/v1/local/search")
                 append("?q=").append(URLEncoder.encode(request.query, "UTF-8"))

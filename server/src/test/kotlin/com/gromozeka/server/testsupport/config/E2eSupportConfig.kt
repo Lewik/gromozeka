@@ -2,6 +2,7 @@ package com.gromozeka.server.testsupport.config
 
 import com.gromozeka.domain.service.AiRuntimeProvider
 import com.gromozeka.domain.service.AudioController
+import com.gromozeka.domain.service.SettingsProvider
 import com.gromozeka.infrastructure.ai.platform.GlobalHotkeyController
 import com.gromozeka.infrastructure.ai.platform.NoOpGlobalHotkeyController
 import com.gromozeka.infrastructure.ai.platform.ScreenCaptureController
@@ -20,9 +21,13 @@ class E2eSupportConfig {
 
     @Bean
     @Primary
-    fun aiRuntimeProvider(backends: List<AiRuntimeBackend>): AiRuntimeProvider {
+    fun aiRuntimeProvider(
+        backends: List<AiRuntimeBackend>,
+        settingsProvider: SettingsProvider,
+    ): AiRuntimeProvider {
         return CassetteAiRuntimeProvider(
             backends = backends,
+            settingsProvider = settingsProvider,
             settings = AiRuntimeCassetteSettings.fromSystemProperties(),
         )
     }

@@ -1,6 +1,5 @@
 package com.gromozeka.application.service
 
-import com.gromozeka.domain.model.AIProvider
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.Conversation.Message.BlockState
@@ -14,9 +13,8 @@ import com.gromozeka.application.service.memory.MemoryMessageRoutingApplicationS
 import com.gromozeka.application.service.memory.MemoryToolResultRenderer
 import com.gromozeka.application.service.memory.withoutMemoryManagementTools
 import com.gromozeka.domain.model.memory.DirectStructuredMemoryWriteResult
+import com.gromozeka.domain.repository.AiModelSpecRepository
 import com.gromozeka.domain.model.ai.AiRuntimeOptions
-import com.gromozeka.domain.model.ai.AiModelSpec
-import com.gromozeka.domain.model.ai.AiModelSpecs
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.model.ai.AiToolChoice
 import com.gromozeka.domain.service.AgentDomainService
@@ -70,6 +68,7 @@ class ConversationEngineService(
     private val memoryMessageRoutingApplicationService: MemoryMessageRoutingApplicationService,
     private val toolCallSequenceFixerService: ToolCallSequenceFixerService,
     private val settingsProvider: com.gromozeka.domain.service.SettingsProvider,
+    private val aiModelSpecRepository: AiModelSpecRepository,
     private val strideEngineService: com.gromozeka.domain.service.StrideEngineService,
     private val planRepository: com.gromozeka.domain.repository.PlanRepository
 ) : ConversationRuntimeService {
@@ -80,8 +79,8 @@ class ConversationEngineService(
      * LLM-agnostic - works with all providers (Anthropic, OpenAI, Google, etc.)
      *
      * Automatically uses typed memory around a turn only when enabled by settings:
-     * - settings.memoryAutoRemember writes current turn memory
-     * - settings.memoryAutoRecall recalls memory before the main model call
+     * - user profile memory settings write current turn memory
+     * - user profile memory settings recall memory before the main model call
      *
      * @param conversationId The conversation to append messages to
      * @param userMessage The user message to send
@@ -97,19 +96,20 @@ class ConversationEngineService(
         val conversation = conversationService.findById(conversationId)
             ?: throw IllegalStateException("Conversation not found: $conversationId")
         val project = conversationService.getProject(conversationId)
-        val provider = AIProvider.valueOf(agent.aiProvider)
-        
-        val modelName = agent.modelName
-        log.info { "Agent config: name=${agent.name}, modelName=$modelName, provider=$provider, maxTokens=${agent.maxTokens}, thinking=${agent.thinking}, outputConfig=${agent.outputConfig}" }
+        val resolvedRuntime = settingsProvider.resolveAiRuntime(agent.runtimeSelection)
+        val provider = resolvedRuntime.connection.kind.provider
+        val modelName = resolvedRuntime.modelConfiguration.providerModelId
+        log.info {
+            "Agent config: name=${agent.name}, modelName=$modelName, provider=$provider, " +
+                "runtimeOverrides=${agent.runtimeOverrides}"
+        }
         
         val runtime = aiRuntimeProvider.getRuntime(
-            provider,
-            modelName,
+            agent.runtimeSelection,
             project.path
         )
-        val modelProvider = AiModelSpec.Provider.valueOf(provider.name)
         val autoCompactionThresholdTokens = if (runtime.capabilities.supportsAutoCompaction) {
-            AiModelSpecs.byProviderAndId[modelProvider to modelName]?.autoCompactionThresholdTokens.also { threshold ->
+            aiModelSpecRepository.find(provider, modelName)?.autoCompactionThresholdTokens.also { threshold ->
                 if (threshold == null) {
                     log.warn { "Auto compaction disabled: context window is not configured for model=$modelName" }
                 } else {
@@ -123,8 +123,8 @@ class ConversationEngineService(
         val memoryPipelineTools = availableTools.withoutMemoryManagementTools()
         val baseSystemPrompts = agentDomainService.assembleSystemPrompt(agent, project)
         val systemPrompts = baseSystemPrompts
-        val automaticMemoryRememberEnabled = settingsProvider.memoryAutoRemember
-        val automaticMemoryRecallEnabled = settingsProvider.memoryAutoRecall
+        val automaticMemoryRememberEnabled = settingsProvider.userProfile.memorySettings.autoRemember
+        val automaticMemoryRecallEnabled = settingsProvider.userProfile.memorySettings.autoRecall
 
         // Add user message
         conversationService.addMessage(conversationId, userMessage)
@@ -202,7 +202,7 @@ class ConversationEngineService(
         }
         val finalMessages = conversationService.loadCurrentMessages(conversationId)
         log.info {
-            "Memory auto wiring: conversation=${conversationId.value} autoRemember=${settingsProvider.memoryAutoRemember} autoRecall=${settingsProvider.memoryAutoRecall} " +
+            "Memory auto wiring: conversation=${conversationId.value} autoRemember=$automaticMemoryRememberEnabled autoRecall=$automaticMemoryRecallEnabled " +
                 "memoryPromptPresent=${!runtimeMemoryResult?.runtimePrompt.isNullOrBlank()} memoryPromptChars=${runtimeMemoryResult?.runtimePrompt?.length ?: 0} " +
                 "systemPrompts=${systemPrompts.size} rememberTriggered=$automaticMemoryRememberEnabled recallTriggered=$automaticMemoryRecallEnabled"
         }
@@ -302,9 +302,8 @@ class ConversationEngineService(
                 messages = messagesWithStrideInstruction,
                 tools = availableTools,
                 options = AiRuntimeOptions(
-                    maxTokens = agent.maxTokens,
-                    thinking = agent.thinking,
-                    outputConfig = agent.outputConfig,
+                    maxOutputTokens = agent.runtimeOverrides.maxOutputTokens,
+                    reasoning = agent.runtimeOverrides.reasoning,
                     autoCompactionThresholdTokens = autoCompactionThresholdTokens,
                     toolChoice = toolChoice,
                     toolContext = mapOf(
@@ -408,8 +407,8 @@ class ConversationEngineService(
                                 cacheCreationTokens = usage.cacheCreationTokens,
                                 cacheReadTokens = usage.cacheReadTokens,
                                 thinkingTokens = usage.thinkingTokens,
-                                provider = agent.aiProvider,
-                                modelId = agent.modelName
+                                provider = provider.name,
+                                modelId = modelName
                             )
                         )
                     } catch (e: Exception) {

@@ -5,6 +5,8 @@ import com.gromozeka.domain.model.Tab
 import com.gromozeka.domain.model.ConversationInitiator
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.ai.AiModelConfiguration
+import com.gromozeka.domain.model.ai.AiRuntimeSelection
 import com.gromozeka.domain.service.AgentDomainService
 import io.modelcontextprotocol.kotlin.sdk.CallToolRequest
 import io.modelcontextprotocol.kotlin.sdk.CallToolResult
@@ -35,8 +37,7 @@ class CreateAgentTool(
         val agent_name: String,
         val agent_prompt: String? = null,
         val expects_response: Boolean = false,
-        val ai_provider: String = "ANTHROPIC",
-        val model_name: String = "claude-sonnet-4-6",
+        val model_configuration_id: String = "openai-subscription-gpt-5.5",
     )
 
     override val definition = Tool(
@@ -74,15 +75,10 @@ class CreateAgentTool(
                     put("description", "Whether parent agent expects a response back from the created agent (default: false)")
                     put("default", false)
                 })
-                put("ai_provider", buildJsonObject {
+                put("model_configuration_id", buildJsonObject {
                     put("type", "string")
-                    put("description", "AI provider identifier (e.g., 'ANTHROPIC', 'ANTHROPIC_BEDROCK', 'OPENAI', 'GEMINI')")
-                    put("default", "ANTHROPIC")
-                })
-                put("model_name", buildJsonObject {
-                    put("type", "string")
-                    put("description", "Model identifier (e.g., 'claude-sonnet-4-6', 'gpt-4')")
-                    put("default", "claude-sonnet-4-6")
+                    put("description", "Server-side AI model configuration id to use for the new agent")
+                    put("default", "openai-subscription-gpt-5.5")
                 })
             },
             required = listOf(
@@ -106,8 +102,7 @@ class CreateAgentTool(
             agentService.createAgent(
                 name = input.agent_name,
                 prompts = listOf(inlinePrompt.id),
-                aiProvider = input.ai_provider,
-                modelName = input.model_name,
+                runtimeSelection = AiRuntimeSelection(AiModelConfiguration.Id(input.model_configuration_id)),
                 description = "Created via MCP from parent tab: ${input.parent_tab_id}",
                 type = AgentDefinition.Type.Inline
             )

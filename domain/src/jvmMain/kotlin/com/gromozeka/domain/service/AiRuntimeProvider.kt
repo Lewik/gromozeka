@@ -1,9 +1,9 @@
 package com.gromozeka.domain.service
 
-import com.gromozeka.domain.model.AIProvider
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.model.ai.AiRuntimeResponse
 import com.gromozeka.domain.model.ai.AiRuntimeCapabilities
+import com.gromozeka.domain.model.ai.AiRuntimeSelection
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -15,8 +15,7 @@ import kotlinx.coroutines.flow.Flow
  */
 interface AiRuntimeProvider {
     fun getRuntime(
-        provider: AIProvider,
-        modelName: String,
+        selection: AiRuntimeSelection,
         projectPath: String?
     ): AiRuntime
 }

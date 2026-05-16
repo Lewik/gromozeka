@@ -1,6 +1,5 @@
 package com.gromozeka.domain.model.ai
 
-import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.tool.AiToolCallback
 import kotlinx.serialization.Serializable
@@ -20,14 +19,20 @@ data class AiRuntimeRequest(
 )
 
 data class AiRuntimeOptions(
-    val maxTokens: Int? = null,
-    val thinking: AgentDefinition.ThinkingConfig? = null,
-    val outputConfig: AgentDefinition.OutputConfig? = null,
+    val maxOutputTokens: Int? = null,
+    val reasoning: AiReasoningConfig? = null,
     val autoCompactionThresholdTokens: Int? = null,
     val toolChoice: AiToolChoice = AiToolChoice.Auto,
     val responseFormat: AiResponseFormat = AiResponseFormat.Text,
     val toolContext: Map<String, Any?> = emptyMap(),
-)
+) {
+    init {
+        require(maxOutputTokens == null || maxOutputTokens > 0) { "AI runtime max output tokens must be positive" }
+        require(autoCompactionThresholdTokens == null || autoCompactionThresholdTokens > 0) {
+            "AI runtime auto-compaction threshold tokens must be positive"
+        }
+    }
+}
 
 sealed class AiToolChoice {
     data object Auto : AiToolChoice()

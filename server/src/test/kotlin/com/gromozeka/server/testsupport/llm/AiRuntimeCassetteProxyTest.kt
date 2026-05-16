@@ -1,12 +1,15 @@
 package com.gromozeka.server.testsupport.llm
 
-import com.gromozeka.domain.model.AIProvider
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.UserProfile
+import com.gromozeka.domain.model.ai.AiConnection
 import com.gromozeka.domain.model.ai.AiAssistantMessage
+import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.model.ai.AiRuntimeCapabilities
 import com.gromozeka.domain.model.ai.AiRuntimeOptions
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.model.ai.AiRuntimeResponse
+import com.gromozeka.domain.model.ai.AiRuntimeSelection
 import com.gromozeka.domain.model.ai.AiUsage
 import com.gromozeka.domain.service.AiRuntime
 import com.gromozeka.infrastructure.ai.runtime.AiRuntimeBackend
@@ -61,7 +64,7 @@ class AiRuntimeCassetteProxyTest {
         val root = Files.createTempDirectory("llm-cassettes-test-")
         try {
             val backend = CountingBackend()
-            val provider = CassetteAiRuntimeProvider(
+            val provider = cassetteProvider(
                 backends = listOf(backend),
                 settings = AiRuntimeCassetteSettings(
                     mode = AiRuntimeCassetteMode.RECORD_MISSING,
@@ -70,15 +73,13 @@ class AiRuntimeCassetteProxyTest {
             )
 
             val firstRuntime = provider.getRuntime(
-                provider = AIProvider.OPEN_AI,
-                modelName = "fake/model:1",
+                selection = runtimeSelection("fake/model:1"),
                 projectPath = "/tmp/gromozeka-e2e-111/projects/case-a",
             )
             val firstResponse = firstRuntime.call(requestWithDynamicIds("111", "Tell me the stored fact."))
 
             val secondRuntime = provider.getRuntime(
-                provider = AIProvider.OPEN_AI,
-                modelName = "fake/model:1",
+                selection = runtimeSelection("fake/model:1"),
                 projectPath = "/tmp/gromozeka-e2e-222/projects/case-a",
             )
             val secondResponse = secondRuntime.call(requestWithDynamicIds("222", "Tell me the stored fact."))
@@ -89,7 +90,7 @@ class AiRuntimeCassetteProxyTest {
             assertEquals(1, backend.callCount)
             assertEquals(
                 1,
-                root.resolve("OPEN_AI")
+                root.resolve("OPENAI")
                     .resolve("fake_model_1")
                     .resolve("call")
                     .listDirectoryEntries("*.json")
@@ -106,14 +107,14 @@ class AiRuntimeCassetteProxyTest {
         try {
             val store = AiRuntimeCassetteStore(root)
             val firstKey = store.keyFor(
-                provider = "OPEN_AI",
+                provider = "OPENAI",
                 modelName = "fake/model:1",
                 projectPath = "/tmp/gromozeka-e2e-111/projects/case-a",
                 operation = AiRuntimeCassetteOperation.CALL,
                 request = requestWithDynamicIds("111", "Tell me the stored fact."),
             )
             val secondKey = store.keyFor(
-                provider = "OPEN_AI",
+                provider = "OPENAI",
                 modelName = "fake/model:1",
                 projectPath = "/tmp/gromozeka-e2e-222/projects/case-a",
                 operation = AiRuntimeCassetteOperation.CALL,
@@ -132,7 +133,7 @@ class AiRuntimeCassetteProxyTest {
         val root = Files.createTempDirectory("llm-cassettes-test-")
         try {
             val firstBackend = DynamicMetadataBackend()
-            val recordProvider = CassetteAiRuntimeProvider(
+            val recordProvider = cassetteProvider(
                 backends = listOf(firstBackend),
                 settings = AiRuntimeCassetteSettings(
                     mode = AiRuntimeCassetteMode.RECORD_MISSING,
@@ -141,10 +142,10 @@ class AiRuntimeCassetteProxyTest {
             )
 
             recordProvider
-                .getRuntime(AIProvider.OPEN_AI, "fake/model:1", "/tmp/gromozeka-e2e-111/projects/case-a")
+                .getRuntime(runtimeSelection("fake/model:1"), "/tmp/gromozeka-e2e-111/projects/case-a")
                 .call(requestWithDynamicIds("111", "Tell me the stored fact."))
 
-            val cassettePath = root.resolve("OPEN_AI")
+            val cassettePath = root.resolve("OPENAI")
                 .resolve("fake_model_1")
                 .resolve("call")
                 .listDirectoryEntries("*.json")
@@ -154,7 +155,7 @@ class AiRuntimeCassetteProxyTest {
             require("\\\"explicit_date\\\":\\\"2026-01-10T00:00:00Z\\\"" in firstBody)
 
             val secondBackend = DynamicMetadataBackend()
-            val refreshProvider = CassetteAiRuntimeProvider(
+            val refreshProvider = cassetteProvider(
                 backends = listOf(secondBackend),
                 settings = AiRuntimeCassetteSettings(
                     mode = AiRuntimeCassetteMode.REFRESH,
@@ -163,7 +164,7 @@ class AiRuntimeCassetteProxyTest {
             )
 
             refreshProvider
-                .getRuntime(AIProvider.OPEN_AI, "fake/model:1", "/tmp/gromozeka-e2e-222/projects/case-a")
+                .getRuntime(runtimeSelection("fake/model:1"), "/tmp/gromozeka-e2e-222/projects/case-a")
                 .call(requestWithDynamicIds("222", "Tell me the stored fact."))
 
             assertEquals(firstBody, Files.readString(cassettePath))
@@ -176,14 +177,15 @@ class AiRuntimeCassetteProxyTest {
     fun replayOnlyFailsOnMiss() = runBlocking {
         val root = Files.createTempDirectory("llm-cassettes-test-")
         try {
-            val provider = CassetteAiRuntimeProvider(
+            val provider = cassetteProvider(
                 backends = listOf(CountingBackend()),
+                modelNames = listOf("fake-model"),
                 settings = AiRuntimeCassetteSettings(
                     mode = AiRuntimeCassetteMode.REPLAY_ONLY,
                     rootDirectory = root,
                 ),
             )
-            val runtime = provider.getRuntime(AIProvider.OPEN_AI, "fake-model", projectPath = null)
+            val runtime = provider.getRuntime(runtimeSelection("fake-model"), projectPath = null)
 
             val failure = assertFailsWith<IllegalStateException> {
                 runtime.call(requestWithDynamicIds("333", "No cassette exists."))
@@ -201,17 +203,17 @@ class AiRuntimeCassetteProxyTest {
         val artifacts = Files.createTempDirectory("llm-cassettes-artifacts-")
         AiRuntimeCassetteUsageRegistry.reset()
         try {
-            val provider = CassetteAiRuntimeProvider(
+            val provider = cassetteProvider(
                 backends = listOf(CountingBackend()),
                 settings = AiRuntimeCassetteSettings(
                     mode = AiRuntimeCassetteMode.RECORD_MISSING,
                     rootDirectory = root,
                 ),
             )
-            val runtime = provider.getRuntime(AIProvider.OPEN_AI, "fake/model:1", projectPath = null)
+            val runtime = provider.getRuntime(runtimeSelection("fake/model:1"), projectPath = null)
 
             runtime.call(requestWithDynamicIds("444", "Tell me the stored fact."))
-            val cassetteDirectory = root.resolve("OPEN_AI")
+            val cassetteDirectory = root.resolve("OPENAI")
                 .resolve("fake_model_1")
                 .resolve("call")
             val unusedCassette = cassetteDirectory.resolve("unused-cassette.json")
@@ -318,14 +320,52 @@ class AiRuntimeCassetteProxyTest {
         )
     }
 
+    private fun cassetteProvider(
+        backends: List<AiRuntimeBackend>,
+        settings: AiRuntimeCassetteSettings,
+        modelNames: List<String> = listOf("fake/model:1"),
+    ): CassetteAiRuntimeProvider =
+        CassetteAiRuntimeProvider(
+            backends = backends,
+            userProfile = testUserProfile(modelNames),
+            settings = settings,
+        )
+
+    private fun testUserProfile(modelNames: List<String>): UserProfile {
+        val connectionId = AiConnection.Id("test-openai")
+        val modelConfigurations = modelNames.distinct().map { modelName ->
+            AiModelConfiguration(
+                id = runtimeSelection(modelName).modelConfigurationId,
+                connectionId = connectionId,
+                providerModelId = modelName,
+                displayName = modelName,
+            )
+        }
+        return UserProfile(
+            aiSettings = UserProfile.AiSettings(
+                defaultSelection = AiRuntimeSelection(modelConfigurations.first().id),
+                connections = listOf(
+                    AiConnection.OpenAiApi(
+                        id = connectionId,
+                        displayName = "Test OpenAI",
+                    )
+                ),
+                modelConfigurations = modelConfigurations,
+            )
+        )
+    }
+
+    private fun runtimeSelection(modelName: String): AiRuntimeSelection =
+        AiRuntimeSelection(AiModelConfiguration.Id(modelName))
+
     private class CountingBackend : AiRuntimeBackend {
         var callCount: Int = 0
 
-        override fun supports(provider: AIProvider): Boolean = provider == AIProvider.OPEN_AI
+        override fun supports(connectionKind: AiConnection.Kind): Boolean = connectionKind == AiConnection.Kind.OPENAI_API
 
         override fun createRuntime(
-            provider: AIProvider,
-            modelName: String,
+            connection: AiConnection,
+            modelConfiguration: AiModelConfiguration,
             projectPath: String?,
         ): AiRuntime = object : AiRuntime {
             override val capabilities: AiRuntimeCapabilities = AiRuntimeCapabilities()
@@ -345,11 +385,11 @@ class AiRuntimeCassetteProxyTest {
     private class DynamicMetadataBackend : AiRuntimeBackend {
         var callCount: Int = 0
 
-        override fun supports(provider: AIProvider): Boolean = provider == AIProvider.OPEN_AI
+        override fun supports(connectionKind: AiConnection.Kind): Boolean = connectionKind == AiConnection.Kind.OPENAI_API
 
         override fun createRuntime(
-            provider: AIProvider,
-            modelName: String,
+            connection: AiConnection,
+            modelConfiguration: AiModelConfiguration,
             projectPath: String?,
         ): AiRuntime = object : AiRuntime {
             override val capabilities: AiRuntimeCapabilities = AiRuntimeCapabilities()

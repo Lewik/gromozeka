@@ -1,18 +1,23 @@
 package com.gromozeka.server.testsupport.llm
 
-import com.gromozeka.domain.model.AIProvider
-import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.UserProfile
+import com.gromozeka.domain.model.ai.AiConnection
 import com.gromozeka.domain.model.ai.AiAssistantMessage
+import com.gromozeka.domain.model.ai.AiModelConfiguration
+import com.gromozeka.domain.model.ai.AiReasoningConfig
 import com.gromozeka.domain.model.ai.AiResponseFormat
 import com.gromozeka.domain.model.ai.AiRuntimeCapabilities
 import com.gromozeka.domain.model.ai.AiRuntimeOptions
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.model.ai.AiRuntimeResponse
+import com.gromozeka.domain.model.ai.AiRuntimeSelection
 import com.gromozeka.domain.model.ai.AiToolChoice
 import com.gromozeka.domain.model.ai.AiUsage
 import com.gromozeka.domain.service.AiRuntime
 import com.gromozeka.domain.service.AiRuntimeProvider
+import com.gromozeka.domain.service.ResolvedAiRuntime
+import com.gromozeka.domain.service.SettingsProvider
 import com.gromozeka.domain.tool.AiToolCallback
 import com.gromozeka.domain.tool.AiToolMetadata
 import com.gromozeka.infrastructure.ai.runtime.AiRuntimeBackend
@@ -49,26 +54,40 @@ import kotlin.io.path.writeText
 
 internal class CassetteAiRuntimeProvider(
     private val backends: List<AiRuntimeBackend>,
+    private val settingsProvider: SettingsProvider? = null,
+    private val userProfile: UserProfile = UserProfile(),
     private val settings: AiRuntimeCassetteSettings = AiRuntimeCassetteSettings.fromSystemProperties(),
 ) : AiRuntimeProvider {
     override fun getRuntime(
-        provider: AIProvider,
-        modelName: String,
+        selection: AiRuntimeSelection,
         projectPath: String?,
     ): AiRuntime {
-        val backend = backends.firstOrNull { it.supports(provider) }
-            ?: error("No AI runtime backend registered for provider $provider")
-        val runtime = backend.createRuntime(provider, modelName, projectPath)
+        val (connection, modelConfiguration) = resolveRuntime(selection)
+        val backend = backends.firstOrNull { it.supports(connection.kind) }
+            ?: error("No AI runtime backend registered for connection kind ${connection.kind}")
+        val runtime = backend.createRuntime(connection, modelConfiguration, projectPath)
         if (settings.mode == AiRuntimeCassetteMode.OFF) return runtime
 
         return CassetteAiRuntime(
             delegate = runtime,
             store = AiRuntimeCassetteStore(settings.rootDirectory),
-            provider = provider.name,
-            modelName = modelName,
+            provider = connection.kind.provider.name,
+            modelName = modelConfiguration.providerModelId,
             projectPath = projectPath,
             mode = settings.mode,
         )
+    }
+
+    private fun resolveRuntime(selection: AiRuntimeSelection): ResolvedAiRuntime {
+        settingsProvider?.let { return it.resolveAiRuntime(selection) }
+        val modelConfiguration = userProfile.aiSettings.modelConfigurations.firstOrNull {
+            it.id == selection.modelConfigurationId
+        } ?: error("AI model configuration not found: ${selection.modelConfigurationId.value}")
+        val connection = userProfile.aiSettings.connections.firstOrNull { it.id == modelConfiguration.connectionId }
+            ?: error("AI connection not found: ${modelConfiguration.connectionId.value}")
+        require(connection.enabled) { "AI connection is disabled: ${connection.id.value}" }
+        require(modelConfiguration.enabled) { "AI model configuration is disabled: ${modelConfiguration.id.value}" }
+        return ResolvedAiRuntime(connection, modelConfiguration)
     }
 }
 
@@ -646,9 +665,8 @@ internal data class AiToolSnapshot(
 
 @Serializable
 internal data class AiRuntimeOptionsSnapshot(
-    val maxTokens: Int?,
-    val thinking: JsonElement?,
-    val outputConfig: JsonElement?,
+    val maxOutputTokens: Int?,
+    val reasoning: JsonElement?,
     val autoCompactionThreshold: Int?,
     val toolChoice: JsonElement,
     val responseFormat: JsonElement,
@@ -741,9 +759,8 @@ private fun AiRuntimeOptions.toCassetteOptionsSnapshot(
     runtimeBindings: AiRuntimeCassetteRuntimeBindings,
 ): AiRuntimeOptionsSnapshot {
     return AiRuntimeOptionsSnapshot(
-        maxTokens = maxTokens,
-        thinking = thinking?.let { cassetteJson.encodeToJsonElement(AgentDefinition.ThinkingConfig.serializer(), it) },
-        outputConfig = outputConfig?.let { cassetteJson.encodeToJsonElement(AgentDefinition.OutputConfig.serializer(), it) },
+        maxOutputTokens = maxOutputTokens,
+        reasoning = reasoning?.let { cassetteJson.encodeToJsonElement(AiReasoningConfig.serializer(), it) },
         autoCompactionThreshold = autoCompactionThresholdTokens,
         toolChoice = toolChoice.toCassetteJson(),
         responseFormat = responseFormat.toCassetteJson(runtimeBindings),

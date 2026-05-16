@@ -25,9 +25,12 @@ import com.anthropic.models.messages.ToolChoiceNone
 import com.anthropic.models.messages.ToolResultBlockParam
 import com.anthropic.models.messages.ToolUnion
 import com.anthropic.models.messages.ToolUseBlockParam
-import com.gromozeka.domain.model.AIProvider
-import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.ai.AiConnection
+import com.gromozeka.domain.model.ai.AiModelConfiguration
+import com.gromozeka.domain.model.ai.AiReasoningConfig
+import com.gromozeka.domain.model.ai.AiReasoningDisplay
+import com.gromozeka.domain.model.ai.AiReasoningMode
 import com.gromozeka.domain.model.ai.AiAssistantMessage
 import com.gromozeka.domain.model.ai.AiResponseFormat
 import com.gromozeka.domain.model.ai.AiRuntimeOptions
@@ -64,45 +67,54 @@ internal class AnthropicSdkRuntimeBackend(
     private val settingsProvider: SettingsProvider,
 ) : AiRuntimeBackend {
 
-    override fun supports(provider: AIProvider): Boolean =
-        provider == AIProvider.ANTHROPIC || provider == AIProvider.ANTHROPIC_BEDROCK
+    override fun supports(connectionKind: AiConnection.Kind): Boolean =
+        connectionKind == AiConnection.Kind.ANTHROPIC_API || connectionKind == AiConnection.Kind.ANTHROPIC_BEDROCK
 
     override fun createRuntime(
-        provider: AIProvider,
-        modelName: String,
+        connection: AiConnection,
+        modelConfiguration: AiModelConfiguration,
         projectPath: String?
     ): AiRuntime {
-        val client = when (provider) {
-            AIProvider.ANTHROPIC -> createDirectAnthropicClient()
-            AIProvider.ANTHROPIC_BEDROCK -> createBedrockAnthropicClient()
-            else -> error("Anthropic SDK runtime does not support provider $provider")
+        val connectionKind = connection.kind
+        val client = when (connectionKind) {
+            AiConnection.Kind.ANTHROPIC_API -> createDirectAnthropicClient(connection)
+            AiConnection.Kind.ANTHROPIC_BEDROCK -> createBedrockAnthropicClient(connection)
+            else -> error("Anthropic SDK runtime does not support connection kind $connectionKind")
         }
 
-        return AnthropicSdkRuntime(provider, modelName, client, AnthropicSdkMessageMapper(provider))
+        return AnthropicSdkRuntime(
+            connectionKind,
+            modelConfiguration.providerModelId,
+            client,
+            AnthropicSdkMessageMapper(connectionKind)
+        )
     }
 
-    private fun createDirectAnthropicClient(): AnthropicClient {
+    private fun createDirectAnthropicClient(connection: AiConnection): AnthropicClient {
         val builder = AnthropicOkHttpClient.builder()
             .maxRetries(0)
 
-        val apiKey = settingsProvider.anthropicApiKey?.takeIf { it.isNotBlank() }
+        val apiKey = settingsProvider.resolveSecret((connection as? AiConnection.ApiKeyAiConnection)?.apiKey)
+            ?.takeIf { it.isNotBlank() }
         if (apiKey != null) {
             builder.apiKey(apiKey)
         } else {
             builder.fromEnv()
         }
 
-        settingsProvider.anthropicBaseUrl
+        ((connection as? AiConnection.HttpAiConnection)?.baseUrl ?: "https://api.anthropic.com")
             .takeIf { it.isNotBlank() }
             ?.let(builder::baseUrl)
 
         return builder.build()
     }
 
-    private fun createBedrockAnthropicClient(): AnthropicClient {
-        val region = settingsProvider.anthropicBedrockRegion?.takeIf { it.isNotBlank() }
-        val baseUrl = settingsProvider.anthropicBedrockBaseUrl?.takeIf { it.isNotBlank() }
-        val profile = settingsProvider.anthropicBedrockProfile?.takeIf { it.isNotBlank() }
+    private fun createBedrockAnthropicClient(connection: AiConnection): AnthropicClient {
+        val awsConnection = connection as? AiConnection.AwsAiConnection
+            ?: error("Bedrock Anthropic connection must expose AWS settings")
+        val region = awsConnection.awsRegion?.takeIf { it.isNotBlank() }
+        val baseUrl = (connection as? AiConnection.HttpAiConnection)?.baseUrl?.takeIf { it.isNotBlank() }
+        val profile = awsConnection.awsProfile?.takeIf { it.isNotBlank() }
         val standardBackend = createBedrockBackend(region, profile)
         val backend = baseUrl?.let { BaseUrlOverrideBackend(standardBackend, it) } ?: standardBackend
 
@@ -162,7 +174,7 @@ private class BaseUrlOverrideBackend(
 }
 
 private class AnthropicSdkRuntime(
-    private val provider: AIProvider,
+    private val connectionKind: AiConnection.Kind,
     private val modelName: String,
     private val client: AnthropicClient,
     private val messageMapper: AnthropicSdkMessageMapper,
@@ -172,7 +184,7 @@ private class AnthropicSdkRuntime(
     override suspend fun call(request: AiRuntimeRequest): AiRuntimeResponse {
         val params = messageMapper.toCreateParams(modelName, request)
         log.info {
-            "Calling Anthropic SDK runtime: provider=$provider model=$modelName " +
+            "Calling Anthropic SDK runtime: connectionKind=$connectionKind model=$modelName " +
                 "messages=${request.messages.size} tools=${request.tools.size} " +
                 "responseFormat=${request.options.responseFormat.logName()}"
         }
@@ -190,14 +202,14 @@ private class AnthropicSdkRuntime(
 }
 
 internal class AnthropicSdkMessageMapper(
-    private val provider: AIProvider,
+    private val connectionKind: AiConnection.Kind,
 ) {
     private val json = Json { ignoreUnknownKeys = true }
 
     fun toCreateParams(modelName: String, request: AiRuntimeRequest): MessageCreateParams {
         val builder = MessageCreateParams.builder()
             .model(modelName)
-            .maxTokens((request.options.maxTokens ?: DEFAULT_MAX_TOKENS).toLong())
+            .maxTokens((request.options.maxOutputTokens ?: DEFAULT_MAX_TOKENS).toLong())
 
         val systemPrompt = request.systemPrompts
             .filter { it.isNotBlank() }
@@ -210,12 +222,12 @@ internal class AnthropicSdkMessageMapper(
         require(messages.isNotEmpty()) { "Anthropic request must contain at least one user or assistant message" }
         builder.messages(messages)
 
-        if (provider == AIProvider.ANTHROPIC) {
+        if (connectionKind == AiConnection.Kind.ANTHROPIC_API) {
             builder.cacheControl(CacheControlEphemeral.builder().build())
         }
 
         applyTools(builder, request.tools, request.options.toolChoice)
-        applyThinking(builder, request.options.thinking)
+        applyThinking(builder, request.options.reasoning)
         applyOutputConfig(builder, request.options)
 
         return builder.build()
@@ -230,7 +242,7 @@ internal class AnthropicSdkMessageMapper(
                 AiAssistantMessage(
                     content = content,
                     metadata = mapOf(
-                        "provider" to provider.name,
+                        "provider" to connectionKind.name,
                         "model" to message.model().asString(),
                         "messageId" to message.id(),
                     )
@@ -243,7 +255,7 @@ internal class AnthropicSdkMessageMapper(
             usage = toAiUsage(message.usage()),
             finishReason = message.stopReason().getOrNull()?.asString(),
             providerMetadata = mapOf(
-                "provider" to provider.name,
+                "provider" to connectionKind.name,
                 "model" to message.model().asString(),
                 "messageId" to message.id(),
                 "contentBlockCount" to message.content().size,
@@ -426,23 +438,22 @@ internal class AnthropicSdkMessageMapper(
 
     private fun applyThinking(
         builder: MessageCreateParams.Builder,
-        thinking: AgentDefinition.ThinkingConfig?,
+        reasoning: AiReasoningConfig?,
     ) {
-        when (thinking?.type) {
+        when (reasoning?.mode) {
             null -> Unit
-            "adaptive" -> builder.thinking(
+            AiReasoningMode.ADAPTIVE -> builder.thinking(
                 ThinkingConfigAdaptive.builder()
-                    .display(adaptiveDisplay(thinking.display))
+                    .display(adaptiveDisplay(reasoning.display))
                     .build()
             )
-            "enabled" -> builder.thinking(
+            AiReasoningMode.TOKEN_BUDGET -> builder.thinking(
                 ThinkingConfigEnabled.builder()
-                    .budgetTokens((thinking.budgetTokens ?: DEFAULT_THINKING_BUDGET_TOKENS).toLong())
-                    .display(enabledDisplay(thinking.display))
+                    .budgetTokens((reasoning.budgetTokens ?: DEFAULT_THINKING_BUDGET_TOKENS).toLong())
+                    .display(enabledDisplay(reasoning.display))
                     .build()
             )
-            "disabled" -> builder.thinking(ThinkingConfigDisabled.builder().build())
-            else -> error("Unsupported Anthropic thinking type: ${thinking.type}")
+            AiReasoningMode.DISABLED -> builder.thinking(ThinkingConfigDisabled.builder().build())
         }
     }
 
@@ -453,8 +464,8 @@ internal class AnthropicSdkMessageMapper(
         val outputConfigBuilder = OutputConfig.builder()
         var hasOutputConfig = false
 
-        options.outputConfig?.effort?.takeIf { it.isNotBlank() }?.let { effort ->
-            outputConfigBuilder.effort(OutputConfig.Effort.of(effort.lowercase()))
+        options.reasoning?.effort?.let { effort ->
+            outputConfigBuilder.effort(OutputConfig.Effort.of(effort.name.lowercase()))
             hasOutputConfig = true
         }
 
@@ -478,20 +489,22 @@ internal class AnthropicSdkMessageMapper(
     }
 
     private fun supportsNativeStructuredOutput(): Boolean =
-        provider == AIProvider.ANTHROPIC
+        connectionKind == AiConnection.Kind.ANTHROPIC_API
 
-    private fun adaptiveDisplay(display: String): ThinkingConfigAdaptive.Display =
-        when (display.lowercase()) {
-            "omitted" -> ThinkingConfigAdaptive.Display.OMITTED
-            "summarized", "summary", "full" -> ThinkingConfigAdaptive.Display.SUMMARIZED
-            else -> ThinkingConfigAdaptive.Display.SUMMARIZED
+    private fun adaptiveDisplay(display: AiReasoningDisplay?): ThinkingConfigAdaptive.Display =
+        when (display) {
+            AiReasoningDisplay.OMITTED -> ThinkingConfigAdaptive.Display.OMITTED
+            AiReasoningDisplay.FULL,
+            AiReasoningDisplay.SUMMARIZED,
+            null -> ThinkingConfigAdaptive.Display.SUMMARIZED
         }
 
-    private fun enabledDisplay(display: String): ThinkingConfigEnabled.Display =
-        when (display.lowercase()) {
-            "omitted" -> ThinkingConfigEnabled.Display.OMITTED
-            "summarized", "summary", "full" -> ThinkingConfigEnabled.Display.SUMMARIZED
-            else -> ThinkingConfigEnabled.Display.SUMMARIZED
+    private fun enabledDisplay(display: AiReasoningDisplay?): ThinkingConfigEnabled.Display =
+        when (display) {
+            AiReasoningDisplay.OMITTED -> ThinkingConfigEnabled.Display.OMITTED
+            AiReasoningDisplay.FULL,
+            AiReasoningDisplay.SUMMARIZED,
+            null -> ThinkingConfigEnabled.Display.SUMMARIZED
         }
 
     private fun toContentItems(block: com.anthropic.models.messages.ContentBlock): List<Conversation.Message.ContentItem> {

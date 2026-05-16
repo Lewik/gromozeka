@@ -1,10 +1,10 @@
 package com.gromozeka.application.service
 
-import com.gromozeka.domain.model.AIProvider
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.Prompt
 import com.gromozeka.domain.model.SquashType
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
+import com.gromozeka.domain.model.ai.AiRuntimeSelection
 import com.gromozeka.domain.service.ConversationDomainService
 import com.gromozeka.domain.service.PromptDomainService
 import com.gromozeka.domain.service.AiRuntimeProvider
@@ -62,15 +62,6 @@ class MessageSquashService(
                 errorType = MessageSquashServiceSpec.SquashResult.Failure.ErrorType.AI_GENERATION_FAILED
             )
 
-        val aiProvider = try {
-            AIProvider.valueOf(agentDefinition.aiProvider)
-        } catch (e: IllegalArgumentException) {
-            return MessageSquashServiceSpec.SquashResult.Failure(
-                reason = "Invalid AI provider: ${agentDefinition.aiProvider}",
-                errorType = MessageSquashServiceSpec.SquashResult.Failure.ErrorType.AI_GENERATION_FAILED
-            )
-        }
-
         return try {
             when (strategy) {
                 SquashType.CONCATENATE -> {
@@ -108,12 +99,11 @@ class MessageSquashService(
                         )
                     }
 
-                    val squashedContent = squashWithAI(
+                    val squashedContent = runSquashWithAI(
                         conversationId = conversationId,
                         selectedIds = messageIds,
                         squashType = strategy,
-                        aiProvider = aiProvider,
-                        modelName = agentDefinition.modelName,
+                        runtimeSelection = agentDefinition.runtimeSelection,
                         projectPath = projectPath
                     )
 
@@ -134,12 +124,11 @@ class MessageSquashService(
         }
     }
 
-    suspend fun squashWithAI(
+    private suspend fun runSquashWithAI(
         conversationId: Conversation.Id,
         selectedIds: List<Conversation.Message.Id>,
         squashType: SquashType,
-        aiProvider: AIProvider,
-        modelName: String,
+        runtimeSelection: AiRuntimeSelection,
         projectPath: String?
     ): String {
         require(squashType != SquashType.CONCATENATE) {
@@ -182,7 +171,7 @@ class MessageSquashService(
             "Calling AI with ${markedMessages.size + 1} messages (${systemPrompts.size} system + ${markedMessages.size} history + 1 command)"
         }
 
-        val runtime = aiRuntimeProvider.getRuntime(aiProvider, modelName, projectPath)
+        val runtime = aiRuntimeProvider.getRuntime(runtimeSelection, projectPath)
         val response = runtime.call(
             AiRuntimeRequest(
                 systemPrompts = systemPrompts,
@@ -206,16 +195,14 @@ class MessageSquashService(
         conversationId: Conversation.Id,
         selectedIds: List<Conversation.Message.Id>,
         squashType: SquashType,
-        aiProvider: String,
-        modelName: String,
+        runtimeSelection: AiRuntimeSelection,
         projectPath: String?,
     ): String =
-        squashWithAI(
+        runSquashWithAI(
             conversationId = conversationId,
             selectedIds = selectedIds,
             squashType = squashType,
-            aiProvider = AIProvider.valueOf(aiProvider),
-            modelName = modelName,
+            runtimeSelection = runtimeSelection,
             projectPath = projectPath,
         )
 

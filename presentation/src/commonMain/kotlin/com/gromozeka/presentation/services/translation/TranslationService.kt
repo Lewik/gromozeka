@@ -40,7 +40,7 @@ class TranslationService {
     fun exportToFile(): Boolean = false
 
     private fun applyLanguageSettings(settings: Settings) {
-        _currentTranslation.value = Translation.builtIn[settings.currentLanguageCode]
+        _currentTranslation.value = Translation.builtIn[settings.userDeviceSettings.uiSettings.languageCode]
             ?: Translation.builtIn[EnglishTranslation.LANGUAGE_CODE]!!
         _lastOverrideResult.value = null
     }

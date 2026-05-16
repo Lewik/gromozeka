@@ -25,7 +25,7 @@ import kotlin.jvm.JvmInline
  * @property cacheCreationTokens tokens written to prompt cache (for repeated context)
  * @property cacheReadTokens tokens read from prompt cache (cost reduction)
  * @property thinkingTokens extended thinking tokens (Claude extended thinking mode)
- * @property provider AI provider name (e.g., "ANTHROPIC", "ANTHROPIC_BEDROCK", "GEMINI", "OPEN_AI")
+ * @property provider AI provider name (e.g., "OPENAI", "ANTHROPIC", "GOOGLE", "OLLAMA")
  * @property modelId LLM model identifier (e.g., "claude-3-5-sonnet-20241022")
  */
 @Serializable
@@ -74,6 +74,7 @@ data class TokenUsageStatistics(
      * @property lastCallTokens token count from most recent API call (null if no calls yet)
      * @property recentCalls list of recent statistics records for history display
      * @property currentContextSize estimated current context window usage in tokens
+     * @property contextWindowTokens known context window for latest provider/model, if configured
      * @property provider AI provider used in most recent call (null if no calls yet)
      * @property modelId model used in most recent call (null if no calls yet)
      */
@@ -87,6 +88,7 @@ data class TokenUsageStatistics(
         val lastCallTokens: Int?,
         val recentCalls: List<TokenUsageStatistics>,
         val currentContextSize: Int? = null,
+        val contextWindowTokens: Int? = null,
         val provider: String? = null,
         val modelId: String? = null
     ) {

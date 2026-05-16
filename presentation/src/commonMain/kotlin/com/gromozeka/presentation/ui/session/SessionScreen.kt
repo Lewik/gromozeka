@@ -101,11 +101,8 @@ fun SessionScreen(
     
     // Context percentage calculation (used by Agent button and Send button)
     val contextPercentage = tokenStats?.currentContextSize?.let { currentContext ->
-        tokenStats?.modelId?.let { modelId ->
-            com.gromozeka.domain.model.ai.AiModelSpecs.byProviderAndId.values.singleOrNull { it.id == modelId }?.contextWindowTokens
-                ?.let { contextWindow ->
-                    (currentContext.toFloat() / contextWindow * 100).toInt()
-                }
+        tokenStats?.contextWindowTokens?.let { contextWindow ->
+            (currentContext.toFloat() / contextWindow * 100).toInt()
         }
     }
 
@@ -543,7 +540,7 @@ fun SessionScreen(
                         coroutineScope = coroutineScope,
                         pttEventHandler = pttEventHandler,
                         isRecording = isRecording,
-                        showPttButton = settings.enableStt,
+                        showPttButton = settings.userProfile.speechSettings.speechToText.enabled,
                         pttStatusMessage = pttStatusMessage,
                         contextPercentage = contextPercentage
                     )

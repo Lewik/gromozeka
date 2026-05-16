@@ -8,8 +8,10 @@ import com.gromozeka.domain.repository.MessageRepository
 import com.gromozeka.domain.repository.ProjectRepository
 import com.gromozeka.domain.repository.ThreadMessageRepository
 import com.gromozeka.domain.repository.ThreadRepository
+import com.gromozeka.domain.repository.AiModelSpecRepository
 import com.gromozeka.domain.service.AiRuntimeProvider
 import com.gromozeka.domain.service.AiToolProvider
+import com.gromozeka.domain.service.SettingsProvider
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -40,7 +42,9 @@ class ActorConfig {
         aiRuntimeProvider: AiRuntimeProvider,
         agentDomainService: AgentDomainService,
         parallelToolExecutor: ParallelToolExecutor,
-        aiToolProvider: AiToolProvider
+        aiToolProvider: AiToolProvider,
+        settingsProvider: SettingsProvider,
+        aiModelSpecRepository: AiModelSpecRepository
     ): ConversationSupervisor {
         val supervisor = ConversationSupervisor(
             scope = scope,
@@ -53,6 +57,8 @@ class ActorConfig {
             agentDomainService = agentDomainService,
             parallelToolExecutor = parallelToolExecutor,
             aiToolProvider = aiToolProvider,
+            settingsProvider = settingsProvider,
+            aiModelSpecRepository = aiModelSpecRepository,
             maxIterations = 200
         )
         

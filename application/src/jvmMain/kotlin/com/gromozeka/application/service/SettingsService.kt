@@ -1,8 +1,10 @@
 package com.gromozeka.application.service
 
-import com.gromozeka.domain.model.AIProvider
 import com.gromozeka.domain.model.AppMode
+import com.gromozeka.domain.model.SecretRef
 import com.gromozeka.domain.model.Settings
+import com.gromozeka.domain.model.UserDeviceSettings
+import com.gromozeka.domain.model.UserProfile
 import com.gromozeka.shared.utils.findRandomAvailablePort
 import jakarta.annotation.PostConstruct
 import klog.KLoggers
@@ -45,25 +47,15 @@ class SettingsService : com.gromozeka.domain.service.SettingsService {
     private val _settingsFlow = MutableStateFlow(Settings())
     override val settingsFlow: StateFlow<Settings> = _settingsFlow.asStateFlow()
 
-    override val sttMainLanguage: String get() = settings.sttMainLanguage
-    override val ttsModel: String get() = settings.ttsModel
-    override val ttsVoice: String get() = settings.ttsVoice
-    override val ttsSpeed: Float get() = settings.ttsSpeed
-    override val aiProvider: AIProvider get() = settings.defaultAiProvider
+    override val userProfile get() = settings.userProfile
+    override val userDeviceSettings get() = settings.userDeviceSettings
     override val homeDirectory: String get() = gromozekaHome.absolutePath
-    override val enableBraveSearch: Boolean get() = settings.enableBraveSearch
-    override val braveApiKey: String? get() = settings.braveApiKey
-    override val enableJinaReader: Boolean get() = settings.enableJinaReader
-    override val jinaApiKey: String? get() = settings.jinaApiKey
-    override val anthropicApiKey: String? get() = settings.anthropicApiKey
-    override val anthropicBaseUrl: String get() = settings.anthropicBaseUrl
-    override val anthropicBedrockRegion: String? get() = settings.anthropicBedrockRegion
-    override val anthropicBedrockBaseUrl: String? get() = settings.anthropicBedrockBaseUrl
-    override val anthropicBedrockProfile: String? get() = settings.anthropicBedrockProfile
-    override val openAiApiKey: String? get() = settings.openAiApiKey
-    override val ollamaBaseUrl: String get() = settings.ollamaBaseUrl
-    override val memoryAutoRemember: Boolean get() = settings.memoryAutoRemember
-    override val memoryAutoRecall: Boolean get() = settings.memoryAutoRecall
+
+    override fun resolveSecret(secretRef: SecretRef?): String? = when (secretRef) {
+        null -> null
+        is SecretRef.Inline -> secretRef.value
+        is SecretRef.EnvironmentVariable -> System.getenv(secretRef.name)?.takeIf { it.isNotBlank() }
+    }
 
     @PostConstruct
     fun initialize() {
@@ -149,14 +141,16 @@ class SettingsService : com.gromozeka.domain.service.SettingsService {
         val detectedScale = detectOptimalUIScale()
 
         val defaults = Settings(
-            enableTts = true,
-            enableStt = true,
-            autoSend = true,
-            enableErrorSounds = false,
-            enableMessageSounds = false,
-            enableReadySounds = false,
-            soundVolume = 1.0f,
-            uiScale = detectedScale
+            userProfile = UserProfile(
+                speechSettings = UserProfile.SpeechSettings(
+                    speechToText = UserProfile.SpeechSettings.SpeechToText(enabled = true),
+                    textToSpeech = UserProfile.SpeechSettings.TextToSpeech(enabled = true),
+                ),
+            ),
+            userDeviceSettings = UserDeviceSettings.Desktop(
+                uiSettings = UserDeviceSettings.UiSettings(uiScale = detectedScale),
+                inputSettings = UserDeviceSettings.DesktopInputSettings(autoSend = true),
+            ),
         )
 
         settingsFile.writeText(json.encodeToString(defaults))
@@ -200,8 +194,8 @@ class SettingsService : com.gromozeka.domain.service.SettingsService {
     fun getLogsDirectory(): Path = Path(logPath)
 
     private fun validateSettings(settings: Settings) {
-        validateLanguageCode(settings.sttMainLanguage)
-        validateTtsSpeed(settings.ttsSpeed)
+        validateLanguageCode(settings.userProfile.speechSettings.speechToText.mainLanguageCode)
+        validateTtsSpeed(settings.userProfile.speechSettings.textToSpeech.speed)
     }
 
     private fun validateLanguageCode(languageCode: String) {

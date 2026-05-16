@@ -1,14 +1,15 @@
 package com.gromozeka.infrastructure.ai.runtime
 
-import com.gromozeka.domain.model.AIProvider
+import com.gromozeka.domain.model.ai.AiConnection
+import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.service.AiRuntime
 
 interface AiRuntimeBackend {
-    fun supports(provider: AIProvider): Boolean
+    fun supports(connectionKind: AiConnection.Kind): Boolean
 
     fun createRuntime(
-        provider: AIProvider,
-        modelName: String,
+        connection: AiConnection,
+        modelConfiguration: AiModelConfiguration,
         projectPath: String?
     ): AiRuntime
 }

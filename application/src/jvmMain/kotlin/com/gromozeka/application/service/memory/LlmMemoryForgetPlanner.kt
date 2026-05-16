@@ -17,7 +17,6 @@ import klog.KLoggers
 import kotlinx.datetime.Clock
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 
 class LlmMemoryForgetPlanner(
@@ -54,7 +53,7 @@ class LlmMemoryForgetPlanner(
                 messages = stageMessages,
                 tools = runtimeTools,
                 options = AiRuntimeOptions(
-                    maxTokens = 3_600,
+                    maxOutputTokens = 3_600,
                     toolChoice = AiToolChoice.None,
                     responseFormat = MemoryStructuredResponseFormats.ForgetPlanner,
                     toolContext = mapOf(

@@ -1,7 +1,8 @@
 package com.gromozeka.infrastructure.ai.openai.subscription
 
-import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.ai.AiReasoningConfig
+import com.gromozeka.domain.model.ai.AiReasoningEffort
 import com.gromozeka.domain.model.ai.AiResponseFormat
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.model.ai.AiToolChoice
@@ -58,7 +59,7 @@ class OpenAiSubscriptionRequestMapper {
             tools = sortedTools.map { tool -> tool.toToolJson() },
             toolChoice = request.options.toolChoice.toToolChoiceJson().takeIf { sortedTools.isNotEmpty() },
             text = buildTextConfig(request.options.responseFormat),
-            reasoning = buildReasoning(request.options.outputConfig),
+            reasoning = buildReasoning(request.options.reasoning),
             promptCacheKey = conversationKey,
         )
 
@@ -272,13 +273,13 @@ class OpenAiSubscriptionRequestMapper {
         )
     }
 
-    private fun buildReasoning(outputConfig: AgentDefinition.OutputConfig?): JsonObject? {
-        val effort = when (outputConfig?.effort?.lowercase()) {
-            "low" -> "low"
-            "medium" -> "medium"
-            "high" -> "high"
-            "max", "xhigh" -> "xhigh"
-            else -> null
+    private fun buildReasoning(reasoning: AiReasoningConfig?): JsonObject? {
+        val effort = when (reasoning?.effort) {
+            AiReasoningEffort.LOW -> "low"
+            AiReasoningEffort.MEDIUM -> "medium"
+            AiReasoningEffort.HIGH -> "high"
+            AiReasoningEffort.MAX -> "xhigh"
+            null -> null
         } ?: return null
 
         return buildJsonObject {

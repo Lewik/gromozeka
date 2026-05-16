@@ -14,6 +14,7 @@ import androidx.compose.ui.window.WindowPlacement
 import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.rememberWindowState
 import com.gromozeka.domain.model.AppMode
+import com.gromozeka.domain.model.UserDeviceSettings
 import com.gromozeka.presentation.AppComponents
 import com.gromozeka.presentation.services.WindowStateService
 
@@ -27,6 +28,8 @@ fun ApplicationScope.ChatWindow(
 ) {
     val settingsService = appComponents.settingsService
     val currentSettings by settingsService.settingsFlow.collectAsState()
+    val windowSettings = (currentSettings.userDeviceSettings as? UserDeviceSettings.Desktop)?.windowSettings
+        ?: UserDeviceSettings.DesktopWindowSettings()
     val savedWindowState = remember { windowStateService.loadWindowState() }
 
     val windowState = rememberWindowState(
@@ -43,7 +46,7 @@ fun ApplicationScope.ChatWindow(
 
     Window(
         state = windowState,
-        alwaysOnTop = currentSettings.alwaysOnTop,
+        alwaysOnTop = windowSettings.alwaysOnTop,
         onCloseRequest = {
             windowStateService.saveWindowState(
                 UiWindowState(
@@ -58,7 +61,7 @@ fun ApplicationScope.ChatWindow(
         },
         title = buildString {
             append("Gromozeka")
-            if (currentSettings.alwaysOnTop) {
+            if (windowSettings.alwaysOnTop) {
                 append(" [Always on Top]")
             }
             if (settingsService.mode == AppMode.DEV) {

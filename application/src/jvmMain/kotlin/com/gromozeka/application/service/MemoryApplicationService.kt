@@ -21,7 +21,6 @@ import com.gromozeka.application.service.memory.PolicyMemoryRetentionPlanner
 import com.gromozeka.application.service.memory.ProjectionMemoryProfileUpdater
 import com.gromozeka.application.service.memory.RuntimeMemoryReadPipeline
 import com.gromozeka.application.service.memory.UuidMemoryIdFactory
-import com.gromozeka.domain.model.AIProvider
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.Project
@@ -101,8 +100,7 @@ class MemoryApplicationService(
         }
         val namespace = MemoryNamespace("project:${project.id.value}")
         val runtime = aiRuntimeProvider.getRuntime(
-            provider = AIProvider.valueOf(agent.aiProvider),
-            modelName = agent.modelName,
+            selection = agent.runtimeSelection,
             projectPath = project.path,
         )
         val pipeline = RuntimeMemoryReadPipeline(
@@ -170,8 +168,7 @@ class MemoryApplicationService(
     ): MemoryNoteConsolidationPipelineResult {
         val namespace = MemoryNamespace("project:${project.id.value}")
         val runtime = aiRuntimeProvider.getRuntime(
-            provider = AIProvider.valueOf(agent.aiProvider),
-            modelName = agent.modelName,
+            selection = agent.runtimeSelection,
             projectPath = project.path,
         )
         val pipeline = MemoryNoteConsolidationPipeline(
@@ -218,8 +215,7 @@ class MemoryApplicationService(
     ): MemoryRepairPipelineResult {
         val namespace = MemoryNamespace("project:${project.id.value}")
         val runtime = aiRuntimeProvider.getRuntime(
-            provider = AIProvider.valueOf(agent.aiProvider),
-            modelName = agent.modelName,
+            selection = agent.runtimeSelection,
             projectPath = project.path,
         )
         val pipeline = MemoryRepairPipeline(
@@ -265,8 +261,7 @@ class MemoryApplicationService(
     ): MemoryEntityMaintenancePipelineResult {
         val namespace = MemoryNamespace("project:${project.id.value}")
         val runtime = aiRuntimeProvider.getRuntime(
-            provider = AIProvider.valueOf(agent.aiProvider),
-            modelName = agent.modelName,
+            selection = agent.runtimeSelection,
             projectPath = project.path,
         )
         val pipeline = MemoryEntityMaintenancePipeline(

@@ -1,7 +1,7 @@
 package com.gromozeka.infrastructure.ai.anthropic
 
-import com.gromozeka.domain.model.AIProvider
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.ai.AiConnection
 import com.gromozeka.domain.model.ai.AiResponseFormat
 import com.gromozeka.domain.model.ai.AiRuntimeOptions
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
@@ -18,7 +18,7 @@ class AnthropicSdkMessageMapperTest {
 
     @Test
     fun bedrockDoesNotSendNativeJsonSchemaOutputFormat() {
-        val params = AnthropicSdkMessageMapper(AIProvider.ANTHROPIC_BEDROCK)
+        val params = AnthropicSdkMessageMapper(AiConnection.Kind.ANTHROPIC_BEDROCK)
             .toCreateParams("anthropic.claude-sonnet-4-20250514-v1:0", requestWithJsonSchema())
 
         assertTrue(params.outputConfig().isEmpty)
@@ -26,7 +26,7 @@ class AnthropicSdkMessageMapperTest {
 
     @Test
     fun directAnthropicSendsNativeJsonSchemaOutputFormat() {
-        val params = AnthropicSdkMessageMapper(AIProvider.ANTHROPIC)
+        val params = AnthropicSdkMessageMapper(AiConnection.Kind.ANTHROPIC_API)
             .toCreateParams("claude-sonnet-4-20250514", requestWithJsonSchema())
 
         assertFalse(params.outputConfig().isEmpty)

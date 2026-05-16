@@ -1,6 +1,6 @@
 package com.gromozeka.infrastructure.ai.openai.subscription
 
-import com.gromozeka.domain.model.AIProvider
+import com.gromozeka.domain.model.ai.AiConnection
 import com.gromozeka.domain.service.SettingsProvider
 import jakarta.annotation.PostConstruct
 import klog.KLoggers
@@ -17,7 +17,9 @@ class OpenAiSubscriptionStartupAuthService(
 
     @PostConstruct
     fun bootstrapIfNeeded() {
-        if (settingsProvider.aiProvider != AIProvider.OPEN_AI_SUBSCRIPTION) {
+        if (settingsProvider.userProfile.aiSettings.connections.none {
+                it.enabled && it.kind == AiConnection.Kind.OPENAI_SUBSCRIPTION
+            }) {
             return
         }
 

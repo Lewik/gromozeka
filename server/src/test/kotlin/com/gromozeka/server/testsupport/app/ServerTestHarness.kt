@@ -1,14 +1,15 @@
 package com.gromozeka.server.testsupport.app
 
-import com.gromozeka.domain.model.AIProvider
 import com.gromozeka.domain.model.Settings
+import com.gromozeka.domain.model.UserProfile
+import com.gromozeka.domain.model.UserProfileAiDefaults
+import com.gromozeka.domain.model.ai.AiModelConfiguration
+import com.gromozeka.domain.model.ai.AiRuntimeSelection
 import com.gromozeka.infrastructure.ai.openai.subscription.OpenAiSubscriptionConfig
 import com.gromozeka.infrastructure.ai.openai.subscription.OpenAiSubscriptionSession
 import com.gromozeka.server.GromozekaServerApplication
 import com.gromozeka.server.testsupport.config.E2eSupportConfig
 import kotlinx.datetime.Clock
-import kotlinx.serialization.decodeFromString
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.springframework.boot.WebApplicationType
 import org.springframework.boot.builder.SpringApplicationBuilder
@@ -115,14 +116,31 @@ class ServerTestHarness(
 
     companion object {
         fun defaultSettings(): Settings = Settings(
-            enableTts = false,
-            enableStt = false,
-            autoSend = false,
-            defaultAiProvider = AIProvider.OPEN_AI_SUBSCRIPTION,
-            openAiModel = "gpt-5.3-codex",
-            enableBraveSearch = false,
-            enableJinaReader = false,
+            userProfile = openAiSubscriptionProfile("gpt-5.3-codex"),
         )
+
+        fun openAiSubscriptionRuntimeSelection(): AiRuntimeSelection =
+            AiRuntimeSelection(AiModelConfiguration.Id("openai-subscription-gpt-5.5"))
+
+        fun openAiSubscriptionProfile(modelName: String): UserProfile {
+            val selection = openAiSubscriptionRuntimeSelection()
+            return UserProfile(
+                aiSettings = UserProfile.AiSettings(
+                    defaultSelection = selection,
+                    connections = UserProfileAiDefaults.connections(),
+                    modelConfigurations = UserProfileAiDefaults.modelConfigurations().map { configuration ->
+                        if (configuration.id == selection.modelConfigurationId) {
+                            configuration.copy(
+                                providerModelId = modelName,
+                                displayName = "OpenAI subscription $modelName",
+                            )
+                        } else {
+                            configuration
+                        }
+                    },
+                )
+            )
+        }
 
         fun defaultSubscriptionSession(): OpenAiSubscriptionSession = OpenAiSubscriptionSession(
             accessToken = "test-access-token",

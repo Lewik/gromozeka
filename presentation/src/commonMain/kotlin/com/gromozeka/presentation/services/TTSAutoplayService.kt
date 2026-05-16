@@ -68,7 +68,7 @@ class TTSAutoplayService(
         val settings = settingsService.settings
 
         // Check if TTS is enabled at all
-        if (!settings.enableTts) return false
+        if (!settings.userProfile.speechSettings.textToSpeech.enabled) return false
 
         // Only Assistant messages can have TTS
         if (message.role != Conversation.Message.Role.ASSISTANT) return false

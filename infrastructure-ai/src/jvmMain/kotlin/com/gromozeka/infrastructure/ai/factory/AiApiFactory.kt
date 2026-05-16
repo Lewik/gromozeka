@@ -1,6 +1,7 @@
 package com.gromozeka.infrastructure.ai.factory
 
 import com.google.genai.Client
+import com.gromozeka.domain.model.ai.AiConnection
 import com.gromozeka.domain.service.SettingsProvider
 import klog.KLoggers
 import org.springframework.ai.ollama.api.OllamaApi
@@ -13,28 +14,32 @@ class AiApiFactory(
 ) {
     private val log = KLoggers.logger(this)
 
-    fun createOllamaApi(): OllamaApi {
-        val baseUrl = settingsProvider.ollamaBaseUrl
+    fun createOllamaApi(connection: AiConnection): OllamaApi {
+        val baseUrl = (connection as? AiConnection.HttpAiConnection)?.baseUrl ?: "http://localhost:11434"
         log.info("Creating Ollama API with base URL: $baseUrl")
         return OllamaApi.builder()
             .baseUrl(baseUrl)
             .build()
     }
 
-    fun createOpenAiApi(): OpenAiApi {
+    fun createOpenAiApi(connection: AiConnection): OpenAiApi {
+        val apiKey = settingsProvider.resolveSecret((connection as? AiConnection.ApiKeyAiConnection)?.apiKey)
+        val baseUrl = (connection as? AiConnection.HttpAiConnection)?.baseUrl
         return when {
-            settingsProvider.openAiApiKey != null -> {
+            apiKey != null -> {
                 log.info("Creating OpenAI API with API Key authentication")
-                OpenAiApi.builder()
-                    .apiKey(settingsProvider.openAiApiKey)
-                    .build()
+                OpenAiApi.builder().apply {
+                    apiKey(apiKey)
+                    baseUrl?.takeIf { it.isNotBlank() }?.let(::baseUrl)
+                }.build()
             }
 
             else -> {
                 log.warn("No OpenAI API key configured")
-                OpenAiApi.builder()
-                    .apiKey("")
-                    .build()
+                OpenAiApi.builder().apply {
+                    apiKey("")
+                    baseUrl?.takeIf { it.isNotBlank() }?.let(::baseUrl)
+                }.build()
             }
         }
     }

@@ -3,6 +3,7 @@ package com.gromozeka.client
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.Prompt
+import com.gromozeka.domain.model.ai.AiRuntimeSelection
 import com.gromozeka.domain.service.AgentDomainService
 import com.gromozeka.domain.service.DefaultAgentProvider
 import com.gromozeka.remote.protocol.AgentResponse
@@ -35,14 +36,13 @@ internal class RemoteAgentService(
     override suspend fun createAgent(
         name: String,
         prompts: List<Prompt.Id>,
-        aiProvider: String,
-        modelName: String,
+        runtimeSelection: AiRuntimeSelection,
         tools: List<String>,
         description: String?,
         type: AgentDefinition.Type,
     ): AgentDefinition =
         client.requestTyped<CreateAgentRequest, AgentResponse>(
-            CreateAgentRequest(name, prompts, aiProvider, modelName, tools, description, type)
+            CreateAgentRequest(name, prompts, runtimeSelection, tools, description, type)
         ).agent ?: error("Server returned null agent after create")
 
     override suspend fun assembleSystemPrompt(agent: AgentDefinition, project: Project): List<String> =

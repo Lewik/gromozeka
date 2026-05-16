@@ -4,6 +4,7 @@ import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.SquashType
 import com.gromozeka.domain.model.TokenUsageStatistics
+import com.gromozeka.domain.model.ai.AiRuntimeSelection
 import com.gromozeka.domain.service.ConversationNameSearchService
 import com.gromozeka.domain.service.ConversationTokenStatsService
 import com.gromozeka.domain.service.MessageSquashGenerationService
@@ -37,10 +38,9 @@ internal class RemoteMessageSquashGenerationService(
         conversationId: Conversation.Id,
         selectedIds: List<Conversation.Message.Id>,
         squashType: SquashType,
-        aiProvider: String,
-        modelName: String,
+        runtimeSelection: AiRuntimeSelection,
         projectPath: String?,
     ): String = client.requestTyped<SquashMessagesWithAiRequest, TextResponse>(
-        SquashMessagesWithAiRequest(conversationId, selectedIds, squashType, aiProvider, modelName, projectPath)
+        SquashMessagesWithAiRequest(conversationId, selectedIds, squashType, runtimeSelection, projectPath)
     ).text
 }
