@@ -65,6 +65,7 @@ class GromozekaRemoteServer(
                 is SendMessageCommand -> handleSendMessage(session, envelope.id, payload, encoding)
                 is SynthesizeSpeechStreamCommand -> handleSynthesizeSpeechStream(session, envelope.id, payload, encoding)
                 is LiveInterpreterAudioChunkCommand -> liveInterpreterApplicationService.append(payload)
+                is LiveInterpreterTranscriptChunkCommand -> liveInterpreterApplicationService.append(payload)
                 is StopLiveInterpreterCommand -> liveInterpreterApplicationService.stop(payload)
             }
         }

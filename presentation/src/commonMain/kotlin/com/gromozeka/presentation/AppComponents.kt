@@ -10,6 +10,7 @@ import com.gromozeka.domain.service.ProjectDomainService
 import com.gromozeka.domain.service.PromptDomainService
 import com.gromozeka.presentation.services.GlobalHotkeyController
 import com.gromozeka.presentation.services.ClientLiveAudioStreamer
+import com.gromozeka.presentation.services.ClientSideSpeechToTextService
 import com.gromozeka.presentation.services.LogEncryptor
 import com.gromozeka.presentation.services.OllamaModelService
 import com.gromozeka.presentation.services.PttEventHandler
@@ -31,6 +32,7 @@ data class AppComponents(
     val remoteClientSettingsService: RemoteClientSettingsService,
     val memoryTaskService: RemoteMemoryTaskService,
     val liveInterpreterService: RemoteLiveInterpreterService,
+    val clientSideSpeechToTextService: ClientSideSpeechToTextService,
     val liveAudioStreamer: ClientLiveAudioStreamer,
     val globalHotkeyController: GlobalHotkeyController,
     val pttEventRouter: PttEventHandler,

@@ -17,9 +17,11 @@ import com.gromozeka.remote.protocol.LiveInterpreterStartedResponse
 import com.gromozeka.remote.protocol.LiveInterpreterStatusEvent
 import com.gromozeka.remote.protocol.LiveInterpreterStoppedEvent
 import com.gromozeka.remote.protocol.LiveInterpreterTranscriptEvent
+import com.gromozeka.remote.protocol.LiveInterpreterTranscriptChunkCommand
 import com.gromozeka.remote.protocol.LiveInterpreterTranslationEvent
 import com.gromozeka.remote.protocol.RemoteLiveAudioChunk
 import com.gromozeka.remote.protocol.RemoteLiveInterpreterDraft
+import com.gromozeka.remote.protocol.RemoteLiveTranscriptChunk
 import com.gromozeka.remote.protocol.ServerPayload
 import com.gromozeka.remote.protocol.StartLiveInterpreterRequest
 import com.gromozeka.remote.protocol.StopLiveInterpreterCommand
@@ -83,6 +85,15 @@ class LiveInterpreterApplicationService(
         session.append(command.chunk)
     }
 
+    suspend fun append(command: LiveInterpreterTranscriptChunkCommand) {
+        val session = sessions[command.sessionId]
+        if (session == null) {
+            log.warn { "Live interpreter transcript ignored for missing session=${command.sessionId}" }
+            return
+        }
+        session.append(command.chunk)
+    }
+
     suspend fun stop(command: StopLiveInterpreterCommand) {
         val session = sessions.remove(command.sessionId) ?: return
         session.stop()
@@ -132,6 +143,14 @@ class LiveInterpreterApplicationService(
             chunks.send(chunk)
         }
 
+        suspend fun append(chunk: RemoteLiveTranscriptChunk) {
+            recordTranscriptDraft(
+                sequenceNumber = chunk.sequenceNumber,
+                transcript = chunk.text.trim(),
+                source = "client",
+            )
+        }
+
         suspend fun stop() {
             chunks.close()
         }
@@ -161,11 +180,28 @@ class LiveInterpreterApplicationService(
                 return
             }
 
+            recordTranscriptDraft(
+                sequenceNumber = chunk.sequenceNumber,
+                transcript = transcript,
+                source = "server",
+            )
+        }
+
+        private suspend fun recordTranscriptDraft(
+            sequenceNumber: Int,
+            transcript: String,
+            source: String,
+        ) {
+            if (transcript.isBlank()) {
+                emit(LiveInterpreterStatusEvent(sessionId, "Segment $sequenceNumber: no speech detected"))
+                return
+            }
             val draft = transcriptStateMutex.withLock {
-                transcriptState.recordDraft(chunk.sequenceNumber, transcript)
+                transcriptState.recordDraft(sequenceNumber, transcript)
             }
             log.info {
-                "Live interpreter draft transcript: session=$sessionId draft=${draft.id} chars=${transcript.length} " +
+                "Live interpreter draft transcript: session=$sessionId source=$source " +
+                    "draft=${draft.id} chars=${transcript.length} " +
                     "text='${transcript.liveLogSnippet()}'"
             }
             emit(

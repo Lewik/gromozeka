@@ -7,10 +7,12 @@ import com.gromozeka.device.telemetry.DeviceLocationService
 import com.gromozeka.device.telemetry.NoOpDeviceLocationService
 import com.gromozeka.presentation.services.ClientAudioPlayer
 import com.gromozeka.presentation.services.ClientAudioRecorder
+import com.gromozeka.presentation.services.ClientSideSpeechToTextService
 import com.gromozeka.presentation.services.LogEncryptor
 import com.gromozeka.presentation.services.NoOpGlobalHotkeyController
 import com.gromozeka.presentation.services.NoOpClientAudioPlayer
 import com.gromozeka.presentation.services.NoOpClientAudioRecorder
+import com.gromozeka.presentation.services.NoOpClientSideSpeechToTextService
 import com.gromozeka.presentation.services.NoOpSoundNotificationPlayer
 import com.gromozeka.presentation.services.OllamaModelService
 import com.gromozeka.presentation.services.RemotePttController
@@ -28,6 +30,7 @@ import com.gromozeka.presentation.services.translation.TranslationService
 import com.gromozeka.presentation.ui.viewmodel.AppViewModel
 import com.gromozeka.presentation.ui.viewmodel.ConversationSearchViewModel
 import com.gromozeka.presentation.ui.viewmodel.LoadingViewModel
+import com.gromozeka.domain.service.SettingsService
 import kotlinx.coroutines.CoroutineScope
 
 suspend fun createRemoteAppComponents(
@@ -38,6 +41,9 @@ suspend fun createRemoteAppComponents(
     remoteClientSettingsStore: RemoteClientSettingsStore = InMemoryRemoteClientSettingsStore(),
     audioRecorder: ClientAudioRecorder = NoOpClientAudioRecorder,
     audioPlayer: ClientAudioPlayer = NoOpClientAudioPlayer,
+    clientSideSpeechToTextServiceFactory: (SettingsService) -> ClientSideSpeechToTextService = {
+        NoOpClientSideSpeechToTextService
+    },
     deviceLocationService: DeviceLocationService = NoOpDeviceLocationService,
 ): RemoteAppComponents {
     val remoteServices = GromozekaRemoteServices(
@@ -72,10 +78,12 @@ suspend fun createRemoteAppComponents(
 
     val translationService = TranslationService().also { it.init(remoteServices.settingsService) }
     val themeService = ThemeService().also { it.init(remoteServices.settingsService) }
+    val clientSideSpeechToTextService = clientSideSpeechToTextServiceFactory(remoteServices.settingsService)
     val pttController = RemotePttController(
         appViewModel = appViewModel,
         audioRecorder = audioRecorder,
         audioTranscriptionService = remoteServices.audioTranscriptionService,
+        clientSideSpeechToTextService = clientSideSpeechToTextService,
         scope = scope
     )
     val ttsQueue = RemoteTtsQueue(remoteServices.speechSynthesisService, audioPlayer)
@@ -95,6 +103,7 @@ suspend fun createRemoteAppComponents(
             remoteClientSettingsService = remoteServices.clientSettingsService,
             memoryTaskService = remoteServices.memoryTaskService,
             liveInterpreterService = remoteServices.liveInterpreterService,
+            clientSideSpeechToTextService = clientSideSpeechToTextService,
             liveAudioStreamer = RollingClientLiveAudioStreamer(audioRecorder),
             globalHotkeyController = NoOpGlobalHotkeyController,
             pttEventRouter = pttController,

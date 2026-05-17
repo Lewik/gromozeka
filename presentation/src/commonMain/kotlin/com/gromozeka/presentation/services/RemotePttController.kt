@@ -1,6 +1,6 @@
 package com.gromozeka.presentation.services
 
-import com.gromozeka.client.RemoteAudioTranscriptionService
+import com.gromozeka.client.AudioTranscriptionService
 import com.gromozeka.presentation.ui.viewmodel.AppViewModel
 import com.gromozeka.shared.uuid.uuid7
 import klog.KLoggers
@@ -13,7 +13,8 @@ import kotlinx.coroutines.sync.withLock
 class RemotePttController(
     private val appViewModel: AppViewModel,
     private val audioRecorder: ClientAudioRecorder,
-    private val audioTranscriptionService: RemoteAudioTranscriptionService,
+    private val audioTranscriptionService: AudioTranscriptionService,
+    private val clientSideSpeechToTextService: ClientSideSpeechToTextService,
     private val scope: CoroutineScope,
 ) : PttEventHandler, PttRecordingService {
     private val log = KLoggers.logger(this)
@@ -65,8 +66,15 @@ class RemotePttController(
             "PTT recording captured: session=$sessionId bytes=${recording.byteSize} mediaType=${recording.mediaType}"
         }
 
+        val remoteRecording = recording.toRemoteRecording(sessionId)
         val text = runCatching {
-            audioTranscriptionService.transcribe(recording.toRemoteRecording(sessionId)).trim()
+            if (clientSideSpeechToTextService.isEnabled()) {
+                log.info { "PTT transcription using client-side speech-to-text: session=$sessionId" }
+                clientSideSpeechToTextService.transcribe(remoteRecording).trim()
+            } else {
+                log.info { "PTT transcription using remote speech-to-text: session=$sessionId" }
+                audioTranscriptionService.transcribe(remoteRecording).trim()
+            }
         }.getOrElse { error ->
             _statusMessage.value = "Не удалось распознать голос: ${error.message}"
             log.warn(error) { "PTT transcription failed: ${error.message}" }

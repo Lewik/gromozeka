@@ -2,6 +2,7 @@ package com.gromozeka.presentation
 
 import com.gromozeka.presentation.services.DesktopClientAudioRecorder
 import com.gromozeka.presentation.services.DesktopClientAudioPlayer
+import com.gromozeka.presentation.services.DesktopLocalWhisperSpeechToTextService
 import com.gromozeka.presentation.services.DesktopRemoteClientSettingsStore
 import com.gromozeka.presentation.services.WindowStateService
 import kotlinx.coroutines.CoroutineScope
@@ -26,6 +27,7 @@ internal fun startRemotePresentation(remoteUrl: String): RemoteStartedApp {
             ),
             audioRecorder = DesktopClientAudioRecorder(),
             audioPlayer = DesktopClientAudioPlayer(),
+            clientSideSpeechToTextServiceFactory = ::DesktopLocalWhisperSpeechToTextService,
         )
     }
     File(remoteApp.components.settingsService.homeDirectory).mkdirs()

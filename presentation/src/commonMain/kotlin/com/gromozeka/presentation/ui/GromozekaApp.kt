@@ -289,6 +289,7 @@ fun GromozekaAppContent(
                                                         settings = currentSettings,
                                                         liveInterpreterService = appComponents.liveInterpreterService,
                                                         liveAudioStreamer = appComponents.liveAudioStreamer,
+                                                        clientSideSpeechToTextService = appComponents.clientSideSpeechToTextService,
                                                         coroutineScope = coroutineScope,
                                                         isCompactLayout = isCompactLayout,
                                                     )

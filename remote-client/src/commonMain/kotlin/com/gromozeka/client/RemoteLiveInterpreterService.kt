@@ -2,6 +2,7 @@ package com.gromozeka.client
 
 import com.gromozeka.domain.model.ai.AiRuntimeSelection
 import com.gromozeka.remote.protocol.RemoteLiveAudioChunk
+import com.gromozeka.remote.protocol.RemoteLiveTranscriptChunk
 import com.gromozeka.remote.protocol.ServerPayload
 import com.gromozeka.remote.protocol.StartLiveInterpreterRequest
 import kotlinx.coroutines.channels.Channel
@@ -38,6 +39,10 @@ class RemoteLiveInterpreterSession internal constructor(
 
     suspend fun sendAudioChunk(chunk: RemoteLiveAudioChunk) {
         client.sendLiveInterpreterAudioChunk(sessionId, chunk)
+    }
+
+    suspend fun sendTranscriptChunk(chunk: RemoteLiveTranscriptChunk) {
+        client.sendLiveInterpreterTranscriptChunk(sessionId, chunk)
     }
 
     suspend fun stop() {

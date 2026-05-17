@@ -45,12 +45,15 @@ import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.model.ai.AiRuntimeSelection
 import com.gromozeka.presentation.services.ClientLiveAudioStreamer
 import com.gromozeka.presentation.services.ClientLiveAudioStreamingSession
+import com.gromozeka.presentation.services.ClientSideSpeechToTextService
+import com.gromozeka.presentation.services.NoOpClientSideSpeechToTextService
 import com.gromozeka.remote.protocol.LiveInterpreterDraftsEvent
 import com.gromozeka.remote.protocol.LiveInterpreterFailedEvent
 import com.gromozeka.remote.protocol.LiveInterpreterStatusEvent
 import com.gromozeka.remote.protocol.LiveInterpreterStoppedEvent
 import com.gromozeka.remote.protocol.LiveInterpreterTranscriptEvent
 import com.gromozeka.remote.protocol.LiveInterpreterTranslationEvent
+import com.gromozeka.remote.protocol.RemoteLiveTranscriptChunk
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -60,6 +63,7 @@ fun LiveInterpreterScreen(
     settings: Settings,
     liveInterpreterService: RemoteLiveInterpreterService,
     liveAudioStreamer: ClientLiveAudioStreamer,
+    clientSideSpeechToTextService: ClientSideSpeechToTextService = NoOpClientSideSpeechToTextService,
     coroutineScope: CoroutineScope = rememberCoroutineScope(),
     isCompactLayout: Boolean = false,
 ) {
@@ -194,12 +198,39 @@ fun LiveInterpreterScreen(
                         }
                     }
                 }
+                val useClientSideSpeechToText = clientSideSpeechToTextService.isEnabled()
                 audioSession = liveAudioStreamer.start(coroutineScope) { chunk ->
-                    session.sendAudioChunk(chunk)
+                    runCatching {
+                        if (useClientSideSpeechToText) {
+                            val transcript = clientSideSpeechToTextService.transcribe(
+                                chunk = chunk,
+                                language = selectedSourceLanguage.code,
+                                prompt = selectedSourceLanguage.hint,
+                            ).trim()
+                            if (transcript.isNotBlank()) {
+                                session.sendTranscriptChunk(
+                                    RemoteLiveTranscriptChunk(
+                                        sequenceNumber = chunk.sequenceNumber,
+                                        text = transcript,
+                                    )
+                                )
+                            }
+                        } else {
+                            session.sendAudioChunk(chunk)
+                        }
+                    }.onFailure { error ->
+                        statusItems += "Client speech-to-text failed: ${error.message ?: error::class.simpleName}"
+                        runCatching { session.stop() }
+                        throw error
+                    }
                 }
                 isRunning = true
                 isStopping = false
-                statusItems += "Listening"
+                statusItems += if (useClientSideSpeechToText) {
+                    "Listening with client-side speech-to-text"
+                } else {
+                    "Listening"
+                }
             }.onFailure { error ->
                 runCatching { audioSession?.stop() }
                 runCatching { remoteSession?.stop() }

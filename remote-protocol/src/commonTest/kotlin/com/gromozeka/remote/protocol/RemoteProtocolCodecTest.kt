@@ -102,6 +102,24 @@ class RemoteProtocolCodecTest {
         assertContentEquals(bytes, command.chunk.data)
         assertEquals("audio/wav", command.chunk.mediaType)
 
+        val transcriptEnvelope = GromozekaClientEnvelope(
+            id = "live-transcript-1",
+            payload = LiveInterpreterTranscriptChunkCommand(
+                sessionId = "live-session-1",
+                chunk = RemoteLiveTranscriptChunk(
+                    sequenceNumber = 8,
+                    text = "שלום",
+                )
+            )
+        )
+        val decodedTranscript = RemoteProtocolCodec.decodeClientBinary(
+            RemoteProtocolCodec.encodeClientBinary(transcriptEnvelope)
+        ).payload as LiveInterpreterTranscriptChunkCommand
+
+        assertEquals("live-session-1", decodedTranscript.sessionId)
+        assertEquals(8, decodedTranscript.chunk.sequenceNumber)
+        assertEquals("שלום", decodedTranscript.chunk.text)
+
         val serverEnvelope = GromozekaServerEnvelope(
             id = "live-event-1",
             payload = LiveInterpreterTranslationEvent(

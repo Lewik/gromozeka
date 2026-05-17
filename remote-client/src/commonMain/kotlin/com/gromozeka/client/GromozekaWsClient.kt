@@ -15,8 +15,10 @@ import com.gromozeka.remote.protocol.LiveInterpreterStatusEvent
 import com.gromozeka.remote.protocol.LiveInterpreterStoppedEvent
 import com.gromozeka.remote.protocol.LiveInterpreterTranscriptEvent
 import com.gromozeka.remote.protocol.LiveInterpreterTranslationEvent
+import com.gromozeka.remote.protocol.LiveInterpreterTranscriptChunkCommand
 import com.gromozeka.remote.protocol.MessageUpsertedEvent
 import com.gromozeka.remote.protocol.RemoteLiveAudioChunk
+import com.gromozeka.remote.protocol.RemoteLiveTranscriptChunk
 import com.gromozeka.remote.protocol.RemoteProtocolCodec
 import com.gromozeka.remote.protocol.RemoteProtocolEncoding
 import com.gromozeka.remote.protocol.SendCompletedEvent
@@ -147,6 +149,13 @@ internal class GromozekaWsClient(
         chunk: RemoteLiveAudioChunk,
     ) {
         send(LiveInterpreterAudioChunkCommand(sessionId, chunk))
+    }
+
+    suspend fun sendLiveInterpreterTranscriptChunk(
+        sessionId: String,
+        chunk: RemoteLiveTranscriptChunk,
+    ) {
+        send(LiveInterpreterTranscriptChunkCommand(sessionId, chunk))
     }
 
     suspend fun stopLiveInterpreter(sessionId: String) {

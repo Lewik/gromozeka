@@ -353,6 +353,12 @@ data class RemoteLiveAudioChunk(
 )
 
 @Serializable
+data class RemoteLiveTranscriptChunk(
+    val sequenceNumber: Int,
+    val text: String,
+)
+
+@Serializable
 data class RemoteLiveInterpreterDraft(
     val id: String,
     val sequenceNumber: Int,
@@ -381,6 +387,13 @@ data class SynthesizeSpeechStreamCommand(
 data class LiveInterpreterAudioChunkCommand(
     val sessionId: String,
     val chunk: RemoteLiveAudioChunk,
+) : ClientPayload
+
+@Serializable
+@SerialName("live_interpreter_transcript_chunk")
+data class LiveInterpreterTranscriptChunkCommand(
+    val sessionId: String,
+    val chunk: RemoteLiveTranscriptChunk,
 ) : ClientPayload
 
 @Serializable
