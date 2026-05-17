@@ -1,5 +1,6 @@
 package com.gromozeka.presentation.services
 
+import com.gromozeka.domain.model.UserProfile
 import com.gromozeka.remote.protocol.RemoteLiveAudioChunk
 import klog.KLoggers
 import kotlinx.coroutines.CompletableDeferred
@@ -11,6 +12,8 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.flow.collect
+
+private typealias LocalWhisperLiveStreaming = UserProfile.SpeechSettings.SpeechToText.LocalWhisper.LiveStreaming
 
 interface ClientLiveAudioStreamer {
     suspend fun start(
@@ -25,9 +28,7 @@ interface ClientLiveAudioStreamingSession {
 
 class RollingClientLiveAudioStreamer(
     private val recorder: ClientAudioRecorder,
-    private val windowMillis: Long = 12_000L,
-    private val stepMillis: Long = 6_000L,
-    private val minWindowMillis: Long = 4_000L,
+    private val liveStreamingSettings: () -> LocalWhisperLiveStreaming = { LocalWhisperLiveStreaming() },
 ) : ClientLiveAudioStreamer {
     private val log = KLoggers.logger(this)
     private val sampleRate = 16_000
@@ -39,35 +40,47 @@ class RollingClientLiveAudioStreamer(
         scope: CoroutineScope,
         onChunk: suspend (RemoteLiveAudioChunk) -> Unit,
     ): ClientLiveAudioStreamingSession {
+        val settings = liveStreamingSettings()
+        val windowMillis = settings.windowMillis
+        val stepMillis = settings.stepMillis
+        val minWindowMillis = settings.minWindowMillis
+        val maxAdaptiveWindowMillis = settings.maximumAdaptiveWindowMillis
+
         require(windowMillis > 0) { "Live audio window duration must be positive" }
         require(stepMillis > 0) { "Live audio step duration must be positive" }
         require(minWindowMillis > 0) { "Live audio minimum window duration must be positive" }
+        require(maxAdaptiveWindowMillis >= windowMillis) {
+            "Live audio maximum adaptive window must be greater than or equal to window duration"
+        }
         return if (recorder.supportsStreamingAudioChunks) {
-            startOverlappingStream(scope, onChunk)
+            startOverlappingStream(scope, onChunk, settings)
         } else {
-            startSegmentedStream(scope, onChunk)
+            startSegmentedStream(scope, onChunk, settings)
         }
     }
 
     private suspend fun startOverlappingStream(
         scope: CoroutineScope,
         onChunk: suspend (RemoteLiveAudioChunk) -> Unit,
+        settings: LocalWhisperLiveStreaming,
     ): ClientLiveAudioStreamingSession {
         val stopSignal = CompletableDeferred<Unit>()
         val recordingSession = recorder.start(scope)
         val bufferMutex = Mutex()
         var rawBuffer = ByteArray(0)
-        var totalRawBytes = 0
-        var lastSentTotalRawBytes = 0
-        val windowBytes = bytesForMillis(windowMillis)
-        val minWindowBytes = bytesForMillis(minWindowMillis)
-        val maxBufferBytes = windowBytes * 2
+        var totalRawBytes = 0L
+        var lastSentTotalRawBytes = 0L
+        val windowBytes = bytesForMillis(settings.windowMillis)
+        val stepMillis = settings.stepMillis
+        val minWindowBytes = bytesForMillis(settings.minWindowMillis)
+        val overlapBytes = bytesForMillis(settings.overlapMillis)
+        val maxWindowBytes = bytesForMillis(settings.maximumAdaptiveWindowMillis)
 
         val collectorJob = scope.launch {
             recordingSession.audioChunks.collect { chunk ->
                 bufferMutex.withLock {
-                    totalRawBytes += chunk.size
-                    rawBuffer = (rawBuffer + chunk).takeLastBytes(maxBufferBytes)
+                    totalRawBytes += chunk.size.toLong()
+                    rawBuffer = (rawBuffer + chunk).takeLastBytes(maxWindowBytes)
                 }
             }
         }
@@ -79,13 +92,33 @@ class RollingClientLiveAudioStreamer(
                     stopSignal.await()
                 }
                 val window = bufferMutex.withLock {
-                    if (totalRawBytes == lastSentTotalRawBytes) {
+                    val pendingRawBytes = totalRawBytes - lastSentTotalRawBytes
+                    if (pendingRawBytes <= 0L) {
                         null
                     } else if (rawBuffer.size < minWindowBytes && !stopSignal.isCompleted) {
                         null
                     } else {
+                        val adaptiveWindowBytes = adaptiveWindowBytes(
+                            pendingRawBytes = pendingRawBytes,
+                            defaultWindowBytes = windowBytes,
+                            overlapBytes = overlapBytes,
+                            maxWindowBytes = maxWindowBytes,
+                        )
+                        if (adaptiveWindowBytes > windowBytes) {
+                            log.info {
+                                "Live audio adaptive window expanded: pendingMillis=${bytesToMillis(pendingRawBytes)} " +
+                                    "windowMillis=${bytesToMillis(adaptiveWindowBytes.toLong())} " +
+                                    "maxWindowMillis=${settings.maximumAdaptiveWindowMillis}"
+                            }
+                        }
+                        if (pendingRawBytes > (maxWindowBytes - overlapBytes).toLong()) {
+                            log.warn {
+                                "Live audio capture fell behind max adaptive window: " +
+                                    "pendingMillis=${bytesToMillis(pendingRawBytes)} maxWindowMillis=${settings.maximumAdaptiveWindowMillis}"
+                            }
+                        }
                         lastSentTotalRawBytes = totalRawBytes
-                        rawBuffer.takeLastBytes(windowBytes)
+                        rawBuffer.takeLastBytes(adaptiveWindowBytes)
                     }
                 }
                 if (window != null && window.isNotEmpty()) {
@@ -93,7 +126,11 @@ class RollingClientLiveAudioStreamer(
                 }
             }
         }
-        log.info { "Live audio overlapping streamer started: windowMillis=$windowMillis stepMillis=$stepMillis" }
+        log.info {
+            "Live audio overlapping streamer started: profile=${settings.profile} " +
+                "windowMillis=${settings.windowMillis} stepMillis=${settings.stepMillis} " +
+                "maxAdaptiveWindowMillis=${settings.maximumAdaptiveWindowMillis}"
+        }
         return object : ClientLiveAudioStreamingSession {
             override suspend fun stop() {
                 stopSignal.complete(Unit)
@@ -108,6 +145,7 @@ class RollingClientLiveAudioStreamer(
     private fun startSegmentedStream(
         scope: CoroutineScope,
         onChunk: suspend (RemoteLiveAudioChunk) -> Unit,
+        settings: LocalWhisperLiveStreaming,
     ): ClientLiveAudioStreamingSession {
         val stopSignal = CompletableDeferred<Unit>()
         val senderJob = scope.launch {
@@ -115,7 +153,7 @@ class RollingClientLiveAudioStreamer(
             while (isActive && !stopSignal.isCompleted) {
                 val recordingSession = recorder.start(scope)
                 try {
-                    withTimeoutOrNull(windowMillis) {
+                    withTimeoutOrNull(settings.windowMillis) {
                         stopSignal.await()
                     }
                     val recorded = recordingSession.stop()
@@ -128,7 +166,7 @@ class RollingClientLiveAudioStreamer(
                 }
             }
         }
-        log.info { "Live audio segmented streamer started: segmentMillis=$windowMillis" }
+        log.info { "Live audio segmented streamer started: segmentMillis=${settings.windowMillis}" }
         return object : ClientLiveAudioStreamingSession {
             override suspend fun stop() {
                 stopSignal.complete(Unit)
@@ -140,6 +178,22 @@ class RollingClientLiveAudioStreamer(
 
     private fun bytesForMillis(millis: Long): Int =
         (sampleRate * frameSizeBytes * millis / 1000L).toInt()
+
+    private fun bytesToMillis(bytes: Long): Long =
+        bytes * 1000L / (sampleRate * frameSizeBytes)
+
+    private fun adaptiveWindowBytes(
+        pendingRawBytes: Long,
+        defaultWindowBytes: Int,
+        overlapBytes: Int,
+        maxWindowBytes: Int,
+    ): Int =
+        LiveAudioWindowSizing.adaptiveWindowBytes(
+            pendingRawBytes = pendingRawBytes,
+            defaultWindowBytes = defaultWindowBytes,
+            overlapBytes = overlapBytes,
+            maxWindowBytes = maxWindowBytes,
+        )
 
     private fun ByteArray.toRemoteLiveWavChunk(sequenceNumber: Int): RemoteLiveAudioChunk =
         RemoteLiveAudioChunk(
@@ -217,6 +271,18 @@ private fun ByteArray.writeLittleEndianInt(offset: Int, value: Int) {
     this[offset + 1] = ((value ushr 8) and 0xff).toByte()
     this[offset + 2] = ((value ushr 16) and 0xff).toByte()
     this[offset + 3] = ((value ushr 24) and 0xff).toByte()
+}
+
+internal object LiveAudioWindowSizing {
+    fun adaptiveWindowBytes(
+        pendingRawBytes: Long,
+        defaultWindowBytes: Int,
+        overlapBytes: Int,
+        maxWindowBytes: Int,
+    ): Int =
+        maxOf(defaultWindowBytes.toLong(), pendingRawBytes + overlapBytes)
+            .coerceAtMost(maxWindowBytes.toLong())
+            .toInt()
 }
 
 private fun ByteArray.writeLittleEndianShort(offset: Int, value: Int) {

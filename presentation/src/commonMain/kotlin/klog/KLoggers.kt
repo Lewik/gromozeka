@@ -1,5 +1,7 @@
 package klog
 
+import kotlinx.datetime.Clock
+
 object KLoggers {
     fun logger(name: String): KLogger = KLogger(name)
 
@@ -29,6 +31,6 @@ class KLogger(
     fun error(error: Throwable, message: () -> String) = error(error, message())
 
     private fun log(level: String, message: String) {
-        println("[$level] $name - $message")
+        println("${Clock.System.now()} [$level] $name - $message")
     }
 }

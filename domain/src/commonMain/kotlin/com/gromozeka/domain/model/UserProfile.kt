@@ -88,11 +88,77 @@ data class UserProfile(
                 val modelName: String = "base",
                 val modelPath: String = "",
                 val timeoutSeconds: Int = 120,
+                val serverStartupTimeoutSeconds: Int = 300,
+                val audioContext: AudioContext = AudioContext(),
+                val liveStreaming: LiveStreaming = LiveStreaming(),
             ) {
                 init {
                     require(executablePath.isNotBlank()) { "Local Whisper executable path must not be blank" }
                     require(modelName.isNotBlank()) { "Local Whisper model name must not be blank" }
                     require(timeoutSeconds > 0) { "Local Whisper timeout must be positive" }
+                    require(serverStartupTimeoutSeconds > 0) { "Local Whisper server startup timeout must be positive" }
+                }
+
+                fun audioContextFramesForWavBytes(audioBytes: Int): Int? =
+                    audioContext.framesForWavBytes(audioBytes)
+
+                @Serializable
+                data class AudioContext(
+                    val enabled: Boolean = true,
+                    val minimumFrames: Int = 256,
+                    val maximumFrames: Int = 1_500,
+                    val paddingFrames: Int = 128,
+                ) {
+                    init {
+                        require(minimumFrames > 0) { "Local Whisper audio context minimum must be positive" }
+                        require(maximumFrames >= minimumFrames) {
+                            "Local Whisper audio context maximum must be greater than or equal to minimum"
+                        }
+                        require(paddingFrames >= 0) { "Local Whisper audio context padding must not be negative" }
+                    }
+
+                    fun framesForWavBytes(audioBytes: Int): Int? {
+                        if (!enabled) return null
+                        val durationSeconds = (audioBytes - WavHeaderBytes).coerceAtLeast(0) / WavBytesPerSecond
+                        val frames = (durationSeconds / WhisperWindowSeconds * maximumFrames).toInt() + paddingFrames
+                        return frames.coerceIn(minimumFrames, maximumFrames)
+                    }
+
+                    private companion object {
+                        private const val WavHeaderBytes = 44
+                        private const val WavBytesPerSecond = 32_000.0
+                        private const val WhisperWindowSeconds = 30.0
+                    }
+                }
+
+                @Serializable
+                data class LiveStreaming(
+                    val profile: Profile = Profile.BALANCED,
+                    val maximumAdaptiveWindowMillis: Long = 90_000L,
+                ) {
+                    init {
+                        require(maximumAdaptiveWindowMillis >= profile.windowMillis) {
+                            "Local Whisper maximum adaptive live window must be greater than or equal to profile window"
+                        }
+                    }
+
+                    val windowMillis: Long get() = profile.windowMillis
+                    val stepMillis: Long get() = profile.stepMillis
+                    val minWindowMillis: Long get() = profile.minWindowMillis
+                    val overlapMillis: Long get() = profile.overlapMillis
+
+                    @Serializable
+                    enum class Profile(
+                        val label: String,
+                        val windowMillis: Long,
+                        val stepMillis: Long,
+                        val minWindowMillis: Long,
+                        val overlapMillis: Long,
+                    ) {
+                        LOW_LATENCY("Low latency", 12_000L, 6_000L, 4_000L, 4_000L),
+                        BALANCED("Balanced", 20_000L, 15_000L, 5_000L, 5_000L),
+                        SLOW_CPU("Slow CPU", 30_000L, 25_000L, 8_000L, 5_000L),
+                    }
                 }
             }
         }

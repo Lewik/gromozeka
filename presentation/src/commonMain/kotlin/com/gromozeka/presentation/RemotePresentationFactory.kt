@@ -104,7 +104,9 @@ suspend fun createRemoteAppComponents(
             memoryTaskService = remoteServices.memoryTaskService,
             liveInterpreterService = remoteServices.liveInterpreterService,
             clientSideSpeechToTextService = clientSideSpeechToTextService,
-            liveAudioStreamer = RollingClientLiveAudioStreamer(audioRecorder),
+            liveAudioStreamer = RollingClientLiveAudioStreamer(audioRecorder) {
+                remoteServices.settingsService.userProfile.speechSettings.speechToText.localWhisper.liveStreaming
+            },
             globalHotkeyController = NoOpGlobalHotkeyController,
             pttEventRouter = pttController,
             pttService = pttController,

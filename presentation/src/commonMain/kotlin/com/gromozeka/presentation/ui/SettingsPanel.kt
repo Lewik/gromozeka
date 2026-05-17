@@ -346,7 +346,7 @@ fun SettingsPanel(
 
                                 TextFieldSettingItem(
                                     label = "Whisper executable",
-                                    description = "Path or command name for whisper.cpp CLI",
+                                    description = "Path or command name for whisper.cpp CLI. Gromozeka starts the sibling whisper-server executable.",
                                     value = localWhisper.executablePath,
                                     placeholder = "whisper-cli",
                                     onValueChange = {
@@ -396,6 +396,29 @@ fun SettingsPanel(
                                                     speechSettings = speechSettings.copy(
                                                         speechToText = speechSettings.speechToText.copy(
                                                             localWhisper = localWhisper.copy(modelPath = it)
+                                                        )
+                                                    )
+                                                )
+                                            }
+                                        )
+                                    }
+                                )
+
+                                DropdownSettingItem(
+                                    label = "Whisper live profile",
+                                    description = "Controls live chunk size. Slow CPU increases latency but reduces missed audio on weak machines.",
+                                    value = localWhisper.liveStreaming.profile,
+                                    options = UserProfile.SpeechSettings.SpeechToText.LocalWhisper.LiveStreaming.Profile.entries,
+                                    optionLabel = { it.label },
+                                    onValueChange = { profile ->
+                                        onSettingsChange(
+                                            settings.updateUserProfile {
+                                                copy(
+                                                    speechSettings = speechSettings.copy(
+                                                        speechToText = speechSettings.speechToText.copy(
+                                                            localWhisper = localWhisper.copy(
+                                                                liveStreaming = localWhisper.liveStreaming.copy(profile = profile)
+                                                            )
                                                         )
                                                     )
                                                 )
