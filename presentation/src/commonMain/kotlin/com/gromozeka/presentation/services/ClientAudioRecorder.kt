@@ -3,12 +3,20 @@ package com.gromozeka.presentation.services
 import com.gromozeka.remote.protocol.RemoteAudioChunk
 import com.gromozeka.remote.protocol.RemoteAudioRecording
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
 
 interface ClientAudioRecorder {
+    val supportsStreamingAudioChunks: Boolean
+        get() = false
+
     suspend fun start(scope: CoroutineScope): ClientAudioRecordingSession
 }
 
 interface ClientAudioRecordingSession {
+    val audioChunks: Flow<ByteArray>
+        get() = emptyFlow()
+
     suspend fun stop(): ClientRecordedAudio
     fun cancel()
 }

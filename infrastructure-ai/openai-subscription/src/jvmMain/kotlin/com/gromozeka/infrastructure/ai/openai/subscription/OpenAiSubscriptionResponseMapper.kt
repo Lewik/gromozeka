@@ -2,8 +2,10 @@ package com.gromozeka.infrastructure.ai.openai.subscription
 
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ai.AiAssistantMessage
+import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.model.ai.AiRuntimeResponse
 import com.gromozeka.domain.model.ai.AiUsage
+import com.gromozeka.infrastructure.ai.parsers.AssistantResponseParser
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -26,8 +28,9 @@ class OpenAiSubscriptionResponseMapper {
         outputItems: List<JsonObject>,
         completed: OpenAiSubscriptionCompletedResponse?,
         conversationKey: String,
+        assistantResponseFormat: AiModelConfiguration.AssistantResponseFormat,
     ): AiRuntimeResponse {
-        val messages = outputItems.mapNotNull(::toAssistantMessage)
+        val messages = outputItems.mapNotNull { toAssistantMessage(it, assistantResponseFormat) }
 
         return AiRuntimeResponse(
             messages = messages,
@@ -54,16 +57,21 @@ class OpenAiSubscriptionResponseMapper {
             .ifBlank { body.trim() }
     }
 
-    private fun toAssistantMessage(item: JsonObject): AiAssistantMessage? {
+    private fun toAssistantMessage(
+        item: JsonObject,
+        assistantResponseFormat: AiModelConfiguration.AssistantResponseFormat,
+    ): AiAssistantMessage? {
         return when (item["type"]?.jsonPrimitive?.contentOrNull) {
-            "message" -> item.toOutputMessage()
+            "message" -> item.toOutputMessage(assistantResponseFormat)
             "function_call" -> item.toToolCall()
             "reasoning", "compaction_summary", "compaction" -> item.toReasoningMessage()
             else -> null
         }
     }
 
-    private fun JsonObject.toOutputMessage(): AiAssistantMessage? {
+    private fun JsonObject.toOutputMessage(
+        assistantResponseFormat: AiModelConfiguration.AssistantResponseFormat,
+    ): AiAssistantMessage? {
         if (this["role"]?.jsonPrimitive?.contentOrNull != "assistant") return null
 
         val blocks = buildList {
@@ -71,7 +79,7 @@ class OpenAiSubscriptionResponseMapper {
                 is JsonPrimitive -> {
                     val text = content.contentOrNull?.trim().orEmpty()
                     if (text.isNotBlank()) {
-                        add(assistantBlock(text))
+                        add(assistantBlock(text, assistantResponseFormat))
                     }
                 }
 
@@ -82,14 +90,14 @@ class OpenAiSubscriptionResponseMapper {
                             "output_text", "text" -> {
                                 val text = partObject["text"]?.jsonPrimitive?.contentOrNull?.trim().orEmpty()
                                 if (text.isNotBlank()) {
-                                    add(assistantBlock(text))
+                                    add(assistantBlock(text, assistantResponseFormat))
                                 }
                             }
 
                             "refusal" -> {
                                 val text = partObject["refusal"]?.jsonPrimitive?.contentOrNull?.trim().orEmpty()
                                 if (text.isNotBlank()) {
-                                    add(assistantBlock(text))
+                                    add(plainAssistantBlock(text))
                                 }
                             }
                         }
@@ -186,7 +194,17 @@ class OpenAiSubscriptionResponseMapper {
         }
     }
 
-    private fun assistantBlock(text: String): Conversation.Message.ContentItem.AssistantMessage {
+    private fun assistantBlock(
+        text: String,
+        assistantResponseFormat: AiModelConfiguration.AssistantResponseFormat,
+    ): Conversation.Message.ContentItem.AssistantMessage {
+        return Conversation.Message.ContentItem.AssistantMessage(
+            structured = AssistantResponseParser.parse(text, assistantResponseFormat),
+            state = Conversation.Message.BlockState.COMPLETE,
+        )
+    }
+
+    private fun plainAssistantBlock(text: String): Conversation.Message.ContentItem.AssistantMessage {
         return Conversation.Message.ContentItem.AssistantMessage(
             structured = Conversation.Message.StructuredText(fullText = text),
             state = Conversation.Message.BlockState.COMPLETE,

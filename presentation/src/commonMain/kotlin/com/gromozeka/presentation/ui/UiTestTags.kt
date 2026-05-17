@@ -17,6 +17,7 @@ sealed interface UiTestTag {
     data object ProjectsTab : UiTestTag
     data object AgentsTab : UiTestTag
     data object SettingsTab : UiTestTag
+    data object LiveTab : UiTestTag
     data object SettingsPanel : UiTestTag
     data object SettingsButton : UiTestTag
     data object SessionScreen : UiTestTag

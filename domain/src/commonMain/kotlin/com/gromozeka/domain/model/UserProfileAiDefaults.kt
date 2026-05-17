@@ -35,20 +35,6 @@ object UserProfileAiDefaults {
             displayName = "OpenAI API",
             apiKey = SecretRef.EnvironmentVariable("OPENAI_API_KEY"),
         ),
-        AiConnection.ClaudeCode(
-            id = AiConnection.Id("claude-code"),
-            displayName = "Claude Code",
-        ),
-        AiConnection.GeminiApi(
-            id = AiConnection.Id("gemini"),
-            displayName = "Gemini",
-            apiKey = SecretRef.EnvironmentVariable("GEMINI_API_KEY"),
-        ),
-        AiConnection.Ollama(
-            id = AiConnection.Id("ollama-local"),
-            displayName = "Local Ollama",
-            baseUrl = "http://localhost:11434",
-        ),
     )
 
     fun modelConfigurations(): List<AiModelConfiguration> = listOf(
@@ -68,28 +54,34 @@ object UserProfileAiDefaults {
             connectionId = AiConnection.Id("anthropic-direct"),
             providerModelId = "claude-sonnet-4-7",
             displayName = "Claude Sonnet 4.7",
-            roles = setOf(AiModelConfiguration.Role.CHAT, AiModelConfiguration.Role.MEMORY),
+            roles = setOf(
+                AiModelConfiguration.Role.CHAT,
+                AiModelConfiguration.Role.MEMORY,
+                AiModelConfiguration.Role.TRANSLATION,
+            ),
         ),
         AiModelConfiguration(
             id = AiModelConfiguration.Id("bedrock-sonnet-4"),
             connectionId = AiConnection.Id("anthropic-bedrock"),
             providerModelId = "anthropic.claude-sonnet-4-20250514-v1:0",
             displayName = "Claude Sonnet 4 via Bedrock",
-            roles = setOf(AiModelConfiguration.Role.CHAT, AiModelConfiguration.Role.MEMORY),
+            roles = setOf(
+                AiModelConfiguration.Role.CHAT,
+                AiModelConfiguration.Role.MEMORY,
+                AiModelConfiguration.Role.TRANSLATION,
+            ),
+            assistantResponseFormat = AiModelConfiguration.AssistantResponseFormat.XML_INLINE,
         ),
         AiModelConfiguration(
             id = AiModelConfiguration.Id("openai-api-gpt-4o-mini"),
             connectionId = AiConnection.Id("openai-api"),
             providerModelId = "gpt-4o-mini",
             displayName = "GPT-4o mini API",
-            roles = setOf(AiModelConfiguration.Role.CHAT),
-        ),
-        AiModelConfiguration(
-            id = AiModelConfiguration.Id("openai-api-text-embedding-3-large"),
-            connectionId = AiConnection.Id("openai-api"),
-            providerModelId = "text-embedding-3-large",
-            displayName = "OpenAI text-embedding-3-large",
-            roles = setOf(AiModelConfiguration.Role.EMBEDDINGS),
+            roles = setOf(
+                AiModelConfiguration.Role.CHAT,
+                AiModelConfiguration.Role.MEMORY,
+                AiModelConfiguration.Role.TRANSLATION,
+            ),
         ),
         AiModelConfiguration(
             id = AiModelConfiguration.Id("openai-api-gpt-4o-transcribe"),
@@ -97,6 +89,7 @@ object UserProfileAiDefaults {
             providerModelId = "gpt-4o-transcribe",
             displayName = "OpenAI GPT-4o transcribe",
             roles = setOf(AiModelConfiguration.Role.SPEECH_TO_TEXT),
+            assistantResponseFormat = AiModelConfiguration.AssistantResponseFormat.TEXT,
         ),
         AiModelConfiguration(
             id = AiModelConfiguration.Id("openai-api-gpt-4o-mini-tts"),
@@ -104,27 +97,7 @@ object UserProfileAiDefaults {
             providerModelId = "gpt-4o-mini-tts",
             displayName = "OpenAI GPT-4o mini TTS",
             roles = setOf(AiModelConfiguration.Role.TEXT_TO_SPEECH),
-        ),
-        AiModelConfiguration(
-            id = AiModelConfiguration.Id("claude-code-sonnet"),
-            connectionId = AiConnection.Id("claude-code"),
-            providerModelId = "claude-sonnet-4-5",
-            displayName = "Claude Code Sonnet",
-            roles = setOf(AiModelConfiguration.Role.CHAT),
-        ),
-        AiModelConfiguration(
-            id = AiModelConfiguration.Id("gemini-flash"),
-            connectionId = AiConnection.Id("gemini"),
-            providerModelId = "gemini-2.0-flash-exp",
-            displayName = "Gemini 2.0 Flash",
-            roles = setOf(AiModelConfiguration.Role.CHAT),
-        ),
-        AiModelConfiguration(
-            id = AiModelConfiguration.Id("ollama-llama3.2"),
-            connectionId = AiConnection.Id("ollama-local"),
-            providerModelId = "llama3.2",
-            displayName = "Ollama llama3.2",
-            roles = setOf(AiModelConfiguration.Role.CHAT),
+            assistantResponseFormat = AiModelConfiguration.AssistantResponseFormat.TEXT,
         ),
     )
 }

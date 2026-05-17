@@ -67,11 +67,33 @@ data class UserProfile(
         @Serializable
         data class SpeechToText(
             val enabled: Boolean = false,
+            val engine: Engine = Engine.OPENAI_API,
             val mainLanguageCode: String = "en",
             val modelConfigurationId: AiModelConfiguration.Id = AiModelConfiguration.Id("openai-api-gpt-4o-transcribe"),
+            val localWhisper: LocalWhisper = LocalWhisper(),
         ) {
             init {
                 require(mainLanguageCode.isNotBlank()) { "Speech-to-text main language code must not be blank" }
+            }
+
+            @Serializable
+            enum class Engine {
+                OPENAI_API,
+                LOCAL_WHISPER,
+            }
+
+            @Serializable
+            data class LocalWhisper(
+                val executablePath: String = "whisper-cli",
+                val modelName: String = "base",
+                val modelPath: String = "",
+                val timeoutSeconds: Int = 120,
+            ) {
+                init {
+                    require(executablePath.isNotBlank()) { "Local Whisper executable path must not be blank" }
+                    require(modelName.isNotBlank()) { "Local Whisper model name must not be blank" }
+                    require(timeoutSeconds > 0) { "Local Whisper timeout must be positive" }
+                }
             }
         }
 
@@ -79,7 +101,7 @@ data class UserProfile(
         data class TextToSpeech(
             val enabled: Boolean = false,
             val modelConfigurationId: AiModelConfiguration.Id = AiModelConfiguration.Id("openai-api-gpt-4o-mini-tts"),
-            val voice: String = "alloy",
+            val voice: String = "marin",
             val speed: Float = 1.0f,
         ) {
             init {
@@ -92,17 +114,8 @@ data class UserProfile(
     @Serializable
     data class AgentSettings(
         val includeCurrentTime: Boolean = true,
-        val responseFormat: ResponseFormat = ResponseFormat.XML_INLINE,
         val autoApproveAllTools: Boolean = true,
-    ) {
-        @Serializable
-        enum class ResponseFormat {
-            JSON,
-            XML_STRUCTURED,
-            XML_INLINE,
-            PLAIN_TEXT,
-        }
-    }
+    )
 
     @Serializable
     data class MemorySettings(

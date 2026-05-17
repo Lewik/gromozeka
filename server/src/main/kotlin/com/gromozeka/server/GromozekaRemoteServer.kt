@@ -14,7 +14,8 @@ import com.gromozeka.domain.service.MessageSquashGenerationService
 import com.gromozeka.domain.service.PromptDomainService
 import com.gromozeka.domain.service.ProjectDomainService
 import com.gromozeka.domain.service.SettingsService
-import com.gromozeka.infrastructure.ai.springai.SttService
+import com.gromozeka.infrastructure.ai.openai.SttService
+import com.gromozeka.infrastructure.ai.openai.TtsService
 import com.gromozeka.remote.protocol.*
 import io.ktor.server.websocket.DefaultWebSocketServerSession
 import io.ktor.websocket.Frame
@@ -22,6 +23,7 @@ import io.ktor.websocket.readBytes
 import io.ktor.websocket.readText
 import io.ktor.websocket.send
 import klog.KLoggers
+import com.gromozeka.shared.uuid.uuid7
 import org.springframework.stereotype.Service
 import java.io.ByteArrayOutputStream
 import java.security.MessageDigest
@@ -41,7 +43,9 @@ class GromozekaRemoteServer(
     private val messageSquashGenerationService: MessageSquashGenerationService,
     private val conversationNameSearchService: ConversationNameSearchService,
     private val sttService: SttService,
+    private val ttsService: TtsService,
     private val memoryStore: MemoryStore,
+    private val liveInterpreterApplicationService: LiveInterpreterApplicationService,
 ) {
     private val log = KLoggers.logger(this)
     private val memoryTaskRevisionJson = Json {
@@ -59,6 +63,9 @@ class GromozekaRemoteServer(
             when (val payload = envelope.payload) {
                 is ClientRequest -> handleRequest(session, envelope.id, payload, encoding)
                 is SendMessageCommand -> handleSendMessage(session, envelope.id, payload, encoding)
+                is SynthesizeSpeechStreamCommand -> handleSynthesizeSpeechStream(session, envelope.id, payload, encoding)
+                is LiveInterpreterAudioChunkCommand -> liveInterpreterApplicationService.append(payload)
+                is StopLiveInterpreterCommand -> liveInterpreterApplicationService.stop(payload)
             }
         }
     }
@@ -183,6 +190,10 @@ class GromozekaRemoteServer(
                 is GetMemoryTasksRequest -> loadMemoryTasks(request)
 
                 is TranscribeAudioRequest -> transcribeAudio(request.recording)
+                is SynthesizeSpeechRequest -> synthesizeSpeech(request)
+                is StartLiveInterpreterRequest -> liveInterpreterApplicationService.start(request) { payload ->
+                    send(session, uuid7(), payload, encoding)
+                }
             }
         }.getOrElse { error ->
             log.warn(error) { "Remote request failed: ${request::class.simpleName}: ${error.message}" }
@@ -208,6 +219,51 @@ class GromozekaRemoteServer(
         }.onFailure { error ->
             log.warn(error) { "Remote send failed: conversation=${command.conversationId.value} error=${error.message}" }
             send(session, requestId, SendFailedEvent(command.streamId, error.message ?: "Unknown send error"), encoding)
+        }
+    }
+
+    private suspend fun handleSynthesizeSpeechStream(
+        session: DefaultWebSocketServerSession,
+        requestId: String,
+        command: SynthesizeSpeechStreamCommand,
+        encoding: RemoteProtocolEncoding,
+    ) {
+        runCatching {
+            log.info {
+                "Remote speech synthesis stream requested: stream=${command.streamId} " +
+                    "textChars=${command.text.length} tone=${command.tone}"
+            }
+            send(
+                session,
+                requestId,
+                SpeechSynthesisStartedEvent(
+                    streamId = command.streamId,
+                    mediaType = "audio/pcm",
+                    fileExtension = "pcm",
+                    sampleRate = OPENAI_TTS_PCM_SAMPLE_RATE,
+                    channels = OPENAI_TTS_PCM_CHANNELS,
+                    bitsPerSample = OPENAI_TTS_PCM_BITS_PER_SAMPLE,
+                ),
+                encoding,
+            )
+
+            var sequenceNumber = 0
+            ttsService.streamSpeechPcm(command.text, command.tone).collect { chunk ->
+                send(
+                    session,
+                    requestId,
+                    SpeechSynthesisChunkEvent(command.streamId, sequenceNumber++, chunk.data),
+                    encoding,
+                )
+            }
+
+            log.info {
+                "Remote speech synthesis stream completed: stream=${command.streamId} chunks=$sequenceNumber"
+            }
+            send(session, requestId, SpeechSynthesisCompletedEvent(command.streamId), encoding)
+        }.onFailure { error ->
+            log.warn(error) { "Remote speech synthesis stream failed: stream=${command.streamId} error=${error.message}" }
+            send(session, requestId, SpeechSynthesisFailedEvent(command.streamId, error.message ?: "Unknown TTS error"), encoding)
         }
     }
 
@@ -252,6 +308,23 @@ class GromozekaRemoteServer(
         }
 
         return AudioTranscriptionResponse(text)
+    }
+
+    private suspend fun synthesizeSpeech(request: SynthesizeSpeechRequest): SpeechSynthesisResponse {
+        log.info {
+            "Remote speech synthesis requested: textChars=${request.text.length} tone=${request.tone}"
+        }
+        val audioFile = ttsService.generateSpeech(request.text, request.tone)
+            ?: return SpeechSynthesisResponse(ByteArray(0), "audio/wav", "wav")
+        return try {
+            val audioData = audioFile.readBytes()
+            log.info {
+                "Remote speech synthesis completed: textChars=${request.text.length} bytes=${audioData.size}"
+            }
+            SpeechSynthesisResponse(audioData, "audio/wav", "wav")
+        } finally {
+            audioFile.delete()
+        }
     }
 
     private suspend fun runMemoryAction(
@@ -319,6 +392,9 @@ class GromozekaRemoteServer(
 
     private companion object {
         val closedMemoryTaskStatuses = setOf(MemoryTask.Status.DONE, MemoryTask.Status.CANCELLED)
+        const val OPENAI_TTS_PCM_SAMPLE_RATE = 24_000
+        const val OPENAI_TTS_PCM_CHANNELS = 1
+        const val OPENAI_TTS_PCM_BITS_PER_SAMPLE = 16
     }
 }
 

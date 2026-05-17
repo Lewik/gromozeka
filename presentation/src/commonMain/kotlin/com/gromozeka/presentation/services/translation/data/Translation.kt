@@ -33,7 +33,6 @@ sealed class Translation {
         abstract val autoSendMessagesLabel: String
         abstract val globalPttHotkeyLabel: String
         abstract val muteAudioDuringPttLabel: String
-        abstract val responseFormatLabel: String
         abstract val includeCurrentTimeLabel: String
         abstract val openaiApiKeyLabel: String
         abstract val enableBraveSearchLabel: String
@@ -65,7 +64,6 @@ sealed class Translation {
         abstract val autoSendDescription: String
         abstract val globalPttDescription: String
         abstract val muteAudioDescription: String
-        abstract val responseFormatDescription: String
         abstract val includeTimeDescription: String
         abstract val openaiKeyDescription: String
         abstract val braveSearchDescription: String

@@ -1,6 +1,7 @@
 package com.gromozeka.application.actor
 
 import com.gromozeka.application.service.AiConversationMessageMapper
+import com.gromozeka.application.service.AssistantResponseFormatContract
 import com.gromozeka.application.service.ParallelToolExecutor
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
@@ -512,7 +513,11 @@ class ConversationEngine(
             
             log.info { "Agent config: name=${definition.name}, modelName=$modelName, provider=$provider, runtimeOverrides=${definition.runtimeOverrides}" }
             
-            val systemPrompts = agentDomainService.assembleSystemPrompt(definition, project)
+            val assistantResponseFormat = resolvedRuntime.modelConfiguration.assistantResponseFormat
+            val systemPrompts = buildList {
+                addAll(agentDomainService.assembleSystemPrompt(definition, project))
+                AssistantResponseFormatContract.instruction(assistantResponseFormat)?.let(::add)
+            }
             val runtime = aiRuntimeProvider.getRuntime(definition.runtimeSelection, project.path)
             val autoCompactionThresholdTokens = if (runtime.capabilities.supportsAutoCompaction) {
                 aiModelSpecRepository.find(provider, modelName)?.autoCompactionThresholdTokens.also { threshold ->
@@ -543,6 +548,8 @@ class ConversationEngine(
                                 maxOutputTokens = definition.runtimeOverrides.maxOutputTokens,
                                 reasoning = definition.runtimeOverrides.reasoning,
                                 autoCompactionThresholdTokens = autoCompactionThresholdTokens,
+                                responseFormat = AssistantResponseFormatContract.runtimeResponseFormat(assistantResponseFormat),
+                                assistantResponseFormat = assistantResponseFormat,
                                 toolContext = mapOf(
                                     "projectPath" to project.path,
                                     "conversationId" to conversationId.value

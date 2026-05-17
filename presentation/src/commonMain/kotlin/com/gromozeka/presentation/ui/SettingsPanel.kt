@@ -207,7 +207,21 @@ fun SettingsPanel(
                                 label = translation.settings.voiceTypeLabel,
                                 description = translation.settings.ttsVoiceDescription,
                                 value = textToSpeech.voice,
-                                options = listOf("alloy", "echo", "fable", "onyx", "nova", "shimmer"),
+                                options = listOf(
+                                    "marin",
+                                    "cedar",
+                                    "alloy",
+                                    "ash",
+                                    "ballad",
+                                    "coral",
+                                    "echo",
+                                    "fable",
+                                    "nova",
+                                    "onyx",
+                                    "sage",
+                                    "shimmer",
+                                    "verse",
+                                ),
                                 onValueChange = {
                                     onSettingsChange(
                                         settings.updateUserProfile {
@@ -266,10 +280,136 @@ fun SettingsPanel(
                         // Only show STT settings if STT is enabled
                         if (speechToText.enabled) {
                             DropdownSettingItem(
+                                label = "Speech-to-text backend",
+                                description = "OpenAI uses the regular transcription API. Local Whisper runs whisper.cpp on the server.",
+                                value = speechToText.engine,
+                                options = UserProfile.SpeechSettings.SpeechToText.Engine.entries.toList(),
+                                optionLabel = {
+                                    when (it) {
+                                        UserProfile.SpeechSettings.SpeechToText.Engine.OPENAI_API -> "OpenAI API"
+                                        UserProfile.SpeechSettings.SpeechToText.Engine.LOCAL_WHISPER -> "Local Whisper"
+                                    }
+                                },
+                                onValueChange = {
+                                    onSettingsChange(
+                                        settings.updateUserProfile {
+                                            copy(
+                                                speechSettings = speechSettings.copy(
+                                                    speechToText = speechSettings.speechToText.copy(engine = it)
+                                                )
+                                            )
+                                        }
+                                    )
+                                }
+                            )
+
+                            if (speechToText.engine == UserProfile.SpeechSettings.SpeechToText.Engine.OPENAI_API) {
+                                val speechToTextModelOptions = userProfile.aiSettings.modelConfigurations.filter {
+                                    AiModelConfiguration.Role.SPEECH_TO_TEXT in it.roles
+                                }
+                                val selectedSpeechToTextModel = speechToTextModelOptions.firstOrNull {
+                                    it.id == speechToText.modelConfigurationId
+                                } ?: speechToTextModelOptions.firstOrNull()
+
+                                if (selectedSpeechToTextModel != null) {
+                                    DropdownSettingItem(
+                                        label = "Recognition model",
+                                        description = "OpenAI transcription model used for speech-to-text",
+                                        value = selectedSpeechToTextModel,
+                                        options = speechToTextModelOptions,
+                                        optionLabel = { "${it.displayName} · ${it.providerModelId}" },
+                                        onValueChange = {
+                                            onSettingsChange(
+                                                settings.updateUserProfile {
+                                                    copy(
+                                                        speechSettings = speechSettings.copy(
+                                                            speechToText = speechSettings.speechToText.copy(
+                                                                modelConfigurationId = it.id
+                                                            )
+                                                        )
+                                                    )
+                                                }
+                                            )
+                                        }
+                                    )
+                                } else {
+                                    InfoSettingItem(
+                                        label = "Recognition model",
+                                        message = "No speech-to-text model configuration is available",
+                                        isError = true
+                                    )
+                                }
+                            }
+
+                            if (speechToText.engine == UserProfile.SpeechSettings.SpeechToText.Engine.LOCAL_WHISPER) {
+                                val localWhisper = speechToText.localWhisper
+
+                                TextFieldSettingItem(
+                                    label = "Whisper executable",
+                                    description = "Path or command name for whisper.cpp CLI",
+                                    value = localWhisper.executablePath,
+                                    placeholder = "whisper-cli",
+                                    onValueChange = {
+                                        onSettingsChange(
+                                            settings.updateUserProfile {
+                                                copy(
+                                                    speechSettings = speechSettings.copy(
+                                                        speechToText = speechSettings.speechToText.copy(
+                                                            localWhisper = localWhisper.copy(executablePath = it)
+                                                        )
+                                                    )
+                                                )
+                                            }
+                                        )
+                                    }
+                                )
+
+                                DropdownSettingItem(
+                                    label = "Whisper model",
+                                    description = "Used when model path is empty. Model is expected under Gromozeka home: models/whisper/ggml-<name>.bin",
+                                    value = localWhisper.modelName,
+                                    options = listOf("tiny", "base", "small", "medium", "large-v3-turbo", "large-v3"),
+                                    onValueChange = {
+                                        onSettingsChange(
+                                            settings.updateUserProfile {
+                                                copy(
+                                                    speechSettings = speechSettings.copy(
+                                                        speechToText = speechSettings.speechToText.copy(
+                                                            localWhisper = localWhisper.copy(modelName = it)
+                                                        )
+                                                    )
+                                                )
+                                            }
+                                        )
+                                    }
+                                )
+
+                                TextFieldSettingItem(
+                                    label = "Whisper model path",
+                                    description = "Optional absolute path. Leave empty to use the model name in Gromozeka home.",
+                                    value = localWhisper.modelPath,
+                                    placeholder = "",
+                                    onValueChange = {
+                                        onSettingsChange(
+                                            settings.updateUserProfile {
+                                                copy(
+                                                    speechSettings = speechSettings.copy(
+                                                        speechToText = speechSettings.speechToText.copy(
+                                                            localWhisper = localWhisper.copy(modelPath = it)
+                                                        )
+                                                    )
+                                                )
+                                            }
+                                        )
+                                    }
+                                )
+                            }
+
+                            DropdownSettingItem(
                                 label = translation.settings.recognitionLanguageLabel,
                                 description = translation.settings.sttLanguageDescription,
                                 value = speechToText.mainLanguageCode,
-                                options = listOf("en", "ru", "es", "fr", "de", "zh", "ja"),
+                                options = listOf("en", "ru", "he", "ar", "es", "fr", "de", "zh", "ja"),
                                 onValueChange = {
                                     onSettingsChange(
                                         settings.updateUserProfile {
@@ -418,22 +558,6 @@ fun SettingsPanel(
 
                         Spacer(modifier = Modifier.height(8.dp))
                         HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-
-                        // Common AI settings
-                        DropdownSettingItem(
-                            label = translation.settings.responseFormatLabel,
-                            description = translation.settings.responseFormatDescription,
-                            value = agentSettings.responseFormat.name,
-                            options = UserProfile.AgentSettings.ResponseFormat.entries.map { it.name },
-                            onValueChange = {
-                                val format = UserProfile.AgentSettings.ResponseFormat.valueOf(it)
-                                onSettingsChange(
-                                    settings.updateUserProfile {
-                                        copy(agentSettings = agentSettings.copy(responseFormat = format))
-                                    }
-                                )
-                            }
-                        )
 
                         SwitchSettingItem(
                             label = translation.settings.includeCurrentTimeLabel,
@@ -1389,6 +1513,20 @@ private fun AiModelConfigurationSettingsCard(
                 value = configuration.providerModelId,
                 placeholder = "gpt-5.4",
                 onValueChange = { onConfigurationChange(configuration.copy(providerModelId = it)) }
+            )
+
+            DropdownSettingItem(
+                label = "Assistant response format",
+                description = "JSON_SCHEMA is the default. Use XML_INLINE/XML_STRUCTURED for providers without native structured output.",
+                value = configuration.assistantResponseFormat.name,
+                options = AiModelConfiguration.AssistantResponseFormat.entries.map { it.name },
+                onValueChange = {
+                    onConfigurationChange(
+                        configuration.copy(
+                            assistantResponseFormat = AiModelConfiguration.AssistantResponseFormat.valueOf(it)
+                        )
+                    )
+                }
             )
 
             Text(

@@ -17,11 +17,7 @@ kotlin {
                 implementation(project(":domain"))  // Transitively provides :shared
                 implementation(project(":infrastructure-db"))  // For embedding cache
 
-                // Spring AI providers
-                implementation(libs.spring.ai.openai)
-                implementation(libs.spring.ai.anthropic)
-                implementation(libs.spring.ai.google.genai)
-                implementation(libs.spring.ai.ollama)
+                implementation(libs.openai.java)
                 implementation(libs.anthropic.java)
                 implementation(libs.anthropic.java.bedrock)
                 implementation(libs.aws.sdk.sso)

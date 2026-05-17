@@ -8,7 +8,8 @@ import klog.KLoggers
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 
@@ -48,7 +49,7 @@ class TTSAutoplayService(
                 val newMessages = messages.drop(lastProcessedMessageIndex + 1)
 
                 newMessages.forEach { message ->
-                    if (shouldPlayAutoTTS(message)) {
+                    if (shouldConsiderAutoTTS(message)) {
                         val messageTime = message.createdAt
                         val subscribeTime = subscriptionTimestamp
                         if (subscribeTime == null || messageTime >= subscribeTime) {
@@ -64,19 +65,14 @@ class TTSAutoplayService(
             .launchIn(scope)
     }
 
-    private fun shouldPlayAutoTTS(message: Conversation.Message): Boolean {
+    private fun shouldConsiderAutoTTS(message: Conversation.Message): Boolean {
         val settings = settingsService.settings
 
         // Check if TTS is enabled at all
         if (!settings.userProfile.speechSettings.textToSpeech.enabled) return false
 
         // Only Assistant messages can have TTS
-        if (message.role != Conversation.Message.Role.ASSISTANT) return false
-
-        // Check if message has TTS content
-        return message.content
-            .filterIsInstance<Conversation.Message.ContentItem.AssistantMessage>()
-            .any { it.structured.ttsText != null }
+        return message.role == Conversation.Message.Role.ASSISTANT
     }
 
     private suspend fun playAutoTTS(message: Conversation.Message) {
@@ -85,8 +81,20 @@ class TTSAutoplayService(
                 .filterIsInstance<Conversation.Message.ContentItem.AssistantMessage>()
                 .firstOrNull() ?: return
 
-            val ttsText = assistantContent.structured.ttsText ?: return
+            val ttsText = assistantContent.structured.ttsText?.trim()?.takeIf { it.isNotBlank() }
+            if (ttsText == null) {
+                log.info(
+                    "Auto TTS skipped: message=${message.id.value} reason=blank_tts_text " +
+                        "fullTextChars=${assistantContent.structured.fullText.length}"
+                )
+                return
+            }
             val voiceTone = assistantContent.structured.voiceTone ?: ""
+
+            log.info(
+                "Auto TTS enqueue: message=${message.id.value} textChars=${ttsText.length} " +
+                    "voiceToneChars=${voiceTone.length}"
+            )
 
             ttsQueueService.enqueue(
                 TtsTask(

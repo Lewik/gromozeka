@@ -40,6 +40,89 @@ class RemoteProtocolCodecTest {
     }
 
     @Test
+    fun cborRoundTripSupportsSpeechSynthesisAudio() {
+        val bytes = ByteArray(256) { index -> (255 - index).toByte() }
+        val envelope = GromozekaServerEnvelope(
+            id = "response-speech-1",
+            payload = SpeechSynthesisResponse(
+                audioData = bytes,
+                mediaType = "audio/mpeg",
+                fileExtension = "mp3",
+            )
+        )
+
+        val decoded = RemoteProtocolCodec.decodeServerBinary(RemoteProtocolCodec.encodeServerBinary(envelope))
+        val response = decoded.payload as SpeechSynthesisResponse
+
+        assertContentEquals(bytes, response.audioData)
+        assertEquals("audio/mpeg", response.mediaType)
+        assertEquals("mp3", response.fileExtension)
+    }
+
+    @Test
+    fun cborRoundTripSupportsLiveInterpreterPayloads() {
+        val startEnvelope = GromozekaClientEnvelope(
+            id = "live-start-1",
+            payload = StartLiveInterpreterRequest(
+                targetLanguage = "ru",
+                sourceLanguageCode = "he",
+                sourceLanguageHint = "Hebrew workplace conversation",
+            )
+        )
+        val decodedStart = RemoteProtocolCodec.decodeClientBinary(
+            RemoteProtocolCodec.encodeClientBinary(startEnvelope)
+        ).payload as StartLiveInterpreterRequest
+
+        assertEquals("he", decodedStart.sourceLanguageCode)
+        assertEquals("Hebrew workplace conversation", decodedStart.sourceLanguageHint)
+
+        val bytes = ByteArray(128) { index -> index.toByte() }
+        val clientEnvelope = GromozekaClientEnvelope(
+            id = "live-command-1",
+            payload = LiveInterpreterAudioChunkCommand(
+                sessionId = "live-session-1",
+                chunk = RemoteLiveAudioChunk(
+                    sequenceNumber = 7,
+                    data = bytes,
+                    mediaType = "audio/wav",
+                    fileExtension = "wav",
+                    sampleRate = 16_000,
+                    channels = 1,
+                    bitDepth = 16,
+                )
+            )
+        )
+        val decodedClient = RemoteProtocolCodec.decodeClientBinary(
+            RemoteProtocolCodec.encodeClientBinary(clientEnvelope)
+        )
+        val command = decodedClient.payload as LiveInterpreterAudioChunkCommand
+
+        assertEquals("live-session-1", command.sessionId)
+        assertEquals(7, command.chunk.sequenceNumber)
+        assertContentEquals(bytes, command.chunk.data)
+        assertEquals("audio/wav", command.chunk.mediaType)
+
+        val serverEnvelope = GromozekaServerEnvelope(
+            id = "live-event-1",
+            payload = LiveInterpreterTranslationEvent(
+                sessionId = "live-session-1",
+                segmentId = "segment-7",
+                sequenceNumber = 3,
+                text = "Привет",
+                targetLanguage = "ru",
+            )
+        )
+        val decodedServer = RemoteProtocolCodec.decodeServerBinary(
+            RemoteProtocolCodec.encodeServerBinary(serverEnvelope)
+        )
+        val event = decodedServer.payload as LiveInterpreterTranslationEvent
+
+        assertEquals("segment-7", event.segmentId)
+        assertEquals("Привет", event.text)
+        assertTrue(event.isFinal)
+    }
+
+    @Test
     fun cborRoundTripSupportsConversationMessageJsonFields() {
         val envelope = GromozekaServerEnvelope(
             id = "response-1",

@@ -24,6 +24,7 @@ data class AiRuntimeOptions(
     val autoCompactionThresholdTokens: Int? = null,
     val toolChoice: AiToolChoice = AiToolChoice.Auto,
     val responseFormat: AiResponseFormat = AiResponseFormat.Text,
+    val assistantResponseFormat: AiModelConfiguration.AssistantResponseFormat = AiModelConfiguration.AssistantResponseFormat.TEXT,
     val toolContext: Map<String, Any?> = emptyMap(),
 ) {
     init {

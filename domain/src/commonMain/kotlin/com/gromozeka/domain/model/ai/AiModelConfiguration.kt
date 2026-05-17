@@ -14,6 +14,8 @@ import kotlin.jvm.JvmInline
  * @property providerModelId exact provider-specific model id passed to the adapter.
  * @property roles intended usage categories. Role filtering is advisory but should
  * be respected by UI defaults and automatic runtime selection.
+ * @property assistantResponseFormat response contract expected from normal
+ * assistant chat calls using this model configuration.
  * @property defaultParameters optional model-level defaults. Per-call options may
  * override them when the application workflow explicitly needs that.
  */
@@ -25,6 +27,7 @@ data class AiModelConfiguration(
     val displayName: String,
     val enabled: Boolean = true,
     val roles: Set<Role> = setOf(Role.CHAT),
+    val assistantResponseFormat: AssistantResponseFormat = AssistantResponseFormat.JSON_SCHEMA,
     val defaultParameters: DefaultParameters = DefaultParameters(),
 ) {
     init {
@@ -56,6 +59,14 @@ data class AiModelConfiguration(
         SPEECH_TO_TEXT,
         TEXT_TO_SPEECH,
         EMBEDDINGS,
+    }
+
+    @Serializable
+    enum class AssistantResponseFormat {
+        JSON_SCHEMA,
+        XML_STRUCTURED,
+        XML_INLINE,
+        TEXT,
     }
 
     /**

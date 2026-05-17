@@ -122,14 +122,19 @@ class ConversationEngineService(
         val availableTools = aiToolProvider.getTools()
         val memoryPipelineTools = availableTools.withoutMemoryManagementTools()
         val baseSystemPrompts = agentDomainService.assembleSystemPrompt(agent, project)
-        val systemPrompts = baseSystemPrompts
+        val assistantResponseFormat = resolvedRuntime.modelConfiguration.assistantResponseFormat
+        val memorySystemPrompts = baseSystemPrompts
+        val runtimeSystemPrompts = buildList {
+            addAll(baseSystemPrompts)
+            AssistantResponseFormatContract.instruction(assistantResponseFormat)?.let(::add)
+        }
         val automaticMemoryRememberEnabled = settingsProvider.userProfile.memorySettings.autoRemember
         val automaticMemoryRecallEnabled = settingsProvider.userProfile.memorySettings.autoRecall
 
         // Add user message
         conversationService.addMessage(conversationId, userMessage)
         val writeResult = if (automaticMemoryRememberEnabled) {
-            routeMessageThroughMemoryRouter(conversationId, conversation.currentThread, userMessage, agent, project, systemPrompts, memoryPipelineTools)
+            routeMessageThroughMemoryRouter(conversationId, conversation.currentThread, userMessage, agent, project, memorySystemPrompts, memoryPipelineTools)
         } else {
             null
         }
@@ -173,7 +178,7 @@ class ConversationEngineService(
                     threadMessages = messagesBeforeRecall,
                     agent = agent,
                     project = project,
-                    runtimeSystemPrompts = systemPrompts,
+                    runtimeSystemPrompts = memorySystemPrompts,
                     runtimeTools = memoryPipelineTools,
                 )
             }.onFailure { error ->
@@ -204,7 +209,8 @@ class ConversationEngineService(
         log.info {
             "Memory auto wiring: conversation=${conversationId.value} autoRemember=$automaticMemoryRememberEnabled autoRecall=$automaticMemoryRecallEnabled " +
                 "memoryPromptPresent=${!runtimeMemoryResult?.runtimePrompt.isNullOrBlank()} memoryPromptChars=${runtimeMemoryResult?.runtimePrompt?.length ?: 0} " +
-                "systemPrompts=${systemPrompts.size} rememberTriggered=$automaticMemoryRememberEnabled recallTriggered=$automaticMemoryRecallEnabled"
+                "systemPrompts=${runtimeSystemPrompts.size} assistantResponseFormat=$assistantResponseFormat " +
+                "rememberTriggered=$automaticMemoryRememberEnabled recallTriggered=$automaticMemoryRecallEnabled"
         }
 
         var iterationCount = 0
@@ -298,7 +304,7 @@ class ConversationEngineService(
             }
             
             val runtimeRequest = AiRuntimeRequest(
-                systemPrompts = systemPrompts,
+                systemPrompts = runtimeSystemPrompts,
                 messages = messagesWithStrideInstruction,
                 tools = availableTools,
                 options = AiRuntimeOptions(
@@ -306,6 +312,8 @@ class ConversationEngineService(
                     reasoning = agent.runtimeOverrides.reasoning,
                     autoCompactionThresholdTokens = autoCompactionThresholdTokens,
                     toolChoice = toolChoice,
+                    responseFormat = AssistantResponseFormatContract.runtimeResponseFormat(assistantResponseFormat),
+                    assistantResponseFormat = assistantResponseFormat,
                     toolContext = mapOf(
                         "projectPath" to project.path,
                         "conversationId" to conversationId.value,
@@ -325,7 +333,7 @@ class ConversationEngineService(
                 emit(errorMessage)
                 conversationService.addMessage(conversationId, errorMessage)
                 if (automaticMemoryRememberEnabled) {
-                    routeMessageThroughMemoryRouter(conversationId, conversation.currentThread, errorMessage, agent, project, systemPrompts, memoryPipelineTools)
+                    routeMessageThroughMemoryRouter(conversationId, conversation.currentThread, errorMessage, agent, project, memorySystemPrompts, memoryPipelineTools)
                 }
                 break
             }
@@ -368,7 +376,7 @@ class ConversationEngineService(
                     emit(violationMessage)
                     conversationService.addMessage(conversationId, violationMessage)
                     if (automaticMemoryRememberEnabled) {
-                        routeMessageThroughMemoryRouter(conversationId, conversation.currentThread, violationMessage, agent, project, systemPrompts, memoryPipelineTools)
+                        routeMessageThroughMemoryRouter(conversationId, conversation.currentThread, violationMessage, agent, project, memorySystemPrompts, memoryPipelineTools)
                     }
                 } catch (e: Exception) {
                     log.error(e) { "Failed to handle Stride violation: ${e.message}" }
@@ -422,7 +430,7 @@ class ConversationEngineService(
                 emit(message)
                 conversationService.addMessage(conversationId, message)
                 if (automaticMemoryRememberEnabled) {
-                    routeMessageThroughMemoryRouter(conversationId, conversation.currentThread, message, agent, project, systemPrompts, memoryPipelineTools)
+                    routeMessageThroughMemoryRouter(conversationId, conversation.currentThread, message, agent, project, memorySystemPrompts, memoryPipelineTools)
                 }
             }
 
@@ -472,7 +480,7 @@ class ConversationEngineService(
                 emit(toolResultMessage)
                 conversationService.addMessage(conversationId, toolResultMessage)
                 if (automaticMemoryRememberEnabled) {
-                    routeMessageThroughMemoryRouter(conversationId, conversation.currentThread, toolResultMessage, agent, project, systemPrompts, memoryPipelineTools)
+                    routeMessageThroughMemoryRouter(conversationId, conversation.currentThread, toolResultMessage, agent, project, memorySystemPrompts, memoryPipelineTools)
                 }
 
                 if (executionResult.returnDirect) {

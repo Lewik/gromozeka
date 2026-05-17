@@ -41,6 +41,7 @@ import com.gromozeka.domain.model.ai.AiUsage
 import com.gromozeka.domain.service.AiRuntime
 import com.gromozeka.domain.service.SettingsProvider
 import com.gromozeka.domain.tool.AiToolCallback
+import com.gromozeka.infrastructure.ai.parsers.AssistantResponseParser
 import com.gromozeka.infrastructure.ai.runtime.AiRuntimeBackend
 import klog.KLoggers
 import kotlinx.coroutines.Dispatchers
@@ -193,7 +194,7 @@ private class AnthropicSdkRuntime(
             client.messages().create(params)
         }
 
-        return messageMapper.toRuntimeResponse(response)
+        return messageMapper.toRuntimeResponse(response, request.options.assistantResponseFormat)
     }
 
     override fun stream(request: AiRuntimeRequest): Flow<AiRuntimeResponse> = flow {
@@ -233,8 +234,11 @@ internal class AnthropicSdkMessageMapper(
         return builder.build()
     }
 
-    fun toRuntimeResponse(message: Message): AiRuntimeResponse {
-        val content = message.content().flatMap(::toContentItems)
+    fun toRuntimeResponse(
+        message: Message,
+        assistantResponseFormat: AiModelConfiguration.AssistantResponseFormat,
+    ): AiRuntimeResponse {
+        val content = message.content().flatMap { toContentItems(it, assistantResponseFormat) }
         val assistantMessages = if (content.isEmpty()) {
             emptyList()
         } else {
@@ -470,7 +474,10 @@ internal class AnthropicSdkMessageMapper(
         }
 
         val responseFormat = options.responseFormat
-        if (responseFormat is AiResponseFormat.JsonSchema && supportsNativeStructuredOutput()) {
+        if (responseFormat is AiResponseFormat.JsonSchema) {
+            require(supportsNativeStructuredOutput()) {
+                "Connection kind $connectionKind does not support Anthropic native structured output"
+            }
             outputConfigBuilder.format(
                 JsonOutputFormat.builder()
                     .schema(
@@ -507,7 +514,10 @@ internal class AnthropicSdkMessageMapper(
             null -> ThinkingConfigEnabled.Display.SUMMARIZED
         }
 
-    private fun toContentItems(block: com.anthropic.models.messages.ContentBlock): List<Conversation.Message.ContentItem> {
+    private fun toContentItems(
+        block: com.anthropic.models.messages.ContentBlock,
+        assistantResponseFormat: AiModelConfiguration.AssistantResponseFormat,
+    ): List<Conversation.Message.ContentItem> {
         val items = mutableListOf<Conversation.Message.ContentItem>()
 
         block.thinking().getOrNull()?.let { thinking ->
@@ -533,7 +543,7 @@ internal class AnthropicSdkMessageMapper(
         block.text().getOrNull()?.let { text ->
             items.add(
                 Conversation.Message.ContentItem.AssistantMessage(
-                    structured = Conversation.Message.StructuredText(fullText = text.text()),
+                    structured = AssistantResponseParser.parse(text.text(), assistantResponseFormat),
                     state = Conversation.Message.BlockState.COMPLETE
                 )
             )

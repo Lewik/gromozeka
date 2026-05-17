@@ -4,7 +4,7 @@ import klog.KLoggers
 import org.springframework.stereotype.Service
 import java.nio.file.Path
 import java.util.concurrent.ConcurrentHashMap
-import javax.annotation.PreDestroy
+import jakarta.annotation.PreDestroy
 
 /**
  * Service managing LSP clients for different languages and projects.

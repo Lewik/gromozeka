@@ -5,16 +5,20 @@ import com.gromozeka.client.InMemoryRemoteClientSettingsStore
 import com.gromozeka.client.RemoteClientSettingsStore
 import com.gromozeka.device.telemetry.DeviceLocationService
 import com.gromozeka.device.telemetry.NoOpDeviceLocationService
+import com.gromozeka.presentation.services.ClientAudioPlayer
 import com.gromozeka.presentation.services.ClientAudioRecorder
 import com.gromozeka.presentation.services.LogEncryptor
 import com.gromozeka.presentation.services.NoOpGlobalHotkeyController
+import com.gromozeka.presentation.services.NoOpClientAudioPlayer
 import com.gromozeka.presentation.services.NoOpClientAudioRecorder
 import com.gromozeka.presentation.services.NoOpSoundNotificationPlayer
-import com.gromozeka.presentation.services.NoOpTtsQueue
 import com.gromozeka.presentation.services.OllamaModelService
 import com.gromozeka.presentation.services.RemotePttController
+import com.gromozeka.presentation.services.RemoteTtsQueue
+import com.gromozeka.presentation.services.RollingClientLiveAudioStreamer
 import com.gromozeka.presentation.services.ScreenCaptureController
 import com.gromozeka.presentation.services.TabPromptService
+import com.gromozeka.presentation.services.TTSAutoplayService
 import com.gromozeka.presentation.services.UIStateService
 import com.gromozeka.presentation.services.UIStateStore
 import com.gromozeka.presentation.services.InMemoryUIStateStore
@@ -33,6 +37,7 @@ suspend fun createRemoteAppComponents(
     uiStateStore: UIStateStore = InMemoryUIStateStore(),
     remoteClientSettingsStore: RemoteClientSettingsStore = InMemoryRemoteClientSettingsStore(),
     audioRecorder: ClientAudioRecorder = NoOpClientAudioRecorder,
+    audioPlayer: ClientAudioPlayer = NoOpClientAudioPlayer,
     deviceLocationService: DeviceLocationService = NoOpDeviceLocationService,
 ): RemoteAppComponents {
     val remoteServices = GromozekaRemoteServices(
@@ -73,14 +78,24 @@ suspend fun createRemoteAppComponents(
         audioTranscriptionService = remoteServices.audioTranscriptionService,
         scope = scope
     )
+    val ttsQueue = RemoteTtsQueue(remoteServices.speechSynthesisService, audioPlayer)
+    val ttsAutoplayService = TTSAutoplayService(
+        appViewModel = appViewModel,
+        ttsQueueService = ttsQueue,
+        settingsService = remoteServices.settingsService,
+        scope = scope,
+    )
+    ttsAutoplayService.start()
 
     return RemoteAppComponents(
         components = AppComponents(
             appViewModel = appViewModel,
-            ttsQueueService = NoOpTtsQueue(),
+            ttsQueueService = ttsQueue,
             settingsService = remoteServices.settingsService,
             remoteClientSettingsService = remoteServices.clientSettingsService,
             memoryTaskService = remoteServices.memoryTaskService,
+            liveInterpreterService = remoteServices.liveInterpreterService,
+            liveAudioStreamer = RollingClientLiveAudioStreamer(audioRecorder),
             globalHotkeyController = NoOpGlobalHotkeyController,
             pttEventRouter = pttController,
             pttService = pttController,
@@ -100,17 +115,20 @@ suspend fun createRemoteAppComponents(
             deviceLocationService = deviceLocationService,
         ),
         remoteServices = remoteServices,
+        ttsAutoplayService = ttsAutoplayService,
     )
 }
 
 class RemoteAppComponents(
     val components: AppComponents,
     private val remoteServices: GromozekaRemoteServices,
+    private val ttsAutoplayService: TTSAutoplayService,
 ) : AutoCloseable {
     override fun close() {
         runCatching { components.uiStateService.forceSave() }
         runCatching { components.uiStateService.disableAutoSave() }
         runCatching { components.globalHotkeyController.cleanup() }
+        runCatching { ttsAutoplayService.shutdown() }
         runCatching { components.ttsQueueService.shutdown() }
         runCatching { remoteServices.close() }
     }

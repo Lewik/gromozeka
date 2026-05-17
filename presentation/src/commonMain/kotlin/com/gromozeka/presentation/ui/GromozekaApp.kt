@@ -250,7 +250,8 @@ fun GromozekaAppContent(
                                     null -> 0
                                     -1 -> 1
                                     -2 -> 2
-                                    else -> currentIndex + 3
+                                    -3 -> 3
+                                    else -> currentIndex + 4
                                 }
 
                                 val tabRowComponent = @Composable {
@@ -283,7 +284,15 @@ fun GromozekaAppContent(
                                     Row(modifier = Modifier.weight(1f)) {
                                         Column(modifier = Modifier.weight(1f).padding(contentPadding)) {
                                             Box(modifier = Modifier.weight(1f)) {
-                                                if (currentTab != null) {
+                                                if (currentTabIndex == -3) {
+                                                    LiveInterpreterScreen(
+                                                        settings = currentSettings,
+                                                        liveInterpreterService = appComponents.liveInterpreterService,
+                                                        liveAudioStreamer = appComponents.liveAudioStreamer,
+                                                        coroutineScope = coroutineScope,
+                                                        isCompactLayout = isCompactLayout,
+                                                    )
+                                                } else if (currentTab != null) {
                                                     val tabViewModel = currentTab!!
                                                     SessionScreen(
                                                         viewModel = tabViewModel,

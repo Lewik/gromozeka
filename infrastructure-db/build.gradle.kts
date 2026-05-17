@@ -30,10 +30,6 @@ kotlin {
                 // Knowledge Graph
                 implementation(libs.neo4j.driver)
                 
-                // Spring AI for embeddings and chat models
-                implementation(libs.spring.ai.openai)
-                implementation(libs.spring.ai.google.genai)
-                
                 // Spring Boot
                 implementation(libs.spring.boot.starter)
                 implementation(libs.kotlinx.coroutines.reactor)

@@ -1,6 +1,7 @@
 package com.gromozeka.presentation
 
 import com.gromozeka.presentation.services.DesktopClientAudioRecorder
+import com.gromozeka.presentation.services.DesktopClientAudioPlayer
 import com.gromozeka.presentation.services.DesktopRemoteClientSettingsStore
 import com.gromozeka.presentation.services.WindowStateService
 import kotlinx.coroutines.CoroutineScope
@@ -24,6 +25,7 @@ internal fun startRemotePresentation(remoteUrl: String): RemoteStartedApp {
                 File(clientHomeDirectoryFile, "remote-client-settings.json")
             ),
             audioRecorder = DesktopClientAudioRecorder(),
+            audioPlayer = DesktopClientAudioPlayer(),
         )
     }
     File(remoteApp.components.settingsService.homeDirectory).mkdirs()

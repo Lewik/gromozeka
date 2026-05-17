@@ -309,6 +309,22 @@ data class TranscribeAudioRequest(
 ) : ClientRequest
 
 @Serializable
+@SerialName("synthesize_speech")
+data class SynthesizeSpeechRequest(
+    val text: String,
+    val tone: String = "neutral colleague",
+) : ClientRequest
+
+@Serializable
+@SerialName("start_live_interpreter")
+data class StartLiveInterpreterRequest(
+    val targetLanguage: String = "ru",
+    val sourceLanguageCode: String = "auto",
+    val sourceLanguageHint: String = "Hebrew, Russian, and English workplace conversation",
+    val translationRuntimeSelection: AiRuntimeSelection? = null,
+) : ClientRequest
+
+@Serializable
 data class RemoteAudioRecording(
     val sessionId: String,
     val mediaType: String,
@@ -326,12 +342,51 @@ data class RemoteAudioChunk(
 )
 
 @Serializable
+data class RemoteLiveAudioChunk(
+    val sequenceNumber: Int,
+    val data: ByteArray,
+    val mediaType: String,
+    val fileExtension: String,
+    val sampleRate: Int? = null,
+    val channels: Int? = null,
+    val bitDepth: Int? = null,
+)
+
+@Serializable
+data class RemoteLiveInterpreterDraft(
+    val id: String,
+    val sequenceNumber: Int,
+    val text: String,
+)
+
+@Serializable
 @SerialName("send_message")
 data class SendMessageCommand(
     val streamId: String,
     val conversationId: Conversation.Id,
     val userMessage: Conversation.Message,
     val agent: AgentDefinition,
+) : ClientPayload
+
+@Serializable
+@SerialName("synthesize_speech_stream")
+data class SynthesizeSpeechStreamCommand(
+    val streamId: String,
+    val text: String,
+    val tone: String = "neutral colleague",
+) : ClientPayload
+
+@Serializable
+@SerialName("live_interpreter_audio_chunk")
+data class LiveInterpreterAudioChunkCommand(
+    val sessionId: String,
+    val chunk: RemoteLiveAudioChunk,
+) : ClientPayload
+
+@Serializable
+@SerialName("stop_live_interpreter")
+data class StopLiveInterpreterCommand(
+    val sessionId: String,
 ) : ClientPayload
 
 @Serializable
@@ -482,6 +537,20 @@ data class AudioTranscriptionResponse(
 ) : ServerResponse
 
 @Serializable
+@SerialName("speech_synthesis")
+data class SpeechSynthesisResponse(
+    val audioData: ByteArray,
+    val mediaType: String,
+    val fileExtension: String,
+) : ServerResponse
+
+@Serializable
+@SerialName("live_interpreter_started")
+data class LiveInterpreterStartedResponse(
+    val sessionId: String,
+) : ServerResponse
+
+@Serializable
 @SerialName("error")
 data class ErrorResponse(
     val message: String,
@@ -505,5 +574,85 @@ data class SendCompletedEvent(
 @SerialName("send_failed")
 data class SendFailedEvent(
     val streamId: String,
+    val message: String,
+) : ServerPayload
+
+@Serializable
+@SerialName("speech_synthesis_started")
+data class SpeechSynthesisStartedEvent(
+    val streamId: String,
+    val mediaType: String,
+    val fileExtension: String,
+    val sampleRate: Int,
+    val channels: Int,
+    val bitsPerSample: Int,
+) : ServerPayload
+
+@Serializable
+@SerialName("speech_synthesis_chunk")
+data class SpeechSynthesisChunkEvent(
+    val streamId: String,
+    val sequenceNumber: Int,
+    val data: ByteArray,
+) : ServerPayload
+
+@Serializable
+@SerialName("speech_synthesis_completed")
+data class SpeechSynthesisCompletedEvent(
+    val streamId: String,
+) : ServerPayload
+
+@Serializable
+@SerialName("speech_synthesis_failed")
+data class SpeechSynthesisFailedEvent(
+    val streamId: String,
+    val message: String,
+) : ServerPayload
+
+@Serializable
+@SerialName("live_interpreter_status")
+data class LiveInterpreterStatusEvent(
+    val sessionId: String,
+    val message: String,
+) : ServerPayload
+
+@Serializable
+@SerialName("live_interpreter_transcript")
+data class LiveInterpreterTranscriptEvent(
+    val sessionId: String,
+    val segmentId: String,
+    val sequenceNumber: Int,
+    val text: String,
+    val isFinal: Boolean = true,
+) : ServerPayload
+
+@Serializable
+@SerialName("live_interpreter_drafts")
+data class LiveInterpreterDraftsEvent(
+    val sessionId: String,
+    val drafts: List<RemoteLiveInterpreterDraft>,
+) : ServerPayload
+
+@Serializable
+@SerialName("live_interpreter_translation")
+data class LiveInterpreterTranslationEvent(
+    val sessionId: String,
+    val segmentId: String,
+    val sequenceNumber: Int,
+    val text: String,
+    val targetLanguage: String,
+    val isFinal: Boolean = true,
+) : ServerPayload
+
+@Serializable
+@SerialName("live_interpreter_stopped")
+data class LiveInterpreterStoppedEvent(
+    val sessionId: String,
+) : ServerPayload
+
+@Serializable
+@SerialName("live_interpreter_failed")
+data class LiveInterpreterFailedEvent(
+    val sessionId: String,
     val message: String,
 ) : ServerPayload

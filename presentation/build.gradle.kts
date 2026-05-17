@@ -64,6 +64,12 @@ kotlin {
             }
         }
 
+        val commonTest by getting {
+            dependencies {
+                implementation(kotlin("test"))
+            }
+        }
+
         val iosMain by creating {
             dependsOn(commonMain)
         }

@@ -7,7 +7,16 @@ import com.gromozeka.remote.protocol.ClientRequest
 import com.gromozeka.remote.protocol.ErrorResponse
 import com.gromozeka.remote.protocol.GromozekaClientEnvelope
 import com.gromozeka.remote.protocol.GromozekaServerEnvelope
+import com.gromozeka.remote.protocol.LiveInterpreterAudioChunkCommand
+import com.gromozeka.remote.protocol.LiveInterpreterFailedEvent
+import com.gromozeka.remote.protocol.LiveInterpreterDraftsEvent
+import com.gromozeka.remote.protocol.LiveInterpreterStartedResponse
+import com.gromozeka.remote.protocol.LiveInterpreterStatusEvent
+import com.gromozeka.remote.protocol.LiveInterpreterStoppedEvent
+import com.gromozeka.remote.protocol.LiveInterpreterTranscriptEvent
+import com.gromozeka.remote.protocol.LiveInterpreterTranslationEvent
 import com.gromozeka.remote.protocol.MessageUpsertedEvent
+import com.gromozeka.remote.protocol.RemoteLiveAudioChunk
 import com.gromozeka.remote.protocol.RemoteProtocolCodec
 import com.gromozeka.remote.protocol.RemoteProtocolEncoding
 import com.gromozeka.remote.protocol.SendCompletedEvent
@@ -15,6 +24,13 @@ import com.gromozeka.remote.protocol.SendFailedEvent
 import com.gromozeka.remote.protocol.SendMessageCommand
 import com.gromozeka.remote.protocol.ServerPayload
 import com.gromozeka.remote.protocol.ServerResponse
+import com.gromozeka.remote.protocol.SpeechSynthesisChunkEvent
+import com.gromozeka.remote.protocol.SpeechSynthesisCompletedEvent
+import com.gromozeka.remote.protocol.SpeechSynthesisFailedEvent
+import com.gromozeka.remote.protocol.SpeechSynthesisStartedEvent
+import com.gromozeka.remote.protocol.StartLiveInterpreterRequest
+import com.gromozeka.remote.protocol.StopLiveInterpreterCommand
+import com.gromozeka.remote.protocol.SynthesizeSpeechStreamCommand
 import com.gromozeka.shared.uuid.uuid7
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.websocket.WebSockets
@@ -51,6 +67,7 @@ internal class GromozekaWsClient(
     private var readerJob: Job? = null
     private val pending = mutableMapOf<String, CompletableDeferred<ServerResponse>>()
     private val streams = mutableMapOf<String, Channel<ServerPayload>>()
+    private val liveInterpreterSessions = mutableMapOf<String, Channel<ServerPayload>>()
 
     suspend fun request(payload: ClientRequest): ServerResponse {
         val id = uuid7()
@@ -91,6 +108,53 @@ internal class GromozekaWsClient(
             streams.remove(streamId)
             channel.close()
         }
+    }
+
+    fun synthesizeSpeech(
+        text: String,
+        tone: String,
+    ): Flow<ServerPayload> = flow {
+        val streamId = uuid7()
+        val channel = Channel<ServerPayload>(Channel.UNLIMITED)
+        streams[streamId] = channel
+        send(SynthesizeSpeechStreamCommand(streamId, text, tone))
+
+        try {
+            for (event in channel) {
+                emit(event)
+                when (event) {
+                    is SpeechSynthesisCompletedEvent,
+                    is SpeechSynthesisFailedEvent -> break
+
+                    else -> Unit
+                }
+            }
+        } finally {
+            streams.remove(streamId)
+            channel.close()
+        }
+    }
+
+    suspend fun startLiveInterpreter(request: StartLiveInterpreterRequest): LiveInterpreterClientSession {
+        val response = requestTyped<StartLiveInterpreterRequest, LiveInterpreterStartedResponse>(request)
+        val channel = Channel<ServerPayload>(Channel.UNLIMITED)
+        liveInterpreterSessions[response.sessionId] = channel
+        return LiveInterpreterClientSession(response.sessionId, channel)
+    }
+
+    suspend fun sendLiveInterpreterAudioChunk(
+        sessionId: String,
+        chunk: RemoteLiveAudioChunk,
+    ) {
+        send(LiveInterpreterAudioChunkCommand(sessionId, chunk))
+    }
+
+    suspend fun stopLiveInterpreter(sessionId: String) {
+        send(StopLiveInterpreterCommand(sessionId))
+    }
+
+    fun closeLiveInterpreterSession(sessionId: String) {
+        liveInterpreterSessions.remove(sessionId)?.close()
     }
 
     private suspend fun send(payload: ClientPayload) {
@@ -142,6 +206,22 @@ internal class GromozekaWsClient(
                     is MessageUpsertedEvent -> streams[payload.streamId]?.send(payload)
                     is SendCompletedEvent -> streams[payload.streamId]?.send(payload)
                     is SendFailedEvent -> streams[payload.streamId]?.send(payload)
+                    is SpeechSynthesisStartedEvent -> streams[payload.streamId]?.send(payload)
+                    is SpeechSynthesisChunkEvent -> streams[payload.streamId]?.send(payload)
+                    is SpeechSynthesisCompletedEvent -> streams[payload.streamId]?.send(payload)
+                    is SpeechSynthesisFailedEvent -> streams[payload.streamId]?.send(payload)
+                    is LiveInterpreterStatusEvent -> routeLiveInterpreterEvent(payload.sessionId, payload)
+                    is LiveInterpreterTranscriptEvent -> routeLiveInterpreterEvent(payload.sessionId, payload)
+                    is LiveInterpreterDraftsEvent -> routeLiveInterpreterEvent(payload.sessionId, payload)
+                    is LiveInterpreterTranslationEvent -> routeLiveInterpreterEvent(payload.sessionId, payload)
+                    is LiveInterpreterStoppedEvent -> {
+                        routeLiveInterpreterEvent(payload.sessionId, payload)
+                        closeLiveInterpreterSession(payload.sessionId)
+                    }
+                    is LiveInterpreterFailedEvent -> {
+                        routeLiveInterpreterEvent(payload.sessionId, payload)
+                        closeLiveInterpreterSession(payload.sessionId)
+                    }
                 }
             }
         } catch (error: Throwable) {
@@ -150,10 +230,16 @@ internal class GromozekaWsClient(
             pending.clear()
             streams.values.forEach { it.close(error) }
             streams.clear()
+            liveInterpreterSessions.values.forEach { it.close(error) }
+            liveInterpreterSessions.clear()
             if (session === activeSession) {
                 session = null
             }
         }
+    }
+
+    private fun routeLiveInterpreterEvent(sessionId: String, payload: ServerPayload) {
+        liveInterpreterSessions[sessionId]?.trySend(payload)
     }
 
     fun close() {
@@ -164,6 +250,11 @@ internal class GromozekaWsClient(
         httpClient.close()
     }
 }
+
+internal class LiveInterpreterClientSession(
+    val sessionId: String,
+    internal val channel: Channel<ServerPayload>,
+)
 
 internal suspend inline fun <reified TRequest : ClientRequest, reified TResponse : ServerResponse> GromozekaWsClient.requestTyped(
     payload: TRequest,

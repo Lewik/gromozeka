@@ -2,6 +2,7 @@ package com.gromozeka.presentation.services
 
 import com.gromozeka.domain.model.TtsTask
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
 
 interface ScreenCaptureController {
@@ -48,6 +49,18 @@ class NoOpTtsQueue : TtsQueue {
     override suspend fun enqueue(task: TtsTask) = Unit
     override fun stopAndClear() = Unit
     override fun shutdown() = Unit
+}
+
+interface ClientAudioPlayer {
+    suspend fun playAudio(data: ByteArray, mediaType: String, fileExtension: String)
+    suspend fun playPcmStream(chunks: Flow<ByteArray>, sampleRate: Int, channels: Int, bitsPerSample: Int)
+}
+
+object NoOpClientAudioPlayer : ClientAudioPlayer {
+    override suspend fun playAudio(data: ByteArray, mediaType: String, fileExtension: String) = Unit
+    override suspend fun playPcmStream(chunks: Flow<ByteArray>, sampleRate: Int, channels: Int, bitsPerSample: Int) {
+        chunks.collect {}
+    }
 }
 
 interface PttRecordingService {

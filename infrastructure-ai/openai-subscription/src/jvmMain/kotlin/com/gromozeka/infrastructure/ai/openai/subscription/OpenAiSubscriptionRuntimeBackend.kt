@@ -85,6 +85,7 @@ private class Runtime(
                 outputItems = parsed.outputItems,
                 completed = parsed.completed,
                 conversationKey = conversationKey,
+                assistantResponseFormat = request.options.assistantResponseFormat,
             )
         } catch (error: OpenAiSubscriptionUnauthorizedException) {
             if (!retryOnUnauthorized) throw error

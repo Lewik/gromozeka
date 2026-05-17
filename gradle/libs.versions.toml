@@ -6,9 +6,6 @@ java = "21"
 kotlin = "2.2.0"
 agp = "8.10.1"
 ktor = "3.2.3"
-# Spring AI SNAPSHOT - auto-updates to latest build
-# See CLAUDE.md "Spring AI API Migration" section for migration guide
-spring-ai = "1.1.0-SNAPSHOT"
 spring-boot = "3.5.4"
 spring-dependency-management = "1.1.7"
 jetbrains-compose = "1.8.2"
@@ -40,7 +37,7 @@ uuid-creator = "5.3.7"
 neo4j-driver = "5.26.0"
 ktreesitter = "0.24.1"
 lsp4j = "0.23.1"
-openai-java = "4.13.0"
+openai-java = "4.35.0"
 anthropic-java = "2.30.0"
 aws-sdk = "2.33.1"
 mongodb-driver = "5.6.4"
@@ -67,19 +64,12 @@ ktor-server-websockets = { module = "io.ktor:ktor-server-websockets", version.re
 ktor-client-websockets = { module = "io.ktor:ktor-client-websockets", version.ref = "ktor" }
 
 # Spring
-spring-ai-bom = { module = "org.springframework.ai:spring-ai-bom", version.ref = "spring-ai" }
 spring-boot-dependencies = { module = "org.springframework.boot:spring-boot-dependencies", version.ref = "spring-boot" }
-spring-ai-openai = { module = "org.springframework.ai:spring-ai-openai", version.ref = "spring-ai" }
-spring-ai-anthropic = { module = "org.springframework.ai:spring-ai-anthropic", version.ref = "spring-ai" }
 openai-java = { module = "com.openai:openai-java", version.ref = "openai-java" }
 anthropic-java = { module = "com.anthropic:anthropic-java", version.ref = "anthropic-java" }
 anthropic-java-bedrock = { module = "com.anthropic:anthropic-java-bedrock", version.ref = "anthropic-java" }
 aws-sdk-sso = { module = "software.amazon.awssdk:sso", version.ref = "aws-sdk" }
 aws-sdk-ssooidc = { module = "software.amazon.awssdk:ssooidc", version.ref = "aws-sdk" }
-spring-ai-vertex-ai-gemini = { module = "org.springframework.ai:spring-ai-vertex-ai-gemini", version.ref = "spring-ai" }
-spring-ai-google-genai = { module = "org.springframework.ai:spring-ai-google-genai", version.ref = "spring-ai" }
-spring-ai-ollama = { module = "org.springframework.ai:spring-ai-ollama", version.ref = "spring-ai" }
-spring-ai-starter-mcp-client = { module = "org.springframework.ai:spring-ai-starter-mcp-client", version.ref = "spring-ai" }
 spring-boot-starter = { module = "org.springframework.boot:spring-boot-starter", version.ref = "spring-boot" }
 spring-boot-starter-test = { module = "org.springframework.boot:spring-boot-starter-test", version.ref = "spring-boot" }
 

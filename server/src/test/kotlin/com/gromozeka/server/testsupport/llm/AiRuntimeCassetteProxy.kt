@@ -670,6 +670,7 @@ internal data class AiRuntimeOptionsSnapshot(
     val autoCompactionThreshold: Int?,
     val toolChoice: JsonElement,
     val responseFormat: JsonElement,
+    val assistantResponseFormat: AiModelConfiguration.AssistantResponseFormat = AiModelConfiguration.AssistantResponseFormat.TEXT,
     val toolContext: JsonObject,
 )
 
@@ -764,6 +765,7 @@ private fun AiRuntimeOptions.toCassetteOptionsSnapshot(
         autoCompactionThreshold = autoCompactionThresholdTokens,
         toolChoice = toolChoice.toCassetteJson(),
         responseFormat = responseFormat.toCassetteJson(runtimeBindings),
+        assistantResponseFormat = assistantResponseFormat,
         toolContext = JsonObject(
             toolContext
                 .mapNotNull { (key, value) -> value.toJsonElement(normalize, key, runtimeBindings)?.let { key to it } }

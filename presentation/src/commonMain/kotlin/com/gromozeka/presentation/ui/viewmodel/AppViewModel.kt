@@ -354,6 +354,6 @@ open class AppViewModel(
     }
 
     private companion object {
-        val systemTabIndexes = setOf(-1, -2)
+        val systemTabIndexes = setOf(-1, -2, -3)
     }
 }

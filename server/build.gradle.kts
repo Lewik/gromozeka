@@ -22,12 +22,6 @@ java {
     }
 }
 
-dependencyManagement {
-    imports {
-        mavenBom(libs.spring.ai.bom.get().toString())
-    }
-}
-
 dependencies {
     implementation(project(":domain"))
     implementation(project(":remote-protocol"))

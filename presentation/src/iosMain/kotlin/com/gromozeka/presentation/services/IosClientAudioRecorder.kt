@@ -8,11 +8,13 @@ import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.suspendCancellableCoroutine
-import platform.AVFAudio.AVAudioQualityHigh
 import platform.AVFAudio.AVAudioRecorder
 import platform.AVFAudio.AVAudioSession
-import platform.AVFAudio.AVEncoderAudioQualityKey
+import platform.AVFAudio.AVAudioSessionCategoryRecord
 import platform.AVFAudio.AVFormatIDKey
+import platform.AVFAudio.AVLinearPCMBitDepthKey
+import platform.AVFAudio.AVLinearPCMIsBigEndianKey
+import platform.AVFAudio.AVLinearPCMIsFloatKey
 import platform.AVFAudio.AVNumberOfChannelsKey
 import platform.AVFAudio.AVSampleRateKey
 import platform.Foundation.NSFileManager
@@ -26,13 +28,17 @@ import platform.posix.fseek
 import platform.posix.ftell
 import platform.posix.rewind
 
+private const val AUDIO_FORMAT_LINEAR_PCM = 1_819_304_813
+
+@OptIn(ExperimentalForeignApi::class)
 class IosClientAudioRecorder : ClientAudioRecorder {
     override suspend fun start(scope: CoroutineScope): ClientAudioRecordingSession {
         if (!requestMicrophonePermission()) {
             error("Microphone permission denied")
         }
 
-        val fileUrl = NSURL.fileURLWithPath("${NSTemporaryDirectory()}gromozeka-${uuid7()}.m4a")
+        AVAudioSession.sharedInstance().setCategory(AVAudioSessionCategoryRecord, null)
+        val fileUrl = NSURL.fileURLWithPath("${NSTemporaryDirectory()}gromozeka-${uuid7()}.wav")
         val recorder = createRecorder(fileUrl)
         check(recorder.record()) { "Failed to start iOS audio recorder" }
 
@@ -51,10 +57,12 @@ class IosClientAudioRecorder : ClientAudioRecorder {
     @OptIn(ExperimentalForeignApi::class)
     private fun createRecorder(fileUrl: NSURL): AVAudioRecorder {
         val settings = mapOf<Any?, Any>(
-            AVFormatIDKey to 1_633_772_320,
+            AVFormatIDKey to AUDIO_FORMAT_LINEAR_PCM,
             AVSampleRateKey to 16_000.0,
             AVNumberOfChannelsKey to 1,
-            AVEncoderAudioQualityKey to AVAudioQualityHigh,
+            AVLinearPCMBitDepthKey to 16,
+            AVLinearPCMIsBigEndianKey to false,
+            AVLinearPCMIsFloatKey to false,
         )
 
         return AVAudioRecorder(fileUrl, settings, null)
@@ -75,11 +83,12 @@ private class IosClientAudioRecordingSession(
 
         return ClientRecordedAudio(
             data = data,
-            mediaType = "audio/mp4",
-            fileExtension = "m4a",
+            mediaType = "audio/wav",
+            fileExtension = "wav",
             byteSize = data.size,
             sampleRate = 16_000,
             channels = 1,
+            bitDepth = 16,
         )
     }
 

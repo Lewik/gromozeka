@@ -8,6 +8,7 @@ import androidx.compose.material.icons.filled.Face
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -104,11 +105,30 @@ fun CustomTabRow(
                 )
             }
 
-            // Session tabs with loading indicators and edit button (index 3+)
+            OptionalTooltip("Live interpreter") {
+                Tab(
+                    selected = selectedTabIndex == 3,
+                    onClick = {
+                        coroutineScope.launch {
+                            onTabSelect(-3)
+                        }
+                    },
+                    modifier = Modifier.testTag(UiTestTag.LiveTab.value),
+                    text = {
+                        Row(verticalAlignment = Alignment.Companion.CenterVertically) {
+                            Icon(Icons.Default.Mic, contentDescription = "Live")
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Live")
+                        }
+                    }
+                )
+            }
+
+            // Session tabs with loading indicators and edit button (index 4+)
             tabs.forEachIndexed { index, tab ->
                 val isLoading = tab.isWaitingForResponse.collectAsState().value
                 val tabUiState = tab.uiState.collectAsState().value
-                val tabIndex = index + 3
+                val tabIndex = index + 4
 
                 Tab(
                     selected = selectedTabIndex == tabIndex,
