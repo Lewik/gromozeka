@@ -42,7 +42,9 @@
               [
                 "evidence",
                 "raw source",
-                "сырой источник"
+                "сырой источник",
+                "what was said",
+                "what was said/seen"
               ],
               [
                 "Note"
@@ -54,6 +56,8 @@
                 "doc digest",
                 "not yet solidified",
                 "not yet hard fact",
+                "not yet cemented",
+                "cemented as a fact",
                 "промежуточ",
                 "смыслов"
               ]
