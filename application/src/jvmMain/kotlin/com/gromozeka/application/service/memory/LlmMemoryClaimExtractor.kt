@@ -11,6 +11,7 @@ import com.gromozeka.domain.model.memory.MemoryEntity
 import com.gromozeka.domain.model.memory.MemoryEntityCanonicalizationOp
 import com.gromozeka.domain.model.memory.MemoryEvidenceRef
 import com.gromozeka.domain.model.memory.MemoryPredicateCatalog
+import com.gromozeka.domain.model.memory.MemoryPredicateDefinition
 import com.gromozeka.domain.model.memory.MemoryRouteDecision
 import com.gromozeka.domain.model.memory.MemorySemanticType
 import com.gromozeka.domain.model.memory.MemoryScope
@@ -123,7 +124,7 @@ class LlmMemoryClaimExtractor(
         }
 
         val candidates = responses
-            .mapNotNull { it.toClaimCandidate(request, entityOps) }
+            .mapNotNull { it.toClaimCandidate(request, entityOps, predicateCatalog) }
 
         log.info {
             "Memory claim extractor mapped candidates: namespace=${request.namespace.value} source=${request.source.id.value} " +
@@ -169,6 +170,7 @@ class LlmMemoryClaimExtractor(
     private fun ClaimExtractorResponse.toClaimCandidate(
         request: DirectStructuredMemoryWriteRequest,
         entityOps: List<MemoryEntityCanonicalizationOp>,
+        predicateCatalog: MemoryPredicateCatalog,
     ): MemoryClaimCandidate? {
         val subjectId = subjectEntityId
             .toMemoryRefTextOrNull()
@@ -194,6 +196,18 @@ class LlmMemoryClaimExtractor(
             ?.takeIf { mappedObjectEntityId == null }
 
         if (mappedObjectEntityId == null && mappedObjectValue == null) {
+            return null
+        }
+
+        val predicateDefinition = predicateCatalog.firstOrNull { it.predicate == mappedPredicate }
+        if (predicateDefinition != null && !predicateDefinition.acceptsExtractedObject(mappedObjectEntityId, mappedObjectValue)) {
+            log.info {
+                "Memory claim extractor dropped candidate with object kind mismatch: " +
+                    "namespace=${request.namespace.value} source=${request.source.id.value} " +
+                    "predicate=${mappedPredicate.oneLineForClaimMemoryLog(120)} " +
+                    "expected=${predicateDefinition.objectKind.name} objectEntity=${mappedObjectEntityId?.value ?: "null"} " +
+                    "objectValue=${mappedObjectValue?.toString()?.oneLineForClaimMemoryLog(240) ?: "null"}"
+            }
             return null
         }
 
@@ -316,7 +330,8 @@ class LlmMemoryClaimExtractor(
             - If a message states a current/default/status value, emit that precise state claim instead of an additional generic preference/affinity claim unless the message independently asserts both.
             - For positive preference or affinity claims, prefer predicate "prefers"; keep category and strength in qualifiers_json, for example category="technology|brand|food|style|tool" and intensity="weak|normal|strong".
             - Do not invent category-specific variants such as "prefers_car_brand" for ordinary preferences; use predicate "prefers" and put category details in qualifiers_json or context_text.
-            - A shortlist, candidate set, comparison set, or alternatives under consideration is not a positive preference for each option. Extract a preference only when the target selects, endorses, defaults to, or explicitly prefers one option.
+            - A shortlist, candidate set, comparison set, or alternatives under consideration is not a positive preference for each option or for the whole set. Extract a preference only when the target selects, endorses, defaults to, or explicitly prefers one option.
+            - "I am choosing between X, Y, and Z", "I am considering X/Y/Z", "my shortlist is X/Y/Z", or "I am comparing X and Y" are not "prefers" claims. If durable, use a constraint/comparison-set claim; otherwise return zero claims.
             - For negative preferences, exclusions, dislikes, "do not recommend", or "avoid" instructions, use predicate "avoids"; include category and polarity="negative" in qualifiers_json when useful.
             - Do not convert negated negative preference into either positive preference or avoidance. "I do not dislike X", "do not treat X as something to avoid", or "X is not an anti-preference" are neutral unless the target message also states an explicit positive or negative preference.
             - For attributed viewpoints such as "Alice thinks X", "Bob believes Y", or "Carol argues Z", prefer predicate "believes" with the person as subject and the viewpoint as a string object.
@@ -325,6 +340,7 @@ class LlmMemoryClaimExtractor(
             - Do not set replaces_previous=true for historical dated facts where both old and new facts remain valid in their own time windows.
             - Preserve proper names, product names, repo names, file names, and exact quoted values.
             - Use only entity IDs listed in Resolved entities.
+            - Follow Predicate catalog object kind. If catalog says object=ENTITY, set object_entity_id and leave object_value_json null. If catalog says object=STRING, leave object_entity_id null and set object_value_json to a JSON string.
             - For project-level facts without a more specific subject entity, use the resolved current project subject entity.
             - Use scope_json to prevent over-generalization.
             - Use entity scope when the fact is about one subject; use global scope for namespace-wide preferences or policies.
@@ -502,6 +518,30 @@ private fun String.oneLineForClaimMemoryLog(maxChars: Int): String {
     }
     return oneLine.take(maxChars) + "...[truncated ${oneLine.length - maxChars} chars]"
 }
+
+private fun MemoryPredicateDefinition.acceptsExtractedObject(
+    objectEntityId: MemoryEntity.Id?,
+    objectValue: JsonElement?,
+): Boolean =
+    when (objectKind) {
+        MemoryPredicateDefinition.ObjectValueKind.ENTITY -> objectEntityId != null && objectValue == null
+        MemoryPredicateDefinition.ObjectValueKind.STRING ->
+            objectEntityId == null && objectValue is JsonPrimitive && objectValue.isString
+
+        MemoryPredicateDefinition.ObjectValueKind.NUMBER ->
+            objectEntityId == null &&
+                objectValue is JsonPrimitive &&
+                !objectValue.isString &&
+                objectValue.contentOrNull?.toDoubleOrNull() != null
+
+        MemoryPredicateDefinition.ObjectValueKind.BOOLEAN ->
+            objectEntityId == null &&
+                objectValue is JsonPrimitive &&
+                !objectValue.isString &&
+                objectValue.contentOrNull in setOf("true", "false")
+
+        MemoryPredicateDefinition.ObjectValueKind.JSON -> objectEntityId != null || objectValue != null
+    }
 
 private fun MemoryClaimCandidate.toDebugString(): String {
     return "subject=${subjectEntityId.value} predicate=$predicate objectEntity=${objectEntityId?.value ?: "null"} " +
