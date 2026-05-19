@@ -1,0 +1,393 @@
+{
+    "version": 1,
+    "hash": "d7a49b25a9c4b733b710b4301ba0de2335196619c40417d73cde09d26f65f21c",
+    "provider": "OPENAI",
+    "model": "gpt-5.3-codex",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>/projects/memory-repair-duplicate-claims",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "What runtime language does the Atlas planner sandbox use? Answer with only the language name.",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            },
+            {
+                "content": [
+                    {
+                        "call": {
+                            "input": {
+                                "mode": "automatic_hot_path",
+                                "target": "previous_user_message",
+                                "target_message_id": "<uuid>"
+                            },
+                            "name": "memory_remember"
+                        },
+                        "id": "<id>",
+                        "state": "COMPLETE",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolCall"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "ASSISTANT"
+            },
+            {
+                "content": [
+                    {
+                        "isError": false,
+                        "result": [
+                            {
+                                "content": "{\"status\":\"completed\",\"decision\":\"NOOP\",\"memory_types\":[],\"salience\":0.0,\"reason\":\"Source policy blocked structured extraction: Information-seeking question with no new durable fact, preference, or task update.\",\"source_id\":\"chat:<0>\",\"counts\":{\"predicate_definitions\":0,\"sources\":0,\"runs\":0,\"entities\":0,\"claims\":0,\"notes\":0,\"tasks\":0,\"profiles\":0,\"episodes\":0},\"runs\":[],\"claims\":[],\"notes\":[],\"tasks\":[],\"entities\":[]}",
+                                "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult.Data.Text"
+                            }
+                        ],
+                        "state": "COMPLETE",
+                        "toolName": "memory_remember",
+                        "toolUseId": "tool-call",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            },
+            {
+                "content": [
+                    {
+                        "call": {
+                            "input": {
+                                "mode": "automatic_runtime_context_enrichment",
+                                "target": "previous_user_message",
+                                "target_message_id": "<uuid>"
+                            },
+                            "name": "memory_enrich_context"
+                        },
+                        "id": "<id>",
+                        "state": "COMPLETE",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolCall"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "ASSISTANT"
+            },
+            {
+                "content": [
+                    {
+                        "isError": false,
+                        "result": [
+                            {
+                                "content": "{\"status\":\"completed\",\"need_memory\":true,\"answer_mode\":\"FACTUAL\",\"retrieved_count\":2,\"usage_guidance\":\"Selected memory is the strongest available remembered context for the target context. Use it unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message. Do not replace selected memory with guesses or general defaults. For exact quote, exact wording, source, or when-said questions, prefer complete source text from memory_context over shorter evidence excerpts.\",\"memory_context\":\"MEMORY-ONLY CONTEXT\\nThis message is not part of the real conversation and must not be stored as evidence.\\nThe retrieved memory below was selected for the immediately following user request.\\nTreat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\\nUse selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\\nDo not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and tasks for commitments.\\nIf raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\\nIf the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\\nIf the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\\nIf the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\\n\\nNamespace: project:<0>\\nAnswer mode: FACTUAL\\nRequire evidence fallback: false\\n\\nRetrieved profile:\\nnone\\n\\nRetrieved tasks:\\nnone\\n\\nRetrieved claims:\\n- claim memory-repair-duplicate-claims-fixture-1-claim-second [ACTIVE] uses_runtime_language family=fixture_duplicate_fact: The Atlas planner sandbox uses Kotlin for workflow orchestration.; scope=Atlas planner sandbox implementation facts\\n\\nRetrieved notes:\\nnone\\n\\nRetrieved evidence:\\nnot requested for this answer mode\\n\\nRetrieved entities:\\n- entity memory-repair-duplicate-claims-fixture-1-subject [PROJECT]: Atlas planner sandbox; no summary\\n\\nRetrieved episodes:\\nnone\",\"selected_refs\":[{\"type\":\"CLAIM\",\"id\":\"memory-repair-duplicate-claims-fixture-1-claim-second\",\"summary\":\"The Atlas planner sandbox uses Kotlin for workflow orchestration.\",\"predicate\":\"uses_runtime_language\",\"status\":\"ACTIVE\"},{\"type\":\"ENTITY\",\"id\":\"memory-repair-duplicate-claims-fixture-1-subject\",\"summary\":\"PROJECT:Atlas planner sandbox\"}],\"selector_decisions\":[{\"type\":\"CLAIM\",\"id\":\"memory-repair-duplicate-claims-fixture-1-claim-second\",\"selected\":true,\"rank\":1,\"reason\":\"Active factual claim directly states Atlas planner sandbox runtime language.\"},{\"type\":\"ENTITY\",\"id\":\"memory-repair-duplicate-claims-fixture-1-subject\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Entity label not needed to answer since claim is explicit and sufficient.\"}]}",
+                                "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult.Data.Text"
+                            }
+                        ],
+                        "state": "COMPLETE",
+                        "toolName": "memory_enrich_context",
+                        "toolUseId": "tool-call",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "JSON_SCHEMA",
+            "autoCompactionThreshold": 320000,
+            "maxOutputTokens": 2048,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Structured assistant response for visual UI and optional text-to-speech.",
+                "name": "gromozeka_assistant_response",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "fullText": {
+                            "description": "Complete visible answer. Markdown is allowed.",
+                            "type": "string"
+                        },
+                        "ttsText": {
+                            "description": "Short speakable main answer. Empty string means no automatic TTS.",
+                            "type": "string"
+                        },
+                        "voiceTone": {
+                            "description": "Short English voice style hint. Empty string when ttsText is empty.",
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "fullText",
+                        "ttsText",
+                        "voiceTone"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "auto"
+            },
+            "toolContext": {
+                "aiProvider": "OPENAI",
+                "conversationId": "<conversation-key>",
+                "modelName": "gpt-5.3-codex",
+                "planId": null,
+                "projectPath": "gromozeka-e2e-<id>/projects/memory-repair-duplicate-claims"
+            }
+        },
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value.",
+            "Return the assistant answer as the configured structured response.\nfullText: complete visible answer, markdown is allowed.\nttsText: short speakable main answer, or empty string when nothing should be spoken.\nvoiceTone: short English voice style hint for TTS, or empty string when ttsText is empty."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value.",
+            "Return the assistant answer as the configured structured response.\nfullText: complete visible answer, markdown is allowed.\nttsText: short speakable main answer, or empty string when nothing should be spoken.\nvoiceTone: short English voice style hint for TTS, or empty string when ttsText is empty."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "What runtime language does the Atlas planner sandbox use? Answer with only the language name.",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "ASSISTANT",
+                "content": [
+                    {
+                        "call": {
+                            "input": {
+                                "mode": "automatic_hot_path",
+                                "target": "previous_user_message",
+                                "target_message_id": "<uuid>"
+                            },
+                            "name": "memory_remember"
+                        },
+                        "id": "<id>",
+                        "state": "COMPLETE",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolCall"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {
+                    "synthetic": true,
+                    "syntheticKind": "memory",
+                    "targetMessageId": "<uuid>"
+                },
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "isError": false,
+                        "result": [
+                            {
+                                "content": "{\"status\":\"completed\",\"decision\":\"NOOP\",\"memory_types\":[],\"salience\":0.0,\"reason\":\"Source policy blocked structured extraction: Information-seeking question with no new durable fact, preference, or task update.\",\"source_id\":\"chat:<0>\",\"counts\":{\"predicate_definitions\":0,\"sources\":0,\"runs\":0,\"entities\":0,\"claims\":0,\"notes\":0,\"tasks\":0,\"profiles\":0,\"episodes\":0},\"runs\":[],\"claims\":[],\"notes\":[],\"tasks\":[],\"entities\":[]}",
+                                "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult.Data.Text"
+                            }
+                        ],
+                        "state": "COMPLETE",
+                        "toolName": "memory_remember",
+                        "toolUseId": "tool-call",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {
+                    "synthetic": true,
+                    "syntheticKind": "memory",
+                    "targetMessageId": "<uuid>"
+                },
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "ASSISTANT",
+                "content": [
+                    {
+                        "call": {
+                            "input": {
+                                "mode": "automatic_runtime_context_enrichment",
+                                "target": "previous_user_message",
+                                "target_message_id": "<uuid>"
+                            },
+                            "name": "memory_enrich_context"
+                        },
+                        "id": "<id>",
+                        "state": "COMPLETE",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolCall"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {
+                    "synthetic": true,
+                    "syntheticKind": "memory",
+                    "targetMessageId": "<uuid>"
+                },
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "isError": false,
+                        "result": [
+                            {
+                                "content": "{\"status\":\"completed\",\"need_memory\":true,\"answer_mode\":\"FACTUAL\",\"retrieved_count\":2,\"usage_guidance\":\"Selected memory is the strongest available remembered context for the target context. Use it unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message. Do not replace selected memory with guesses or general defaults. For exact quote, exact wording, source, or when-said questions, prefer complete source text from memory_context over shorter evidence excerpts.\",\"memory_context\":\"MEMORY-ONLY CONTEXT\\nThis message is not part of the real conversation and must not be stored as evidence.\\nThe retrieved memory below was selected for the immediately following user request.\\nTreat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\\nUse selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\\nDo not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and tasks for commitments.\\nIf raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\\nIf the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\\nIf the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\\nIf the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\\n\\nNamespace: project:<0>\\nAnswer mode: FACTUAL\\nRequire evidence fallback: false\\n\\nRetrieved profile:\\nnone\\n\\nRetrieved tasks:\\nnone\\n\\nRetrieved claims:\\n- claim memory-repair-duplicate-claims-fixture-1-claim-second [ACTIVE] uses_runtime_language family=fixture_duplicate_fact: The Atlas planner sandbox uses Kotlin for workflow orchestration.; scope=Atlas planner sandbox implementation facts\\n\\nRetrieved notes:\\nnone\\n\\nRetrieved evidence:\\nnot requested for this answer mode\\n\\nRetrieved entities:\\n- entity memory-repair-duplicate-claims-fixture-1-subject [PROJECT]: Atlas planner sandbox; no summary\\n\\nRetrieved episodes:\\nnone\",\"selected_refs\":[{\"type\":\"CLAIM\",\"id\":\"memory-repair-duplicate-claims-fixture-1-claim-second\",\"summary\":\"The Atlas planner sandbox uses Kotlin for workflow orchestration.\",\"predicate\":\"uses_runtime_language\",\"status\":\"ACTIVE\"},{\"type\":\"ENTITY\",\"id\":\"memory-repair-duplicate-claims-fixture-1-subject\",\"summary\":\"PROJECT:Atlas planner sandbox\"}],\"selector_decisions\":[{\"type\":\"CLAIM\",\"id\":\"memory-repair-duplicate-claims-fixture-1-claim-second\",\"selected\":true,\"rank\":1,\"reason\":\"Active factual claim directly states Atlas planner sandbox runtime language.\"},{\"type\":\"ENTITY\",\"id\":\"memory-repair-duplicate-claims-fixture-1-subject\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Entity label not needed to answer since claim is explicit and sufficient.\"}]}",
+                                "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult.Data.Text"
+                            }
+                        ],
+                        "state": "COMPLETE",
+                        "toolName": "memory_enrich_context",
+                        "toolUseId": "tool-call",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {
+                    "synthetic": true,
+                    "syntheticKind": "memory",
+                    "targetMessageId": "<uuid>"
+                },
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 2048,
+            "reasoning": null,
+            "autoCompactionThreshold": 320000,
+            "toolChoice": {
+                "type": "auto"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "gromozeka_assistant_response",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "fullText": {
+                            "description": "Complete visible answer. Markdown is allowed.",
+                            "type": "string"
+                        },
+                        "ttsText": {
+                            "description": "Short speakable main answer. Empty string means no automatic TTS.",
+                            "type": "string"
+                        },
+                        "voiceTone": {
+                            "description": "Short English voice style hint. Empty string when ttsText is empty.",
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "fullText",
+                        "ttsText",
+                        "voiceTone"
+                    ],
+                    "type": "object"
+                },
+                "description": "Structured assistant response for visual UI and optional text-to-speech.",
+                "strict": true
+            },
+            "assistantResponseFormat": "JSON_SCHEMA",
+            "toolContext": {
+                "aiProvider": "OPENAI",
+                "conversationId": "<conversation-key>",
+                "modelName": "gpt-5.3-codex",
+                "planId": null,
+                "projectPath": "gromozeka-e2e-<id>/projects/memory-repair-duplicate-claims"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "Kotlin",
+                                "ttsText": "",
+                                "voiceTone": "",
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 1159,
+                "completionTokens": 28,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

@@ -1,0 +1,393 @@
+{
+    "version": 1,
+    "hash": "2b01884b101eec630333c6b4cca932458f39a2be79960a160931f4f64a2e6011",
+    "provider": "OPENAI",
+    "model": "gpt-5.3-codex",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>/projects/predicate-policy-temporal-coexist",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "Acme project timeline: on 2026-01-05 the search service used Elasticsearch during the prototype.",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            },
+            {
+                "content": [
+                    {
+                        "call": {
+                            "input": {
+                                "mode": "automatic_hot_path",
+                                "target": "previous_user_message",
+                                "target_message_id": "<uuid>"
+                            },
+                            "name": "memory_remember"
+                        },
+                        "id": "<id>",
+                        "state": "COMPLETE",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolCall"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "ASSISTANT"
+            },
+            {
+                "content": [
+                    {
+                        "isError": false,
+                        "result": [
+                            {
+                                "content": "{\"status\":\"completed\",\"decision\":\"DIRECT_STRUCTURED_WRITE\",\"memory_types\":[\"CLAIM\"],\"salience\":0.7,\"reason\":\"Explicit, specific historical project fact with date and technology; reusable for future project context.\",\"source_id\":\"chat:<0>\",\"counts\":{\"predicate_definitions\":1,\"sources\":0,\"runs\":1,\"entities\":2,\"claims\":1,\"notes\":0,\"tasks\":0,\"profiles\":0,\"episodes\":0},\"runs\":[{\"id\":\"hot-path:run:<0>\",\"type\":\"RECONCILE_CLAIMS\",\"summary\":\"Direct structured write applied: notes=0, claims=1, tasks=0, entities=2; noop ops: notes=0, claims=0, tasks=0\"}],\"claims\":[{\"id\":\"hot-path:claim:<0>\",\"predicate\":\"uses_search_backend\",\"status\":\"ACTIVE\",\"text\":\"On 2026-01-05, the search service in the Acme project used Elasticsearch as its search backend during the prototype phase.\"}],\"notes\":[],\"tasks\":[],\"entities\":[{\"id\":\"entity:<0>\",\"type\":\"SERVICE\",\"name\":\"search service\"},{\"id\":\"entity:<1>\",\"type\":\"TECHNOLOGY\",\"name\":\"Elasticsearch\"}]}",
+                                "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult.Data.Text"
+                            }
+                        ],
+                        "state": "COMPLETE",
+                        "toolName": "memory_remember",
+                        "toolUseId": "tool-call",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            },
+            {
+                "content": [
+                    {
+                        "call": {
+                            "input": {
+                                "mode": "automatic_runtime_context_enrichment",
+                                "target": "previous_user_message",
+                                "target_message_id": "<uuid>"
+                            },
+                            "name": "memory_enrich_context"
+                        },
+                        "id": "<id>",
+                        "state": "COMPLETE",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolCall"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "ASSISTANT"
+            },
+            {
+                "content": [
+                    {
+                        "isError": false,
+                        "result": [
+                            {
+                                "content": "{\"status\":\"completed\",\"need_memory\":false,\"answer_mode\":\"FACTUAL\",\"retrieved_count\":0,\"usage_guidance\":\"Selected memory is the strongest available remembered context for the target context. Use it unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message. Do not replace selected memory with guesses or general defaults. For exact quote, exact wording, source, or when-said questions, prefer complete source text from memory_context over shorter evidence excerpts.\",\"memory_context\":\"No relevant persisted memory was retrieved for the target context.\",\"selected_refs\":[],\"selector_decisions\":[]}",
+                                "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult.Data.Text"
+                            }
+                        ],
+                        "state": "COMPLETE",
+                        "toolName": "memory_enrich_context",
+                        "toolUseId": "tool-call",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "JSON_SCHEMA",
+            "autoCompactionThreshold": 320000,
+            "maxOutputTokens": 2048,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Structured assistant response for visual UI and optional text-to-speech.",
+                "name": "gromozeka_assistant_response",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "fullText": {
+                            "description": "Complete visible answer. Markdown is allowed.",
+                            "type": "string"
+                        },
+                        "ttsText": {
+                            "description": "Short speakable main answer. Empty string means no automatic TTS.",
+                            "type": "string"
+                        },
+                        "voiceTone": {
+                            "description": "Short English voice style hint. Empty string when ttsText is empty.",
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "fullText",
+                        "ttsText",
+                        "voiceTone"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "auto"
+            },
+            "toolContext": {
+                "aiProvider": "OPENAI",
+                "conversationId": "<conversation-key>",
+                "modelName": "gpt-5.3-codex",
+                "planId": null,
+                "projectPath": "gromozeka-e2e-<id>/projects/predicate-policy-temporal-coexist"
+            }
+        },
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value.",
+            "Return the assistant answer as the configured structured response.\nfullText: complete visible answer, markdown is allowed.\nttsText: short speakable main answer, or empty string when nothing should be spoken.\nvoiceTone: short English voice style hint for TTS, or empty string when ttsText is empty."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value.",
+            "Return the assistant answer as the configured structured response.\nfullText: complete visible answer, markdown is allowed.\nttsText: short speakable main answer, or empty string when nothing should be spoken.\nvoiceTone: short English voice style hint for TTS, or empty string when ttsText is empty."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "Acme project timeline: on 2026-01-05 the search service used Elasticsearch during the prototype.",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "ASSISTANT",
+                "content": [
+                    {
+                        "call": {
+                            "input": {
+                                "mode": "automatic_hot_path",
+                                "target": "previous_user_message",
+                                "target_message_id": "<uuid>"
+                            },
+                            "name": "memory_remember"
+                        },
+                        "id": "<id>",
+                        "state": "COMPLETE",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolCall"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {
+                    "synthetic": true,
+                    "syntheticKind": "memory",
+                    "targetMessageId": "<uuid>"
+                },
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "isError": false,
+                        "result": [
+                            {
+                                "content": "{\"status\":\"completed\",\"decision\":\"DIRECT_STRUCTURED_WRITE\",\"memory_types\":[\"CLAIM\"],\"salience\":0.7,\"reason\":\"Explicit, specific historical project fact with date and technology; reusable for future project context.\",\"source_id\":\"chat:<0>\",\"counts\":{\"predicate_definitions\":1,\"sources\":0,\"runs\":1,\"entities\":2,\"claims\":1,\"notes\":0,\"tasks\":0,\"profiles\":0,\"episodes\":0},\"runs\":[{\"id\":\"hot-path:run:<0>\",\"type\":\"RECONCILE_CLAIMS\",\"summary\":\"Direct structured write applied: notes=0, claims=1, tasks=0, entities=2; noop ops: notes=0, claims=0, tasks=0\"}],\"claims\":[{\"id\":\"hot-path:claim:<0>\",\"predicate\":\"uses_search_backend\",\"status\":\"ACTIVE\",\"text\":\"On 2026-01-05, the search service in the Acme project used Elasticsearch as its search backend during the prototype phase.\"}],\"notes\":[],\"tasks\":[],\"entities\":[{\"id\":\"entity:<0>\",\"type\":\"SERVICE\",\"name\":\"search service\"},{\"id\":\"entity:<1>\",\"type\":\"TECHNOLOGY\",\"name\":\"Elasticsearch\"}]}",
+                                "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult.Data.Text"
+                            }
+                        ],
+                        "state": "COMPLETE",
+                        "toolName": "memory_remember",
+                        "toolUseId": "tool-call",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {
+                    "synthetic": true,
+                    "syntheticKind": "memory",
+                    "targetMessageId": "<uuid>"
+                },
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "ASSISTANT",
+                "content": [
+                    {
+                        "call": {
+                            "input": {
+                                "mode": "automatic_runtime_context_enrichment",
+                                "target": "previous_user_message",
+                                "target_message_id": "<uuid>"
+                            },
+                            "name": "memory_enrich_context"
+                        },
+                        "id": "<id>",
+                        "state": "COMPLETE",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolCall"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {
+                    "synthetic": true,
+                    "syntheticKind": "memory",
+                    "targetMessageId": "<uuid>"
+                },
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "isError": false,
+                        "result": [
+                            {
+                                "content": "{\"status\":\"completed\",\"need_memory\":false,\"answer_mode\":\"FACTUAL\",\"retrieved_count\":0,\"usage_guidance\":\"Selected memory is the strongest available remembered context for the target context. Use it unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message. Do not replace selected memory with guesses or general defaults. For exact quote, exact wording, source, or when-said questions, prefer complete source text from memory_context over shorter evidence excerpts.\",\"memory_context\":\"No relevant persisted memory was retrieved for the target context.\",\"selected_refs\":[],\"selector_decisions\":[]}",
+                                "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult.Data.Text"
+                            }
+                        ],
+                        "state": "COMPLETE",
+                        "toolName": "memory_enrich_context",
+                        "toolUseId": "tool-call",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {
+                    "synthetic": true,
+                    "syntheticKind": "memory",
+                    "targetMessageId": "<uuid>"
+                },
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 2048,
+            "reasoning": null,
+            "autoCompactionThreshold": 320000,
+            "toolChoice": {
+                "type": "auto"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "gromozeka_assistant_response",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "fullText": {
+                            "description": "Complete visible answer. Markdown is allowed.",
+                            "type": "string"
+                        },
+                        "ttsText": {
+                            "description": "Short speakable main answer. Empty string means no automatic TTS.",
+                            "type": "string"
+                        },
+                        "voiceTone": {
+                            "description": "Short English voice style hint. Empty string when ttsText is empty.",
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "fullText",
+                        "ttsText",
+                        "voiceTone"
+                    ],
+                    "type": "object"
+                },
+                "description": "Structured assistant response for visual UI and optional text-to-speech.",
+                "strict": true
+            },
+            "assistantResponseFormat": "JSON_SCHEMA",
+            "toolContext": {
+                "aiProvider": "OPENAI",
+                "conversationId": "<conversation-key>",
+                "modelName": "gpt-5.3-codex",
+                "planId": null,
+                "projectPath": "gromozeka-e2e-<id>/projects/predicate-policy-temporal-coexist"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "Got it — noted: on **2026-01-05**, the Acme project’s search service used **Elasticsearch** during the prototype.",
+                                "ttsText": "Got it, noted.",
+                                "voiceTone": "neutral",
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 828,
+                "completionTokens": 60,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

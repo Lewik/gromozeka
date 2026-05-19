@@ -1,0 +1,273 @@
+{
+    "version": 1,
+    "hash": "451b296cf340f608e68f847532376b61058d2a4db8f4fc7bef654d197f4cd381",
+    "provider": "OPENAI",
+    "model": "gpt-5.3-codex",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>/projects/handoff-architecture-document-ingestion",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: MemoryRouter v3.\n        Current time: <instant>\n        Timezone: Asia/Jerusalem\n        Namespace: project:<0>\n\n        Stage instructions:\n        You are MemoryRouter v3 for a long-term AI agent.\n\nYour job is to decide whether the latest turns contain durable information worth storing in long-term memory, and if so, which write mode to use.\n\nReturn JSON:\n{\n  \"decision\": \"noop | direct_structured_write | note_write | mixed | forget_request\",\n  \"memory_types\": [\"claim\", \"note\", \"task\", \"profile\", \"source\"],\n  \"salience\": 0.0,\n  \"source_policy\": {\n    \"allow_structured_extraction\": true,\n    \"allow_recall\": true,\n    \"allow_evidence_hydration\": true,\n    \"reason\": \"short source usage explanation\"\n  },\n  \"source_search_text\": \"English search-only paraphrase of TARGET_MESSAGE, or empty string\",\n  \"reason\": \"short explanation\"\n}\n\nCore definitions:\n- Current-turn execution command: an instruction for the assistant to act now in this chat/codebase, such as edit this, clean this up, run tests, commit and push, do the second wave, or finish it. It is audit-only by default.\n- Durable task memory: a follow-up/todo/commitment that must be remembered after this turn, or an explicit lifecycle update to an existing stored task, such as keep an open task, close the follow-up, cancel the todo, unblock the task, or mark it done.\n- Durable claim/rule: a stable reusable fact, preference, constraint, workflow rule, project state, or user requirement. It is not merely a one-time instruction to execute now.\n- Note memory: reusable rationale, trade-offs, design direction, lesson, procedure, or document digest. It is not a transcript summary of the current instruction.\n\nDecision policy:\n- \"noop\" for greetings, filler, repetition, low-value chatter, and transient content.\n- \"direct_structured_write\" for explicit durable facts, stable preferences, reusable rules, clear durable status changes, deadlines, commitments, and durable task lifecycle commands.\n- \"note_write\" for rationale, trade-offs, design direction, evolving plans, local conclusions, lessons, and document digests.\n- \"mixed\" when the material contains both structured facts/tasks and richer rationale/context.\n- \"forget_request\" when TARGET_MESSAGE explicitly asks to forget, remove, delete, or stop remembering previously stored information.\n- Include memory_type \"task\" only when TARGET_MESSAGE explicitly creates, repeats, updates, closes, cancels, blocks, unblocks, reprioritizes, or assigns a durable follow-up/task/todo.\n- Do not include memory_type \"task\" for a normal implementation command unless the target explicitly says it should be tracked after this turn.\n- Do not include memory_type \"claim\" for a task lifecycle command unless TARGET_MESSAGE independently asserts a stable reusable fact/rule.\n- Do not include memory_type \"note\" merely to summarize a one-off command.\n- Include memory_type \"source\" for \"forget_request\".\n- Attributed viewpoints such as \"Alice thinks X\" or \"Bob says Y\" are claim-worthy because the durable fact is the attribution, even when X and Y conflict.\n- A single weak uncertain observation without rationale, decision, plan, lesson, or reusable analysis should usually be \"noop\", not \"note_write\" or \"direct_structured_write\".\n- A current-turn execution command such as \"edit it\", \"clean it up\", \"run tests\", \"commit and push\", \"do the second wave\", or \"finish it\" is usually \"noop\" with audit-only source policy unless it explicitly changes a tracked task or states a durable rule/fact.\n\nSource policy:\n- Default source_policy allows structured extraction, recall, and evidence hydration for non-noop memory-worthy sources.\n- For low-value \"noop\" greetings, filler, pure repetition, and no-content chatter, keep the source only as audit material:\n  allow_structured_extraction=false, allow_recall=false, allow_evidence_hydration=false.\n- For current-turn execution commands with no durable assertion and no stored-task lifecycle update, keep the source only as audit material:\n  allow_structured_extraction=false, allow_recall=false, allow_evidence_hydration=false.\n- For \"noop\" user statements that are not durable enough for structured memory but still contain a concrete name, source wording, uncertainty, attribution, or a soft observation the user may later ask about, keep them as recallable source-only memory:\n  allow_structured_extraction=false, allow_recall=true, allow_evidence_hydration=true.\n- If the target explicitly says the content should not be remembered, stored, or treated as a fact/preference/project fact, keep the source only as audit material:\n  allow_structured_extraction=false, allow_recall=false, allow_evidence_hydration=false.\n- For \"forget_request\", keep the forget command as audit material only:\n  allow_structured_extraction=false, allow_recall=false, allow_evidence_hydration=false.\n- Questions, probes, and \"I remember X, is that still true?\" turns are not evidence of X. If they contain no new durable assertion, route \"noop\" and make them audit-only.\n- Recall/probe questions about existing memory are \"noop\" even if they include answer-shaping instructions such as \"keep it short\", \"answer briefly\", or \"answer with only the value\".\n- Examples of audit-only noop targets: \"How should you adapt your answer style for me?\", \"What do you remember about my preferences?\", \"Which open follow-up exists?\", \"What database does this project use?\".\n- A question becomes write-worthy only when TARGET_MESSAGE also asserts new durable content or explicitly asks to remember/update/forget a memory.\n- If the target is a quoted diagnostic/repeat-only instruction and says not to remember it, also set all three source policy gates to false.\n- If the target is a normal correction, disagreement, retraction, or clarification, do not block source usage; route the correction as durable memory when appropriate.\n\nSource search bridge:\n- Always return source_search_text.\n- source_search_text is derived search/index text only, never evidence.\n- Use concise English even when TARGET_MESSAGE is in another language.\n- Preserve important names, product names, dates, identifiers, and exact entities.\n- Include uncertainty, negation, correction, and attribution markers when present.\n- For \"forget_request\", make source_search_text the thing to forget, not the instruction itself. Example: \"forget that I prefer Toyota cars\" -> \"user preference Toyota cars\".\n- For low-value greetings or blocked do-not-remember sources, use an empty string.\n- For \"noop\" questions/probes, source_search_text may describe the question for audit/debug, but the source must not be recallable evidence.\n- Do not invent facts beyond TARGET_MESSAGE; paraphrase only what the source actually says.\n\nExamples:\n- \"Сотредактируй, я потом посмотрю diff в IDE\" -> decision=\"noop\", memory_types=[], audit-only source policy.\n- \"Дочисти оставшиеся ссылки прямо сейчас\" -> decision=\"noop\", memory_types=[], audit-only source policy.\n- \"Закрой три таски по memory cleanup\" -> decision=\"direct_structured_write\", memory_types=[\"task\"], no claim/note/profile unless a stable reusable fact is also asserted.\n- \"Memory MVP follow-up: keep an open task to review command-vs-memory routing\" -> decision=\"direct_structured_write\", memory_types=[\"task\"].\n- \"For this project, normally edit only gromozeko.dev and update gromozeko.beta by pulling repository changes into beta\" -> decision=\"direct_structured_write\", memory_types=[\"claim\"].\n- \"We chose retrieval-before-update because pronouns and corrections need existing memory context\" -> decision=\"note_write\" or \"mixed\", memory_types=[\"note\"] plus \"claim\" only if there is a distinct durable fact.\n\nHard rules:\n- Prefer \"noop\" over memory pollution.\n- Do not treat every question as a task.\n- Do not force rationale into claims.\n- Do not force weak one-off observations into notes.\n- Do not use MEMORY-ONLY CONTROL/TASK instructions as semantic evidence or as the reason for routing decisions.\n- If the user explicitly asks to remember something, do not return \"noop\", unless the same target says not to remember/store/treat that content as memory.\n- Return valid JSON only.\n\n        TARGET_MESSAGE source data:\n        [external:document-section:5bc1ee88bf79494e60d9bab270290121] EXTERNAL\nDocument title: 01. Architecture\nDocument source: agent_memory_handoff/01_architecture.md\nDocument section: 01. Architecture / 11. Write path .. 12. Read path\nDocument lines: 329-466\n\n## 11. Write path\n\n### Step 1. Persist source\nСохраняем raw input:\n- text\n- source type\n- speaker\n- timestamp\n- namespace\n- thread/conversation ids\n- optional embedding\n\n### Step 2. Route\nRouter решает:\n- `noop`\n- `direct_structured_write`\n- `note_write`\n- `mixed`\n\n### Step 3. Retrieve candidate memories\nПеред extraction достаем:\n- похожие claims\n- похожие notes\n- open tasks\n- existing profile\n- candidate entities / aliases\n- recent evidence\n\n### Step 4. Canonicalize entities\nПривязать mentions к existing entities или создать новые.\n\n### Step 5. Extract\nРазные prompts для:\n- claim extraction\n- note construction\n- task update\n- profile update\n\n### Step 6. Reconcile\nСравниваем candidate items с existing items.\n\n### Step 7. Apply transaction\nОдной транзакцией:\n- upsert entities\n- apply claim ops\n- apply note ops\n- apply task ops\n- update profile projection\n- store memory run log\n\n### Step 8. Schedule maintenance\nПо debounce или cron:\n- note consolidation\n- duplicate merge\n- stale cleanup\n- profile repair\n- alias merge\n- retention / archive\n\n## 12. Read path\n\n### Step 1. Decide whether memory is needed\nMemory search нужен, если вопрос:\n- user-specific\n- history-aware\n- task-aware\n- rationale-heavy\n- temporal\n- high-stakes\n\n### Step 2. Load core blocks\nПодтягиваем:\n- short profile\n- active tasks\n- optional session summary\n\n### Step 3. Choose retrieval mode\n\n#### Claim-first\nДля:\n- factual questions\n- preferences\n- current status\n- short “кто/что/когда”\n\n#### Note-first\nДля:\n- “почему решили?”\n- “к чему склонялись?”\n- “что обсуждали?”\n- “какой паттерн уже был?”\n\n#### Mixed\nДля:\n- factual + rationale\n- history + current state\n- task with supporting discussion\n\n#### Evidence-first / evidence-fallback\nДля:\n- конфликтов\n- запросов на подтверждение / цитату\n- высокой ставки\n\n### Step 4. Respect retrieval budget\n`v3` требует явных budget caps.\n\nРекомендуемый старт:\n\n- `factual`\n  - up to `6 claims`\n  - up to `2 tasks`\n  - up to `2 evidence snippets`\n\n- `rationale`\n  - up to `4 notes`\n  - up to `2 claims`\n  - up to `4 evidence snippets`\n\n- `task`\n  - up to `4 tasks`\n  - up to `2 notes`\n  - up to `2 evidence snippets`\n\n- `mixed`\n  - up to `4 claims`\n  - up to `3 notes`\n  - up to `2 tasks`\n  - up to `3 evidence snippets`\n\n### Step 5. Compose answer\nAnswer composer обязан:\n- различать verified vs provisional\n- учитывать conflicts\n- уважать scope boundaries\n- уметь abstain\n- не выдавать note как hard fact без оговорки",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 2400,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Route one target conversation message into a memory write decision.",
+                "name": "memory_write_router",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "decision": {
+                            "enum": [
+                                "noop",
+                                "direct_structured_write",
+                                "note_write",
+                                "mixed",
+                                "forget_request"
+                            ],
+                            "type": "string"
+                        },
+                        "memory_types": {
+                            "items": {
+                                "enum": [
+                                    "claim",
+                                    "note",
+                                    "task",
+                                    "profile",
+                                    "source"
+                                ],
+                                "type": "string"
+                            },
+                            "type": "array"
+                        },
+                        "reason": {
+                            "type": "string"
+                        },
+                        "salience": {
+                            "type": "number"
+                        },
+                        "source_policy": {
+                            "additionalProperties": false,
+                            "properties": {
+                                "allow_evidence_hydration": {
+                                    "type": "boolean"
+                                },
+                                "allow_recall": {
+                                    "type": "boolean"
+                                },
+                                "allow_structured_extraction": {
+                                    "type": "boolean"
+                                },
+                                "reason": {
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "allow_structured_extraction",
+                                "allow_recall",
+                                "allow_evidence_hydration",
+                                "reason"
+                            ],
+                            "type": "object"
+                        },
+                        "source_search_text": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "decision",
+                        "memory_types",
+                        "salience",
+                        "source_policy",
+                        "source_search_text",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "memoryNamespace": "project:<0>",
+                "memoryRouter": true,
+                "memorySourceId": "external:document-section:5bc1ee88bf79494e60d9bab270290121"
+            }
+        },
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: MemoryRouter v3.\n        Current time: <instant>\n        Timezone: Asia/Jerusalem\n        Namespace: project:<0>\n\n        Stage instructions:\n        You are MemoryRouter v3 for a long-term AI agent.\n\nYour job is to decide whether the latest turns contain durable information worth storing in long-term memory, and if so, which write mode to use.\n\nReturn JSON:\n{\n  \"decision\": \"noop | direct_structured_write | note_write | mixed | forget_request\",\n  \"memory_types\": [\"claim\", \"note\", \"task\", \"profile\", \"source\"],\n  \"salience\": 0.0,\n  \"source_policy\": {\n    \"allow_structured_extraction\": true,\n    \"allow_recall\": true,\n    \"allow_evidence_hydration\": true,\n    \"reason\": \"short source usage explanation\"\n  },\n  \"source_search_text\": \"English search-only paraphrase of TARGET_MESSAGE, or empty string\",\n  \"reason\": \"short explanation\"\n}\n\nCore definitions:\n- Current-turn execution command: an instruction for the assistant to act now in this chat/codebase, such as edit this, clean this up, run tests, commit and push, do the second wave, or finish it. It is audit-only by default.\n- Durable task memory: a follow-up/todo/commitment that must be remembered after this turn, or an explicit lifecycle update to an existing stored task, such as keep an open task, close the follow-up, cancel the todo, unblock the task, or mark it done.\n- Durable claim/rule: a stable reusable fact, preference, constraint, workflow rule, project state, or user requirement. It is not merely a one-time instruction to execute now.\n- Note memory: reusable rationale, trade-offs, design direction, lesson, procedure, or document digest. It is not a transcript summary of the current instruction.\n\nDecision policy:\n- \"noop\" for greetings, filler, repetition, low-value chatter, and transient content.\n- \"direct_structured_write\" for explicit durable facts, stable preferences, reusable rules, clear durable status changes, deadlines, commitments, and durable task lifecycle commands.\n- \"note_write\" for rationale, trade-offs, design direction, evolving plans, local conclusions, lessons, and document digests.\n- \"mixed\" when the material contains both structured facts/tasks and richer rationale/context.\n- \"forget_request\" when TARGET_MESSAGE explicitly asks to forget, remove, delete, or stop remembering previously stored information.\n- Include memory_type \"task\" only when TARGET_MESSAGE explicitly creates, repeats, updates, closes, cancels, blocks, unblocks, reprioritizes, or assigns a durable follow-up/task/todo.\n- Do not include memory_type \"task\" for a normal implementation command unless the target explicitly says it should be tracked after this turn.\n- Do not include memory_type \"claim\" for a task lifecycle command unless TARGET_MESSAGE independently asserts a stable reusable fact/rule.\n- Do not include memory_type \"note\" merely to summarize a one-off command.\n- Include memory_type \"source\" for \"forget_request\".\n- Attributed viewpoints such as \"Alice thinks X\" or \"Bob says Y\" are claim-worthy because the durable fact is the attribution, even when X and Y conflict.\n- A single weak uncertain observation without rationale, decision, plan, lesson, or reusable analysis should usually be \"noop\", not \"note_write\" or \"direct_structured_write\".\n- A current-turn execution command such as \"edit it\", \"clean it up\", \"run tests\", \"commit and push\", \"do the second wave\", or \"finish it\" is usually \"noop\" with audit-only source policy unless it explicitly changes a tracked task or states a durable rule/fact.\n\nSource policy:\n- Default source_policy allows structured extraction, recall, and evidence hydration for non-noop memory-worthy sources.\n- For low-value \"noop\" greetings, filler, pure repetition, and no-content chatter, keep the source only as audit material:\n  allow_structured_extraction=false, allow_recall=false, allow_evidence_hydration=false.\n- For current-turn execution commands with no durable assertion and no stored-task lifecycle update, keep the source only as audit material:\n  allow_structured_extraction=false, allow_recall=false, allow_evidence_hydration=false.\n- For \"noop\" user statements that are not durable enough for structured memory but still contain a concrete name, source wording, uncertainty, attribution, or a soft observation the user may later ask about, keep them as recallable source-only memory:\n  allow_structured_extraction=false, allow_recall=true, allow_evidence_hydration=true.\n- If the target explicitly says the content should not be remembered, stored, or treated as a fact/preference/project fact, keep the source only as audit material:\n  allow_structured_extraction=false, allow_recall=false, allow_evidence_hydration=false.\n- For \"forget_request\", keep the forget command as audit material only:\n  allow_structured_extraction=false, allow_recall=false, allow_evidence_hydration=false.\n- Questions, probes, and \"I remember X, is that still true?\" turns are not evidence of X. If they contain no new durable assertion, route \"noop\" and make them audit-only.\n- Recall/probe questions about existing memory are \"noop\" even if they include answer-shaping instructions such as \"keep it short\", \"answer briefly\", or \"answer with only the value\".\n- Examples of audit-only noop targets: \"How should you adapt your answer style for me?\", \"What do you remember about my preferences?\", \"Which open follow-up exists?\", \"What database does this project use?\".\n- A question becomes write-worthy only when TARGET_MESSAGE also asserts new durable content or explicitly asks to remember/update/forget a memory.\n- If the target is a quoted diagnostic/repeat-only instruction and says not to remember it, also set all three source policy gates to false.\n- If the target is a normal correction, disagreement, retraction, or clarification, do not block source usage; route the correction as durable memory when appropriate.\n\nSource search bridge:\n- Always return source_search_text.\n- source_search_text is derived search/index text only, never evidence.\n- Use concise English even when TARGET_MESSAGE is in another language.\n- Preserve important names, product names, dates, identifiers, and exact entities.\n- Include uncertainty, negation, correction, and attribution markers when present.\n- For \"forget_request\", make source_search_text the thing to forget, not the instruction itself. Example: \"forget that I prefer Toyota cars\" -> \"user preference Toyota cars\".\n- For low-value greetings or blocked do-not-remember sources, use an empty string.\n- For \"noop\" questions/probes, source_search_text may describe the question for audit/debug, but the source must not be recallable evidence.\n- Do not invent facts beyond TARGET_MESSAGE; paraphrase only what the source actually says.\n\nExamples:\n- \"Сотредактируй, я потом посмотрю diff в IDE\" -> decision=\"noop\", memory_types=[], audit-only source policy.\n- \"Дочисти оставшиеся ссылки прямо сейчас\" -> decision=\"noop\", memory_types=[], audit-only source policy.\n- \"Закрой три таски по memory cleanup\" -> decision=\"direct_structured_write\", memory_types=[\"task\"], no claim/note/profile unless a stable reusable fact is also asserted.\n- \"Memory MVP follow-up: keep an open task to review command-vs-memory routing\" -> decision=\"direct_structured_write\", memory_types=[\"task\"].\n- \"For this project, normally edit only gromozeko.dev and update gromozeko.beta by pulling repository changes into beta\" -> decision=\"direct_structured_write\", memory_types=[\"claim\"].\n- \"We chose retrieval-before-update because pronouns and corrections need existing memory context\" -> decision=\"note_write\" or \"mixed\", memory_types=[\"note\"] plus \"claim\" only if there is a distinct durable fact.\n\nHard rules:\n- Prefer \"noop\" over memory pollution.\n- Do not treat every question as a task.\n- Do not force rationale into claims.\n- Do not force weak one-off observations into notes.\n- Do not use MEMORY-ONLY CONTROL/TASK instructions as semantic evidence or as the reason for routing decisions.\n- If the user explicitly asks to remember something, do not return \"noop\", unless the same target says not to remember/store/treat that content as memory.\n- Return valid JSON only.\n\n        TARGET_MESSAGE source data:\n        [external:document-section:5bc1ee88bf79494e60d9bab270290121] EXTERNAL\nDocument title: 01. Architecture\nDocument source: agent_memory_handoff/01_architecture.md\nDocument section: 01. Architecture / 11. Write path .. 12. Read path\nDocument lines: 329-466\n\n## 11. Write path\n\n### Step 1. Persist source\nСохраняем raw input:\n- text\n- source type\n- speaker\n- timestamp\n- namespace\n- thread/conversation ids\n- optional embedding\n\n### Step 2. Route\nRouter решает:\n- `noop`\n- `direct_structured_write`\n- `note_write`\n- `mixed`\n\n### Step 3. Retrieve candidate memories\nПеред extraction достаем:\n- похожие claims\n- похожие notes\n- open tasks\n- existing profile\n- candidate entities / aliases\n- recent evidence\n\n### Step 4. Canonicalize entities\nПривязать mentions к existing entities или создать новые.\n\n### Step 5. Extract\nРазные prompts для:\n- claim extraction\n- note construction\n- task update\n- profile update\n\n### Step 6. Reconcile\nСравниваем candidate items с existing items.\n\n### Step 7. Apply transaction\nОдной транзакцией:\n- upsert entities\n- apply claim ops\n- apply note ops\n- apply task ops\n- update profile projection\n- store memory run log\n\n### Step 8. Schedule maintenance\nПо debounce или cron:\n- note consolidation\n- duplicate merge\n- stale cleanup\n- profile repair\n- alias merge\n- retention / archive\n\n## 12. Read path\n\n### Step 1. Decide whether memory is needed\nMemory search нужен, если вопрос:\n- user-specific\n- history-aware\n- task-aware\n- rationale-heavy\n- temporal\n- high-stakes\n\n### Step 2. Load core blocks\nПодтягиваем:\n- short profile\n- active tasks\n- optional session summary\n\n### Step 3. Choose retrieval mode\n\n#### Claim-first\nДля:\n- factual questions\n- preferences\n- current status\n- short “кто/что/когда”\n\n#### Note-first\nДля:\n- “почему решили?”\n- “к чему склонялись?”\n- “что обсуждали?”\n- “какой паттерн уже был?”\n\n#### Mixed\nДля:\n- factual + rationale\n- history + current state\n- task with supporting discussion\n\n#### Evidence-first / evidence-fallback\nДля:\n- конфликтов\n- запросов на подтверждение / цитату\n- высокой ставки\n\n### Step 4. Respect retrieval budget\n`v3` требует явных budget caps.\n\nРекомендуемый старт:\n\n- `factual`\n  - up to `6 claims`\n  - up to `2 tasks`\n  - up to `2 evidence snippets`\n\n- `rationale`\n  - up to `4 notes`\n  - up to `2 claims`\n  - up to `4 evidence snippets`\n\n- `task`\n  - up to `4 tasks`\n  - up to `2 notes`\n  - up to `2 evidence snippets`\n\n- `mixed`\n  - up to `4 claims`\n  - up to `3 notes`\n  - up to `2 tasks`\n  - up to `3 evidence snippets`\n\n### Step 5. Compose answer\nAnswer composer обязан:\n- различать verified vs provisional\n- учитывать conflicts\n- уважать scope boundaries\n- уметь abstain\n- не выдавать note как hard fact без оговорки",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 2400,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "memory_write_router",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "decision": {
+                            "enum": [
+                                "noop",
+                                "direct_structured_write",
+                                "note_write",
+                                "mixed",
+                                "forget_request"
+                            ],
+                            "type": "string"
+                        },
+                        "memory_types": {
+                            "items": {
+                                "enum": [
+                                    "claim",
+                                    "note",
+                                    "task",
+                                    "profile",
+                                    "source"
+                                ],
+                                "type": "string"
+                            },
+                            "type": "array"
+                        },
+                        "reason": {
+                            "type": "string"
+                        },
+                        "salience": {
+                            "type": "number"
+                        },
+                        "source_policy": {
+                            "additionalProperties": false,
+                            "properties": {
+                                "allow_evidence_hydration": {
+                                    "type": "boolean"
+                                },
+                                "allow_recall": {
+                                    "type": "boolean"
+                                },
+                                "allow_structured_extraction": {
+                                    "type": "boolean"
+                                },
+                                "reason": {
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "allow_structured_extraction",
+                                "allow_recall",
+                                "allow_evidence_hydration",
+                                "reason"
+                            ],
+                            "type": "object"
+                        },
+                        "source_search_text": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "decision",
+                        "memory_types",
+                        "salience",
+                        "source_policy",
+                        "source_search_text",
+                        "reason"
+                    ],
+                    "type": "object"
+                },
+                "description": "Route one target conversation message into a memory write decision.",
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "memoryNamespace": "project:<0>",
+                "memoryRouter": true,
+                "memorySourceId": "external:document-section:5bc1ee88bf79494e60d9bab270290121"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"decision\":\"note_write\",\"memory_types\":[\"note\"],\"reason\":\"This is durable technical guidance and process rationale suitable as reusable notes rather than a transient command or personal preference.\",\"salience\":0.84,\"source_policy\":{\"allow_evidence_hydration\":true,\"allow_recall\":true,\"allow_structured_extraction\":true,\"reason\":\"Architecture section provides durable reusable design procedures for memory write/read paths.\"},\"source_search_text\":\"Architecture document describes memory system write path and read path: persist source, route, retrieve candidates, canonicalize entities, extract, reconcile, apply transaction, schedule maintenance; read path includes deciding need, loading core blocks, retrieval modes (claim-first, note-first, mixed, evidence-first), retrieval budget caps, and answer composition rules.\"}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 2738,
+                "completionTokens": 164,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

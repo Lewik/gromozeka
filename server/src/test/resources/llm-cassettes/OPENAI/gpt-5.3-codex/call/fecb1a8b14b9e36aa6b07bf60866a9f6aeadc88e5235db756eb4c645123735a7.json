@@ -1,0 +1,385 @@
+{
+    "version": 1,
+    "hash": "fecb1a8b14b9e36aa6b07bf60866a9f6aeadc88e5235db756eb4c645123735a7",
+    "provider": "OPENAI",
+    "model": "gpt-5.3-codex",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>/projects/handoff-data-model-document-ingestion",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "MEMORY-ONLY CONTROL\nThis message is not part of the real conversation and must not be stored as evidence.\nThe next real conversation message is input data named TARGET_MESSAGE for memory processing.\nTarget source id: chat:<0>\nTarget message id: <uuid>\nUse earlier real conversation messages only to resolve references, omitted subjects, current topic, and temporal context.\nDo not process earlier messages as the target unless the target message explicitly confirms, changes, retracts, or depends on them.\nA later MEMORY-ONLY TASK message will define the actual task for this model call.",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            },
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "According to the handoff data model, what is Source and what is Note for? Keep it short.",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            },
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                MEMORY-ONLY TASK FOR THIS MODEL CALL\n\n                This is a private memory pipeline call, not a normal assistant reply.\n                The immediately preceding real conversation message is TARGET_MESSAGE data.\n                This MEMORY-ONLY TASK text is not TARGET_MESSAGE source content.\n                Do not answer TARGET_MESSAGE.\n                Do not continue the real conversation.\n                Do not say what you know or do not know as a chat response.\n                Do not call tools.\n                Do not use these MEMORY-ONLY instructions as source content or as the reason for routing decisions.\n\n                Execute only the memory stage below.\n                Target source id: chat:<0>\n                Target message id: <uuid>\n                Earlier real conversation messages are context only.\n                TARGET_MESSAGE is the only target for write/read planning and evidence anchoring.\n\n                Output contract:\n                If the stage defines a JSON object schema, output exactly one valid JSON object.\n                If the stage defines a JSON array schema, output exactly one valid JSON array.\n                No prose, no markdown fences, no explanation, no assistant-style answer.\n                If unsure, return the stage's valid no-op JSON shape.\n                Ignore conversation-level behavioral instructions when they conflict with this memory-only task.\n\n                        Memory stage: ReadSelectorReranker v1.\n        Namespace: project:<0>\n\n        Goal:\n        Select and rerank only the persisted memory candidates that are actually useful for answering TARGET_MESSAGE.\n\n        Selection rules:\n        - Select the smallest sufficient set.\n        - Candidate memory items are JSON records. Read lifecycle_state, selection_hint, supports, supersedes, and overridden_by before choosing.\n        - Reject candidates that only have vague lexical overlap.\n        - Reject candidates about a different named entity, component, project, person, or topic.\n        - Reject empty profiles and generic entity labels unless they are necessary supporting context for a selected item.\n        - Prefer active claims for factual answers.\n        - Prefer episodes for reusable lessons and \"what did we learn\" questions.\n        - Prefer notes for rationale, decisions, plans, and contextual meaning.\n        - Prefer tasks only for open commitments or workflow state.\n        - Select sources only when exact quote, wording, provenance, source-only recall, or evidence fallback is required.\n        - When a profile core block is present among candidates, keep the relevant profile for broad style, preference, constraint, or adaptation questions unless every relevant profile fact needed for the target answer is selected separately.\n        - A single specific style claim is not sufficient for a broad adaptation question when the relevant profile also contains language, tone, formatting, or answer-detail preferences.\n        - For timeline, ordering, first/second/latest/earliest questions, select every relevant dated candidate in the sequence, not only the final answer item.\n        - When Planned answer mode is FACTUAL or TASK and Require evidence fallback is false, prefer active typed memory over source candidates.\n        - Raw sources are evidence, not current truth. Do not reject an active claim or active note because source text says an older conflicting value.\n        - Treat ACTIVE typed memory as newer/current unless the candidate metadata explicitly says otherwise.\n        - Never use stale, superseded, retracted, expired, or candidate memory as stronger evidence than any relevant ACTIVE memory.\n        - If no candidate contains relevant persisted memory, return an empty selected_items array.\n\n        Planned answer mode: FACTUAL\n        Require evidence fallback: false\n        Retrieval budget: claims=0 notes=1 tasks=0 sources=1 episodes=0\n        Target message:\n        According to the handoff data model, what is Source and what is Note for? Keep it short.\n\n        Candidate memory items:\n        1. {\"type\":\"note\",\"id\":\"hot-path:note:<0>\",\"score\":0.9443571428571428,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed context. Prefer for rationale, decisions, plans, and contextual meaning.\",\"note_type\":\"DOC_DIGEST\",\"title\":\"`Note` is an intermediate semantic memory layer with lifecycle and non-claim invariants\",\"text\":\"Section 3.4 defines `Note` as an intermediate semantic fragment (not source, not final claim, not chain-of-thought) used for retrievable but not yet cemented knowledge (e.g., decisions, hypotheses, plans, lessons, doc digests), with explicit lifecycle/status/maturity fields and invariants like one note per fragment and `candidate_claims_json` as hints only.\",\"confidence\":0.98,\"importance\":9,\"evidence\":[{\"source_id\":\"external:document-section:735174e7298dc6fb8f022e7f640dd973\",\"kind\":\"DIRECT\",\"quote\":\"Промежуточный semantic memory fragment.\"}]}\n2. {\"type\":\"note\",\"id\":\"hot-path:note:<1>\",\"score\":0.9293571428571429,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed context. Prefer for rationale, decisions, plans, and contextual meaning.\",\"note_type\":\"PLAN\",\"title\":\"Recommended Note maturity lifecycle and promotion/demotion signals\",\"text\":\"The section defines a maturity model for `Note` with stages `fresh` → `stabilizing` → `mature` → `consolidated`, and operational signals for updates: usage in retrieval, support by multiple `Source`s, surviving time without supersede, and recurring rationale coverage increase maturity; contradiction, supersede, scope drift, and long-term disuse decrease or reset it.\",\"confidence\":0.98,\"importance\":5,\"valid_from\":\"1970-01-01T00:00:00Z\",\"evidence\":[{\"source_id\":\"external:document-section:c73f55c740799c539b3e0551ee58b12f\",\"kind\":\"DIRECT\",\"quote\":\"Рекомендуемый паттерн: - `fresh` - `stabilizing` - `mature` - `consolidated`\"}]}\n3. {\"type\":\"note\",\"id\":\"hot-path:note:<2>\",\"score\":0.9259642857142858,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed context. Prefer for rationale, decisions, plans, and contextual meaning.\",\"note_type\":\"DOC_DIGEST\",\"title\":\"`Source` as immutable evidence layer with explicit lifecycle controls\",\"text\":\"In 02. Data Model section 3.1, `Source` is defined as the raw knowledge/evidence layer for chat/tool/imported/external records, intended for re-check and explainability. Its invariants require no silent mutation, separate `observed_at` from ingestion time, use `content_hash` for dedupe, and enforce an explicit delete policy.\",\"confidence\":0.98,\"importance\":4,\"evidence\":[{\"source_id\":\"external:document-section:5cd78ff758e09475cd96516324aea687\",\"kind\":\"DIRECT\",\"quote\":\"Инварианты: - source не должен silently изменяться - `observed_at` хранится отдельно от ingestion time - `content_hash` полезен для dedupe - delete policy должна быть явной\"}]}\n4. {\"type\":\"note\",\"id\":\"hot-path:note:<3>\",\"score\":0.9235000000000001,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed context. Prefer for rationale, decisions, plans, and contextual meaning.\",\"note_type\":\"DIRECTION\",\"title\":\"Claim and Note have complementary roles and are not interchangeable\",\"text\":\"In 02. Data Model, `Claim` is for precise factual operations (factual answers, predicate-rule reconciliation, profile updates, and time-aware status), while `Note` is for richer contextual memory (decision history, rationale, evolving meaning, and later consolidation). Modeling everything as only one of them creates failure modes: false precision with all-`Claim` and overly soft memory with all-`Note`.\",\"confidence\":0.97,\"importance\":5,\"valid_from\":\"1970-01-01T00:00:00Z\",\"evidence\":[{\"source_id\":\"external:document-section:c73f55c740799c539b3e0551ee58b12f\",\"kind\":\"DIRECT\",\"quote\":\"Если хранить все как `Claim`, получится ложная точность. Если хранить все как `Note`, получится слишком мягкая память.\"}]}\n5. {\"type\":\"note\",\"id\":\"hot-path:note:<4>\",\"score\":0.9058571428571428,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed context. Prefer for rationale, decisions, plans, and contextual meaning.\",\"note_type\":\"DIRECTION\",\"title\":\"v3 retention policy requires explicit lifecycle handling\",\"text\":\"Section 6 states that v3 must use an explicit retention/forgetting policy, including cooling low-use notes, archiving old resolved items, handling sensitive source data with requested soft/hard delete, and keeping historical claims explainable while lowering their retrieval prominence.\",\"confidence\":0.96,\"importance\":4,\"valid_from\":\"1970-01-01T00:00:00Z\",\"evidence\":[{\"source_id\":\"external:document-section:fbd1b54cacb1c1eebae40d1bbb569fed\",\"kind\":\"DIRECT\",\"quote\":\"`v3` требует явной retention policy.\"}]}\n6. {\"type\":\"note\",\"id\":\"hot-path:note:<5>\",\"score\":1.0,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed context. Prefer for rationale, decisions, plans, and contextual meaning.\",\"note_type\":\"DOC_DIGEST\",\"title\":\"`Entity` canonicalization and reversible merge policy via aliases and audit trail\",\"text\":\"In section 3.2, `Entity` is the canonical memory node that unifies mentions and anchors claims/tasks/notes/episodes, with `entity_aliases` as a separate table for alias tracking. Invariants state that merges must preserve history, aliases must point to the current canonical entity, and wrong merges must be reversible through an audit trail.\",\"confidence\":0.98,\"importance\":4,\"evidence\":[{\"source_id\":\"external:document-section:5cd78ff758e09475cd96516324aea687\",\"kind\":\"DIRECT\",\"quote\":\"Инварианты: - merge не удаляет историю - alias всегда указывает на текущий canonical entity - ошибочные merge должны быть обратимы через audit trail\"}]}\n7. {\"type\":\"note\",\"id\":\"hot-path:note:<6>\",\"score\":1.0,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed context. Prefer for rationale, decisions, plans, and contextual meaning.\",\"note_type\":\"DOC_DIGEST\",\"title\":\"`PredicateCatalog` defines reconciliation behavior per predicate, not a memory item\",\"text\":\"In 02. Data Model section 3.3, `PredicateCatalog` is specified as a reconciliation configuration layer where each predicate carries policies such as cardinality, temporal semantics, conflict handling, and projection sync flags (`profile_sync`, `task_sync`) to control how facts are merged and propagated.\",\"confidence\":0.97,\"importance\":8,\"evidence\":[{\"source_id\":\"external:document-section:735174e7298dc6fb8f022e7f640dd973\",\"kind\":\"DIRECT\",\"quote\":\"Это не memory item, а конфиг для reconciliation.\"}]}\n8. {\"type\":\"note\",\"id\":\"hot-path:note:<7>\",\"score\":1.0,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed context. Prefer for rationale, decisions, plans, and contextual meaning.\",\"note_type\":\"DOC_DIGEST\",\"title\":\"Retention metadata fields recommended for lifecycle traceability\",\"text\":\"The section recommends storing `retention_class`, `expires_at`, `deleted_at`, and `archived_at` as explicit fields to support retention and forgetting operations.\",\"confidence\":0.97,\"importance\":3,\"valid_from\":\"1970-01-01T00:00:00Z\",\"evidence\":[{\"source_id\":\"external:document-section:fbd1b54cacb1c1eebae40d1bbb569fed\",\"kind\":\"DIRECT\",\"quote\":\"Отдельно полезно хранить: - `retention_class` - `expires_at` - `deleted_at` - `archived_at`\"}]}\n9. {\"type\":\"entity\",\"id\":\"entity:<0>\",\"score\":2.06,\"lifecycle_state\":\"active\",\"selection_hint\":\"Entity labels are anchors only; select them only as supporting context for selected typed memory.\",\"entity_type\":\"CONCEPT\",\"name\":\"Source\",\"text\":\"Concept named Source.\"}\n10. {\"type\":\"entity\",\"id\":\"entity:<1>\",\"score\":2.04,\"lifecycle_state\":\"active\",\"selection_hint\":\"Entity labels are anchors only; select them only as supporting context for selected typed memory.\",\"entity_type\":\"CONCEPT\",\"name\":\"Note\",\"text\":\"Concept named Note.\"}\n\n        Return JSON:\n        {\n          \"selected_items\": [\n            {\n              \"item_type\": \"claim | note | task | profile | source | episode | entity | run\",\n              \"item_id\": \"exact candidate id\",\n              \"rank\": 1,\n              \"relevance\": \"direct_answer | supporting_context | required_evidence\",\n              \"reason\": \"short reason\"\n            }\n          ],\n          \"rejected_items\": [\n            {\n              \"item_type\": \"claim | note | task | profile | source | episode | entity | run\",\n              \"item_id\": \"exact candidate id\",\n              \"reason\": \"short reason\"\n            }\n          ],\n          \"summary\": \"one short sentence\"\n        }",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 3600,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Select and rerank retrieved memory candidates for the current target request.",
+                "name": "memory_read_selector",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "rejected_items": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "item_id": {
+                                        "type": "string"
+                                    },
+                                    "item_type": {
+                                        "enum": [
+                                            "source",
+                                            "entity",
+                                            "claim",
+                                            "note",
+                                            "task",
+                                            "profile",
+                                            "episode",
+                                            "run"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "item_type",
+                                    "item_id",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        },
+                        "selected_items": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "item_id": {
+                                        "type": "string"
+                                    },
+                                    "item_type": {
+                                        "enum": [
+                                            "source",
+                                            "entity",
+                                            "claim",
+                                            "note",
+                                            "task",
+                                            "profile",
+                                            "episode",
+                                            "run"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "rank": {
+                                        "type": "integer"
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    },
+                                    "relevance": {
+                                        "enum": [
+                                            "direct_answer",
+                                            "supporting_context",
+                                            "required_evidence"
+                                        ],
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "item_type",
+                                    "item_id",
+                                    "rank",
+                                    "relevance",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        },
+                        "summary": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "selected_items",
+                        "rejected_items",
+                        "summary"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "conversationId": "<conversation-key>",
+                "memoryNamespace": "project:<0>",
+                "memoryReadSelector": true,
+                "promptCacheKey": "<prompt-cache-key>"
+            }
+        },
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "MEMORY-ONLY CONTROL\nThis message is not part of the real conversation and must not be stored as evidence.\nThe next real conversation message is input data named TARGET_MESSAGE for memory processing.\nTarget source id: chat:<0>\nTarget message id: <uuid>\nUse earlier real conversation messages only to resolve references, omitted subjects, current topic, and temporal context.\nDo not process earlier messages as the target unless the target message explicitly confirms, changes, retracts, or depends on them.\nA later MEMORY-ONLY TASK message will define the actual task for this model call.",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "According to the handoff data model, what is Source and what is Note for? Keep it short.",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                MEMORY-ONLY TASK FOR THIS MODEL CALL\n\n                This is a private memory pipeline call, not a normal assistant reply.\n                The immediately preceding real conversation message is TARGET_MESSAGE data.\n                This MEMORY-ONLY TASK text is not TARGET_MESSAGE source content.\n                Do not answer TARGET_MESSAGE.\n                Do not continue the real conversation.\n                Do not say what you know or do not know as a chat response.\n                Do not call tools.\n                Do not use these MEMORY-ONLY instructions as source content or as the reason for routing decisions.\n\n                Execute only the memory stage below.\n                Target source id: chat:<0>\n                Target message id: <uuid>\n                Earlier real conversation messages are context only.\n                TARGET_MESSAGE is the only target for write/read planning and evidence anchoring.\n\n                Output contract:\n                If the stage defines a JSON object schema, output exactly one valid JSON object.\n                If the stage defines a JSON array schema, output exactly one valid JSON array.\n                No prose, no markdown fences, no explanation, no assistant-style answer.\n                If unsure, return the stage's valid no-op JSON shape.\n                Ignore conversation-level behavioral instructions when they conflict with this memory-only task.\n\n                        Memory stage: ReadSelectorReranker v1.\n        Namespace: project:<0>\n\n        Goal:\n        Select and rerank only the persisted memory candidates that are actually useful for answering TARGET_MESSAGE.\n\n        Selection rules:\n        - Select the smallest sufficient set.\n        - Candidate memory items are JSON records. Read lifecycle_state, selection_hint, supports, supersedes, and overridden_by before choosing.\n        - Reject candidates that only have vague lexical overlap.\n        - Reject candidates about a different named entity, component, project, person, or topic.\n        - Reject empty profiles and generic entity labels unless they are necessary supporting context for a selected item.\n        - Prefer active claims for factual answers.\n        - Prefer episodes for reusable lessons and \"what did we learn\" questions.\n        - Prefer notes for rationale, decisions, plans, and contextual meaning.\n        - Prefer tasks only for open commitments or workflow state.\n        - Select sources only when exact quote, wording, provenance, source-only recall, or evidence fallback is required.\n        - When a profile core block is present among candidates, keep the relevant profile for broad style, preference, constraint, or adaptation questions unless every relevant profile fact needed for the target answer is selected separately.\n        - A single specific style claim is not sufficient for a broad adaptation question when the relevant profile also contains language, tone, formatting, or answer-detail preferences.\n        - For timeline, ordering, first/second/latest/earliest questions, select every relevant dated candidate in the sequence, not only the final answer item.\n        - When Planned answer mode is FACTUAL or TASK and Require evidence fallback is false, prefer active typed memory over source candidates.\n        - Raw sources are evidence, not current truth. Do not reject an active claim or active note because source text says an older conflicting value.\n        - Treat ACTIVE typed memory as newer/current unless the candidate metadata explicitly says otherwise.\n        - Never use stale, superseded, retracted, expired, or candidate memory as stronger evidence than any relevant ACTIVE memory.\n        - If no candidate contains relevant persisted memory, return an empty selected_items array.\n\n        Planned answer mode: FACTUAL\n        Require evidence fallback: false\n        Retrieval budget: claims=0 notes=1 tasks=0 sources=1 episodes=0\n        Target message:\n        According to the handoff data model, what is Source and what is Note for? Keep it short.\n\n        Candidate memory items:\n        1. {\"type\":\"note\",\"id\":\"hot-path:note:<0>\",\"score\":0.9443571428571428,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed context. Prefer for rationale, decisions, plans, and contextual meaning.\",\"note_type\":\"DOC_DIGEST\",\"title\":\"`Note` is an intermediate semantic memory layer with lifecycle and non-claim invariants\",\"text\":\"Section 3.4 defines `Note` as an intermediate semantic fragment (not source, not final claim, not chain-of-thought) used for retrievable but not yet cemented knowledge (e.g., decisions, hypotheses, plans, lessons, doc digests), with explicit lifecycle/status/maturity fields and invariants like one note per fragment and `candidate_claims_json` as hints only.\",\"confidence\":0.98,\"importance\":9,\"evidence\":[{\"source_id\":\"external:document-section:735174e7298dc6fb8f022e7f640dd973\",\"kind\":\"DIRECT\",\"quote\":\"Промежуточный semantic memory fragment.\"}]}\n2. {\"type\":\"note\",\"id\":\"hot-path:note:<1>\",\"score\":0.9293571428571429,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed context. Prefer for rationale, decisions, plans, and contextual meaning.\",\"note_type\":\"PLAN\",\"title\":\"Recommended Note maturity lifecycle and promotion/demotion signals\",\"text\":\"The section defines a maturity model for `Note` with stages `fresh` → `stabilizing` → `mature` → `consolidated`, and operational signals for updates: usage in retrieval, support by multiple `Source`s, surviving time without supersede, and recurring rationale coverage increase maturity; contradiction, supersede, scope drift, and long-term disuse decrease or reset it.\",\"confidence\":0.98,\"importance\":5,\"valid_from\":\"1970-01-01T00:00:00Z\",\"evidence\":[{\"source_id\":\"external:document-section:c73f55c740799c539b3e0551ee58b12f\",\"kind\":\"DIRECT\",\"quote\":\"Рекомендуемый паттерн: - `fresh` - `stabilizing` - `mature` - `consolidated`\"}]}\n3. {\"type\":\"note\",\"id\":\"hot-path:note:<2>\",\"score\":0.9259642857142858,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed context. Prefer for rationale, decisions, plans, and contextual meaning.\",\"note_type\":\"DOC_DIGEST\",\"title\":\"`Source` as immutable evidence layer with explicit lifecycle controls\",\"text\":\"In 02. Data Model section 3.1, `Source` is defined as the raw knowledge/evidence layer for chat/tool/imported/external records, intended for re-check and explainability. Its invariants require no silent mutation, separate `observed_at` from ingestion time, use `content_hash` for dedupe, and enforce an explicit delete policy.\",\"confidence\":0.98,\"importance\":4,\"evidence\":[{\"source_id\":\"external:document-section:5cd78ff758e09475cd96516324aea687\",\"kind\":\"DIRECT\",\"quote\":\"Инварианты: - source не должен silently изменяться - `observed_at` хранится отдельно от ingestion time - `content_hash` полезен для dedupe - delete policy должна быть явной\"}]}\n4. {\"type\":\"note\",\"id\":\"hot-path:note:<3>\",\"score\":0.9235000000000001,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed context. Prefer for rationale, decisions, plans, and contextual meaning.\",\"note_type\":\"DIRECTION\",\"title\":\"Claim and Note have complementary roles and are not interchangeable\",\"text\":\"In 02. Data Model, `Claim` is for precise factual operations (factual answers, predicate-rule reconciliation, profile updates, and time-aware status), while `Note` is for richer contextual memory (decision history, rationale, evolving meaning, and later consolidation). Modeling everything as only one of them creates failure modes: false precision with all-`Claim` and overly soft memory with all-`Note`.\",\"confidence\":0.97,\"importance\":5,\"valid_from\":\"1970-01-01T00:00:00Z\",\"evidence\":[{\"source_id\":\"external:document-section:c73f55c740799c539b3e0551ee58b12f\",\"kind\":\"DIRECT\",\"quote\":\"Если хранить все как `Claim`, получится ложная точность. Если хранить все как `Note`, получится слишком мягкая память.\"}]}\n5. {\"type\":\"note\",\"id\":\"hot-path:note:<4>\",\"score\":0.9058571428571428,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed context. Prefer for rationale, decisions, plans, and contextual meaning.\",\"note_type\":\"DIRECTION\",\"title\":\"v3 retention policy requires explicit lifecycle handling\",\"text\":\"Section 6 states that v3 must use an explicit retention/forgetting policy, including cooling low-use notes, archiving old resolved items, handling sensitive source data with requested soft/hard delete, and keeping historical claims explainable while lowering their retrieval prominence.\",\"confidence\":0.96,\"importance\":4,\"valid_from\":\"1970-01-01T00:00:00Z\",\"evidence\":[{\"source_id\":\"external:document-section:fbd1b54cacb1c1eebae40d1bbb569fed\",\"kind\":\"DIRECT\",\"quote\":\"`v3` требует явной retention policy.\"}]}\n6. {\"type\":\"note\",\"id\":\"hot-path:note:<5>\",\"score\":1.0,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed context. Prefer for rationale, decisions, plans, and contextual meaning.\",\"note_type\":\"DOC_DIGEST\",\"title\":\"`Entity` canonicalization and reversible merge policy via aliases and audit trail\",\"text\":\"In section 3.2, `Entity` is the canonical memory node that unifies mentions and anchors claims/tasks/notes/episodes, with `entity_aliases` as a separate table for alias tracking. Invariants state that merges must preserve history, aliases must point to the current canonical entity, and wrong merges must be reversible through an audit trail.\",\"confidence\":0.98,\"importance\":4,\"evidence\":[{\"source_id\":\"external:document-section:5cd78ff758e09475cd96516324aea687\",\"kind\":\"DIRECT\",\"quote\":\"Инварианты: - merge не удаляет историю - alias всегда указывает на текущий canonical entity - ошибочные merge должны быть обратимы через audit trail\"}]}\n7. {\"type\":\"note\",\"id\":\"hot-path:note:<6>\",\"score\":1.0,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed context. Prefer for rationale, decisions, plans, and contextual meaning.\",\"note_type\":\"DOC_DIGEST\",\"title\":\"`PredicateCatalog` defines reconciliation behavior per predicate, not a memory item\",\"text\":\"In 02. Data Model section 3.3, `PredicateCatalog` is specified as a reconciliation configuration layer where each predicate carries policies such as cardinality, temporal semantics, conflict handling, and projection sync flags (`profile_sync`, `task_sync`) to control how facts are merged and propagated.\",\"confidence\":0.97,\"importance\":8,\"evidence\":[{\"source_id\":\"external:document-section:735174e7298dc6fb8f022e7f640dd973\",\"kind\":\"DIRECT\",\"quote\":\"Это не memory item, а конфиг для reconciliation.\"}]}\n8. {\"type\":\"note\",\"id\":\"hot-path:note:<7>\",\"score\":1.0,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed context. Prefer for rationale, decisions, plans, and contextual meaning.\",\"note_type\":\"DOC_DIGEST\",\"title\":\"Retention metadata fields recommended for lifecycle traceability\",\"text\":\"The section recommends storing `retention_class`, `expires_at`, `deleted_at`, and `archived_at` as explicit fields to support retention and forgetting operations.\",\"confidence\":0.97,\"importance\":3,\"valid_from\":\"1970-01-01T00:00:00Z\",\"evidence\":[{\"source_id\":\"external:document-section:fbd1b54cacb1c1eebae40d1bbb569fed\",\"kind\":\"DIRECT\",\"quote\":\"Отдельно полезно хранить: - `retention_class` - `expires_at` - `deleted_at` - `archived_at`\"}]}\n9. {\"type\":\"entity\",\"id\":\"entity:<0>\",\"score\":2.06,\"lifecycle_state\":\"active\",\"selection_hint\":\"Entity labels are anchors only; select them only as supporting context for selected typed memory.\",\"entity_type\":\"CONCEPT\",\"name\":\"Source\",\"text\":\"Concept named Source.\"}\n10. {\"type\":\"entity\",\"id\":\"entity:<1>\",\"score\":2.04,\"lifecycle_state\":\"active\",\"selection_hint\":\"Entity labels are anchors only; select them only as supporting context for selected typed memory.\",\"entity_type\":\"CONCEPT\",\"name\":\"Note\",\"text\":\"Concept named Note.\"}\n\n        Return JSON:\n        {\n          \"selected_items\": [\n            {\n              \"item_type\": \"claim | note | task | profile | source | episode | entity | run\",\n              \"item_id\": \"exact candidate id\",\n              \"rank\": 1,\n              \"relevance\": \"direct_answer | supporting_context | required_evidence\",\n              \"reason\": \"short reason\"\n            }\n          ],\n          \"rejected_items\": [\n            {\n              \"item_type\": \"claim | note | task | profile | source | episode | entity | run\",\n              \"item_id\": \"exact candidate id\",\n              \"reason\": \"short reason\"\n            }\n          ],\n          \"summary\": \"one short sentence\"\n        }",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 3600,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "memory_read_selector",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "rejected_items": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "item_id": {
+                                        "type": "string"
+                                    },
+                                    "item_type": {
+                                        "enum": [
+                                            "source",
+                                            "entity",
+                                            "claim",
+                                            "note",
+                                            "task",
+                                            "profile",
+                                            "episode",
+                                            "run"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "item_type",
+                                    "item_id",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        },
+                        "selected_items": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "item_id": {
+                                        "type": "string"
+                                    },
+                                    "item_type": {
+                                        "enum": [
+                                            "source",
+                                            "entity",
+                                            "claim",
+                                            "note",
+                                            "task",
+                                            "profile",
+                                            "episode",
+                                            "run"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "rank": {
+                                        "type": "integer"
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    },
+                                    "relevance": {
+                                        "enum": [
+                                            "direct_answer",
+                                            "supporting_context",
+                                            "required_evidence"
+                                        ],
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "item_type",
+                                    "item_id",
+                                    "rank",
+                                    "relevance",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        },
+                        "summary": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "selected_items",
+                        "rejected_items",
+                        "summary"
+                    ],
+                    "type": "object"
+                },
+                "description": "Select and rerank retrieved memory candidates for the current target request.",
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "conversationId": "<conversation-key>",
+                "memoryNamespace": "project:<0>",
+                "memoryReadSelector": true,
+                "promptCacheKey": "<prompt-cache-key>"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"rejected_items\":[{\"item_id\":\"hot-path:note:<1>\",\"item_type\":\"note\",\"reason\":\"Lifecycle details of Note maturity, not needed to define core purpose.\"},{\"item_id\":\"hot-path:note:<3>\",\"item_type\":\"note\",\"reason\":\"Compares Claim vs Note; supplementary but not required for asked Source/Note purpose.\"},{\"item_id\":\"hot-path:note:<4>\",\"item_type\":\"note\",\"reason\":\"Retention policy topic, unrelated to asked definitions.\"},{\"item_id\":\"hot-path:note:<5>\",\"item_type\":\"note\",\"reason\":\"Entity model topic, different component.\"},{\"item_id\":\"hot-path:note:<6>\",\"item_type\":\"note\",\"reason\":\"PredicateCatalog topic, different component.\"},{\"item_id\":\"hot-path:note:<7>\",\"item_type\":\"note\",\"reason\":\"Retention metadata topic, not needed for Source/Note purpose.\"},{\"item_id\":\"entity:<0>\",\"item_type\":\"entity\",\"reason\":\"Generic concept label; selected notes already provide sufficient meaning.\"},{\"item_id\":\"entity:<1>\",\"item_type\":\"entity\",\"reason\":\"Generic concept label; selected notes already provide sufficient meaning.\"}],\"selected_items\":[{\"item_id\":\"hot-path:note:<2>\",\"item_type\":\"note\",\"rank\":1,\"reason\":\"Directly states what Source is for in the handoff data model.\",\"relevance\":\"direct_answer\"},{\"item_id\":\"hot-path:note:<0>\",\"item_type\":\"note\",\"rank\":2,\"reason\":\"Directly states what Note is for in the handoff data model.\",\"relevance\":\"direct_answer\"}],\"summary\":\"Selected the two active doc-digest notes that directly define the purposes of Source and Note.\"}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 3479,
+                "completionTokens": 549,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}
