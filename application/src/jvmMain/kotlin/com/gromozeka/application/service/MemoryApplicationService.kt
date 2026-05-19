@@ -31,7 +31,9 @@ import com.gromozeka.domain.model.memory.MemoryRun
 import com.gromozeka.domain.model.memory.MemoryReadRequest
 import com.gromozeka.domain.model.memory.MemoryStore
 import com.gromozeka.domain.model.memory.MemoryThreadContext
+import com.gromozeka.domain.model.ai.AiRuntimeAssignment
 import com.gromozeka.domain.service.AiRuntimeProvider
+import com.gromozeka.domain.service.SettingsProvider
 import com.gromozeka.domain.tool.AiToolCallback
 import klog.KLoggers
 import kotlinx.datetime.TimeZone
@@ -42,6 +44,7 @@ import org.springframework.stereotype.Service
 @Service
 class MemoryApplicationService(
     private val aiRuntimeProvider: AiRuntimeProvider,
+    private val settingsProvider: SettingsProvider,
     private val store: MemoryStore,
     private val readTraceSinks: List<MemoryReadTraceSink>,
     private val maintenanceTraceSinks: List<MemoryMaintenanceTraceSink>,
@@ -100,7 +103,7 @@ class MemoryApplicationService(
         }
         val namespace = MemoryNamespace("project:${project.id.value}")
         val runtime = aiRuntimeProvider.getRuntime(
-            selection = agent.runtimeSelection,
+            selection = settingsProvider.runtimeSelectionFor(AiRuntimeAssignment.Purpose.MEMORY_READ),
             projectPath = project.path,
         )
         val pipeline = RuntimeMemoryReadPipeline(
@@ -168,7 +171,7 @@ class MemoryApplicationService(
     ): MemoryNoteConsolidationPipelineResult {
         val namespace = MemoryNamespace("project:${project.id.value}")
         val runtime = aiRuntimeProvider.getRuntime(
-            selection = agent.runtimeSelection,
+            selection = settingsProvider.runtimeSelectionFor(AiRuntimeAssignment.Purpose.MEMORY_MAINTENANCE),
             projectPath = project.path,
         )
         val pipeline = MemoryNoteConsolidationPipeline(
@@ -215,7 +218,7 @@ class MemoryApplicationService(
     ): MemoryRepairPipelineResult {
         val namespace = MemoryNamespace("project:${project.id.value}")
         val runtime = aiRuntimeProvider.getRuntime(
-            selection = agent.runtimeSelection,
+            selection = settingsProvider.runtimeSelectionFor(AiRuntimeAssignment.Purpose.MEMORY_MAINTENANCE),
             projectPath = project.path,
         )
         val pipeline = MemoryRepairPipeline(
@@ -261,7 +264,7 @@ class MemoryApplicationService(
     ): MemoryEntityMaintenancePipelineResult {
         val namespace = MemoryNamespace("project:${project.id.value}")
         val runtime = aiRuntimeProvider.getRuntime(
-            selection = agent.runtimeSelection,
+            selection = settingsProvider.runtimeSelectionFor(AiRuntimeAssignment.Purpose.MEMORY_MAINTENANCE),
             projectPath = project.path,
         )
         val pipeline = MemoryEntityMaintenancePipeline(

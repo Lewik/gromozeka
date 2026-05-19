@@ -10,7 +10,7 @@ class AiModelSpecConfigurationTest {
     @Test
     fun loadsModelSpecsFromDefaultResource() = runBlocking {
         val provider = AiModelSpecConfiguration().aiModelSpecRepository()
-        val spec = provider.find(AiProvider.OPENAI, "gpt-5.4")
+        val spec = provider.find(AiProvider.OPENAI, "gpt-5.5")
 
         assertNotNull(spec)
         assertEquals(1_050_000, spec.contextWindowTokens)

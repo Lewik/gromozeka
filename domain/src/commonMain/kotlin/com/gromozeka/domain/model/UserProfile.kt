@@ -2,7 +2,8 @@ package com.gromozeka.domain.model
 
 import com.gromozeka.domain.model.ai.AiConnection
 import com.gromozeka.domain.model.ai.AiModelConfiguration
-import com.gromozeka.domain.model.ai.AiRuntimeSelection
+import com.gromozeka.domain.model.ai.AiModelSpec
+import com.gromozeka.domain.model.ai.AiRuntimeAssignment
 import kotlinx.serialization.Serializable
 import kotlin.jvm.JvmInline
 
@@ -36,26 +37,80 @@ data class UserProfile(
     }
 
     /**
-     * User-owned AI settings: available connections, configured models, and the
-     * default runtime choice.
+     * User-owned AI settings: available connections, configured models, and
+     * purpose-specific runtime assignments.
      */
     @Serializable
     data class AiSettings(
-        val defaultSelection: AiRuntimeSelection = UserProfileAiDefaults.defaultSelection,
         val connections: List<AiConnection> = UserProfileAiDefaults.connections(),
+        val modelSpecs: List<AiModelSpec> = UserProfileAiDefaults.modelSpecs(),
         val modelConfigurations: List<AiModelConfiguration> = UserProfileAiDefaults.modelConfigurations(),
+        val runtimeAssignments: List<AiRuntimeAssignment> = UserProfileAiDefaults.runtimeAssignments(),
     ) {
         init {
             require(connections.map { it.id }.distinct().size == connections.size) { "AI connection ids must be unique" }
+            require(modelSpecs.map { it.provider to it.id }.distinct().size == modelSpecs.size) {
+                "AI model specs must be unique by provider and model id"
+            }
             require(modelConfigurations.map { it.id }.distinct().size == modelConfigurations.size) {
                 "AI model configuration ids must be unique"
             }
             require(modelConfigurations.all { configuration -> connections.any { it.id == configuration.connectionId } }) {
                 "Every AI model configuration must reference an existing connection"
             }
-            require(modelConfigurations.any { it.id == defaultSelection.modelConfigurationId }) {
-                "Default AI runtime selection must reference an existing model configuration"
+            require(runtimeAssignments.map { it.purpose }.distinct().size == runtimeAssignments.size) {
+                "AI runtime assignment purposes must be unique"
             }
+            require(runtimeAssignments.map { it.purpose }.containsAll(AiRuntimeAssignment.Purpose.entries)) {
+                "Every AI runtime purpose must have an assignment"
+            }
+            modelConfigurations.filter { it.enabled }.forEach { configuration ->
+                require(connectionFor(configuration)?.enabled == true) {
+                    "Enabled AI model configuration ${configuration.id.value} must reference an enabled connection"
+                }
+                require(modelSpecFor(configuration) != null) {
+                    "Enabled AI model configuration ${configuration.id.value} must have a model spec for " +
+                        "${configuration.providerModelId}"
+                }
+            }
+            runtimeAssignments.forEach { assignment ->
+                val configuration = modelConfigurations.firstOrNull {
+                    it.id == assignment.selection.modelConfigurationId
+                } ?: error(
+                    "AI runtime assignment ${assignment.purpose.name} references missing model configuration " +
+                        assignment.selection.modelConfigurationId.value
+                )
+                require(configuration.enabled) {
+                    "AI runtime assignment ${assignment.purpose.name} references disabled model configuration " +
+                        configuration.id.value
+                }
+                val spec = modelSpecFor(configuration) ?: error(
+                    "AI runtime assignment ${assignment.purpose.name} references model configuration " +
+                        "${configuration.id.value} without a matching model spec"
+                )
+                require(spec.capabilities.containsAll(assignment.purpose.requiredCapabilities)) {
+                    "AI runtime assignment ${assignment.purpose.name} requires capabilities " +
+                        "${assignment.purpose.requiredCapabilities}, but ${configuration.id.value} has ${spec.capabilities}"
+                }
+            }
+        }
+
+        fun connectionFor(configuration: AiModelConfiguration): AiConnection? =
+            connections.firstOrNull { it.id == configuration.connectionId }
+
+        fun modelSpecFor(configuration: AiModelConfiguration): AiModelSpec? =
+            connectionFor(configuration)?.let { connection ->
+                modelSpecs.firstOrNull {
+                    it.provider == connection.kind.provider && it.id == configuration.providerModelId
+                }
+            }
+
+        fun supportsPurpose(configuration: AiModelConfiguration, purpose: AiRuntimeAssignment.Purpose): Boolean {
+            if (!configuration.enabled) return false
+            val connection = connectionFor(configuration) ?: return false
+            if (!connection.enabled) return false
+            val spec = modelSpecFor(configuration) ?: return false
+            return spec.capabilities.containsAll(purpose.requiredCapabilities)
         }
     }
 
@@ -69,7 +124,6 @@ data class UserProfile(
             val enabled: Boolean = false,
             val engine: Engine = Engine.OPENAI_API,
             val mainLanguageCode: String = "en",
-            val modelConfigurationId: AiModelConfiguration.Id = AiModelConfiguration.Id("openai-api-gpt-4o-transcribe"),
             val localWhisper: LocalWhisper = LocalWhisper(),
         ) {
             init {
@@ -166,7 +220,6 @@ data class UserProfile(
         @Serializable
         data class TextToSpeech(
             val enabled: Boolean = false,
-            val modelConfigurationId: AiModelConfiguration.Id = AiModelConfiguration.Id("openai-api-gpt-4o-mini-tts"),
             val voice: String = "marin",
             val speed: Float = 1.0f,
         ) {

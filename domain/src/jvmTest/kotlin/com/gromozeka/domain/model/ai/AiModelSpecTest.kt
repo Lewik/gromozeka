@@ -17,21 +17,30 @@ class AiModelSpecTest {
             {
               "id": "gpt-5.5",
               "provider": "OPENAI",
-              "contextWindowTokens": 1050000,
-              "maxOutputTokens": 128000,
+              "capabilities": ["TEXT_GENERATION", "STRUCTURED_OUTPUT", "TOOL_CALLING"],
+              "limits": {
+                "textGeneration": {
+                  "contextWindowTokens": 1050000,
+                  "maxOutputTokens": 128000,
+                  "autoCompaction": {
+                    "type": "percent",
+                    "value": 80
+                  }
+                }
+              },
               "reasoning": {
                 "modes": ["ADAPTIVE"],
                 "efforts": ["LOW", "MEDIUM", "HIGH"],
                 "displays": ["SUMMARIZED", "OMITTED"]
-              },
-              "autoCompaction": {
-                "type": "percent",
-                "value": 80
               }
             }
             """.trimIndent()
         )
 
+        assertEquals(
+            setOf(AiModelCapability.TEXT_GENERATION, AiModelCapability.STRUCTURED_OUTPUT, AiModelCapability.TOOL_CALLING),
+            spec.capabilities
+        )
         assertEquals(1_050_000, spec.contextWindowTokens)
         assertEquals(128_000, spec.maxOutputTokens)
         assertEquals(setOf(AiReasoningMode.ADAPTIVE), spec.reasoning?.modes)
@@ -45,8 +54,13 @@ class AiModelSpecTest {
         val spec = AiModelSpec(
             id = "custom-model",
             provider = AiProvider.OPENAI,
-            contextWindowTokens = 100_000,
-            autoCompaction = AiModelSpec.AutoCompaction.Absolute(75_000),
+            capabilities = setOf(AiModelCapability.TEXT_GENERATION),
+            limits = AiModelSpec.Limits(
+                textGeneration = AiModelSpec.Limits.TextGeneration(
+                    contextWindowTokens = 100_000,
+                    autoCompaction = AiModelSpec.AutoCompaction.Absolute(75_000),
+                )
+            ),
         )
 
         assertEquals(75_000, spec.autoCompactionThresholdTokens)
@@ -58,8 +72,13 @@ class AiModelSpecTest {
             AiModelSpec(
                 id = "broken-model",
                 provider = AiProvider.OPENAI,
-                contextWindowTokens = 100_000,
-                autoCompaction = AiModelSpec.AutoCompaction.Absolute(100_001),
+                capabilities = setOf(AiModelCapability.TEXT_GENERATION),
+                limits = AiModelSpec.Limits(
+                    textGeneration = AiModelSpec.Limits.TextGeneration(
+                        contextWindowTokens = 100_000,
+                        autoCompaction = AiModelSpec.AutoCompaction.Absolute(100_001),
+                    )
+                ),
             )
         }
     }
@@ -70,8 +89,13 @@ class AiModelSpecTest {
             AiModelSpec(
                 id = "broken-model",
                 provider = AiProvider.OPENAI,
-                contextWindowTokens = 100_000,
-                maxOutputTokens = 100_001,
+                capabilities = setOf(AiModelCapability.TEXT_GENERATION),
+                limits = AiModelSpec.Limits(
+                    textGeneration = AiModelSpec.Limits.TextGeneration(
+                        contextWindowTokens = 100_000,
+                        maxOutputTokens = 100_001,
+                    )
+                ),
             )
         }
     }

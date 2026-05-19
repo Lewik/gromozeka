@@ -82,7 +82,7 @@ class OpenAiSubscriptionRequestMapperTest {
                 messages = emptyList(),
                 options = AiRuntimeOptions(autoCompactionThresholdTokens = 945_000),
             ),
-            modelName = "gpt-5.4",
+            modelName = "gpt-5.5",
             conversationKey = "test-conversation",
         )
 
@@ -99,7 +99,7 @@ class OpenAiSubscriptionRequestMapperTest {
                 messages = emptyList(),
                 options = AiRuntimeOptions(autoCompactionThresholdTokens = null),
             ),
-            modelName = "gpt-5.4",
+            modelName = "gpt-5.5",
             conversationKey = "test-conversation",
         )
 

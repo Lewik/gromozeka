@@ -3,6 +3,7 @@ package com.gromozeka.server
 import com.gromozeka.application.service.AiConversationMessageMapper
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ai.AiModelConfiguration
+import com.gromozeka.domain.model.ai.AiRuntimeAssignment
 import com.gromozeka.domain.model.ai.AiRuntimeOptions
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.model.ai.AiRuntimeSelection
@@ -63,15 +64,20 @@ class LiveInterpreterApplicationService(
             sourceLanguageHint = request.sourceLanguageHint.ifBlank {
                 "Hebrew, Russian, and English workplace conversation"
             },
-            translationRuntimeSelection = request.translationRuntimeSelection ?: selectTranslationRuntime(),
+            stabilizerRuntimeSelection = settingsService.runtimeSelectionFor(
+                AiRuntimeAssignment.Purpose.LIVE_TRANSCRIPT_STABILIZER
+            ),
+            translationRuntimeSelection = request.translationRuntimeSelection
+                ?: settingsService.runtimeSelectionFor(AiRuntimeAssignment.Purpose.LIVE_TRANSLATION),
             eventSink = eventSink,
         )
         sessions[sessionId] = session
         session.start()
         log.info {
-            "Live interpreter started: session=$sessionId target=${session.targetLanguage} " +
-                "sourceLanguage=${session.sourceLanguageCode} " +
-                "translationRuntime=${session.translationRuntimeSelection.modelConfigurationId.value}"
+                "Live interpreter started: session=$sessionId target=${session.targetLanguage} " +
+                    "sourceLanguage=${session.sourceLanguageCode} " +
+                    "stabilizerRuntime=${session.stabilizerRuntimeSelection.modelConfigurationId.value} " +
+                    "translationRuntime=${session.translationRuntimeSelection.modelConfigurationId.value}"
         }
         return LiveInterpreterStartedResponse(sessionId)
     }
@@ -104,6 +110,7 @@ class LiveInterpreterApplicationService(
         val targetLanguage: String,
         val sourceLanguageCode: String,
         val sourceLanguageHint: String,
+        val stabilizerRuntimeSelection: AiRuntimeSelection,
         val translationRuntimeSelection: AiRuntimeSelection,
         private val eventSink: suspend (ServerPayload) -> Unit,
     ) {
@@ -353,6 +360,7 @@ class LiveInterpreterApplicationService(
 
         private suspend fun stabilizeTranscript(context: LiveInterpreterStabilizerPromptContext): TranscriptStabilizerResponse {
             val text = callTextModel(
+                selection = stabilizerRuntimeSelection,
                 systemPrompt = buildLiveInterpreterStabilizerSystemPrompt(sourceLanguageHint),
                 userPrompt = buildLiveInterpreterStabilizerUserPrompt(context),
                 maxOutputTokens = 900,
@@ -362,6 +370,7 @@ class LiveInterpreterApplicationService(
 
         private suspend fun translate(context: LiveInterpreterTranslationPromptContext): String {
             return callTextModel(
+                selection = translationRuntimeSelection,
                 systemPrompt = buildLiveInterpreterTranslationSystemPrompt(
                     targetLanguage = targetLanguage,
                     sourceLanguageHint = sourceLanguageHint,
@@ -372,11 +381,12 @@ class LiveInterpreterApplicationService(
         }
 
         private suspend fun callTextModel(
+            selection: AiRuntimeSelection,
             systemPrompt: String,
             userPrompt: String,
             maxOutputTokens: Int,
         ): String {
-            val runtime = aiRuntimeProvider.getRuntime(translationRuntimeSelection, null)
+            val runtime = aiRuntimeProvider.getRuntime(selection, null)
             val response = runtime.call(
                 AiRuntimeRequest(
                     systemPrompts = listOf(systemPrompt),
@@ -433,15 +443,6 @@ class LiveInterpreterApplicationService(
         }
     }
 
-    private fun selectTranslationRuntime(): AiRuntimeSelection {
-        val settings = settingsService.settings
-        val translationModel = settings.userProfile.aiSettings.modelConfigurations.firstOrNull {
-            it.enabled && AiModelConfiguration.Role.TRANSLATION in it.roles
-        } ?: settings.userProfile.aiSettings.modelConfigurations.firstOrNull {
-            it.enabled && AiModelConfiguration.Role.CHAT in it.roles
-        }
-        return AiRuntimeSelection(translationModel?.id ?: settings.userProfile.aiSettings.defaultSelection.modelConfigurationId)
-    }
 }
 
 private fun String.toTargetLanguageName(): String =

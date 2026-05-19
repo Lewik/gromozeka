@@ -1,7 +1,7 @@
 package com.gromozeka.infrastructure.ai.openai
 
 import com.gromozeka.domain.model.TtsTask
-import com.gromozeka.domain.model.ai.AiRuntimeSelection
+import com.gromozeka.domain.model.ai.AiRuntimeAssignment
 import com.gromozeka.domain.service.AudioController
 import com.gromozeka.domain.service.SettingsProvider
 import com.openai.models.audio.speech.SpeechCreateParams
@@ -100,9 +100,7 @@ class TtsService(
     }
 
     private fun textToSpeechRuntime() =
-        settingsProvider.resolveAiRuntime(
-            AiRuntimeSelection(settingsProvider.userProfile.speechSettings.textToSpeech.modelConfigurationId)
-        )
+        settingsProvider.resolveAiRuntime(AiRuntimeAssignment.Purpose.TEXT_TO_SPEECH)
 
     private fun speechParamsBuilder(
         text: String,

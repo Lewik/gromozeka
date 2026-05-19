@@ -3,6 +3,7 @@ package com.gromozeka.application.service.memory
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.Project
+import com.gromozeka.domain.model.ai.AiRuntimeAssignment
 import com.gromozeka.domain.model.memory.DirectStructuredMemoryWriteRequest
 import com.gromozeka.domain.model.memory.DirectStructuredMemoryWriteResult
 import com.gromozeka.domain.model.memory.MemoryNamespace
@@ -17,6 +18,7 @@ import com.gromozeka.domain.model.memory.MemoryUpdateBatch
 import com.gromozeka.domain.model.memory.MemoryWriteRetrievalPlan
 import com.gromozeka.domain.repository.ThreadMessageRepository
 import com.gromozeka.domain.service.AiRuntimeProvider
+import com.gromozeka.domain.service.SettingsProvider
 import com.gromozeka.domain.tool.AiToolCallback
 import java.security.MessageDigest
 import klog.KLoggers
@@ -33,6 +35,7 @@ import org.springframework.stereotype.Service
 @Service
 class MemoryMessageRoutingApplicationService(
     private val aiRuntimeProvider: AiRuntimeProvider,
+    private val settingsProvider: SettingsProvider,
     private val store: MemoryStore,
     private val threadMessageRepository: ThreadMessageRepository,
     private val writeTraceSinks: List<MemoryWriteTraceSink>,
@@ -292,7 +295,7 @@ class MemoryMessageRoutingApplicationService(
         throwOnError: Boolean = false,
     ): DirectStructuredMemoryWriteResult? {
         val runtime = aiRuntimeProvider.getRuntime(
-            selection = agent.runtimeSelection,
+            selection = settingsProvider.runtimeSelectionFor(AiRuntimeAssignment.Purpose.MEMORY_WRITE),
             projectPath = project.path,
         )
 

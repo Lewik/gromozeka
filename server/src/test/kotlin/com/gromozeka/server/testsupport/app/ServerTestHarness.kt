@@ -4,6 +4,7 @@ import com.gromozeka.domain.model.Settings
 import com.gromozeka.domain.model.UserProfile
 import com.gromozeka.domain.model.UserProfileAiDefaults
 import com.gromozeka.domain.model.ai.AiModelConfiguration
+import com.gromozeka.domain.model.ai.AiRuntimeAssignment
 import com.gromozeka.domain.model.ai.AiRuntimeSelection
 import com.gromozeka.infrastructure.ai.openai.subscription.OpenAiSubscriptionConfig
 import com.gromozeka.infrastructure.ai.openai.subscription.OpenAiSubscriptionSession
@@ -126,7 +127,6 @@ class ServerTestHarness(
             val selection = openAiSubscriptionRuntimeSelection()
             return UserProfile(
                 aiSettings = UserProfile.AiSettings(
-                    defaultSelection = selection,
                     connections = UserProfileAiDefaults.connections(),
                     modelConfigurations = UserProfileAiDefaults.modelConfigurations().map { configuration ->
                         if (configuration.id == selection.modelConfigurationId) {
@@ -136,6 +136,13 @@ class ServerTestHarness(
                             )
                         } else {
                             configuration
+                        }
+                    },
+                    runtimeAssignments = UserProfileAiDefaults.runtimeAssignments().map {
+                        if (it.purpose == AiRuntimeAssignment.Purpose.DEFAULT_CHAT) {
+                            it.copy(selection = selection)
+                        } else {
+                            it
                         }
                     },
                 )

@@ -1,7 +1,7 @@
 package com.gromozeka.infrastructure.ai.openai
 
 import com.gromozeka.domain.model.UserProfile
-import com.gromozeka.domain.model.ai.AiRuntimeSelection
+import com.gromozeka.domain.model.ai.AiRuntimeAssignment
 import com.gromozeka.domain.service.SettingsProvider
 import com.gromozeka.infrastructure.ai.speech.LocalWhisperTranscriptionService
 import com.gromozeka.shared.audio.AudioConfig
@@ -64,7 +64,7 @@ class SttService(
             )
         }
 
-        val runtime = settingsProvider.resolveAiRuntime(AiRuntimeSelection(sttSettings.modelConfigurationId))
+        val runtime = settingsProvider.resolveAiRuntime(AiRuntimeAssignment.Purpose.SPEECH_TO_TEXT)
         val client = clientFactory.createClient(runtime.connection)
         val normalizedExtension = fileExtension.trim().trimStart('.').ifBlank { "webm" }
         val tempFile = File.createTempFile("gromozeka-stt", ".$normalizedExtension")

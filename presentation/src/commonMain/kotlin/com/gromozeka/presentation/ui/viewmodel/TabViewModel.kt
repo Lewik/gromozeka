@@ -13,6 +13,7 @@ import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.MessageTagDefinition
 import com.gromozeka.domain.model.SquashType
 import com.gromozeka.domain.model.TokenUsageStatistics
+import com.gromozeka.domain.model.ai.AiRuntimeAssignment
 import com.gromozeka.domain.service.ConversationDomainService
 import com.gromozeka.domain.service.ConversationRuntimeService
 import com.gromozeka.domain.service.ConversationTokenStatsService
@@ -714,8 +715,7 @@ class TabViewModel(
         }
 
         try {
-            val agentDefinition = _uiState.value.agent
-            val runtimeSelection = agentDefinition.runtimeSelection
+            val runtimeSelection = settingsService.runtimeSelectionFor(AiRuntimeAssignment.Purpose.MESSAGE_SQUASH)
 
             log.info { "Starting AI squash: type=$squashType, runtimeSelection=${runtimeSelection.modelConfigurationId.value}" }
 

@@ -1,12 +1,12 @@
 package com.gromozeka.domain.service
 
 import com.gromozeka.domain.model.AppMode
-import com.gromozeka.domain.model.AiProvider
 import com.gromozeka.domain.model.SecretRef
 import com.gromozeka.domain.model.UserDeviceSettings
 import com.gromozeka.domain.model.UserProfile
 import com.gromozeka.domain.model.ai.AiConnection
 import com.gromozeka.domain.model.ai.AiModelConfiguration
+import com.gromozeka.domain.model.ai.AiRuntimeAssignment
 import com.gromozeka.domain.model.ai.AiRuntimeSelection
 
 /**
@@ -37,6 +37,13 @@ interface SettingsProvider {
      */
     val homeDirectory: String
 
+    fun runtimeSelectionFor(purpose: AiRuntimeAssignment.Purpose): AiRuntimeSelection =
+        userProfile.aiSettings.runtimeAssignments.firstOrNull { it.purpose == purpose }?.selection
+            ?: error("AI runtime assignment not found: ${purpose.name}")
+
+    fun resolveAiRuntime(purpose: AiRuntimeAssignment.Purpose): ResolvedAiRuntime =
+        resolveAiRuntime(runtimeSelectionFor(purpose))
+
     fun resolveAiRuntime(selection: AiRuntimeSelection): ResolvedAiRuntime {
         val modelConfiguration = userProfile.aiSettings.modelConfigurations.firstOrNull {
             it.id == selection.modelConfigurationId
@@ -50,23 +57,6 @@ interface SettingsProvider {
 
     fun resolveSecret(secretRef: SecretRef?): String? = null
 
-    fun findFirstModelConfiguration(
-        role: AiModelConfiguration.Role,
-        provider: AiProvider? = null,
-        connectionKind: AiConnection.Kind? = null,
-    ): ResolvedAiRuntime? {
-        val configuration = userProfile.aiSettings.modelConfigurations.firstOrNull { configuration ->
-            configuration.enabled &&
-                role in configuration.roles &&
-                userProfile.aiSettings.connections.any { connection ->
-                    connection.id == configuration.connectionId &&
-                        connection.enabled &&
-                        (provider == null || connection.kind.provider == provider) &&
-                        (connectionKind == null || connection.kind == connectionKind)
-                }
-        } ?: return null
-        return resolveAiRuntime(AiRuntimeSelection(configuration.id))
-    }
 }
 
 data class ResolvedAiRuntime(

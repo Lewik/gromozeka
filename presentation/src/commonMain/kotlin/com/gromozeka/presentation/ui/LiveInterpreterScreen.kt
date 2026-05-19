@@ -42,6 +42,7 @@ import com.gromozeka.client.RemoteLiveInterpreterService
 import com.gromozeka.client.RemoteLiveInterpreterSession
 import com.gromozeka.domain.model.Settings
 import com.gromozeka.domain.model.ai.AiModelConfiguration
+import com.gromozeka.domain.model.ai.AiRuntimeAssignment
 import com.gromozeka.domain.model.ai.AiRuntimeSelection
 import com.gromozeka.presentation.services.ClientLiveAudioStreamer
 import com.gromozeka.presentation.services.ClientLiveAudioStreamingSession
@@ -90,18 +91,20 @@ fun LiveInterpreterScreen(
     var selectedSourceLanguageCode by remember { mutableStateOf(sourceLanguageOptions.first().code) }
     val selectedSourceLanguage = sourceLanguageOptions.firstOrNull { it.code == selectedSourceLanguageCode }
         ?: sourceLanguageOptions.first()
-    val translationModelOptions = remember(settings.userProfile.aiSettings.modelConfigurations) {
-        settings.userProfile.aiSettings.modelConfigurations.filter {
-            it.enabled && (
-                AiModelConfiguration.Role.TRANSLATION in it.roles ||
-                    AiModelConfiguration.Role.CHAT in it.roles
-                )
+    val aiSettings = settings.userProfile.aiSettings
+    val translationModelOptions = remember(aiSettings) {
+        aiSettings.modelConfigurations.filter {
+            aiSettings.supportsPurpose(it, AiRuntimeAssignment.Purpose.LIVE_TRANSLATION)
         }
     }
     var selectedTranslationModelId by remember {
         mutableStateOf(
-            translationModelOptions.firstOrNull()?.id
-                ?: settings.userProfile.aiSettings.defaultSelection.modelConfigurationId
+            aiSettings.runtimeAssignments.firstOrNull {
+                it.purpose == AiRuntimeAssignment.Purpose.LIVE_TRANSLATION
+            }?.selection?.modelConfigurationId ?: translationModelOptions.firstOrNull()?.id
+                ?: aiSettings.runtimeAssignments.first {
+                    it.purpose == AiRuntimeAssignment.Purpose.DEFAULT_CHAT
+                }.selection.modelConfigurationId
         )
     }
     val selectedTranslationModel = translationModelOptions.firstOrNull { it.id == selectedTranslationModelId }

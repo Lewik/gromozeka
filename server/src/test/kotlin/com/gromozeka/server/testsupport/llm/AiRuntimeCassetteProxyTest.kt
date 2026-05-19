@@ -1,10 +1,14 @@
 package com.gromozeka.server.testsupport.llm
 
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.AiProvider
 import com.gromozeka.domain.model.UserProfile
 import com.gromozeka.domain.model.ai.AiConnection
 import com.gromozeka.domain.model.ai.AiAssistantMessage
+import com.gromozeka.domain.model.ai.AiModelCapability
 import com.gromozeka.domain.model.ai.AiModelConfiguration
+import com.gromozeka.domain.model.ai.AiModelSpec
+import com.gromozeka.domain.model.ai.AiRuntimeAssignment
 import com.gromozeka.domain.model.ai.AiRuntimeCapabilities
 import com.gromozeka.domain.model.ai.AiRuntimeOptions
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
@@ -341,16 +345,34 @@ class AiRuntimeCassetteProxyTest {
                 displayName = modelName,
             )
         }
+        val modelSpecs = modelNames.distinct().map { modelName ->
+            AiModelSpec(
+                id = modelName,
+                provider = AiProvider.OPENAI,
+                capabilities = setOf(
+                    AiModelCapability.TEXT_GENERATION,
+                    AiModelCapability.SPEECH_TO_TEXT,
+                    AiModelCapability.TEXT_TO_SPEECH,
+                ),
+                limits = AiModelSpec.Limits(
+                    textGeneration = AiModelSpec.Limits.TextGeneration(contextWindowTokens = 128_000)
+                ),
+            )
+        }
+        val selection = AiRuntimeSelection(modelConfigurations.first().id)
         return UserProfile(
             aiSettings = UserProfile.AiSettings(
-                defaultSelection = AiRuntimeSelection(modelConfigurations.first().id),
                 connections = listOf(
                     AiConnection.OpenAiApi(
                         id = connectionId,
                         displayName = "Test OpenAI",
                     )
                 ),
+                modelSpecs = modelSpecs,
                 modelConfigurations = modelConfigurations,
+                runtimeAssignments = AiRuntimeAssignment.Purpose.entries.map { purpose ->
+                    AiRuntimeAssignment(purpose, selection)
+                },
             )
         )
     }

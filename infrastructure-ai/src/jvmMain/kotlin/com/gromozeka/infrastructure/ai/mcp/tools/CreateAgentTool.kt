@@ -6,8 +6,10 @@ import com.gromozeka.domain.model.ConversationInitiator
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ai.AiModelConfiguration
+import com.gromozeka.domain.model.ai.AiRuntimeAssignment
 import com.gromozeka.domain.model.ai.AiRuntimeSelection
 import com.gromozeka.domain.service.AgentDomainService
+import com.gromozeka.domain.service.SettingsProvider
 import io.modelcontextprotocol.kotlin.sdk.CallToolRequest
 import io.modelcontextprotocol.kotlin.sdk.CallToolResult
 import io.modelcontextprotocol.kotlin.sdk.TextContent
@@ -26,6 +28,7 @@ class CreateAgentTool(
     private val tabManager: TabManager,
     private val agentService: AgentDomainService,
     private val promptService: com.gromozeka.domain.service.PromptDomainService,
+    private val settingsProvider: SettingsProvider,
 ) : GromozekaMcpTool {
 
     @Serializable
@@ -37,7 +40,7 @@ class CreateAgentTool(
         val agent_name: String,
         val agent_prompt: String? = null,
         val expects_response: Boolean = false,
-        val model_configuration_id: String = "openai-subscription-gpt-5.5",
+        val model_configuration_id: String? = null,
     )
 
     override val definition = Tool(
@@ -77,8 +80,7 @@ class CreateAgentTool(
                 })
                 put("model_configuration_id", buildJsonObject {
                     put("type", "string")
-                    put("description", "Server-side AI model configuration id to use for the new agent")
-                    put("default", "openai-subscription-gpt-5.5")
+                    put("description", "Optional server-side AI model configuration id. If omitted, uses the Default chat runtime assignment.")
                 })
             },
             required = listOf(
@@ -102,7 +104,9 @@ class CreateAgentTool(
             agentService.createAgent(
                 name = input.agent_name,
                 prompts = listOf(inlinePrompt.id),
-                runtimeSelection = AiRuntimeSelection(AiModelConfiguration.Id(input.model_configuration_id)),
+                runtimeSelection = input.model_configuration_id?.let {
+                    AiRuntimeSelection(AiModelConfiguration.Id(it))
+                } ?: settingsProvider.runtimeSelectionFor(AiRuntimeAssignment.Purpose.DEFAULT_CHAT),
                 description = "Created via MCP from parent tab: ${input.parent_tab_id}",
                 type = AgentDefinition.Type.Inline
             )

@@ -6,36 +6,79 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonClassDiscriminator
 
 /**
- * Optional static knowledge about a provider model.
+ * Static knowledge about a provider model.
  *
- * Model specs are not the source of truth for whether a model may be called.
- * [AiModelConfiguration] decides that. A missing spec means Gromozeka does not
- * know safe context-window or auto-compaction values for this provider model
- * and callers must disable spec-dependent behavior instead of guessing.
+ * A model spec describes what the model itself can do and which limits are safe
+ * to assume. User-facing [AiModelConfiguration] values only decide how a known
+ * provider model is connected and tuned.
  */
 @Serializable
 data class AiModelSpec(
     val id: String,
     val provider: AiProvider,
-    val contextWindowTokens: Int,
-    val maxOutputTokens: Int? = null,
+    val capabilities: Set<AiModelCapability>,
+    val limits: Limits = Limits(),
     val reasoning: AiReasoningCapabilities? = null,
-    val autoCompaction: AutoCompaction? = null,
 ) {
     init {
         require(id.isNotBlank()) { "AI model id must not be blank" }
-        require(contextWindowTokens > 0) { "AI model context window must be positive" }
-        require(maxOutputTokens == null || maxOutputTokens in 1..contextWindowTokens) {
-            "AI model max output tokens must be inside context window"
+        require(capabilities.isNotEmpty()) { "AI model capabilities must not be empty" }
+        require((AiModelCapability.TEXT_GENERATION in capabilities) == (limits.textGeneration != null)) {
+            "AI text generation capability requires text generation limits and vice versa"
         }
-        val threshold = autoCompaction?.thresholdTokens(contextWindowTokens)
-        require(threshold == null || threshold in 1..contextWindowTokens) {
-            "AI model auto compaction threshold must be inside context window"
+        require((AiModelCapability.EMBEDDINGS in capabilities) == (limits.embeddings != null)) {
+            "AI embeddings capability requires embedding limits and vice versa"
+        }
+        require(reasoning == null || AiModelCapability.TEXT_GENERATION in capabilities) {
+            "AI reasoning capabilities are valid only for text generation models"
         }
     }
 
+    val contextWindowTokens: Int?
+        get() = limits.textGeneration?.contextWindowTokens
+
+    val maxOutputTokens: Int?
+        get() = limits.textGeneration?.maxOutputTokens
+
     val autoCompactionThresholdTokens: Int?
-        get() = autoCompaction?.thresholdTokens(contextWindowTokens)
+        get() = limits.textGeneration?.let { textGeneration ->
+            textGeneration.autoCompaction?.thresholdTokens(textGeneration.contextWindowTokens)
+        }
+
+    @Serializable
+    data class Limits(
+        val textGeneration: TextGeneration? = null,
+        val embeddings: Embeddings? = null,
+    ) {
+        @Serializable
+        data class TextGeneration(
+            val contextWindowTokens: Int,
+            val maxOutputTokens: Int? = null,
+            val autoCompaction: AutoCompaction? = null,
+        ) {
+            init {
+                require(contextWindowTokens > 0) { "AI model context window must be positive" }
+                require(maxOutputTokens == null || maxOutputTokens in 1..contextWindowTokens) {
+                    "AI model max output tokens must be inside context window"
+                }
+                val threshold = autoCompaction?.thresholdTokens(contextWindowTokens)
+                require(threshold == null || threshold in 1..contextWindowTokens) {
+                    "AI model auto compaction threshold must be inside context window"
+                }
+            }
+        }
+
+        @Serializable
+        data class Embeddings(
+            val dimensions: Int? = null,
+            val maxInputTokens: Int? = null,
+        ) {
+            init {
+                require(dimensions == null || dimensions > 0) { "AI embedding dimensions must be positive" }
+                require(maxInputTokens == null || maxInputTokens > 0) { "AI embedding max input tokens must be positive" }
+            }
+        }
+    }
 
     /**
      * Auto-compaction threshold policy for models that support provider-side compaction.
@@ -66,4 +109,14 @@ data class AiModelSpec(
             override fun thresholdTokens(contextWindowTokens: Int): Int = tokens
         }
     }
+}
+
+@Serializable
+enum class AiModelCapability {
+    TEXT_GENERATION,
+    STRUCTURED_OUTPUT,
+    TOOL_CALLING,
+    SPEECH_TO_TEXT,
+    TEXT_TO_SPEECH,
+    EMBEDDINGS,
 }

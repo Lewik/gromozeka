@@ -4,12 +4,11 @@ import com.gromozeka.domain.model.AiProvider
 import com.gromozeka.domain.model.ai.AiModelSpec
 
 /**
- * Repository for optional static knowledge about provider models.
+ * Repository for static knowledge about provider models.
  *
- * Model specs are not the source of truth for whether a model may be called.
- * User profile model configurations decide that. Missing specs are normal for
- * custom or newly released models; callers must treat `null` as "unknown
- * limits" and disable spec-dependent behavior instead of guessing.
+ * Runtime configuration decides which model is selected, but a selected model
+ * should have an explicit spec so Gromozeka can validate capabilities and avoid
+ * guessing limits.
  */
 interface AiModelSpecRepository {
     /**
@@ -17,8 +16,7 @@ interface AiModelSpecRepository {
      *
      * @param provider provider/model family.
      * @param modelId exact provider model id from an `AiModelConfiguration`.
-     * @return configured model spec, or null when this model is callable but its
-     * limits are not known to Gromozeka.
+     * @return configured model spec, or null when this model is not described.
      */
     suspend fun find(provider: AiProvider, modelId: String): AiModelSpec?
 

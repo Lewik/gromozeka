@@ -24,6 +24,8 @@ import com.gromozeka.domain.model.UserDeviceSettings
 import com.gromozeka.domain.model.UserProfile
 import com.gromozeka.domain.model.ai.AiConnection
 import com.gromozeka.domain.model.ai.AiModelConfiguration
+import com.gromozeka.domain.model.ai.AiModelSpec
+import com.gromozeka.domain.model.ai.AiRuntimeAssignment
 import com.gromozeka.domain.model.ai.AiRuntimeSelection
 import com.gromozeka.presentation.services.LogEncryptor
 import com.gromozeka.presentation.services.OllamaModelService
@@ -165,44 +167,7 @@ fun SettingsPanel(
                             }
                         )
 
-                        // Only show TTS settings if TTS is enabled
                         if (textToSpeech.enabled) {
-                            val textToSpeechModelOptions = userProfile.aiSettings.modelConfigurations.filter {
-                                AiModelConfiguration.Role.TEXT_TO_SPEECH in it.roles
-                            }
-                            val selectedTextToSpeechModel = textToSpeechModelOptions.firstOrNull {
-                                it.id == textToSpeech.modelConfigurationId
-                            } ?: textToSpeechModelOptions.firstOrNull()
-
-                            if (selectedTextToSpeechModel != null) {
-                                DropdownSettingItem(
-                                    label = translation.settings.voiceModelLabel,
-                                    description = translation.settings.ttsModelDescription,
-                                    value = selectedTextToSpeechModel,
-                                    options = textToSpeechModelOptions,
-                                    optionLabel = { "${it.displayName} · ${it.providerModelId}" },
-                                    onValueChange = {
-                                        onSettingsChange(
-                                            settings.updateUserProfile {
-                                                copy(
-                                                    speechSettings = speechSettings.copy(
-                                                        textToSpeech = speechSettings.textToSpeech.copy(
-                                                            modelConfigurationId = it.id
-                                                        )
-                                                    )
-                                                )
-                                            }
-                                        )
-                                    }
-                                )
-                            } else {
-                                InfoSettingItem(
-                                    label = translation.settings.voiceModelLabel,
-                                    message = "No text-to-speech model configuration is available",
-                                    isError = true
-                                )
-                            }
-
                             DropdownSettingItem(
                                 label = translation.settings.voiceTypeLabel,
                                 description = translation.settings.ttsVoiceDescription,
@@ -302,44 +267,6 @@ fun SettingsPanel(
                                     )
                                 }
                             )
-
-                            if (speechToText.engine == UserProfile.SpeechSettings.SpeechToText.Engine.OPENAI_API) {
-                                val speechToTextModelOptions = userProfile.aiSettings.modelConfigurations.filter {
-                                    AiModelConfiguration.Role.SPEECH_TO_TEXT in it.roles
-                                }
-                                val selectedSpeechToTextModel = speechToTextModelOptions.firstOrNull {
-                                    it.id == speechToText.modelConfigurationId
-                                } ?: speechToTextModelOptions.firstOrNull()
-
-                                if (selectedSpeechToTextModel != null) {
-                                    DropdownSettingItem(
-                                        label = "Recognition model",
-                                        description = "OpenAI transcription model used for speech-to-text",
-                                        value = selectedSpeechToTextModel,
-                                        options = speechToTextModelOptions,
-                                        optionLabel = { "${it.displayName} · ${it.providerModelId}" },
-                                        onValueChange = {
-                                            onSettingsChange(
-                                                settings.updateUserProfile {
-                                                    copy(
-                                                        speechSettings = speechSettings.copy(
-                                                            speechToText = speechSettings.speechToText.copy(
-                                                                modelConfigurationId = it.id
-                                                            )
-                                                        )
-                                                    )
-                                                }
-                                            )
-                                        }
-                                    )
-                                } else {
-                                    InfoSettingItem(
-                                        label = "Recognition model",
-                                        message = "No speech-to-text model configuration is available",
-                                        isError = true
-                                    )
-                                }
-                            }
 
                             if (speechToText.engine == UserProfile.SpeechSettings.SpeechToText.Engine.LOCAL_WHISPER) {
                                 val localWhisper = speechToText.localWhisper
@@ -494,32 +421,55 @@ fun SettingsPanel(
                     if (contentMode == SettingsPanelContentMode.AiRuntime) {
                         SettingsGroup(title = translation.settings.aiSettingsTitle) {
                         val aiSettings = userProfile.aiSettings
-                        val runtimeOptions = aiSettings.modelConfigurations.map { "${it.id.value} · ${it.displayName}" }
-                        val selectedRuntimeOption = aiSettings.modelConfigurations
-                            .firstOrNull { it.id == aiSettings.defaultSelection.modelConfigurationId }
-                            ?.let { "${it.id.value} · ${it.displayName}" }
-                            ?: aiSettings.defaultSelection.modelConfigurationId.value
+                        Text(
+                            text = "Runtime assignments",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.padding(vertical = 8.dp)
+                        )
 
-                        DropdownSettingItem(
-                            label = "Default runtime model",
-                            description = "Server-side model configuration used by default when a new agent/session does not override it",
-                            value = selectedRuntimeOption,
-                            options = runtimeOptions,
-                            onValueChange = {
-                                val modelConfigurationId = it.substringBefore(" · ")
-                                onSettingsChange(
-                                    settings.copy(
-                                        userProfile = userProfile.copy(
-                                            aiSettings = aiSettings.copy(
-                                                defaultSelection = AiRuntimeSelection(
-                                                    AiModelConfiguration.Id(modelConfigurationId)
+                        AiRuntimeAssignment.Purpose.entries.forEach { purpose ->
+                            val assignment = aiSettings.assignmentFor(purpose)
+                            val options = aiSettings.modelConfigurations.filter {
+                                aiSettings.supportsPurpose(it, purpose)
+                            }
+                            val selectedConfiguration = options.firstOrNull {
+                                it.id == assignment?.selection?.modelConfigurationId
+                            } ?: aiSettings.modelConfigurations.firstOrNull {
+                                it.id == assignment?.selection?.modelConfigurationId
+                            } ?: options.firstOrNull()
+
+                            if (selectedConfiguration != null) {
+                                DropdownSettingItem(
+                                    label = purpose.displayName,
+                                    description = purpose.description,
+                                    value = selectedConfiguration,
+                                    options = options.ifEmpty { listOf(selectedConfiguration) },
+                                    optionLabel = { "${it.displayName} · ${it.providerModelId}" },
+                                    optionEnabled = { aiSettings.supportsPurpose(it, purpose) },
+                                    onValueChange = { selected ->
+                                        onSettingsChange(
+                                            settings.copy(
+                                                userProfile = userProfile.copy(
+                                                    aiSettings = aiSettings.withRuntimeAssignment(
+                                                        purpose = purpose,
+                                                        modelConfigurationId = selected.id,
+                                                    )
                                                 )
                                             )
                                         )
-                                    )
+                                    }
+                                )
+                            } else {
+                                InfoSettingItem(
+                                    label = purpose.displayName,
+                                    message = "No enabled model configuration with capabilities ${purpose.requiredCapabilities}",
+                                    isError = true,
                                 )
                             }
-                        )
+
+                            Spacer(modifier = Modifier.height(8.dp))
+                        }
 
                         Spacer(modifier = Modifier.height(8.dp))
 
@@ -558,8 +508,13 @@ fun SettingsPanel(
                         )
 
                         aiSettings.modelConfigurations.forEach { configuration ->
+                            val assignedPurposes = aiSettings.runtimeAssignments
+                                .filter { it.selection.modelConfigurationId == configuration.id }
+                                .map { it.purpose.displayName }
                             AiModelConfigurationSettingsCard(
                                 configuration = configuration,
+                                modelSpec = aiSettings.modelSpecFor(configuration),
+                                assignedPurposes = assignedPurposes,
                                 onConfigurationChange = { updated ->
                                     onSettingsChange(
                                         settings.copy(
@@ -1489,9 +1444,29 @@ private fun SecretRef?.secretText(): String =
 private fun String.inlineSecretOrNull(): SecretRef? =
     ifBlank { null }?.let(SecretRef::Inline)
 
+private fun UserProfile.AiSettings.assignmentFor(purpose: AiRuntimeAssignment.Purpose): AiRuntimeAssignment? =
+    runtimeAssignments.firstOrNull { it.purpose == purpose }
+
+private fun UserProfile.AiSettings.withRuntimeAssignment(
+    purpose: AiRuntimeAssignment.Purpose,
+    modelConfigurationId: AiModelConfiguration.Id,
+): UserProfile.AiSettings =
+    copy(
+        runtimeAssignments = AiRuntimeAssignment.Purpose.entries.map { currentPurpose ->
+            val existing = runtimeAssignments.firstOrNull { it.purpose == currentPurpose }
+            if (currentPurpose == purpose) {
+                AiRuntimeAssignment(currentPurpose, AiRuntimeSelection(modelConfigurationId))
+            } else {
+                existing ?: error("AI runtime assignment not found: ${currentPurpose.name}")
+            }
+        }
+    )
+
 @Composable
 private fun AiModelConfigurationSettingsCard(
     configuration: AiModelConfiguration,
+    modelSpec: AiModelSpec?,
+    assignedPurposes: List<String>,
     onConfigurationChange: (AiModelConfiguration) -> Unit,
 ) {
     Card(
@@ -1517,7 +1492,15 @@ private fun AiModelConfigurationSettingsCard(
                 }
                 Switch(
                     checked = configuration.enabled,
+                    enabled = !configuration.enabled || assignedPurposes.isEmpty(),
                     onCheckedChange = { onConfigurationChange(configuration.copy(enabled = it)) }
+                )
+            }
+            if (assignedPurposes.isNotEmpty()) {
+                Text(
+                    text = "Assigned to: ${assignedPurposes.joinToString()}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
@@ -1532,7 +1515,7 @@ private fun AiModelConfigurationSettingsCard(
                 label = "Provider model id",
                 description = "Exact model id sent to the provider",
                 value = configuration.providerModelId,
-                placeholder = "gpt-5.4",
+                placeholder = "gpt-5.5",
                 onValueChange = { onConfigurationChange(configuration.copy(providerModelId = it)) }
             )
 
@@ -1551,9 +1534,11 @@ private fun AiModelConfigurationSettingsCard(
             )
 
             Text(
-                text = "Roles: ${configuration.roles.joinToString { it.name.lowercase() }}",
+                text = modelSpec?.let {
+                    "Capabilities: ${it.capabilities.joinToString { capability -> capability.name.lowercase() }}"
+                } ?: "Capabilities: missing model spec",
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = if (modelSpec == null) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }

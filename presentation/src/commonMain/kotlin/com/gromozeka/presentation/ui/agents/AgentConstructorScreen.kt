@@ -15,10 +15,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.gromozeka.domain.service.AgentDomainService
 import com.gromozeka.domain.service.PromptDomainService
+import com.gromozeka.domain.service.SettingsService
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Prompt
-import com.gromozeka.domain.model.ai.AiModelConfiguration
-import com.gromozeka.domain.model.ai.AiRuntimeSelection
+import com.gromozeka.domain.model.ai.AiRuntimeAssignment
 import com.gromozeka.presentation.ui.CompactButton
 import klog.KLoggers
 import kotlinx.coroutines.CoroutineScope
@@ -30,6 +30,7 @@ private val log = KLoggers.logger("AgentConstructorScreen")
 fun AgentConstructorScreen(
     agentService: AgentDomainService,
     promptService: PromptDomainService,
+    settingsService: SettingsService,
     coroutineScope: CoroutineScope,
     projectPath: String? = null,
     modifier: Modifier = Modifier
@@ -487,8 +488,8 @@ fun AgentConstructorScreen(
                             agentService.createAgent(
                                 name = name,
                                 prompts = selectedPrompts,
-                                runtimeSelection = AiRuntimeSelection(
-                                    AiModelConfiguration.Id("openai-subscription-gpt-5.5")
+                                runtimeSelection = settingsService.runtimeSelectionFor(
+                                    AiRuntimeAssignment.Purpose.DEFAULT_CHAT
                                 ),
                                 description = description,
                                 type = AgentDefinition.Type.Inline

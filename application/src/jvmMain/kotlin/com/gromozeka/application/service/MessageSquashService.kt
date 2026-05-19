@@ -4,13 +4,14 @@ import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.Prompt
 import com.gromozeka.domain.model.SquashType
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
+import com.gromozeka.domain.model.ai.AiRuntimeAssignment
 import com.gromozeka.domain.model.ai.AiRuntimeSelection
 import com.gromozeka.domain.service.ConversationDomainService
 import com.gromozeka.domain.service.PromptDomainService
 import com.gromozeka.domain.service.AiRuntimeProvider
 import com.gromozeka.domain.service.MessageSquashService as MessageSquashServiceSpec
-import com.gromozeka.domain.service.AgentDomainService
 import com.gromozeka.domain.service.MessageSquashGenerationService
+import com.gromozeka.domain.service.SettingsProvider
 import com.gromozeka.domain.repository.ProjectRepository
 import klog.KLoggers
 import org.springframework.stereotype.Service
@@ -20,7 +21,7 @@ class MessageSquashService(
     private val aiRuntimeProvider: AiRuntimeProvider,
     private val conversationService: ConversationDomainService,
     private val promptDomainService: PromptDomainService,
-    private val agentDomainService: AgentDomainService,
+    private val settingsProvider: SettingsProvider,
     private val projectRepository: ProjectRepository
 ) : MessageSquashServiceSpec, MessageSquashGenerationService {
     companion object {
@@ -53,13 +54,6 @@ class MessageSquashService(
             ?: return MessageSquashServiceSpec.SquashResult.Failure(
                 reason = "Conversation not found: $conversationId",
                 errorType = MessageSquashServiceSpec.SquashResult.Failure.ErrorType.MESSAGES_NOT_FOUND
-            )
-
-        // Get agent definition for AI model
-        val agentDefinition = agentDomainService.findById(conversation.agentDefinitionId)
-            ?: return MessageSquashServiceSpec.SquashResult.Failure(
-                reason = "Agent definition not found: ${conversation.agentDefinitionId}",
-                errorType = MessageSquashServiceSpec.SquashResult.Failure.ErrorType.AI_GENERATION_FAILED
             )
 
         return try {
@@ -103,7 +97,7 @@ class MessageSquashService(
                         conversationId = conversationId,
                         selectedIds = messageIds,
                         squashType = strategy,
-                        runtimeSelection = agentDefinition.runtimeSelection,
+                        runtimeSelection = settingsProvider.runtimeSelectionFor(AiRuntimeAssignment.Purpose.MESSAGE_SQUASH),
                         projectPath = projectPath
                     )
 

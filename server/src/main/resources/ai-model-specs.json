@@ -1,182 +1,266 @@
 [
   {
-    "id": "claude-opus-4-6",
+    "id": "claude-opus-4-7",
     "provider": "ANTHROPIC",
-    "contextWindowTokens": 1000000,
-    "autoCompaction": {
-      "type": "percent",
-      "value": 80
+    "capabilities": ["TEXT_GENERATION", "STRUCTURED_OUTPUT", "TOOL_CALLING"],
+    "limits": {
+      "textGeneration": {
+        "contextWindowTokens": 1000000,
+        "autoCompaction": { "type": "percent", "value": 80 }
+      }
     }
   },
   {
-    "id": "claude-sonnet-4-6",
+    "id": "claude-sonnet-4-7",
     "provider": "ANTHROPIC",
-    "contextWindowTokens": 1000000,
-    "autoCompaction": {
-      "type": "percent",
-      "value": 80
+    "capabilities": ["TEXT_GENERATION", "STRUCTURED_OUTPUT", "TOOL_CALLING"],
+    "limits": {
+      "textGeneration": {
+        "contextWindowTokens": 1000000,
+        "autoCompaction": { "type": "percent", "value": 80 }
+      }
     }
   },
   {
     "id": "claude-sonnet-4-5-20250929",
     "provider": "ANTHROPIC",
-    "contextWindowTokens": 200000,
-    "autoCompaction": {
-      "type": "percent",
-      "value": 80
+    "capabilities": ["TEXT_GENERATION", "STRUCTURED_OUTPUT", "TOOL_CALLING"],
+    "limits": {
+      "textGeneration": {
+        "contextWindowTokens": 200000,
+        "autoCompaction": { "type": "percent", "value": 80 }
+      }
     }
   },
   {
     "id": "claude-haiku-4-5-20251001",
     "provider": "ANTHROPIC",
-    "contextWindowTokens": 200000,
-    "autoCompaction": {
-      "type": "percent",
-      "value": 80
+    "capabilities": ["TEXT_GENERATION", "STRUCTURED_OUTPUT", "TOOL_CALLING"],
+    "limits": {
+      "textGeneration": {
+        "contextWindowTokens": 200000,
+        "autoCompaction": { "type": "percent", "value": 80 }
+      }
     }
   },
   {
     "id": "claude-3-5-sonnet-20241022",
     "provider": "ANTHROPIC",
-    "contextWindowTokens": 200000,
-    "autoCompaction": {
-      "type": "percent",
-      "value": 80
+    "capabilities": ["TEXT_GENERATION", "STRUCTURED_OUTPUT", "TOOL_CALLING"],
+    "limits": {
+      "textGeneration": {
+        "contextWindowTokens": 200000,
+        "autoCompaction": { "type": "percent", "value": 80 }
+      }
     }
   },
   {
     "id": "claude-3-5-haiku-20241022",
     "provider": "ANTHROPIC",
-    "contextWindowTokens": 200000,
-    "autoCompaction": {
-      "type": "percent",
-      "value": 80
+    "capabilities": ["TEXT_GENERATION", "STRUCTURED_OUTPUT", "TOOL_CALLING"],
+    "limits": {
+      "textGeneration": {
+        "contextWindowTokens": 200000,
+        "autoCompaction": { "type": "percent", "value": 80 }
+      }
     }
   },
   {
     "id": "claude-3-opus-20240229",
     "provider": "ANTHROPIC",
-    "contextWindowTokens": 200000,
-    "autoCompaction": {
-      "type": "percent",
-      "value": 80
+    "capabilities": ["TEXT_GENERATION", "STRUCTURED_OUTPUT", "TOOL_CALLING"],
+    "limits": {
+      "textGeneration": {
+        "contextWindowTokens": 200000,
+        "autoCompaction": { "type": "percent", "value": 80 }
+      }
     }
   },
   {
     "id": "anthropic.claude-sonnet-4-20250514-v1:0",
     "provider": "ANTHROPIC",
-    "contextWindowTokens": 200000,
-    "autoCompaction": {
-      "type": "percent",
-      "value": 80
+    "capabilities": ["TEXT_GENERATION", "STRUCTURED_OUTPUT", "TOOL_CALLING"],
+    "limits": {
+      "textGeneration": {
+        "contextWindowTokens": 200000,
+        "autoCompaction": { "type": "percent", "value": 80 }
+      }
     }
   },
   {
     "id": "anthropic.claude-3-5-sonnet-20241022-v2:0",
     "provider": "ANTHROPIC",
-    "contextWindowTokens": 200000,
-    "autoCompaction": {
-      "type": "percent",
-      "value": 80
+    "capabilities": ["TEXT_GENERATION", "STRUCTURED_OUTPUT", "TOOL_CALLING"],
+    "limits": {
+      "textGeneration": {
+        "contextWindowTokens": 200000,
+        "autoCompaction": { "type": "percent", "value": 80 }
+      }
     }
   },
   {
     "id": "claude-sonnet-4-5",
     "provider": "ANTHROPIC",
-    "contextWindowTokens": 200000,
-    "autoCompaction": {
-      "type": "percent",
-      "value": 80
+    "capabilities": ["TEXT_GENERATION", "STRUCTURED_OUTPUT", "TOOL_CALLING"],
+    "limits": {
+      "textGeneration": {
+        "contextWindowTokens": 200000,
+        "autoCompaction": { "type": "percent", "value": 80 }
+      }
     }
   },
   {
     "id": "sonnet",
     "provider": "ANTHROPIC",
-    "contextWindowTokens": 1000000,
-    "autoCompaction": {
-      "type": "percent",
-      "value": 80
+    "capabilities": ["TEXT_GENERATION", "STRUCTURED_OUTPUT", "TOOL_CALLING"],
+    "limits": {
+      "textGeneration": {
+        "contextWindowTokens": 1000000,
+        "autoCompaction": { "type": "percent", "value": 80 }
+      }
     }
   },
   {
     "id": "opus",
     "provider": "ANTHROPIC",
-    "contextWindowTokens": 1000000,
-    "autoCompaction": {
-      "type": "percent",
-      "value": 80
+    "capabilities": ["TEXT_GENERATION", "STRUCTURED_OUTPUT", "TOOL_CALLING"],
+    "limits": {
+      "textGeneration": {
+        "contextWindowTokens": 1000000,
+        "autoCompaction": { "type": "percent", "value": 80 }
+      }
     }
   },
   {
     "id": "haiku",
     "provider": "ANTHROPIC",
-    "contextWindowTokens": 200000,
-    "autoCompaction": {
-      "type": "percent",
-      "value": 80
+    "capabilities": ["TEXT_GENERATION", "STRUCTURED_OUTPUT", "TOOL_CALLING"],
+    "limits": {
+      "textGeneration": {
+        "contextWindowTokens": 200000,
+        "autoCompaction": { "type": "percent", "value": 80 }
+      }
     }
   },
   {
     "id": "gemini-2.0-flash-exp",
     "provider": "GOOGLE",
-    "contextWindowTokens": 1000000,
-    "autoCompaction": {
-      "type": "percent",
-      "value": 80
+    "capabilities": ["TEXT_GENERATION", "STRUCTURED_OUTPUT", "TOOL_CALLING"],
+    "limits": {
+      "textGeneration": {
+        "contextWindowTokens": 1000000,
+        "autoCompaction": { "type": "percent", "value": 80 }
+      }
     }
   },
   {
     "id": "gemini-1.5-pro",
     "provider": "GOOGLE",
-    "contextWindowTokens": 2000000,
-    "autoCompaction": {
-      "type": "percent",
-      "value": 80
+    "capabilities": ["TEXT_GENERATION", "STRUCTURED_OUTPUT", "TOOL_CALLING"],
+    "limits": {
+      "textGeneration": {
+        "contextWindowTokens": 2000000,
+        "autoCompaction": { "type": "percent", "value": 80 }
+      }
     }
   },
   {
     "id": "gemini-1.5-flash",
     "provider": "GOOGLE",
-    "contextWindowTokens": 1000000,
-    "autoCompaction": {
-      "type": "percent",
-      "value": 80
+    "capabilities": ["TEXT_GENERATION", "STRUCTURED_OUTPUT", "TOOL_CALLING"],
+    "limits": {
+      "textGeneration": {
+        "contextWindowTokens": 1000000,
+        "autoCompaction": { "type": "percent", "value": 80 }
+      }
     }
   },
   {
     "id": "gpt-4-turbo",
     "provider": "OPENAI",
-    "contextWindowTokens": 128000,
-    "autoCompaction": {
-      "type": "percent",
-      "value": 80
+    "capabilities": ["TEXT_GENERATION", "STRUCTURED_OUTPUT", "TOOL_CALLING"],
+    "limits": {
+      "textGeneration": {
+        "contextWindowTokens": 128000,
+        "autoCompaction": { "type": "percent", "value": 80 }
+      }
     }
   },
   {
     "id": "gpt-4o",
     "provider": "OPENAI",
-    "contextWindowTokens": 128000,
-    "autoCompaction": {
-      "type": "percent",
-      "value": 80
+    "capabilities": ["TEXT_GENERATION", "STRUCTURED_OUTPUT", "TOOL_CALLING"],
+    "limits": {
+      "textGeneration": {
+        "contextWindowTokens": 128000,
+        "autoCompaction": { "type": "percent", "value": 80 }
+      }
+    }
+  },
+  {
+    "id": "gpt-4o-mini",
+    "provider": "OPENAI",
+    "capabilities": ["TEXT_GENERATION", "STRUCTURED_OUTPUT", "TOOL_CALLING"],
+    "limits": {
+      "textGeneration": {
+        "contextWindowTokens": 128000,
+        "autoCompaction": { "type": "percent", "value": 80 }
+      }
     }
   },
   {
     "id": "gpt-5.3-codex",
     "provider": "OPENAI",
-    "contextWindowTokens": 400000,
-    "autoCompaction": {
-      "type": "percent",
-      "value": 80
+    "capabilities": ["TEXT_GENERATION", "STRUCTURED_OUTPUT", "TOOL_CALLING"],
+    "limits": {
+      "textGeneration": {
+        "contextWindowTokens": 400000,
+        "autoCompaction": { "type": "percent", "value": 80 }
+      }
     }
   },
   {
-    "id": "gpt-5.4",
+    "id": "gpt-5.5",
     "provider": "OPENAI",
-    "contextWindowTokens": 1050000,
-    "autoCompaction": {
-      "type": "percent",
-      "value": 80
+    "capabilities": ["TEXT_GENERATION", "STRUCTURED_OUTPUT", "TOOL_CALLING"],
+    "limits": {
+      "textGeneration": {
+        "contextWindowTokens": 1050000,
+        "maxOutputTokens": 128000,
+        "autoCompaction": { "type": "percent", "value": 80 }
+      }
+    }
+  },
+  {
+    "id": "text-embedding-3-large",
+    "provider": "OPENAI",
+    "capabilities": ["EMBEDDINGS"],
+    "limits": {
+      "embeddings": {
+        "dimensions": 3072,
+        "maxInputTokens": 8191
+      }
+    }
+  },
+  {
+    "id": "gpt-4o-transcribe",
+    "provider": "OPENAI",
+    "capabilities": ["SPEECH_TO_TEXT"]
+  },
+  {
+    "id": "gpt-4o-mini-tts",
+    "provider": "OPENAI",
+    "capabilities": ["TEXT_TO_SPEECH"]
+  },
+  {
+    "id": "llama3.2",
+    "provider": "OLLAMA",
+    "capabilities": ["TEXT_GENERATION"],
+    "limits": {
+      "textGeneration": {
+        "contextWindowTokens": 4096,
+        "autoCompaction": { "type": "percent", "value": 80 }
+      }
     }
   }
 ]

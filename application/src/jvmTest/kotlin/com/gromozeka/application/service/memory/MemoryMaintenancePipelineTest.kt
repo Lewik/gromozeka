@@ -485,8 +485,8 @@ class MemoryMaintenancePipelineTest {
         val newClaim = claim(
             id = "claim-new-model",
             predicate = "uses_primary_model",
-            objectValue = JsonPrimitive("gpt-5.4"),
-            normalizedText = "Gromozeka uses gpt-5.4 as the primary model.",
+            objectValue = JsonPrimitive("gpt-5.5"),
+            normalizedText = "Gromozeka uses gpt-5.5 as the primary model.",
         ).copy(
             predicatePolicy = modelPredicate,
             updatedAt = NOW,
