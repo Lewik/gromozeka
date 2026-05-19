@@ -235,6 +235,44 @@ class MemoryRememberDocumentTest {
     }
 
     @Test
+    fun adaptiveIngestSplitsTypedOutputTruncationFailures() = runBlocking {
+        val section = MarkdownDocumentSection(
+            index = 6,
+            headingPath = listOf("Dense"),
+            startLine = 1,
+            endLine = 6,
+            text = """
+                # Dense
+                First paragraph.
+
+                Second paragraph.
+                Third paragraph.
+                Fourth paragraph.
+            """.trimIndent(),
+        )
+        val calls = mutableListOf<Int>()
+
+        val result = MemoryDocumentAdaptiveIngest.processSection(section) { effectiveSection ->
+            calls += effectiveSection.index
+            if (effectiveSection.index == section.index) {
+                throw MemoryLlmOutputTruncatedException(
+                    stageName = "ClaimExtractor",
+                    finishReason = "max_tokens",
+                    logContext = "test",
+                    usage = null,
+                )
+            }
+            effectiveSection.headingLabel
+        }
+
+        assertEquals(listOf(6, 61, 62), calls)
+        assertEquals(2, result.results.size)
+        assertEquals(2, result.processedSections)
+        assertEquals(0, result.failedSections.size)
+        assertEquals(1, result.splitCount)
+    }
+
+    @Test
     fun adaptiveIngestDoesNotSplitUnrelatedFailures() = runBlocking {
         val section = MarkdownDocumentSection(
             index = 3,

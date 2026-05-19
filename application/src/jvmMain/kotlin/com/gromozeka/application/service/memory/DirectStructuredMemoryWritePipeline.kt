@@ -344,7 +344,7 @@ class DirectStructuredMemoryWritePipeline(
                 "notes=${noteCandidates.noteDetailsForLog()}"
         }
 
-        val rawNoteOps = noteReconciler.reconcile(
+        val rawNoteOps = reconcileNoteCandidates(
             request = effectiveRequest,
             noteCandidates = noteCandidates,
             retrievedHits = retrievedHits,
@@ -389,7 +389,7 @@ class DirectStructuredMemoryWritePipeline(
                 "claims=${claimCandidates.claimDetailsForLog()}"
         }
 
-        val rawClaimOps = claimReconciler.reconcile(
+        val rawClaimOps = reconcileClaimCandidates(
             request = effectiveRequest,
             claimCandidates = claimCandidates,
             retrievedHits = retrievedHits,
@@ -523,6 +523,55 @@ class DirectStructuredMemoryWritePipeline(
             taskOps = taskOps,
             memoryBatch = memoryBatch,
         )
+    }
+
+    private suspend fun reconcileNoteCandidates(
+        request: DirectStructuredMemoryWriteRequest,
+        noteCandidates: List<MemoryNoteCandidate>,
+        retrievedHits: List<MemoryStore.SearchHit>,
+    ): List<MemoryNoteReconciliationOp> {
+        val batchSize = MemoryLlmStageLimits.NOTE_RECONCILER_CANDIDATE_BATCH_SIZE
+        if (noteCandidates.size <= batchSize) {
+            return noteReconciler.reconcile(request, noteCandidates, retrievedHits)
+        }
+
+        log.info {
+            "Memory note reconciler batching: namespace=${request.namespace.value} source=${request.source.id.value} " +
+                "candidates=${noteCandidates.size} batchSize=$batchSize"
+        }
+
+        return noteCandidates.chunked(batchSize).flatMapIndexed { index, batch ->
+            log.info {
+                "Memory note reconciler batch start: namespace=${request.namespace.value} source=${request.source.id.value} " +
+                    "batch=${index + 1} candidates=${batch.size}/${noteCandidates.size}"
+            }
+            noteReconciler.reconcile(request, batch, retrievedHits)
+        }
+    }
+
+    private suspend fun reconcileClaimCandidates(
+        request: DirectStructuredMemoryWriteRequest,
+        claimCandidates: List<MemoryClaimCandidate>,
+        retrievedHits: List<MemoryStore.SearchHit>,
+        predicateCatalog: MemoryPredicateCatalog,
+    ): List<MemoryClaimReconciliationOp> {
+        val batchSize = MemoryLlmStageLimits.CLAIM_RECONCILER_CANDIDATE_BATCH_SIZE
+        if (claimCandidates.size <= batchSize) {
+            return claimReconciler.reconcile(request, claimCandidates, retrievedHits, predicateCatalog)
+        }
+
+        log.info {
+            "Memory claim reconciler batching: namespace=${request.namespace.value} source=${request.source.id.value} " +
+                "candidates=${claimCandidates.size} batchSize=$batchSize"
+        }
+
+        return claimCandidates.chunked(batchSize).flatMapIndexed { index, batch ->
+            log.info {
+                "Memory claim reconciler batch start: namespace=${request.namespace.value} source=${request.source.id.value} " +
+                    "batch=${index + 1} candidates=${batch.size}/${claimCandidates.size}"
+            }
+            claimReconciler.reconcile(request, batch, retrievedHits, predicateCatalog)
+        }
     }
 
     private suspend fun staleNotesForSupersededClaims(

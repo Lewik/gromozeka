@@ -1,0 +1,23 @@
+package com.gromozeka.application.service.memory
+
+internal object MemoryLlmStageLimits {
+    const val READ_PLANNER_OUTPUT = 3_200
+    const val READ_NEED_VERIFIER_OUTPUT = 1_600
+    const val READ_SELECTOR_OUTPUT = 3_600
+    const val WRITE_ROUTER_OUTPUT = 2_400
+    const val WRITE_RETRIEVAL_PLANNER_OUTPUT = 3_200
+    const val ENTITY_CANONICALIZER_OUTPUT = 8_000
+    const val NOTE_CONSTRUCTOR_OUTPUT = 9_600
+    const val NOTE_RECONCILER_OUTPUT = 6_000
+    const val CLAIM_EXTRACTOR_OUTPUT = 16_000
+    const val CLAIM_RECONCILER_OUTPUT = 8_000
+    const val TASK_UPDATER_OUTPUT = 6_000
+    const val FORGET_PLANNER_OUTPUT = 6_000
+    const val REPAIR_PLANNER_OUTPUT = 6_000
+    const val ENTITY_MAINTENANCE_PLANNER_OUTPUT = 6_000
+    const val NOTE_CONSOLIDATOR_OUTPUT = 12_000
+    const val THREAD_CONTEXT_COMPACTION_OUTPUT = 4_000
+
+    const val NOTE_RECONCILER_CANDIDATE_BATCH_SIZE = 8
+    const val CLAIM_RECONCILER_CANDIDATE_BATCH_SIZE = 16
+}

@@ -55,7 +55,7 @@ class LlmMemoryEntityMaintenancePlanner(
                 messages = stageMessages,
                 tools = runtimeTools,
                 options = AiRuntimeOptions(
-                    maxOutputTokens = 4_000,
+                    maxOutputTokens = MemoryLlmStageLimits.ENTITY_MAINTENANCE_PLANNER_OUTPUT,
                     toolChoice = AiToolChoice.None,
                     responseFormat = MemoryStructuredResponseFormats.EntityMaintenancePlanner,
                     toolContext = mapOf(

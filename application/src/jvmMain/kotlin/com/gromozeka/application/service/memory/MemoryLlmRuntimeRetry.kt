@@ -12,6 +12,16 @@ import kotlinx.coroutines.withTimeout
 
 private val memoryLlmRetryLog = KLoggers.logger("MemoryLlmRuntimeRetry")
 
+internal class MemoryLlmOutputTruncatedException(
+    stageName: String,
+    finishReason: String?,
+    logContext: String,
+    usage: AiUsage?,
+) : IllegalStateException(
+    "Memory LLM stage output was truncated: stage=$stageName finishReason=${finishReason ?: "unknown"} " +
+        "${usage?.memoryUsageSummary().orEmpty()} $logContext".trim()
+)
+
 internal suspend fun AiRuntime.callMemoryStageWithRetry(
     request: AiRuntimeRequest,
     stageName: String,
@@ -36,6 +46,7 @@ internal suspend fun AiRuntime.callMemoryStageWithRetry(
                     logContext = logContext,
                 )
             }
+            response.throwIfOutputTruncated(stageName, logContext)
             return response
         } catch (error: Throwable) {
             if (error is CancellationException && error !is TimeoutCancellationException) {
@@ -78,14 +89,43 @@ private fun AiRuntimeResponse.memoryStageUsageLogLine(
     logContext: String,
 ): String {
     val responseUsage = this.usage
-        ?: return "Memory LLM stage tokens unavailable: stage=$stageName attempt=$attempt elapsedMs=$elapsedMs $logContext"
+        ?: return "Memory LLM stage tokens unavailable: stage=$stageName attempt=$attempt elapsedMs=$elapsedMs " +
+            "finishReason=${finishReason ?: "unknown"} $logContext"
 
     return "Memory LLM stage tokens: stage=$stageName attempt=$attempt elapsedMs=$elapsedMs " +
         responseUsage.memoryUsageSummary() +
+        " finishReason=${finishReason ?: "unknown"}" +
         " $logContext"
 }
 
-private fun AiUsage.memoryUsageSummary(): String =
+private fun AiRuntimeResponse.throwIfOutputTruncated(stageName: String, logContext: String) {
+    if (!finishReason.isMemoryOutputTruncationReason()) return
+    throw MemoryLlmOutputTruncatedException(
+        stageName = stageName,
+        finishReason = finishReason,
+        logContext = logContext,
+        usage = usage,
+    )
+}
+
+private fun String?.isMemoryOutputTruncationReason(): Boolean {
+    val normalized = this
+        ?.trim()
+        ?.lowercase()
+        ?.replace("-", "_")
+        ?: return false
+
+    return normalized == "length" ||
+        normalized == "max_tokens" ||
+        normalized == "max_output_tokens" ||
+        normalized == "output_token_limit" ||
+        normalized == "model_context_window_exceeded" ||
+        normalized.contains("max_tokens") ||
+        normalized.contains("output_token") ||
+        normalized.contains("truncated")
+}
+
+internal fun AiUsage.memoryUsageSummary(): String =
     "prompt=$promptTokens cache_creation=$cacheCreationTokens cache_read=$cacheReadTokens " +
         "total_input=$totalInputTokens completion=$completionTokens thinking=$thinkingTokens " +
         "total_output=$totalOutputTokens total=$totalTokens"
@@ -94,6 +134,10 @@ private fun Long.elapsedMs(): Long =
     (System.nanoTime() - this) / 1_000_000
 
 private fun Throwable.isRetryableMemoryLlmFailure(): Boolean {
+    if (this is MemoryLlmOutputTruncatedException) {
+        return false
+    }
+
     if (this is TimeoutCancellationException) {
         return true
     }

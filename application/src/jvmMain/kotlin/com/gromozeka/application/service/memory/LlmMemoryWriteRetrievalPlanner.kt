@@ -57,7 +57,7 @@ class LlmMemoryWriteRetrievalPlanner(
                 messages = stageMessages,
                 tools = runtimeTools,
                 options = AiRuntimeOptions(
-                    maxOutputTokens = 2_000,
+                    maxOutputTokens = MemoryLlmStageLimits.WRITE_RETRIEVAL_PLANNER_OUTPUT,
                     toolChoice = AiToolChoice.None,
                     responseFormat = MemoryStructuredResponseFormats.WriteRetrievalPlanner,
                     toolContext = mapOf(

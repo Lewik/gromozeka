@@ -298,6 +298,13 @@ class MemoryMessageRoutingApplicationService(
             selection = settingsProvider.runtimeSelectionFor(AiRuntimeAssignment.Purpose.MEMORY_WRITE),
             projectPath = project.path,
         )
+        val focusedThreadContext = threadContext?.let {
+            MemoryThreadContextCompactor(runtime).compactIfNeeded(
+                context = it,
+                targetSourceLabel = source.id.value,
+                logContext = logContext,
+            )
+        }
 
         val pipeline = DirectStructuredMemoryWritePipeline(
             store = store,
@@ -368,7 +375,7 @@ class MemoryMessageRoutingApplicationService(
                 DirectStructuredMemoryWriteRequest(
                     namespace = namespace,
                     source = source,
-                    threadContext = threadContext,
+                    threadContext = focusedThreadContext,
                     parentRunId = parentRunId,
                 )
             )

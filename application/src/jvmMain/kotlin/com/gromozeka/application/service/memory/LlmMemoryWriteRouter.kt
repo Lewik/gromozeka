@@ -52,7 +52,7 @@ class LlmMemoryWriteRouter(
                 messages = stageMessages,
                 tools = runtimeTools,
                 options = AiRuntimeOptions(
-                    maxOutputTokens = 1_800,
+                    maxOutputTokens = MemoryLlmStageLimits.WRITE_ROUTER_OUTPUT,
                     toolChoice = AiToolChoice.None,
                     responseFormat = MemoryStructuredResponseFormats.WriteRouter,
                     toolContext = mapOf(

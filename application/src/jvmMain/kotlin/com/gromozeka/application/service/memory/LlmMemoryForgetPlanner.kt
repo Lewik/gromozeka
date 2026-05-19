@@ -53,7 +53,7 @@ class LlmMemoryForgetPlanner(
                 messages = stageMessages,
                 tools = runtimeTools,
                 options = AiRuntimeOptions(
-                    maxOutputTokens = 3_600,
+                    maxOutputTokens = MemoryLlmStageLimits.FORGET_PLANNER_OUTPUT,
                     toolChoice = AiToolChoice.None,
                     responseFormat = MemoryStructuredResponseFormats.ForgetPlanner,
                     toolContext = mapOf(

@@ -9,6 +9,7 @@ import com.gromozeka.application.service.memory.MemoryEntityMaintenancePipeline
 import com.gromozeka.application.service.memory.MemoryEntityMaintenancePipelineResult
 import com.gromozeka.application.service.memory.MemoryMaintenanceTraceEvent
 import com.gromozeka.application.service.memory.MemoryMaintenanceTraceSink
+import com.gromozeka.application.service.memory.MemoryThreadContextCompactor
 import com.gromozeka.application.service.memory.MemoryNoteConsolidationPipeline
 import com.gromozeka.application.service.memory.MemoryNoteConsolidationPipelineResult
 import com.gromozeka.application.service.memory.MemoryRepairPipeline
@@ -106,6 +107,17 @@ class MemoryApplicationService(
             selection = settingsProvider.runtimeSelectionFor(AiRuntimeAssignment.Purpose.MEMORY_READ),
             projectPath = project.path,
         )
+        val threadContext = MemoryThreadContext(
+            conversationId = conversationId,
+            threadId = threadId,
+            targetMessageId = targetMessage.id,
+            messages = contextMessages,
+        )
+        val focusedThreadContext = MemoryThreadContextCompactor(runtime).compactIfNeeded(
+            context = threadContext,
+            targetSourceLabel = "chat:${targetMessage.id.value}",
+            logContext = "conversation=${conversationId.value} thread=${threadId.value} purpose=memory_read",
+        )
         val pipeline = RuntimeMemoryReadPipeline(
             store = store,
             planner = LlmMemoryReadPlanner(
@@ -123,12 +135,7 @@ class MemoryApplicationService(
         val result = pipeline.read(
             MemoryReadRequest(
                 namespace = namespace,
-                threadContext = MemoryThreadContext(
-                    conversationId = conversationId,
-                    threadId = threadId,
-                    targetMessageId = targetMessage.id,
-                    messages = contextMessages,
-                ),
+                threadContext = focusedThreadContext,
             )
         )
 

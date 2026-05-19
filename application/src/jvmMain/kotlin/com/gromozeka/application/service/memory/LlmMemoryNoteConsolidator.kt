@@ -71,7 +71,7 @@ class LlmMemoryNoteConsolidator(
                 messages = stageMessages,
                 tools = runtimeTools,
                 options = AiRuntimeOptions(
-                    maxOutputTokens = 6_400,
+                    maxOutputTokens = MemoryLlmStageLimits.NOTE_CONSOLIDATOR_OUTPUT,
                     toolChoice = AiToolChoice.None,
                     responseFormat = MemoryStructuredResponseFormats.NoteConsolidator,
                     toolContext = mapOf(

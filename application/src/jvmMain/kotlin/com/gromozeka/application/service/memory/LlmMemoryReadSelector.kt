@@ -55,7 +55,7 @@ class LlmMemoryReadSelector(
                 messages = stageMessages,
                 tools = runtimeTools,
                 options = AiRuntimeOptions(
-                    maxOutputTokens = 2_400,
+                    maxOutputTokens = MemoryLlmStageLimits.READ_SELECTOR_OUTPUT,
                     toolChoice = AiToolChoice.None,
                     responseFormat = MemoryStructuredResponseFormats.ReadSelector,
                     toolContext = mapOf(

@@ -108,6 +108,10 @@ internal data class MemoryDocumentAdaptiveSectionFailure(
 )
 
 internal fun Throwable.isLikelyMemoryDocumentSplitCandidate(): Boolean {
+    if (this is MemoryLlmOutputTruncatedException) {
+        return true
+    }
+
     val chainText = generateSequence(this) { it.cause }
         .joinToString(" | ") { error ->
             "${error::class.qualifiedName.orEmpty()}: ${error.message.orEmpty()}"

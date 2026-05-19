@@ -45,7 +45,7 @@ class LlmMemoryReadPlanner(
                 messages = stageMessages,
                 tools = runtimeTools,
                 options = AiRuntimeOptions(
-                    maxOutputTokens = 2_000,
+                    maxOutputTokens = MemoryLlmStageLimits.READ_PLANNER_OUTPUT,
                     toolChoice = AiToolChoice.None,
                     responseFormat = MemoryStructuredResponseFormats.ReadRetrievalPlanner,
                     toolContext = mapOf(
@@ -121,7 +121,7 @@ class LlmMemoryReadPlanner(
                 messages = stageMessages,
                 tools = runtimeTools,
                 options = AiRuntimeOptions(
-                    maxOutputTokens = 1_200,
+                    maxOutputTokens = MemoryLlmStageLimits.READ_NEED_VERIFIER_OUTPUT,
                     toolChoice = AiToolChoice.None,
                     responseFormat = MemoryStructuredResponseFormats.ReadNeedVerifier,
                     toolContext = mapOf(

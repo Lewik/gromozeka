@@ -72,7 +72,7 @@ class LlmMemoryTaskUpdater(
                 messages = stageMessages,
                 tools = runtimeTools,
                 options = AiRuntimeOptions(
-                    maxOutputTokens = 3_600,
+                    maxOutputTokens = MemoryLlmStageLimits.TASK_UPDATER_OUTPUT,
                     toolChoice = AiToolChoice.None,
                     responseFormat = MemoryStructuredResponseFormats.TaskUpdater,
                     toolContext = mapOf(
