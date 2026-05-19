@@ -277,7 +277,13 @@ class RuntimeMemoryReadPipeline(
             hits = distinctHits,
             useCase = plan.sourceRetrievalUseCase(),
         )
-        val rawSourceDeferral = sourceSelection.hits.deferRawSourceCandidatesToEvidenceHydration(plan)
+        val activeTypedRefsBeforeSourceSupport = sourceSelection.hits.currentTruthBearingTypedRefs()
+        val sourceTypedSupportHits = sourceSelection.hits
+            .withActiveTypedSupportForSourceCandidates(snapshot)
+        val rawSourceDeferral = sourceTypedSupportHits.deferRawSourceCandidatesToEvidenceHydration(
+            plan = plan,
+            activeTypedRefs = activeTypedRefsBeforeSourceSupport,
+        )
         if (rawSourceDeferral.changed) {
             log.info {
                 "Memory read raw source candidates deferred: namespace=${request.namespace.value} " +
@@ -286,7 +292,9 @@ class RuntimeMemoryReadPipeline(
                     "droppedSourceIds=${rawSourceDeferral.droppedSources.joinToString("|") { it.source.id.value }}"
             }
         }
-        val budgetedHits = rawSourceDeferral.hits.enforceBudget(plan, expandForSelector = true)
+        val budgetedHits = rawSourceDeferral.hits
+            .withActiveTypedReplacementsForSourceCandidates(snapshot)
+            .enforceBudget(plan, expandForSelector = true)
         val selectorCandidateHits = budgetedHits
             .withActiveTypedSupportForSourceCandidates(snapshot)
             .withActiveTypedReplacementsForSourceCandidates(snapshot)
@@ -756,14 +764,12 @@ private fun List<MemoryStore.SearchHit>.applySourceRetrievalPolicyFor(
 
 private fun List<MemoryStore.SearchHit>.deferRawSourceCandidatesToEvidenceHydration(
     plan: MemoryReadPlan,
+    activeTypedRefs: List<MemoryItemRef>,
 ): RuntimeMemoryRawSourceDeferralResult {
     if (!plan.defersRawSourcesWhenTypedMemoryExists()) {
         return RuntimeMemoryRawSourceDeferralResult(hits = this)
     }
 
-    val activeTypedRefs = filter { it.isCurrentTruthBearingTypedHit() }
-        .map { it.toItemRef() }
-        .distinct()
     if (activeTypedRefs.isEmpty()) {
         return RuntimeMemoryRawSourceDeferralResult(hits = this)
     }
@@ -779,6 +785,11 @@ private fun List<MemoryStore.SearchHit>.deferRawSourceCandidatesToEvidenceHydrat
         activeTypedRefs = activeTypedRefs,
     )
 }
+
+private fun List<MemoryStore.SearchHit>.currentTruthBearingTypedRefs(): List<MemoryItemRef> =
+    filter { it.isCurrentTruthBearingTypedHit() }
+        .map { it.toItemRef() }
+        .distinct()
 
 private fun MemoryReadPlan.defersRawSourcesWhenTypedMemoryExists(): Boolean =
     when (answerMode) {
@@ -1099,7 +1110,7 @@ private fun String.queryFocusedExcerptForMemoryPrompt(query: String, maxChars: I
             acc
         }
 
-    if (windows.isEmpty()) return text.limitForMemoryPrompt(maxChars)
+    if (windows.isEmpty()) return text.truncateForRuntimeMemoryPrompt(maxChars)
 
     val head = text.take(500)
     val snippets = mutableListOf<String>()
@@ -1405,12 +1416,20 @@ private fun List<MemoryEvidenceRef>.renderEvidenceRefs(): String =
             val quote = ref.cachedQuote
                 ?.trim()
                 ?.takeIf { it.isNotBlank() }
-                ?.limitForMemoryPrompt(300)
+                ?.truncateForRuntimeMemoryPrompt(300)
                 ?.let { " quote=\"$it\"" }
                 .orEmpty()
             "${ref.kind.name} source=${ref.sourceId.value}$quote"
         }
     }
+
+private fun String.truncateForRuntimeMemoryPrompt(maxChars: Int): String {
+    val trimmed = trim()
+    if (trimmed.length <= maxChars) {
+        return trimmed
+    }
+    return trimmed.take(maxChars) + "\n[truncated ${trimmed.length - maxChars} chars]"
+}
 
 private fun MemorySource.sourceLabelForMemoryPrompt(): String =
     when (this) {

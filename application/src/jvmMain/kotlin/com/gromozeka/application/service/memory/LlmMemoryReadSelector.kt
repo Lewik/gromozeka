@@ -127,7 +127,8 @@ class LlmMemoryReadSelector(
         - Prefer notes for rationale, decisions, plans, and contextual meaning.
         - Prefer tasks only for open commitments or workflow state.
         - Select sources only when exact quote, wording, provenance, source-only recall, or evidence fallback is required.
-        - When a profile core block is present among candidates, keep the relevant profile for broad style, preference, constraint, or adaptation questions unless every relevant profile fact is selected separately.
+        - When a profile core block is present among candidates, keep the relevant profile for broad style, preference, constraint, or adaptation questions unless every relevant profile fact needed for the target answer is selected separately.
+        - A single specific style claim is not sufficient for a broad adaptation question when the relevant profile also contains language, tone, formatting, or answer-detail preferences.
         - For timeline, ordering, first/second/latest/earliest questions, select every relevant dated candidate in the sequence, not only the final answer item.
         - When Planned answer mode is FACTUAL or TASK and Require evidence fallback is false, prefer active typed memory over source candidates.
         - Raw sources are evidence, not current truth. Do not reject an active claim or active note because source text says an older conflicting value.
