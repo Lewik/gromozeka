@@ -618,11 +618,36 @@ private fun MemoryNamespaceSnapshot.resolveTargetEntitiesForRead(
         )
         .toList()
     val subjectHits = matchedHits.filter { it.entity.entityType.isSubjectAnchorType() }
-    val hits = (subjectHits.ifEmpty { matchedHits })
+    val profileAnchorHits = entities.profileAnchorHitsForRead(query, plan)
+    val hits = (profileAnchorHits + subjectHits.ifEmpty { matchedHits })
+        .distinctBy { it.entity.id }
         .take(4)
 
     return RuntimeMemoryTargetEntities(hits)
 }
+
+private fun List<MemoryEntity>.profileAnchorHitsForRead(
+    query: String,
+    plan: MemoryReadPlan,
+): List<MemoryStore.SearchHit.EntityHit> {
+    if (!plan.requestsProfileContext() || !query.hasFirstPersonSingularReference()) {
+        return emptyList()
+    }
+
+    return asSequence()
+        .filter { it.status == MemoryEntity.Status.ACTIVE }
+        .filter { it.entityType == MemoryEntity.Type.USER }
+        .map { MemoryStore.SearchHit.EntityHit(it, score = 2.0) }
+        .take(1)
+        .toList()
+}
+
+private fun MemoryReadPlan.requestsProfileContext(): Boolean =
+    MemoryReadPlan.CoreBlock.PROFILE in coreBlocks ||
+        retrievalRequests.any { it.memoryType == MemorySemanticType.PROFILE }
+
+private fun String.hasFirstPersonSingularReference(): Boolean =
+    Regex("""\b(i|me|my|mine|myself)\b""").containsMatchIn(this)
 
 private fun MemoryEntity.Type.isSubjectAnchorType(): Boolean =
     when (this) {

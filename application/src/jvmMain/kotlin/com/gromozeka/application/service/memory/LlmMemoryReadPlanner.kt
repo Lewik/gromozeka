@@ -196,7 +196,10 @@ class LlmMemoryReadPlanner(
         - "which brand should you remember that I prefer?"
         - "if memory lacks this, say ..."
         - "what order/procedure/workflow should we follow?"
-        - questions about prior user preferences, project facts, team facts, ownership, decisions, corrections, or prior-session context.
+        - "what should report X show/include?"
+        - "what should component X do/use/be?"
+        - questions about prior user preferences, project facts, team facts, ownership, decisions, corrections, maintenance rules, reporting rules, or prior-session context.
+        - requests for a short phrase can still be memory-dependent when they ask for remembered rules or prior decisions.
 
         Treat these as no-memory:
         - the target is fully self-contained and asks for general reasoning, coding, math, rewriting, or explanation.
@@ -408,10 +411,12 @@ class LlmMemoryReadPlanner(
             - Prefer no memory when the current request is fully self-contained.
             - A request is not self-contained when it asks about user-specific, project-specific, team-specific, or prior-session context and the target message does not contain the answer.
             - Include the profile core block for broad user/project working style, language, tone, preferences, constraints, and "how should you adapt to me/us" questions.
+            - For adaptation/profile questions involving both the user and a project, retrieve profile memory broadly enough to include both user-level and project-level preferences.
             - For named local projects, repositories, products, agents, user preferences, or working agreements, plan memory retrieval instead of relying on model world knowledge.
             - If the target asks according to, from, or in a named/pasted/imported document, handoff, prompt pack, architecture document, or data model, plan memory retrieval unless the target message includes the relevant document content.
             - For named document questions that ask for exact definitions, fields, listed items, or specific component roles, include source retrieval; notes are useful for document digests and rationale, but raw source can be the best answer evidence.
             - If the target asks what order, procedure, workflow, policy, or working agreement "we should follow", and the target itself does not provide the steps, retrieve memory even if the wording sounds like a general advice question.
+            - If the target asks what a named report, trace, pipeline, component, policy, rule, or workflow should show/include/do/use/be, retrieve memory unless the target itself provides that rule.
             - For timeline, sequence, ordering, ordinal, "first/second/third/latest/previous/next", or "what happened before/after" questions, retrieve enough surrounding ordered items to establish the order. Do not set the claim budget/top_k equal to the requested ordinal only; use at least 4 claims when available, or source retrieval if the sequence likely lives in one document/source.
             - For remembered workflows, retrieve claim and note memory first. Retrieve source memory only when exact wording, provenance, conflict, or evidence fallback is required.
             - For claim retrieval, set preferred_claim_predicates to predicates that directly answer the target and deprioritized_claim_predicates to contextual predicates that may be useful but should not outrank direct answers.
