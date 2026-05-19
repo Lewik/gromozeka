@@ -336,6 +336,9 @@ class LlmMemoryClaimExtractor(
             - Do not convert negated negative preference into either positive preference or avoidance. "I do not dislike X", "do not treat X as something to avoid", or "X is not an anti-preference" are neutral unless the target message also states an explicit positive or negative preference.
             - For attributed viewpoints such as "Alice thinks X", "Bob believes Y", or "Carol argues Z", prefer predicate "believes" with the person as subject and the viewpoint as a string object.
             - Do not map third-party viewpoints to "prefers" or "avoids" unless the source explicitly says the person prefers, dislikes, wants, or avoids something.
+            - For ownership or responsibility assignments such as "Alice owns X", "Bob is responsible for Y", or "Mira owns token rotation", prefer predicate "responsible_for" with the owner as subject and the owned responsibility as object.
+            - Keep project/account/service context for responsibility claims in normalized_text, context_text, qualifiers_json, or scope_json. Do not weaken responsibility ownership into "works_on_project".
+            - Use "works_on_project" only for plain project association when no more specific responsibility, role, ownership, or project-state claim is available.
             - When the target explicitly replaces the user's current preference/status/decision with a new current value, set qualifiers_json.replaces_previous=true on the new current claim.
             - Do not set replaces_previous=true for historical dated facts where both old and new facts remain valid in their own time windows.
             - Preserve proper names, product names, repo names, file names, and exact quoted values.

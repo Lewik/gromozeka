@@ -117,6 +117,71 @@ class LlmMemoryClaimExtractorTest {
         )
     }
 
+    @Test
+    fun acceptsResponsibilityClaimsWithEntityObject() = runBlocking {
+        val miraEntityId = MemoryEntity.Id("entity-mira")
+        val tokenRotationEntityId = MemoryEntity.Id("entity-token-rotation")
+        val request = DirectStructuredMemoryWriteRequest(
+            namespace = TEST_NAMESPACE,
+            source = source("For Aurora project context: Mira owns the token rotation."),
+        )
+        val extractor = LlmMemoryClaimExtractor(
+            runtime = FixedJsonRuntime(
+                """
+                {
+                  "claims": [
+                    {
+                      "subject_entity_id": "${miraEntityId.value}",
+                      "predicate": "responsible_for",
+                      "object_entity_id": "${tokenRotationEntityId.value}",
+                      "object_value_json": null,
+                      "normalized_text": "Mira is responsible for token rotation in the Aurora project.",
+                      "context_text": "Aurora project responsibility assignment.",
+                      "scope_json": {"kind": "global", "text": "Aurora project context", "basis": "explicit"},
+                      "qualifiers_json": {"project": "Aurora"},
+                      "confidence": 0.86,
+                      "importance": 8,
+                      "evidence_quote": "Mira owns the token rotation",
+                      "evidence_kind": "direct",
+                      "evidence_reason": "The target explicitly assigns token rotation ownership to Mira.",
+                      "reason": "Ownership of token rotation is a durable responsibility."
+                    }
+                  ]
+                }
+                """.trimIndent()
+            ),
+            timezone = "UTC",
+            runtimeSystemPrompts = emptyList(),
+            runtimeTools = emptyList(),
+        )
+
+        val candidates = extractor.extract(
+            request = request,
+            routeDecision = MemoryRouteDecision(
+                decision = MemoryRouteDecision.Decision.DIRECT_STRUCTURED_WRITE,
+                memoryTypes = setOf(MemorySemanticType.CLAIM),
+                salience = 0.8,
+                reason = "The target contains a durable responsibility assignment.",
+            ),
+            retrievalPlan = MemoryWriteRetrievalPlan(
+                predicateHints = listOf("responsible_for"),
+                memoryTypes = setOf(MemorySemanticType.CLAIM),
+            ),
+            retrievedHits = emptyList(),
+            entityOps = listOf(
+                entityOp("Mira", miraEntityId, MemoryEntity.Type.PERSON),
+                entityOp("token rotation", tokenRotationEntityId, MemoryEntity.Type.CONCEPT),
+            ),
+            predicateCatalog = MemoryPredicateCatalogDefaults.forNamespace(TEST_NAMESPACE),
+        )
+
+        assertEquals(1, candidates.size)
+        assertEquals("responsible_for", candidates.single().predicate)
+        assertEquals(miraEntityId, candidates.single().subjectEntityId)
+        assertEquals(tokenRotationEntityId, candidates.single().objectEntityId)
+        assertNull(candidates.single().objectValue)
+    }
+
     private class FixedJsonRuntime(
         private val responseText: String,
     ) : AiRuntime {
@@ -141,6 +206,23 @@ class LlmMemoryClaimExtractorTest {
     private companion object {
         val TEST_NAMESPACE = MemoryNamespace("claim-extractor-test")
         val NOW: Instant = Instant.parse("2026-01-02T03:04:05Z")
+
+        fun entityOp(
+            mention: String,
+            entityId: MemoryEntity.Id,
+            entityType: MemoryEntity.Type,
+        ): MemoryEntityCanonicalizationOp =
+            MemoryEntityCanonicalizationOp(
+                mention = mention,
+                action = MemoryEntityCanonicalizationOp.Action.CREATE_NEW,
+                entityId = entityId,
+                newEntity = MemoryEntityCanonicalizationOp.NewEntity(
+                    entityType = entityType,
+                    canonicalName = mention,
+                ),
+                confidence = 1.0,
+                reason = "Resolved test entity.",
+            )
 
         fun source(text: String): MemorySource =
             MemorySource.ChatTurn(
