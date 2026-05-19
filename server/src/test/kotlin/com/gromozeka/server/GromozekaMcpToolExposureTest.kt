@@ -12,6 +12,7 @@ class GromozekaMcpToolExposureTest {
 
         assertTrue(exposure.exposes("memory_queue_status"))
         assertTrue(exposure.exposes("memory_enrich_context"))
+        assertTrue(exposure.exposes("memory_list_namespaces"))
         assertTrue(exposure.exposes("memory_maintenance"))
         assertTrue(exposure.exposes("memory_remember"))
         assertTrue(exposure.exposes("memory_run_status"))

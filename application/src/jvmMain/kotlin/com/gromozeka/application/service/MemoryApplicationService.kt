@@ -12,6 +12,7 @@ import com.gromozeka.application.service.memory.MemoryMaintenanceTraceSink
 import com.gromozeka.application.service.memory.MemoryThreadContextCompactor
 import com.gromozeka.application.service.memory.MemoryNoteConsolidationPipeline
 import com.gromozeka.application.service.memory.MemoryNoteConsolidationPipelineResult
+import com.gromozeka.application.service.memory.defaultMemoryNamespace
 import com.gromozeka.application.service.memory.MemoryRepairPipeline
 import com.gromozeka.application.service.memory.MemoryRepairPipelineResult
 import com.gromozeka.application.service.memory.MemoryRetentionPipeline
@@ -91,6 +92,7 @@ class MemoryApplicationService(
         project: Project,
         runtimeSystemPrompts: List<String>,
         runtimeTools: List<AiToolCallback>,
+        namespaceOverride: MemoryNamespace? = null,
     ): MemoryReadResult {
         val memoryContextMessages = threadMessages.filterNot { it.isSyntheticMemoryRuntimeMessage() }
         val targetIndex = memoryContextMessages.indexOfFirst { it.id == targetMessage.id }
@@ -103,7 +105,9 @@ class MemoryApplicationService(
             }
             memoryContextMessages + targetMessage
         }
-        val namespace = MemoryNamespace("project:${project.id.value}")
+        val namespace = namespaceOverride
+            ?: settingsProvider.userProfile.memorySettings.defaultMemoryNamespace()
+            ?: project.defaultMemoryNamespace()
         val runtimes = MemoryServiceStageRuntimes(project)
         val threadContext = MemoryThreadContext(
             conversationId = conversationId,

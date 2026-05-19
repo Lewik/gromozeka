@@ -1,6 +1,7 @@
 package com.gromozeka.application.service.memory
 
 import com.gromozeka.domain.model.memory.MemoryNamespace
+import com.gromozeka.domain.model.memory.MemoryNamespaceSummary
 import com.gromozeka.domain.model.memory.MemoryRun
 import com.gromozeka.domain.model.memory.MemorySource
 import kotlinx.datetime.Instant
@@ -82,5 +83,35 @@ class MemoryStatusToolRendererTest {
         assertEquals("true", json.getValue("has_active_job").jsonPrimitive.content)
         assertEquals("document-ingest:run:active", json.getValue("active_job").jsonObject.getValue("run_id").jsonPrimitive.content)
         assertEquals("false", json.getValue("durable_resume").jsonPrimitive.content)
+    }
+
+    @Test
+    fun namespaceListRendersDefaultAndCounts() {
+        val json = Json.parseToJsonElement(
+            MemoryToolResultRenderer.namespaceListResultJsonString(
+                summaries = listOf(
+                    MemoryNamespaceSummary(
+                        namespace = namespace,
+                        displayName = "Test project (project:test)",
+                        counts = MemoryNamespaceSummary.Counts(
+                            sources = 1,
+                            claims = 2,
+                            notes = 3,
+                        ),
+                        lastUpdatedAt = createdAt,
+                    )
+                ),
+                configuredDefaultNamespace = namespace,
+            )
+        ).jsonObject
+        val renderedNamespace = json.getValue("namespaces").jsonArray.single().jsonObject
+        val counts = renderedNamespace.getValue("counts").jsonObject
+
+        assertEquals("completed", json.getValue("status").jsonPrimitive.content)
+        assertEquals("project:test", json.getValue("configured_default_namespace").jsonPrimitive.content)
+        assertEquals("project:test", renderedNamespace.getValue("namespace").jsonPrimitive.content)
+        assertEquals("Test project (project:test)", renderedNamespace.getValue("display_name").jsonPrimitive.content)
+        assertEquals("true", renderedNamespace.getValue("is_configured_default").jsonPrimitive.content)
+        assertEquals("6", counts.getValue("total_items").jsonPrimitive.content)
     }
 }

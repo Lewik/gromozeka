@@ -6,6 +6,7 @@ import com.gromozeka.domain.model.memory.MemoryEntity
 import com.gromozeka.domain.model.memory.MemoryEpisode
 import com.gromozeka.domain.model.memory.MemoryItemRef
 import com.gromozeka.domain.model.memory.MemoryNamespace
+import com.gromozeka.domain.model.memory.MemoryNamespaceSummary
 import com.gromozeka.domain.model.memory.MemoryNamespaceSnapshot
 import com.gromozeka.domain.model.memory.MemoryNote
 import com.gromozeka.domain.model.memory.MemoryPredicateCatalog
@@ -217,6 +218,20 @@ class MongoMemoryStore(
     ): MemoryNamespaceSnapshot {
         indexes.ensure()
         return loadSnapshot(namespace, includeArchived)
+    }
+
+    override suspend fun listNamespaceSummaries(): List<MemoryNamespaceSummary> {
+        indexes.ensure()
+        val allMemory = loadSnapshot(namespace = null, includeArchived = false)
+        val namespaces = allMemory.namespaces()
+        return namespaces
+            .sortedBy { it.value }
+            .map { namespace ->
+                MemoryNamespaceSummary.fromSnapshot(
+                    namespace = namespace,
+                    snapshot = allMemory.filterNamespace(namespace),
+                )
+            }
     }
 
     override suspend fun loadPredicateCatalog(namespace: MemoryNamespace): MemoryPredicateCatalog {
@@ -459,6 +474,32 @@ private fun MemoryStore.SearchFilters.filtersForLog(): String =
 
 private fun MemoryNamespaceSnapshot.countsForLog(): String =
     "sources=${sources.size},runs=${runs.size},entities=${entities.size},claims=${claims.size},notes=${notes.size},tasks=${tasks.size},profiles=${profiles.size},episodes=${episodes.size}"
+
+private fun MemoryNamespaceSnapshot.namespaces(): Set<MemoryNamespace> =
+    buildSet {
+        predicateDefinitions.mapNotNullTo(this) { it.namespace }
+        sources.mapTo(this) { it.namespace }
+        runs.mapTo(this) { it.namespace }
+        entities.mapTo(this) { it.namespace }
+        claims.mapTo(this) { it.namespace }
+        notes.mapTo(this) { it.namespace }
+        tasks.mapTo(this) { it.namespace }
+        profiles.mapTo(this) { it.namespace }
+        episodes.mapTo(this) { it.namespace }
+    }
+
+private fun MemoryNamespaceSnapshot.filterNamespace(namespace: MemoryNamespace): MemoryNamespaceSnapshot =
+    MemoryNamespaceSnapshot(
+        predicateDefinitions = predicateDefinitions.filter { it.namespace == namespace },
+        sources = sources.filter { it.namespace == namespace },
+        runs = runs.filter { it.namespace == namespace },
+        entities = entities.filter { it.namespace == namespace },
+        claims = claims.filter { it.namespace == namespace },
+        notes = notes.filter { it.namespace == namespace },
+        tasks = tasks.filter { it.namespace == namespace },
+        profiles = profiles.filter { it.namespace == namespace },
+        episodes = episodes.filter { it.namespace == namespace },
+    )
 
 private fun Double.scoreForLog(): String =
     "%.3f".format(this)

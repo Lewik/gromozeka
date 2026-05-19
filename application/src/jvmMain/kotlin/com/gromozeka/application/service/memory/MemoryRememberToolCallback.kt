@@ -28,11 +28,12 @@ class MemoryRememberToolCallback(
         val user_consent_confirmed: Boolean = false,
         val force_write: Boolean = false,
         val mode: String? = null,
+        val namespace: String? = null,
     )
 
     override val definition: AiToolDefinition = AiToolDefinition(
         name = MEMORY_REMEMBER_TOOL_NAME,
-        description = "Persist memory-worthy information into typed memory. Use previous_user_message/message_id for normal conversation memory writes. Provided content modes can run without conversation context and are only allowed when the user explicitly asks or consents to remember that exact arbitrary text/document. For documents, pass exactly one of text, file_path, or raw_url plus document_type='markdown'; document ingestion returns a queued run_id and continues in the background. raw_url must point to raw text/markdown, not a normal HTML web page. Do not use provided content modes for assistant-generated summaries, guesses, rewritten content, or hidden compression unless the user approved that exact text.",
+        description = "Persist memory-worthy information into typed memory. Use previous_user_message/message_id for normal conversation memory writes. Provided content modes can run without conversation context and are only allowed when the user explicitly asks or consents to remember that exact arbitrary text/document. Optional namespace is a readable memory boundary such as global, user:lewik, work:hebrew, or project:<project-id>; omit it to use the configured default or current project namespace. For documents, pass exactly one of text, file_path, or raw_url plus document_type='markdown'; document ingestion returns a queued run_id and continues in the background. raw_url must point to raw text/markdown, not a normal HTML web page. Do not use provided content modes for assistant-generated summaries, guesses, rewritten content, or hidden compression unless the user approved that exact text.",
         inputSchema = """
             {
               "type": "object",
@@ -80,6 +81,10 @@ class MemoryRememberToolCallback(
                 "mode": {
                   "type": "string",
                   "description": "Optional caller mode label for debugging or analytics."
+                },
+                "namespace": {
+                  "type": "string",
+                  "description": "Optional readable memory namespace to write into. Examples: global, user:lewik, work:hebrew, project:<project-id>. Omit to use the configured default or current project namespace."
                 }
               }
             }
@@ -113,6 +118,7 @@ class MemoryRememberToolCallback(
                 sourceRef = input.source_ref,
                 forceWrite = input.force_write,
                 mode = input.mode,
+                namespaceValue = input.namespace,
             )
         }
 
@@ -132,6 +138,7 @@ class MemoryRememberToolCallback(
             conversationIdValue = conversationId,
             targetMessageId = input.target_message_id,
             forceWrite = input.force_write,
+            namespaceValue = input.namespace,
         )
     }
 

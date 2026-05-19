@@ -256,6 +256,7 @@ data class UserProfile(
     data class MemorySettings(
         val autoRemember: Boolean = false,
         val autoRecall: Boolean = false,
+        val defaultNamespace: String? = null,
     )
 
     @Serializable

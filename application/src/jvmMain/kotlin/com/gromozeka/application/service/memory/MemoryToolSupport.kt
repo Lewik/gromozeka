@@ -4,6 +4,7 @@ import com.gromozeka.domain.model.memory.DirectStructuredMemoryWriteResult
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.memory.MemoryReadResult
 import com.gromozeka.domain.model.memory.MemoryNamespace
+import com.gromozeka.domain.model.memory.MemoryNamespaceSummary
 import com.gromozeka.domain.model.memory.MemoryRun
 import com.gromozeka.domain.model.memory.MemoryUpdateBatch
 import com.gromozeka.domain.tool.AiToolCallback
@@ -18,6 +19,7 @@ const val MEMORY_ENRICH_CONTEXT_TOOL_NAME = "memory_enrich_context"
 const val MEMORY_RUN_STATUS_TOOL_NAME = "memory_run_status"
 const val MEMORY_QUEUE_STATUS_TOOL_NAME = "memory_queue_status"
 const val MEMORY_MAINTENANCE_TOOL_NAME = "memory_maintenance"
+const val MEMORY_LIST_NAMESPACES_TOOL_NAME = "memory_list_namespaces"
 
 fun List<AiToolCallback>.withoutMemoryManagementTools(): List<AiToolCallback> =
     filterNot { tool -> tool.definition.name in memoryManagementToolNames }
@@ -28,6 +30,7 @@ private val memoryManagementToolNames = setOf(
     MEMORY_RUN_STATUS_TOOL_NAME,
     MEMORY_QUEUE_STATUS_TOOL_NAME,
     MEMORY_MAINTENANCE_TOOL_NAME,
+    MEMORY_LIST_NAMESPACES_TOOL_NAME,
 )
 
 data class MemoryMaintenanceToolResult(
@@ -236,6 +239,42 @@ object MemoryToolResultRenderer {
             put("worker_count", 1)
             put("process_local", true)
             put("durable_resume", false)
+        }.toString()
+
+    fun namespaceListResultJsonString(
+        summaries: List<MemoryNamespaceSummary>,
+        configuredDefaultNamespace: MemoryNamespace?,
+    ): String =
+        buildJsonObject {
+            put("status", "completed")
+            put("configured_default_namespace", configuredDefaultNamespace?.value ?: "")
+            put("namespace_count", summaries.size)
+            putJsonArray("namespaces") {
+                summaries.forEach { summary ->
+                    add(buildJsonObject {
+                        put("namespace", summary.namespace.value)
+                        put("display_name", summary.displayName)
+                        put("kind", summary.kind.name)
+                        put("is_configured_default", summary.namespace == configuredDefaultNamespace)
+                        put("last_updated_at", summary.lastUpdatedAt?.toString() ?: "")
+                        put(
+                            "counts",
+                            buildJsonObject {
+                                put("total_items", summary.counts.totalItems)
+                                put("predicate_definitions", summary.counts.predicateDefinitions)
+                                put("sources", summary.counts.sources)
+                                put("runs", summary.counts.runs)
+                                put("entities", summary.counts.entities)
+                                put("claims", summary.counts.claims)
+                                put("notes", summary.counts.notes)
+                                put("tasks", summary.counts.tasks)
+                                put("profiles", summary.counts.profiles)
+                                put("episodes", summary.counts.episodes)
+                            }
+                        )
+                    })
+                }
+            }
         }.toString()
 
     fun maintenanceResultJsonString(result: MemoryMaintenanceToolResult): String =

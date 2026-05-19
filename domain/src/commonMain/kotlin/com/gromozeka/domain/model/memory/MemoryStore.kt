@@ -20,6 +20,8 @@ interface MemoryStore {
         includeArchived: Boolean = false,
     ): MemoryNamespaceSnapshot
 
+    suspend fun listNamespaceSummaries(): List<MemoryNamespaceSummary>
+
     suspend fun loadPredicateCatalog(namespace: MemoryNamespace): MemoryPredicateCatalog
 
     suspend fun findEntitiesByNormalizedNames(

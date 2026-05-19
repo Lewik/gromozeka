@@ -2,6 +2,7 @@ package com.gromozeka.server
 
 import com.gromozeka.application.service.memory.MEMORY_QUEUE_STATUS_TOOL_NAME
 import com.gromozeka.application.service.memory.MEMORY_ENRICH_CONTEXT_TOOL_NAME
+import com.gromozeka.application.service.memory.MEMORY_LIST_NAMESPACES_TOOL_NAME
 import com.gromozeka.application.service.memory.MEMORY_MAINTENANCE_TOOL_NAME
 import com.gromozeka.application.service.memory.MEMORY_REMEMBER_TOOL_NAME
 import com.gromozeka.application.service.memory.MEMORY_RUN_STATUS_TOOL_NAME
@@ -150,6 +151,7 @@ internal class GromozekaMcpToolExposure private constructor(
         val DEFAULT_TOOL_NAMES = setOf(
             MEMORY_QUEUE_STATUS_TOOL_NAME,
             MEMORY_ENRICH_CONTEXT_TOOL_NAME,
+            MEMORY_LIST_NAMESPACES_TOOL_NAME,
             MEMORY_MAINTENANCE_TOOL_NAME,
             MEMORY_REMEMBER_TOOL_NAME,
             MEMORY_RUN_STATUS_TOOL_NAME,

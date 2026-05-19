@@ -1,6 +1,7 @@
 package com.gromozeka.application.service
 
 import com.gromozeka.application.service.memory.MEMORY_ENRICH_CONTEXT_TOOL_NAME
+import com.gromozeka.application.service.memory.MEMORY_LIST_NAMESPACES_TOOL_NAME
 import com.gromozeka.application.service.memory.MEMORY_MAINTENANCE_TOOL_NAME
 import com.gromozeka.application.service.memory.MEMORY_REMEMBER_TOOL_NAME
 import com.gromozeka.application.service.memory.MemoryDocumentIngestJob
@@ -17,11 +18,15 @@ import com.gromozeka.application.service.memory.MemoryRememberContentResolver
 import com.gromozeka.application.service.memory.MemoryRememberDocumentQueuedResult
 import com.gromozeka.application.service.memory.MemoryResolvedRememberContent
 import com.gromozeka.application.service.memory.MemoryToolResultRenderer
+import com.gromozeka.application.service.memory.PROJECT_MEMORY_NAMESPACE_PREFIX
+import com.gromozeka.application.service.memory.defaultMemoryNamespace
+import com.gromozeka.application.service.memory.toConfiguredMemoryNamespace
 import com.gromozeka.application.service.memory.withoutMemoryManagementTools
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.memory.MemoryNamespace
+import com.gromozeka.domain.model.memory.MemoryNamespaceSummary
 import com.gromozeka.domain.model.memory.MemoryRun
 import com.gromozeka.domain.model.memory.MemorySource
 import com.gromozeka.domain.model.memory.MemorySourceUsagePolicy
@@ -64,6 +69,7 @@ class MemoryToolApplicationService(
         conversationIdValue: String,
         targetMessageId: String? = null,
         forceWrite: Boolean = false,
+        namespaceValue: String? = null,
     ): String = runMemoryTool(MEMORY_REMEMBER_TOOL_NAME, conversationIdValue, targetMessageId) { context, targetMessage ->
         val result = memoryMessageRoutingApplicationService.routeMessage(
             conversationId = context.conversation.id,
@@ -74,6 +80,7 @@ class MemoryToolApplicationService(
             runtimeSystemPrompts = context.systemPrompts,
             runtimeTools = context.memoryTools,
             forceMemoryWrite = forceWrite,
+            namespaceOverride = namespaceValue.toConfiguredMemoryNamespace(),
         )
         MemoryToolResultRenderer.rememberResultJsonString(result)
     }
@@ -88,6 +95,7 @@ class MemoryToolApplicationService(
         sourceRef: String? = null,
         forceWrite: Boolean = false,
         mode: String? = null,
+        namespaceValue: String? = null,
     ): String {
         val resolvedContent = runCatching {
             rememberContentResolver.resolve(
@@ -105,7 +113,7 @@ class MemoryToolApplicationService(
         }
 
         if (resolvedContent.documentType != null) {
-            return rememberResolvedDocument(conversationIdValue, resolvedContent, forceWrite, mode)
+            return rememberResolvedDocument(conversationIdValue, resolvedContent, forceWrite, mode, namespaceValue)
         }
 
         val normalizedText = resolvedContent.text.trim()
@@ -114,7 +122,7 @@ class MemoryToolApplicationService(
         }
 
         if (conversationIdValue.isNullOrBlank()) {
-            return rememberStandaloneProvidedText(normalizedText, forceWrite, mode)
+            return rememberStandaloneProvidedText(normalizedText, forceWrite, mode, namespaceValue)
         }
 
         return runCatching {
@@ -145,6 +153,7 @@ class MemoryToolApplicationService(
                 runtimeTools = context.memoryTools,
                 threadContextMessages = context.threadMessages + targetMessage,
                 forceMemoryWrite = forceWrite,
+                namespaceOverride = namespaceValue.toConfiguredMemoryNamespace(),
             )
             MemoryToolResultRenderer.rememberResultJsonString(result)
         }.onFailure { error ->
@@ -160,11 +169,12 @@ class MemoryToolApplicationService(
         text: String,
         forceWrite: Boolean,
         mode: String?,
+        namespaceValue: String?,
     ): String {
         return runCatching {
             val agent = defaultAgentProvider.getDefault()
             val project = projectService.getOrCreate(defaultStandaloneProjectPath())
-            val namespace = MemoryNamespace("project:${project.id.value}")
+            val namespace = resolveMemoryNamespace(namespaceValue, project)
             val contentHash = text.sha256()
             val now = Clock.System.now()
             val source = MemorySource.ExternalRecord(
@@ -207,6 +217,7 @@ class MemoryToolApplicationService(
         resolvedContent: MemoryResolvedRememberContent,
         forceWrite: Boolean,
         mode: String?,
+        namespaceValue: String?,
     ): String =
         runCatching {
             val documentType = requireNotNull(resolvedContent.documentType)
@@ -228,7 +239,7 @@ class MemoryToolApplicationService(
                 runtimeTools = context.memoryTools
             }
 
-            val namespace = MemoryNamespace("project:${project.id.value}")
+            val namespace = resolveMemoryNamespace(namespaceValue, project)
             val now = Clock.System.now()
             val documentHash = resolvedContent.text.sha256()
             val parentRecordRef = "memory_remember:document:${documentHash.take(16)}"
@@ -353,6 +364,7 @@ class MemoryToolApplicationService(
     suspend fun enrichContext(
         conversationIdValue: String,
         targetMessageId: String? = null,
+        namespaceValue: String? = null,
     ): String = runMemoryTool(MEMORY_ENRICH_CONTEXT_TOOL_NAME, conversationIdValue, targetMessageId) { context, targetMessage ->
         val result = memoryApplicationService.buildRuntimeMemoryReadResult(
             conversationId = context.conversation.id,
@@ -363,6 +375,7 @@ class MemoryToolApplicationService(
             project = context.project,
             runtimeSystemPrompts = context.systemPrompts,
             runtimeTools = context.memoryTools,
+            namespaceOverride = namespaceValue.toConfiguredMemoryNamespace(),
         )
         MemoryToolResultRenderer.enrichContextResultJsonString(result)
     }
@@ -371,6 +384,7 @@ class MemoryToolApplicationService(
         conversationIdValue: String?,
         contextText: String,
         mode: String? = null,
+        namespaceValue: String? = null,
     ): String {
         val normalizedContext = contextText.trim()
         if (normalizedContext.isBlank()) {
@@ -378,7 +392,7 @@ class MemoryToolApplicationService(
         }
 
         if (conversationIdValue.isNullOrBlank()) {
-            return enrichStandaloneContext(normalizedContext, mode)
+            return enrichStandaloneContext(normalizedContext, mode, namespaceValue)
         }
 
         return runCatching {
@@ -399,6 +413,7 @@ class MemoryToolApplicationService(
                 project = context.project,
                 runtimeSystemPrompts = context.systemPrompts,
                 runtimeTools = context.memoryTools,
+                namespaceOverride = namespaceValue.toConfiguredMemoryNamespace(),
             )
             MemoryToolResultRenderer.enrichContextResultJsonString(result)
         }.onFailure { error ->
@@ -437,6 +452,25 @@ class MemoryToolApplicationService(
 
     fun memoryQueueStatus(): String =
         MemoryToolResultRenderer.queueStatusJsonString(memoryDocumentIngestQueue.status())
+
+    suspend fun listNamespaces(): String =
+        runCatching {
+            val configuredDefault = settingsService.userProfile.memorySettings.defaultMemoryNamespace()
+            val storedSummaries = memoryStore.listNamespaceSummaries()
+            val summaries = (storedSummaries + configuredDefault.emptyNamespaceSummaryIfMissing(storedSummaries))
+                .distinctBy { it.namespace.value }
+                .map { it.withReadableDisplayName() }
+                .sortedWith(compareByDescending<MemoryNamespaceSummary> { it.namespace == configuredDefault }.thenBy { it.namespace.value })
+
+            MemoryToolResultRenderer.namespaceListResultJsonString(
+                summaries = summaries,
+                configuredDefaultNamespace = configuredDefault,
+            )
+        }.onFailure { error ->
+            log.warn(error) { "Memory tool failed: tool=$MEMORY_LIST_NAMESPACES_TOOL_NAME error=${error.message}" }
+        }.getOrElse { error ->
+            MemoryToolResultRenderer.failureJsonString(error.message ?: "Memory namespace list failed.")
+        }
 
     suspend fun runMaintenance(
         actionValue: String,
@@ -519,6 +553,7 @@ class MemoryToolApplicationService(
     private suspend fun enrichStandaloneContext(
         text: String,
         mode: String?,
+        namespaceValue: String?,
     ): String {
         return runCatching {
             val agent = defaultAgentProvider.getDefault()
@@ -540,6 +575,7 @@ class MemoryToolApplicationService(
                 project = project,
                 runtimeSystemPrompts = agentDomainService.assembleSystemPrompt(agent, project),
                 runtimeTools = aiToolProvider.getTools().withoutMemoryManagementTools(),
+                namespaceOverride = resolveMemoryNamespace(namespaceValue, project),
             )
             MemoryToolResultRenderer.enrichContextResultJsonString(result)
         }.onFailure { error ->
@@ -717,7 +753,7 @@ class MemoryToolApplicationService(
         }
 
     private suspend fun resolveProjectNamespace(namespace: MemoryNamespace): Project {
-        val projectId = namespace.value.removePrefix(PROJECT_NAMESPACE_PREFIX)
+        val projectId = namespace.value.removePrefix(PROJECT_MEMORY_NAMESPACE_PREFIX)
         require(projectId != namespace.value && projectId.isNotBlank()) {
             "Only project namespaces are supported by memory_maintenance target resolution: ${namespace.value}"
         }
@@ -732,7 +768,7 @@ class MemoryToolApplicationService(
             conversationId = Conversation.Id("memory_maintenance:standalone:${uuid7()}"),
             agent = agent,
             project = this,
-            namespace = MemoryNamespace("project:${id.value}"),
+            namespace = defaultMemoryNamespace(),
             systemPrompts = systemPrompts,
             memoryTools = aiToolProvider.getTools().withoutMemoryManagementTools(),
         )
@@ -743,7 +779,7 @@ class MemoryToolApplicationService(
             conversationId = conversationId,
             agent = agent,
             project = project,
-            namespace = MemoryNamespace("project:${project.id.value}"),
+            namespace = project.defaultMemoryNamespace(),
             systemPrompts = systemPrompts,
             memoryTools = memoryTools,
         )
@@ -837,6 +873,31 @@ class MemoryToolApplicationService(
         System.getProperty("gromozeka.project.root")
             ?: settingsService.homeDirectory
 
+    private fun resolveMemoryNamespace(
+        explicitNamespaceValue: String?,
+        project: Project,
+    ): MemoryNamespace =
+        explicitNamespaceValue.toConfiguredMemoryNamespace()
+            ?: settingsService.userProfile.memorySettings.defaultMemoryNamespace()
+            ?: project.defaultMemoryNamespace()
+
+    private fun MemoryNamespace?.emptyNamespaceSummaryIfMissing(existing: List<MemoryNamespaceSummary>): List<MemoryNamespaceSummary> {
+        if (this == null || existing.any { it.namespace == this }) return emptyList()
+        return listOf(MemoryNamespaceSummary(namespace = this))
+    }
+
+    private suspend fun MemoryNamespaceSummary.withReadableDisplayName(): MemoryNamespaceSummary =
+        copy(displayName = readableNamespaceName(namespace))
+
+    private suspend fun readableNamespaceName(namespace: MemoryNamespace): String {
+        val projectId = namespace.value.removePrefix(PROJECT_MEMORY_NAMESPACE_PREFIX)
+        if (projectId == namespace.value || projectId.isBlank()) return namespace.value
+        val project = projectService.findById(Project.Id(projectId)) ?: return namespace.value
+        val pathName = File(project.path).name.takeIf { it.isNotBlank() }
+        val projectName = project.name.takeIf { it.isNotBlank() } ?: pathName ?: project.id.value
+        return "$projectName (${namespace.value})"
+    }
+
     private fun String.sha256(): String {
         val digest = MessageDigest.getInstance("SHA-256").digest(toByteArray())
         return digest.joinToString("") { "%02x".format(it) }
@@ -891,7 +952,4 @@ class MemoryToolApplicationService(
         }
     }
 
-    private companion object {
-        const val PROJECT_NAMESPACE_PREFIX = "project:"
-    }
 }

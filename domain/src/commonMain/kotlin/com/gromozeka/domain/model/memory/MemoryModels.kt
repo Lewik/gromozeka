@@ -949,3 +949,82 @@ data class MemoryNamespaceSnapshot(
     val profiles: List<MemoryProfile> = emptyList(),
     val episodes: List<MemoryEpisode> = emptyList(),
 )
+
+@Serializable
+data class MemoryNamespaceSummary(
+    val namespace: MemoryNamespace,
+    val displayName: String = namespace.value,
+    val kind: Kind = Kind.from(namespace),
+    val counts: Counts = Counts(),
+    val lastUpdatedAt: Instant? = null,
+) {
+    @Serializable
+    enum class Kind {
+        PROJECT,
+        USER,
+        GLOBAL,
+        CUSTOM;
+
+        companion object {
+            fun from(namespace: MemoryNamespace): Kind =
+                when {
+                    namespace.value.startsWith("project:") -> PROJECT
+                    namespace.value.startsWith("user:") -> USER
+                    namespace.value == "global" || namespace.value.startsWith("global:") -> GLOBAL
+                    else -> CUSTOM
+                }
+        }
+    }
+
+    @Serializable
+    data class Counts(
+        val predicateDefinitions: Int = 0,
+        val sources: Int = 0,
+        val runs: Int = 0,
+        val entities: Int = 0,
+        val claims: Int = 0,
+        val notes: Int = 0,
+        val tasks: Int = 0,
+        val profiles: Int = 0,
+        val episodes: Int = 0,
+    ) {
+        val totalItems: Int
+            get() = predicateDefinitions + sources + runs + entities + claims + notes + tasks + profiles + episodes
+    }
+
+    companion object {
+        fun fromSnapshot(
+            namespace: MemoryNamespace,
+            snapshot: MemoryNamespaceSnapshot,
+            displayName: String = namespace.value,
+        ): MemoryNamespaceSummary =
+            MemoryNamespaceSummary(
+                namespace = namespace,
+                displayName = displayName,
+                counts = Counts(
+                    predicateDefinitions = snapshot.predicateDefinitions.size,
+                    sources = snapshot.sources.size,
+                    runs = snapshot.runs.size,
+                    entities = snapshot.entities.size,
+                    claims = snapshot.claims.size,
+                    notes = snapshot.notes.size,
+                    tasks = snapshot.tasks.size,
+                    profiles = snapshot.profiles.size,
+                    episodes = snapshot.episodes.size,
+                ),
+                lastUpdatedAt = snapshot.lastUpdatedAt(),
+            )
+    }
+}
+
+private fun MemoryNamespaceSnapshot.lastUpdatedAt(): Instant? =
+    buildList {
+        sources.mapTo(this) { it.createdAt }
+        runs.mapTo(this) { it.completedAt ?: it.startedAt ?: it.createdAt }
+        entities.mapTo(this) { it.updatedAt }
+        claims.mapTo(this) { it.updatedAt }
+        notes.mapTo(this) { it.updatedAt }
+        tasks.mapTo(this) { it.updatedAt }
+        profiles.mapTo(this) { it.updatedAt }
+        episodes.mapTo(this) { it.updatedAt }
+    }.maxOrNull()

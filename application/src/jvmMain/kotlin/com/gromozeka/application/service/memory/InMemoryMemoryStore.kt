@@ -5,6 +5,7 @@ import com.gromozeka.domain.model.memory.MemoryClaim
 import com.gromozeka.domain.model.memory.MemoryEntity
 import com.gromozeka.domain.model.memory.MemoryItemRef
 import com.gromozeka.domain.model.memory.MemoryNamespace
+import com.gromozeka.domain.model.memory.MemoryNamespaceSummary
 import com.gromozeka.domain.model.memory.MemoryNamespaceSnapshot
 import com.gromozeka.domain.model.memory.MemoryNote
 import com.gromozeka.domain.model.memory.MemoryPredicateCatalog
@@ -127,20 +128,18 @@ class InMemoryMemoryStore(
         includeArchived: Boolean,
     ): MemoryNamespaceSnapshot {
         ensureDefaultPredicateCatalog(namespace)
-        return MemoryNamespaceSnapshot(
-            predicateDefinitions = predicateDefinitions
-                .filter { it.namespace == namespace }
-                .activeDefinitions(),
-            sources = sources.filter { it.namespace == namespace && (includeArchived || it.deletedAt == null) },
-            runs = runs.filter { it.namespace == namespace },
-            entities = entities.filter { it.namespace == namespace },
-            claims = claims.filter { it.namespace == namespace && (includeArchived || it.archivedAt == null) },
-            notes = notes.filter { it.namespace == namespace && (includeArchived || it.archivedAt == null) },
-            tasks = tasks.filter { it.namespace == namespace && (includeArchived || it.archivedAt == null) },
-            profiles = profiles.filter { it.namespace == namespace },
-            episodes = episodes.filter { it.namespace == namespace && (includeArchived || it.archivedAt == null) },
-        )
+        return snapshotForNamespace(namespace, includeArchived)
     }
+
+    override suspend fun listNamespaceSummaries(): List<MemoryNamespaceSummary> =
+        allNamespaces()
+            .sortedBy { it.value }
+            .map { namespace ->
+                MemoryNamespaceSummary.fromSnapshot(
+                    namespace = namespace,
+                    snapshot = snapshotForNamespace(namespace, includeArchived = false),
+                )
+            }
 
     override suspend fun loadPredicateCatalog(namespace: MemoryNamespace): MemoryPredicateCatalog {
         ensureDefaultPredicateCatalog(namespace)
@@ -199,6 +198,37 @@ class InMemoryMemoryStore(
 
         predicateDefinitions.upsertAll(missingDefaults) { it.id.value }
     }
+
+    private fun allNamespaces(): Set<MemoryNamespace> =
+        buildSet {
+            predicateDefinitions.mapNotNullTo(this) { it.namespace }
+            sources.mapTo(this) { it.namespace }
+            runs.mapTo(this) { it.namespace }
+            entities.mapTo(this) { it.namespace }
+            claims.mapTo(this) { it.namespace }
+            notes.mapTo(this) { it.namespace }
+            tasks.mapTo(this) { it.namespace }
+            profiles.mapTo(this) { it.namespace }
+            episodes.mapTo(this) { it.namespace }
+        }
+
+    private fun snapshotForNamespace(
+        namespace: MemoryNamespace,
+        includeArchived: Boolean,
+    ): MemoryNamespaceSnapshot =
+        MemoryNamespaceSnapshot(
+            predicateDefinitions = predicateDefinitions
+                .filter { it.namespace == namespace }
+                .activeDefinitions(),
+            sources = sources.filter { it.namespace == namespace && (includeArchived || it.deletedAt == null) },
+            runs = runs.filter { it.namespace == namespace },
+            entities = entities.filter { it.namespace == namespace },
+            claims = claims.filter { it.namespace == namespace && (includeArchived || it.archivedAt == null) },
+            notes = notes.filter { it.namespace == namespace && (includeArchived || it.archivedAt == null) },
+            tasks = tasks.filter { it.namespace == namespace && (includeArchived || it.archivedAt == null) },
+            profiles = profiles.filter { it.namespace == namespace },
+            episodes = episodes.filter { it.namespace == namespace && (includeArchived || it.archivedAt == null) },
+        )
 
     private fun <T> MutableList<T>.upsertAll(
         items: List<T>,
