@@ -386,7 +386,7 @@ private fun List<MemoryStore.SearchHit>.renderRelevantMemory(): String {
             is MemoryStore.SearchHit.ProfileHit -> "- profile ${hit.profile.id.value}: ${hit.profile.profileText}"
             is MemoryStore.SearchHit.TaskHit -> "- task ${hit.task.id.value}: ${hit.task.title}; ${hit.task.description ?: "no description"}"
             is MemoryStore.SearchHit.EpisodeHit -> "- episode ${hit.episode.id.value}: ${hit.episode.situation}; lesson=${hit.episode.lesson}"
-            is MemoryStore.SearchHit.SourceHit -> null
+            is MemoryStore.SearchHit.SourceHit -> "- source ${hit.source.id.value}: ${hit.source.contentText.limitForMemoryPrompt(700)}"
             is MemoryStore.SearchHit.EntityHit -> null
             is MemoryStore.SearchHit.RunHit -> null
         }

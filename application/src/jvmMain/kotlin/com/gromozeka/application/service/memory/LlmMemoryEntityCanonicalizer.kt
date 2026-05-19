@@ -121,6 +121,9 @@ class LlmMemoryEntityCanonicalizer(
         Candidate existing entities:
         ${retrievedHits.renderCandidateEntities()}
 
+        Relevant retrieval context for ambiguous mention resolution:
+        ${retrievedHits.renderEntityResolutionContext()}
+
         Retrieval plan context:
         entity_queries=${retrievalPlan.entityQueries.joinToString("|")}
         text_queries=${retrievalPlan.textQueries.joinToString("|")}
@@ -259,6 +262,8 @@ class LlmMemoryEntityCanonicalizer(
             - Prefer English for entity summaries; keep proper names, product names, repo names, and file names unchanged.
             - Entity summaries must describe identity only, not mutable facts, current status, preferences, ownership, formats, fields, versions, or decisions. Put those facts into claims/notes instead.
             - For USER first-person facts and preferences, resolve the user as the stable namespace-level USER entity named "User".
+            - Use relevant retrieval context to resolve ambiguous target mentions such as pronouns, "it", "that", "first one", "second one", and "from that list".
+            - When TARGET_MESSAGE selects one item from a previously retrieved ordered list, create or link only the selected concrete entity so later stages can write the target claim.
             - Never create chat-specific USER entities such as "User of chat:..."; a new chat is not a new user.
             - Return valid JSON only.
         """.trimIndent()
@@ -379,6 +384,27 @@ private fun List<MemoryStore.SearchHit>.renderCandidateEntities(): String {
         val aliases = entity.aliases.joinToString(", ") { it.text }.ifBlank { "none" }
         "- id=${entity.id.value}; type=${entity.entityType.name}; name=${entity.canonicalName}; aliases=$aliases; summary=${entity.summary ?: "none"}"
     }
+}
+
+private fun List<MemoryStore.SearchHit>.renderEntityResolutionContext(): String {
+    val rendered = mapNotNull { hit ->
+        when (hit) {
+            is MemoryStore.SearchHit.EntityHit -> null
+            is MemoryStore.SearchHit.ClaimHit -> "- claim ${hit.claim.id.value}: ${hit.claim.normalizedText}"
+            is MemoryStore.SearchHit.ProfileHit -> "- profile ${hit.profile.id.value}: ${hit.profile.profileText}"
+            is MemoryStore.SearchHit.SourceHit -> "- source ${hit.source.id.value}: ${hit.source.contentText.limitForMemoryPrompt(700)}"
+            is MemoryStore.SearchHit.NoteHit -> "- note ${hit.note.id.value}: ${hit.note.title}; ${hit.note.summary}"
+            is MemoryStore.SearchHit.TaskHit -> "- task ${hit.task.id.value}: ${hit.task.title}; ${hit.task.description ?: "no description"}"
+            is MemoryStore.SearchHit.EpisodeHit -> "- episode ${hit.episode.id.value}: ${hit.episode.situation}; lesson=${hit.episode.lesson}"
+            is MemoryStore.SearchHit.RunHit -> null
+        }
+    }.take(12)
+
+    if (rendered.isEmpty()) {
+        return "none"
+    }
+
+    return rendered.joinToString("\n")
 }
 
 internal fun String.extractJsonArray(): String? {
