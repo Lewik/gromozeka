@@ -21,6 +21,7 @@ import com.gromozeka.domain.model.memory.MemoryNoteConstructor
 import com.gromozeka.domain.model.memory.MemoryNoteReconciliationOp
 import com.gromozeka.domain.model.memory.MemoryNoteReconciler
 import com.gromozeka.domain.model.memory.MemoryPredicateCatalog
+import com.gromozeka.domain.model.memory.MemoryPredicateDefinition
 import com.gromozeka.domain.model.memory.MemoryProfile
 import com.gromozeka.domain.model.memory.MemoryProfileUpdater
 import com.gromozeka.domain.model.memory.MemoryReconciliationAction
@@ -42,8 +43,17 @@ import java.security.MessageDigest
 import klog.KLoggers
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonArray
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.encodeToJsonElement
+import kotlinx.serialization.json.put
+import kotlinx.serialization.json.putJsonArray
+
+private val memoryRunJson = Json { encodeDefaults = true }
 
 fun interface MemoryClock {
     fun now(): Instant
@@ -81,9 +91,12 @@ data class DirectStructuredMemoryWriteMaterialization(
     val retrievedHits: List<MemoryStore.SearchHit>,
     val entityOps: List<MemoryEntityCanonicalizationOp>,
     val noteCandidates: List<MemoryNoteCandidate>,
+    val rawNoteOps: List<MemoryNoteReconciliationOp>,
     val noteOps: List<MemoryNoteReconciliationOp>,
     val claimCandidates: List<MemoryClaimCandidate>,
+    val rawClaimOps: List<MemoryClaimReconciliationOp>,
     val claimOps: List<MemoryClaimReconciliationOp>,
+    val rawTaskOps: List<MemoryTaskUpdateOp>,
     val taskOps: List<MemoryTaskUpdateOp>,
     val predicateCatalog: MemoryPredicateCatalog,
     val startedAt: Instant,
@@ -261,8 +274,32 @@ class DirectStructuredMemoryWritePipeline(
         }
 
         if (structuredRouteDecision.decision == MemoryRouteDecision.Decision.NOOP) {
+            val completedAt = clock.now()
+            val noopRunBatch = materializer.materialize(
+                DirectStructuredMemoryWriteMaterialization(
+                    request = effectiveRequest,
+                    routeDecision = structuredRouteDecision,
+                    retrievalPlan = null,
+                    retrievedHits = emptyList(),
+                    entityOps = emptyList(),
+                    noteCandidates = emptyList(),
+                    rawNoteOps = emptyList(),
+                    noteOps = emptyList(),
+                    claimCandidates = emptyList(),
+                    rawClaimOps = emptyList(),
+                    claimOps = emptyList(),
+                    rawTaskOps = emptyList(),
+                    taskOps = emptyList(),
+                    predicateCatalog = emptyList(),
+                    startedAt = request.source.createdAt,
+                    completedAt = completedAt,
+                )
+            )
+            store.apply(noopRunBatch)
+
             log.info {
-                "Memory write pipeline completed as NOOP: namespace=${request.namespace.value} source=${request.source.id.value}"
+                "Memory write pipeline completed as NOOP: namespace=${request.namespace.value} source=${request.source.id.value} " +
+                    "runs=${noopRunBatch.runs.size}"
             }
 
             return DirectStructuredMemoryWriteResult(
@@ -280,7 +317,7 @@ class DirectStructuredMemoryWritePipeline(
                 claimOps = emptyList(),
                 rawTaskOps = emptyList(),
                 taskOps = emptyList(),
-                memoryBatch = MemoryUpdateBatch(),
+                memoryBatch = noopRunBatch,
             )
         }
 
@@ -450,9 +487,12 @@ class DirectStructuredMemoryWritePipeline(
             retrievedHits = retrievedHits,
             entityOps = entityOps,
             noteCandidates = noteCandidates,
+            rawNoteOps = rawNoteOps,
             noteOps = noteOps,
             claimCandidates = claimCandidates,
+            rawClaimOps = rawClaimOps,
             claimOps = claimOps,
+            rawTaskOps = rawTaskOps,
             taskOps = taskOps,
             predicateCatalog = predicateCatalog,
             startedAt = request.source.createdAt,
@@ -1293,6 +1333,20 @@ class DefaultDirectStructuredMemoryWriteMaterializer(
             retrievedItemRefs = input.retrievedHits.map { it.toItemRef() },
             retrievalBudget = input.retrievalPlan?.retrievalBudget,
             inputHash = input.inputHash(),
+            output = input.toRunOutput(
+                entities = entities,
+                notes = notes,
+                claims = claims,
+                tasks = tasks,
+                predicateDefinitions = predicateDefinitions,
+            ),
+            appliedOps = input.toAppliedOps(
+                entities = entities,
+                notes = notes,
+                claims = claims,
+                tasks = tasks,
+                predicateDefinitions = predicateDefinitions,
+            ),
             latencyMs = input.completedAt.toEpochMilliseconds() - input.startedAt.toEpochMilliseconds(),
             status = MemoryRun.Status.SUCCESS,
             createdAt = input.startedAt,
@@ -1725,6 +1779,123 @@ class DefaultDirectStructuredMemoryWriteMaterializer(
         )
     }
 }
+
+private fun DirectStructuredMemoryWriteMaterialization.toRunOutput(
+    entities: List<MemoryEntity>,
+    notes: List<MemoryNote>,
+    claims: List<MemoryClaim>,
+    tasks: List<MemoryTask>,
+    predicateDefinitions: List<MemoryPredicateDefinition>,
+): JsonElement =
+    buildJsonObject {
+        put("kind", "direct_structured_memory_write")
+        put("sourceId", request.source.id.value)
+        put("sourceHash", request.source.contentHash)
+        put("sourceChars", request.source.contentText.length)
+        put("triggerMode", request.triggerMode.name)
+        request.parentRunId?.let { put("parentRunId", it.value) }
+        put("routeDecision", memoryRunJson.encodeToJsonElement(routeDecision))
+        retrievalPlan?.let { put("retrievalPlan", memoryRunJson.encodeToJsonElement(it)) }
+        put("predicateCatalogSize", predicateCatalog.size)
+        putJsonArray("retrievedItemRefs") {
+            retrievedHits.map { it.toItemRef() }.forEach { add(memoryRunJson.encodeToJsonElement(it)) }
+        }
+        put("entityOps", memoryRunJson.encodeToJsonElement(entityOps))
+        put("noteCandidates", memoryRunJson.encodeToJsonElement(noteCandidates))
+        put("rawNoteOps", memoryRunJson.encodeToJsonElement(rawNoteOps))
+        put("noteOps", memoryRunJson.encodeToJsonElement(noteOps))
+        put("claimCandidates", memoryRunJson.encodeToJsonElement(claimCandidates))
+        put("rawClaimOps", memoryRunJson.encodeToJsonElement(rawClaimOps))
+        put("claimOps", memoryRunJson.encodeToJsonElement(claimOps))
+        put("rawTaskOps", memoryRunJson.encodeToJsonElement(rawTaskOps))
+        put("taskOps", memoryRunJson.encodeToJsonElement(taskOps))
+        putJsonArray("appliedPredicateDefinitionIds") {
+            predicateDefinitions.forEach { add(JsonPrimitive(it.id.value)) }
+        }
+        putJsonArray("appliedEntityIds") {
+            entities.forEach { add(JsonPrimitive(it.id.value)) }
+        }
+        putJsonArray("appliedNoteIds") {
+            notes.forEach { add(JsonPrimitive(it.id.value)) }
+        }
+        putJsonArray("appliedClaimIds") {
+            claims.forEach { add(JsonPrimitive(it.id.value)) }
+        }
+        putJsonArray("appliedTaskIds") {
+            tasks.forEach { add(JsonPrimitive(it.id.value)) }
+        }
+    }
+
+private fun DirectStructuredMemoryWriteMaterialization.toAppliedOps(
+    entities: List<MemoryEntity>,
+    notes: List<MemoryNote>,
+    claims: List<MemoryClaim>,
+    tasks: List<MemoryTask>,
+    predicateDefinitions: List<MemoryPredicateDefinition>,
+): JsonArray =
+    buildJsonArray {
+        add(
+            buildJsonObject {
+                put("op", "route")
+                put("decision", routeDecision.decision.name)
+                put("memoryTypes", routeDecision.memoryTypes.joinToString("|") { it.name })
+                put("reason", routeDecision.reason)
+            }
+        )
+        predicateDefinitions.forEach { definition ->
+            add(
+                buildJsonObject {
+                    put("op", "upsert_predicate_definition")
+                    put("id", definition.id.value)
+                    put("predicate", definition.predicate)
+                }
+            )
+        }
+        entities.forEach { entity ->
+            add(
+                buildJsonObject {
+                    put("op", "upsert_entity")
+                    put("id", entity.id.value)
+                    put("type", entity.entityType.name)
+                    put("name", entity.canonicalName)
+                }
+            )
+        }
+        notes.forEach { note ->
+            add(
+                buildJsonObject {
+                    put("op", "upsert_note")
+                    put("id", note.id.value)
+                    put("type", note.noteType.name)
+                    put("status", note.status.name)
+                    put("title", note.title)
+                }
+            )
+        }
+        claims.forEach { claim ->
+            add(
+                buildJsonObject {
+                    put("op", "upsert_claim")
+                    put("id", claim.id.value)
+                    put("subjectEntityId", claim.subjectEntityId.value)
+                    put("predicate", claim.predicate)
+                    claim.objectEntityId?.let { put("objectEntityId", it.value) }
+                    put("status", claim.status.name)
+                    put("text", claim.normalizedText)
+                }
+            )
+        }
+        tasks.forEach { task ->
+            add(
+                buildJsonObject {
+                    put("op", "upsert_task")
+                    put("id", task.id.value)
+                    put("status", task.status.name)
+                    put("title", task.title)
+                }
+            )
+        }
+    }
 
 private fun MemoryRouteDecision.shouldRunDirectStructuredWrite(): Boolean {
     return decision == MemoryRouteDecision.Decision.DIRECT_STRUCTURED_WRITE ||

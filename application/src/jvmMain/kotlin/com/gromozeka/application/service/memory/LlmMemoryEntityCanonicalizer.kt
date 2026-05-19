@@ -262,6 +262,7 @@ class LlmMemoryEntityCanonicalizer(
             - Prefer English for entity summaries; keep proper names, product names, repo names, and file names unchanged.
             - Entity summaries must describe identity only, not mutable facts, current status, preferences, ownership, formats, fields, versions, or decisions. Put those facts into claims/notes instead.
             - For USER first-person facts and preferences, resolve the user as the stable namespace-level USER entity named "User".
+            - Do not use raw labels such as "user", "assistant", "project", or "document" as entity_id. entity_id must be an existing candidate id, or null when creating a new entity.
             - Use relevant retrieval context to resolve ambiguous target mentions such as pronouns, "it", "that", "first one", "second one", and "from that list".
             - When TARGET_MESSAGE selects one item from a previously retrieved ordered list, create or link only the selected concrete entity so later stages can write the target claim.
             - Never create chat-specific USER entities such as "User of chat:..."; a new chat is not a new user.

@@ -17,6 +17,7 @@ import com.gromozeka.domain.model.memory.MemoryStore
 import com.gromozeka.domain.model.memory.MemoryTask
 import com.gromozeka.domain.model.memory.MemoryUpdateBatch
 import com.gromozeka.domain.model.memory.activeDefinitions
+import com.gromozeka.domain.model.memory.requireValidEntityIds
 import kotlinx.datetime.Instant
 
 class InMemoryMemoryStore(
@@ -33,15 +34,16 @@ class InMemoryMemoryStore(
     private val episodes = initialSnapshot.episodes.toMutableList()
 
     override suspend fun apply(batch: MemoryUpdateBatch) {
-        predicateDefinitions.upsertAll(batch.predicateDefinitions) { it.id.value }
-        sources.upsertAll(batch.sources) { it.id.value }
-        runs.upsertAll(batch.runs) { it.id.value }
-        entities.upsertAll(batch.entities) { it.id.value }
-        claims.upsertAll(batch.claims) { it.id.value }
-        notes.upsertAll(batch.notes) { it.id.value }
-        tasks.upsertAll(batch.tasks) { it.id.value }
-        profiles.upsertAll(batch.profiles) { it.id.value }
-        episodes.upsertAll(batch.episodes) { it.id.value }
+        val validBatch = batch.requireValidEntityIds()
+        predicateDefinitions.upsertAll(validBatch.predicateDefinitions) { it.id.value }
+        sources.upsertAll(validBatch.sources) { it.id.value }
+        runs.upsertAll(validBatch.runs) { it.id.value }
+        entities.upsertAll(validBatch.entities) { it.id.value }
+        claims.upsertAll(validBatch.claims) { it.id.value }
+        notes.upsertAll(validBatch.notes) { it.id.value }
+        tasks.upsertAll(validBatch.tasks) { it.id.value }
+        profiles.upsertAll(validBatch.profiles) { it.id.value }
+        episodes.upsertAll(validBatch.episodes) { it.id.value }
     }
 
     override suspend fun search(request: MemoryStore.SearchRequest): List<MemoryStore.SearchHit> {

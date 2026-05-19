@@ -17,6 +17,7 @@ import com.gromozeka.domain.model.memory.MemoryScope
 import com.gromozeka.domain.model.memory.MemorySource
 import com.gromozeka.domain.model.memory.MemoryStore
 import com.gromozeka.domain.model.memory.MemoryWriteRetrievalPlan
+import com.gromozeka.domain.model.memory.isValidMemoryEntityId
 import com.gromozeka.domain.service.AiRuntime
 import com.gromozeka.domain.tool.AiToolCallback
 import klog.KLoggers
@@ -296,6 +297,7 @@ class LlmMemoryNoteConstructor(
             - Write title, summary, keywords, tags, evidence_reason, and rationale in English.
             - Preserve proper names, product names, repo names, file names, exact commands, exact identifiers, dates, and quoted terms.
             - Use only entity IDs listed in Resolved entities.
+            - Never write raw labels such as "user", "assistant", "project", or "document" into entity_refs. If a note is about the user, use the resolved USER entity id from Resolved entities.
             - For project-level notes without a more specific subject, use the resolved namespace/project subject entity.
             - Use TARGET_MESSAGE as the only evidence. Earlier messages are context only.
             - evidence_quote must be an exact short substring copied from TARGET_MESSAGE source data.
@@ -452,6 +454,9 @@ private fun String?.toNoteMemoryIdTextOrNull(): String? {
     val value = this?.trim()?.takeIf { it.isNotBlank() } ?: return null
     val normalized = value.lowercase()
     if (normalized == "null" || normalized == "uuid-or-null" || normalized == "resolved-entity-id") return null
+    require(value.isValidMemoryEntityId()) {
+        "NoteConstructor returned invalid entity id '$value'. It must use a resolved entity id, not a raw label."
+    }
     return value
 }
 

@@ -529,7 +529,7 @@ class MemoryRealModelE2eTest {
         val prefix = "${caseId.sanitizePathSegment()}-fixture-${index + 1}"
         val olderAt = kotlinx.datetime.Instant.parse("2026-01-01T00:00:00Z")
         val newerAt = kotlinx.datetime.Instant.parse("2026-01-02T00:00:00Z")
-        val subjectEntityId = MemoryEntity.Id("$prefix-subject")
+        val subjectEntityId = MemoryEntity.Id("$prefix-entity-subject")
         val subject = preloadedSubjectEntity(namespace, subjectEntityId, olderAt, newerAt)
 
         return when (type.trim().lowercase()) {

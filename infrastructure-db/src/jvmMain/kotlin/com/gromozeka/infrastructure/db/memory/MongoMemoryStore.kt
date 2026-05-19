@@ -18,6 +18,7 @@ import com.gromozeka.domain.model.memory.MemoryStore
 import com.gromozeka.domain.model.memory.MemoryTask
 import com.gromozeka.domain.model.memory.MemoryUpdateBatch
 import com.gromozeka.domain.model.memory.activeDefinitions
+import com.gromozeka.domain.model.memory.requireValidEntityIds
 import com.gromozeka.infrastructure.db.persistence.mongo.MongoIndexInitializer
 import com.gromozeka.infrastructure.db.persistence.mongo.findByDomainId
 import com.gromozeka.infrastructure.db.persistence.mongo.upsertByDomainId
@@ -68,15 +69,16 @@ class MongoMemoryStore(
 
     override suspend fun apply(batch: MemoryUpdateBatch) {
         indexes.ensure()
-        batch.predicateDefinitions.forEach { predicateDefinitions.upsertByDomainId(it.id.value, it) }
-        batch.sources.forEach { sources.upsertByDomainId(it.id.value, it) }
-        batch.runs.forEach { runs.upsertByDomainId(it.id.value, it) }
-        batch.entities.forEach { entities.upsertByDomainId(it.id.value, it) }
-        batch.claims.forEach { claims.upsertByDomainId(it.id.value, it) }
-        batch.notes.forEach { notes.upsertByDomainId(it.id.value, it) }
-        batch.tasks.forEach { tasks.upsertByDomainId(it.id.value, it) }
-        batch.profiles.forEach { profiles.upsertByDomainId(it.id.value, it) }
-        batch.episodes.forEach { episodes.upsertByDomainId(it.id.value, it) }
+        val validBatch = batch.requireValidEntityIds()
+        validBatch.predicateDefinitions.forEach { predicateDefinitions.upsertByDomainId(it.id.value, it) }
+        validBatch.sources.forEach { sources.upsertByDomainId(it.id.value, it) }
+        validBatch.runs.forEach { runs.upsertByDomainId(it.id.value, it) }
+        validBatch.entities.forEach { entities.upsertByDomainId(it.id.value, it) }
+        validBatch.claims.forEach { claims.upsertByDomainId(it.id.value, it) }
+        validBatch.notes.forEach { notes.upsertByDomainId(it.id.value, it) }
+        validBatch.tasks.forEach { tasks.upsertByDomainId(it.id.value, it) }
+        validBatch.profiles.forEach { profiles.upsertByDomainId(it.id.value, it) }
+        validBatch.episodes.forEach { episodes.upsertByDomainId(it.id.value, it) }
     }
 
     override suspend fun search(request: MemoryStore.SearchRequest): List<MemoryStore.SearchHit> {

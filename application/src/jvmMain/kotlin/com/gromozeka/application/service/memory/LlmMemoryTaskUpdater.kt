@@ -17,6 +17,7 @@ import com.gromozeka.domain.model.memory.MemoryTask
 import com.gromozeka.domain.model.memory.MemoryTaskUpdateOp
 import com.gromozeka.domain.model.memory.MemoryTaskUpdater
 import com.gromozeka.domain.model.memory.MemoryWriteRetrievalPlan
+import com.gromozeka.domain.model.memory.isValidMemoryEntityId
 import com.gromozeka.domain.service.AiRuntime
 import com.gromozeka.domain.tool.AiToolCallback
 import klog.KLoggers
@@ -268,14 +269,12 @@ class LlmMemoryTaskUpdater(
             }
 
             val allowedEntityIds = entityOps.mapNotNullTo(mutableSetOf()) { it.entityId }
-            val owner = ownerEntityId.toTaskMemoryIdTextOrNull()
-                ?.let { MemoryEntity.Id(it) }
+            val owner = ownerEntityId.toTaskEntityIdOrNull("owner_entity_id")
                 ?.takeIf { it in allowedEntityIds }
-            val assignee = assigneeEntityId.toTaskMemoryIdTextOrNull()
-                ?.let { MemoryEntity.Id(it) }
+            val assignee = assigneeEntityId.toTaskEntityIdOrNull("assignee_entity_id")
                 ?.takeIf { it in allowedEntityIds }
             val related = relatedEntityIds
-                .mapNotNull { rawId -> rawId.toTaskMemoryIdTextOrNull()?.let { MemoryEntity.Id(it) } }
+                .mapNotNull { rawId -> rawId.toTaskEntityIdOrNull("related_entity_ids") }
                 .filter { it in allowedEntityIds }
                 .distinct()
 
@@ -354,6 +353,7 @@ class LlmMemoryTaskUpdater(
             - Use Full thread context to resolve pronouns and omitted subjects, but TARGET_MESSAGE is the only evidence for the task update.
             - evidence_quote must be an exact short substring copied from TARGET_MESSAGE when task is not noop.
             - Use only entity IDs listed in Resolved entities.
+            - Never write raw labels such as "user", "assistant", "project", or "document" into owner_entity_id, assignee_entity_id, or related_entity_ids. If a task is owned by the user, use the resolved USER entity id from Resolved entities.
             - If TARGET_MESSAGE only asks the assistant to do something now in this chat, return noop unless it explicitly asks to remember/save a follow-up.
             - Prefer noop over task spam.
             - Return valid JSON only.
@@ -511,6 +511,14 @@ private fun String?.toTaskMemoryIdTextOrNull(): String? {
         return null
     }
     return value
+}
+
+private fun String?.toTaskEntityIdOrNull(fieldName: String): MemoryEntity.Id? {
+    val value = toTaskMemoryIdTextOrNull() ?: return null
+    require(value.isValidMemoryEntityId()) {
+        "TaskUpdater returned invalid entity id '$value' in $fieldName. It must use a resolved entity id, not a raw label."
+    }
+    return MemoryEntity.Id(value)
 }
 
 private fun List<String>.cleanTaskTextList(

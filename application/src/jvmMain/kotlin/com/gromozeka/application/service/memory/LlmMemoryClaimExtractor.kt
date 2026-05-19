@@ -18,6 +18,7 @@ import com.gromozeka.domain.model.memory.MemoryScope
 import com.gromozeka.domain.model.memory.MemorySource
 import com.gromozeka.domain.model.memory.MemoryStore
 import com.gromozeka.domain.model.memory.MemoryWriteRetrievalPlan
+import com.gromozeka.domain.model.memory.isValidMemoryEntityId
 import com.gromozeka.domain.service.AiRuntime
 import com.gromozeka.domain.tool.AiToolCallback
 import klog.KLoggers
@@ -343,6 +344,7 @@ class LlmMemoryClaimExtractor(
             - Do not set replaces_previous=true for historical dated facts where both old and new facts remain valid in their own time windows.
             - Preserve proper names, product names, repo names, file names, and exact quoted values.
             - Use only entity IDs listed in Resolved entities.
+            - Never write raw labels such as "user", "assistant", "project", or "document" into subject_entity_id or object_entity_id. If a first-person fact is about the user, use the resolved USER entity id from Resolved entities.
             - Follow Predicate catalog object kind. If catalog says object=ENTITY, set object_entity_id and leave object_value_json null. If catalog says object=STRING, leave object_entity_id null and set object_value_json to a JSON string.
             - For project-level facts without a more specific subject entity, use the resolved current project subject entity.
             - Use scope_json to prevent over-generalization.
@@ -507,6 +509,9 @@ private fun String?.toMemoryRefTextOrNull(): String? {
     val normalized = value.lowercase()
     if (normalized == "null" || normalized == "uuid-or-null") {
         return null
+    }
+    require(value.isValidMemoryEntityId()) {
+        "ClaimExtractor returned invalid entity id '$value'. It must use a resolved entity id, not a raw label."
     }
     return value
 }
