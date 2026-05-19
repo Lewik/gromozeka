@@ -352,6 +352,7 @@ class LlmMemoryClaimExtractor(
             - Use Full thread context and Relevant persisted memory to disambiguate pronouns, corrections, replacement targets, and semantic slot names, but never as evidence for a new claim.
             - If TARGET_MESSAGE updates, replaces, or says "instead of" an older value, normalize the new claim to the same semantic slot/family as the replaced claim when context identifies it.
             - Every returned claim must be supported by TARGET_MESSAGE itself.
+            - If TARGET_MESSAGE is an imported document or document section, the document text itself is valid imported evidence. Extract stable facts/rules stated by the document with document scope; do not require the user to personally assert them in chat.
             - evidence_quote must be an exact short substring copied from TARGET_MESSAGE source data.
             - Do not use Relevant persisted memory as evidence for a new claim; it is only dedup/context.
             - Do not emit lifecycle/reconciliation predicates such as "supersedes", "replaces", "updates", "retracts", or "corrects" as semantic claims. Emit the current semantic fact only; reconciliation handles old claim status.

@@ -2,6 +2,7 @@ package com.gromozeka.application.service.memory
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.datetime.Instant
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
@@ -538,9 +539,11 @@ internal object MarkdownDocumentSlicer {
 internal fun MarkdownDocumentSection.toMemorySourceText(
     title: String?,
     sourceRef: String,
+    importedAt: Instant? = null,
 ): String = buildString {
     title?.takeIf { it.isNotBlank() }?.let { appendLine("Document title: $it") }
     appendLine("Document source: $sourceRef")
+    importedAt?.let { appendLine("Document imported at: $it") }
     appendLine("Document section: $headingLabel")
     appendLine("Document lines: $startLine-$endLine")
     appendLine()

@@ -370,7 +370,11 @@ internal fun MemorySource.renderLatestTurn(): String {
         is MemorySource.ExternalRecord -> "EXTERNAL"
     }
 
-    return "[${id.value}] $role\n${contentText.trim()}"
+    return buildString {
+        appendLine("[${id.value}] $role")
+        renderIngestionMetadataForPrompt()?.let { appendLine(it) }
+        append(contentText.trim())
+    }
 }
 
 private fun List<MemoryStore.SearchHit>.renderCandidateEntities(): String {

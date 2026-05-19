@@ -27,6 +27,7 @@ class ConversationMessageMemorySourceMapper {
             speakerRole = message.role.toMemoryActorRole(),
             authorLabel = message.role.name.lowercase(),
             contentText = contentText,
+            contentPayload = message.providerMetadata.takeIf { it.isNotEmpty() },
             contentHash = contentText.sha256(),
             observedAt = message.createdAt,
             createdAt = Clock.System.now(),

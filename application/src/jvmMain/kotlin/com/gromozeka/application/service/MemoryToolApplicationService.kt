@@ -63,6 +63,7 @@ class MemoryToolApplicationService(
     suspend fun remember(
         conversationIdValue: String,
         targetMessageId: String? = null,
+        forceWrite: Boolean = false,
     ): String = runMemoryTool(MEMORY_REMEMBER_TOOL_NAME, conversationIdValue, targetMessageId) { context, targetMessage ->
         val result = memoryMessageRoutingApplicationService.routeMessage(
             conversationId = context.conversation.id,
@@ -72,6 +73,7 @@ class MemoryToolApplicationService(
             project = context.project,
             runtimeSystemPrompts = context.systemPrompts,
             runtimeTools = context.memoryTools,
+            forceMemoryWrite = forceWrite,
         )
         MemoryToolResultRenderer.rememberResultJsonString(result)
     }
@@ -84,6 +86,7 @@ class MemoryToolApplicationService(
         documentType: String? = null,
         title: String? = null,
         sourceRef: String? = null,
+        forceWrite: Boolean = false,
         mode: String? = null,
     ): String {
         val resolvedContent = runCatching {
@@ -102,7 +105,7 @@ class MemoryToolApplicationService(
         }
 
         if (resolvedContent.documentType != null) {
-            return rememberResolvedDocument(conversationIdValue, resolvedContent, mode)
+            return rememberResolvedDocument(conversationIdValue, resolvedContent, forceWrite, mode)
         }
 
         val normalizedText = resolvedContent.text.trim()
@@ -111,7 +114,7 @@ class MemoryToolApplicationService(
         }
 
         if (conversationIdValue.isNullOrBlank()) {
-            return rememberStandaloneProvidedText(normalizedText, mode)
+            return rememberStandaloneProvidedText(normalizedText, forceWrite, mode)
         }
 
         return runCatching {
@@ -127,6 +130,7 @@ class MemoryToolApplicationService(
                     put("userConsentConfirmed", true)
                     put("inputKind", resolvedContent.kind.name)
                     put("sourceRef", resolvedContent.sourceRef)
+                    if (forceWrite) put("forceMemoryWrite", true)
                     mode?.takeIf { it.isNotBlank() }?.let { put("mode", it) }
                 },
                 createdAt = Clock.System.now(),
@@ -140,6 +144,7 @@ class MemoryToolApplicationService(
                 runtimeSystemPrompts = context.systemPrompts,
                 runtimeTools = context.memoryTools,
                 threadContextMessages = context.threadMessages + targetMessage,
+                forceMemoryWrite = forceWrite,
             )
             MemoryToolResultRenderer.rememberResultJsonString(result)
         }.onFailure { error ->
@@ -153,6 +158,7 @@ class MemoryToolApplicationService(
 
     private suspend fun rememberStandaloneProvidedText(
         text: String,
+        forceWrite: Boolean,
         mode: String?,
     ): String {
         return runCatching {
@@ -171,6 +177,7 @@ class MemoryToolApplicationService(
                     put("memoryToolOrigin", "provided_text")
                     put("userConsentConfirmed", true)
                     put("standalone", true)
+                    if (forceWrite) put("forceMemoryWrite", true)
                     mode?.takeIf { it.isNotBlank() }?.let { put("mode", it) }
                 },
                 contentHash = contentHash,
@@ -198,6 +205,7 @@ class MemoryToolApplicationService(
     private suspend fun rememberResolvedDocument(
         conversationIdValue: String?,
         resolvedContent: MemoryResolvedRememberContent,
+        forceWrite: Boolean,
         mode: String?,
     ): String =
         runCatching {
@@ -232,10 +240,13 @@ class MemoryToolApplicationService(
                 contentText = resolvedContent.text,
                 contentPayload = buildJsonObject {
                     put("memoryToolOrigin", "provided_document")
+                    put("sourceKind", "document")
                     put("userConsentConfirmed", true)
                     put("inputKind", resolvedContent.kind.name)
                     put("documentType", documentType.name)
                     put("sourceRef", resolvedContent.sourceRef)
+                    put("importedAt", now.toString())
+                    if (forceWrite) put("forceMemoryWrite", true)
                     resolvedContent.title?.let { put("title", it) }
                     mode?.takeIf { it.isNotBlank() }?.let { put("mode", it) }
                 },
@@ -265,14 +276,18 @@ class MemoryToolApplicationService(
                     put("input_kind", resolvedContent.kind.name)
                     put("title", resolvedContent.title.orEmpty())
                     put("source_ref", resolvedContent.sourceRef)
+                    put("ingested_at", now.toString())
                     put("parent_source_id", parentSource.id.value)
                     put("sections_total", sections.size)
                 },
                 metadata = buildJsonObject {
                     put("memoryToolOrigin", "provided_document")
+                    put("sourceKind", "document")
                     put("inputKind", resolvedContent.kind.name)
                     put("documentType", documentType.name)
                     put("sourceRef", resolvedContent.sourceRef)
+                    put("importedAt", now.toString())
+                    if (forceWrite) put("forceMemoryWrite", true)
                     resolvedContent.title?.let { put("title", it) }
                     mode?.takeIf { it.isNotBlank() }?.let { put("mode", it) }
                 },
@@ -305,6 +320,7 @@ class MemoryToolApplicationService(
                     documentHash = documentHash,
                     parentRecordRef = parentRecordRef,
                     sections = sections,
+                    forceWrite = forceWrite,
                     mode = mode,
                     agent = agent,
                     project = project,

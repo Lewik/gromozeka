@@ -2,6 +2,7 @@ package com.gromozeka.application.service.memory
 
 import com.sun.net.httpserver.HttpServer
 import kotlinx.coroutines.runBlocking
+import kotlinx.datetime.Instant
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -149,6 +150,30 @@ class MemoryRememberDocumentTest {
         assertTrue(detected?.markdown.orEmpty().contains("Memory Router v3"))
         assertTrue(!detected?.markdown.orEmpty().contains("Memory ingestion source document."))
         assertTrue(detected?.markdown.orEmpty().startsWith("# 03. Prompt Pack"))
+    }
+
+    @Test
+    fun documentSectionSourceTextIncludesImportMetadata() {
+        val section = MarkdownDocumentSection(
+            index = 1,
+            headingPath = listOf("Guide"),
+            startLine = 3,
+            endLine = 5,
+            text = "# Guide\n\nStable fact.",
+        )
+        val importedAt = Instant.parse("2026-05-19T10:15:30Z")
+
+        val sourceText = section.toMemorySourceText(
+            title = "Guide",
+            sourceRef = "docs/guide.md",
+            importedAt = importedAt,
+        )
+
+        assertTrue(sourceText.contains("Document title: Guide"))
+        assertTrue(sourceText.contains("Document source: docs/guide.md"))
+        assertTrue(sourceText.contains("Document imported at: 2026-05-19T10:15:30Z"))
+        assertTrue(sourceText.contains("Document section: Guide"))
+        assertTrue(sourceText.contains("Stable fact."))
     }
 
     @Test

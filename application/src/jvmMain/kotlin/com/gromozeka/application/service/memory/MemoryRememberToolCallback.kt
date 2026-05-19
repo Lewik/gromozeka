@@ -26,6 +26,7 @@ class MemoryRememberToolCallback(
         val title: String? = null,
         val source_ref: String? = null,
         val user_consent_confirmed: Boolean = false,
+        val force_write: Boolean = false,
         val mode: String? = null,
     )
 
@@ -72,6 +73,10 @@ class MemoryRememberToolCallback(
                   "type": "boolean",
                   "description": "Must be true for provided content targets. Set it only when the user explicitly asked or agreed to remember the provided text/document."
                 },
+                "force_write": {
+                  "type": "boolean",
+                  "description": "Force ingestion for this exact target when the user explicitly says to remember/store/import it even if the router would normally choose no-op. Use sparingly; does not bypass user_consent_confirmed for provided content."
+                },
                 "mode": {
                   "type": "string",
                   "description": "Optional caller mode label for debugging or analytics."
@@ -106,6 +111,7 @@ class MemoryRememberToolCallback(
                 documentType = input.document_type,
                 title = input.title,
                 sourceRef = input.source_ref,
+                forceWrite = input.force_write,
                 mode = input.mode,
             )
         }
@@ -125,6 +131,7 @@ class MemoryRememberToolCallback(
         memoryToolApplicationService.remember(
             conversationIdValue = conversationId,
             targetMessageId = input.target_message_id,
+            forceWrite = input.force_write,
         )
     }
 

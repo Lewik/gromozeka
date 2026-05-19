@@ -308,6 +308,7 @@ class LlmMemoryNoteConstructor(
             - If TARGET_MESSAGE is a document or document section, preserve document title/source/section names and create section-scoped notes for important definitions, component roles, workflows, policies, and lists.
             - For dense technical documents and prompt packs, prefer several strong section-scoped notes over one broad document summary. Keep only reusable notes; do not summarize every paragraph.
             - For one document section, return at most two notes. If a section defines one compact component or policy, return one note.
+            - If source metadata force_memory_write=true, create a note when the content is reusable context but not a clean claim/task/profile update.
             - For named components, include the exact component names in title, summary, keywords, or tags so later retrieval can find the component role.
             - A troubleshooting/procedure note is allowed, but do not create a task unless the target creates a commitment.
             - Keep each note self-contained: future recall should understand it without the original conversation.

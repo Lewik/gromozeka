@@ -55,6 +55,7 @@ class MemoryMessageRoutingApplicationService(
         runtimeSystemPrompts: List<String>,
         runtimeTools: List<AiToolCallback>,
         threadContextMessages: List<Conversation.Message>? = null,
+        forceMemoryWrite: Boolean = false,
     ): DirectStructuredMemoryWriteResult? {
         if (!message.isMemoryRouteableTarget()) {
             log.info {
@@ -65,12 +66,19 @@ class MemoryMessageRoutingApplicationService(
         }
 
         val namespace = MemoryNamespace("project:${project.id.value}")
-        val source = sourceMapper.toChatTurn(
+        val baseSource = sourceMapper.toChatTurn(
             namespace = namespace,
             conversationId = conversationId,
             threadId = threadId,
             message = message,
         )
+        val source = baseSource?.let {
+            if (forceMemoryWrite) {
+                it.withForceMemoryWrite() as MemorySource.ChatTurn
+            } else {
+                it
+            }
+        }
 
         if (source == null) {
             val skipped = "Memory router skipped: conversation=${conversationId.value} message=${message.id.value} role=${message.role} reason=blank_or_non_memory_content"
@@ -161,13 +169,16 @@ class MemoryMessageRoutingApplicationService(
                 put("input_kind", "PASTED_CHAT_DOCUMENT")
                 put("title", document.title.orEmpty())
                 put("source_ref", document.sourceRef)
+                put("ingested_at", now.toString())
                 put("parent_source_id", parentSource.id.value)
                 put("sections_total", sections.size)
             },
             metadata = buildJsonObject {
                 put("memoryToolOrigin", "pasted_document")
+                put("sourceKind", "document")
                 put("documentType", MemoryDocumentType.MARKDOWN.name)
                 put("sourceRef", document.sourceRef)
+                put("importedAt", now.toString())
                 document.title?.let { put("title", it) }
             },
             createdAt = now,
@@ -450,14 +461,17 @@ class MemoryMessageRoutingApplicationService(
             contentText = section.toMemorySourceText(
                 title = document.title,
                 sourceRef = document.sourceRef,
+                importedAt = now,
             ),
             contentPayload = buildJsonObject {
                 put("memoryToolOrigin", "pasted_document_section")
+                put("sourceKind", "document")
                 put("parentSourceId", id.value)
                 put("parentRunId", parentRun.id.value)
                 put("documentHash", documentHash)
                 put("documentType", MemoryDocumentType.MARKDOWN.name)
                 put("sourceRef", document.sourceRef)
+                put("importedAt", now.toString())
                 document.title?.let { put("title", it) }
                 put("sectionIndex", section.index)
                 put("heading", section.headingLabel)

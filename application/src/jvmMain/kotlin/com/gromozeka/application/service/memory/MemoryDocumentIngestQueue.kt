@@ -257,15 +257,19 @@ class MemoryDocumentIngestQueue(
             contentText = section.toMemorySourceText(
                 title = title,
                 sourceRef = sourceRef,
+                importedAt = now,
             ),
             contentPayload = buildJsonObject {
                 put("memoryToolOrigin", "provided_document_section")
+                put("sourceKind", "document")
                 put("parentSourceId", parentSource.id.value)
                 put("parentRunId", parentRun.id.value)
                 put("documentHash", documentHash)
                 put("inputKind", inputKind.name)
                 put("documentType", documentType.name)
                 put("sourceRef", sourceRef)
+                put("importedAt", now.toString())
+                if (forceWrite) put("forceMemoryWrite", true)
                 title?.let { put("title", it) }
                 put("sectionIndex", section.index)
                 put("heading", section.headingLabel)
@@ -341,6 +345,7 @@ internal data class MemoryDocumentIngestJob(
     val documentHash: String,
     val parentRecordRef: String,
     val sections: List<MarkdownDocumentSection>,
+    val forceWrite: Boolean,
     val mode: String?,
     val agent: AgentDefinition,
     val project: Project,
