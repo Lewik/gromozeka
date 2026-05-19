@@ -18,11 +18,14 @@ import java.net.http.HttpRequest
 import java.net.http.HttpResponse
 import java.net.http.WebSocket
 import java.net.http.WebSocketHandshakeException
+import java.time.Duration
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.CompletionException
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.ExecutionException
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.TimeoutException
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -101,6 +104,7 @@ class OpenAiSubscriptionResponsesClient(
         val requestJson = json.encodeToString(requestBody)
         val requestBuilder = HttpRequest.newBuilder()
             .uri(URI.create(responsesUrl))
+            .timeout(Duration.ofMillis(websocketResponseTimeoutMs.coerceAtLeast(1L)))
             .header("Authorization", "Bearer ${session.accessToken}")
             .header("OpenAI-Beta", "responses=experimental")
             .header("originator", "gromozeka")
@@ -320,6 +324,7 @@ class OpenAiSubscriptionResponsesClient(
         private val responseTimeoutMs: Long,
     ) {
         private val log = KLoggers.logger(this)
+        private val boundedResponseTimeoutMs = responseTimeoutMs.coerceAtLeast(1L)
         private val httpClient = HttpClient.newBuilder().build()
         private val inboundEvents = LinkedBlockingQueue<WebSocketInboundEvent>()
         private val requestMutex = Mutex()
@@ -528,6 +533,7 @@ class OpenAiSubscriptionResponsesClient(
             }
 
             val builder = httpClient.newWebSocketBuilder()
+                .connectTimeout(Duration.ofMillis(boundedResponseTimeoutMs))
                 .header("Authorization", "Bearer ${session.accessToken}")
                 .header("OpenAI-Beta", "responses=experimental")
                 .header("originator", "gromozeka")
@@ -537,7 +543,8 @@ class OpenAiSubscriptionResponsesClient(
             session.accountId?.let { builder.header("ChatGPT-Account-Id", it) }
 
             try {
-                webSocket = builder.buildAsync(URI.create(websocketUrl), listener).join()
+                webSocket = builder.buildAsync(URI.create(websocketUrl), listener)
+                    .awaitTransport("opening OpenAI subscription websocket")
                 log.info(
                     "OpenAI subscription websocket session ready: " +
                         "conversationKey=$conversationKey, url=$websocketUrl"
@@ -573,7 +580,8 @@ class OpenAiSubscriptionResponsesClient(
             )
 
             try {
-                socket.sendText(payload, true).join()
+                socket.sendText(payload, true)
+                    .awaitTransport("sending OpenAI subscription websocket request")
             } catch (error: CompletionException) {
                 throw error.toTransportException()
             } catch (error: Throwable) {
@@ -583,8 +591,16 @@ class OpenAiSubscriptionResponsesClient(
                 )
             }
 
+            val responseStartedAt = System.nanoTime()
             while (true) {
-                when (val event = inboundEvents.poll(responseTimeoutMs, TimeUnit.MILLISECONDS)) {
+                val remainingTimeoutMs = remainingResponseTimeoutMs(responseStartedAt)
+                if (remainingTimeoutMs <= 0L) {
+                    throw OpenAiSubscriptionTransportException(
+                        "Timed out waiting for OpenAI subscription websocket response completion"
+                    )
+                }
+
+                when (val event = inboundEvents.poll(remainingTimeoutMs, TimeUnit.MILLISECONDS)) {
                     null -> {
                         throw OpenAiSubscriptionTransportException(
                             "Timed out waiting for OpenAI subscription websocket response"
@@ -612,6 +628,31 @@ class OpenAiSubscriptionResponsesClient(
                         )
                     }
                 }
+            }
+        }
+
+        private fun remainingResponseTimeoutMs(responseStartedAt: Long): Long {
+            val elapsedMs = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - responseStartedAt)
+            return boundedResponseTimeoutMs - elapsedMs
+        }
+
+        private fun <T> CompletableFuture<T>.awaitTransport(action: String): T {
+            try {
+                return get(boundedResponseTimeoutMs, TimeUnit.MILLISECONDS)
+            } catch (error: TimeoutException) {
+                cancel(true)
+                throw OpenAiSubscriptionTransportException(
+                    "Timed out while $action",
+                    error,
+                )
+            } catch (error: InterruptedException) {
+                Thread.currentThread().interrupt()
+                throw OpenAiSubscriptionTransportException(
+                    "Interrupted while $action",
+                    error,
+                )
+            } catch (error: ExecutionException) {
+                throw CompletionException(error.cause ?: error).toTransportException()
             }
         }
 
