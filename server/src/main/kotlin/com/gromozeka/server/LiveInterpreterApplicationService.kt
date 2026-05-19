@@ -214,7 +214,13 @@ class LiveInterpreterApplicationService(
                 )
             )
             emitPendingDrafts()
-            stabilizationSignals.trySend(Unit)
+            val signalResult = stabilizationSignals.trySend(Unit)
+            if (signalResult.isFailure) {
+                log.warn {
+                    "Live interpreter stabilization signal failed: session=$sessionId " +
+                        "draft=${draft.id}"
+                }
+            }
         }
 
         private suspend fun runStabilizationLoop() {
@@ -298,47 +304,51 @@ class LiveInterpreterApplicationService(
 
         private suspend fun translateFinalizedOriginal(finalizedOriginal: LiveInterpreterFinalizedOriginal) {
             emit(LiveInterpreterStatusEvent(sessionId, "Translating finalized transcript ${finalizedOriginal.sequenceNumber}"))
-            runCatching {
+            val translation = runCatching {
                 val context = transcriptStateMutex.withLock {
                     transcriptState.translationContext(finalizedOriginal.segments)
                 }
                 translate(context)
+            }.getOrElse { error ->
+                log.warn(error) {
+                    "Live interpreter translation failed: session=$sessionId " +
+                        "sequence=${finalizedOriginal.sequenceNumber} error=${error.message}"
+                }
+                emit(
+                    LiveInterpreterStatusEvent(
+                        sessionId = sessionId,
+                        message = "Translation failed for finalized transcript ${finalizedOriginal.sequenceNumber}: ${error.message}"
+                    )
+                )
+                throw error
             }
-                .onFailure { error ->
-                    log.warn(error) {
-                        "Live interpreter translation failed: session=$sessionId " +
-                            "sequence=${finalizedOriginal.sequenceNumber} error=${error.message}"
-                    }
-                    emit(
-                        LiveInterpreterStatusEvent(
-                            sessionId = sessionId,
-                            message = "Translation failed for finalized transcript ${finalizedOriginal.sequenceNumber}: ${error.message}"
-                        )
-                    )
-                }
-                .getOrNull()
-                ?.trim()
-                ?.takeIf { it.isNotBlank() }
-                ?.let { translation ->
-                    transcriptStateMutex.withLock {
-                        transcriptState.recordTranslationSegment(translation)
-                    }
-                    log.info {
-                        "Live interpreter translated transcript: session=$sessionId " +
-                            "sequence=${finalizedOriginal.sequenceNumber} chars=${translation.length} " +
-                            "text='${translation.liveLogSnippet()}'"
-                    }
-                    emit(
-                        LiveInterpreterTranslationEvent(
-                            sessionId = sessionId,
-                            segmentId = finalizedOriginal.segmentId,
-                            sequenceNumber = finalizedOriginal.sequenceNumber,
-                            text = translation,
-                            targetLanguage = targetLanguage,
-                            isFinal = true,
-                        )
-                    )
-                }
+
+            val trimmedTranslation = translation.trim()
+            if (trimmedTranslation.isBlank()) {
+                val errorMessage = "Translation returned blank text for finalized transcript ${finalizedOriginal.sequenceNumber}"
+                log.warn { "Live interpreter translation failed: session=$sessionId error=$errorMessage" }
+                emit(LiveInterpreterStatusEvent(sessionId, errorMessage))
+                error(errorMessage)
+            }
+
+            transcriptStateMutex.withLock {
+                transcriptState.recordTranslationSegment(trimmedTranslation)
+            }
+            log.info {
+                "Live interpreter translated transcript: session=$sessionId " +
+                    "sequence=${finalizedOriginal.sequenceNumber} chars=${trimmedTranslation.length} " +
+                    "text='${trimmedTranslation.liveLogSnippet()}'"
+            }
+            emit(
+                LiveInterpreterTranslationEvent(
+                    sessionId = sessionId,
+                    segmentId = finalizedOriginal.segmentId,
+                    sequenceNumber = finalizedOriginal.sequenceNumber,
+                    text = trimmedTranslation,
+                    targetLanguage = targetLanguage,
+                    isFinal = true,
+                )
+            )
         }
 
         private suspend fun stabilizeTranscript(context: LiveInterpreterStabilizerPromptContext): TranscriptStabilizerResponse {
@@ -460,7 +470,6 @@ internal class LiveInterpreterTranscriptState {
         )
         pendingDrafts.removeAll { it.id == draft.id }
         pendingDrafts += draft
-        trimPendingDrafts()
         return draft
     }
 
@@ -480,23 +489,14 @@ internal class LiveInterpreterTranscriptState {
 
         if (finalized.isNotEmpty()) {
             finalizedOriginalSegments += finalized
-            compactFinalizedOriginal()
         }
 
         pendingDrafts.removeAll { draft -> draft.id in dropIds && draft.id !in keepIds }
-        trimPendingDrafts()
         return finalized
     }
 
     fun recordTranslationSegment(text: String) {
         finalizedTranslationSegments += text
-        if (finalizedTranslationSegments.size > MAX_FINAL_SEGMENTS_RETAINED) {
-            repeat(FINAL_SEGMENTS_TRIM_COUNT) {
-                if (finalizedTranslationSegments.isNotEmpty()) {
-                    finalizedTranslationSegments.removeAt(0)
-                }
-            }
-        }
     }
 
     fun translationContext(finalizedOriginalDelta: List<String>): LiveInterpreterTranslationPromptContext =
@@ -508,27 +508,8 @@ internal class LiveInterpreterTranscriptState {
             newFinalOriginalDelta = finalizedOriginalDelta.joinToString("\n"),
         )
 
-    private fun trimPendingDrafts() {
-        while (pendingDrafts.size > MAX_PENDING_DRAFTS) {
-            pendingDrafts.removeAt(0)
-        }
-    }
-
-    private fun compactFinalizedOriginal() {
-        if (finalizedOriginalSegments.size > MAX_FINAL_SEGMENTS_RETAINED) {
-            repeat(FINAL_SEGMENTS_TRIM_COUNT) {
-                if (finalizedOriginalSegments.isNotEmpty()) {
-                    finalizedOriginalSegments.removeAt(0)
-                }
-            }
-        }
-    }
-
     companion object {
-        private const val MAX_PENDING_DRAFTS = 8
         private const val MAX_FINAL_SEGMENTS_IN_PROMPT = 50
-        private const val MAX_FINAL_SEGMENTS_RETAINED = 100
-        private const val FINAL_SEGMENTS_TRIM_COUNT = 50
     }
 }
 
@@ -610,6 +591,7 @@ internal fun buildLiveInterpreterTranslationSystemPrompt(
     Preserve names, product names, technical terms, numbers, and uncertainty.
     Return only new text that should be appended to the target-language transcript.
     Do not repeat already published translation. Do not explain.
+    Never return an empty response for a finalized source delta; translate it or preserve uncertainty explicitly.
     """.trimIndent()
 
 internal fun buildLiveInterpreterTranslationUserPrompt(context: LiveInterpreterTranslationPromptContext): String =
@@ -624,7 +606,7 @@ internal fun buildLiveInterpreterTranslationUserPrompt(context: LiveInterpreterT
     ${context.newFinalOriginalDelta}
 
     Return only the target-language text to append now.
-    If this delta is too incomplete to safely translate, return an empty string.
+    Do not return an empty string. If the delta contains uncertainty, translate the uncertainty explicitly.
     Do not repeat or rewrite the already published translation.
     """.trimIndent()
 

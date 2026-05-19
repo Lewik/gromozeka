@@ -21,6 +21,8 @@ import kotlin.math.max
 
 @OptIn(ExperimentalForeignApi::class)
 class IosClientAudioPlayer : ClientAudioPlayer {
+    private var activePlayer: AVAudioPlayer? = null
+
     override suspend fun playAudio(data: ByteArray, mediaType: String, fileExtension: String) = withContext(Dispatchers.Default) {
         val normalizedExtension = fileExtension.trim().trimStart('.').ifBlank { "wav" }
         playAudioFile(data, normalizedExtension)
@@ -60,14 +62,21 @@ class IosClientAudioPlayer : ClientAudioPlayer {
         writeFileBytes(fileUrl.path ?: error("iOS audio temp file path is missing"), data)
         try {
             val player = AVAudioPlayer(fileUrl, null) ?: error("Failed to create iOS audio player")
+            activePlayer = player
             player.prepareToPlay()
             check(player.play()) { "Failed to start iOS audio playback" }
             while (player.playing) {
                 delay(50)
             }
         } finally {
+            activePlayer = null
             runCatching { NSFileManager.defaultManager.removeItemAtURL(fileUrl, null) }
         }
+    }
+
+    override fun stop() {
+        activePlayer?.stop()
+        activePlayer = null
     }
 
     private fun configureAudioSession() {

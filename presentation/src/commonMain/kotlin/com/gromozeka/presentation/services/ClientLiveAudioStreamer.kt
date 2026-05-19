@@ -67,9 +67,8 @@ class RollingClientLiveAudioStreamer(
         val stopSignal = CompletableDeferred<Unit>()
         val recordingSession = recorder.start(scope)
         val bufferMutex = Mutex()
-        var rawBuffer = ByteArray(0)
-        var totalRawBytes = 0L
-        var lastSentTotalRawBytes = 0L
+        var pendingRawBuffer = ByteArray(0)
+        var overlapBuffer = ByteArray(0)
         val windowBytes = bytesForMillis(settings.windowMillis)
         val stepMillis = settings.stepMillis
         val minWindowBytes = bytesForMillis(settings.minWindowMillis)
@@ -79,50 +78,58 @@ class RollingClientLiveAudioStreamer(
         val collectorJob = scope.launch {
             recordingSession.audioChunks.collect { chunk ->
                 bufferMutex.withLock {
-                    totalRawBytes += chunk.size.toLong()
-                    rawBuffer = (rawBuffer + chunk).takeLastBytes(maxWindowBytes)
+                    pendingRawBuffer += chunk
                 }
             }
         }
 
         val senderJob = scope.launch {
             var sequenceNumber = 0
-            while (isActive && !stopSignal.isCompleted) {
-                withTimeoutOrNull(stepMillis) {
-                    stopSignal.await()
+            while (isActive) {
+                if (!stopSignal.isCompleted) {
+                    withTimeoutOrNull(stepMillis) {
+                        stopSignal.await()
+                    }
                 }
                 val window = bufferMutex.withLock {
-                    val pendingRawBytes = totalRawBytes - lastSentTotalRawBytes
-                    if (pendingRawBytes <= 0L) {
+                    val pendingRawBytes = pendingRawBuffer.size.toLong()
+                    if (pendingRawBuffer.isEmpty()) {
                         null
-                    } else if (rawBuffer.size < minWindowBytes && !stopSignal.isCompleted) {
+                    } else if (pendingRawBuffer.size < minWindowBytes && !stopSignal.isCompleted) {
                         null
                     } else {
-                        val adaptiveWindowBytes = adaptiveWindowBytes(
+                        val audioWindow = overlapBuffer + pendingRawBuffer
+                        val windowSizeBytes = windowBytes(
                             pendingRawBytes = pendingRawBytes,
                             defaultWindowBytes = windowBytes,
                             overlapBytes = overlapBytes,
-                            maxWindowBytes = maxWindowBytes,
                         )
-                        if (adaptiveWindowBytes > windowBytes) {
+                        if (windowSizeBytes > windowBytes) {
                             log.info {
                                 "Live audio adaptive window expanded: pendingMillis=${bytesToMillis(pendingRawBytes)} " +
-                                    "windowMillis=${bytesToMillis(adaptiveWindowBytes.toLong())} " +
-                                    "maxWindowMillis=${settings.maximumAdaptiveWindowMillis}"
+                                    "windowMillis=${bytesToMillis(windowSizeBytes.toLong())}"
                             }
                         }
-                        if (pendingRawBytes > (maxWindowBytes - overlapBytes).toLong()) {
+                        if (audioWindow.size > maxWindowBytes) {
                             log.warn {
-                                "Live audio capture fell behind max adaptive window: " +
-                                    "pendingMillis=${bytesToMillis(pendingRawBytes)} maxWindowMillis=${settings.maximumAdaptiveWindowMillis}"
+                                "Live audio capture exceeded max adaptive window; preserving full backlog: " +
+                                    "windowMillis=${bytesToMillis(audioWindow.size.toLong())} " +
+                                    "configuredMaxWindowMillis=${settings.maximumAdaptiveWindowMillis}"
                             }
                         }
-                        lastSentTotalRawBytes = totalRawBytes
-                        rawBuffer.takeLastBytes(adaptiveWindowBytes)
+                        pendingRawBuffer = ByteArray(0)
+                        overlapBuffer = audioWindow.takeLastBytes(overlapBytes)
+                        audioWindow
                     }
                 }
                 if (window != null && window.isNotEmpty()) {
                     onChunk(window.toRemoteLiveWavChunk(sequenceNumber++))
+                }
+                if (stopSignal.isCompleted) {
+                    val hasPendingAudio = bufferMutex.withLock { pendingRawBuffer.isNotEmpty() }
+                    if (!hasPendingAudio) {
+                        break
+                    }
                 }
             }
         }
@@ -133,10 +140,11 @@ class RollingClientLiveAudioStreamer(
         }
         return object : ClientLiveAudioStreamingSession {
             override suspend fun stop() {
+                recordingSession.cancel()
+                collectorJob.join()
                 stopSignal.complete(Unit)
                 senderJob.join()
                 collectorJob.cancelAndJoin()
-                recordingSession.cancel()
                 log.info { "Live audio overlapping streamer stopped" }
             }
         }
@@ -182,17 +190,15 @@ class RollingClientLiveAudioStreamer(
     private fun bytesToMillis(bytes: Long): Long =
         bytes * 1000L / (sampleRate * frameSizeBytes)
 
-    private fun adaptiveWindowBytes(
+    private fun windowBytes(
         pendingRawBytes: Long,
         defaultWindowBytes: Int,
         overlapBytes: Int,
-        maxWindowBytes: Int,
     ): Int =
-        LiveAudioWindowSizing.adaptiveWindowBytes(
+        LiveAudioWindowSizing.backlogPreservingWindowBytes(
             pendingRawBytes = pendingRawBytes,
             defaultWindowBytes = defaultWindowBytes,
             overlapBytes = overlapBytes,
-            maxWindowBytes = maxWindowBytes,
         )
 
     private fun ByteArray.toRemoteLiveWavChunk(sequenceNumber: Int): RemoteLiveAudioChunk =
@@ -274,15 +280,17 @@ private fun ByteArray.writeLittleEndianInt(offset: Int, value: Int) {
 }
 
 internal object LiveAudioWindowSizing {
-    fun adaptiveWindowBytes(
+    fun backlogPreservingWindowBytes(
         pendingRawBytes: Long,
         defaultWindowBytes: Int,
         overlapBytes: Int,
-        maxWindowBytes: Int,
-    ): Int =
-        maxOf(defaultWindowBytes.toLong(), pendingRawBytes + overlapBytes)
-            .coerceAtMost(maxWindowBytes.toLong())
-            .toInt()
+    ): Int {
+        val windowBytes = maxOf(defaultWindowBytes.toLong(), pendingRawBytes + overlapBytes)
+        require(windowBytes <= Int.MAX_VALUE) {
+            "Live audio backlog is too large to fit into one in-memory window: $windowBytes bytes"
+        }
+        return windowBytes.toInt()
+    }
 }
 
 private fun ByteArray.writeLittleEndianShort(offset: Int, value: Int) {

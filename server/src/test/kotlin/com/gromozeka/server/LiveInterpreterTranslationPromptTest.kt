@@ -120,4 +120,18 @@ class LiveInterpreterTranslationPromptTest {
             state.stabilizerContext().pendingDrafts.map { it.id }
         )
     }
+
+    @Test
+    fun transcriptStateKeepsAllPendingDraftsUntilStabilizerDropsThem() {
+        val state = LiveInterpreterTranscriptState()
+
+        repeat(12) { index ->
+            state.recordDraft(index + 1, "draft ${index + 1}")
+        }
+
+        assertEquals(
+            (1..12).map { "draft-$it" },
+            state.stabilizerContext().pendingDrafts.map { it.id }
+        )
+    }
 }

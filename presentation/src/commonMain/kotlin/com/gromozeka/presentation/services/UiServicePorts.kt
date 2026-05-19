@@ -39,7 +39,7 @@ interface TtsQueue {
     val isPlaying: StateFlow<Boolean>
     fun start()
     suspend fun enqueue(task: TtsTask)
-    fun stopAndClear()
+    suspend fun stopAndClear()
     fun shutdown()
 }
 
@@ -47,13 +47,14 @@ class NoOpTtsQueue : TtsQueue {
     override val isPlaying: StateFlow<Boolean> = MutableStateFlow(false)
     override fun start() = Unit
     override suspend fun enqueue(task: TtsTask) = Unit
-    override fun stopAndClear() = Unit
+    override suspend fun stopAndClear() = Unit
     override fun shutdown() = Unit
 }
 
 interface ClientAudioPlayer {
     suspend fun playAudio(data: ByteArray, mediaType: String, fileExtension: String)
     suspend fun playPcmStream(chunks: Flow<ByteArray>, sampleRate: Int, channels: Int, bitsPerSample: Int)
+    fun stop()
 }
 
 object NoOpClientAudioPlayer : ClientAudioPlayer {
@@ -61,6 +62,17 @@ object NoOpClientAudioPlayer : ClientAudioPlayer {
     override suspend fun playPcmStream(chunks: Flow<ByteArray>, sampleRate: Int, channels: Int, bitsPerSample: Int) {
         chunks.collect {}
     }
+    override fun stop() = Unit
+}
+
+interface SystemAudioMuteService {
+    suspend fun mute()
+    suspend fun restore()
+}
+
+object NoOpSystemAudioMuteService : SystemAudioMuteService {
+    override suspend fun mute() = Unit
+    override suspend fun restore() = Unit
 }
 
 interface PttRecordingService {
@@ -85,6 +97,7 @@ interface PttEventHandler {
     fun initialize()
     suspend fun handlePTTEvent(event: PTTEvent)
     suspend fun handlePTTRelease()
+    suspend fun handlePTTCancel() = Unit
 }
 
 object NoOpPttEventHandler : PttEventHandler {

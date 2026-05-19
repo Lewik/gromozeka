@@ -50,6 +50,9 @@ class UnifiedGestureDetector(
                     timeoutJob?.cancel()
                     state = GestureState.SECOND_DOWN
 
+                    // Start PTT immediately on second press too; short double-click will cancel it on release
+                    pttEventRouter.handlePTTEvent(PTTEvent.BUTTON_DOWN)
+
                     // If holding - this is double hold
                     timeoutJob = coroutineScope.launch {
                         delay(shortClickThreshold)
@@ -92,6 +95,7 @@ class UnifiedGestureDetector(
                 timeoutJob?.cancel()
 
                 if (holdDuration < shortClickThreshold.inWholeMilliseconds) {
+                    pttEventRouter.handlePTTCancel()
                     // Quick press, waiting for second
                     state = GestureState.WAITING_SECOND_DOWN
 
@@ -105,6 +109,7 @@ class UnifiedGestureDetector(
                 } else {
                     // This was single hold, but released early
                     state = GestureState.IDLE
+                    pttEventRouter.handlePTTRelease()
                 }
             }
 
@@ -112,12 +117,14 @@ class UnifiedGestureDetector(
                 timeoutJob?.cancel()
 
                 if (holdDuration < shortClickThreshold.inWholeMilliseconds) {
+                    pttEventRouter.handlePTTCancel()
                     // Quick double click
                     state = GestureState.IDLE
                     pttEventRouter.handlePTTEvent(PTTEvent.DOUBLE_CLICK)
                 } else {
                     // This was double hold, but released early
                     state = GestureState.IDLE
+                    pttEventRouter.handlePTTRelease()
                 }
             }
 

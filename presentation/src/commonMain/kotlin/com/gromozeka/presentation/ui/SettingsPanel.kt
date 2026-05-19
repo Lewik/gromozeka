@@ -476,19 +476,17 @@ fun SettingsPanel(
                                 modifier = Modifier.padding(start = 8.dp, top = 4.dp, bottom = 8.dp)
                             )
 
-                            // Only show mute option if global PTT is enabled
-                            if (desktopInputSettings.globalPttHotkeyEnabled) {
-                                SwitchSettingItem(
-                                    label = translation.settings.muteAudioDuringPttLabel,
-                                    description = translation.settings.muteAudioDescription,
-                                    value = desktopInputSettings.muteSystemAudioDuringPtt,
-                                    onValueChange = {
-                                        onSettingsChange(
-                                            settings.updateDesktopInputSettings { copy(muteSystemAudioDuringPtt = it) }
-                                        )
-                                    }
-                                )
-                            }
+                            // Applies to both global hotkey and UI PTT button.
+                            SwitchSettingItem(
+                                label = translation.settings.muteAudioDuringPttLabel,
+                                description = translation.settings.muteAudioDescription,
+                                value = desktopInputSettings.muteSystemAudioDuringPtt,
+                                onValueChange = {
+                                    onSettingsChange(
+                                        settings.updateDesktopInputSettings { copy(muteSystemAudioDuringPtt = it) }
+                                    )
+                                }
+                            )
                         }
                     }
                     }

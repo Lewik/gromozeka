@@ -76,6 +76,16 @@ fun LiveInterpreterScreen(
     var eventsJob by remember { mutableStateOf<Job?>(null) }
     var isRunning by remember { mutableStateOf(false) }
     var isStopping by remember { mutableStateOf(false) }
+    val clientSideSpeechToTextAvailable = clientSideSpeechToTextService.isEnabled()
+    var selectedRecognitionBackend by remember {
+        mutableStateOf(
+            if (clientSideSpeechToTextAvailable) {
+                LiveInterpreterRecognitionBackend.ClientWhisper
+            } else {
+                LiveInterpreterRecognitionBackend.ServerStt
+            }
+        )
+    }
     val sourceLanguageOptions = remember { liveInterpreterSourceLanguageOptions() }
     var selectedSourceLanguageCode by remember { mutableStateOf(sourceLanguageOptions.first().code) }
     val selectedSourceLanguage = sourceLanguageOptions.firstOrNull { it.code == selectedSourceLanguageCode }
@@ -101,6 +111,12 @@ fun LiveInterpreterScreen(
         val selected = selectedTranslationModel ?: return@LaunchedEffect
         if (selectedTranslationModelId != selected.id) {
             selectedTranslationModelId = selected.id
+        }
+    }
+
+    LaunchedEffect(clientSideSpeechToTextAvailable) {
+        if (!clientSideSpeechToTextAvailable && selectedRecognitionBackend == LiveInterpreterRecognitionBackend.ClientWhisper) {
+            selectedRecognitionBackend = LiveInterpreterRecognitionBackend.ServerStt
         }
     }
 
@@ -168,9 +184,6 @@ fun LiveInterpreterScreen(
                                         sequenceNumber = event.sequenceNumber,
                                         text = event.text,
                                     )
-                                    while (originalDraftItems.size > 3) {
-                                        originalDraftItems.removeAt(0)
-                                    }
                                 }
                             }
                             is LiveInterpreterDraftsEvent -> {
@@ -198,7 +211,9 @@ fun LiveInterpreterScreen(
                         }
                     }
                 }
-                val useClientSideSpeechToText = clientSideSpeechToTextService.isEnabled()
+                val useClientSideSpeechToText =
+                    selectedRecognitionBackend == LiveInterpreterRecognitionBackend.ClientWhisper &&
+                        clientSideSpeechToTextAvailable
                 audioSession = liveAudioStreamer.start(coroutineScope) { chunk ->
                     runCatching {
                         if (useClientSideSpeechToText) {
@@ -214,6 +229,8 @@ fun LiveInterpreterScreen(
                                         text = transcript,
                                     )
                                 )
+                            } else {
+                                statusItems += "Segment ${chunk.sequenceNumber}: client speech-to-text returned blank text"
                             }
                         } else {
                             session.sendAudioChunk(chunk)
@@ -227,9 +244,9 @@ fun LiveInterpreterScreen(
                 isRunning = true
                 isStopping = false
                 statusItems += if (useClientSideSpeechToText) {
-                    "Listening with client-side speech-to-text"
+                    "Listening with client-side Local Whisper"
                 } else {
-                    "Listening"
+                    "Listening with server speech-to-text"
                 }
             }.onFailure { error ->
                 runCatching { audioSession?.stop() }
@@ -291,6 +308,15 @@ fun LiveInterpreterScreen(
 
         Spacer(Modifier.height(12.dp))
 
+        LiveInterpreterRecognitionBackendBar(
+            selectedBackend = selectedRecognitionBackend,
+            clientWhisperAvailable = clientSideSpeechToTextAvailable,
+            onBackendChange = { selectedRecognitionBackend = it },
+            enabled = !isRunning && !isStopping,
+        )
+
+        Spacer(Modifier.height(12.dp))
+
         LiveInterpreterSourceLanguageBar(
             sourceLanguages = sourceLanguageOptions,
             selectedSourceLanguage = selectedSourceLanguage,
@@ -332,6 +358,20 @@ fun LiveInterpreterScreen(
     }
 }
 
+private enum class LiveInterpreterRecognitionBackend(
+    val label: String,
+    val description: String,
+) {
+    ClientWhisper(
+        label = "Client Whisper",
+        description = "Transcribe locally on this client and send text to the server.",
+    ),
+    ServerStt(
+        label = "Server STT",
+        description = "Send audio chunks to the server speech-to-text pipeline.",
+    ),
+}
+
 private data class LiveInterpreterSourceLanguage(
     val code: String,
     val label: String,
@@ -349,6 +389,42 @@ private fun liveInterpreterSourceLanguageOptions(): List<LiveInterpreterSourceLa
         LiveInterpreterSourceLanguage("en", "English", "English workplace conversation, possibly with Hebrew and Russian terms"),
         LiveInterpreterSourceLanguage("ru", "Russian", "Russian workplace conversation, possibly with Hebrew and English terms"),
     )
+
+@Composable
+private fun LiveInterpreterRecognitionBackendBar(
+    selectedBackend: LiveInterpreterRecognitionBackend,
+    clientWhisperAvailable: Boolean,
+    onBackendChange: (LiveInterpreterRecognitionBackend) -> Unit,
+    enabled: Boolean,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            "Recognition backend",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(0.dp)) {
+            LiveInterpreterRecognitionBackend.entries.forEachIndexed { index, backend ->
+                val available = backend != LiveInterpreterRecognitionBackend.ClientWhisper || clientWhisperAvailable
+                val selected = selectedBackend == backend
+                Button(
+                    onClick = { onBackendChange(backend) },
+                    enabled = enabled && available,
+                    contentPadding = CompactButtonDefaults.ContentPadding,
+                    shape = segmentedButtonShape(index, LiveInterpreterRecognitionBackend.entries.lastIndex),
+                    colors = segmentedButtonColors(selected),
+                ) {
+                    Text(backend.label)
+                }
+            }
+        }
+        Text(
+            selectedBackend.description,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
 
 @Composable
 private fun LiveInterpreterSourceLanguageBar(

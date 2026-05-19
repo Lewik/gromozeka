@@ -8,11 +8,10 @@ class LiveAudioWindowSizingTest {
     fun keepsDefaultWindowWhenRecognizerKeepsUp() {
         assertEquals(
             20_000,
-            LiveAudioWindowSizing.adaptiveWindowBytes(
+            LiveAudioWindowSizing.backlogPreservingWindowBytes(
                 pendingRawBytes = 10_000,
                 defaultWindowBytes = 20_000,
                 overlapBytes = 5_000,
-                maxWindowBytes = 90_000,
             )
         )
     }
@@ -21,24 +20,22 @@ class LiveAudioWindowSizingTest {
     fun expandsWindowToCoverBacklogPlusOverlap() {
         assertEquals(
             45_000,
-            LiveAudioWindowSizing.adaptiveWindowBytes(
+            LiveAudioWindowSizing.backlogPreservingWindowBytes(
                 pendingRawBytes = 40_000,
                 defaultWindowBytes = 20_000,
                 overlapBytes = 5_000,
-                maxWindowBytes = 90_000,
             )
         )
     }
 
     @Test
-    fun capsWindowAtMaximumAdaptiveWindow() {
+    fun keepsFullBacklogInsteadOfCappingAtMaximumAdaptiveWindow() {
         assertEquals(
-            90_000,
-            LiveAudioWindowSizing.adaptiveWindowBytes(
+            125_000,
+            LiveAudioWindowSizing.backlogPreservingWindowBytes(
                 pendingRawBytes = 120_000,
                 defaultWindowBytes = 20_000,
                 overlapBytes = 5_000,
-                maxWindowBytes = 90_000,
             )
         )
     }

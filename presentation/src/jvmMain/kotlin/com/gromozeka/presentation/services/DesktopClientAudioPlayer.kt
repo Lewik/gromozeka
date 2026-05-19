@@ -7,12 +7,17 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import javax.sound.sampled.AudioFormat
 import javax.sound.sampled.AudioSystem
+import javax.sound.sampled.SourceDataLine
 
 class DesktopClientAudioPlayer : ClientAudioPlayer {
     private companion object {
         const val PCM_START_PREBUFFER_MS = 500
         const val PCM_LINE_BUFFER_MS = 1_000
     }
+
+    private val lock = Any()
+    private var activeLine: SourceDataLine? = null
+    private var activeProcess: Process? = null
 
     override suspend fun playAudio(data: ByteArray, mediaType: String, fileExtension: String) = withContext(Dispatchers.IO) {
         val normalizedExtension = fileExtension.trim().trimStart('.').ifBlank { "mp3" }
@@ -35,6 +40,9 @@ class DesktopClientAudioPlayer : ClientAudioPlayer {
         val frameSize = format.frameSize
         require(frameSize > 0) { "Invalid PCM frame size: $frameSize" }
         val line = AudioSystem.getSourceDataLine(format)
+        synchronized(lock) {
+            activeLine = line
+        }
         line.open(format, PcmFrameBuffer.prebufferBytes(sampleRate, frameSize, PCM_LINE_BUFFER_MS))
         val buffer = PcmFrameBuffer(
             frameSizeBytes = frameSize,
@@ -60,9 +68,31 @@ class DesktopClientAudioPlayer : ClientAudioPlayer {
             }
             if (started) line.drain()
         } finally {
-            if (started) line.stop()
-            line.close()
+            synchronized(lock) {
+                if (activeLine === line) {
+                    activeLine = null
+                }
+            }
+            runCatching { line.stop() }
+            runCatching { line.flush() }
+            runCatching { line.close() }
         }
+    }
+
+    override fun stop() {
+        val line: SourceDataLine?
+        val process: Process?
+        synchronized(lock) {
+            line = activeLine
+            activeLine = null
+            process = activeProcess
+            activeProcess = null
+        }
+
+        runCatching { line?.stop() }
+        runCatching { line?.flush() }
+        runCatching { line?.close() }
+        runCatching { process?.destroy() }
     }
 
     private fun playAudioFile(audioFile: File) {
@@ -73,7 +103,18 @@ class DesktopClientAudioPlayer : ClientAudioPlayer {
             else -> listOf("xdg-open", audioFile.absolutePath)
         }
         val process = ProcessBuilder(command).start()
-        val exitCode = process.waitFor()
-        require(exitCode == 0) { "Audio player exited with code $exitCode" }
+        synchronized(lock) {
+            activeProcess = process
+        }
+        try {
+            val exitCode = process.waitFor()
+            require(exitCode == 0) { "Audio player exited with code $exitCode" }
+        } finally {
+            synchronized(lock) {
+                if (activeProcess === process) {
+                    activeProcess = null
+                }
+            }
+        }
     }
 }

@@ -2,6 +2,7 @@ package com.gromozeka.presentation
 
 import com.gromozeka.presentation.services.DesktopClientAudioRecorder
 import com.gromozeka.presentation.services.DesktopClientAudioPlayer
+import com.gromozeka.presentation.services.DesktopSystemAudioMuteService
 import com.gromozeka.presentation.services.DesktopLocalWhisperSpeechToTextService
 import com.gromozeka.presentation.services.DesktopRemoteClientSettingsStore
 import com.gromozeka.presentation.services.WindowStateService
@@ -27,6 +28,7 @@ internal fun startRemotePresentation(remoteUrl: String): RemoteStartedApp {
             ),
             audioRecorder = DesktopClientAudioRecorder(),
             audioPlayer = DesktopClientAudioPlayer(),
+            systemAudioMuteService = DesktopSystemAudioMuteService(),
             clientSideSpeechToTextServiceFactory = ::DesktopLocalWhisperSpeechToTextService,
         )
     }

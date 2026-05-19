@@ -91,7 +91,7 @@ sealed interface UserDeviceSettings {
     data class DesktopInputSettings(
         val autoSend: Boolean = false,
         val globalPttHotkeyEnabled: Boolean = false,
-        val muteSystemAudioDuringPtt: Boolean = false,
+        val muteSystemAudioDuringPtt: Boolean = true,
     )
 
     @Serializable

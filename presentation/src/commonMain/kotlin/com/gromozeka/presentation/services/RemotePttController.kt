@@ -1,20 +1,27 @@
 package com.gromozeka.presentation.services
 
 import com.gromozeka.client.AudioTranscriptionService
+import com.gromozeka.domain.model.UserDeviceSettings
+import com.gromozeka.domain.service.SettingsService
 import com.gromozeka.presentation.ui.viewmodel.AppViewModel
 import com.gromozeka.shared.uuid.uuid7
 import klog.KLoggers
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 
 class RemotePttController(
     private val appViewModel: AppViewModel,
     private val audioRecorder: ClientAudioRecorder,
     private val audioTranscriptionService: AudioTranscriptionService,
     private val clientSideSpeechToTextService: ClientSideSpeechToTextService,
+    private val ttsQueue: TtsQueue,
+    private val systemAudioMuteService: SystemAudioMuteService,
+    private val settingsService: SettingsService,
     private val scope: CoroutineScope,
 ) : PttEventHandler, PttRecordingService {
     private val log = KLoggers.logger(this)
@@ -31,11 +38,11 @@ class RemotePttController(
     override suspend fun handlePTTEvent(event: PTTEvent) {
         log.info { "PTT event received: event=$event recording=${recordingSession != null}" }
         when (event) {
-            PTTEvent.BUTTON_DOWN,
+            PTTEvent.BUTTON_DOWN -> startRecording()
             PTTEvent.SINGLE_PUSH,
-            PTTEvent.DOUBLE_PUSH -> startRecording()
-            PTTEvent.SINGLE_CLICK,
-            PTTEvent.DOUBLE_CLICK -> Unit
+            PTTEvent.DOUBLE_PUSH -> Unit
+            PTTEvent.SINGLE_CLICK -> stopCurrentTts("single click")
+            PTTEvent.DOUBLE_CLICK -> interruptCurrentSession()
         }
     }
 
@@ -48,7 +55,13 @@ class RemotePttController(
             current
         }
 
-        val recording = runCatching { session.stop() }
+        val recording = runCatching {
+            try {
+                session.stop()
+            } finally {
+                restoreSystemAudioAfterPtt()
+            }
+        }
             .getOrElse { error ->
                 _statusMessage.value = "Не удалось записать голос: ${error.message}"
                 log.warn(error) { "PTT recording stop failed: ${error.message}" }
@@ -98,6 +111,39 @@ class RemotePttController(
         currentTab.sendMessageToSession(text)
     }
 
+    override suspend fun handlePTTCancel() {
+        log.info { "PTT cancel received: recording=${recordingSession != null}" }
+        val session = mutex.withLock {
+            val current = recordingSession ?: return
+            recordingSession = null
+            _recordingState.value = false
+            current
+        }
+        runCatching {
+            try {
+                session.cancel()
+            } finally {
+                restoreSystemAudioAfterPtt()
+            }
+        }.onFailure { error ->
+            log.warn(error) { "PTT recording cancel failed: ${error.message}" }
+        }
+        _statusMessage.value = null
+        log.info { "PTT recording cancelled" }
+    }
+
+    private suspend fun stopCurrentTts(reason: String) {
+        _statusMessage.value = null
+        log.info { "PTT TTS stop requested: reason=$reason" }
+        ttsQueue.stopAndClear()
+    }
+
+    private suspend fun interruptCurrentSession() {
+        _statusMessage.value = null
+        log.info { "PTT double click interrupt requested" }
+        appViewModel.sendInterruptToCurrentSession()
+    }
+
     private suspend fun startRecording() {
         mutex.withLock {
             if (recordingSession != null) {
@@ -107,8 +153,11 @@ class RemotePttController(
 
             _statusMessage.value = null
             log.info { "PTT recording start requested" }
+            muteSystemAudioBeforePtt()
+            stopCurrentTts("button down")
             val session = runCatching { audioRecorder.start(scope) }
                 .getOrElse { error ->
+                    restoreSystemAudioAfterPtt()
                     _statusMessage.value = "Не удалось открыть микрофон: ${error.message}"
                     log.warn(error) { "PTT recording start failed: ${error.message}" }
                     return
@@ -119,4 +168,26 @@ class RemotePttController(
             log.info { "PTT recording started" }
         }
     }
+
+    private suspend fun muteSystemAudioBeforePtt() {
+        if (!shouldMuteSystemAudioDuringPtt()) return
+
+        log.info { "PTT system audio mute requested" }
+        systemAudioMuteService.mute()
+    }
+
+    private suspend fun restoreSystemAudioAfterPtt() {
+        if (!shouldMuteSystemAudioDuringPtt()) return
+
+        withContext(NonCancellable) {
+            log.info { "PTT system audio restore requested" }
+            systemAudioMuteService.restore()
+        }
+    }
+
+    private fun shouldMuteSystemAudioDuringPtt(): Boolean =
+        (settingsService.settings.userDeviceSettings as? UserDeviceSettings.Desktop)
+            ?.inputSettings
+            ?.muteSystemAudioDuringPtt
+            ?: false
 }
