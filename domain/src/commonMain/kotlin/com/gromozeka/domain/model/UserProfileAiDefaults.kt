@@ -100,7 +100,11 @@ object UserProfileAiDefaults {
 
     fun modelSpecs(): List<AiModelSpec> = listOf(
         textGenerationSpec(AiProvider.OPENAI, "gpt-5.5", contextWindowTokens = 1_050_000, maxOutputTokens = 128_000),
+        textGenerationSpec(AiProvider.OPENAI, "gpt-5.4", contextWindowTokens = 400_000, maxOutputTokens = 128_000),
+        textGenerationSpec(AiProvider.OPENAI, "gpt-5.4-mini", contextWindowTokens = 400_000, maxOutputTokens = 128_000),
         textGenerationSpec(AiProvider.OPENAI, "gpt-5.3-codex", contextWindowTokens = 400_000),
+        textGenerationSpec(AiProvider.OPENAI, "gpt-5.3-codex-spark", contextWindowTokens = 400_000),
+        textGenerationSpec(AiProvider.OPENAI, "gpt-5.2", contextWindowTokens = 400_000),
         textGenerationSpec(AiProvider.OPENAI, "gpt-4o", contextWindowTokens = 128_000),
         textGenerationSpec(AiProvider.OPENAI, "gpt-4o-mini", contextWindowTokens = 128_000),
         AiModelSpec(

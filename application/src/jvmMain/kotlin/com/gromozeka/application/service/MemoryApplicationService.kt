@@ -33,6 +33,7 @@ import com.gromozeka.domain.model.memory.MemoryReadRequest
 import com.gromozeka.domain.model.memory.MemoryStore
 import com.gromozeka.domain.model.memory.MemoryThreadContext
 import com.gromozeka.domain.model.ai.AiRuntimeAssignment
+import com.gromozeka.domain.service.AiRuntime
 import com.gromozeka.domain.service.AiRuntimeProvider
 import com.gromozeka.domain.service.SettingsProvider
 import com.gromozeka.domain.tool.AiToolCallback
@@ -103,17 +104,16 @@ class MemoryApplicationService(
             memoryContextMessages + targetMessage
         }
         val namespace = MemoryNamespace("project:${project.id.value}")
-        val runtime = aiRuntimeProvider.getRuntime(
-            selection = settingsProvider.runtimeSelectionFor(AiRuntimeAssignment.Purpose.MEMORY_READ),
-            projectPath = project.path,
-        )
+        val runtimes = MemoryServiceStageRuntimes(project)
         val threadContext = MemoryThreadContext(
             conversationId = conversationId,
             threadId = threadId,
             targetMessageId = targetMessage.id,
             messages = contextMessages,
         )
-        val focusedThreadContext = MemoryThreadContextCompactor(runtime).compactIfNeeded(
+        val focusedThreadContext = MemoryThreadContextCompactor(
+            runtimes.runtimeFor(AiRuntimeAssignment.Purpose.MEMORY_READ_CONTEXT_COMPACTOR)
+        ).compactIfNeeded(
             context = threadContext,
             targetSourceLabel = "chat:${targetMessage.id.value}",
             logContext = "conversation=${conversationId.value} thread=${threadId.value} purpose=memory_read",
@@ -121,13 +121,13 @@ class MemoryApplicationService(
         val pipeline = RuntimeMemoryReadPipeline(
             store = store,
             planner = LlmMemoryReadPlanner(
-                runtime = runtime,
+                runtime = runtimes.runtimeFor(AiRuntimeAssignment.Purpose.MEMORY_READ_PLANNER),
                 timezone = TimeZone.currentSystemDefault().id,
                 runtimeSystemPrompts = runtimeSystemPrompts,
                 runtimeTools = runtimeTools,
             ),
             selector = LlmMemoryReadSelector(
-                runtime = runtime,
+                runtime = runtimes.runtimeFor(AiRuntimeAssignment.Purpose.MEMORY_READ_SELECTOR),
                 runtimeSystemPrompts = runtimeSystemPrompts,
                 runtimeTools = runtimeTools,
             ),
@@ -166,6 +166,20 @@ class MemoryApplicationService(
         return result
     }
 
+    private inner class MemoryServiceStageRuntimes(
+        private val project: Project,
+    ) {
+        private val runtimes = mutableMapOf<AiRuntimeAssignment.Purpose, AiRuntime>()
+
+        fun runtimeFor(purpose: AiRuntimeAssignment.Purpose): AiRuntime =
+            runtimes.getOrPut(purpose) {
+                aiRuntimeProvider.getRuntime(
+                    selection = settingsProvider.runtimeSelectionFor(purpose),
+                    projectPath = project.path,
+                )
+            }
+    }
+
     private fun Conversation.Message.isSyntheticMemoryRuntimeMessage(): Boolean =
         providerMetadata["syntheticKind"]?.jsonPrimitive?.contentOrNull == "memory"
 
@@ -177,14 +191,11 @@ class MemoryApplicationService(
         runtimeTools: List<AiToolCallback>,
     ): MemoryNoteConsolidationPipelineResult {
         val namespace = MemoryNamespace("project:${project.id.value}")
-        val runtime = aiRuntimeProvider.getRuntime(
-            selection = settingsProvider.runtimeSelectionFor(AiRuntimeAssignment.Purpose.MEMORY_MAINTENANCE),
-            projectPath = project.path,
-        )
+        val runtimes = MemoryServiceStageRuntimes(project)
         val pipeline = MemoryNoteConsolidationPipeline(
             store = store,
             consolidator = LlmMemoryNoteConsolidator(
-                runtime = runtime,
+                runtime = runtimes.runtimeFor(AiRuntimeAssignment.Purpose.MEMORY_MAINTENANCE_NOTE_CONSOLIDATOR),
                 timezone = TimeZone.currentSystemDefault().id,
                 runtimeSystemPrompts = runtimeSystemPrompts,
                 runtimeTools = runtimeTools,
@@ -224,14 +235,11 @@ class MemoryApplicationService(
         runtimeTools: List<AiToolCallback>,
     ): MemoryRepairPipelineResult {
         val namespace = MemoryNamespace("project:${project.id.value}")
-        val runtime = aiRuntimeProvider.getRuntime(
-            selection = settingsProvider.runtimeSelectionFor(AiRuntimeAssignment.Purpose.MEMORY_MAINTENANCE),
-            projectPath = project.path,
-        )
+        val runtimes = MemoryServiceStageRuntimes(project)
         val pipeline = MemoryRepairPipeline(
             store = store,
             planner = LlmMemoryRepairPlanner(
-                runtime = runtime,
+                runtime = runtimes.runtimeFor(AiRuntimeAssignment.Purpose.MEMORY_MAINTENANCE_REPAIR_PLANNER),
                 runtimeSystemPrompts = runtimeSystemPrompts,
                 runtimeTools = runtimeTools,
             ),
@@ -270,14 +278,11 @@ class MemoryApplicationService(
         runtimeTools: List<AiToolCallback>,
     ): MemoryEntityMaintenancePipelineResult {
         val namespace = MemoryNamespace("project:${project.id.value}")
-        val runtime = aiRuntimeProvider.getRuntime(
-            selection = settingsProvider.runtimeSelectionFor(AiRuntimeAssignment.Purpose.MEMORY_MAINTENANCE),
-            projectPath = project.path,
-        )
+        val runtimes = MemoryServiceStageRuntimes(project)
         val pipeline = MemoryEntityMaintenancePipeline(
             store = store,
             planner = LlmMemoryEntityMaintenancePlanner(
-                runtime = runtime,
+                runtime = runtimes.runtimeFor(AiRuntimeAssignment.Purpose.MEMORY_MAINTENANCE_ENTITY_PLANNER),
                 runtimeSystemPrompts = runtimeSystemPrompts,
                 runtimeTools = runtimeTools,
             ),

@@ -121,7 +121,8 @@ class MemoryRealModelE2eTest {
             subscriptionSession = subscriptionSession,
             systemProperties = mapOf(
                 "gromozeka.mongodb.database" to databaseName,
-                "gromozeka.ai.openai-subscription.websocket-response-timeout-ms" to "90000",
+                "gromozeka.ai.openai-subscription.websocket-response-timeout-ms" to
+                    System.getProperty(WEBSOCKET_RESPONSE_TIMEOUT_MS_PROPERTY, "90000"),
                 "gromozeka.memory.llm.maxAttempts" to "1",
                 "gromozeka.memory.routing.failFast" to "true",
             ),
@@ -2811,6 +2812,7 @@ class MemoryRealModelE2eTest {
         const val SUBSCRIPTION_CONFIG_PROPERTY = "gromozeka.memory.e2e.subscriptionConfig"
         const val CASE_FILTER_PROPERTY = "gromozeka.memory.e2e.caseFilter"
         const val MODEL_NAME_PROPERTY = "gromozeka.memory.e2e.modelName"
+        const val WEBSOCKET_RESPONSE_TIMEOUT_MS_PROPERTY = "gromozeka.memory.e2e.websocketResponseTimeoutMs"
         const val MEMORY_ROUTING_FAIL_FAST_PROPERTY = "gromozeka.memory.routing.failFast"
         const val DEFAULT_MODEL_NAME = "gpt-5.3-codex"
 

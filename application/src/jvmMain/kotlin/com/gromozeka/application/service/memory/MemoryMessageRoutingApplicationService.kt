@@ -17,6 +17,7 @@ import com.gromozeka.domain.model.memory.MemoryThreadContext
 import com.gromozeka.domain.model.memory.MemoryUpdateBatch
 import com.gromozeka.domain.model.memory.MemoryWriteRetrievalPlan
 import com.gromozeka.domain.repository.ThreadMessageRepository
+import com.gromozeka.domain.service.AiRuntime
 import com.gromozeka.domain.service.AiRuntimeProvider
 import com.gromozeka.domain.service.SettingsProvider
 import com.gromozeka.domain.tool.AiToolCallback
@@ -294,12 +295,11 @@ class MemoryMessageRoutingApplicationService(
         traceContext: MemoryWriteTraceContext?,
         throwOnError: Boolean = false,
     ): DirectStructuredMemoryWriteResult? {
-        val runtime = aiRuntimeProvider.getRuntime(
-            selection = settingsProvider.runtimeSelectionFor(AiRuntimeAssignment.Purpose.MEMORY_WRITE),
-            projectPath = project.path,
-        )
+        val runtimes = MemoryWriteStageRuntimes(project)
         val focusedThreadContext = threadContext?.let {
-            MemoryThreadContextCompactor(runtime).compactIfNeeded(
+            MemoryThreadContextCompactor(
+                runtimes.runtimeFor(AiRuntimeAssignment.Purpose.MEMORY_WRITE_CONTEXT_COMPACTOR)
+            ).compactIfNeeded(
                 context = it,
                 targetSourceLabel = source.id.value,
                 logContext = logContext,
@@ -309,47 +309,47 @@ class MemoryMessageRoutingApplicationService(
         val pipeline = DirectStructuredMemoryWritePipeline(
             store = store,
             router = LlmMemoryWriteRouter(
-                runtime = runtime,
+                runtime = runtimes.runtimeFor(AiRuntimeAssignment.Purpose.MEMORY_WRITE_ROUTER),
                 timezone = TimeZone.currentSystemDefault().id,
                 runtimeSystemPrompts = runtimeSystemPrompts,
                 runtimeTools = runtimeTools,
             ),
             retrievalPlanner = LlmMemoryWriteRetrievalPlanner(
-                runtime = runtime,
+                runtime = runtimes.runtimeFor(AiRuntimeAssignment.Purpose.MEMORY_WRITE_RETRIEVAL_PLANNER),
                 timezone = TimeZone.currentSystemDefault().id,
                 runtimeSystemPrompts = runtimeSystemPrompts,
                 runtimeTools = runtimeTools,
             ),
             entityCanonicalizer = LlmMemoryEntityCanonicalizer(
-                runtime = runtime,
+                runtime = runtimes.runtimeFor(AiRuntimeAssignment.Purpose.MEMORY_WRITE_ENTITY_CANONICALIZER),
                 runtimeSystemPrompts = runtimeSystemPrompts,
                 runtimeTools = runtimeTools,
             ),
             noteConstructor = LlmMemoryNoteConstructor(
-                runtime = runtime,
+                runtime = runtimes.runtimeFor(AiRuntimeAssignment.Purpose.MEMORY_WRITE_NOTE_CONSTRUCTOR),
                 timezone = TimeZone.currentSystemDefault().id,
                 runtimeSystemPrompts = runtimeSystemPrompts,
                 runtimeTools = runtimeTools,
             ),
             noteReconciler = LlmMemoryNoteReconciler(
-                runtime = runtime,
+                runtime = runtimes.runtimeFor(AiRuntimeAssignment.Purpose.MEMORY_WRITE_NOTE_RECONCILER),
                 runtimeSystemPrompts = runtimeSystemPrompts,
                 runtimeTools = runtimeTools,
             ),
             claimExtractor = LlmMemoryClaimExtractor(
-                runtime = runtime,
+                runtime = runtimes.runtimeFor(AiRuntimeAssignment.Purpose.MEMORY_WRITE_CLAIM_EXTRACTOR),
                 timezone = TimeZone.currentSystemDefault().id,
                 runtimeSystemPrompts = runtimeSystemPrompts,
                 runtimeTools = runtimeTools,
             ),
             claimReconciler = LlmMemoryClaimReconciler(
-                runtime = runtime,
+                runtime = runtimes.runtimeFor(AiRuntimeAssignment.Purpose.MEMORY_WRITE_CLAIM_RECONCILER),
                 timezone = TimeZone.currentSystemDefault().id,
                 runtimeSystemPrompts = runtimeSystemPrompts,
                 runtimeTools = runtimeTools,
             ),
             taskUpdater = LlmMemoryTaskUpdater(
-                runtime = runtime,
+                runtime = runtimes.runtimeFor(AiRuntimeAssignment.Purpose.MEMORY_WRITE_TASK_UPDATER),
                 timezone = TimeZone.currentSystemDefault().id,
                 runtimeSystemPrompts = runtimeSystemPrompts,
                 runtimeTools = runtimeTools,
@@ -361,7 +361,7 @@ class MemoryMessageRoutingApplicationService(
             forgetPipeline = ExplicitMemoryForgetPipeline(
                 store = store,
                 planner = LlmMemoryForgetPlanner(
-                    runtime = runtime,
+                    runtime = runtimes.runtimeFor(AiRuntimeAssignment.Purpose.MEMORY_WRITE_FORGET_PLANNER),
                     runtimeSystemPrompts = runtimeSystemPrompts,
                     runtimeTools = runtimeTools,
                 ),
@@ -418,6 +418,20 @@ class MemoryMessageRoutingApplicationService(
                 throw error
             }
         }.getOrNull()
+    }
+
+    private inner class MemoryWriteStageRuntimes(
+        private val project: Project,
+    ) {
+        private val runtimes = mutableMapOf<AiRuntimeAssignment.Purpose, AiRuntime>()
+
+        fun runtimeFor(purpose: AiRuntimeAssignment.Purpose): AiRuntime =
+            runtimes.getOrPut(purpose) {
+                aiRuntimeProvider.getRuntime(
+                    selection = settingsProvider.runtimeSelectionFor(purpose),
+                    projectPath = project.path,
+                )
+            }
     }
 
     private fun MemorySource.ChatTurn.toDocumentSectionSource(

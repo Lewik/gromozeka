@@ -99,12 +99,10 @@ fun LiveInterpreterScreen(
     }
     var selectedTranslationModelId by remember {
         mutableStateOf(
-            aiSettings.runtimeAssignments.firstOrNull {
-                it.purpose == AiRuntimeAssignment.Purpose.LIVE_TRANSLATION
-            }?.selection?.modelConfigurationId ?: translationModelOptions.firstOrNull()?.id
-                ?: aiSettings.runtimeAssignments.first {
-                    it.purpose == AiRuntimeAssignment.Purpose.DEFAULT_CHAT
-                }.selection.modelConfigurationId
+            aiSettings.runtimeSelectionFor(AiRuntimeAssignment.Purpose.LIVE_TRANSLATION)?.modelConfigurationId
+                ?: translationModelOptions.firstOrNull()?.id
+                ?: aiSettings.runtimeSelectionFor(AiRuntimeAssignment.Purpose.DEFAULT_CHAT)?.modelConfigurationId
+                ?: aiSettings.modelConfigurations.first().id
         )
     }
     val selectedTranslationModel = translationModelOptions.firstOrNull { it.id == selectedTranslationModelId }

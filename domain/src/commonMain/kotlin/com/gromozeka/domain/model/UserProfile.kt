@@ -4,6 +4,7 @@ import com.gromozeka.domain.model.ai.AiConnection
 import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.model.ai.AiModelSpec
 import com.gromozeka.domain.model.ai.AiRuntimeAssignment
+import com.gromozeka.domain.model.ai.AiRuntimeSelection
 import kotlinx.serialization.Serializable
 import kotlin.jvm.JvmInline
 
@@ -61,8 +62,10 @@ data class UserProfile(
             require(runtimeAssignments.map { it.purpose }.distinct().size == runtimeAssignments.size) {
                 "AI runtime assignment purposes must be unique"
             }
-            require(runtimeAssignments.map { it.purpose }.containsAll(AiRuntimeAssignment.Purpose.entries)) {
-                "Every AI runtime purpose must have an assignment"
+            val assignedPurposes = runtimeAssignments.map { it.purpose }
+            val requiredPurposes = AiRuntimeAssignment.Purpose.entries.filter { it.requiresExplicitAssignment }
+            require(assignedPurposes.containsAll(requiredPurposes)) {
+                "Every primary AI runtime purpose must have an assignment"
             }
             modelConfigurations.filter { it.enabled }.forEach { configuration ->
                 require(connectionFor(configuration)?.enabled == true) {
@@ -104,6 +107,19 @@ data class UserProfile(
                     it.provider == connection.kind.provider && it.id == configuration.providerModelId
                 }
             }
+
+        fun runtimeSelectionFor(purpose: AiRuntimeAssignment.Purpose): AiRuntimeSelection? {
+            var currentPurpose: AiRuntimeAssignment.Purpose? = purpose
+            while (currentPurpose != null) {
+                val purposeToCheck = currentPurpose
+                val selection = runtimeAssignments.firstOrNull {
+                    it.purpose == purposeToCheck
+                }?.selection
+                if (selection != null) return selection
+                currentPurpose = purposeToCheck.fallbackPurpose
+            }
+            return null
+        }
 
         fun supportsPurpose(configuration: AiModelConfiguration, purpose: AiRuntimeAssignment.Purpose): Boolean {
             if (!configuration.enabled) return false

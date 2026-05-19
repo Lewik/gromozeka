@@ -37,9 +37,10 @@ interface SettingsProvider {
      */
     val homeDirectory: String
 
-    fun runtimeSelectionFor(purpose: AiRuntimeAssignment.Purpose): AiRuntimeSelection =
-        userProfile.aiSettings.runtimeAssignments.firstOrNull { it.purpose == purpose }?.selection
+    fun runtimeSelectionFor(purpose: AiRuntimeAssignment.Purpose): AiRuntimeSelection {
+        return userProfile.aiSettings.runtimeSelectionFor(purpose)
             ?: error("AI runtime assignment not found: ${purpose.name}")
+    }
 
     fun resolveAiRuntime(purpose: AiRuntimeAssignment.Purpose): ResolvedAiRuntime =
         resolveAiRuntime(runtimeSelectionFor(purpose))

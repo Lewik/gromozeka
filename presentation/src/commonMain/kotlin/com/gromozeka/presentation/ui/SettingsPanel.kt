@@ -430,18 +430,23 @@ fun SettingsPanel(
 
                         AiRuntimeAssignment.Purpose.entries.forEach { purpose ->
                             val assignment = aiSettings.assignmentFor(purpose)
+                            val selection = aiSettings.runtimeSelectionFor(purpose)
                             val options = aiSettings.modelConfigurations.filter {
                                 aiSettings.supportsPurpose(it, purpose)
                             }
                             val selectedConfiguration = options.firstOrNull {
-                                it.id == assignment?.selection?.modelConfigurationId
+                                it.id == selection?.modelConfigurationId
                             } ?: aiSettings.modelConfigurations.firstOrNull {
-                                it.id == assignment?.selection?.modelConfigurationId
+                                it.id == selection?.modelConfigurationId
                             } ?: options.firstOrNull()
 
                             if (selectedConfiguration != null) {
                                 DropdownSettingItem(
-                                    label = purpose.displayName,
+                                    label = if (assignment == null && purpose.fallbackPurpose != null) {
+                                        "${purpose.displayName} (fallback)"
+                                    } else {
+                                        purpose.displayName
+                                    },
                                     description = purpose.description,
                                     value = selectedConfiguration,
                                     options = options.ifEmpty { listOf(selectedConfiguration) },
@@ -1452,14 +1457,10 @@ private fun UserProfile.AiSettings.withRuntimeAssignment(
     modelConfigurationId: AiModelConfiguration.Id,
 ): UserProfile.AiSettings =
     copy(
-        runtimeAssignments = AiRuntimeAssignment.Purpose.entries.map { currentPurpose ->
-            val existing = runtimeAssignments.firstOrNull { it.purpose == currentPurpose }
-            if (currentPurpose == purpose) {
-                AiRuntimeAssignment(currentPurpose, AiRuntimeSelection(modelConfigurationId))
-            } else {
-                existing ?: error("AI runtime assignment not found: ${currentPurpose.name}")
-            }
-        }
+        runtimeAssignments = (
+            runtimeAssignments.filterNot { it.purpose == purpose } +
+                AiRuntimeAssignment(purpose, AiRuntimeSelection(modelConfigurationId))
+            ).sortedBy { it.purpose.ordinal }
     )
 
 @Composable
