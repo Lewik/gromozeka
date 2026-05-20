@@ -97,6 +97,8 @@ class TabViewModel(
     val pendingMessagesCount: StateFlow<Int> = pendingMessages
         .map { it.size }
         .stateIn(scope, SharingStarted.Eagerly, 0)
+    private val _queuePlacementPreference = MutableStateFlow(QueuedMessagePlacement.AFTER_TOOL_RESULT)
+    val queuePlacementPreference: StateFlow<QueuedMessagePlacement> = _queuePlacementPreference.asStateFlow()
 
     private val _tokenStats = MutableStateFlow<TokenUsageStatistics.ThreadTotals?>(null)
     val tokenStats: StateFlow<TokenUsageStatistics.ThreadTotals?> = _tokenStats.asStateFlow()
@@ -252,6 +254,10 @@ class TabViewModel(
         }
     }
 
+    fun updateQueuePlacementPreference(placement: QueuedMessagePlacement) {
+        _queuePlacementPreference.value = placement
+    }
+
     suspend fun toggleStrideMode() {
         try {
             val currentValue = _strideEnabled.value
@@ -282,16 +288,21 @@ class TabViewModel(
         val queuedMessage = createPendingUserMessage(message, additionalInstructions)
 
         if (currentRequestJob?.isActive == true || _isWaitingForResponse.value) {
-            val runtimeAccepted = runCatching {
-                conversationRuntimeService.enqueueMessage(
-                    conversationId = conversationId,
-                    userMessage = queuedMessage.userMessage,
-                    agent = queuedMessage.agent,
-                    placement = QueuedMessagePlacement.AFTER_TOOL_RESULT
-                )
-            }.onFailure { error ->
-                log.warn(error) { "Runtime queue rejected message for conversation $conversationId: ${error.message}" }
-            }.getOrDefault(false)
+            val preferredPlacement = _queuePlacementPreference.value
+            val runtimeAccepted = if (preferredPlacement == QueuedMessagePlacement.AFTER_TOOL_RESULT) {
+                runCatching {
+                    conversationRuntimeService.enqueueMessage(
+                        conversationId = conversationId,
+                        userMessage = queuedMessage.userMessage,
+                        agent = queuedMessage.agent,
+                        placement = QueuedMessagePlacement.AFTER_TOOL_RESULT
+                    )
+                }.onFailure { error ->
+                    log.warn(error) { "Runtime queue rejected message for conversation $conversationId: ${error.message}" }
+                }.getOrDefault(false)
+            } else {
+                false
+            }
 
             _pendingMessages.update {
                 it + queuedMessage.copy(

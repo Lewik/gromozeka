@@ -98,6 +98,7 @@ fun SessionScreen(
     val isWaitingForResponse by viewModel.isWaitingForResponse.collectAsState()
     val pendingMessagesCount by viewModel.pendingMessagesCount.collectAsState()
     val pendingMessages by viewModel.pendingMessages.collectAsState()
+    val queuePlacementPreference by viewModel.queuePlacementPreference.collectAsState()
     val uiState by viewModel.uiState.collectAsState()
     val userInput = uiState.userInput
     val jsonToShow = viewModel.jsonToShow
@@ -540,6 +541,8 @@ fun SessionScreen(
                     ConversationProgressStrip(
                         isWaitingForResponse = isWaitingForResponse,
                         pendingMessages = pendingMessages,
+                        queuePlacementPreference = queuePlacementPreference,
+                        onQueuePlacementPreferenceChange = viewModel::updateQueuePlacementPreference,
                     )
 
                     MessageInput(
@@ -751,6 +754,8 @@ fun SessionScreen(
 private fun ConversationProgressStrip(
     isWaitingForResponse: Boolean,
     pendingMessages: List<PendingUserMessage>,
+    queuePlacementPreference: QueuedMessagePlacement,
+    onQueuePlacementPreferenceChange: (QueuedMessagePlacement) -> Unit,
 ) {
     if (!isWaitingForResponse && pendingMessages.isEmpty()) {
         return
@@ -786,12 +791,47 @@ private fun ConversationProgressStrip(
             Spacer(modifier = Modifier.width(8.dp))
             Text(
                 text = statusText,
+                modifier = Modifier.weight(1f),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+            if (isWaitingForResponse) {
+                Spacer(modifier = Modifier.width(8.dp))
+                QueuePlacementButton(
+                    text = "После инструмента",
+                    selected = queuePlacementPreference == QueuedMessagePlacement.AFTER_TOOL_RESULT,
+                    onClick = { onQueuePlacementPreferenceChange(QueuedMessagePlacement.AFTER_TOOL_RESULT) },
+                )
+                QueuePlacementButton(
+                    text = "После ответа",
+                    selected = queuePlacementPreference == QueuedMessagePlacement.END_OF_TURN,
+                    onClick = { onQueuePlacementPreferenceChange(QueuedMessagePlacement.END_OF_TURN) },
+                )
+            }
         }
+    }
+}
+
+@Composable
+private fun QueuePlacementButton(
+    text: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    TextButton(
+        onClick = onClick,
+        colors = if (selected) {
+            ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.primary)
+        } else {
+            ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelSmall,
+        )
     }
 }
 
