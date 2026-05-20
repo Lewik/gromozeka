@@ -24,6 +24,7 @@ sealed interface UiTestTag {
     data object MessageList : UiTestTag
     data object MessageInput : UiTestTag
     data object SendButton : UiTestTag
+    data object PendingMessagesPanel : UiTestTag
     data object PttButton : UiTestTag
     data object PromptsPanel : UiTestTag
     data object AgentButton : UiTestTag

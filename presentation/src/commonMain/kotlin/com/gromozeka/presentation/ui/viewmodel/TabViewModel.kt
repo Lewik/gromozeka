@@ -91,7 +91,11 @@ class TabViewModel(
     private val _isWaitingForResponse = MutableStateFlow(false)
     val isWaitingForResponse: StateFlow<Boolean> = _isWaitingForResponse.asStateFlow()
 
-    val pendingMessagesCount: StateFlow<Int> = flowOf(0).stateIn(scope, SharingStarted.Eagerly, 0)
+    private val _pendingMessages = MutableStateFlow<List<PendingUserMessage>>(emptyList())
+    val pendingMessages: StateFlow<List<PendingUserMessage>> = _pendingMessages.asStateFlow()
+    val pendingMessagesCount: StateFlow<Int> = pendingMessages
+        .map { it.size }
+        .stateIn(scope, SharingStarted.Eagerly, 0)
 
     private val _tokenStats = MutableStateFlow<TokenUsageStatistics.ThreadTotals?>(null)
     val tokenStats: StateFlow<TokenUsageStatistics.ThreadTotals?> = _tokenStats.asStateFlow()
@@ -270,11 +274,40 @@ class TabViewModel(
         message: String,
         additionalInstructions: List<Conversation.Message.Instruction> = emptyList(),
     ) {
-        if (currentRequestJob?.isActive == true || _isWaitingForResponse.value) {
-            log.warn { "Ignoring send request for conversation $conversationId because previous request is still running" }
+        if (message.isBlank()) {
             return
         }
 
+        val queuedMessage = createPendingUserMessage(message, additionalInstructions)
+
+        if (currentRequestJob?.isActive == true || _isWaitingForResponse.value) {
+            _pendingMessages.update { it + queuedMessage }
+            _uiState.update { it.copy(userInput = "") }
+            log.info { "Queued user message for conversation $conversationId because previous request is still running" }
+            return
+        }
+
+        sendPendingMessageToSession(queuedMessage)
+    }
+
+    fun cancelPendingMessage(messageId: String) {
+        _pendingMessages.update { messages ->
+            messages.filterNot { it.id == messageId }
+        }
+    }
+
+    fun editPendingMessage(messageId: String) {
+        val message = _pendingMessages.value.firstOrNull { it.id == messageId } ?: return
+        _pendingMessages.update { messages ->
+            messages.filterNot { it.id == messageId }
+        }
+        _uiState.update { it.copy(userInput = message.text) }
+    }
+
+    private fun createPendingUserMessage(
+        message: String,
+        additionalInstructions: List<Conversation.Message.Instruction>,
+    ): PendingUserMessage {
         val currentState = _uiState.value
 
         val activeTagsData = availableMessageTags.mapNotNull { messageTag ->
@@ -292,13 +325,30 @@ class TabViewModel(
 
         val instructions = activeTagsData + additionalInstructions
 
+        return PendingUserMessage(
+            id = uuid7(),
+            text = message,
+            instructions = instructions,
+            agent = currentState.agent
+        )
+    }
+
+    private fun sendPendingMessageToSession(
+        pendingMessage: PendingUserMessage,
+        fromQueue: Boolean = false,
+    ) {
+        if (!fromQueue && (currentRequestJob?.isActive == true || _isWaitingForResponse.value)) {
+            _pendingMessages.update { it + pendingMessage }
+            return
+        }
+
         val userMessage = Conversation.Message(
             id = Conversation.Message.Id(uuid7()),
             conversationId = conversationId,
             role = Conversation.Message.Role.USER,
-            content = listOf(Conversation.Message.ContentItem.UserMessage(message)),
+            content = listOf(Conversation.Message.ContentItem.UserMessage(pendingMessage.text)),
             createdAt = Clock.System.now(),
-            instructions = instructions
+            instructions = pendingMessage.instructions
         )
 
         _allMessages.value += userMessage
@@ -311,7 +361,7 @@ class TabViewModel(
 
                 var lastMessage: Conversation.Message? = null
 
-                conversationRuntimeService.sendMessage(conversationId, userMessage, currentState.agent)
+                conversationRuntimeService.sendMessage(conversationId, userMessage, pendingMessage.agent)
                     .collect { message ->
                         val messages = _allMessages.value.toMutableList()
 
@@ -369,11 +419,29 @@ class TabViewModel(
             } catch (e: Exception) {
                 log.error(e) { "Failed to send message" }
             } finally {
-                _isWaitingForResponse.value = false
-                _uiState.update { it.copy(isWaitingForResponse = false) }
                 currentRequestJob = null
+                val nextMessage = popNextPendingMessage()
+                if (nextMessage != null) {
+                    sendPendingMessageToSession(nextMessage, fromQueue = true)
+                } else {
+                    _isWaitingForResponse.value = false
+                    _uiState.update { it.copy(isWaitingForResponse = false) }
+                }
             }
         }
+    }
+
+    private fun popNextPendingMessage(): PendingUserMessage? {
+        var nextMessage: PendingUserMessage? = null
+        _pendingMessages.update { messages ->
+            nextMessage = messages.firstOrNull()
+            if (nextMessage == null) {
+                messages
+            } else {
+                messages.drop(1)
+            }
+        }
+        return nextMessage
     }
 
     fun notifyMemoryTasksMayHaveChanged() {
@@ -382,6 +450,7 @@ class TabViewModel(
 
     fun interrupt() {
         log.debug { "Interrupting current request for conversation $conversationId" }
+        _pendingMessages.value = emptyList()
         currentRequestJob?.cancel()
         currentRequestJob = null
         _isWaitingForResponse.value = false
@@ -768,3 +837,10 @@ class TabViewModel(
         }
     }
 }
+
+data class PendingUserMessage(
+    val id: String,
+    val text: String,
+    val instructions: List<Conversation.Message.Instruction>,
+    val agent: AgentDefinition,
+)

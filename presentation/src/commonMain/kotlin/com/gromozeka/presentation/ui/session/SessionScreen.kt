@@ -13,14 +13,18 @@ import androidx.compose.material.icons.automirrored.filled.MergeType
 import androidx.compose.material.icons.automirrored.filled.Subject
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.TtsTask
@@ -32,6 +36,7 @@ import com.gromozeka.presentation.ui.LocalTranslation
 import com.gromozeka.presentation.ui.ToggleButtonGroup
 import com.gromozeka.presentation.ui.UiTestTag
 import com.gromozeka.presentation.ui.format
+import com.gromozeka.presentation.ui.viewmodel.PendingUserMessage
 import com.gromozeka.presentation.ui.viewmodel.TabViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -90,6 +95,7 @@ fun SessionScreen(
     val toolResultsMap by viewModel.toolResultsMap.collectAsState()
     val isWaitingForResponse by viewModel.isWaitingForResponse.collectAsState()
     val pendingMessagesCount by viewModel.pendingMessagesCount.collectAsState()
+    val pendingMessages by viewModel.pendingMessages.collectAsState()
     val uiState by viewModel.uiState.collectAsState()
     val userInput = uiState.userInput
     val jsonToShow = viewModel.jsonToShow
@@ -545,6 +551,12 @@ fun SessionScreen(
                         contextPercentage = contextPercentage
                     )
 
+                    PendingMessagesPanel(
+                        pendingMessages = pendingMessages,
+                        onEdit = viewModel::editPendingMessage,
+                        onCancel = viewModel::cancelPendingMessage,
+                    )
+
                     // Message Tags and Screenshot button
                     Spacer(modifier = Modifier.height(4.dp))
                     Row(
@@ -724,6 +736,60 @@ fun SessionScreen(
                     viewModel.cancelEditMessage()
                 }
             )
+        }
+    }
+}
+
+@Composable
+private fun PendingMessagesPanel(
+    pendingMessages: List<PendingUserMessage>,
+    onEdit: (String) -> Unit,
+    onCancel: (String) -> Unit,
+) {
+    if (pendingMessages.isEmpty()) {
+        return
+    }
+
+    Spacer(modifier = Modifier.height(6.dp))
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag(UiTestTag.PendingMessagesPanel.value),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.35f)
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Text(
+                text = "Очередь сообщений: ${pendingMessages.size}",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSecondaryContainer
+            )
+
+            pendingMessages.forEachIndexed { index, message ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "${index + 1}. ${message.text}",
+                        modifier = Modifier.weight(1f),
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    TextButton(onClick = { onEdit(message.id) }) {
+                        Text("Edit")
+                    }
+                    TextButton(onClick = { onCancel(message.id) }) {
+                        Text("Cancel")
+                    }
+                }
+            }
         }
     }
 }

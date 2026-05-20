@@ -54,6 +54,53 @@ After any fix, verify:
 
 Pattern: `-q` first (saves tokens), full output only on error.
 
+## Autonomous Work Rules
+
+User has a high-limit Codex/ChatGPT subscription. Do not optimize for token
+cost while developing Gromozeka: use searches, LLM-backed tests, experiments,
+and longer analysis when they improve correctness. Do not burn tokens
+deliberately, but never make memory/LLM features weaker just to save calls.
+
+For memory and other LLM-heavy features, first make the behavior correct and
+observable, then optimize cost and speed later.
+
+When the user is at work or otherwise unavailable, autonomous work is allowed:
+read code, inspect logs, research best practices, clone relevant dependencies
+into `.sources/`, prototype options, run checks, commit, and push finished safe
+changes. If no useful next step is visible, it is fine to stop; do not invent
+busywork.
+
+Useful refactoring is allowed. If a task exposes a clearly beneficial refactor,
+stash current work if needed, do the refactor, verify compilation/tests, commit
+it, then restore the original task context and continue. Prefer small,
+purposeful commits.
+
+For dev work, Codex may start/stop Gromozeka server/client, Docker databases,
+Wasm/JVM UI, browser checks, screenshots, and dev data wipes. This applies to
+the dev environment only. Do not modify beta/production unless the user says so.
+
+Gromozeka dev currently does not require backward compatibility for local dev
+data or settings. Prefer clean domain/config changes over legacy fallbacks or
+migrations. If compatibility matters, the user will say it explicitly.
+
+Usually verify on JVM or Wasm/browser, whichever is fastest and relevant. Avoid
+iOS builds unless explicitly needed because they are slow.
+
+## Current Product Priorities
+
+- Queued messages UI: allow typing while a turn is running, show queued
+  messages, edit/cancel them, and choose whether to send at the nearest safe
+  point after a `tool_result` or at the end of the turn. Never insert a user
+  message between `tool_call` and `tool_result`.
+- Progress/loader UI: make active work visible near the input, including agent
+  thinking, tools, memory read/write, and queue state.
+- Voice/STT awareness: pass metadata that text came from voice/STT so the agent
+  can account for recognition mistakes and spoken phrasing.
+- External-world awareness: research and design future device/location/audio/
+  screenshot/camera context as possible Gromozeka inputs.
+- Postgres direction: memory/vector work should move toward PostgreSQL JSONB
+  plus pgvector. Do not over-invest in Mongo-only embedding infrastructure.
+
 ## Codex Run Actions
 
 Codex App run buttons are configured in `.codex/environments/environment.toml`.
