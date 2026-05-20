@@ -837,10 +837,10 @@ private fun PendingMessagesPanel(
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     TextButton(onClick = { onEdit(message.id) }) {
-                        Text("Edit")
+                        Text("Править")
                     }
                     TextButton(onClick = { onCancel(message.id) }) {
-                        Text("Cancel")
+                        Text("Убрать")
                     }
                 }
             }

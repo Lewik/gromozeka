@@ -116,8 +116,8 @@ fun MessageInput(
                         .fillMaxHeight()
                         .testTag(UiTestTag.SendButton.value),
                     tooltip = when {
-                        isWaitingForResponse && pendingMessagesCount > 0 -> "Отправляется... ($pendingMessagesCount в очереди)"
-                        isWaitingForResponse -> LocalTranslation.current.sendingMessageTooltip
+                        isWaitingForResponse && pendingMessagesCount > 0 -> "Добавить в очередь ($pendingMessagesCount уже ждёт)"
+                        isWaitingForResponse -> "Добавить сообщение в очередь"
                         contextPercentage != null && contextPercentage >= 90 -> "${LocalTranslation.current.sendMessageTooltip} (критическое заполнение $contextPercentage%)"
                         contextPercentage != null && contextPercentage >= 75 -> "${LocalTranslation.current.sendMessageTooltip} (контекст заполнен на $contextPercentage%)"
                         else -> LocalTranslation.current.sendMessageTooltip
