@@ -1,9 +1,14 @@
 package com.gromozeka.remote.protocol
 
+import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.model.Prompt
+import com.gromozeka.domain.model.ai.AiModelConfiguration
+import com.gromozeka.domain.model.ai.AiRuntimeSelection
 import com.gromozeka.domain.model.memory.MemoryNamespace
 import com.gromozeka.domain.model.memory.MemoryScope
 import com.gromozeka.domain.model.memory.MemoryTask
+import com.gromozeka.domain.service.QueuedMessagePlacement
 import kotlinx.datetime.Instant
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -172,6 +177,56 @@ class RemoteProtocolCodecTest {
 
         assertEquals(JsonPrimitive("test"), message.providerMetadata["provider"])
         assertEquals(JsonPrimitive("toyota"), (toolCall.call.input as JsonObject)["query"])
+    }
+
+    @Test
+    fun cborRoundTripSupportsQueuedMessageRequests() {
+        val userMessage = Conversation.Message(
+            id = Conversation.Message.Id("message-queued-1"),
+            conversationId = Conversation.Id("conversation-queued-1"),
+            role = Conversation.Message.Role.USER,
+            content = listOf(Conversation.Message.ContentItem.UserMessage("Continue after the current tool result")),
+            createdAt = Instant.parse("2026-05-20T00:00:00Z"),
+        )
+        val agent = AgentDefinition(
+            id = AgentDefinition.Id("agent-queued-1"),
+            name = "Queued Agent",
+            prompts = listOf(Prompt.Id("prompt-1")),
+            runtimeSelection = AiRuntimeSelection(AiModelConfiguration.Id("model-1")),
+            type = AgentDefinition.Type.Inline,
+            createdAt = Instant.parse("2026-05-20T00:00:00Z"),
+            updatedAt = Instant.parse("2026-05-20T00:00:00Z"),
+        )
+
+        val enqueueEnvelope = GromozekaClientEnvelope(
+            id = "enqueue-1",
+            payload = EnqueueMessageRequest(
+                conversationId = Conversation.Id("conversation-queued-1"),
+                userMessage = userMessage,
+                agent = agent,
+                placement = QueuedMessagePlacement.AFTER_TOOL_RESULT,
+            )
+        )
+        val decodedEnqueue = RemoteProtocolCodec.decodeClientBinary(
+            RemoteProtocolCodec.encodeClientBinary(enqueueEnvelope)
+        ).payload as EnqueueMessageRequest
+
+        assertEquals(QueuedMessagePlacement.AFTER_TOOL_RESULT, decodedEnqueue.placement)
+        assertEquals("message-queued-1", decodedEnqueue.userMessage.id.value)
+        assertEquals("Queued Agent", decodedEnqueue.agent.name)
+
+        val cancelEnvelope = GromozekaClientEnvelope(
+            id = "cancel-queued-1",
+            payload = CancelQueuedMessageRequest(
+                conversationId = Conversation.Id("conversation-queued-1"),
+                messageId = Conversation.Message.Id("message-queued-1"),
+            )
+        )
+        val decodedCancel = RemoteProtocolCodec.decodeClientBinary(
+            RemoteProtocolCodec.encodeClientBinary(cancelEnvelope)
+        ).payload as CancelQueuedMessageRequest
+
+        assertEquals("message-queued-1", decodedCancel.messageId.value)
     }
 
     @Test
