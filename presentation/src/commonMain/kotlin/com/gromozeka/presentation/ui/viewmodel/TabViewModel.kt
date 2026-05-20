@@ -356,6 +356,7 @@ class TabViewModel(
         _uiState.update { it.copy(userInput = "", isWaitingForResponse = true) }
 
         currentRequestJob = scope.launch {
+            var requestFailed = false
             try {
                 log.debug { "Sending message to conversation $conversationId" }
 
@@ -417,10 +418,11 @@ class TabViewModel(
                 notifyMemoryTasksMayHaveChanged()
                 log.debug { "Message sent successfully" }
             } catch (e: Exception) {
+                requestFailed = true
                 log.error(e) { "Failed to send message" }
             } finally {
                 currentRequestJob = null
-                val nextMessage = popNextPendingMessage()
+                val nextMessage = if (requestFailed) null else popNextPendingMessage()
                 if (nextMessage != null) {
                     sendPendingMessageToSession(nextMessage, fromQueue = true)
                 } else {
