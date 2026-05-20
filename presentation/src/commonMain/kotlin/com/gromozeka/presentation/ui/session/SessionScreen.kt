@@ -17,6 +17,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -535,6 +536,11 @@ fun SessionScreen(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 DisableSelection {
+                    ConversationProgressStrip(
+                        isWaitingForResponse = isWaitingForResponse,
+                        pendingMessages = pendingMessages,
+                    )
+
                     MessageInput(
                         userInput = userInput,
                         onUserInputChange = { viewModel.updateUserInput(it) },
@@ -735,6 +741,54 @@ fun SessionScreen(
                 onDismiss = {
                     viewModel.cancelEditMessage()
                 }
+            )
+        }
+    }
+}
+
+@Composable
+private fun ConversationProgressStrip(
+    isWaitingForResponse: Boolean,
+    pendingMessages: List<PendingUserMessage>,
+) {
+    if (!isWaitingForResponse && pendingMessages.isEmpty()) {
+        return
+    }
+
+    val statusText = when {
+        isWaitingForResponse && pendingMessages.isNotEmpty() ->
+            "Агент отвечает. В очереди ${pendingMessages.size}; следующее уйдет после текущего ответа."
+        isWaitingForResponse ->
+            "Агент отвечает..."
+        else ->
+            "В очереди ${pendingMessages.size}"
+    }
+
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 6.dp)
+            .testTag(UiTestTag.ConversationProgressStrip.value),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+        shape = MaterialTheme.shapes.small,
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = if (pendingMessages.isEmpty()) Icons.Default.HourglassTop else Icons.Default.PlaylistAddCheck,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(16.dp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = statusText,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }
