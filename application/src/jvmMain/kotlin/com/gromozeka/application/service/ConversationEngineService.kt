@@ -522,6 +522,10 @@ class ConversationEngineService(
                     routeMessageThroughMemoryRouter(conversationId, conversation.currentThread, toolResultMessage, agent, project, memorySystemPrompts, memoryPipelineTools)
                 }
 
+                if (executionResult.returnDirect) {
+                    break
+                }
+
                 emitQueuedRuntimeMessagesAtSafePoint(
                     conversationId = conversationId,
                     placement = QueuedMessagePlacement.AFTER_TOOL_RESULT,
@@ -533,10 +537,6 @@ class ConversationEngineService(
                     automaticMemoryRecallEnabled = automaticMemoryRecallEnabled,
                 ).forEach { queuedMessage ->
                     emit(queuedMessage)
-                }
-
-                if (executionResult.returnDirect) {
-                    break
                 }
             } else {
                 log.info {
