@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.TtsTask
 import com.gromozeka.domain.model.Settings
+import com.gromozeka.domain.service.QueuedMessagePlacement
 import com.gromozeka.presentation.services.PttEventHandler
 import com.gromozeka.presentation.services.TtsQueue
 import com.gromozeka.presentation.ui.CompactButton
@@ -828,14 +829,25 @@ private fun PendingMessagesPanel(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = "${index + 1}. ${message.text}",
-                        modifier = Modifier.weight(1f),
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "${index + 1}. ${message.text}",
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = when (message.placement) {
+                                QueuedMessagePlacement.AFTER_TOOL_RESULT -> "Уйдет после ближайшего результата инструмента"
+                                QueuedMessagePlacement.END_OF_TURN -> "Уйдет после текущего ответа"
+                            },
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                     TextButton(onClick = { onEdit(message.id) }) {
                         Text("Править")
                     }

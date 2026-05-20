@@ -22,6 +22,7 @@ import com.gromozeka.domain.service.AiRuntimeProvider
 import com.gromozeka.domain.service.AiToolProvider
 import com.gromozeka.domain.service.ConversationDomainService
 import com.gromozeka.domain.service.ConversationRuntimeService
+import com.gromozeka.domain.service.QueuedMessagePlacement
 import com.gromozeka.domain.repository.ThreadRepository
 import com.gromozeka.domain.repository.TokenUsageStatisticsRepository
 import com.gromozeka.domain.tool.AiToolCallback
@@ -29,6 +30,8 @@ import klog.KLoggers
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.Clock
 import com.gromozeka.domain.tool.ToolExecutionContext
 import org.springframework.stereotype.Service
@@ -73,6 +76,42 @@ class ConversationEngineService(
     private val planRepository: com.gromozeka.domain.repository.PlanRepository
 ) : ConversationRuntimeService {
     private val log = KLoggers.logger(this)
+    private val queuedMessagesMutex = Mutex()
+    private val queuedMessagesByConversation = mutableMapOf<Conversation.Id, MutableList<QueuedRuntimeMessage>>()
+
+    override suspend fun enqueueMessage(
+        conversationId: Conversation.Id,
+        userMessage: Conversation.Message,
+        agent: AgentDefinition,
+        placement: QueuedMessagePlacement,
+    ): Boolean {
+        queuedMessagesMutex.withLock {
+            val messages = queuedMessagesByConversation.getOrPut(conversationId) { mutableListOf() }
+            messages.add(QueuedRuntimeMessage(userMessage, agent, placement))
+        }
+        log.info {
+            "Queued runtime message: conversation=${conversationId.value} message=${userMessage.id.value} placement=$placement"
+        }
+        return true
+    }
+
+    override suspend fun cancelQueuedMessage(
+        conversationId: Conversation.Id,
+        messageId: Conversation.Message.Id,
+    ): Boolean {
+        val removed = queuedMessagesMutex.withLock {
+            val messages = queuedMessagesByConversation[conversationId] ?: return@withLock false
+            val removed = messages.removeAll { it.userMessage.id == messageId }
+            if (messages.isEmpty()) {
+                queuedMessagesByConversation.remove(conversationId)
+            }
+            removed
+        }
+        if (removed) {
+            log.info { "Cancelled runtime queued message: conversation=${conversationId.value} message=${messageId.value}" }
+        }
+        return removed
+    }
 
     /**
      * Send message and get response using blocking call().
@@ -483,6 +522,19 @@ class ConversationEngineService(
                     routeMessageThroughMemoryRouter(conversationId, conversation.currentThread, toolResultMessage, agent, project, memorySystemPrompts, memoryPipelineTools)
                 }
 
+                emitQueuedRuntimeMessagesAtSafePoint(
+                    conversationId = conversationId,
+                    placement = QueuedMessagePlacement.AFTER_TOOL_RESULT,
+                    conversation = conversation,
+                    project = project,
+                    memorySystemPrompts = memorySystemPrompts,
+                    memoryPipelineTools = memoryPipelineTools,
+                    automaticMemoryRememberEnabled = automaticMemoryRememberEnabled,
+                    automaticMemoryRecallEnabled = automaticMemoryRecallEnabled,
+                ).forEach { queuedMessage ->
+                    emit(queuedMessage)
+                }
+
                 if (executionResult.returnDirect) {
                     break
                 }
@@ -532,6 +584,137 @@ class ConversationEngineService(
                 throw error
             }
         }.getOrNull()
+    }
+
+    private suspend fun popQueuedRuntimeMessages(
+        conversationId: Conversation.Id,
+        placement: QueuedMessagePlacement,
+    ): List<QueuedRuntimeMessage> =
+        queuedMessagesMutex.withLock {
+            val messages = queuedMessagesByConversation[conversationId] ?: return@withLock emptyList()
+            val readyMessages = messages.filter { it.placement == placement }
+            messages.removeAll(readyMessages.toSet())
+            if (messages.isEmpty()) {
+                queuedMessagesByConversation.remove(conversationId)
+            }
+            readyMessages
+        }
+
+    private suspend fun emitQueuedRuntimeMessagesAtSafePoint(
+        conversationId: Conversation.Id,
+        placement: QueuedMessagePlacement,
+        conversation: Conversation,
+        project: Project,
+        memorySystemPrompts: List<String>,
+        memoryPipelineTools: List<AiToolCallback>,
+        automaticMemoryRememberEnabled: Boolean,
+        automaticMemoryRecallEnabled: Boolean,
+    ): List<Conversation.Message> {
+        val queuedMessages = popQueuedRuntimeMessages(conversationId, placement)
+        if (queuedMessages.isEmpty()) {
+            return emptyList()
+        }
+
+        return queuedMessages.flatMap { queued ->
+            appendQueuedUserMessage(
+                conversationId = conversationId,
+                conversation = conversation,
+                project = project,
+                queued = queued,
+                memorySystemPrompts = memorySystemPrompts,
+                memoryPipelineTools = memoryPipelineTools,
+                automaticMemoryRememberEnabled = automaticMemoryRememberEnabled,
+                automaticMemoryRecallEnabled = automaticMemoryRecallEnabled,
+            )
+        }
+    }
+
+    private suspend fun appendQueuedUserMessage(
+        conversationId: Conversation.Id,
+        conversation: Conversation,
+        project: Project,
+        queued: QueuedRuntimeMessage,
+        memorySystemPrompts: List<String>,
+        memoryPipelineTools: List<AiToolCallback>,
+        automaticMemoryRememberEnabled: Boolean,
+        automaticMemoryRecallEnabled: Boolean,
+    ): List<Conversation.Message> {
+        val emittedMessages = mutableListOf<Conversation.Message>()
+        val userMessage = queued.userMessage
+        val agent = queued.agent
+
+        conversationService.addMessage(conversationId, userMessage)
+        emittedMessages.add(userMessage)
+        log.info {
+            "Accepted queued runtime message at ${queued.placement}: conversation=${conversationId.value} message=${userMessage.id.value}"
+        }
+
+        val writeResult = if (automaticMemoryRememberEnabled) {
+            routeMessageThroughMemoryRouter(conversationId, conversation.currentThread, userMessage, agent, project, memorySystemPrompts, memoryPipelineTools)
+        } else {
+            null
+        }
+
+        if (automaticMemoryRememberEnabled) {
+            val rememberMessages = buildSyntheticMemoryToolPair(
+                conversationId = conversationId,
+                targetMessage = userMessage,
+                toolName = MEMORY_REMEMBER_TOOL_NAME,
+                arguments = buildJsonObject {
+                    put("target", "previous_user_message")
+                    put("target_message_id", userMessage.id.value)
+                    put("mode", "automatic_hot_path")
+                },
+                resultText = MemoryToolResultRenderer.rememberResultJsonString(writeResult)
+            )
+            rememberMessages.forEach { syntheticMessage ->
+                conversationService.addMessage(conversationId, syntheticMessage)
+                emittedMessages.add(syntheticMessage)
+            }
+        }
+
+        val activeConversation = conversationService.findById(conversationId) ?: conversation
+        val messagesBeforeRecall = conversationService.loadCurrentMessages(conversationId)
+        val runtimeMemoryResult = if (automaticMemoryRecallEnabled) {
+            runCatching {
+                memoryApplicationService.buildRuntimeMemoryReadResult(
+                    conversationId = conversationId,
+                    threadId = activeConversation.currentThread,
+                    targetMessage = userMessage,
+                    threadMessages = messagesBeforeRecall,
+                    agent = agent,
+                    project = project,
+                    runtimeSystemPrompts = memorySystemPrompts,
+                    runtimeTools = memoryPipelineTools,
+                )
+            }.onFailure { error ->
+                log.warn(error) {
+                    "Queued message memory recall failed: conversation=${conversationId.value} target=${userMessage.id.value} error=${error.message}"
+                }
+            }.getOrNull()
+        } else {
+            null
+        }
+
+        if (automaticMemoryRecallEnabled) {
+            val recallMessages = buildSyntheticMemoryToolPair(
+                conversationId = conversationId,
+                targetMessage = userMessage,
+                toolName = MEMORY_ENRICH_CONTEXT_TOOL_NAME,
+                arguments = buildJsonObject {
+                    put("target", "previous_user_message")
+                    put("target_message_id", userMessage.id.value)
+                    put("mode", "automatic_runtime_context_enrichment")
+                },
+                resultText = MemoryToolResultRenderer.enrichContextResultJsonString(runtimeMemoryResult)
+            )
+            recallMessages.forEach { syntheticMessage ->
+                conversationService.addMessage(conversationId, syntheticMessage)
+                emittedMessages.add(syntheticMessage)
+            }
+        }
+
+        return emittedMessages
     }
 
     /**
@@ -677,4 +860,10 @@ class ConversationEngineService(
 
         return listOf(toolCallMessage, toolResultMessage)
     }
+
+    private data class QueuedRuntimeMessage(
+        val userMessage: Conversation.Message,
+        val agent: AgentDefinition,
+        val placement: QueuedMessagePlacement,
+    )
 }

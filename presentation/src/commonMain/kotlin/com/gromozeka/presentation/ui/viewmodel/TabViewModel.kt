@@ -18,6 +18,7 @@ import com.gromozeka.domain.service.ConversationDomainService
 import com.gromozeka.domain.service.ConversationRuntimeService
 import com.gromozeka.domain.service.ConversationTokenStatsService
 import com.gromozeka.domain.service.MessageSquashGenerationService
+import com.gromozeka.domain.service.QueuedMessagePlacement
 import com.gromozeka.domain.service.SettingsService
 import com.gromozeka.shared.uuid.uuid7
 import klog.KLoggers
@@ -281,9 +282,26 @@ class TabViewModel(
         val queuedMessage = createPendingUserMessage(message, additionalInstructions)
 
         if (currentRequestJob?.isActive == true || _isWaitingForResponse.value) {
-            _pendingMessages.update { it + queuedMessage }
+            val runtimeAccepted = runCatching {
+                conversationRuntimeService.enqueueMessage(
+                    conversationId = conversationId,
+                    userMessage = queuedMessage.userMessage,
+                    agent = queuedMessage.agent,
+                    placement = QueuedMessagePlacement.AFTER_TOOL_RESULT
+                )
+            }.onFailure { error ->
+                log.warn(error) { "Runtime queue rejected message for conversation $conversationId: ${error.message}" }
+            }.getOrDefault(false)
+
+            _pendingMessages.update {
+                it + queuedMessage.copy(
+                    placement = if (runtimeAccepted) QueuedMessagePlacement.AFTER_TOOL_RESULT else QueuedMessagePlacement.END_OF_TURN
+                )
+            }
             _uiState.update { it.copy(userInput = "") }
-            log.info { "Queued user message for conversation $conversationId because previous request is still running" }
+            log.info {
+                "Queued user message for conversation $conversationId because previous request is still running, runtimeAccepted=$runtimeAccepted"
+            }
             return
         }
 
@@ -291,8 +309,14 @@ class TabViewModel(
     }
 
     fun cancelPendingMessage(messageId: String) {
+        val message = _pendingMessages.value.firstOrNull { it.id == messageId }
         _pendingMessages.update { messages ->
             messages.filterNot { it.id == messageId }
+        }
+        message?.let { pendingMessage ->
+            scope.launch {
+                pendingMessage.cancelRuntimeQueueIfNeeded()
+            }
         }
     }
 
@@ -300,6 +324,9 @@ class TabViewModel(
         val message = _pendingMessages.value.firstOrNull { it.id == messageId } ?: return
         _pendingMessages.update { messages ->
             messages.filterNot { it.id == messageId }
+        }
+        scope.launch {
+            message.cancelRuntimeQueueIfNeeded()
         }
         _uiState.update { it.copy(userInput = message.text) }
     }
@@ -325,11 +352,19 @@ class TabViewModel(
 
         val instructions = activeTagsData + additionalInstructions
 
+        val userMessage = Conversation.Message(
+            id = Conversation.Message.Id(uuid7()),
+            conversationId = conversationId,
+            role = Conversation.Message.Role.USER,
+            content = listOf(Conversation.Message.ContentItem.UserMessage(message)),
+            createdAt = Clock.System.now(),
+            instructions = instructions
+        )
+
         return PendingUserMessage(
-            id = uuid7(),
-            text = message,
-            instructions = instructions,
-            agent = currentState.agent
+            userMessage = userMessage,
+            agent = currentState.agent,
+            placement = QueuedMessagePlacement.END_OF_TURN,
         )
     }
 
@@ -342,14 +377,7 @@ class TabViewModel(
             return
         }
 
-        val userMessage = Conversation.Message(
-            id = Conversation.Message.Id(uuid7()),
-            conversationId = conversationId,
-            role = Conversation.Message.Role.USER,
-            content = listOf(Conversation.Message.ContentItem.UserMessage(pendingMessage.text)),
-            createdAt = Clock.System.now(),
-            instructions = pendingMessage.instructions
-        )
+        val userMessage = pendingMessage.userMessage
 
         _allMessages.value += userMessage
         _isWaitingForResponse.value = true
@@ -364,6 +392,9 @@ class TabViewModel(
 
                 conversationRuntimeService.sendMessage(conversationId, userMessage, pendingMessage.agent)
                     .collect { message ->
+                        _pendingMessages.update { pendingMessages ->
+                            pendingMessages.filterNot { it.userMessage.id == message.id }
+                        }
                         val messages = _allMessages.value.toMutableList()
 
                         val existingIndex = messages.indexOfFirst { it.id == message.id }
@@ -424,7 +455,8 @@ class TabViewModel(
                 currentRequestJob = null
                 val nextMessage = if (requestFailed) null else popNextPendingMessage()
                 if (nextMessage != null) {
-                    sendPendingMessageToSession(nextMessage, fromQueue = true)
+                    nextMessage.cancelRuntimeQueueIfNeeded()
+                    sendPendingMessageToSession(nextMessage.copy(placement = QueuedMessagePlacement.END_OF_TURN), fromQueue = true)
                 } else {
                     _isWaitingForResponse.value = false
                     _uiState.update { it.copy(isWaitingForResponse = false) }
@@ -444,6 +476,13 @@ class TabViewModel(
             }
         }
         return nextMessage
+    }
+
+    private suspend fun PendingUserMessage.cancelRuntimeQueueIfNeeded() {
+        if (placement != QueuedMessagePlacement.AFTER_TOOL_RESULT) {
+            return
+        }
+        conversationRuntimeService.cancelQueuedMessage(conversationId, userMessage.id)
     }
 
     fun notifyMemoryTasksMayHaveChanged() {
@@ -841,8 +880,14 @@ class TabViewModel(
 }
 
 data class PendingUserMessage(
-    val id: String,
-    val text: String,
-    val instructions: List<Conversation.Message.Instruction>,
+    val userMessage: Conversation.Message,
     val agent: AgentDefinition,
-)
+    val placement: QueuedMessagePlacement,
+) {
+    val id: String get() = userMessage.id.value
+
+    val text: String
+        get() = userMessage.content
+            .filterIsInstance<Conversation.Message.ContentItem.UserMessage>()
+            .joinToString("\n") { it.text }
+}

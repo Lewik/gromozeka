@@ -12,6 +12,7 @@ import com.gromozeka.domain.model.SquashType
 import com.gromozeka.domain.model.TokenUsageStatistics
 import com.gromozeka.domain.model.ai.AiRuntimeSelection
 import com.gromozeka.domain.model.memory.MemoryTask
+import com.gromozeka.domain.service.QueuedMessagePlacement
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonClassDiscriminator
@@ -373,6 +374,22 @@ data class SendMessageCommand(
     val userMessage: Conversation.Message,
     val agent: AgentDefinition,
 ) : ClientPayload
+
+@Serializable
+@SerialName("enqueue_message")
+data class EnqueueMessageRequest(
+    val conversationId: Conversation.Id,
+    val userMessage: Conversation.Message,
+    val agent: AgentDefinition,
+    val placement: QueuedMessagePlacement,
+) : ClientRequest
+
+@Serializable
+@SerialName("cancel_queued_message")
+data class CancelQueuedMessageRequest(
+    val conversationId: Conversation.Id,
+    val messageId: Conversation.Message.Id,
+) : ClientRequest
 
 @Serializable
 @SerialName("synthesize_speech_stream")

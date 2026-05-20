@@ -187,6 +187,17 @@ class GromozekaRemoteServer(
                     runMemoryAction(request.conversationId, request.action)
                     MemoryActionCompletedResponse
                 }
+                is EnqueueMessageRequest -> OperationResultResponse(
+                    conversationRuntimeService.enqueueMessage(
+                        request.conversationId,
+                        request.userMessage,
+                        request.agent,
+                        request.placement
+                    )
+                )
+                is CancelQueuedMessageRequest -> OperationResultResponse(
+                    conversationRuntimeService.cancelQueuedMessage(request.conversationId, request.messageId)
+                )
 
                 is GetMemoryTasksRequest -> loadMemoryTasks(request)
 
