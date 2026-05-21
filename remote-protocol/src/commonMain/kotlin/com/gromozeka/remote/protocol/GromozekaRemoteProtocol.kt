@@ -14,6 +14,7 @@ import com.gromozeka.domain.model.ai.AiRuntimeSelection
 import com.gromozeka.domain.model.memory.MemoryTask
 import com.gromozeka.domain.service.ConversationRuntimeControlAction
 import com.gromozeka.domain.service.ConversationRuntimeCommand
+import com.gromozeka.domain.service.ConversationRuntimeSnapshot
 import com.gromozeka.domain.service.QueuedMessagePlacement
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -607,6 +608,14 @@ data class ErrorResponse(
     val message: String,
     val type: String? = null,
 ) : ServerResponse
+
+@Serializable
+@SerialName("conversation_runtime_snapshot")
+data class ConversationRuntimeSnapshotEvent(
+    val subscriptionId: String,
+    val conversationId: Conversation.Id,
+    val snapshot: ConversationRuntimeSnapshot,
+) : ServerPayload
 
 @Serializable
 @SerialName("message_upserted")

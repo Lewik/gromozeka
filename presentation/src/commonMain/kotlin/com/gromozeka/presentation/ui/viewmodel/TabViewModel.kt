@@ -15,8 +15,11 @@ import com.gromozeka.domain.model.SquashType
 import com.gromozeka.domain.model.TokenUsageStatistics
 import com.gromozeka.domain.model.ai.AiRuntimeAssignment
 import com.gromozeka.domain.service.ConversationDomainService
+import com.gromozeka.domain.service.ConversationExecutionState
 import com.gromozeka.domain.service.ConversationRuntimeControlAction
+import com.gromozeka.domain.service.ConversationRuntimeCommand
 import com.gromozeka.domain.service.ConversationRuntimeEvent
+import com.gromozeka.domain.service.ConversationRuntimeSnapshot
 import com.gromozeka.domain.service.ConversationRuntimeService
 import com.gromozeka.domain.service.ConversationTokenStatsService
 import com.gromozeka.domain.service.MessageSquashGenerationService
@@ -181,6 +184,7 @@ class TabViewModel(
 
     private suspend fun handleRuntimeEvent(event: ConversationRuntimeEvent) {
         when (event) {
+            is ConversationRuntimeEvent.SnapshotUpdated -> applyRuntimeSnapshot(event.snapshot)
             is ConversationRuntimeEvent.MessageEmitted -> {
                 _isWaitingForResponse.value = true
                 _uiState.update { it.copy(isWaitingForResponse = true) }
@@ -193,6 +197,17 @@ class TabViewModel(
                 finishRuntimeExecution(playCompletionSound = false)
             }
         }
+    }
+
+    private fun applyRuntimeSnapshot(snapshot: ConversationRuntimeSnapshot) {
+        _pendingMessages.value = snapshot.pendingCommands.map { it.toPendingUserMessage() }
+        val status = snapshot.state?.status
+        val isRuntimeActive = snapshot.state != null || snapshot.pendingCommands.isNotEmpty()
+        val isPaused = status == ConversationExecutionState.Status.PAUSED ||
+            status == ConversationExecutionState.Status.PAUSE_REQUESTED
+        _isWaitingForResponse.value = isRuntimeActive
+        _executionPauseRequested.value = isPaused
+        _uiState.update { it.copy(isWaitingForResponse = isRuntimeActive) }
     }
 
     private suspend fun upsertRuntimeMessage(message: Conversation.Message) {
@@ -392,7 +407,7 @@ class TabViewModel(
         val queuedMessage = createPendingUserMessage(message, additionalInstructions)
 
         if (currentRequestJob?.isActive == true || _isWaitingForResponse.value) {
-            if (enqueuePendingMessage(queuedMessage)) {
+            if (submitPendingMessage(queuedMessage)) {
                 _pendingMessages.update { it + queuedMessage }
                 _uiState.update { it.copy(userInput = "") }
                 log.info {
@@ -513,7 +528,7 @@ class TabViewModel(
     ) {
         if (currentRequestJob?.isActive == true || _isWaitingForResponse.value) {
             scope.launch {
-                if (enqueuePendingMessage(pendingMessage)) {
+                if (submitPendingMessage(pendingMessage)) {
                     _pendingMessages.update { it + pendingMessage }
                 }
             }
@@ -553,13 +568,12 @@ class TabViewModel(
         }
     }
 
-    private suspend fun enqueuePendingMessage(pendingMessage: PendingUserMessage): Boolean =
+    private suspend fun submitPendingMessage(pendingMessage: PendingUserMessage): Boolean =
         runCatching {
-            conversationRuntimeService.enqueueMessage(
+            conversationRuntimeService.submitMessage(
                 conversationId = conversationId,
                 userMessage = pendingMessage.userMessage,
-                agent = pendingMessage.agent,
-                placement = pendingMessage.placement
+                agent = pendingMessage.agent
             )
         }.onFailure { error ->
             log.warn(error) {
@@ -1040,3 +1054,10 @@ data class PendingUserMessage(
             .filterIsInstance<Conversation.Message.ContentItem.UserMessage>()
             .joinToString("\n") { it.text }
 }
+
+private fun ConversationRuntimeCommand.toPendingUserMessage(): PendingUserMessage =
+    PendingUserMessage(
+        userMessage = userMessage,
+        agent = agent,
+        placement = placement,
+    )

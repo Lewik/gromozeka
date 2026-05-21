@@ -131,6 +131,7 @@ class ConversationEngineService(
     ): Boolean {
         val removed = runtimeCoordinator.cancelByMessageId(conversationId, messageId)
         if (removed) {
+            publishRuntimeSnapshot(conversationId)
             log.info { "Cancelled runtime queued message: conversation=${conversationId.value} message=${messageId.value}" }
         }
         return removed
@@ -162,6 +163,7 @@ class ConversationEngineService(
             }
         }
         if (accepted) {
+            publishRuntimeSnapshot(conversationId)
             log.info { "Runtime execution control accepted: conversation=${conversationId.value} action=$action" }
         } else {
             log.info { "Runtime execution control ignored without active turn: conversation=${conversationId.value} action=$action" }
@@ -181,6 +183,7 @@ class ConversationEngineService(
     override fun observeConversation(conversationId: Conversation.Id): Flow<ConversationRuntimeEvent> = flow {
         val subscription = runtimeEventBus.subscribe(conversationId)
         try {
+            emit(runtimeSnapshotEvent(conversationId))
             subscription.events.collect(::emit)
         } finally {
             subscription.close()
@@ -189,8 +192,11 @@ class ConversationEngineService(
 
     private suspend fun submitRuntimeCommand(command: ConversationRuntimeCommand): Boolean {
         val accepted = runtimeCoordinator.submit(command)
-        if (accepted && command.placement == QueuedMessagePlacement.END_OF_TURN) {
-            wakeConversationExecutor(command.conversationId)
+        if (accepted) {
+            publishRuntimeSnapshot(command.conversationId)
+            if (command.placement == QueuedMessagePlacement.END_OF_TURN) {
+                wakeConversationExecutor(command.conversationId)
+            }
         }
         return accepted
     }
@@ -243,12 +249,12 @@ class ConversationEngineService(
 
     private suspend fun drainConversationRuntime(conversationId: Conversation.Id): Boolean {
         val workerId = uuid7()
-        if (runtimeCoordinator.finishIfIdle(conversationId)) {
+        if (finishRuntimeIfIdle(conversationId)) {
             runtimeEventBus.publish(ConversationRuntimeEvent.ExecutionCompleted(conversationId))
             return false
         }
         if (!awaitExecutionCanContinue(conversationId)) {
-            runtimeCoordinator.finishIfIdle(conversationId)
+            finishRuntimeIfIdle(conversationId)
             runtimeEventBus.publish(ConversationRuntimeEvent.ExecutionCompleted(conversationId))
             return false
         }
@@ -258,9 +264,10 @@ class ConversationEngineService(
             workerId = workerId,
             leaseUntil = null,
         )
+        publishRuntimeSnapshot(conversationId)
 
         if (command == null) {
-            if (runtimeCoordinator.finishIfIdle(conversationId)) {
+            if (finishRuntimeIfIdle(conversationId)) {
                 runtimeEventBus.publish(ConversationRuntimeEvent.ExecutionCompleted(conversationId))
             }
             return false
@@ -284,23 +291,26 @@ class ConversationEngineService(
                 )
             }
             runtimeCoordinator.completeActiveTurn(conversationId)
+            publishRuntimeSnapshot(conversationId)
 
-            if (runtimeCoordinator.finishIfIdle(conversationId)) {
+            if (finishRuntimeIfIdle(conversationId)) {
                 runtimeEventBus.publish(ConversationRuntimeEvent.ExecutionCompleted(conversationId))
                 return false
             }
             if (!awaitExecutionCanContinue(conversationId)) {
-                runtimeCoordinator.finishIfIdle(conversationId)
+                finishRuntimeIfIdle(conversationId)
                 runtimeEventBus.publish(ConversationRuntimeEvent.ExecutionCompleted(conversationId))
                 return false
             }
             return true
         } catch (error: CancellationException) {
             runtimeCoordinator.abort(conversationId)
+            publishRuntimeSnapshot(conversationId)
             runtimeEventBus.publish(ConversationRuntimeEvent.ExecutionCompleted(conversationId))
             return false
         } catch (error: Throwable) {
             runtimeCoordinator.fail(conversationId)
+            publishRuntimeSnapshot(conversationId)
             runtimeEventBus.publish(
                 ConversationRuntimeEvent.ExecutionFailed(
                     conversationId = conversationId,
@@ -317,7 +327,7 @@ class ConversationEngineService(
         userMessage: Conversation.Message,
         agent: AgentDefinition,
     ): Flow<Conversation.Message> = flow {
-        runtimeCoordinator.markPhase(conversationId, ConversationExecutionState.Phase.BEFORE_LLM)
+        markRuntimePhase(conversationId, ConversationExecutionState.Phase.BEFORE_LLM)
         val conversation = conversationService.findById(conversationId)
             ?: throw IllegalStateException("Conversation not found: $conversationId")
         val project = conversationService.getProject(conversationId)
@@ -554,7 +564,7 @@ class ConversationEngineService(
 
             val runtimeResponse = try {
                 log.info { "Calling LLM runtime: model=$modelName, provider=$provider, iteration=$iterationCount" }
-                runtimeCoordinator.markPhase(conversationId, ConversationExecutionState.Phase.RUNNING_LLM)
+                markRuntimePhase(conversationId, ConversationExecutionState.Phase.RUNNING_LLM)
                 runtime.call(runtimeRequest)
             } catch (e: Exception) {
                 log.error(e) { "Chat call error" }
@@ -571,7 +581,7 @@ class ConversationEngineService(
                 "Runtime response received: assistantMessages=${runtimeResponse.messages.size}, " +
                     "toolCalls=${runtimeResponse.toolCalls.size}, finishReason=${runtimeResponse.finishReason}"
             }
-            runtimeCoordinator.markPhase(conversationId, ConversationExecutionState.Phase.AFTER_LLM)
+            markRuntimePhase(conversationId, ConversationExecutionState.Phase.AFTER_LLM)
             if (runtimeCoordinator.find(conversationId)?.status == ConversationExecutionState.Status.INTERRUPTING) {
                 break
             }
@@ -697,7 +707,7 @@ class ConversationEngineService(
                         "modelName" to modelName
                     )
                 )
-                runtimeCoordinator.markPhase(conversationId, ConversationExecutionState.Phase.RUNNING_TOOL)
+                markRuntimePhase(conversationId, ConversationExecutionState.Phase.RUNNING_TOOL)
                 val executionResult = parallelToolExecutor.executeParallel(
                     toolCalls = allToolCalls,
                     toolContext = toolContext,
@@ -713,7 +723,7 @@ class ConversationEngineService(
                 )
                 emit(toolResultMessage)
                 conversationService.addMessage(conversationId, toolResultMessage)
-                runtimeCoordinator.markPhase(conversationId, ConversationExecutionState.Phase.AFTER_TOOL_RESULT)
+                markRuntimePhase(conversationId, ConversationExecutionState.Phase.AFTER_TOOL_RESULT)
                 if (automaticMemoryRememberEnabled) {
                     routeMessageThroughMemoryRouter(conversationId, conversation.currentThread, toolResultMessage, agent, project, memorySystemPrompts, memoryPipelineTools)
                 }
@@ -788,8 +798,39 @@ class ConversationEngineService(
     private suspend fun popQueuedRuntimeMessages(
         conversationId: Conversation.Id,
         placement: QueuedMessagePlacement,
-    ): List<ConversationRuntimeCommand> =
-        runtimeCoordinator.takeActiveInsertions(conversationId, placement)
+    ): List<ConversationRuntimeCommand> {
+        val commands = runtimeCoordinator.takeActiveInsertions(conversationId, placement)
+        if (commands.isNotEmpty()) {
+            publishRuntimeSnapshot(conversationId)
+        }
+        return commands
+    }
+
+    private suspend fun markRuntimePhase(
+        conversationId: Conversation.Id,
+        phase: ConversationExecutionState.Phase,
+    ) {
+        runtimeCoordinator.markPhase(conversationId, phase)
+        publishRuntimeSnapshot(conversationId)
+    }
+
+    private suspend fun finishRuntimeIfIdle(conversationId: Conversation.Id): Boolean {
+        val finished = runtimeCoordinator.finishIfIdle(conversationId)
+        if (finished) {
+            publishRuntimeSnapshot(conversationId)
+        }
+        return finished
+    }
+
+    private suspend fun publishRuntimeSnapshot(conversationId: Conversation.Id) {
+        runtimeEventBus.publish(runtimeSnapshotEvent(conversationId))
+    }
+
+    private suspend fun runtimeSnapshotEvent(conversationId: Conversation.Id): ConversationRuntimeEvent.SnapshotUpdated =
+        ConversationRuntimeEvent.SnapshotUpdated(
+            conversationId = conversationId,
+            snapshot = runtimeCoordinator.snapshot(conversationId),
+        )
 
     private suspend fun awaitExecutionCanContinue(conversationId: Conversation.Id): Boolean {
         while (true) {
@@ -801,7 +842,9 @@ class ConversationEngineService(
                 state.status == ConversationExecutionState.Status.PAUSED -> delay(250)
 
                 state.status == ConversationExecutionState.Status.PAUSE_REQUESTED -> {
-                    runtimeCoordinator.markPaused(conversationId)
+                    if (runtimeCoordinator.markPaused(conversationId)) {
+                        publishRuntimeSnapshot(conversationId)
+                    }
                     delay(250)
                 }
 

@@ -60,8 +60,21 @@ data class ConversationExecutionState(
 }
 
 @Serializable
+data class ConversationRuntimeSnapshot(
+    val conversationId: Conversation.Id,
+    val state: ConversationExecutionState?,
+    val pendingCommands: List<ConversationRuntimeCommand>,
+)
+
+@Serializable
 sealed interface ConversationRuntimeEvent {
     val conversationId: Conversation.Id
+
+    @Serializable
+    data class SnapshotUpdated(
+        override val conversationId: Conversation.Id,
+        val snapshot: ConversationRuntimeSnapshot,
+    ) : ConversationRuntimeEvent
 
     @Serializable
     data class MessageEmitted(
@@ -133,4 +146,6 @@ interface ConversationRuntimeCoordinator {
     ): List<ConversationRuntimeCommand>
 
     suspend fun listPending(conversationId: Conversation.Id): List<ConversationRuntimeCommand>
+
+    suspend fun snapshot(conversationId: Conversation.Id): ConversationRuntimeSnapshot
 }

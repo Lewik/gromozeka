@@ -95,6 +95,28 @@ class InMemoryConversationRuntimeStoresTest {
     }
 
     @Test
+    fun `coordinator promotes missed active insertions before ordinary queued turns`() = runBlocking {
+        val coordinator = InMemoryConversationRuntimeCoordinator()
+        val active = command("active-message", QueuedMessagePlacement.END_OF_TURN)
+        val queued = command("message-1", QueuedMessagePlacement.END_OF_TURN)
+        val steering = command("message-2", QueuedMessagePlacement.AFTER_TOOL_RESULT)
+
+        coordinator.submit(active)
+        assertEquals(active, coordinator.claimNextTurn(conversationId, "worker-1", leaseUntil = null))
+        coordinator.submit(queued)
+        coordinator.submit(steering)
+
+        coordinator.completeActiveTurn(conversationId)
+
+        val next = coordinator.claimNextTurn(conversationId, "worker-2", leaseUntil = null)
+        assertEquals(steering.id, next?.id)
+        assertEquals(QueuedMessagePlacement.END_OF_TURN, next?.placement)
+        coordinator.completeActiveTurn(conversationId)
+
+        assertEquals(queued.id, coordinator.claimNextTurn(conversationId, "worker-3", leaseUntil = null)?.id)
+    }
+
+    @Test
     fun `coordinator keeps one active command per conversation and supports controls`() = runBlocking {
         val coordinator = InMemoryConversationRuntimeCoordinator()
         val first = command("message-1", QueuedMessagePlacement.END_OF_TURN)

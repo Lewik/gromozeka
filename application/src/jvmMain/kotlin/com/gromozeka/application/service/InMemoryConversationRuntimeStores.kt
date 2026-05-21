@@ -7,6 +7,7 @@ import com.gromozeka.domain.service.ConversationRuntimeCoordinator
 import com.gromozeka.domain.service.ConversationRuntimeEvent
 import com.gromozeka.domain.service.ConversationRuntimeEventBus
 import com.gromozeka.domain.service.ConversationRuntimeEventSubscription
+import com.gromozeka.domain.service.ConversationRuntimeSnapshot
 import com.gromozeka.domain.service.QueuedMessagePlacement
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
@@ -97,11 +98,15 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
             if (completedState.status != ConversationExecutionState.Status.STOPPING &&
                 completedState.status != ConversationExecutionState.Status.INTERRUPTING
             ) {
-                commandsByConversation[conversationId]?.replaceAll { command ->
-                    if (command.placement == QueuedMessagePlacement.AFTER_TOOL_RESULT) {
-                        command.copy(placement = QueuedMessagePlacement.END_OF_TURN)
-                    } else {
-                        command
+                commandsByConversation[conversationId]?.let { commands ->
+                    val promotedActiveInsertions = commands
+                        .filter { it.placement == QueuedMessagePlacement.AFTER_TOOL_RESULT }
+                        .map { it.copy(placement = QueuedMessagePlacement.END_OF_TURN) }
+                    if (promotedActiveInsertions.isNotEmpty()) {
+                        val existingEndOfTurn = commands
+                            .filterNot { it.placement == QueuedMessagePlacement.AFTER_TOOL_RESULT }
+                        commands.clear()
+                        commands.addAll(promotedActiveInsertions + existingEndOfTurn)
                     }
                 }
             }
@@ -246,6 +251,15 @@ class InMemoryConversationRuntimeCoordinator : ConversationRuntimeCoordinator {
     override suspend fun listPending(conversationId: Conversation.Id): List<ConversationRuntimeCommand> =
         mutex.withLock {
             commandsByConversation[conversationId]?.toList().orEmpty()
+        }
+
+    override suspend fun snapshot(conversationId: Conversation.Id): ConversationRuntimeSnapshot =
+        mutex.withLock {
+            ConversationRuntimeSnapshot(
+                conversationId = conversationId,
+                state = statesByConversation[conversationId],
+                pendingCommands = commandsByConversation[conversationId]?.toList().orEmpty(),
+            )
         }
 
     private suspend fun update(

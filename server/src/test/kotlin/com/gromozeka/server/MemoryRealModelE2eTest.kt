@@ -1114,6 +1114,7 @@ class MemoryRealModelE2eTest {
         val observer = launch(start = CoroutineStart.UNDISPATCHED) {
             conversationEngineService.observeConversation(conversation.id).collect { event ->
                 when (event) {
+                    is ConversationRuntimeEvent.SnapshotUpdated -> Unit
                     is ConversationRuntimeEvent.MessageEmitted -> emittedMessages.add(event.message)
                     is ConversationRuntimeEvent.ExecutionCompleted -> completed.complete(Unit)
                     is ConversationRuntimeEvent.ExecutionFailed -> completed.completeExceptionally(

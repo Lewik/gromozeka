@@ -6,6 +6,7 @@ import com.gromozeka.remote.protocol.ClientPayload
 import com.gromozeka.remote.protocol.ClientRequest
 import com.gromozeka.remote.protocol.ConversationExecutionCompletedEvent
 import com.gromozeka.remote.protocol.ConversationExecutionFailedEvent
+import com.gromozeka.remote.protocol.ConversationRuntimeSnapshotEvent
 import com.gromozeka.remote.protocol.ErrorResponse
 import com.gromozeka.remote.protocol.GromozekaClientEnvelope
 import com.gromozeka.remote.protocol.GromozekaServerEnvelope
@@ -98,6 +99,12 @@ internal class GromozekaWsClient(
         try {
             for (event in channel) {
                 when (event) {
+                    is ConversationRuntimeSnapshotEvent -> emit(
+                        ConversationRuntimeEvent.SnapshotUpdated(
+                            conversationId = event.conversationId,
+                            snapshot = event.snapshot,
+                        )
+                    )
                     is MessageUpsertedEvent -> emit(
                         ConversationRuntimeEvent.MessageEmitted(
                             conversationId = event.conversationId,
@@ -237,6 +244,7 @@ internal class GromozekaWsClient(
                 println("Gromozeka WS incoming id=${envelope.id} type=${envelope.payload::class.simpleName}")
                 when (val payload = envelope.payload) {
                     is ServerResponse -> pending.remove(envelope.id)?.complete(payload)
+                    is ConversationRuntimeSnapshotEvent -> conversationSubscriptions[payload.subscriptionId]?.send(payload)
                     is MessageUpsertedEvent -> conversationSubscriptions[payload.subscriptionId]?.send(payload)
                     is ConversationExecutionCompletedEvent -> conversationSubscriptions[payload.subscriptionId]?.send(payload)
                     is ConversationExecutionFailedEvent -> conversationSubscriptions[payload.subscriptionId]?.send(payload)

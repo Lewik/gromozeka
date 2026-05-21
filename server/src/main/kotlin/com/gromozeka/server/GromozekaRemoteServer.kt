@@ -261,6 +261,15 @@ class GromozekaRemoteServer(
             conversationRuntimeService.observeConversation(command.conversationId)
                 .collect { event ->
                     when (event) {
+                        is ConversationRuntimeEvent.SnapshotUpdated -> sender.send(
+                            command.subscriptionId,
+                            ConversationRuntimeSnapshotEvent(
+                                subscriptionId = command.subscriptionId,
+                                conversationId = event.conversationId,
+                                snapshot = event.snapshot,
+                            ),
+                            encoding,
+                        )
                         is ConversationRuntimeEvent.MessageEmitted -> sender.send(
                             command.subscriptionId,
                             MessageUpsertedEvent(
