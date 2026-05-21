@@ -6,23 +6,30 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.serialization.Serializable
 
 interface ConversationRuntimeService {
-    suspend fun sendMessage(
+    suspend fun submitMessage(
         conversationId: Conversation.Id,
         userMessage: Conversation.Message,
         agent: AgentDefinition,
-    ): Flow<Conversation.Message>
+    ): Boolean
+
+    fun observeConversation(conversationId: Conversation.Id): Flow<ConversationRuntimeEvent>
 
     suspend fun enqueueMessage(
         conversationId: Conversation.Id,
         userMessage: Conversation.Message,
         agent: AgentDefinition,
         placement: QueuedMessagePlacement,
-    ): Boolean = false
+    ): Boolean
 
     suspend fun cancelQueuedMessage(
         conversationId: Conversation.Id,
         messageId: Conversation.Message.Id,
-    ): Boolean = false
+    ): Boolean
+
+    suspend fun controlExecution(
+        conversationId: Conversation.Id,
+        action: ConversationRuntimeControlAction,
+    ): Boolean
 
     suspend fun rememberCurrentThread(conversationId: Conversation.Id)
     suspend fun consolidateCurrentMemory(conversationId: Conversation.Id)

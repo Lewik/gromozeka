@@ -12,6 +12,8 @@ import com.gromozeka.domain.model.SquashType
 import com.gromozeka.domain.model.TokenUsageStatistics
 import com.gromozeka.domain.model.ai.AiRuntimeSelection
 import com.gromozeka.domain.model.memory.MemoryTask
+import com.gromozeka.domain.service.ConversationRuntimeControlAction
+import com.gromozeka.domain.service.ConversationRuntimeCommand
 import com.gromozeka.domain.service.QueuedMessagePlacement
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -367,13 +369,25 @@ data class RemoteLiveInterpreterDraft(
 )
 
 @Serializable
-@SerialName("send_message")
-data class SendMessageCommand(
-    val streamId: String,
+@SerialName("observe_conversation")
+data class ObserveConversationCommand(
+    val subscriptionId: String,
+    val conversationId: Conversation.Id,
+) : ClientPayload
+
+@Serializable
+@SerialName("stop_observe_conversation")
+data class StopObserveConversationCommand(
+    val subscriptionId: String,
+) : ClientPayload
+
+@Serializable
+@SerialName("submit_message")
+data class SubmitMessageRequest(
     val conversationId: Conversation.Id,
     val userMessage: Conversation.Message,
     val agent: AgentDefinition,
-) : ClientPayload
+) : ClientRequest
 
 @Serializable
 @SerialName("enqueue_message")
@@ -389,6 +403,13 @@ data class EnqueueMessageRequest(
 data class CancelQueuedMessageRequest(
     val conversationId: Conversation.Id,
     val messageId: Conversation.Message.Id,
+) : ClientRequest
+
+@Serializable
+@SerialName("control_conversation_runtime")
+data class ControlConversationRuntimeRequest(
+    val conversationId: Conversation.Id,
+    val action: ConversationRuntimeControlAction,
 ) : ClientRequest
 
 @Serializable
@@ -590,21 +611,26 @@ data class ErrorResponse(
 @Serializable
 @SerialName("message_upserted")
 data class MessageUpsertedEvent(
-    val streamId: String,
+    val subscriptionId: String,
+    val conversationId: Conversation.Id,
+    val commandId: ConversationRuntimeCommand.Id?,
     val message: Conversation.Message,
 ) : ServerPayload
 
 @Serializable
-@SerialName("send_completed")
-data class SendCompletedEvent(
-    val streamId: String,
+@SerialName("conversation_execution_completed")
+data class ConversationExecutionCompletedEvent(
+    val subscriptionId: String,
+    val conversationId: Conversation.Id,
 ) : ServerPayload
 
 @Serializable
-@SerialName("send_failed")
-data class SendFailedEvent(
-    val streamId: String,
+@SerialName("conversation_execution_failed")
+data class ConversationExecutionFailedEvent(
+    val subscriptionId: String,
+    val conversationId: Conversation.Id,
     val message: String,
+    val type: String? = null,
 ) : ServerPayload
 
 @Serializable

@@ -22,6 +22,7 @@ import androidx.compose.ui.window.ComposeViewport
 import com.gromozeka.presentation.services.BrowserClientAudioRecorder
 import com.gromozeka.presentation.services.BrowserRemoteClientSettingsStore
 import com.gromozeka.presentation.services.BrowserUIStateStore
+import com.gromozeka.presentation.ui.ClientPlatform
 import com.gromozeka.presentation.ui.GromozekaApp
 import kotlinx.browser.window
 
@@ -29,6 +30,7 @@ private data class WebLayoutHints(
     val uiScaleMultiplier: Float,
     val showPromptsPanelInitially: Boolean,
     val forceCompactLayout: Boolean,
+    val clientPlatform: ClientPlatform,
 )
 
 @OptIn(ExperimentalComposeUiApi::class)
@@ -76,6 +78,7 @@ private fun GromozekaWebApp() {
             uiScaleMultiplier = layoutHints.uiScaleMultiplier,
             showPromptsPanelInitially = layoutHints.showPromptsPanelInitially,
             forceCompactLayout = layoutHints.forceCompactLayout,
+            clientPlatform = layoutHints.clientPlatform,
         )
         startupError != null -> StartupError(startupError!!)
         else -> StartupLoading()
@@ -89,24 +92,33 @@ private fun resolveRemoteUrl(): String {
 
 private fun resolveWebLayoutHints(): WebLayoutHints {
     val hasTouch = window.navigator.maxTouchPoints > 0
+    val hasCoarsePointer = window.matchMedia("(pointer: coarse)").matches
     val compactScreen = window.screen.width <= 430 || window.innerWidth <= 430
     val tabletScreen = window.screen.width <= 820 || window.innerWidth <= 820
+    val clientPlatform = if (hasTouch && (hasCoarsePointer || tabletScreen)) {
+        ClientPlatform.WEB_TOUCH
+    } else {
+        ClientPlatform.WEB_DESKTOP
+    }
 
     return when {
         compactScreen -> WebLayoutHints(
             uiScaleMultiplier = 1.25f,
             showPromptsPanelInitially = false,
             forceCompactLayout = true,
+            clientPlatform = clientPlatform,
         )
         hasTouch && tabletScreen -> WebLayoutHints(
             uiScaleMultiplier = 1.15f,
             showPromptsPanelInitially = false,
             forceCompactLayout = true,
+            clientPlatform = clientPlatform,
         )
         else -> WebLayoutHints(
             uiScaleMultiplier = 1.0f,
             showPromptsPanelInitially = true,
             forceCompactLayout = false,
+            clientPlatform = clientPlatform,
         )
     }
 }

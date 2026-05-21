@@ -3,24 +3,33 @@ package com.gromozeka.client
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.MemoryAction
+import com.gromozeka.domain.service.ConversationRuntimeControlAction
+import com.gromozeka.domain.service.ConversationRuntimeEvent
 import com.gromozeka.domain.service.ConversationRuntimeService
 import com.gromozeka.domain.service.QueuedMessagePlacement
 import com.gromozeka.remote.protocol.CancelQueuedMessageRequest
+import com.gromozeka.remote.protocol.ControlConversationRuntimeRequest
 import com.gromozeka.remote.protocol.EnqueueMessageRequest
 import com.gromozeka.remote.protocol.MemoryActionCompletedResponse
 import com.gromozeka.remote.protocol.MemoryActionRequest
 import com.gromozeka.remote.protocol.OperationResultResponse
+import com.gromozeka.remote.protocol.SubmitMessageRequest
 import kotlinx.coroutines.flow.Flow
 
 internal class RemoteConversationRuntimeService(
     private val client: GromozekaWsClient,
 ) : ConversationRuntimeService {
-    override suspend fun sendMessage(
+    override suspend fun submitMessage(
         conversationId: Conversation.Id,
         userMessage: Conversation.Message,
         agent: AgentDefinition,
-    ): Flow<Conversation.Message> =
-        client.sendMessage(conversationId, userMessage, agent)
+    ): Boolean =
+        client.requestTyped<SubmitMessageRequest, OperationResultResponse>(
+            SubmitMessageRequest(conversationId, userMessage, agent)
+        ).success
+
+    override fun observeConversation(conversationId: Conversation.Id): Flow<ConversationRuntimeEvent> =
+        client.observeConversation(conversationId)
 
     override suspend fun enqueueMessage(
         conversationId: Conversation.Id,
@@ -38,6 +47,14 @@ internal class RemoteConversationRuntimeService(
     ): Boolean =
         client.requestTyped<CancelQueuedMessageRequest, OperationResultResponse>(
             CancelQueuedMessageRequest(conversationId, messageId)
+        ).success
+
+    override suspend fun controlExecution(
+        conversationId: Conversation.Id,
+        action: ConversationRuntimeControlAction,
+    ): Boolean =
+        client.requestTyped<ControlConversationRuntimeRequest, OperationResultResponse>(
+            ControlConversationRuntimeRequest(conversationId, action)
         ).success
 
     override suspend fun rememberCurrentThread(conversationId: Conversation.Id) =

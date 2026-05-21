@@ -22,6 +22,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import com.gromozeka.presentation.services.PttEventHandler
+import com.gromozeka.presentation.ui.ClientPlatform
 import com.gromozeka.presentation.ui.CompactButton
 import com.gromozeka.presentation.ui.LocalTranslation
 import com.gromozeka.presentation.ui.UiTestTag
@@ -40,6 +41,7 @@ fun MessageInput(
     pttEventHandler: PttEventHandler,
     isRecording: Boolean,
     showPttButton: Boolean,
+    clientPlatform: ClientPlatform,
     pttStatusMessage: String? = null,
     contextPercentage: Int? = null,
 ) {
@@ -79,7 +81,7 @@ fun MessageInput(
             )
             Spacer(modifier = Modifier.width(4.dp))
 
-            if (inputFocused) {
+            if (clientPlatform.showSoftwareKeyboardControls && inputFocused) {
                 CompactButton(
                     onClick = {
                         keyboardController?.hide()
@@ -116,8 +118,8 @@ fun MessageInput(
                         .fillMaxHeight()
                         .testTag(UiTestTag.SendButton.value),
                     tooltip = when {
-                        isWaitingForResponse && pendingMessagesCount > 0 -> "Добавить в очередь ($pendingMessagesCount уже ждёт)"
-                        isWaitingForResponse -> "Добавить сообщение в очередь"
+                        isWaitingForResponse && pendingMessagesCount > 0 -> "Поставить в очередь ($pendingMessagesCount уже ждёт)"
+                        isWaitingForResponse -> "Поставить в очередь"
                         contextPercentage != null && contextPercentage >= 90 -> "${LocalTranslation.current.sendMessageTooltip} (критическое заполнение $contextPercentage%)"
                         contextPercentage != null && contextPercentage >= 75 -> "${LocalTranslation.current.sendMessageTooltip} (контекст заполнен на $contextPercentage%)"
                         else -> LocalTranslation.current.sendMessageTooltip

@@ -7,6 +7,7 @@ import com.gromozeka.domain.model.memory.MemoryTask
 import com.gromozeka.domain.service.AgentDomainService
 import com.gromozeka.domain.service.ConversationDomainService
 import com.gromozeka.domain.service.ConversationNameSearchService
+import com.gromozeka.domain.service.ConversationRuntimeEvent
 import com.gromozeka.domain.service.ConversationRuntimeService
 import com.gromozeka.domain.service.ConversationTokenStatsService
 import com.gromozeka.domain.service.DefaultAgentProvider
@@ -24,6 +25,12 @@ import io.ktor.websocket.readText
 import io.ktor.websocket.send
 import klog.KLoggers
 import com.gromozeka.shared.uuid.uuid7
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import org.springframework.stereotype.Service
 import java.io.ByteArrayOutputStream
 import java.security.MessageDigest
@@ -54,25 +61,45 @@ class GromozekaRemoteServer(
     }
 
     suspend fun handle(session: DefaultWebSocketServerSession) {
-        for (frame in session.incoming) {
-            val (encoding, envelope) = when (frame) {
-                is Frame.Binary -> RemoteProtocolEncoding.CBOR to RemoteProtocolCodec.decodeClientBinary(frame.readBytes())
-                is Frame.Text -> RemoteProtocolEncoding.JSON to RemoteProtocolCodec.decodeClientText(frame.readText())
-                else -> continue
-            }
-            when (val payload = envelope.payload) {
-                is ClientRequest -> handleRequest(session, envelope.id, payload, encoding)
-                is SendMessageCommand -> handleSendMessage(session, envelope.id, payload, encoding)
-                is SynthesizeSpeechStreamCommand -> handleSynthesizeSpeechStream(session, envelope.id, payload, encoding)
-                is LiveInterpreterAudioChunkCommand -> liveInterpreterApplicationService.append(payload)
-                is LiveInterpreterTranscriptChunkCommand -> liveInterpreterApplicationService.append(payload)
-                is StopLiveInterpreterCommand -> liveInterpreterApplicationService.stop(payload)
+        val sender = RemoteSessionSender(session)
+        val conversationSubscriptions = mutableMapOf<String, Job>()
+        coroutineScope {
+            try {
+                for (frame in session.incoming) {
+                    val decoded = when (frame) {
+                        is Frame.Binary -> RemoteProtocolEncoding.CBOR to RemoteProtocolCodec.decodeClientBinary(frame.readBytes())
+                        is Frame.Text -> RemoteProtocolEncoding.JSON to RemoteProtocolCodec.decodeClientText(frame.readText())
+                        else -> null
+                    }
+                    if (decoded != null) {
+                        val (encoding, envelope) = decoded
+                        when (val payload = envelope.payload) {
+                            is ClientRequest -> handleRequest(sender, envelope.id, payload, encoding)
+                            is ObserveConversationCommand -> {
+                                conversationSubscriptions[payload.subscriptionId]?.cancel()
+                                conversationSubscriptions[payload.subscriptionId] = launch {
+                                    observeConversation(sender, payload, encoding)
+                                }
+                            }
+                            is StopObserveConversationCommand -> conversationSubscriptions.remove(payload.subscriptionId)?.cancel()
+                            is SynthesizeSpeechStreamCommand -> launch {
+                                handleSynthesizeSpeechStream(sender, envelope.id, payload, encoding)
+                            }
+                            is LiveInterpreterAudioChunkCommand -> liveInterpreterApplicationService.append(payload)
+                            is LiveInterpreterTranscriptChunkCommand -> liveInterpreterApplicationService.append(payload)
+                            is StopLiveInterpreterCommand -> liveInterpreterApplicationService.stop(payload)
+                        }
+                    }
+                }
+            } finally {
+                conversationSubscriptions.values.forEach { it.cancel() }
+                conversationSubscriptions.clear()
             }
         }
     }
 
     private suspend fun handleRequest(
-        session: DefaultWebSocketServerSession,
+        sender: RemoteSessionSender,
         requestId: String,
         request: ClientRequest,
         encoding: RemoteProtocolEncoding,
@@ -187,6 +214,13 @@ class GromozekaRemoteServer(
                     runMemoryAction(request.conversationId, request.action)
                     MemoryActionCompletedResponse
                 }
+                is SubmitMessageRequest -> OperationResultResponse(
+                    conversationRuntimeService.submitMessage(
+                        request.conversationId,
+                        request.userMessage,
+                        request.agent,
+                    )
+                )
                 is EnqueueMessageRequest -> OperationResultResponse(
                     conversationRuntimeService.enqueueMessage(
                         request.conversationId,
@@ -198,13 +232,16 @@ class GromozekaRemoteServer(
                 is CancelQueuedMessageRequest -> OperationResultResponse(
                     conversationRuntimeService.cancelQueuedMessage(request.conversationId, request.messageId)
                 )
+                is ControlConversationRuntimeRequest -> OperationResultResponse(
+                    conversationRuntimeService.controlExecution(request.conversationId, request.action)
+                )
 
                 is GetMemoryTasksRequest -> loadMemoryTasks(request)
 
                 is TranscribeAudioRequest -> transcribeAudio(request.recording)
                 is SynthesizeSpeechRequest -> synthesizeSpeech(request)
                 is StartLiveInterpreterRequest -> liveInterpreterApplicationService.start(request) { payload ->
-                    send(session, uuid7(), payload, encoding)
+                    sender.send(uuid7(), payload, encoding)
                 }
             }
         }.getOrElse { error ->
@@ -212,30 +249,64 @@ class GromozekaRemoteServer(
             ErrorResponse(error.message ?: "Unknown server error", error::class.simpleName)
         }
 
-        send(session, requestId, response, encoding)
+        sender.send(requestId, response, encoding)
     }
 
-    private suspend fun handleSendMessage(
-        session: DefaultWebSocketServerSession,
-        requestId: String,
-        command: SendMessageCommand,
+    private suspend fun observeConversation(
+        sender: RemoteSessionSender,
+        command: ObserveConversationCommand,
         encoding: RemoteProtocolEncoding,
     ) {
-        runCatching {
-            conversationRuntimeService
-                .sendMessage(command.conversationId, command.userMessage, command.agent)
-                .collect { message ->
-                    send(session, requestId, MessageUpsertedEvent(command.streamId, message), encoding)
+        try {
+            conversationRuntimeService.observeConversation(command.conversationId)
+                .collect { event ->
+                    when (event) {
+                        is ConversationRuntimeEvent.MessageEmitted -> sender.send(
+                            command.subscriptionId,
+                            MessageUpsertedEvent(
+                                subscriptionId = command.subscriptionId,
+                                conversationId = event.conversationId,
+                                commandId = event.commandId,
+                                message = event.message,
+                            ),
+                            encoding,
+                        )
+                        is ConversationRuntimeEvent.ExecutionCompleted -> sender.send(
+                            command.subscriptionId,
+                            ConversationExecutionCompletedEvent(command.subscriptionId, event.conversationId),
+                            encoding,
+                        )
+                        is ConversationRuntimeEvent.ExecutionFailed -> sender.send(
+                            command.subscriptionId,
+                            ConversationExecutionFailedEvent(
+                                subscriptionId = command.subscriptionId,
+                                conversationId = event.conversationId,
+                                message = event.message,
+                                type = event.type,
+                            ),
+                            encoding,
+                        )
+                    }
                 }
-            send(session, requestId, SendCompletedEvent(command.streamId), encoding)
-        }.onFailure { error ->
-            log.warn(error) { "Remote send failed: conversation=${command.conversationId.value} error=${error.message}" }
-            send(session, requestId, SendFailedEvent(command.streamId, error.message ?: "Unknown send error"), encoding)
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Throwable) {
+            log.warn(error) { "Remote conversation observation failed: conversation=${command.conversationId.value} error=${error.message}" }
+            sender.send(
+                command.subscriptionId,
+                ConversationExecutionFailedEvent(
+                    subscriptionId = command.subscriptionId,
+                    conversationId = command.conversationId,
+                    message = error.message ?: "Unknown conversation observation error",
+                    type = error::class.simpleName,
+                ),
+                encoding,
+            )
         }
     }
 
     private suspend fun handleSynthesizeSpeechStream(
-        session: DefaultWebSocketServerSession,
+        sender: RemoteSessionSender,
         requestId: String,
         command: SynthesizeSpeechStreamCommand,
         encoding: RemoteProtocolEncoding,
@@ -245,8 +316,7 @@ class GromozekaRemoteServer(
                 "Remote speech synthesis stream requested: stream=${command.streamId} " +
                     "textChars=${command.text.length} tone=${command.tone}"
             }
-            send(
-                session,
+            sender.send(
                 requestId,
                 SpeechSynthesisStartedEvent(
                     streamId = command.streamId,
@@ -261,8 +331,7 @@ class GromozekaRemoteServer(
 
             var sequenceNumber = 0
             ttsService.streamSpeechPcm(command.text, command.tone).collect { chunk ->
-                send(
-                    session,
+                sender.send(
                     requestId,
                     SpeechSynthesisChunkEvent(command.streamId, sequenceNumber++, chunk.data),
                     encoding,
@@ -272,23 +341,10 @@ class GromozekaRemoteServer(
             log.info {
                 "Remote speech synthesis stream completed: stream=${command.streamId} chunks=$sequenceNumber"
             }
-            send(session, requestId, SpeechSynthesisCompletedEvent(command.streamId), encoding)
+            sender.send(requestId, SpeechSynthesisCompletedEvent(command.streamId), encoding)
         }.onFailure { error ->
             log.warn(error) { "Remote speech synthesis stream failed: stream=${command.streamId} error=${error.message}" }
-            send(session, requestId, SpeechSynthesisFailedEvent(command.streamId, error.message ?: "Unknown TTS error"), encoding)
-        }
-    }
-
-    private suspend fun send(
-        session: DefaultWebSocketServerSession,
-        id: String,
-        payload: ServerPayload,
-        encoding: RemoteProtocolEncoding,
-    ) {
-        val envelope = GromozekaServerEnvelope(id, payload)
-        when (encoding) {
-            RemoteProtocolEncoding.CBOR -> session.send(Frame.Binary(true, RemoteProtocolCodec.encodeServerBinary(envelope)))
-            RemoteProtocolEncoding.JSON -> session.send(RemoteProtocolCodec.encodeServerText(envelope))
+            sender.send(requestId, SpeechSynthesisFailedEvent(command.streamId, error.message ?: "Unknown TTS error"), encoding)
         }
     }
 
@@ -407,6 +463,26 @@ class GromozekaRemoteServer(
         const val OPENAI_TTS_PCM_SAMPLE_RATE = 24_000
         const val OPENAI_TTS_PCM_CHANNELS = 1
         const val OPENAI_TTS_PCM_BITS_PER_SAMPLE = 16
+    }
+}
+
+private class RemoteSessionSender(
+    private val session: DefaultWebSocketServerSession,
+) {
+    private val mutex = Mutex()
+
+    suspend fun send(
+        id: String,
+        payload: ServerPayload,
+        encoding: RemoteProtocolEncoding,
+    ) {
+        val envelope = GromozekaServerEnvelope(id, payload)
+        mutex.withLock {
+            when (encoding) {
+                RemoteProtocolEncoding.CBOR -> session.send(Frame.Binary(true, RemoteProtocolCodec.encodeServerBinary(envelope)))
+                RemoteProtocolEncoding.JSON -> session.send(RemoteProtocolCodec.encodeServerText(envelope))
+            }
+        }
     }
 }
 

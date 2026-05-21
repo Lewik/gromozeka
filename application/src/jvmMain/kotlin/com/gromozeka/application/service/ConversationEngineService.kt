@@ -21,17 +21,26 @@ import com.gromozeka.domain.service.AgentDomainService
 import com.gromozeka.domain.service.AiRuntimeProvider
 import com.gromozeka.domain.service.AiToolProvider
 import com.gromozeka.domain.service.ConversationDomainService
+import com.gromozeka.domain.service.ConversationExecutionState
+import com.gromozeka.domain.service.ConversationRuntimeControlAction
+import com.gromozeka.domain.service.ConversationRuntimeCommand
+import com.gromozeka.domain.service.ConversationRuntimeCoordinator
+import com.gromozeka.domain.service.ConversationRuntimeEvent
+import com.gromozeka.domain.service.ConversationRuntimeEventBus
 import com.gromozeka.domain.service.ConversationRuntimeService
 import com.gromozeka.domain.service.QueuedMessagePlacement
 import com.gromozeka.domain.repository.ThreadRepository
 import com.gromozeka.domain.repository.TokenUsageStatisticsRepository
 import com.gromozeka.domain.tool.AiToolCallback
 import klog.KLoggers
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 import com.gromozeka.domain.tool.ToolExecutionContext
 import org.springframework.stereotype.Service
@@ -73,11 +82,13 @@ class ConversationEngineService(
     private val settingsProvider: com.gromozeka.domain.service.SettingsProvider,
     private val aiModelSpecRepository: AiModelSpecRepository,
     private val strideEngineService: com.gromozeka.domain.service.StrideEngineService,
-    private val planRepository: com.gromozeka.domain.repository.PlanRepository
+    private val planRepository: com.gromozeka.domain.repository.PlanRepository,
+    private val runtimeCoordinator: ConversationRuntimeCoordinator,
+    private val runtimeEventBus: ConversationRuntimeEventBus,
 ) : ConversationRuntimeService {
     private val log = KLoggers.logger(this)
-    private val queuedMessagesMutex = Mutex()
-    private val queuedMessagesByConversation = mutableMapOf<Conversation.Id, MutableList<QueuedRuntimeMessage>>()
+    private val executorJobsLock = Any()
+    private val executorJobsByConversation = mutableMapOf<Conversation.Id, Job>()
 
     override suspend fun enqueueMessage(
         conversationId: Conversation.Id,
@@ -85,53 +96,228 @@ class ConversationEngineService(
         agent: AgentDefinition,
         placement: QueuedMessagePlacement,
     ): Boolean {
-        queuedMessagesMutex.withLock {
-            val messages = queuedMessagesByConversation.getOrPut(conversationId) { mutableListOf() }
-            messages.add(QueuedRuntimeMessage(userMessage, agent, placement))
+        val state = runtimeCoordinator.find(conversationId)
+        val pendingCommands = runtimeCoordinator.listPending(conversationId)
+        val canAcceptQueuedCommand = state == null ||
+            state.status == ConversationExecutionState.Status.RUNNING ||
+            state.status == ConversationExecutionState.Status.PAUSE_REQUESTED ||
+            state.status == ConversationExecutionState.Status.PAUSED
+        val canQueue = when (placement) {
+            QueuedMessagePlacement.AFTER_TOOL_RESULT -> canAcceptQueuedCommand && state?.activeCommandId != null
+            QueuedMessagePlacement.END_OF_TURN ->
+                canAcceptQueuedCommand && (state != null || pendingCommands.any { it.placement == QueuedMessagePlacement.END_OF_TURN })
         }
-        log.info {
-            "Queued runtime message: conversation=${conversationId.value} message=${userMessage.id.value} placement=$placement"
+        if (!canQueue) {
+            log.info {
+                "Rejected queued message without active runtime: conversation=${conversationId.value} " +
+                    "message=${userMessage.id.value} placement=$placement"
+            }
+            return false
         }
-        return true
+
+        val command = queuedRuntimeCommand(conversationId, userMessage, agent, placement)
+        val accepted = submitRuntimeCommand(command)
+        if (accepted) {
+            log.info {
+                "Queued runtime message: conversation=${conversationId.value} message=${userMessage.id.value} placement=$placement"
+            }
+        }
+        return accepted
     }
 
     override suspend fun cancelQueuedMessage(
         conversationId: Conversation.Id,
         messageId: Conversation.Message.Id,
     ): Boolean {
-        val removed = queuedMessagesMutex.withLock {
-            val messages = queuedMessagesByConversation[conversationId] ?: return@withLock false
-            val removed = messages.removeAll { it.userMessage.id == messageId }
-            if (messages.isEmpty()) {
-                queuedMessagesByConversation.remove(conversationId)
-            }
-            removed
-        }
+        val removed = runtimeCoordinator.cancelByMessageId(conversationId, messageId)
         if (removed) {
             log.info { "Cancelled runtime queued message: conversation=${conversationId.value} message=${messageId.value}" }
         }
         return removed
     }
 
-    /**
-     * Send message and get response using blocking call().
-     * LLM-agnostic - works with all providers (Anthropic, OpenAI, Google, etc.)
-     *
-     * Automatically uses typed memory around a turn only when enabled by settings:
-     * - user profile memory settings write current turn memory
-     * - user profile memory settings recall memory before the main model call
-     *
-     * @param conversationId The conversation to append messages to
-     * @param userMessage The user message to send
-     * @param agent The agent to use for this conversation (provides system prompts)
-     * @return Flow of Message objects (assistant responses, tool results).
-     *         Flow completes when conversation turn is done.
-     */
-    override suspend fun sendMessage(
+    override suspend fun controlExecution(
+        conversationId: Conversation.Id,
+        action: ConversationRuntimeControlAction,
+    ): Boolean {
+        val accepted = when (action) {
+            ConversationRuntimeControlAction.PAUSE -> runtimeCoordinator.requestPause(conversationId)
+            ConversationRuntimeControlAction.RESUME -> runtimeCoordinator.requestResume(conversationId).also { accepted ->
+                if (accepted) {
+                    wakeConversationExecutor(conversationId)
+                }
+            }
+            ConversationRuntimeControlAction.STOP -> runtimeCoordinator.requestStop(conversationId).also { accepted ->
+                if (accepted) {
+                    wakeConversationExecutor(conversationId)
+                }
+            }
+            ConversationRuntimeControlAction.INTERRUPT -> {
+                val requested = runtimeCoordinator.requestInterrupt(conversationId)
+                val cancelled = cancelConversationExecutor(conversationId)
+                if (requested && !cancelled) {
+                    wakeConversationExecutor(conversationId)
+                }
+                cancelled || requested
+            }
+        }
+        if (accepted) {
+            log.info { "Runtime execution control accepted: conversation=${conversationId.value} action=$action" }
+        } else {
+            log.info { "Runtime execution control ignored without active turn: conversation=${conversationId.value} action=$action" }
+        }
+        return accepted
+    }
+
+    override suspend fun submitMessage(
+        conversationId: Conversation.Id,
+        userMessage: Conversation.Message,
+        agent: AgentDefinition,
+    ): Boolean {
+        val command = queuedRuntimeCommand(conversationId, userMessage, agent, QueuedMessagePlacement.END_OF_TURN)
+        return submitRuntimeCommand(command)
+    }
+
+    override fun observeConversation(conversationId: Conversation.Id): Flow<ConversationRuntimeEvent> = flow {
+        val subscription = runtimeEventBus.subscribe(conversationId)
+        try {
+            subscription.events.collect(::emit)
+        } finally {
+            subscription.close()
+        }
+    }
+
+    private suspend fun submitRuntimeCommand(command: ConversationRuntimeCommand): Boolean {
+        val accepted = runtimeCoordinator.submit(command)
+        if (accepted && command.placement == QueuedMessagePlacement.END_OF_TURN) {
+            wakeConversationExecutor(command.conversationId)
+        }
+        return accepted
+    }
+
+    private fun wakeConversationExecutor(conversationId: Conversation.Id) {
+        lateinit var job: Job
+        job = coroutineScope.launch(start = CoroutineStart.LAZY) {
+            var wakeAgain = false
+            try {
+                wakeAgain = drainConversationRuntime(conversationId)
+            } finally {
+                synchronized(executorJobsLock) {
+                    if (executorJobsByConversation[conversationId] == job) {
+                        executorJobsByConversation.remove(conversationId)
+                    }
+                }
+                if (wakeAgain) {
+                    wakeConversationExecutor(conversationId)
+                }
+            }
+        }
+
+        val shouldStart = synchronized(executorJobsLock) {
+            val existingJob = executorJobsByConversation[conversationId]
+            if (existingJob?.isActive == true) {
+                false
+            } else {
+                executorJobsByConversation[conversationId] = job
+                true
+            }
+        }
+
+        if (shouldStart) {
+            job.start()
+        } else {
+            job.cancel()
+        }
+    }
+
+    private fun cancelConversationExecutor(conversationId: Conversation.Id): Boolean {
+        val job = synchronized(executorJobsLock) {
+            executorJobsByConversation[conversationId]
+        } ?: return false
+        if (!job.isActive) {
+            return false
+        }
+        job.cancel(CancellationException("Conversation runtime interrupted: ${conversationId.value}"))
+        return true
+    }
+
+    private suspend fun drainConversationRuntime(conversationId: Conversation.Id): Boolean {
+        val workerId = uuid7()
+        if (runtimeCoordinator.finishIfIdle(conversationId)) {
+            runtimeEventBus.publish(ConversationRuntimeEvent.ExecutionCompleted(conversationId))
+            return false
+        }
+        if (!awaitExecutionCanContinue(conversationId)) {
+            runtimeCoordinator.finishIfIdle(conversationId)
+            runtimeEventBus.publish(ConversationRuntimeEvent.ExecutionCompleted(conversationId))
+            return false
+        }
+
+        val command = runtimeCoordinator.claimNextTurn(
+            conversationId = conversationId,
+            workerId = workerId,
+            leaseUntil = null,
+        )
+
+        if (command == null) {
+            if (runtimeCoordinator.finishIfIdle(conversationId)) {
+                runtimeEventBus.publish(ConversationRuntimeEvent.ExecutionCompleted(conversationId))
+            }
+            return false
+        }
+
+        try {
+            runtimeEventBus.publish(
+                ConversationRuntimeEvent.MessageEmitted(
+                    conversationId = conversationId,
+                    commandId = command.id,
+                    message = command.userMessage,
+                )
+            )
+            runSingleTurn(command.conversationId, command.userMessage, command.agent).collect { message ->
+                runtimeEventBus.publish(
+                    ConversationRuntimeEvent.MessageEmitted(
+                        conversationId = command.conversationId,
+                        commandId = command.id,
+                        message = message,
+                    )
+                )
+            }
+            runtimeCoordinator.completeActiveTurn(conversationId)
+
+            if (runtimeCoordinator.finishIfIdle(conversationId)) {
+                runtimeEventBus.publish(ConversationRuntimeEvent.ExecutionCompleted(conversationId))
+                return false
+            }
+            if (!awaitExecutionCanContinue(conversationId)) {
+                runtimeCoordinator.finishIfIdle(conversationId)
+                runtimeEventBus.publish(ConversationRuntimeEvent.ExecutionCompleted(conversationId))
+                return false
+            }
+            return true
+        } catch (error: CancellationException) {
+            runtimeCoordinator.abort(conversationId)
+            runtimeEventBus.publish(ConversationRuntimeEvent.ExecutionCompleted(conversationId))
+            return false
+        } catch (error: Throwable) {
+            runtimeCoordinator.fail(conversationId)
+            runtimeEventBus.publish(
+                ConversationRuntimeEvent.ExecutionFailed(
+                    conversationId = conversationId,
+                    message = error.message ?: "Unknown conversation runtime error",
+                    type = error::class.simpleName,
+                )
+            )
+            return false
+        }
+    }
+
+    private fun runSingleTurn(
         conversationId: Conversation.Id,
         userMessage: Conversation.Message,
         agent: AgentDefinition,
     ): Flow<Conversation.Message> = flow {
+        runtimeCoordinator.markPhase(conversationId, ConversationExecutionState.Phase.BEFORE_LLM)
         val conversation = conversationService.findById(conversationId)
             ?: throw IllegalStateException("Conversation not found: $conversationId")
         val project = conversationService.getProject(conversationId)
@@ -257,6 +443,9 @@ class ConversationEngineService(
         val maxStrideIterations = 50 // Separate limit for Stride mode to prevent infinite loops
 
         while (iterationCount < maxIterations) {
+            if (!awaitExecutionCanContinue(conversationId)) {
+                break
+            }
             iterationCount++
 
             // Stride Engine: Domain-Driven State Machine
@@ -365,6 +554,7 @@ class ConversationEngineService(
 
             val runtimeResponse = try {
                 log.info { "Calling LLM runtime: model=$modelName, provider=$provider, iteration=$iterationCount" }
+                runtimeCoordinator.markPhase(conversationId, ConversationExecutionState.Phase.RUNNING_LLM)
                 runtime.call(runtimeRequest)
             } catch (e: Exception) {
                 log.error(e) { "Chat call error" }
@@ -380,6 +570,10 @@ class ConversationEngineService(
             log.info {
                 "Runtime response received: assistantMessages=${runtimeResponse.messages.size}, " +
                     "toolCalls=${runtimeResponse.toolCalls.size}, finishReason=${runtimeResponse.finishReason}"
+            }
+            runtimeCoordinator.markPhase(conversationId, ConversationExecutionState.Phase.AFTER_LLM)
+            if (runtimeCoordinator.find(conversationId)?.status == ConversationExecutionState.Status.INTERRUPTING) {
+                break
             }
 
             try {
@@ -503,6 +697,7 @@ class ConversationEngineService(
                         "modelName" to modelName
                     )
                 )
+                runtimeCoordinator.markPhase(conversationId, ConversationExecutionState.Phase.RUNNING_TOOL)
                 val executionResult = parallelToolExecutor.executeParallel(
                     toolCalls = allToolCalls,
                     toolContext = toolContext,
@@ -518,8 +713,12 @@ class ConversationEngineService(
                 )
                 emit(toolResultMessage)
                 conversationService.addMessage(conversationId, toolResultMessage)
+                runtimeCoordinator.markPhase(conversationId, ConversationExecutionState.Phase.AFTER_TOOL_RESULT)
                 if (automaticMemoryRememberEnabled) {
                     routeMessageThroughMemoryRouter(conversationId, conversation.currentThread, toolResultMessage, agent, project, memorySystemPrompts, memoryPipelineTools)
+                }
+                if (!awaitExecutionCanContinue(conversationId)) {
+                    break
                 }
 
                 if (executionResult.returnDirect) {
@@ -589,16 +788,27 @@ class ConversationEngineService(
     private suspend fun popQueuedRuntimeMessages(
         conversationId: Conversation.Id,
         placement: QueuedMessagePlacement,
-    ): List<QueuedRuntimeMessage> =
-        queuedMessagesMutex.withLock {
-            val messages = queuedMessagesByConversation[conversationId] ?: return@withLock emptyList()
-            val readyMessages = messages.filter { it.placement == placement }
-            messages.removeAll(readyMessages.toSet())
-            if (messages.isEmpty()) {
-                queuedMessagesByConversation.remove(conversationId)
+    ): List<ConversationRuntimeCommand> =
+        runtimeCoordinator.takeActiveInsertions(conversationId, placement)
+
+    private suspend fun awaitExecutionCanContinue(conversationId: Conversation.Id): Boolean {
+        while (true) {
+            val state = runtimeCoordinator.find(conversationId) ?: return true
+            when {
+                state.status == ConversationExecutionState.Status.STOPPING ||
+                    state.status == ConversationExecutionState.Status.INTERRUPTING -> return false
+
+                state.status == ConversationExecutionState.Status.PAUSED -> delay(250)
+
+                state.status == ConversationExecutionState.Status.PAUSE_REQUESTED -> {
+                    runtimeCoordinator.markPaused(conversationId)
+                    delay(250)
+                }
+
+                else -> return true
             }
-            readyMessages
         }
+    }
 
     private suspend fun emitQueuedRuntimeMessagesAtSafePoint(
         conversationId: Conversation.Id,
@@ -633,7 +843,7 @@ class ConversationEngineService(
         conversationId: Conversation.Id,
         conversation: Conversation,
         project: Project,
-        queued: QueuedRuntimeMessage,
+        queued: ConversationRuntimeCommand,
         memorySystemPrompts: List<String>,
         memoryPipelineTools: List<AiToolCallback>,
         automaticMemoryRememberEnabled: Boolean,
@@ -861,9 +1071,18 @@ class ConversationEngineService(
         return listOf(toolCallMessage, toolResultMessage)
     }
 
-    private data class QueuedRuntimeMessage(
-        val userMessage: Conversation.Message,
-        val agent: AgentDefinition,
-        val placement: QueuedMessagePlacement,
-    )
+    private fun queuedRuntimeCommand(
+        conversationId: Conversation.Id,
+        userMessage: Conversation.Message,
+        agent: AgentDefinition,
+        placement: QueuedMessagePlacement,
+    ): ConversationRuntimeCommand =
+        ConversationRuntimeCommand(
+            id = ConversationRuntimeCommand.Id(userMessage.id.value),
+            conversationId = conversationId,
+            userMessage = userMessage,
+            agent = agent,
+            placement = placement,
+            createdAt = Clock.System.now(),
+        )
 }

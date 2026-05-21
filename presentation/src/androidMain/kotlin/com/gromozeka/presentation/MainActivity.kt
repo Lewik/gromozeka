@@ -30,6 +30,7 @@ import com.gromozeka.device.telemetry.AndroidLocationPermissionRequester
 import com.gromozeka.device.telemetry.NoOpDeviceLocationService
 import com.gromozeka.presentation.services.InMemoryUIStateStore
 import com.gromozeka.presentation.services.NoOpClientAudioRecorder
+import com.gromozeka.presentation.ui.ClientPlatform
 import com.gromozeka.presentation.ui.GromozekaApp
 import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -122,6 +123,7 @@ private fun GromozekaAndroidApp(
             uiScaleMultiplier = 1.15f,
             showPromptsPanelInitially = false,
             forceCompactLayout = true,
+            clientPlatform = ClientPlatform.ANDROID,
         )
 
         startupError != null -> StartupError(startupError!!)

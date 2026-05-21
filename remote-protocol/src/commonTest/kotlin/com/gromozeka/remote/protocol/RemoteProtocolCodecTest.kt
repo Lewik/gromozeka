@@ -8,6 +8,8 @@ import com.gromozeka.domain.model.ai.AiRuntimeSelection
 import com.gromozeka.domain.model.memory.MemoryNamespace
 import com.gromozeka.domain.model.memory.MemoryScope
 import com.gromozeka.domain.model.memory.MemoryTask
+import com.gromozeka.domain.service.ConversationRuntimeCommand
+import com.gromozeka.domain.service.ConversationRuntimeControlAction
 import com.gromozeka.domain.service.QueuedMessagePlacement
 import kotlinx.datetime.Instant
 import kotlinx.serialization.json.JsonObject
@@ -227,6 +229,105 @@ class RemoteProtocolCodecTest {
         ).payload as CancelQueuedMessageRequest
 
         assertEquals("message-queued-1", decodedCancel.messageId.value)
+    }
+
+    @Test
+    fun cborRoundTripSupportsConversationSubmitAndObservation() {
+        val userMessage = Conversation.Message(
+            id = Conversation.Message.Id("message-submit-1"),
+            conversationId = Conversation.Id("conversation-submit-1"),
+            role = Conversation.Message.Role.USER,
+            content = listOf(Conversation.Message.ContentItem.UserMessage("Submit this")),
+            createdAt = Instant.parse("2026-05-20T00:00:00Z"),
+        )
+        val agent = AgentDefinition(
+            id = AgentDefinition.Id("agent-submit-1"),
+            name = "Submit Agent",
+            prompts = listOf(Prompt.Id("prompt-1")),
+            runtimeSelection = AiRuntimeSelection(AiModelConfiguration.Id("model-1")),
+            type = AgentDefinition.Type.Inline,
+            createdAt = Instant.parse("2026-05-20T00:00:00Z"),
+            updatedAt = Instant.parse("2026-05-20T00:00:00Z"),
+        )
+
+        val submitEnvelope = GromozekaClientEnvelope(
+            id = "submit-1",
+            payload = SubmitMessageRequest(
+                conversationId = Conversation.Id("conversation-submit-1"),
+                userMessage = userMessage,
+                agent = agent,
+            )
+        )
+        val decodedSubmit = RemoteProtocolCodec.decodeClientBinary(
+            RemoteProtocolCodec.encodeClientBinary(submitEnvelope)
+        ).payload as SubmitMessageRequest
+
+        assertEquals("conversation-submit-1", decodedSubmit.conversationId.value)
+        assertEquals("message-submit-1", decodedSubmit.userMessage.id.value)
+        assertEquals("Submit Agent", decodedSubmit.agent.name)
+
+        val observeEnvelope = GromozekaClientEnvelope(
+            id = "observe-1",
+            payload = ObserveConversationCommand(
+                subscriptionId = "subscription-1",
+                conversationId = Conversation.Id("conversation-submit-1"),
+            )
+        )
+        val decodedObserve = RemoteProtocolCodec.decodeClientBinary(
+            RemoteProtocolCodec.encodeClientBinary(observeEnvelope)
+        ).payload as ObserveConversationCommand
+
+        assertEquals("subscription-1", decodedObserve.subscriptionId)
+        assertEquals("conversation-submit-1", decodedObserve.conversationId.value)
+
+        val messageEnvelope = GromozekaServerEnvelope(
+            id = "subscription-1",
+            payload = MessageUpsertedEvent(
+                subscriptionId = "subscription-1",
+                conversationId = Conversation.Id("conversation-submit-1"),
+                commandId = ConversationRuntimeCommand.Id("message-submit-1"),
+                message = userMessage,
+            )
+        )
+        val decodedMessage = RemoteProtocolCodec.decodeServerBinary(
+            RemoteProtocolCodec.encodeServerBinary(messageEnvelope)
+        ).payload as MessageUpsertedEvent
+
+        assertEquals("subscription-1", decodedMessage.subscriptionId)
+        assertEquals("message-submit-1", decodedMessage.commandId?.value)
+        assertEquals("message-submit-1", decodedMessage.message.id.value)
+
+        val completedEnvelope = GromozekaServerEnvelope(
+            id = "subscription-1",
+            payload = ConversationExecutionCompletedEvent(
+                subscriptionId = "subscription-1",
+                conversationId = Conversation.Id("conversation-submit-1"),
+            )
+        )
+        val decodedCompleted = RemoteProtocolCodec.decodeServerBinary(
+            RemoteProtocolCodec.encodeServerBinary(completedEnvelope)
+        ).payload as ConversationExecutionCompletedEvent
+
+        assertEquals("subscription-1", decodedCompleted.subscriptionId)
+        assertEquals("conversation-submit-1", decodedCompleted.conversationId.value)
+    }
+
+    @Test
+    fun cborRoundTripSupportsRuntimeControlRequest() {
+        val envelope = GromozekaClientEnvelope(
+            id = "control-runtime-1",
+            payload = ControlConversationRuntimeRequest(
+                conversationId = Conversation.Id("conversation-control-1"),
+                action = ConversationRuntimeControlAction.PAUSE,
+            )
+        )
+
+        val decoded = RemoteProtocolCodec.decodeClientBinary(
+            RemoteProtocolCodec.encodeClientBinary(envelope)
+        ).payload as ControlConversationRuntimeRequest
+
+        assertEquals("conversation-control-1", decoded.conversationId.value)
+        assertEquals(ConversationRuntimeControlAction.PAUSE, decoded.action)
     }
 
     @Test

@@ -57,6 +57,7 @@ fun GromozekaApp(
     uiScaleMultiplier: Float = 1f,
     showPromptsPanelInitially: Boolean = true,
     forceCompactLayout: Boolean = false,
+    clientPlatform: ClientPlatform = ClientPlatform.DESKTOP,
 ) {
     val currentTheme by appComponents.themeService.currentTheme.collectAsState()
     GromozekaTheme(currentTheme = currentTheme) {
@@ -68,6 +69,7 @@ fun GromozekaApp(
                 uiScaleMultiplier = uiScaleMultiplier,
                 showPromptsPanelInitially = showPromptsPanelInitially,
                 forceCompactLayout = forceCompactLayout,
+                clientPlatform = clientPlatform,
             )
         }
     }
@@ -80,6 +82,7 @@ fun GromozekaAppContent(
     uiScaleMultiplier: Float = 1f,
     showPromptsPanelInitially: Boolean = true,
     forceCompactLayout: Boolean = false,
+    clientPlatform: ClientPlatform = ClientPlatform.DESKTOP,
 ) {
     val log = KLoggers.logger("ChatWindow")
     val coroutineScope = rememberCoroutineScope()
@@ -403,7 +406,8 @@ fun GromozekaAppContent(
                                                         },
                                                         onShowPromptsPanelChange = setPromptsPanel,
                                                         isDev = appComponents.settingsService.mode == AppMode.DEV,
-                                                        isCompactLayout = isCompactLayout
+                                                        isCompactLayout = isCompactLayout,
+                                                        clientPlatform = clientPlatform,
                                                     )
                                                 } else {
                                                     Box(modifier = Modifier.padding(contentPadding)) {

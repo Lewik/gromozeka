@@ -15,6 +15,8 @@ import com.gromozeka.domain.model.SquashType
 import com.gromozeka.domain.model.TokenUsageStatistics
 import com.gromozeka.domain.model.ai.AiRuntimeAssignment
 import com.gromozeka.domain.service.ConversationDomainService
+import com.gromozeka.domain.service.ConversationRuntimeControlAction
+import com.gromozeka.domain.service.ConversationRuntimeEvent
 import com.gromozeka.domain.service.ConversationRuntimeService
 import com.gromozeka.domain.service.ConversationTokenStatsService
 import com.gromozeka.domain.service.MessageSquashGenerationService
@@ -22,7 +24,9 @@ import com.gromozeka.domain.service.QueuedMessagePlacement
 import com.gromozeka.domain.service.SettingsService
 import com.gromozeka.shared.uuid.uuid7
 import klog.KLoggers
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
@@ -49,8 +53,19 @@ class TabViewModel(
     var jsonToShow by mutableStateOf<String?>(null)
 
     private var currentRequestJob: kotlinx.coroutines.Job? = null
+    private var lastRuntimeMessage: Conversation.Message? = null
 
     companion object {
+        private const val MID_TURN_STEER_INSTRUCTION_ID = "mid_turn_steer"
+
+        private val MID_TURN_STEER_INSTRUCTION = Conversation.Message.Instruction.UserInstruction(
+            id = MID_TURN_STEER_INSTRUCTION_ID,
+            title = "Live steering update",
+            description = "This user message was submitted while the assistant was already working. " +
+                "Treat it as additional steering for the active turn and incorporate it at the next safe boundary, " +
+                "usually after the current tool result. Do not restart or discard completed work unless the user explicitly asks."
+        )
+
         private val ALL_MESSAGE_TAG_DEFINITIONS = listOf(
             MessageTagDefinition(
                 controls = listOf(
@@ -91,15 +106,14 @@ class TabViewModel(
 
     private val _isWaitingForResponse = MutableStateFlow(false)
     val isWaitingForResponse: StateFlow<Boolean> = _isWaitingForResponse.asStateFlow()
+    private val _executionPauseRequested = MutableStateFlow(false)
+    val executionPauseRequested: StateFlow<Boolean> = _executionPauseRequested.asStateFlow()
 
     private val _pendingMessages = MutableStateFlow<List<PendingUserMessage>>(emptyList())
     val pendingMessages: StateFlow<List<PendingUserMessage>> = _pendingMessages.asStateFlow()
     val pendingMessagesCount: StateFlow<Int> = pendingMessages
         .map { it.size }
         .stateIn(scope, SharingStarted.Eagerly, 0)
-    private val _queuePlacementPreference = MutableStateFlow(QueuedMessagePlacement.AFTER_TOOL_RESULT)
-    val queuePlacementPreference: StateFlow<QueuedMessagePlacement> = _queuePlacementPreference.asStateFlow()
-
     private val _tokenStats = MutableStateFlow<TokenUsageStatistics.ThreadTotals?>(null)
     val tokenStats: StateFlow<TokenUsageStatistics.ThreadTotals?> = _tokenStats.asStateFlow()
 
@@ -111,6 +125,10 @@ class TabViewModel(
 
     init {
         _uiState.update { it.copy(isWaitingForResponse = false) }
+
+        scope.launch(start = CoroutineStart.UNDISPATCHED) {
+            observeRuntimeEvents()
+        }
 
         scope.launch {
             loadMessages()
@@ -138,29 +156,119 @@ class TabViewModel(
         try {
             val messages = conversationService.loadCurrentMessages(conversationId)
             _allMessages.value = messages
-            
-            // Collapse Thinking blocks by default
-            val collapsedItems = mutableMapOf<Conversation.Message.Id, Set<Int>>()
-            messages.forEach { message ->
-                val thinkingIndices = message.content.mapIndexedNotNull { index, item ->
-                    if ((item as? Conversation.Message.ContentItem.Thinking)?.isVisible == true) index else null
-                }.toSet()
-                
-                if (thinkingIndices.isNotEmpty()) {
-                    collapsedItems[message.id] = thinkingIndices
-                }
-            }
-            
-            if (collapsedItems.isNotEmpty()) {
-                _uiState.update { currentState ->
-                    currentState.copy(collapsedContentItems = currentState.collapsedContentItems + collapsedItems)
-                }
-            }
-            
+            collapseVisibleThinkingBlocks(messages, onlyWhenNoManualState = false)
+
             log.debug { "Loaded ${messages.size} messages for conversation $conversationId" }
         } catch (e: Exception) {
             log.error(e) { "Failed to load messages for conversation $conversationId" }
         }
+    }
+
+    private suspend fun observeRuntimeEvents() {
+        try {
+            conversationRuntimeService.observeConversation(conversationId).collect { event ->
+                handleRuntimeEvent(event)
+            }
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Exception) {
+            log.error(error) { "Conversation runtime observation failed for $conversationId" }
+            _isWaitingForResponse.value = false
+            _executionPauseRequested.value = false
+            _uiState.update { it.copy(isWaitingForResponse = false) }
+        }
+    }
+
+    private suspend fun handleRuntimeEvent(event: ConversationRuntimeEvent) {
+        when (event) {
+            is ConversationRuntimeEvent.MessageEmitted -> {
+                _isWaitingForResponse.value = true
+                _uiState.update { it.copy(isWaitingForResponse = true) }
+                upsertRuntimeMessage(event.message)
+            }
+            is ConversationRuntimeEvent.ExecutionCompleted -> finishRuntimeExecution()
+            is ConversationRuntimeEvent.ExecutionFailed -> {
+                log.error { "Conversation runtime failed: ${event.type ?: "unknown"} ${event.message}" }
+                soundNotificationService.playErrorSound()
+                finishRuntimeExecution(playCompletionSound = false)
+            }
+        }
+    }
+
+    private suspend fun upsertRuntimeMessage(message: Conversation.Message) {
+        _pendingMessages.update { pendingMessages ->
+            pendingMessages.filterNot { it.userMessage.id == message.id }
+        }
+
+        val messages = _allMessages.value.toMutableList()
+        val existingIndex = messages.indexOfFirst { it.id == message.id }
+
+        if (existingIndex != -1) {
+            messages[existingIndex] = message
+            log.debug { "Updated existing message ${message.id}" }
+        } else {
+            messages.add(message)
+            log.debug { "Added new message ${message.id}" }
+        }
+
+        collapseVisibleThinkingBlocks(listOf(message), onlyWhenNoManualState = true)
+        _allMessages.value = messages
+        lastRuntimeMessage = message
+
+        if (message.error != null) {
+            log.error { "Stream error: ${message.error}" }
+            log.error { "Message with error: id=${message.id}, role=${message.role}, content.size=${message.content.size}" }
+            soundNotificationService.playErrorSound()
+        }
+    }
+
+    private fun collapseVisibleThinkingBlocks(
+        messages: List<Conversation.Message>,
+        onlyWhenNoManualState: Boolean,
+    ) {
+        val collapsedItems = messages.mapNotNull { message ->
+            val thinkingIndices = message.content.mapIndexedNotNull { index, item ->
+                if ((item as? Conversation.Message.ContentItem.Thinking)?.isVisible == true) index else null
+            }.toSet()
+
+            if (thinkingIndices.isEmpty()) null else message.id to thinkingIndices
+        }.toMap()
+
+        if (collapsedItems.isEmpty()) {
+            return
+        }
+
+        _uiState.update { currentState ->
+            val updated = collapsedItems.entries.fold(currentState.collapsedContentItems) { currentCollapsed, (messageId, indices) ->
+                if (onlyWhenNoManualState && !currentCollapsed[messageId].isNullOrEmpty()) {
+                    currentCollapsed
+                } else {
+                    currentCollapsed + (messageId to indices)
+                }
+            }
+            currentState.copy(collapsedContentItems = updated)
+        }
+    }
+
+    private suspend fun finishRuntimeExecution(playCompletionSound: Boolean = true) {
+        val lastMessage = lastRuntimeMessage
+        if (playCompletionSound && lastMessage != null) {
+            if (ChatMessageSoundDetector.shouldPlayErrorSound(lastMessage)) {
+                soundNotificationService.playErrorSound()
+            } else if (ChatMessageSoundDetector.shouldPlayMessageSound(lastMessage)) {
+                soundNotificationService.playMessageSound()
+            }
+        }
+
+        soundNotificationService.playReadySound()
+        loadTokenStats()
+        notifyMemoryTasksMayHaveChanged()
+        log.debug { "Conversation runtime completed" }
+        currentRequestJob = null
+        lastRuntimeMessage = null
+        _isWaitingForResponse.value = false
+        _executionPauseRequested.value = false
+        _uiState.update { it.copy(isWaitingForResponse = false) }
     }
 
     private suspend fun loadTokenStats() {
@@ -254,10 +362,6 @@ class TabViewModel(
         }
     }
 
-    fun updateQueuePlacementPreference(placement: QueuedMessagePlacement) {
-        _queuePlacementPreference.value = placement
-    }
-
     suspend fun toggleStrideMode() {
         try {
             val currentValue = _strideEnabled.value
@@ -288,30 +392,14 @@ class TabViewModel(
         val queuedMessage = createPendingUserMessage(message, additionalInstructions)
 
         if (currentRequestJob?.isActive == true || _isWaitingForResponse.value) {
-            val preferredPlacement = _queuePlacementPreference.value
-            val runtimeAccepted = if (preferredPlacement == QueuedMessagePlacement.AFTER_TOOL_RESULT) {
-                runCatching {
-                    conversationRuntimeService.enqueueMessage(
-                        conversationId = conversationId,
-                        userMessage = queuedMessage.userMessage,
-                        agent = queuedMessage.agent,
-                        placement = QueuedMessagePlacement.AFTER_TOOL_RESULT
-                    )
-                }.onFailure { error ->
-                    log.warn(error) { "Runtime queue rejected message for conversation $conversationId: ${error.message}" }
-                }.getOrDefault(false)
+            if (enqueuePendingMessage(queuedMessage)) {
+                _pendingMessages.update { it + queuedMessage }
+                _uiState.update { it.copy(userInput = "") }
+                log.info {
+                    "Queued user message for conversation $conversationId because previous request is still running"
+                }
             } else {
-                false
-            }
-
-            _pendingMessages.update {
-                it + queuedMessage.copy(
-                    placement = if (runtimeAccepted) QueuedMessagePlacement.AFTER_TOOL_RESULT else QueuedMessagePlacement.END_OF_TURN
-                )
-            }
-            _uiState.update { it.copy(userInput = "") }
-            log.info {
-                "Queued user message for conversation $conversationId because previous request is still running, runtimeAccepted=$runtimeAccepted"
+                log.warn { "Runtime queue rejected end-of-turn message for conversation $conversationId" }
             }
             return
         }
@@ -340,6 +428,47 @@ class TabViewModel(
             message.cancelRuntimeQueueIfNeeded()
         }
         _uiState.update { it.copy(userInput = message.text) }
+    }
+
+    fun sendPendingMessageInCurrentTurn(messageId: String) {
+        val pendingMessage = _pendingMessages.value.firstOrNull { it.id == messageId } ?: return
+        if (pendingMessage.placement == QueuedMessagePlacement.AFTER_TOOL_RESULT) {
+            return
+        }
+
+        val steeredMessage = pendingMessage.withMidTurnSteerInstruction()
+        _pendingMessages.update { messages ->
+            messages.map { message ->
+                if (message.id == messageId) steeredMessage else message
+            }
+        }
+        scope.launch {
+            val runtimeAccepted = runCatching {
+                conversationRuntimeService.enqueueMessage(
+                    conversationId = conversationId,
+                    userMessage = steeredMessage.userMessage,
+                    agent = steeredMessage.agent,
+                    placement = QueuedMessagePlacement.AFTER_TOOL_RESULT
+                )
+            }.onFailure { error ->
+                log.warn(error) {
+                    "Runtime queue rejected live steering message for conversation $conversationId: ${error.message}"
+                }
+            }.getOrDefault(false)
+
+            if (!runtimeAccepted) {
+                _pendingMessages.update { messages ->
+                    messages.map { message ->
+                        if (message.id == messageId && message.placement == QueuedMessagePlacement.AFTER_TOOL_RESULT) {
+                            pendingMessage
+                        } else {
+                            message
+                        }
+                    }
+                }
+                return@launch
+            }
+        }
     }
 
     private fun createPendingUserMessage(
@@ -381,119 +510,78 @@ class TabViewModel(
 
     private fun sendPendingMessageToSession(
         pendingMessage: PendingUserMessage,
-        fromQueue: Boolean = false,
     ) {
-        if (!fromQueue && (currentRequestJob?.isActive == true || _isWaitingForResponse.value)) {
-            _pendingMessages.update { it + pendingMessage }
+        if (currentRequestJob?.isActive == true || _isWaitingForResponse.value) {
+            scope.launch {
+                if (enqueuePendingMessage(pendingMessage)) {
+                    _pendingMessages.update { it + pendingMessage }
+                }
+            }
             return
         }
 
         val userMessage = pendingMessage.userMessage
 
         _allMessages.value += userMessage
+        lastRuntimeMessage = null
         _isWaitingForResponse.value = true
+        _executionPauseRequested.value = false
         _uiState.update { it.copy(userInput = "", isWaitingForResponse = true) }
 
         currentRequestJob = scope.launch {
-            var requestFailed = false
             try {
-                log.debug { "Sending message to conversation $conversationId" }
-
-                var lastMessage: Conversation.Message? = null
-
-                conversationRuntimeService.sendMessage(conversationId, userMessage, pendingMessage.agent)
-                    .collect { message ->
-                        _pendingMessages.update { pendingMessages ->
-                            pendingMessages.filterNot { it.userMessage.id == message.id }
-                        }
-                        val messages = _allMessages.value.toMutableList()
-
-                        val existingIndex = messages.indexOfFirst { it.id == message.id }
-
-                        if (existingIndex != -1) {
-                            messages[existingIndex] = message
-                            log.debug { "Updated existing message ${message.id}" }
-                        } else {
-                            messages.add(message)
-                            log.debug { "Added new message ${message.id}" }
-                        }
-
-                        // Collapse Thinking blocks by default in new messages
-                        val thinkingIndices = message.content.mapIndexedNotNull { index, item ->
-                            if ((item as? Conversation.Message.ContentItem.Thinking)?.isVisible == true) index else null
-                        }.toSet()
-                        
-                        if (thinkingIndices.isNotEmpty()) {
-                            _uiState.update { currentState ->
-                                val currentCollapsed = currentState.collapsedContentItems[message.id] ?: emptySet()
-                                if (currentCollapsed.isEmpty()) {
-                                    // Only auto-collapse if no manual state exists
-                                    currentState.copy(
-                                        collapsedContentItems = currentState.collapsedContentItems + (message.id to thinkingIndices)
-                                    )
-                                } else {
-                                    currentState
-                                }
-                            }
-                        }
-
-                        _allMessages.value = messages
-                        lastMessage = message
-
-                        if (message.error != null) {
-                            log.error { "Stream error: ${message.error}" }
-                            log.error { "Message with error: id=${message.id}, role=${message.role}, content.size=${message.content.size}" }
-                            soundNotificationService.playErrorSound()
-                        }
+                log.debug { "Submitting message to conversation $conversationId" }
+                val accepted = conversationRuntimeService.submitMessage(conversationId, userMessage, pendingMessage.agent)
+                if (!accepted) {
+                    _allMessages.update { messages ->
+                        messages.filterNot { it.id == userMessage.id }
                     }
-
-                if (lastMessage != null) {
-                    if (ChatMessageSoundDetector.shouldPlayErrorSound(lastMessage)) {
-                        soundNotificationService.playErrorSound()
-                    } else if (ChatMessageSoundDetector.shouldPlayMessageSound(lastMessage)) {
-                        soundNotificationService.playMessageSound()
-                    }
+                    _isWaitingForResponse.value = false
+                    _uiState.update { it.copy(userInput = pendingMessage.text, isWaitingForResponse = false) }
+                    log.warn { "Runtime rejected submitted message for conversation $conversationId" }
                 }
-
-                soundNotificationService.playReadySound()
-                loadTokenStats()
-                notifyMemoryTasksMayHaveChanged()
-                log.debug { "Message sent successfully" }
             } catch (e: Exception) {
-                requestFailed = true
-                log.error(e) { "Failed to send message" }
+                _allMessages.update { messages ->
+                    messages.filterNot { it.id == userMessage.id }
+                }
+                _isWaitingForResponse.value = false
+                _uiState.update { it.copy(userInput = pendingMessage.text, isWaitingForResponse = false) }
+                log.error(e) { "Failed to submit message" }
             } finally {
                 currentRequestJob = null
-                val nextMessage = if (requestFailed) null else popNextPendingMessage()
-                if (nextMessage != null) {
-                    nextMessage.cancelRuntimeQueueIfNeeded()
-                    sendPendingMessageToSession(nextMessage.copy(placement = QueuedMessagePlacement.END_OF_TURN), fromQueue = true)
-                } else {
-                    _isWaitingForResponse.value = false
-                    _uiState.update { it.copy(isWaitingForResponse = false) }
-                }
             }
         }
     }
 
-    private fun popNextPendingMessage(): PendingUserMessage? {
-        var nextMessage: PendingUserMessage? = null
-        _pendingMessages.update { messages ->
-            nextMessage = messages.firstOrNull()
-            if (nextMessage == null) {
-                messages
-            } else {
-                messages.drop(1)
+    private suspend fun enqueuePendingMessage(pendingMessage: PendingUserMessage): Boolean =
+        runCatching {
+            conversationRuntimeService.enqueueMessage(
+                conversationId = conversationId,
+                userMessage = pendingMessage.userMessage,
+                agent = pendingMessage.agent,
+                placement = pendingMessage.placement
+            )
+        }.onFailure { error ->
+            log.warn(error) {
+                "Runtime queue request failed for conversation $conversationId: ${error.message}"
             }
-        }
-        return nextMessage
-    }
+        }.getOrDefault(false)
 
     private suspend fun PendingUserMessage.cancelRuntimeQueueIfNeeded() {
-        if (placement != QueuedMessagePlacement.AFTER_TOOL_RESULT) {
-            return
-        }
         conversationRuntimeService.cancelQueuedMessage(conversationId, userMessage.id)
+    }
+
+    private fun PendingUserMessage.withMidTurnSteerInstruction(): PendingUserMessage {
+        val instructions = userMessage.instructions
+            .filterNot { instruction ->
+                instruction is Conversation.Message.Instruction.UserInstruction &&
+                    instruction.id == MID_TURN_STEER_INSTRUCTION_ID
+            } + MID_TURN_STEER_INSTRUCTION
+
+        return copy(
+            userMessage = userMessage.copy(instructions = instructions),
+            placement = QueuedMessagePlacement.AFTER_TOOL_RESULT,
+        )
     }
 
     fun notifyMemoryTasksMayHaveChanged() {
@@ -503,10 +591,60 @@ class TabViewModel(
     fun interrupt() {
         log.debug { "Interrupting current request for conversation $conversationId" }
         _pendingMessages.value = emptyList()
+        _executionPauseRequested.value = false
+        scope.launch {
+            runCatching {
+                conversationRuntimeService.controlExecution(conversationId, ConversationRuntimeControlAction.INTERRUPT)
+            }.onFailure { error ->
+                log.warn(error) { "Runtime interrupt request failed for conversation $conversationId: ${error.message}" }
+            }
+        }
         currentRequestJob?.cancel()
         currentRequestJob = null
+        lastRuntimeMessage = null
         _isWaitingForResponse.value = false
         _uiState.update { it.copy(isWaitingForResponse = false) }
+    }
+
+    fun pauseExecution() {
+        scope.launch {
+            val accepted = runCatching {
+                conversationRuntimeService.controlExecution(conversationId, ConversationRuntimeControlAction.PAUSE)
+            }.onFailure { error ->
+                log.warn(error) { "Runtime pause request failed for conversation $conversationId: ${error.message}" }
+            }.getOrDefault(false)
+            if (accepted) {
+                _executionPauseRequested.value = true
+            }
+        }
+    }
+
+    fun resumeExecution() {
+        scope.launch {
+            val accepted = runCatching {
+                conversationRuntimeService.controlExecution(conversationId, ConversationRuntimeControlAction.RESUME)
+            }.onFailure { error ->
+                log.warn(error) { "Runtime resume request failed for conversation $conversationId: ${error.message}" }
+            }.getOrDefault(false)
+            if (accepted) {
+                _executionPauseRequested.value = false
+            }
+        }
+    }
+
+    fun stopExecution() {
+        scope.launch {
+            val accepted = runCatching {
+                conversationRuntimeService.controlExecution(conversationId, ConversationRuntimeControlAction.STOP)
+            }.onFailure { error ->
+                log.warn(error) { "Runtime stop request failed for conversation $conversationId: ${error.message}" }
+            }.getOrDefault(false)
+            if (accepted) {
+                _pendingMessages.value = emptyList()
+                _executionPauseRequested.value = false
+                lastRuntimeMessage = null
+            }
+        }
     }
 
     suspend fun captureAndAddToInput() {

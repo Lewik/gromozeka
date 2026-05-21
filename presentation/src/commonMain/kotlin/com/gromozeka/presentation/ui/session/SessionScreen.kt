@@ -33,6 +33,7 @@ import com.gromozeka.domain.model.Settings
 import com.gromozeka.domain.service.QueuedMessagePlacement
 import com.gromozeka.presentation.services.PttEventHandler
 import com.gromozeka.presentation.services.TtsQueue
+import com.gromozeka.presentation.ui.ClientPlatform
 import com.gromozeka.presentation.ui.CompactButton
 import com.gromozeka.presentation.ui.LocalTranslation
 import com.gromozeka.presentation.ui.ToggleButtonGroup
@@ -87,6 +88,7 @@ fun SessionScreen(
     // Dev mode
     isDev: Boolean = false,
     isCompactLayout: Boolean = false,
+    clientPlatform: ClientPlatform = ClientPlatform.DESKTOP,
 ) {
     // UI state management - LazyColumn state instead of scroll state
     val lazyListState = rememberLazyListState()
@@ -96,9 +98,9 @@ fun SessionScreen(
     val filteredHistory by viewModel.filteredMessages.collectAsState()
     val toolResultsMap by viewModel.toolResultsMap.collectAsState()
     val isWaitingForResponse by viewModel.isWaitingForResponse.collectAsState()
+    val executionPauseRequested by viewModel.executionPauseRequested.collectAsState()
     val pendingMessagesCount by viewModel.pendingMessagesCount.collectAsState()
     val pendingMessages by viewModel.pendingMessages.collectAsState()
-    val queuePlacementPreference by viewModel.queuePlacementPreference.collectAsState()
     val uiState by viewModel.uiState.collectAsState()
     val userInput = uiState.userInput
     val jsonToShow = viewModel.jsonToShow
@@ -538,11 +540,22 @@ fun SessionScreen(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 DisableSelection {
-                    ConversationProgressStrip(
+                    PendingMessagesPanel(
                         isWaitingForResponse = isWaitingForResponse,
                         pendingMessages = pendingMessages,
-                        queuePlacementPreference = queuePlacementPreference,
-                        onQueuePlacementPreferenceChange = viewModel::updateQueuePlacementPreference,
+                        onSendInCurrentTurn = viewModel::sendPendingMessageInCurrentTurn,
+                        onEdit = viewModel::editPendingMessage,
+                        onCancel = viewModel::cancelPendingMessage,
+                    )
+
+                    ConversationProgressStrip(
+                        isWaitingForResponse = isWaitingForResponse,
+                        executionPauseRequested = executionPauseRequested,
+                        pendingMessages = pendingMessages,
+                        onPause = viewModel::pauseExecution,
+                        onResume = viewModel::resumeExecution,
+                        onStop = viewModel::stopExecution,
+                        onInterrupt = viewModel::interrupt,
                     )
 
                     MessageInput(
@@ -557,14 +570,9 @@ fun SessionScreen(
                         pttEventHandler = pttEventHandler,
                         isRecording = isRecording,
                         showPttButton = settings.userProfile.speechSettings.speechToText.enabled,
+                        clientPlatform = clientPlatform,
                         pttStatusMessage = pttStatusMessage,
                         contextPercentage = contextPercentage
-                    )
-
-                    PendingMessagesPanel(
-                        pendingMessages = pendingMessages,
-                        onEdit = viewModel::editPendingMessage,
-                        onCancel = viewModel::cancelPendingMessage,
                     )
 
                     // Message Tags and Screenshot button
@@ -753,21 +761,40 @@ fun SessionScreen(
 @Composable
 private fun ConversationProgressStrip(
     isWaitingForResponse: Boolean,
+    executionPauseRequested: Boolean,
     pendingMessages: List<PendingUserMessage>,
-    queuePlacementPreference: QueuedMessagePlacement,
-    onQueuePlacementPreferenceChange: (QueuedMessagePlacement) -> Unit,
+    onPause: () -> Unit,
+    onResume: () -> Unit,
+    onStop: () -> Unit,
+    onInterrupt: () -> Unit,
 ) {
-    if (!isWaitingForResponse && pendingMessages.isEmpty()) {
-        return
-    }
-
+    val isReady = !isWaitingForResponse && pendingMessages.isEmpty()
     val statusText = when {
+        executionPauseRequested ->
+            "Пауза запрошена. Агент остановится на ближайшей безопасной границе."
         isWaitingForResponse && pendingMessages.isNotEmpty() ->
-            "Агент отвечает. В очереди ${pendingMessages.size}; следующее уйдет после текущего ответа."
+            "Агент отвечает. В очереди ${pendingMessages.size}."
         isWaitingForResponse ->
-            "Агент отвечает..."
-        else ->
+            "Агент отвечает. Можно отправить уточнение или поставить сообщение в очередь."
+        pendingMessages.isNotEmpty() ->
             "В очереди ${pendingMessages.size}"
+        else ->
+            "Готов к отправке"
+    }
+    val containerColor = if (isReady) {
+        MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.35f)
+    } else {
+        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
+    }
+    val contentColor = if (isReady) {
+        MaterialTheme.colorScheme.onSecondaryContainer
+    } else {
+        MaterialTheme.colorScheme.onSurfaceVariant
+    }
+    val icon = when {
+        isReady -> Icons.Default.CheckCircle
+        pendingMessages.isEmpty() -> Icons.Default.HourglassTop
+        else -> Icons.Default.PlaylistAddCheck
     }
 
     Surface(
@@ -775,7 +802,7 @@ private fun ConversationProgressStrip(
             .fillMaxWidth()
             .padding(bottom = 6.dp)
             .testTag(UiTestTag.ConversationProgressStrip.value),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+        color = containerColor,
         shape = MaterialTheme.shapes.small,
     ) {
         Row(
@@ -783,9 +810,9 @@ private fun ConversationProgressStrip(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
-                imageVector = if (pendingMessages.isEmpty()) Icons.Default.HourglassTop else Icons.Default.PlaylistAddCheck,
+                imageVector = icon,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
+                tint = if (isReady) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(16.dp)
             )
             Spacer(modifier = Modifier.width(8.dp))
@@ -794,50 +821,52 @@ private fun ConversationProgressStrip(
                 modifier = Modifier.weight(1f),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                style = MaterialTheme.typography.bodyMedium,
+                color = contentColor
             )
             if (isWaitingForResponse) {
-                Spacer(modifier = Modifier.width(8.dp))
-                QueuePlacementButton(
-                    text = "После инструмента",
-                    selected = queuePlacementPreference == QueuedMessagePlacement.AFTER_TOOL_RESULT,
-                    onClick = { onQueuePlacementPreferenceChange(QueuedMessagePlacement.AFTER_TOOL_RESULT) },
-                )
-                QueuePlacementButton(
-                    text = "После ответа",
-                    selected = queuePlacementPreference == QueuedMessagePlacement.END_OF_TURN,
-                    onClick = { onQueuePlacementPreferenceChange(QueuedMessagePlacement.END_OF_TURN) },
-                )
+                if (executionPauseRequested) {
+                    TextButton(onClick = onResume) {
+                        Text("Продолжить")
+                    }
+                } else {
+                    TextButton(onClick = onPause) {
+                        Text("Пауза")
+                    }
+                }
+                TextButton(onClick = onStop) {
+                    Text("Стоп")
+                }
+                TextButton(onClick = onInterrupt) {
+                    Text("Прервать")
+                }
             }
         }
     }
 }
 
-@Composable
-private fun QueuePlacementButton(
-    text: String,
-    selected: Boolean,
-    onClick: () -> Unit,
-) {
-    TextButton(
-        onClick = onClick,
-        colors = if (selected) {
-            ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.primary)
-        } else {
-            ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-    ) {
-        Text(
-            text = text,
-            style = MaterialTheme.typography.labelSmall,
-        )
+private fun queuePlacementDescription(placement: QueuedMessagePlacement): String =
+    when (placement) {
+        QueuedMessagePlacement.AFTER_TOOL_RESULT -> "Будет передано в текущий ход после ближайшего результата инструмента"
+        QueuedMessagePlacement.END_OF_TURN -> "В очереди: отправится после текущего ответа"
     }
-}
+
+private fun pendingMessageOrder(placement: QueuedMessagePlacement): Int =
+    when (placement) {
+        QueuedMessagePlacement.AFTER_TOOL_RESULT -> 0
+        QueuedMessagePlacement.END_OF_TURN -> 1
+    }
+
+private fun List<PendingUserMessage>.orderedForDisplay(): List<PendingUserMessage> =
+    withIndex()
+        .sortedWith(compareBy({ pendingMessageOrder(it.value.placement) }, { it.index }))
+        .map { it.value }
 
 @Composable
 private fun PendingMessagesPanel(
+    isWaitingForResponse: Boolean,
     pendingMessages: List<PendingUserMessage>,
+    onSendInCurrentTurn: (String) -> Unit,
     onEdit: (String) -> Unit,
     onCancel: (String) -> Unit,
 ) {
@@ -845,10 +874,14 @@ private fun PendingMessagesPanel(
         return
     }
 
-    Spacer(modifier = Modifier.height(6.dp))
+    val orderedMessages = pendingMessages.orderedForDisplay()
+    val steeringMessages = orderedMessages.filter { it.placement == QueuedMessagePlacement.AFTER_TOOL_RESULT }
+    val queuedMessages = orderedMessages.filter { it.placement == QueuedMessagePlacement.END_OF_TURN }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
+            .padding(bottom = 6.dp)
             .testTag(UiTestTag.PendingMessagesPanel.value),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.35f)
@@ -864,37 +897,78 @@ private fun PendingMessagesPanel(
                 color = MaterialTheme.colorScheme.onSecondaryContainer
             )
 
-            pendingMessages.forEachIndexed { index, message ->
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "${index + 1}. ${message.text}",
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        Text(
-                            text = when (message.placement) {
-                                QueuedMessagePlacement.AFTER_TOOL_RESULT -> "Уйдет после ближайшего результата инструмента"
-                                QueuedMessagePlacement.END_OF_TURN -> "Уйдет после текущего ответа"
-                            },
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    TextButton(onClick = { onEdit(message.id) }) {
-                        Text("Править")
-                    }
-                    TextButton(onClick = { onCancel(message.id) }) {
-                        Text("Убрать")
-                    }
+            PendingMessageGroup(
+                title = "Уточнение текущего хода",
+                messages = steeringMessages,
+                firstIndex = 1,
+                isWaitingForResponse = isWaitingForResponse,
+                onSendInCurrentTurn = onSendInCurrentTurn,
+                onEdit = onEdit,
+                onCancel = onCancel,
+            )
+            PendingMessageGroup(
+                title = "После ответа",
+                messages = queuedMessages,
+                firstIndex = steeringMessages.size + 1,
+                isWaitingForResponse = isWaitingForResponse,
+                onSendInCurrentTurn = onSendInCurrentTurn,
+                onEdit = onEdit,
+                onCancel = onCancel,
+            )
+        }
+    }
+}
+
+@Composable
+private fun PendingMessageGroup(
+    title: String,
+    messages: List<PendingUserMessage>,
+    firstIndex: Int,
+    isWaitingForResponse: Boolean,
+    onSendInCurrentTurn: (String) -> Unit,
+    onEdit: (String) -> Unit,
+    onCancel: (String) -> Unit,
+) {
+    if (messages.isEmpty()) {
+        return
+    }
+
+    Text(
+        text = title,
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.85f)
+    )
+    messages.forEachIndexed { index, message ->
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "${firstIndex + index}. ${message.text}",
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = queuePlacementDescription(message.placement),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            if (isWaitingForResponse && message.placement == QueuedMessagePlacement.END_OF_TURN) {
+                TextButton(onClick = { onSendInCurrentTurn(message.id) }) {
+                    Text("В текущий ход")
                 }
+            }
+            TextButton(onClick = { onEdit(message.id) }) {
+                Text("Править")
+            }
+            TextButton(onClick = { onCancel(message.id) }) {
+                Text("Убрать")
             }
         }
     }

@@ -38,6 +38,7 @@ import com.gromozeka.domain.model.memory.MemoryUpdateBatch
 import com.gromozeka.domain.model.memory.NoteConsolidationResult
 import com.gromozeka.domain.service.AiToolProvider
 import com.gromozeka.domain.service.ConversationDomainService
+import com.gromozeka.domain.service.ConversationRuntimeEvent
 import com.gromozeka.domain.service.PromptDomainService
 import com.gromozeka.domain.tool.AiToolCallback
 import com.gromozeka.domain.model.Settings
@@ -64,7 +65,11 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 import kotlin.test.fail
 import klog.KLoggers
-import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import kotlinx.datetime.Clock
@@ -1088,11 +1093,7 @@ class MemoryRealModelE2eTest {
     ): SentUserTurn {
         val userMessage = buildUserMessage(conversation.id, text)
         val messages = withMemoryRoutingFailFast(memoryRoutingFailFast) {
-            conversationEngineService.sendMessage(
-                conversationId = conversation.id,
-                userMessage = userMessage,
-                agent = agent,
-            ).toList()
+            collectSubmittedTurn(conversationEngineService, conversation, agent, userMessage)
         }
 
         return SentUserTurn(
@@ -1100,6 +1101,44 @@ class MemoryRealModelE2eTest {
             memoryReadTrace = traceCollector.take(userMessage.id),
             memoryWriteTrace = writeTraceCollector.take(userMessage.id),
         )
+    }
+
+    private suspend fun collectSubmittedTurn(
+        conversationEngineService: ConversationEngineService,
+        conversation: Conversation,
+        agent: AgentDefinition,
+        userMessage: Conversation.Message,
+    ): List<Conversation.Message> = coroutineScope {
+        val emittedMessages = mutableListOf<Conversation.Message>()
+        val completed = CompletableDeferred<Unit>()
+        val observer = launch(start = CoroutineStart.UNDISPATCHED) {
+            conversationEngineService.observeConversation(conversation.id).collect { event ->
+                when (event) {
+                    is ConversationRuntimeEvent.MessageEmitted -> emittedMessages.add(event.message)
+                    is ConversationRuntimeEvent.ExecutionCompleted -> completed.complete(Unit)
+                    is ConversationRuntimeEvent.ExecutionFailed -> completed.completeExceptionally(
+                        IllegalStateException("${event.type ?: "ConversationRuntimeError"}: ${event.message}")
+                    )
+                }
+            }
+        }
+
+        try {
+            assertTrue(
+                conversationEngineService.submitMessage(
+                    conversationId = conversation.id,
+                    userMessage = userMessage,
+                    agent = agent,
+                ),
+                "Runtime rejected submitted E2E message ${userMessage.id.value}",
+            )
+            withTimeout(300_000L) {
+                completed.await()
+            }
+            emittedMessages.toList()
+        } finally {
+            observer.cancelAndJoin()
+        }
     }
 
     private suspend fun <T> withMemoryRoutingFailFast(

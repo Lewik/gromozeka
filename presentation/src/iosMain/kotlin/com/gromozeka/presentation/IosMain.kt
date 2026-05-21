@@ -26,6 +26,7 @@ import com.gromozeka.presentation.services.InMemoryUIStateStore
 import com.gromozeka.presentation.services.IosClientAudioPlayer
 import com.gromozeka.presentation.services.IosClientAudioRecorder
 import com.gromozeka.presentation.services.PTTEvent
+import com.gromozeka.presentation.ui.ClientPlatform
 import com.gromozeka.presentation.ui.GromozekaApp
 import kotlinx.coroutines.delay
 import platform.Foundation.NSUserDefaults
@@ -84,6 +85,7 @@ private fun GromozekaIosApp() {
             uiScaleMultiplier = 1.2f,
             showPromptsPanelInitially = false,
             forceCompactLayout = true,
+            clientPlatform = ClientPlatform.IOS,
         )
 
         startupError != null -> StartupError(startupError!!)

@@ -1,9 +1,11 @@
 package com.gromozeka.client
 
-import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
+import com.gromozeka.domain.service.ConversationRuntimeEvent
 import com.gromozeka.remote.protocol.ClientPayload
 import com.gromozeka.remote.protocol.ClientRequest
+import com.gromozeka.remote.protocol.ConversationExecutionCompletedEvent
+import com.gromozeka.remote.protocol.ConversationExecutionFailedEvent
 import com.gromozeka.remote.protocol.ErrorResponse
 import com.gromozeka.remote.protocol.GromozekaClientEnvelope
 import com.gromozeka.remote.protocol.GromozekaServerEnvelope
@@ -17,13 +19,11 @@ import com.gromozeka.remote.protocol.LiveInterpreterTranscriptEvent
 import com.gromozeka.remote.protocol.LiveInterpreterTranslationEvent
 import com.gromozeka.remote.protocol.LiveInterpreterTranscriptChunkCommand
 import com.gromozeka.remote.protocol.MessageUpsertedEvent
+import com.gromozeka.remote.protocol.ObserveConversationCommand
 import com.gromozeka.remote.protocol.RemoteLiveAudioChunk
 import com.gromozeka.remote.protocol.RemoteLiveTranscriptChunk
 import com.gromozeka.remote.protocol.RemoteProtocolCodec
 import com.gromozeka.remote.protocol.RemoteProtocolEncoding
-import com.gromozeka.remote.protocol.SendCompletedEvent
-import com.gromozeka.remote.protocol.SendFailedEvent
-import com.gromozeka.remote.protocol.SendMessageCommand
 import com.gromozeka.remote.protocol.ServerPayload
 import com.gromozeka.remote.protocol.ServerResponse
 import com.gromozeka.remote.protocol.SpeechSynthesisChunkEvent
@@ -32,6 +32,7 @@ import com.gromozeka.remote.protocol.SpeechSynthesisFailedEvent
 import com.gromozeka.remote.protocol.SpeechSynthesisStartedEvent
 import com.gromozeka.remote.protocol.StartLiveInterpreterRequest
 import com.gromozeka.remote.protocol.StopLiveInterpreterCommand
+import com.gromozeka.remote.protocol.StopObserveConversationCommand
 import com.gromozeka.remote.protocol.SynthesizeSpeechStreamCommand
 import com.gromozeka.shared.uuid.uuid7
 import io.ktor.client.HttpClient
@@ -69,6 +70,7 @@ internal class GromozekaWsClient(
     private var readerJob: Job? = null
     private val pending = mutableMapOf<String, CompletableDeferred<ServerResponse>>()
     private val streams = mutableMapOf<String, Channel<ServerPayload>>()
+    private val conversationSubscriptions = mutableMapOf<String, Channel<ServerPayload>>()
     private val liveInterpreterSessions = mutableMapOf<String, Channel<ServerPayload>>()
 
     suspend fun request(payload: ClientRequest): ServerResponse {
@@ -87,27 +89,38 @@ internal class GromozekaWsClient(
         }
     }
 
-    fun sendMessage(
-        conversationId: Conversation.Id,
-        userMessage: Conversation.Message,
-        agent: AgentDefinition,
-    ): Flow<Conversation.Message> = flow {
-        val streamId = uuid7()
+    fun observeConversation(conversationId: Conversation.Id): Flow<ConversationRuntimeEvent> = flow {
+        val subscriptionId = uuid7()
         val channel = Channel<ServerPayload>(Channel.UNLIMITED)
-        streams[streamId] = channel
-        send(SendMessageCommand(streamId, conversationId, userMessage, agent))
+        conversationSubscriptions[subscriptionId] = channel
+        send(ObserveConversationCommand(subscriptionId, conversationId))
 
         try {
             for (event in channel) {
                 when (event) {
-                    is MessageUpsertedEvent -> emit(event.message)
-                    is SendCompletedEvent -> break
-                    is SendFailedEvent -> error(event.message)
+                    is MessageUpsertedEvent -> emit(
+                        ConversationRuntimeEvent.MessageEmitted(
+                            conversationId = event.conversationId,
+                            commandId = event.commandId,
+                            message = event.message,
+                        )
+                    )
+                    is ConversationExecutionCompletedEvent -> emit(
+                        ConversationRuntimeEvent.ExecutionCompleted(event.conversationId)
+                    )
+                    is ConversationExecutionFailedEvent -> emit(
+                        ConversationRuntimeEvent.ExecutionFailed(
+                            conversationId = event.conversationId,
+                            message = event.message,
+                            type = event.type,
+                        )
+                    )
                     else -> Unit
                 }
             }
         } finally {
-            streams.remove(streamId)
+            conversationSubscriptions.remove(subscriptionId)
+            runCatching { sendIfConnected(StopObserveConversationCommand(subscriptionId)) }
             channel.close()
         }
     }
@@ -170,8 +183,20 @@ internal class GromozekaWsClient(
         sendEnvelope(GromozekaClientEnvelope(uuid7(), payload))
     }
 
+    private suspend fun sendIfConnected(payload: ClientPayload) {
+        val activeSession = session?.takeIf { it.isActive } ?: return
+        sendEnvelope(activeSession, GromozekaClientEnvelope(uuid7(), payload))
+    }
+
     private suspend fun sendEnvelope(envelope: GromozekaClientEnvelope) {
         val activeSession = ensureConnected()
+        sendEnvelope(activeSession, envelope)
+    }
+
+    private suspend fun sendEnvelope(
+        activeSession: DefaultClientWebSocketSession,
+        envelope: GromozekaClientEnvelope,
+    ) {
         val frame = when (encodingState.value) {
             RemoteProtocolEncoding.CBOR -> Frame.Binary(true, RemoteProtocolCodec.encodeClientBinary(envelope))
             RemoteProtocolEncoding.JSON -> Frame.Text(RemoteProtocolCodec.encodeClientText(envelope))
@@ -212,9 +237,9 @@ internal class GromozekaWsClient(
                 println("Gromozeka WS incoming id=${envelope.id} type=${envelope.payload::class.simpleName}")
                 when (val payload = envelope.payload) {
                     is ServerResponse -> pending.remove(envelope.id)?.complete(payload)
-                    is MessageUpsertedEvent -> streams[payload.streamId]?.send(payload)
-                    is SendCompletedEvent -> streams[payload.streamId]?.send(payload)
-                    is SendFailedEvent -> streams[payload.streamId]?.send(payload)
+                    is MessageUpsertedEvent -> conversationSubscriptions[payload.subscriptionId]?.send(payload)
+                    is ConversationExecutionCompletedEvent -> conversationSubscriptions[payload.subscriptionId]?.send(payload)
+                    is ConversationExecutionFailedEvent -> conversationSubscriptions[payload.subscriptionId]?.send(payload)
                     is SpeechSynthesisStartedEvent -> streams[payload.streamId]?.send(payload)
                     is SpeechSynthesisChunkEvent -> streams[payload.streamId]?.send(payload)
                     is SpeechSynthesisCompletedEvent -> streams[payload.streamId]?.send(payload)
@@ -239,6 +264,8 @@ internal class GromozekaWsClient(
             pending.clear()
             streams.values.forEach { it.close(error) }
             streams.clear()
+            conversationSubscriptions.values.forEach { it.close(error) }
+            conversationSubscriptions.clear()
             liveInterpreterSessions.values.forEach { it.close(error) }
             liveInterpreterSessions.clear()
             if (session === activeSession) {
