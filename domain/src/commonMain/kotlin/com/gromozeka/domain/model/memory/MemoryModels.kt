@@ -483,6 +483,7 @@ data class MemoryEntity(
     val id: Id,
     val namespace: MemoryNamespace,
     val entityType: Type,
+    val observedTypes: Set<Type> = setOf(entityType),
     val canonicalName: String,
     val normalizedName: String,
     val summary: String? = null,
@@ -495,6 +496,11 @@ data class MemoryEntity(
     val createdAt: Instant,
     val updatedAt: Instant,
 ) {
+    init {
+        require(observedTypes.isNotEmpty()) { "Memory entity observed types must not be empty" }
+        require(entityType in observedTypes) { "Memory entity primary type must be included in observed types" }
+    }
+
     @Serializable
     @JvmInline
     value class Id(val value: String)

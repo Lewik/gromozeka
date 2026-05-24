@@ -1294,6 +1294,55 @@ class MemoryMaintenancePipelineTest {
     }
 
     @Test
+    fun entityMaintenanceMergesCompatibleHumanTypesAndPreservesObservedTypes() = runBlocking {
+        val user = entity(
+            id = MemoryEntity.Id("entity-lewik-user"),
+            entityType = MemoryEntity.Type.USER,
+            canonicalName = "Lewik",
+            normalizedName = "lewik",
+        )
+        val person = entity(
+            id = MemoryEntity.Id("entity-lewik-person"),
+            entityType = MemoryEntity.Type.PERSON,
+            canonicalName = "Lewik",
+            normalizedName = "lewik",
+        )
+        val store = InMemoryMemoryStore(
+            MemoryNamespaceSnapshot(
+                entities = listOf(user, person),
+            )
+        )
+
+        val result = MemoryEntityMaintenancePipeline(
+            store = store,
+            planner = FixedEntityMaintenancePlanner(
+                MemoryEntityMaintenancePlan(
+                    actions = listOf(
+                        MemoryEntityMaintenancePlan.Action(
+                            action = MemoryEntityMaintenancePlan.Action.Type.MERGE,
+                            winnerEntityId = user.id.value,
+                            loserEntityIds = listOf(person.id.value),
+                            reason = "Both entities identify the same human.",
+                        )
+                    ),
+                    summary = "Merged compatible human aliases.",
+                )
+            ),
+            idFactory = SequentialMemoryIdFactory("entity-maintenance"),
+            profileUpdater = ProjectionMemoryProfileUpdater(store),
+            clock = FixedMemoryClock(NOW),
+        ).run(MemoryMaintenanceRequest(TEST_NAMESPACE))
+
+        val snapshot = store.loadNamespaceSnapshot(TEST_NAMESPACE, includeArchived = true)
+        val updatedUser = snapshot.entityById(user.id.value)
+
+        assertEquals(1, result.candidateGroups.size)
+        assertEquals(MemoryEntity.Status.ACTIVE, updatedUser.status)
+        assertEquals(MemoryEntity.Status.MERGED, snapshot.entityById(person.id.value).status)
+        assertEquals(setOf(MemoryEntity.Type.USER, MemoryEntity.Type.PERSON), updatedUser.observedTypes)
+    }
+
+    @Test
     fun entityMaintenanceRefreshesSummaryAfterReplacementClaim() = runBlocking {
         val pantryPilot = entity(
             id = MemoryEntity.Id("entity-pantry-pilot"),

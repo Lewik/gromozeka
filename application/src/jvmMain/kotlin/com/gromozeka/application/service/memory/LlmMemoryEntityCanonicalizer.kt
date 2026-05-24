@@ -168,7 +168,8 @@ class LlmMemoryEntityCanonicalizer(
             return null
         }
 
-        val stableKey = "${request.namespace.value}|${newEntity.entityType.name}|${newEntity.canonicalName.normalizeCanonicalMemoryText()}"
+        val stableKey =
+            "${request.namespace.value}|${newEntity.entityType.entityMergeFamilyKey()}|${newEntity.canonicalName.normalizeCanonicalMemoryText()}"
         val hash = MessageDigest
             .getInstance("SHA-256")
             .digest(stableKey.toByteArray())
@@ -307,7 +308,7 @@ private fun List<MemoryEntityCanonicalizationOp>.normalizeStableUserOps(
 private fun MemoryEntityCanonicalizationOp.NewEntity.provisionalEntityId(
     request: DirectStructuredMemoryWriteRequest,
 ): MemoryEntity.Id {
-    val stableKey = "${request.namespace.value}|${entityType.name}|${canonicalName.normalizeCanonicalMemoryText()}"
+    val stableKey = "${request.namespace.value}|${entityType.entityMergeFamilyKey()}|${canonicalName.normalizeCanonicalMemoryText()}"
     val hash = MessageDigest
         .getInstance("SHA-256")
         .digest(stableKey.toByteArray())

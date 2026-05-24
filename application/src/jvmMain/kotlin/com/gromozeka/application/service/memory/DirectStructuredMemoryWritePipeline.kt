@@ -1338,7 +1338,7 @@ class DefaultDirectStructuredMemoryWriteMaterializer(
             .mapNotNull { it.toEntity(input, idFactory) }
             .filter { it.id in referencedEntityIds }
             .plus(input.existingReferencedEntityPatches(referencedEntityIds))
-            .distinctBy { it.id }
+            .mergeEntitiesById()
         val notes = input.noteOps.flatMap { it.toNotes(input, runId, idFactory) }
         val claims = input.claimOps.flatMap { it.toClaims(input, runId, idFactory) }
         val tasks = input.taskOps.flatMap { it.toTasks(input, runId, idFactory) }
@@ -1411,6 +1411,7 @@ class DefaultDirectStructuredMemoryWriteMaterializer(
             id = entityId,
             namespace = input.request.namespace,
             entityType = entityDraft.entityType,
+            observedTypes = setOf(entityDraft.entityType),
             canonicalName = entityDraft.canonicalName,
             normalizedName = entityDraft.canonicalName.normalizeMemoryText(),
             summary = entityDraft.identityOnlySummary(),
@@ -1431,6 +1432,32 @@ class DefaultDirectStructuredMemoryWriteMaterializer(
             updatedAt = now,
         )
     }
+
+    private fun List<MemoryEntity>.mergeEntitiesById(): List<MemoryEntity> =
+        groupBy { it.id }.values.map { entities ->
+            val primary = entities.first()
+            if (entities.size == 1) {
+                return@map primary.copy(observedTypes = primary.observedTypes + primary.entityType)
+            }
+
+            val extraAliases = entities.drop(1).map { entity ->
+                MemoryEntity.Alias(
+                    text = entity.canonicalName,
+                    normalizedText = entity.normalizedName,
+                    confidence = 1.0,
+                    createdAt = entity.createdAt,
+                )
+            }
+            primary.copy(
+                observedTypes = primary.mergedObservedTypesWith(entities.drop(1)),
+                summary = primary.summary ?: entities.drop(1).firstNotNullOfOrNull { it.summary },
+                aliases = (primary.aliases + entities.drop(1).flatMap { it.aliases } + extraAliases)
+                    .distinctBy { it.normalizedText },
+                firstSeenAt = entities.minOf { it.firstSeenAt },
+                lastSeenAt = entities.maxOf { it.lastSeenAt },
+                updatedAt = entities.maxOf { it.updatedAt },
+            )
+        }
 
     private fun DirectStructuredMemoryWriteMaterialization.existingReferencedEntityPatches(
         referencedEntityIds: Set<MemoryEntity.Id>,

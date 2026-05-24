@@ -233,8 +233,9 @@ private fun List<MemoryEntityMaintenanceCandidateGroup>.renderEntityGroupsForMai
             appendLine("Group ${group.id}: ${group.reason}")
             group.entities.forEach { entity ->
                 val aliases = entity.aliases.joinToString("|") { it.text }.ifBlank { "none" }
+                val observedTypes = entity.observedTypes.joinToString("|") { it.name }
                 appendLine(
-                    "- entity ${entity.id.value}: type=${entity.entityType.name}; status=${entity.status.name}; " +
+                    "- entity ${entity.id.value}: type=${entity.entityType.name}; observed_types=$observedTypes; status=${entity.status.name}; " +
                         "name=${entity.canonicalName}; normalized=${entity.normalizedName}; aliases=$aliases; " +
                         "refs=${usage[entity.id] ?: 0}; summary=${entity.summary ?: "none"}"
                 )
