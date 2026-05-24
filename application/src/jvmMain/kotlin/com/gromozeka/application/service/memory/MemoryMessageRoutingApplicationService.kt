@@ -312,7 +312,8 @@ class MemoryMessageRoutingApplicationService(
         val runtimes = MemoryWriteStageRuntimes(project)
         val focusedThreadContext = threadContext?.let {
             MemoryThreadContextCompactor(
-                runtimes.runtimeFor(AiRuntimeAssignment.Purpose.MEMORY_WRITE_CONTEXT_COMPACTOR)
+                runtime = runtimes.runtimeFor(AiRuntimeAssignment.Purpose.MEMORY_WRITE_CONTEXT_COMPACTOR),
+                preCompactThresholdTokens = MemoryContextWindowPolicy.writePreCompactThresholdTokens(settingsProvider.userProfile.aiSettings),
             ).compactIfNeeded(
                 context = it,
                 targetSourceLabel = source.id.value,

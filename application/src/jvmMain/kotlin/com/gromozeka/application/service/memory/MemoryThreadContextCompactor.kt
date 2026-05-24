@@ -14,6 +14,7 @@ import kotlinx.serialization.json.JsonPrimitive
 
 internal class MemoryThreadContextCompactor(
     private val runtime: AiRuntime,
+    private val preCompactThresholdTokens: Int? = null,
 ) {
     private val log = KLoggers.logger(this)
 
@@ -28,21 +29,27 @@ internal class MemoryThreadContextCompactor(
         val priorMessages = context.messages.take(targetIndex)
         val target = context.messages[targetIndex]
         val priorChars = priorMessages.sumOf { it.memoryCompactionCharCount() }
-        if (priorChars <= PRIOR_CONTEXT_COMPACTION_THRESHOLD_CHARS) return context
+        val estimatedInputTokens = (priorChars + target.memoryCompactionCharCount())
+            .estimatedMemoryContextTokens() + MEMORY_STAGE_PROMPT_OVERHEAD_TOKENS
+        val shouldCompact = preCompactThresholdTokens
+            ?.let { estimatedInputTokens > it }
+            ?: (priorChars > PRIOR_CONTEXT_COMPACTION_THRESHOLD_CHARS)
+        if (!shouldCompact) return context
 
-        val tailMessages = priorMessages.takeLastWithinMemoryCompactionBudget()
+        val tailMessages = priorMessages.takeLastWithinMemoryCompactionBudget(rawTailContextChars())
         val prefixMessages = priorMessages.dropLast(tailMessages.size)
         if (prefixMessages.isEmpty()) return context
 
         log.info {
             "Memory thread context compaction start: $logContext target=${context.targetMessageId.value} " +
                 "priorMessages=${priorMessages.size} prefixMessages=${prefixMessages.size} tailMessages=${tailMessages.size} " +
-                "priorChars=$priorChars targetSource=$targetSourceLabel"
+                "priorChars=$priorChars estimatedInputTokens=$estimatedInputTokens " +
+                "thresholdTokens=${preCompactThresholdTokens ?: "char-fallback"} targetSource=$targetSourceLabel"
         }
 
         val compacted = runCatching {
             val targetText = target.renderForMemoryCompaction(TARGET_CONTEXT_CHARS)
-            val chunks = prefixMessages.chunkForMemoryCompaction()
+            val chunks = prefixMessages.chunkForMemoryCompaction(compactionChunkChars())
             val chunkDigests = chunks.mapIndexed { index, chunk ->
                 compactChunk(
                     chunk = chunk,
@@ -96,11 +103,24 @@ internal class MemoryThreadContextCompactor(
         log.info {
             "Memory thread context compaction completed: $logContext target=${context.targetMessageId.value} " +
                 "messages=${context.messages.size}->${compactedMessages.size} priorChars=$priorChars " +
+                "estimatedInputTokens=$estimatedInputTokens thresholdTokens=${preCompactThresholdTokens ?: "char-fallback"} " +
                 "digestChars=${compacted.length} tailMessages=${tailMessages.size}"
         }
 
         return context.copy(messages = compactedMessages)
     }
+
+    private fun rawTailContextChars(): Int =
+        preCompactThresholdTokens
+            ?.toMemoryContextChars(reservedTokens = MEMORY_STAGE_PROMPT_OVERHEAD_TOKENS)
+            ?.coerceIn(MIN_RAW_TAIL_CONTEXT_CHARS, RAW_TAIL_CONTEXT_CHARS)
+            ?: RAW_TAIL_CONTEXT_CHARS
+
+    private fun compactionChunkChars(): Int =
+        preCompactThresholdTokens
+            ?.toMemoryContextChars(reservedTokens = MEMORY_STAGE_PROMPT_OVERHEAD_TOKENS + TARGET_CONTEXT_CHARS.estimatedMemoryContextTokens())
+            ?.coerceIn(MIN_COMPACTION_CHUNK_CHARS, COMPACTION_CHUNK_CHARS)
+            ?: COMPACTION_CHUNK_CHARS
 
     private suspend fun compactChunk(
         chunk: List<Conversation.Message>,
@@ -207,30 +227,34 @@ internal class MemoryThreadContextCompactor(
 
 private const val PRIOR_CONTEXT_COMPACTION_THRESHOLD_CHARS = 60_000
 private const val RAW_TAIL_CONTEXT_CHARS = 16_000
+private const val MIN_RAW_TAIL_CONTEXT_CHARS = 2_000
 private const val COMPACTION_CHUNK_CHARS = 32_000
+private const val MIN_COMPACTION_CHUNK_CHARS = 2_000
 private const val TARGET_CONTEXT_CHARS = 8_000
 private const val MESSAGE_CONTEXT_CHARS = 6_000
+private const val MEMORY_CONTEXT_CHARS_PER_TOKEN_ESTIMATE = 3
+private const val MEMORY_STAGE_PROMPT_OVERHEAD_TOKENS = 4_000
 
-private fun List<Conversation.Message>.takeLastWithinMemoryCompactionBudget(): List<Conversation.Message> {
+private fun List<Conversation.Message>.takeLastWithinMemoryCompactionBudget(maxChars: Int): List<Conversation.Message> {
     var chars = 0
     val result = ArrayDeque<Conversation.Message>()
     for (message in asReversed()) {
         val messageChars = message.memoryCompactionCharCount()
-        if (result.isNotEmpty() && chars + messageChars > RAW_TAIL_CONTEXT_CHARS) break
+        if (result.isNotEmpty() && chars + messageChars > maxChars) break
         result.addFirst(message)
         chars += messageChars
     }
     return result.toList()
 }
 
-private fun List<Conversation.Message>.chunkForMemoryCompaction(): List<List<Conversation.Message>> {
+private fun List<Conversation.Message>.chunkForMemoryCompaction(maxChars: Int): List<List<Conversation.Message>> {
     val chunks = mutableListOf<List<Conversation.Message>>()
     val current = mutableListOf<Conversation.Message>()
     var chars = 0
 
     for (message in this) {
         val messageChars = message.memoryCompactionCharCount()
-        if (current.isNotEmpty() && chars + messageChars > COMPACTION_CHUNK_CHARS) {
+        if (current.isNotEmpty() && chars + messageChars > maxChars) {
             chunks += current.toList()
             current.clear()
             chars = 0
@@ -295,3 +319,9 @@ private fun String.takeForMemoryCompaction(maxChars: Int): String {
     if (length <= maxChars) return this
     return take(maxChars) + "\n...[truncated ${length - maxChars} chars]"
 }
+
+private fun Int.estimatedMemoryContextTokens(): Int =
+    (this + MEMORY_CONTEXT_CHARS_PER_TOKEN_ESTIMATE - 1) / MEMORY_CONTEXT_CHARS_PER_TOKEN_ESTIMATE
+
+private fun Int.toMemoryContextChars(reservedTokens: Int): Int =
+    (this - reservedTokens).coerceAtLeast(1) * MEMORY_CONTEXT_CHARS_PER_TOKEN_ESTIMATE

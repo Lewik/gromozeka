@@ -7,6 +7,7 @@ import com.gromozeka.application.service.memory.LlmMemoryNoteConsolidator
 import com.gromozeka.application.service.memory.LlmMemoryRepairPlanner
 import com.gromozeka.application.service.memory.MemoryEntityMaintenancePipeline
 import com.gromozeka.application.service.memory.MemoryEntityMaintenancePipelineResult
+import com.gromozeka.application.service.memory.MemoryContextWindowPolicy
 import com.gromozeka.application.service.memory.MemoryMaintenanceTraceEvent
 import com.gromozeka.application.service.memory.MemoryMaintenanceTraceSink
 import com.gromozeka.application.service.memory.MemoryThreadContextCompactor
@@ -116,7 +117,8 @@ class MemoryApplicationService(
             messages = contextMessages,
         )
         val focusedThreadContext = MemoryThreadContextCompactor(
-            runtimes.runtimeFor(AiRuntimeAssignment.Purpose.MEMORY_READ_CONTEXT_COMPACTOR)
+            runtime = runtimes.runtimeFor(AiRuntimeAssignment.Purpose.MEMORY_READ_CONTEXT_COMPACTOR),
+            preCompactThresholdTokens = MemoryContextWindowPolicy.readPreCompactThresholdTokens(settingsProvider.userProfile.aiSettings),
         ).compactIfNeeded(
             context = threadContext,
             targetSourceLabel = "chat:${targetMessage.id.value}",
