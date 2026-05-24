@@ -194,6 +194,18 @@ class MemoryRememberDocumentTest {
     }
 
     @Test
+    fun markdownSlicerSplitsSingleLongLineByCharacterBudget() {
+        val markdown = "# Dense section\n\n" + "important fact ".repeat(200)
+
+        val sections = MarkdownDocumentSlicer.slice(markdown, maxSectionChars = 240)
+
+        assertTrue(sections.size > 1)
+        assertTrue(sections.all { it.text.length <= 240 })
+        assertEquals(200, sections.sumOf { "important fact".toRegex().findAll(it.text).count() })
+        assertTrue(sections.all { it.headingPath.firstOrNull() == "Dense section" })
+    }
+
+    @Test
     fun markdownSlicerSplitsRetrySectionsNearNestedHeading() {
         val section = MarkdownDocumentSection(
             index = 7,
@@ -224,6 +236,29 @@ class MemoryRememberDocumentTest {
         assertEquals(14, parts[1].startLine)
         assertEquals(17, parts[1].endLine)
         assertTrue(parts[1].text.startsWith("## Beta"))
+    }
+
+    @Test
+    fun markdownSlicerSplitsRetrySectionsWithSingleLongLine() {
+        val section = MarkdownDocumentSection(
+            index = 8,
+            headingPath = listOf("Dense"),
+            startLine = 4,
+            endLine = 4,
+            text = "important fact ".repeat(80).trim(),
+        )
+
+        val parts = MarkdownDocumentSlicer.splitForRetry(section)
+
+        assertEquals(2, parts.size)
+        assertEquals(81, parts[0].index)
+        assertEquals(82, parts[1].index)
+        assertEquals(listOf("Dense", "retry part 1/2"), parts[0].headingPath)
+        assertEquals(listOf("Dense", "retry part 2/2"), parts[1].headingPath)
+        assertEquals(4, parts[0].startLine)
+        assertEquals(4, parts[1].startLine)
+        assertTrue(parts.all { it.text.isNotBlank() })
+        assertTrue(parts.sumOf { it.text.length } <= section.text.length)
     }
 
     @Test
@@ -291,6 +326,37 @@ class MemoryRememberDocumentTest {
         }
 
         assertEquals(listOf(6, 61, 62), calls)
+        assertEquals(2, result.results.size)
+        assertEquals(2, result.processedSections)
+        assertEquals(0, result.failedSections.size)
+        assertEquals(1, result.splitCount)
+    }
+
+    @Test
+    fun adaptiveIngestSplitsSingleLongLineAfterOutputTruncation() = runBlocking {
+        val section = MarkdownDocumentSection(
+            index = 9,
+            headingPath = listOf("Dense"),
+            startLine = 1,
+            endLine = 1,
+            text = "important fact ".repeat(80).trim(),
+        )
+        val calls = mutableListOf<Int>()
+
+        val result = MemoryDocumentAdaptiveIngest.processSection(section) { effectiveSection ->
+            calls += effectiveSection.index
+            if (effectiveSection.index == section.index) {
+                throw MemoryLlmOutputTruncatedException(
+                    stageName = "ClaimExtractor",
+                    finishReason = "length",
+                    logContext = "test",
+                    usage = null,
+                )
+            }
+            effectiveSection.text
+        }
+
+        assertEquals(listOf(9, 91, 92), calls)
         assertEquals(2, result.results.size)
         assertEquals(2, result.processedSections)
         assertEquals(0, result.failedSections.size)

@@ -235,31 +235,36 @@ internal object MarkdownDocumentSlicer {
 
     fun splitForRetry(section: MarkdownDocumentSection): List<MarkdownDocumentSection> {
         val sectionLines = section.text.lines()
-        if (sectionLines.size < 2) return emptyList()
+        val lineParts = if (sectionLines.size >= 2) {
+            val splitIndex = sectionLines.headingSplitIndex()
+                ?: sectionLines.blankLineSplitIndex()
+                ?: sectionLines.lineSplitIndex()
 
-        val splitIndex = sectionLines.headingSplitIndex()
-            ?: sectionLines.blankLineSplitIndex()
-            ?: sectionLines.lineSplitIndex()
-            ?: return emptyList()
+            splitIndex?.let {
+                listOf(
+                    section.createRetryPart(
+                        partNumber = 1,
+                        totalParts = 2,
+                        sectionLines = sectionLines,
+                        startIndex = 0,
+                        endIndex = it - 1,
+                    ),
+                    section.createRetryPart(
+                        partNumber = 2,
+                        totalParts = 2,
+                        sectionLines = sectionLines,
+                        startIndex = it,
+                        endIndex = sectionLines.lastIndex,
+                    ),
+                ).filter { part -> part.text.isNotBlank() }
+            }
+        } else {
+            null
+        }
 
-        return listOf(
-            section.createRetryPart(
-                partNumber = 1,
-                totalParts = 2,
-                sectionLines = sectionLines,
-                startIndex = 0,
-                endIndex = splitIndex - 1,
-            ),
-            section.createRetryPart(
-                partNumber = 2,
-                totalParts = 2,
-                sectionLines = sectionLines,
-                startIndex = splitIndex,
-                endIndex = sectionLines.lastIndex,
-            ),
-        ).filter { it.text.isNotBlank() }
-            .takeIf { parts -> parts.size == 2 && parts.sumOf { it.text.length } < section.text.length + 16 }
-            ?: emptyList()
+        return lineParts
+            ?.takeIf { parts -> parts.size == 2 && parts.sumOf { it.text.length } < section.text.length + 16 }
+            ?: section.splitRetryByText()
     }
 
     private fun MarkdownDocumentSection.splitOversized(maxSectionChars: Int): List<MarkdownDocumentSection> {
@@ -284,7 +289,9 @@ internal object MarkdownDocumentSlicer {
         if (partStartIndex < sectionLines.size) {
             parts += createPart(parts.size + 1, sectionLines, partStartIndex, sectionLines.lastIndex)
         }
-        return parts.filter { it.text.isNotBlank() }
+        return parts
+            .filter { it.text.isNotBlank() }
+            .flatMap { part -> part.splitOversizedText(maxSectionChars) }
     }
 
     private fun MarkdownDocumentSection.createPart(
@@ -315,6 +322,112 @@ internal object MarkdownDocumentSlicer {
             endLine = startLine + endIndex,
             text = sectionLines.subList(startIndex, endIndex + 1).joinToString("\n").trim(),
         )
+
+    private fun MarkdownDocumentSection.splitRetryByText(): List<MarkdownDocumentSection> {
+        if (text.length < 2) return emptyList()
+        val splitIndex = text.findSplitBoundaryNear(text.length / 2, minIndex = 1)
+            .takeIf { it in 1 until text.length }
+            ?: return emptyList()
+
+        return listOf(
+            createRetryTextPart(
+                partNumber = 1,
+                totalParts = 2,
+                startOffset = 0,
+                endOffsetExclusive = splitIndex,
+            ),
+            createRetryTextPart(
+                partNumber = 2,
+                totalParts = 2,
+                startOffset = splitIndex,
+                endOffsetExclusive = text.length,
+            ),
+        ).filter { it.text.isNotBlank() }
+            .takeIf { parts -> parts.size == 2 }
+            ?: emptyList()
+    }
+
+    private fun MarkdownDocumentSection.splitOversizedText(maxSectionChars: Int): List<MarkdownDocumentSection> {
+        if (text.length <= maxSectionChars) return listOf(this)
+
+        val parts = mutableListOf<MarkdownDocumentSection>()
+        var startOffset = 0
+        while (startOffset < text.length) {
+            val hardEnd = (startOffset + maxSectionChars).coerceAtMost(text.length)
+            val endOffset = if (hardEnd == text.length) {
+                text.length
+            } else {
+                text.findSplitBoundaryNear(hardEnd, minIndex = startOffset + maxSectionChars / 2)
+                    ?.takeIf { it > startOffset }
+                    ?: hardEnd
+            }
+            parts += createTextPart(
+                partNumber = parts.size + 1,
+                startOffset = startOffset,
+                endOffsetExclusive = endOffset,
+            )
+            startOffset = endOffset
+            while (startOffset < text.length && text[startOffset].isWhitespace()) {
+                startOffset += 1
+            }
+        }
+        return parts.filter { it.text.isNotBlank() }
+    }
+
+    private fun MarkdownDocumentSection.createTextPart(
+        partNumber: Int,
+        startOffset: Int,
+        endOffsetExclusive: Int,
+    ): MarkdownDocumentSection =
+        copy(
+            index = partNumber,
+            headingPath = headingPath + "part $partNumber",
+            startLine = lineNumberAtOffset(startOffset),
+            endLine = lineNumberAtOffset((endOffsetExclusive - 1).coerceAtLeast(startOffset)),
+            text = text.substring(startOffset, endOffsetExclusive).trim(),
+        )
+
+    private fun MarkdownDocumentSection.createRetryTextPart(
+        partNumber: Int,
+        totalParts: Int,
+        startOffset: Int,
+        endOffsetExclusive: Int,
+    ): MarkdownDocumentSection =
+        copy(
+            index = index * 10 + partNumber,
+            headingPath = headingPath + "retry part $partNumber/$totalParts",
+            startLine = lineNumberAtOffset(startOffset),
+            endLine = lineNumberAtOffset((endOffsetExclusive - 1).coerceAtLeast(startOffset)),
+            text = text.substring(startOffset, endOffsetExclusive).trim(),
+        )
+
+    private fun MarkdownDocumentSection.lineNumberAtOffset(offset: Int): Int =
+        startLine + text.take(offset.coerceIn(0, text.length)).count { it == '\n' }
+
+    private fun String.findSplitBoundaryNear(targetIndex: Int, minIndex: Int): Int? {
+        val boundedTarget = targetIndex.coerceIn(1, length - 1)
+        val boundedMin = minIndex.coerceIn(1, boundedTarget)
+        val search = substring(0, boundedTarget)
+
+        listOf("\n\n", "\n").forEach { marker ->
+            val index = search.lastIndexOf(marker)
+            if (index >= boundedMin) return index + marker.length
+        }
+
+        for (index in boundedTarget - 1 downTo boundedMin) {
+            val char = this[index]
+            val next = getOrNull(index + 1)
+            if ((char == '.' || char == '!' || char == '?' || char == ';' || char == ':') && next?.isWhitespace() == true) {
+                return index + 1
+            }
+        }
+
+        for (index in boundedTarget - 1 downTo boundedMin) {
+            if (this[index].isWhitespace()) return index + 1
+        }
+
+        return boundedTarget.takeIf { it in 1 until length }
+    }
 
     private fun List<String>.headingSplitIndex(): Int? =
         indices
