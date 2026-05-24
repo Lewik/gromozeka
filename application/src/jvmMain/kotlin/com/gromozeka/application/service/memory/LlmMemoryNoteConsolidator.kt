@@ -65,6 +65,15 @@ class LlmMemoryNoteConsolidator(
                 "selectedNotes=${selectedNotes.size} relatedHits=${relatedHits.size} runtimeSystemPrompts=${runtimeSystemPrompts.size} runtimeTools=${runtimeTools.size}"
         }
 
+        val selectedById = selectedNotes.associateBy { it.id }
+        val allowedEntityIds = snapshot.entities.mapTo(mutableSetOf()) { it.id } +
+            selectedNotes.flatMap { note -> note.entityRefs.map { it.entityId } + listOfNotNull(note.anchorEntityId) }
+        val existingTaskIds = snapshot.tasks.mapTo(mutableSetOf()) { it.id }
+        val entityRefValidator = MemoryEntityRefValidator(
+            stageName = "NoteConsolidator",
+            allowedEntityIds = allowedEntityIds,
+        )
+
         val structuredResult = runtime.callMemoryStructuredStage(
             request = AiRuntimeRequest(
                 systemPrompts = runtimeSystemPrompts,
@@ -82,7 +91,15 @@ class LlmMemoryNoteConsolidator(
             ),
             stageName = "note-consolidator",
             logContext = "namespace=${request.namespace.value}",
-            parse = { json.decodeFromString<NoteConsolidatorResponse>(it) },
+            parse = { jsonText ->
+                val parsed = json.decodeFromString<NoteConsolidatorResponse>(jsonText)
+                parsed.toMappedResult(
+                    request = request,
+                    selectedById = selectedById,
+                    existingTaskIds = existingTaskIds,
+                    entityRefs = entityRefValidator,
+                )
+            },
         )
 
         log.info {
@@ -90,38 +107,20 @@ class LlmMemoryNoteConsolidator(
                 "response=${structuredResult.rawText.oneLineForMaintenanceLog(5_000)}"
         }
 
-        val parsed = structuredResult.value
-        val selectedById = selectedNotes.associateBy { it.id }
-        val allowedEntityIds = snapshot.entities.mapTo(mutableSetOf()) { it.id } +
-            selectedNotes.flatMap { note -> note.entityRefs.map { it.entityId } + listOfNotNull(note.anchorEntityId) }
-        val existingTaskIds = snapshot.tasks.mapTo(mutableSetOf()) { it.id }
-
-        val claimCandidates = parsed.claimCandidates.mapNotNull {
-            it.toClaimCandidate(request, selectedById, allowedEntityIds)
-        }
-        val taskActions = parsed.taskActions.mapNotNull {
-            it.toTaskAction(request, selectedById, existingTaskIds, allowedEntityIds)
-        }
-        val noteActions = parsed.noteActions.mapNotNull {
-            it.toLifecycleOp(selectedById)
-        }
-        val episodeCandidates = parsed.episodeCandidates.mapNotNull {
-            it.toEpisodeCandidate(selectedById, allowedEntityIds)
-        }
-
+        val mapped = structuredResult.value
         val result = NoteConsolidationResult(
-            claimCandidates = claimCandidates,
-            taskActions = taskActions,
-            profileProjection = parsed.profilePatch?.toProfileProjection(),
-            episodeCandidates = episodeCandidates,
-            noteActions = noteActions,
-            summary = parsed.summary.trim(),
+            claimCandidates = mapped.claimCandidates,
+            taskActions = mapped.taskActions,
+            profileProjection = mapped.profileProjection,
+            episodeCandidates = mapped.episodeCandidates,
+            noteActions = mapped.noteActions,
+            summary = mapped.summary,
         )
 
         log.info {
             "Memory note consolidator mapped result: namespace=${request.namespace.value} " +
-                "claims=${claimCandidates.size} taskActions=${taskActions.size} episodes=${episodeCandidates.size} " +
-                "noteActions=${noteActions.size} summary=${result.summary.oneLineForMaintenanceLog(500)}"
+                "claims=${mapped.claimCandidates.size} taskActions=${mapped.taskActions.size} episodes=${mapped.episodeCandidates.size} " +
+                "noteActions=${mapped.noteActions.size} summary=${result.summary.oneLineForMaintenanceLog(500)}"
         }
 
         return result
@@ -212,6 +211,51 @@ class LlmMemoryNoteConsolidator(
         @SerialName("note_actions")
         val noteActions: List<NoteActionResponse> = emptyList(),
         val summary: String = "",
+    ) {
+        fun toMappedResult(
+            request: MemoryMaintenanceRequest,
+            selectedById: Map<MemoryNote.Id, MemoryNote>,
+            existingTaskIds: Set<MemoryTask.Id>,
+            entityRefs: MemoryEntityRefValidator,
+        ): MappedNoteConsolidationResult =
+            MappedNoteConsolidationResult(
+                claimCandidates = claimCandidates.mapIndexedNotNull { index, candidate ->
+                    candidate.toClaimCandidate(
+                        request = request,
+                        selectedById = selectedById,
+                        entityRefs = entityRefs,
+                        candidatePath = "claim_candidates[$index]",
+                    )
+                },
+                taskActions = taskActions.mapIndexedNotNull { index, action ->
+                    action.toTaskAction(
+                        request = request,
+                        selectedById = selectedById,
+                        existingTaskIds = existingTaskIds,
+                        entityRefs = entityRefs,
+                        actionPath = "task_actions[$index]",
+                    )
+                },
+                profileProjection = profilePatch?.toProfileProjection(),
+                episodeCandidates = episodeCandidates.mapIndexedNotNull { index, candidate ->
+                    candidate.toEpisodeCandidate(
+                        selectedById = selectedById,
+                        entityRefs = entityRefs,
+                        candidatePath = "episode_candidates[$index]",
+                    )
+                },
+                noteActions = noteActions.mapNotNull { it.toLifecycleOp(selectedById) },
+                summary = summary.trim(),
+            )
+    }
+
+    private data class MappedNoteConsolidationResult(
+        val claimCandidates: List<MemoryClaimCandidate>,
+        val taskActions: List<MemoryTaskUpdateOp>,
+        val profileProjection: MemoryProfileProjection?,
+        val episodeCandidates: List<MemoryEpisodeCandidate>,
+        val noteActions: List<MemoryNoteLifecycleOp>,
+        val summary: String,
     )
 
     @Serializable
@@ -250,18 +294,16 @@ class LlmMemoryNoteConsolidator(
         fun toClaimCandidate(
             request: MemoryMaintenanceRequest,
             selectedById: Map<MemoryNote.Id, MemoryNote>,
-            allowedEntityIds: Set<MemoryEntity.Id>,
+            entityRefs: MemoryEntityRefValidator,
+            candidatePath: String,
         ): MemoryClaimCandidate? {
             val originNote = originNoteId.toNoteIdOrNull()?.let(selectedById::get) ?: return null
-            val subjectId = subjectEntityId.toMemoryIdOrNull()?.let { MemoryEntity.Id(it) }
+            val subjectId = entityRefs.optional(subjectEntityId, "$candidatePath.subject_entity_id")
                 ?: originNote.anchorEntityId
                 ?: originNote.entityRefs.firstOrNull()?.entityId
                 ?: return null
-            if (subjectId !in allowedEntityIds) return null
 
-            val objectEntity = objectEntityId.toMemoryIdOrNull()
-                ?.let { MemoryEntity.Id(it) }
-                ?.takeIf { it in allowedEntityIds }
+            val objectEntity = entityRefs.optional(objectEntityId, "$candidatePath.object_entity_id")
             val objectValue = objectValueJson
                 ?.takeUnless { it is JsonNull }
                 ?.takeIf { objectEntity == null }
@@ -308,13 +350,14 @@ class LlmMemoryNoteConsolidator(
             request: MemoryMaintenanceRequest,
             selectedById: Map<MemoryNote.Id, MemoryNote>,
             existingTaskIds: Set<MemoryTask.Id>,
-            allowedEntityIds: Set<MemoryEntity.Id>,
+            entityRefs: MemoryEntityRefValidator,
+            actionPath: String,
         ): MemoryTaskUpdateOp? {
             val target = targetTaskId.toMemoryIdOrNull()?.let { MemoryTask.Id(it) }
             if (target != null && target !in existingTaskIds) return null
 
             val originNote = originNoteId.toNoteIdOrNull()?.let(selectedById::get)
-            val draft = task?.toDraft(request, originNote, allowedEntityIds)
+            val draft = task?.toDraft(request, originNote, entityRefs, "$actionPath.task")
 
             return when (action.trim().lowercase()) {
                 "insert" -> draft?.let {
@@ -394,21 +437,15 @@ class LlmMemoryNoteConsolidator(
         fun toDraft(
             request: MemoryMaintenanceRequest,
             originNote: MemoryNote?,
-            allowedEntityIds: Set<MemoryEntity.Id>,
+            entityRefs: MemoryEntityRefValidator,
+            taskPath: String,
         ): MemoryTaskUpdateOp.Draft? {
             val cleanTitle = title.trim().take(180)
             if (cleanTitle.isBlank()) return null
 
-            val owner = ownerEntityId.toMemoryIdOrNull()
-                ?.let { MemoryEntity.Id(it) }
-                ?.takeIf { it in allowedEntityIds }
-            val assignee = assigneeEntityId.toMemoryIdOrNull()
-                ?.let { MemoryEntity.Id(it) }
-                ?.takeIf { it in allowedEntityIds }
-            val related = relatedEntityIds
-                .mapNotNull { raw -> raw.toMemoryIdOrNull()?.let { MemoryEntity.Id(it) } }
-                .filter { it in allowedEntityIds }
-                .distinct()
+            val owner = entityRefs.optional(ownerEntityId, "$taskPath.owner_entity_id")
+            val assignee = entityRefs.optional(assigneeEntityId, "$taskPath.assignee_entity_id")
+            val related = entityRefs.optionalList(relatedEntityIds, "$taskPath.related_entity_ids")
             val scopeSubject = owner ?: assignee ?: related.firstOrNull() ?: originNote?.anchorEntityId
 
             return MemoryTaskUpdateOp.Draft(
@@ -465,16 +502,15 @@ class LlmMemoryNoteConsolidator(
     ) {
         fun toEpisodeCandidate(
             selectedById: Map<MemoryNote.Id, MemoryNote>,
-            allowedEntityIds: Set<MemoryEntity.Id>,
+            entityRefs: MemoryEntityRefValidator,
+            candidatePath: String,
         ): MemoryEpisodeCandidate? {
             val originNote = originNoteId.toNoteIdOrNull()?.let(selectedById::get) ?: return null
             val cleanLesson = lesson.trim().take(1_200)
             if (cleanLesson.isBlank()) return null
 
             return MemoryEpisodeCandidate(
-                ownerEntityId = ownerEntityId.toMemoryIdOrNull()
-                    ?.let { MemoryEntity.Id(it) }
-                    ?.takeIf { it in allowedEntityIds },
+                ownerEntityId = entityRefs.optional(ownerEntityId, "$candidatePath.owner_entity_id"),
                 originNoteId = originNote.id,
                 situation = situation.trim().take(1_200),
                 action = action.trim().take(1_200),

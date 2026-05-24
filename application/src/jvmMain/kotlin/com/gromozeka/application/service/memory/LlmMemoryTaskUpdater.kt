@@ -17,7 +17,6 @@ import com.gromozeka.domain.model.memory.MemoryTask
 import com.gromozeka.domain.model.memory.MemoryTaskUpdateOp
 import com.gromozeka.domain.model.memory.MemoryTaskUpdater
 import com.gromozeka.domain.model.memory.MemoryWriteRetrievalPlan
-import com.gromozeka.domain.model.memory.isValidMemoryEntityId
 import com.gromozeka.domain.service.AiRuntime
 import com.gromozeka.domain.tool.AiToolCallback
 import klog.KLoggers
@@ -70,6 +69,10 @@ class LlmMemoryTaskUpdater(
         val existingTasks = retrievedHits
             .filterIsInstance<MemoryStore.SearchHit.TaskHit>()
             .map { it.task }
+        val entityRefValidator = MemoryEntityRefValidator(
+            stageName = "TaskUpdater",
+            allowedEntityIds = entityOps.mapNotNullTo(mutableSetOf()) { it.entityId },
+        )
         val result = runtime.callMemoryStructuredStage(
             request = AiRuntimeRequest(
                 systemPrompts = runtimeSystemPrompts,
@@ -92,7 +95,14 @@ class LlmMemoryTaskUpdater(
             parse = { jsonText ->
                 json.decodeFromString<TaskUpdaterResponse>(jsonText)
                     .operations
-                    .mapNotNull { it.toOp(request, existingTasks, entityOps) }
+                    .mapIndexedNotNull { index, operation ->
+                        operation.toOp(
+                            request = request,
+                            existingTasks = existingTasks,
+                            entityRefs = entityRefValidator,
+                            operationPath = "operations[$index]",
+                        )
+                    }
             },
         )
 
@@ -164,14 +174,15 @@ class LlmMemoryTaskUpdater(
         fun toOp(
             request: DirectStructuredMemoryWriteRequest,
             existingTasks: List<MemoryTask>,
-            entityOps: List<MemoryEntityCanonicalizationOp>,
+            entityRefs: MemoryEntityRefValidator,
+            operationPath: String,
         ): MemoryTaskUpdateOp? {
             val target = targetTaskId.toTaskMemoryIdTextOrNull()?.let { MemoryTask.Id(it) }
             if (target != null && existingTasks.none { it.id == target }) {
                 return null
             }
 
-            val draft = task?.toDraft(request, entityOps)
+            val draft = task?.toDraft(request, entityRefs, "$operationPath.task")
             return when (action.trim().lowercase()) {
                 "insert" -> draft?.takeIf { !it.evidenceQuote.isNullOrBlank() }?.let {
                     MemoryTaskUpdateOp(
@@ -249,7 +260,8 @@ class LlmMemoryTaskUpdater(
     ) {
         fun toDraft(
             request: DirectStructuredMemoryWriteRequest,
-            entityOps: List<MemoryEntityCanonicalizationOp>,
+            entityRefs: MemoryEntityRefValidator,
+            taskPath: String,
         ): MemoryTaskUpdateOp.Draft? {
             val cleanTitle = title.trim().take(180)
             if (cleanTitle.isBlank()) return null
@@ -262,15 +274,9 @@ class LlmMemoryTaskUpdater(
                 return null
             }
 
-            val allowedEntityIds = entityOps.mapNotNullTo(mutableSetOf()) { it.entityId }
-            val owner = ownerEntityId.toTaskEntityIdOrNull("owner_entity_id")
-                ?.takeIf { it in allowedEntityIds }
-            val assignee = assigneeEntityId.toTaskEntityIdOrNull("assignee_entity_id")
-                ?.takeIf { it in allowedEntityIds }
-            val related = relatedEntityIds
-                .mapNotNull { rawId -> rawId.toTaskEntityIdOrNull("related_entity_ids") }
-                .filter { it in allowedEntityIds }
-                .distinct()
+            val owner = entityRefs.optional(ownerEntityId, "$taskPath.owner_entity_id")
+            val assignee = entityRefs.optional(assigneeEntityId, "$taskPath.assignee_entity_id")
+            val related = entityRefs.optionalList(relatedEntityIds, "$taskPath.related_entity_ids")
 
             return MemoryTaskUpdateOp.Draft(
                 title = cleanTitle,
@@ -505,14 +511,6 @@ private fun String?.toTaskMemoryIdTextOrNull(): String? {
         return null
     }
     return value
-}
-
-private fun String?.toTaskEntityIdOrNull(fieldName: String): MemoryEntity.Id? {
-    val value = toTaskMemoryIdTextOrNull() ?: return null
-    require(value.isValidMemoryEntityId()) {
-        "TaskUpdater returned invalid entity id '$value' in $fieldName. It must use a resolved entity id, not a raw label."
-    }
-    return MemoryEntity.Id(value)
 }
 
 private fun List<String>.cleanTaskTextList(

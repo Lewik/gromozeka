@@ -18,6 +18,7 @@ import com.gromozeka.domain.service.AiRuntime
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.runBlocking
@@ -182,6 +183,54 @@ class LlmMemoryClaimExtractorTest {
         assertNull(candidates.single().objectValue)
     }
 
+    @Test
+    fun repairsInvalidEntityReferenceBeforeMappingClaims() = runBlocking {
+        val userEntityId = MemoryEntity.Id("entity-user")
+        val runtime = SequencedJsonRuntime(
+            responses = ArrayDeque(
+                listOf(
+                    claimJson(subjectEntityId = "user"),
+                    claimJson(subjectEntityId = userEntityId.value),
+                )
+            )
+        )
+        val extractor = LlmMemoryClaimExtractor(
+            runtime = runtime,
+            timezone = "UTC",
+            runtimeSystemPrompts = emptyList(),
+            runtimeTools = emptyList(),
+        )
+
+        val candidates = extractor.extract(
+            request = DirectStructuredMemoryWriteRequest(
+                namespace = TEST_NAMESPACE,
+                source = source("I usually prefer concise technical answers."),
+            ),
+            routeDecision = MemoryRouteDecision(
+                decision = MemoryRouteDecision.Decision.DIRECT_STRUCTURED_WRITE,
+                memoryTypes = setOf(MemorySemanticType.CLAIM),
+                salience = 0.8,
+                reason = "The target contains a durable preference.",
+            ),
+            retrievalPlan = MemoryWriteRetrievalPlan(
+                predicateHints = listOf("has_constraint"),
+                memoryTypes = setOf(MemorySemanticType.CLAIM),
+            ),
+            retrievedHits = emptyList(),
+            entityOps = listOf(entityOp("I", userEntityId, MemoryEntity.Type.USER)),
+            predicateCatalog = MemoryPredicateCatalogDefaults.forNamespace(TEST_NAMESPACE),
+        )
+
+        assertEquals(1, candidates.size)
+        assertEquals(userEntityId, candidates.single().subjectEntityId)
+        assertEquals(2, runtime.requests.size)
+        val repairText = runtime.requests[1].messages.last().content
+            .filterIsInstance<Conversation.Message.ContentItem.UserMessage>()
+            .joinToString("\n") { it.text }
+        assertTrue(repairText.contains("ClaimExtractor returned invalid entity reference"))
+        assertTrue(repairText.contains("Allowed entity ids: entity-user"))
+    }
+
     private class FixedJsonRuntime(
         private val responseText: String,
     ) : AiRuntime {
@@ -199,6 +248,30 @@ class LlmMemoryClaimExtractorTest {
                     )
                 )
             )
+
+        override fun stream(request: AiRuntimeRequest): Flow<AiRuntimeResponse> = emptyFlow()
+    }
+
+    private class SequencedJsonRuntime(
+        private val responses: ArrayDeque<String>,
+    ) : AiRuntime {
+        val requests = mutableListOf<AiRuntimeRequest>()
+        override val capabilities: AiRuntimeCapabilities = AiRuntimeCapabilities()
+
+        override suspend fun call(request: AiRuntimeRequest): AiRuntimeResponse {
+            requests += request
+            return AiRuntimeResponse(
+                messages = listOf(
+                    AiAssistantMessage(
+                        content = listOf(
+                            Conversation.Message.ContentItem.AssistantMessage(
+                                structured = Conversation.Message.StructuredText(responses.removeFirst()),
+                            )
+                        )
+                    )
+                )
+            )
+        }
 
         override fun stream(request: AiRuntimeRequest): Flow<AiRuntimeResponse> = emptyFlow()
     }
@@ -237,5 +310,28 @@ class LlmMemoryClaimExtractorTest {
                 observedAt = NOW,
                 createdAt = NOW,
             )
+
+        fun claimJson(subjectEntityId: String): String =
+            """
+            {
+              "claims": [
+                {
+                  "subject_entity_id": "$subjectEntityId",
+                  "predicate": "has_constraint",
+                  "object_entity_id": null,
+                  "object_value_json": "concise technical answers",
+                  "normalized_text": "The user prefers concise technical answers.",
+                  "scope_json": {"kind": "global", "text": "Namespace-wide memory", "basis": "explicit"},
+                  "qualifiers_json": {"category": "communication_style"},
+                  "confidence": 0.88,
+                  "importance": 7,
+                  "evidence_quote": "prefer concise technical answers",
+                  "evidence_kind": "direct",
+                  "evidence_reason": "The target explicitly states the preference.",
+                  "reason": "This is a durable answer style preference."
+                }
+              ]
+            }
+            """.trimIndent()
     }
 }

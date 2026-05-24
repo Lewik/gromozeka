@@ -16,7 +16,6 @@ import com.gromozeka.domain.model.memory.MemoryScope
 import com.gromozeka.domain.model.memory.MemorySource
 import com.gromozeka.domain.model.memory.MemoryStore
 import com.gromozeka.domain.model.memory.MemoryWriteRetrievalPlan
-import com.gromozeka.domain.model.memory.isValidMemoryEntityId
 import com.gromozeka.domain.service.AiRuntime
 import com.gromozeka.domain.tool.AiToolCallback
 import klog.KLoggers
@@ -68,6 +67,10 @@ class LlmMemoryNoteConstructor(
                 "runtimeSystemPrompts=${runtimeSystemPrompts.size} runtimeTools=${runtimeTools.size} stageMessages=${stageMessages.size}"
         }
 
+        val entityRefValidator = MemoryEntityRefValidator(
+            stageName = "NoteConstructor",
+            allowedEntityIds = entityOps.mapNotNullTo(mutableSetOf()) { it.entityId },
+        )
         val result = runtime.callMemoryStructuredStage(
             request = AiRuntimeRequest(
                 systemPrompts = runtimeSystemPrompts,
@@ -94,7 +97,13 @@ class LlmMemoryNoteConstructor(
                 } else {
                     json.decodeFromString<List<NoteConstructorResponse>>(jsonText)
                 }
-                responses.mapNotNull { it.toCandidate(request, entityOps) }
+                responses.mapIndexedNotNull { index, response ->
+                    response.toCandidate(
+                        request = request,
+                        entityRefValidator = entityRefValidator,
+                        candidatePath = "notes[$index]",
+                    )
+                }
             },
         )
 
@@ -149,15 +158,17 @@ class LlmMemoryNoteConstructor(
 
     private fun NoteConstructorResponse.toCandidate(
         request: DirectStructuredMemoryWriteRequest,
-        entityOps: List<MemoryEntityCanonicalizationOp>,
+        entityRefValidator: MemoryEntityRefValidator,
+        candidatePath: String,
     ): MemoryNoteCandidate? {
         val cleanTitle = title.trim().take(160)
         val cleanSummary = summary.trim().take(1_500)
         if (cleanTitle.isBlank() || cleanSummary.isBlank()) return null
 
-        val allowedEntityIds = entityOps.mapNotNullTo(mutableSetOf()) { it.entityId }
         val refs = entityRefs
-            .mapNotNull { it.toEntityRef(allowedEntityIds) }
+            .mapIndexed { index, ref ->
+                ref.toEntityRef(entityRefValidator, "$candidatePath.entity_refs[$index]")
+            }
             .distinctBy { "${it.entityId.value}:${it.role.name}" }
 
         val quote = evidenceQuote
@@ -236,10 +247,10 @@ class LlmMemoryNoteConstructor(
     )
 
     private fun EntityRefResponse.toEntityRef(
-        allowedEntityIds: Set<MemoryEntity.Id>,
-    ): MemoryNote.EntityRef? {
-        val id = entityId.toNoteMemoryIdTextOrNull()?.let { MemoryEntity.Id(it) } ?: return null
-        if (id !in allowedEntityIds) return null
+        entityRefs: MemoryEntityRefValidator,
+        fieldPath: String,
+    ): MemoryNote.EntityRef {
+        val id = entityRefs.required(entityId, "$fieldPath.entity_id")
         return MemoryNote.EntityRef(
             entityId = id,
             role = role.toMemoryNoteEntityRole(),
@@ -442,16 +453,6 @@ private fun String.toMemoryEvidenceKindForNote(): MemoryEvidenceRef.Kind =
 private fun String?.toNoteInstantOrNull(): Instant? {
     val value = this?.trim()?.takeIf { it.isNotBlank() && it != "null" } ?: return null
     return runCatching { Instant.parse(value) }.getOrNull()
-}
-
-private fun String?.toNoteMemoryIdTextOrNull(): String? {
-    val value = this?.trim()?.takeIf { it.isNotBlank() } ?: return null
-    val normalized = value.lowercase()
-    if (normalized == "null" || normalized == "uuid-or-null" || normalized == "resolved-entity-id") return null
-    require(value.isValidMemoryEntityId()) {
-        "NoteConstructor returned invalid entity id '$value'. It must use a resolved entity id, not a raw label."
-    }
-    return value
 }
 
 private fun List<String>.cleanTextList(

@@ -17,7 +17,6 @@ import com.gromozeka.domain.model.memory.MemoryScope
 import com.gromozeka.domain.model.memory.MemorySource
 import com.gromozeka.domain.model.memory.MemoryStore
 import com.gromozeka.domain.model.memory.MemoryWriteRetrievalPlan
-import com.gromozeka.domain.model.memory.isValidMemoryEntityId
 import com.gromozeka.domain.service.AiRuntime
 import com.gromozeka.domain.tool.AiToolCallback
 import klog.KLoggers
@@ -77,6 +76,10 @@ class LlmMemoryClaimExtractor(
             ),
         )
 
+        val entityRefValidator = MemoryEntityRefValidator(
+            stageName = "ClaimExtractor",
+            allowedEntityIds = entityOps.mapNotNullTo(mutableSetOf()) { it.entityId },
+        )
         val result = runtime.callMemoryStructuredStage(
             request = AiRuntimeRequest(
                 systemPrompts = runtimeSystemPrompts,
@@ -103,7 +106,14 @@ class LlmMemoryClaimExtractor(
                 } else {
                     json.decodeFromString<List<ClaimExtractorResponse>>(jsonText)
                 }
-                responses.mapNotNull { it.toClaimCandidate(request, entityOps, predicateCatalog) }
+                responses.mapIndexedNotNull { index, response ->
+                    response.toClaimCandidate(
+                        request = request,
+                        entityRefs = entityRefValidator,
+                        predicateCatalog = predicateCatalog,
+                        candidatePath = "claims[$index]",
+                    )
+                }
             },
         )
 
@@ -162,17 +172,11 @@ class LlmMemoryClaimExtractor(
 
     private fun ClaimExtractorResponse.toClaimCandidate(
         request: DirectStructuredMemoryWriteRequest,
-        entityOps: List<MemoryEntityCanonicalizationOp>,
+        entityRefs: MemoryEntityRefValidator,
         predicateCatalog: MemoryPredicateCatalog,
+        candidatePath: String,
     ): MemoryClaimCandidate? {
-        val subjectId = subjectEntityId
-            .toMemoryRefTextOrNull()
-            ?.let { MemoryEntity.Id(it) }
-            ?: return null
-
-        if (entityOps.none { it.entityId == subjectId }) {
-            return null
-        }
+        val subjectId = entityRefs.required(subjectEntityId, "$candidatePath.subject_entity_id")
 
         val mappedPredicate = predicate.trim()
         val mappedText = normalizedText.trim()
@@ -180,9 +184,7 @@ class LlmMemoryClaimExtractor(
             return null
         }
 
-        val mappedObjectEntityId = objectEntityId
-            .toMemoryRefTextOrNull()
-            ?.let { MemoryEntity.Id(it) }
+        val mappedObjectEntityId = entityRefs.optional(objectEntityId, "$candidatePath.object_entity_id")
 
         val mappedObjectValue = objectValueJson
             ?.takeUnless { it is JsonNull }
@@ -496,18 +498,6 @@ private fun String.toMemoryEvidenceKind(): MemoryEvidenceRef.Kind =
         "derived_from_note" -> MemoryEvidenceRef.Kind.DERIVED_FROM_NOTE
         else -> MemoryEvidenceRef.Kind.DIRECT
     }
-
-private fun String?.toMemoryRefTextOrNull(): String? {
-    val value = this?.trim()?.takeIf { it.isNotBlank() } ?: return null
-    val normalized = value.lowercase()
-    if (normalized == "null" || normalized == "uuid-or-null") {
-        return null
-    }
-    require(value.isValidMemoryEntityId()) {
-        "ClaimExtractor returned invalid entity id '$value'. It must use a resolved entity id, not a raw label."
-    }
-    return value
-}
 
 private fun String.oneLineForClaimMemoryLog(maxChars: Int): String {
     val oneLine = trim()
