@@ -7,6 +7,7 @@ import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.model.ai.AiRuntimeResponse
 import com.gromozeka.domain.model.memory.DirectStructuredMemoryWriteRequest
 import com.gromozeka.domain.model.memory.MemoryEntity
+import com.gromozeka.domain.model.memory.MemoryEntityCanonicalizationOp
 import com.gromozeka.domain.model.memory.MemoryNamespace
 import com.gromozeka.domain.model.memory.MemorySource
 import com.gromozeka.domain.model.memory.MemoryStore
@@ -22,6 +23,8 @@ import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Instant
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 
 class LlmMemoryEntityCanonicalizerTest {
 
@@ -97,6 +100,75 @@ class LlmMemoryEntityCanonicalizerTest {
         assertEquals(candidateId, ops.single().entityId)
     }
 
+    @Test
+    fun repairsDocumentFileEntityWithoutAboutFileAssertion() = runBlocking {
+        val runtime = SequencedJsonRuntime(
+            responses = ArrayDeque(
+                listOf(
+                    """
+                    {
+                      "operations": [
+                        {
+                          "mention": "MemoryToolSupport.kt",
+                          "action": "create_new",
+                          "entity_id": null,
+                          "new_entity": {
+                            "entity_type": "file",
+                            "canonical_name": "MemoryToolSupport.kt",
+                            "summary": "File named MemoryToolSupport.kt."
+                          },
+                          "about_file_assertion": false,
+                          "alias_text": null,
+                          "confidence": 0.8,
+                          "reason": "The document mentions this Kotlin file."
+                        }
+                      ]
+                    }
+                    """.trimIndent(),
+                    """
+                    {
+                      "operations": [
+                        {
+                          "mention": "MemoryToolSupport.kt",
+                          "action": "noop",
+                          "entity_id": null,
+                          "new_entity": null,
+                          "about_file_assertion": false,
+                          "alias_text": null,
+                          "confidence": 0.9,
+                          "reason": "This is an incidental code reference, not a durable assertion about the file itself."
+                        }
+                      ]
+                    }
+                    """.trimIndent(),
+                )
+            )
+        )
+        val canonicalizer = LlmMemoryEntityCanonicalizer(
+            runtime = runtime,
+            runtimeSystemPrompts = emptyList(),
+            runtimeTools = emptyList(),
+        )
+
+        val ops = canonicalizer.canonicalize(
+            request = documentRequest(
+                """
+                Document source: docs/lessons.md
+                Document section: Memory lessons
+
+                The lesson mentions MemoryToolSupport.kt while explaining MCP tool status output.
+                """.trimIndent()
+            ),
+            retrievalPlan = MemoryWriteRetrievalPlan(),
+            retrievedHits = emptyList(),
+        )
+
+        assertEquals(1, ops.size)
+        assertEquals(MemoryEntityCanonicalizationOp.Action.NOOP, ops.single().action)
+        assertEquals(2, runtime.requests.size)
+        assertEquals(true, runtime.requests.last().options.toolContext["memoryStageRepair"])
+    }
+
     private class FixedJsonRuntime(
         private val responseText: String,
     ) : AiRuntime {
@@ -118,6 +190,30 @@ class LlmMemoryEntityCanonicalizerTest {
         override fun stream(request: AiRuntimeRequest): Flow<AiRuntimeResponse> = emptyFlow()
     }
 
+    private class SequencedJsonRuntime(
+        private val responses: ArrayDeque<String>,
+    ) : AiRuntime {
+        val requests = mutableListOf<AiRuntimeRequest>()
+        override val capabilities: AiRuntimeCapabilities = AiRuntimeCapabilities()
+
+        override suspend fun call(request: AiRuntimeRequest): AiRuntimeResponse {
+            requests += request
+            return AiRuntimeResponse(
+                messages = listOf(
+                    AiAssistantMessage(
+                        content = listOf(
+                            Conversation.Message.ContentItem.AssistantMessage(
+                                structured = Conversation.Message.StructuredText(responses.removeFirst()),
+                            )
+                        )
+                    )
+                )
+            )
+        }
+
+        override fun stream(request: AiRuntimeRequest): Flow<AiRuntimeResponse> = emptyFlow()
+    }
+
     private companion object {
         val TEST_NAMESPACE = MemoryNamespace("entity-canonicalizer-test")
         val NOW: Instant = Instant.parse("2026-01-02T03:04:05Z")
@@ -133,6 +229,28 @@ class LlmMemoryEntityCanonicalizerTest {
                     sourceMessageId = Conversation.Message.Id("message"),
                     speakerRole = MemorySource.ActorRole.USER,
                     contentText = text,
+                    contentHash = "source-hash",
+                    observedAt = NOW,
+                    createdAt = NOW,
+                ),
+            )
+
+        fun documentRequest(text: String): DirectStructuredMemoryWriteRequest =
+            DirectStructuredMemoryWriteRequest(
+                namespace = TEST_NAMESPACE,
+                source = MemorySource.ExternalRecord(
+                    id = MemorySource.Id("external:document-section"),
+                    namespace = TEST_NAMESPACE,
+                    recordRef = "docs/lessons.md#section:1",
+                    authorLabel = "document section",
+                    contentText = text,
+                    contentPayload = buildJsonObject {
+                        put("memoryToolOrigin", "provided_document_section")
+                        put("sourceKind", "document")
+                        put("documentType", "MARKDOWN")
+                        put("sourceRef", "docs/lessons.md")
+                        put("heading", "Memory lessons")
+                    },
                     contentHash = "source-hash",
                     observedAt = NOW,
                     createdAt = NOW,

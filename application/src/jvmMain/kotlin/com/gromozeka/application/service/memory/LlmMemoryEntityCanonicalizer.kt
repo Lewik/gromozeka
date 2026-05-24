@@ -153,6 +153,18 @@ class LlmMemoryEntityCanonicalizer(
 
         val mappedAction = action.toCanonicalizationAction()
         val mappedNewEntity = newEntity?.toNewEntity()
+        if (
+            request.source.isDocumentIngestSource() &&
+            mappedAction == MemoryEntityCanonicalizationOp.Action.CREATE_NEW &&
+            mappedNewEntity?.entityType == MemoryEntity.Type.FILE &&
+            !aboutFileAssertion
+        ) {
+            throw IllegalArgumentException(
+                "EntityCanonicalizer cannot create a FILE entity for an imported document mention without " +
+                    "about_file_assertion=true. Use action=noop for incidental code references, stack traces, " +
+                    "code blocks, file extensions, or paths unless the text asserts a durable fact about the file itself."
+            )
+        }
         val candidateEntityIds = retrievedHits
             .filterIsInstance<MemoryStore.SearchHit.EntityHit>()
             .mapTo(mutableSetOf()) { it.entity.id }
@@ -227,6 +239,8 @@ class LlmMemoryEntityCanonicalizer(
         val entityId: String? = null,
         @SerialName("new_entity")
         val newEntity: NewEntityResponse? = null,
+        @SerialName("about_file_assertion")
+        val aboutFileAssertion: Boolean = false,
         @SerialName("alias_text")
         val aliasText: String? = null,
         val confidence: Double = 0.0,
@@ -261,6 +275,7 @@ class LlmMemoryEntityCanonicalizer(
                     "canonical_name": "text",
                     "summary": "text-or-null"
                   },
+                  "about_file_assertion": false,
                   "alias_text": "text-or-null",
                   "confidence": 0.0,
                   "reason": "short explanation"
@@ -279,6 +294,8 @@ class LlmMemoryEntityCanonicalizer(
             - Entity summaries must describe identity only, not mutable facts, current status, preferences, ownership, formats, fields, versions, or decisions. Put those facts into claims/notes instead.
             - For USER first-person facts and preferences, resolve the user as the stable namespace-level USER entity named "User".
             - For imported document/file_path/raw_url sources, the source path, URL, title, and section heading are source metadata. Do not create DOCUMENT, FILE, or URL-like entities merely to represent the imported source itself. Create a document/file entity only when the document content discusses that document/file as a durable domain object.
+            - For imported document sources, do not create FILE entities from incidental code references, stack traces, code blocks, file extensions, or paths such as "*.kt". Set action="noop" unless the text states a durable assertion about the file itself and later stages need that file as a claim subject or object.
+            - Set about_file_assertion=true only for FILE operations where the target text asserts something about that file itself. Set it false for non-FILE operations and incidental file-like mentions.
             - Do not use raw labels such as "user", "assistant", "project", or "document" as entity_id. entity_id must be an existing candidate id, or null when creating a new entity.
             - Use relevant retrieval context to resolve ambiguous target mentions such as pronouns, "it", "that", "first one", "second one", and "from that list".
             - When TARGET_MESSAGE selects one item from a previously retrieved ordered list, create or link only the selected concrete entity so later stages can write the target claim.

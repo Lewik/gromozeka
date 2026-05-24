@@ -97,6 +97,7 @@ internal object MemoryStructuredResponseFormats {
                         "canonical_name" to stringSchema(),
                         "summary" to nullableStringSchema(),
                     ),
+                    "about_file_assertion" to booleanSchema(),
                     "alias_text" to nullableStringSchema(),
                     "confidence" to numberSchema(),
                     "reason" to stringSchema(),
