@@ -79,6 +79,7 @@ class LlmMemoryClaimExtractor(
         val entityRefValidator = MemoryEntityRefValidator(
             stageName = "ClaimExtractor",
             allowedEntityIds = entityOps.mapNotNullTo(mutableSetOf()) { it.entityId },
+            entityAliases = entityOps.toEntityRefAliases(),
         )
         val result = runtime.callMemoryStructuredStage(
             request = AiRuntimeRequest(

@@ -72,6 +72,7 @@ class LlmMemoryTaskUpdater(
         val entityRefValidator = MemoryEntityRefValidator(
             stageName = "TaskUpdater",
             allowedEntityIds = entityOps.mapNotNullTo(mutableSetOf()) { it.entityId },
+            entityAliases = entityOps.toEntityRefAliases(),
         )
         val result = runtime.callMemoryStructuredStage(
             request = AiRuntimeRequest(

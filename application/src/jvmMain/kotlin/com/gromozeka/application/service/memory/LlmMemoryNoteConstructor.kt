@@ -70,6 +70,7 @@ class LlmMemoryNoteConstructor(
         val entityRefValidator = MemoryEntityRefValidator(
             stageName = "NoteConstructor",
             allowedEntityIds = entityOps.mapNotNullTo(mutableSetOf()) { it.entityId },
+            entityAliases = entityOps.toEntityRefAliases(),
         )
         val result = runtime.callMemoryStructuredStage(
             request = AiRuntimeRequest(

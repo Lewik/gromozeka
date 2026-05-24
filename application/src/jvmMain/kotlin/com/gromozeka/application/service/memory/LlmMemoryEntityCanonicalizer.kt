@@ -10,6 +10,7 @@ import com.gromozeka.domain.model.memory.MemorySource
 import com.gromozeka.domain.model.memory.MemoryStore
 import com.gromozeka.domain.model.memory.MemoryWriteRetrievalPlan
 import com.gromozeka.domain.model.memory.MemoryEntityCanonicalizer
+import com.gromozeka.domain.model.memory.isValidMemoryEntityId
 import com.gromozeka.domain.service.AiRuntime
 import com.gromozeka.domain.tool.AiToolCallback
 import klog.KLoggers
@@ -71,7 +72,13 @@ class LlmMemoryEntityCanonicalizer(
                     json.decodeFromString<List<EntityCanonicalizerResponse>>(jsonText)
                 }
                 responses
-                    .mapNotNull { it.toOp(request) }
+                    .mapIndexedNotNull { index, response ->
+                        response.toOp(
+                            request = request,
+                            retrievedHits = retrievedHits,
+                            responsePath = "operations[$index]",
+                        )
+                    }
                     .normalizeStableUserOps(request, retrievedHits)
             },
         )
@@ -136,6 +143,8 @@ class LlmMemoryEntityCanonicalizer(
 
     private fun EntityCanonicalizerResponse.toOp(
         request: DirectStructuredMemoryWriteRequest,
+        retrievedHits: List<MemoryStore.SearchHit>,
+        responsePath: String,
     ): MemoryEntityCanonicalizationOp? {
         val normalizedMention = mention.trim()
         if (normalizedMention.isBlank()) {
@@ -144,10 +153,23 @@ class LlmMemoryEntityCanonicalizer(
 
         val mappedAction = action.toCanonicalizationAction()
         val mappedNewEntity = newEntity?.toNewEntity()
-        val mappedEntityId = entityId
-            .toMemoryIdTextOrNull()
-            ?.let { MemoryEntity.Id(it) }
-            ?: mappedAction.provisionalEntityId(request, mappedNewEntity)
+        val candidateEntityIds = retrievedHits
+            .filterIsInstance<MemoryStore.SearchHit.EntityHit>()
+            .mapTo(mutableSetOf()) { it.entity.id }
+        val mappedEntityId = when (mappedAction) {
+            MemoryEntityCanonicalizationOp.Action.CREATE_NEW ->
+                mappedAction.provisionalEntityId(request, mappedNewEntity)
+
+            MemoryEntityCanonicalizationOp.Action.LINK_EXISTING,
+            MemoryEntityCanonicalizationOp.Action.ADD_ALIAS ->
+                entityId.toCandidateEntityIdOrNull(candidateEntityIds, "$responsePath.entity_id")
+                    ?: throw IllegalArgumentException(
+                        "EntityCanonicalizer returned ${mappedAction.name} without a valid existing entity id at $responsePath.entity_id"
+                    )
+
+            MemoryEntityCanonicalizationOp.Action.NOOP ->
+                entityId.toCandidateEntityIdOrNull(candidateEntityIds, "$responsePath.entity_id")
+        }
 
         return MemoryEntityCanonicalizationOp(
             mention = normalizedMention,
@@ -326,6 +348,38 @@ private fun String?.toMemoryIdTextOrNull(): String? {
         return null
     }
     return value
+}
+
+private fun String?.toCandidateEntityIdOrNull(
+    candidateEntityIds: Set<MemoryEntity.Id>,
+    fieldPath: String,
+): MemoryEntity.Id? {
+    val value = toMemoryIdTextOrNull() ?: return null
+    val id = MemoryEntity.Id(value)
+    if (value.isValidMemoryEntityId() && id in candidateEntityIds) {
+        return id
+    }
+
+    value.withEntityPrefixOrNull()?.let { prefixedValue ->
+        val prefixedId = MemoryEntity.Id(prefixedValue)
+        if (prefixedId in candidateEntityIds) {
+            return prefixedId
+        }
+    }
+
+    throw IllegalArgumentException(
+        "EntityCanonicalizer returned invalid entity reference at $fieldPath: value=$value. " +
+            "Use an exact candidate entity id."
+    )
+}
+
+private fun String.withEntityPrefixOrNull(): String? {
+    val value = trim()
+    if (':' in value || '-' in value) {
+        return null
+    }
+    val prefixed = "entity:$value"
+    return prefixed.takeIf { it.isValidMemoryEntityId() }
 }
 
 private fun String.toCanonicalizationAction(): MemoryEntityCanonicalizationOp.Action =

@@ -18,7 +18,6 @@ import com.gromozeka.domain.service.AiRuntime
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
-import kotlin.test.assertTrue
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.runBlocking
@@ -184,13 +183,12 @@ class LlmMemoryClaimExtractorTest {
     }
 
     @Test
-    fun repairsInvalidEntityReferenceBeforeMappingClaims() = runBlocking {
+    fun resolvesUserLiteralEntityReferenceBeforeMappingClaims() = runBlocking {
         val userEntityId = MemoryEntity.Id("entity-user")
         val runtime = SequencedJsonRuntime(
             responses = ArrayDeque(
                 listOf(
                     claimJson(subjectEntityId = "user"),
-                    claimJson(subjectEntityId = userEntityId.value),
                 )
             )
         )
@@ -223,12 +221,7 @@ class LlmMemoryClaimExtractorTest {
 
         assertEquals(1, candidates.size)
         assertEquals(userEntityId, candidates.single().subjectEntityId)
-        assertEquals(2, runtime.requests.size)
-        val repairText = runtime.requests[1].messages.last().content
-            .filterIsInstance<Conversation.Message.ContentItem.UserMessage>()
-            .joinToString("\n") { it.text }
-        assertTrue(repairText.contains("ClaimExtractor returned invalid entity reference"))
-        assertTrue(repairText.contains("Allowed entity ids: entity-user"))
+        assertEquals(1, runtime.requests.size)
     }
 
     private class FixedJsonRuntime(
