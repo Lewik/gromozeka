@@ -147,7 +147,7 @@ class DirectStructuredMemoryWritePipeline(
     branchParallelism: Int = MemoryPipelineParallelism.writeBranchParallelism(),
 ) : DirectStructuredMemoryWriteService {
     private val log = KLoggers.logger(this)
-    private val branchParallelism = branchParallelism.coerceIn(1, 3)
+    private val branchParallelism = MemoryPipelineParallelism.normalizeWriteBranchParallelism(branchParallelism)
 
     override suspend fun write(request: DirectStructuredMemoryWriteRequest): DirectStructuredMemoryWriteResult {
         require(request.source.namespace == request.namespace) {

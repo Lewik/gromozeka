@@ -1,5 +1,6 @@
 package com.gromozeka.server
 
+import com.gromozeka.application.service.MemoryToolApplicationService
 import com.gromozeka.application.service.SettingsService
 import com.gromozeka.infrastructure.ai.config.InternalMcpToolsRegistrar
 import io.ktor.http.HttpHeaders
@@ -43,6 +44,7 @@ fun main() {
 
     val remoteServer = context.getBean(GromozekaRemoteServer::class.java)
     val mcpServerFactory = context.getBean(GromozekaMcpServerFactory::class.java)
+    val memoryToolApplicationService = context.getBean(MemoryToolApplicationService::class.java)
     val host = System.getProperty("gromozeka.remote.host")
         ?: System.getenv("GROMOZEKA_REMOTE_HOST")
         ?: "127.0.0.1"
@@ -64,6 +66,7 @@ fun main() {
                 remoteServer.handle(this)
             }
             gromozekaMcp("/mcp", mcpServerFactory)
+            gromozekaMemoryHttp(memoryToolApplicationService)
             staticFiles("/", webRoot) {
                 modify { _, call ->
                     call.response.headers.append(HttpHeaders.CacheControl, "no-store")
@@ -79,6 +82,7 @@ fun main() {
     }
     println("==== Gromozeka server started: $endpoints ====")
     println("==== Gromozeka MCP SSE: http://$host:$port/mcp ====")
+    println("==== Gromozeka memory HTTP: http://$host:$port/memory/status ====")
     println("==== Gromozeka tailnet web: https://${resolveTailnetHost()}/ ====")
     println("==== Tailscale Serve: tailscale serve --bg http://127.0.0.1:$port ====")
     Thread.currentThread().join()
