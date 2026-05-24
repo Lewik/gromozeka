@@ -224,6 +224,58 @@ class LlmMemoryClaimExtractorTest {
         assertEquals(1, runtime.requests.size)
     }
 
+    @Test
+    fun repairsGenericDescriptionPredicateBeforeReturningClaims() = runBlocking {
+        val userEntityId = MemoryEntity.Id("entity-user")
+        val runtime = SequencedJsonRuntime(
+            responses = ArrayDeque(
+                listOf(
+                    claimJson(
+                        subjectEntityId = userEntityId.value,
+                        predicate = "is_described_as",
+                        objectValue = "The user prefers concise technical answers.",
+                    ),
+                    claimJson(
+                        subjectEntityId = userEntityId.value,
+                        predicate = "has_constraint",
+                        objectValue = "concise technical answers",
+                    ),
+                )
+            )
+        )
+        val extractor = LlmMemoryClaimExtractor(
+            runtime = runtime,
+            timezone = "UTC",
+            runtimeSystemPrompts = emptyList(),
+            runtimeTools = emptyList(),
+        )
+
+        val candidates = extractor.extract(
+            request = DirectStructuredMemoryWriteRequest(
+                namespace = TEST_NAMESPACE,
+                source = source("I usually prefer concise technical answers."),
+            ),
+            routeDecision = MemoryRouteDecision(
+                decision = MemoryRouteDecision.Decision.DIRECT_STRUCTURED_WRITE,
+                memoryTypes = setOf(MemorySemanticType.CLAIM),
+                salience = 0.8,
+                reason = "The target contains a durable preference.",
+            ),
+            retrievalPlan = MemoryWriteRetrievalPlan(
+                predicateHints = listOf("has_constraint"),
+                memoryTypes = setOf(MemorySemanticType.CLAIM),
+            ),
+            retrievedHits = emptyList(),
+            entityOps = listOf(entityOp("I", userEntityId, MemoryEntity.Type.USER)),
+            predicateCatalog = MemoryPredicateCatalogDefaults.forNamespace(TEST_NAMESPACE),
+        )
+
+        assertEquals(1, candidates.size)
+        assertEquals("has_constraint", candidates.single().predicate)
+        assertEquals(2, runtime.requests.size)
+        assertEquals(true, runtime.requests.last().options.toolContext["memoryStageRepair"])
+    }
+
     private class FixedJsonRuntime(
         private val responseText: String,
     ) : AiRuntime {
@@ -304,15 +356,19 @@ class LlmMemoryClaimExtractorTest {
                 createdAt = NOW,
             )
 
-        fun claimJson(subjectEntityId: String): String =
+        fun claimJson(
+            subjectEntityId: String,
+            predicate: String = "has_constraint",
+            objectValue: String = "concise technical answers",
+        ): String =
             """
             {
               "claims": [
                 {
                   "subject_entity_id": "$subjectEntityId",
-                  "predicate": "has_constraint",
+                  "predicate": "$predicate",
                   "object_entity_id": null,
-                  "object_value_json": "concise technical answers",
+                  "object_value_json": "$objectValue",
                   "normalized_text": "The user prefers concise technical answers.",
                   "scope_json": {"kind": "global", "text": "Namespace-wide memory", "basis": "explicit"},
                   "qualifiers_json": {"category": "communication_style"},
