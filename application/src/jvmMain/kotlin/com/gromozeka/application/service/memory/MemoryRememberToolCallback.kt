@@ -113,7 +113,7 @@ class MemoryRememberToolCallback(
                 text = providedText.takeIf { it.isNotBlank() },
                 filePath = providedFilePath.takeIf { it.isNotBlank() },
                 rawUrl = providedRawUrl.takeIf { it.isNotBlank() },
-                documentType = input.document_type,
+                documentType = input.document_type ?: "markdown".takeIf { input.target == "provided_document" },
                 title = input.title,
                 sourceRef = input.source_ref,
                 forceWrite = input.force_write,
