@@ -41,6 +41,10 @@ import com.gromozeka.domain.model.memory.MemoryWriteRetrievalPlanner
 import com.gromozeka.domain.model.memory.MemoryWriteRouter
 import java.security.MessageDigest
 import klog.KLoggers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import kotlinx.serialization.json.Json
@@ -103,6 +107,29 @@ data class DirectStructuredMemoryWriteMaterialization(
     val completedAt: Instant,
 )
 
+private data class MemoryWriteBranchResults(
+    val note: MemoryWriteNoteBranchResult,
+    val claim: MemoryWriteClaimBranchResult,
+    val task: MemoryWriteTaskBranchResult,
+)
+
+private data class MemoryWriteNoteBranchResult(
+    val noteCandidates: List<MemoryNoteCandidate>,
+    val rawNoteOps: List<MemoryNoteReconciliationOp>,
+    val noteOps: List<MemoryNoteReconciliationOp>,
+)
+
+private data class MemoryWriteClaimBranchResult(
+    val claimCandidates: List<MemoryClaimCandidate>,
+    val rawClaimOps: List<MemoryClaimReconciliationOp>,
+    val claimOps: List<MemoryClaimReconciliationOp>,
+)
+
+private data class MemoryWriteTaskBranchResult(
+    val rawTaskOps: List<MemoryTaskUpdateOp>,
+    val taskOps: List<MemoryTaskUpdateOp>,
+)
+
 class DirectStructuredMemoryWritePipeline(
     private val store: MemoryStore,
     private val router: MemoryWriteRouter,
@@ -117,8 +144,10 @@ class DirectStructuredMemoryWritePipeline(
     private val profileUpdater: MemoryProfileUpdater = NoOpMemoryProfileUpdater,
     private val forgetPipeline: ExplicitMemoryForgetPipeline? = null,
     private val clock: MemoryClock = SystemMemoryClock,
+    branchParallelism: Int = MemoryPipelineParallelism.writeBranchParallelism(),
 ) : DirectStructuredMemoryWriteService {
     private val log = KLoggers.logger(this)
+    private val branchParallelism = branchParallelism.coerceIn(1, 3)
 
     override suspend fun write(request: DirectStructuredMemoryWriteRequest): DirectStructuredMemoryWriteResult {
         require(request.source.namespace == request.namespace) {
@@ -365,121 +394,22 @@ class DirectStructuredMemoryWritePipeline(
                 "ops=${entityOps.entityDetailsForLog()}"
         }
 
-        val noteCandidates = noteConstructor.construct(
-            request = effectiveRequest,
-            routeDecision = structuredRouteDecision,
-            retrievalPlan = retrievalPlan,
-            retrievedHits = retrievedHits,
-            entityOps = entityOps,
-        )
-
-        log.info {
-            "Memory note constructor result: namespace=${request.namespace.value} source=${request.source.id.value} " +
-                "notes=${noteCandidates.size} types=${noteCandidates.noteTypeSummary()} notesPreview=${noteCandidates.noteSummary()}"
-        }
-
-        log.info {
-            "Memory note constructor details: namespace=${request.namespace.value} source=${request.source.id.value} " +
-                "notes=${noteCandidates.noteDetailsForLog()}"
-        }
-
-        val rawNoteOps = reconcileNoteCandidates(
-            request = effectiveRequest,
-            noteCandidates = noteCandidates,
-            retrievedHits = retrievedHits,
-        )
-        val noteOps = MemoryDedupPolicy.deduplicateWriteNoteOps(rawNoteOps, retrievedHits)
-
-        if (noteOps != rawNoteOps) {
-            log.info {
-                "Memory note dedup guard adjusted ops: namespace=${request.namespace.value} source=${request.source.id.value} " +
-                    "before=${rawNoteOps.noteReconciliationActionBreakdown()} after=${noteOps.noteReconciliationActionBreakdown()} " +
-                    "changes=${rawNoteOps.noteDedupChangesForLog(noteOps)}"
-            }
-        }
-
-        log.info {
-            "Memory note reconciler result: namespace=${request.namespace.value} source=${request.source.id.value} " +
-                "ops=${noteOps.size} actionBreakdown=${noteOps.noteReconciliationActionBreakdown()} opsPreview=${noteOps.noteReconciliationSummary()}"
-        }
-
-        log.info {
-            "Memory note reconciler details: namespace=${request.namespace.value} source=${request.source.id.value} " +
-                "ops=${noteOps.noteReconciliationDetailsForLog()}"
-        }
-
-        val claimCandidates = claimExtractor.extract(
-            request = effectiveRequest,
-            routeDecision = structuredRouteDecision,
+        val branchResults = runWriteBranches(
+            effectiveRequest = effectiveRequest,
+            structuredRouteDecision = structuredRouteDecision,
             retrievalPlan = retrievalPlan,
             retrievedHits = retrievedHits,
             entityOps = entityOps,
             predicateCatalog = predicateCatalog,
         )
-
-        log.info {
-            "Memory claim extractor result: namespace=${request.namespace.value} source=${request.source.id.value} " +
-                "claims=${claimCandidates.size} predicates=${claimCandidates.predicateSummary()} " +
-                "claimsPreview=${claimCandidates.claimSummary()}"
-        }
-
-        log.info {
-            "Memory claim extractor details: namespace=${request.namespace.value} source=${request.source.id.value} " +
-                "claims=${claimCandidates.claimDetailsForLog()}"
-        }
-
-        val rawClaimOps = reconcileClaimCandidates(
-            request = effectiveRequest,
-            claimCandidates = claimCandidates,
-            retrievedHits = retrievedHits,
-            predicateCatalog = predicateCatalog,
-        )
-        val claimOps = MemoryDedupPolicy.deduplicateWriteClaimOps(rawClaimOps, retrievedHits)
-
-        if (claimOps != rawClaimOps) {
-            log.info {
-                "Memory claim dedup guard adjusted ops: namespace=${request.namespace.value} source=${request.source.id.value} " +
-                    "before=${rawClaimOps.reconciliationActionBreakdown()} after=${claimOps.reconciliationActionBreakdown()} " +
-                    "changes=${rawClaimOps.claimDedupChangesForLog(claimOps)}"
-            }
-        }
-
-        log.info {
-            "Memory claim reconciler result: namespace=${request.namespace.value} source=${request.source.id.value} " +
-                "ops=${claimOps.size} actionBreakdown=${claimOps.reconciliationActionBreakdown()} opsPreview=${claimOps.reconciliationSummary()}"
-        }
-
-        log.info {
-            "Memory claim reconciler details: namespace=${request.namespace.value} source=${request.source.id.value} " +
-                "ops=${claimOps.reconciliationDetailsForLog()}"
-        }
-
-        val rawTaskOps = taskUpdater.update(
-            request = effectiveRequest,
-            routeDecision = structuredRouteDecision,
-            retrievalPlan = retrievalPlan,
-            retrievedHits = retrievedHits,
-            entityOps = entityOps,
-        )
-        val taskOps = MemoryDedupPolicy.deduplicateWriteTaskOps(rawTaskOps, retrievedHits)
-
-        if (taskOps != rawTaskOps) {
-            log.info {
-                "Memory task dedup guard adjusted ops: namespace=${request.namespace.value} source=${request.source.id.value} " +
-                    "before=${rawTaskOps.taskActionBreakdown()} after=${taskOps.taskActionBreakdown()} " +
-                    "changes=${rawTaskOps.taskDedupChangesForLog(taskOps)}"
-            }
-        }
-
-        log.info {
-            "Memory task updater result: namespace=${request.namespace.value} source=${request.source.id.value} " +
-                "ops=${taskOps.size} actionBreakdown=${taskOps.taskActionBreakdown()} opsPreview=${taskOps.taskSummary()}"
-        }
-
-        log.info {
-            "Memory task updater details: namespace=${request.namespace.value} source=${request.source.id.value} " +
-                "ops=${taskOps.taskDetailsForLog()}"
-        }
+        val noteCandidates = branchResults.note.noteCandidates
+        val rawNoteOps = branchResults.note.rawNoteOps
+        val noteOps = branchResults.note.noteOps
+        val claimCandidates = branchResults.claim.claimCandidates
+        val rawClaimOps = branchResults.claim.rawClaimOps
+        val claimOps = branchResults.claim.claimOps
+        val rawTaskOps = branchResults.task.rawTaskOps
+        val taskOps = branchResults.task.taskOps
 
         val completedAt = clock.now()
         val materialization = DirectStructuredMemoryWriteMaterialization(
@@ -516,7 +446,7 @@ class DirectStructuredMemoryWritePipeline(
         }
 
         log.info {
-                "Memory materializer batch: namespace=${request.namespace.value} source=${request.source.id.value} " +
+            "Memory materializer batch: namespace=${request.namespace.value} source=${request.source.id.value} " +
                 "predicates=${structuredMemoryBatch.predicateDefinitions.size} runs=${structuredMemoryBatch.runs.size} entities=${structuredMemoryBatch.entities.size} claims=${structuredMemoryBatch.claims.size} " +
                 "notes=${structuredMemoryBatch.notes.size} tasks=${structuredMemoryBatch.tasks.size} profiles=${structuredMemoryBatch.profiles.size} " +
                 "batch=${structuredMemoryBatch.batchDetailsForLog()}"
@@ -564,6 +494,211 @@ class DirectStructuredMemoryWritePipeline(
             rawTaskOps = rawTaskOps,
             taskOps = taskOps,
             memoryBatch = memoryBatch,
+        )
+    }
+
+    private suspend fun runWriteBranches(
+        effectiveRequest: DirectStructuredMemoryWriteRequest,
+        structuredRouteDecision: MemoryRouteDecision,
+        retrievalPlan: MemoryWriteRetrievalPlan,
+        retrievedHits: List<MemoryStore.SearchHit>,
+        entityOps: List<MemoryEntityCanonicalizationOp>,
+        predicateCatalog: MemoryPredicateCatalog,
+    ): MemoryWriteBranchResults {
+        log.info {
+            "Memory write branches start: namespace=${effectiveRequest.namespace.value} source=${effectiveRequest.source.id.value} " +
+                "parallelism=$branchParallelism"
+        }
+
+        if (branchParallelism == 1) {
+            return MemoryWriteBranchResults(
+                note = runNoteBranch(effectiveRequest, structuredRouteDecision, retrievalPlan, retrievedHits, entityOps),
+                claim = runClaimBranch(effectiveRequest, structuredRouteDecision, retrievalPlan, retrievedHits, entityOps, predicateCatalog),
+                task = runTaskBranch(effectiveRequest, structuredRouteDecision, retrievalPlan, retrievedHits, entityOps),
+            )
+        }
+
+        return coroutineScope {
+            val semaphore = Semaphore(branchParallelism)
+            val note = async {
+                semaphore.withPermit {
+                    runNoteBranch(effectiveRequest, structuredRouteDecision, retrievalPlan, retrievedHits, entityOps)
+                }
+            }
+            val claim = async {
+                semaphore.withPermit {
+                    runClaimBranch(effectiveRequest, structuredRouteDecision, retrievalPlan, retrievedHits, entityOps, predicateCatalog)
+                }
+            }
+            val task = async {
+                semaphore.withPermit {
+                    runTaskBranch(effectiveRequest, structuredRouteDecision, retrievalPlan, retrievedHits, entityOps)
+                }
+            }
+
+            MemoryWriteBranchResults(
+                note = note.await(),
+                claim = claim.await(),
+                task = task.await(),
+            )
+        }
+    }
+
+    private suspend fun runNoteBranch(
+        request: DirectStructuredMemoryWriteRequest,
+        routeDecision: MemoryRouteDecision,
+        retrievalPlan: MemoryWriteRetrievalPlan,
+        retrievedHits: List<MemoryStore.SearchHit>,
+        entityOps: List<MemoryEntityCanonicalizationOp>,
+    ): MemoryWriteNoteBranchResult {
+        val noteCandidates = noteConstructor.construct(
+            request = request,
+            routeDecision = routeDecision,
+            retrievalPlan = retrievalPlan,
+            retrievedHits = retrievedHits,
+            entityOps = entityOps,
+        )
+
+        log.info {
+            "Memory note constructor result: namespace=${request.namespace.value} source=${request.source.id.value} " +
+                "notes=${noteCandidates.size} types=${noteCandidates.noteTypeSummary()} notesPreview=${noteCandidates.noteSummary()}"
+        }
+
+        log.info {
+            "Memory note constructor details: namespace=${request.namespace.value} source=${request.source.id.value} " +
+                "notes=${noteCandidates.noteDetailsForLog()}"
+        }
+
+        val rawNoteOps = reconcileNoteCandidates(
+            request = request,
+            noteCandidates = noteCandidates,
+            retrievedHits = retrievedHits,
+        )
+        val noteOps = MemoryDedupPolicy.deduplicateWriteNoteOps(rawNoteOps, retrievedHits)
+
+        if (noteOps != rawNoteOps) {
+            log.info {
+                "Memory note dedup guard adjusted ops: namespace=${request.namespace.value} source=${request.source.id.value} " +
+                    "before=${rawNoteOps.noteReconciliationActionBreakdown()} after=${noteOps.noteReconciliationActionBreakdown()} " +
+                    "changes=${rawNoteOps.noteDedupChangesForLog(noteOps)}"
+            }
+        }
+
+        log.info {
+            "Memory note reconciler result: namespace=${request.namespace.value} source=${request.source.id.value} " +
+                "ops=${noteOps.size} actionBreakdown=${noteOps.noteReconciliationActionBreakdown()} opsPreview=${noteOps.noteReconciliationSummary()}"
+        }
+
+        log.info {
+            "Memory note reconciler details: namespace=${request.namespace.value} source=${request.source.id.value} " +
+                "ops=${noteOps.noteReconciliationDetailsForLog()}"
+        }
+
+        return MemoryWriteNoteBranchResult(
+            noteCandidates = noteCandidates,
+            rawNoteOps = rawNoteOps,
+            noteOps = noteOps,
+        )
+    }
+
+    private suspend fun runClaimBranch(
+        request: DirectStructuredMemoryWriteRequest,
+        routeDecision: MemoryRouteDecision,
+        retrievalPlan: MemoryWriteRetrievalPlan,
+        retrievedHits: List<MemoryStore.SearchHit>,
+        entityOps: List<MemoryEntityCanonicalizationOp>,
+        predicateCatalog: MemoryPredicateCatalog,
+    ): MemoryWriteClaimBranchResult {
+        val claimCandidates = claimExtractor.extract(
+            request = request,
+            routeDecision = routeDecision,
+            retrievalPlan = retrievalPlan,
+            retrievedHits = retrievedHits,
+            entityOps = entityOps,
+            predicateCatalog = predicateCatalog,
+        )
+
+        log.info {
+            "Memory claim extractor result: namespace=${request.namespace.value} source=${request.source.id.value} " +
+                "claims=${claimCandidates.size} predicates=${claimCandidates.predicateSummary()} " +
+                "claimsPreview=${claimCandidates.claimSummary()}"
+        }
+
+        log.info {
+            "Memory claim extractor details: namespace=${request.namespace.value} source=${request.source.id.value} " +
+                "claims=${claimCandidates.claimDetailsForLog()}"
+        }
+
+        val rawClaimOps = reconcileClaimCandidates(
+            request = request,
+            claimCandidates = claimCandidates,
+            retrievedHits = retrievedHits,
+            predicateCatalog = predicateCatalog,
+        )
+        val claimOps = MemoryDedupPolicy.deduplicateWriteClaimOps(rawClaimOps, retrievedHits)
+
+        if (claimOps != rawClaimOps) {
+            log.info {
+                "Memory claim dedup guard adjusted ops: namespace=${request.namespace.value} source=${request.source.id.value} " +
+                    "before=${rawClaimOps.reconciliationActionBreakdown()} after=${claimOps.reconciliationActionBreakdown()} " +
+                    "changes=${rawClaimOps.claimDedupChangesForLog(claimOps)}"
+            }
+        }
+
+        log.info {
+            "Memory claim reconciler result: namespace=${request.namespace.value} source=${request.source.id.value} " +
+                "ops=${claimOps.size} actionBreakdown=${claimOps.reconciliationActionBreakdown()} opsPreview=${claimOps.reconciliationSummary()}"
+        }
+
+        log.info {
+            "Memory claim reconciler details: namespace=${request.namespace.value} source=${request.source.id.value} " +
+                "ops=${claimOps.reconciliationDetailsForLog()}"
+        }
+
+        return MemoryWriteClaimBranchResult(
+            claimCandidates = claimCandidates,
+            rawClaimOps = rawClaimOps,
+            claimOps = claimOps,
+        )
+    }
+
+    private suspend fun runTaskBranch(
+        request: DirectStructuredMemoryWriteRequest,
+        routeDecision: MemoryRouteDecision,
+        retrievalPlan: MemoryWriteRetrievalPlan,
+        retrievedHits: List<MemoryStore.SearchHit>,
+        entityOps: List<MemoryEntityCanonicalizationOp>,
+    ): MemoryWriteTaskBranchResult {
+        val rawTaskOps = taskUpdater.update(
+            request = request,
+            routeDecision = routeDecision,
+            retrievalPlan = retrievalPlan,
+            retrievedHits = retrievedHits,
+            entityOps = entityOps,
+        )
+        val taskOps = MemoryDedupPolicy.deduplicateWriteTaskOps(rawTaskOps, retrievedHits)
+
+        if (taskOps != rawTaskOps) {
+            log.info {
+                "Memory task dedup guard adjusted ops: namespace=${request.namespace.value} source=${request.source.id.value} " +
+                    "before=${rawTaskOps.taskActionBreakdown()} after=${taskOps.taskActionBreakdown()} " +
+                    "changes=${rawTaskOps.taskDedupChangesForLog(taskOps)}"
+            }
+        }
+
+        log.info {
+            "Memory task updater result: namespace=${request.namespace.value} source=${request.source.id.value} " +
+                "ops=${taskOps.size} actionBreakdown=${taskOps.taskActionBreakdown()} opsPreview=${taskOps.taskSummary()}"
+        }
+
+        log.info {
+            "Memory task updater details: namespace=${request.namespace.value} source=${request.source.id.value} " +
+                "ops=${taskOps.taskDetailsForLog()}"
+        }
+
+        return MemoryWriteTaskBranchResult(
+            rawTaskOps = rawTaskOps,
+            taskOps = taskOps,
         )
     }
 
