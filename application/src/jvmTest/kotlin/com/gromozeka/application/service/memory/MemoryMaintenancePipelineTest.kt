@@ -1343,6 +1343,97 @@ class MemoryMaintenancePipelineTest {
     }
 
     @Test
+    fun entityMaintenanceMergesCompatibleTechnicalTypesAndPreservesObservedTypes() = runBlocking {
+        val winner = entity(
+            id = MemoryEntity.Id("entity-convention-plugins-tech"),
+            entityType = MemoryEntity.Type.TECHNOLOGY,
+            canonicalName = "convention-plugins",
+            normalizedName = "convention plugins",
+        )
+        val loser = entity(
+            id = MemoryEntity.Id("entity-convention-plugins-concept"),
+            entityType = MemoryEntity.Type.CONCEPT,
+            canonicalName = "Convention Plugins",
+            normalizedName = "convention plugins",
+        )
+        val claim = claim(
+            id = "claim-convention-plugins",
+            subjectEntityId = loser.id,
+            predicate = "has_constraint",
+            normalizedText = "Convention plugins should keep shared Gradle build logic centralized.",
+        )
+        val store = InMemoryMemoryStore(
+            MemoryNamespaceSnapshot(
+                entities = listOf(winner, loser),
+                claims = listOf(claim),
+            )
+        )
+
+        val result = MemoryEntityMaintenancePipeline(
+            store = store,
+            planner = FixedEntityMaintenancePlanner(
+                MemoryEntityMaintenancePlan(
+                    actions = listOf(
+                        MemoryEntityMaintenancePlan.Action(
+                            action = MemoryEntityMaintenancePlan.Action.Type.MERGE,
+                            winnerEntityId = winner.id.value,
+                            loserEntityIds = listOf(loser.id.value),
+                            aliasTexts = listOf("Convention Plugins"),
+                            reason = "Both entities name the same Gradle convention plugins concept.",
+                        )
+                    ),
+                    summary = "Merged duplicate convention plugins entities.",
+                )
+            ),
+            idFactory = SequentialMemoryIdFactory("entity-maintenance"),
+            profileUpdater = ProjectionMemoryProfileUpdater(store),
+            clock = FixedMemoryClock(NOW),
+        ).run(MemoryMaintenanceRequest(TEST_NAMESPACE))
+
+        val snapshot = store.loadNamespaceSnapshot(TEST_NAMESPACE, includeArchived = true)
+        val updatedWinner = snapshot.entityById(winner.id.value)
+
+        assertEquals(1, result.candidateGroups.size)
+        assertTrue(result.candidateGroups.single().entities.map { it.id }.containsAll(listOf(winner.id, loser.id)))
+        assertEquals(MemoryEntity.Status.ACTIVE, updatedWinner.status)
+        assertEquals(MemoryEntity.Status.MERGED, snapshot.entityById(loser.id.value).status)
+        assertEquals(winner.id, snapshot.entityById(loser.id.value).mergedIntoEntityId)
+        assertEquals(winner.id, snapshot.claimById(claim.id.value).subjectEntityId)
+        assertEquals(setOf(MemoryEntity.Type.TECHNOLOGY, MemoryEntity.Type.CONCEPT), updatedWinner.observedTypes)
+    }
+
+    @Test
+    fun entityMaintenanceKeepsIncompatibleSameNameEntityTypesSeparate() = runBlocking {
+        val project = entity(
+            id = MemoryEntity.Id("entity-gromozeka-project"),
+            entityType = MemoryEntity.Type.PROJECT,
+            canonicalName = "Gromozeka",
+            normalizedName = "gromozeka",
+        )
+        val document = entity(
+            id = MemoryEntity.Id("entity-gromozeka-document"),
+            entityType = MemoryEntity.Type.DOCUMENT,
+            canonicalName = "Gromozeka",
+            normalizedName = "gromozeka",
+        )
+        val store = InMemoryMemoryStore(
+            MemoryNamespaceSnapshot(
+                entities = listOf(project, document),
+            )
+        )
+
+        val result = MemoryEntityMaintenancePipeline(
+            store = store,
+            planner = FixedEntityMaintenancePlanner(MemoryEntityMaintenancePlan(summary = "No action.")),
+            idFactory = SequentialMemoryIdFactory("entity-maintenance"),
+            profileUpdater = ProjectionMemoryProfileUpdater(store),
+            clock = FixedMemoryClock(NOW),
+        ).run(MemoryMaintenanceRequest(TEST_NAMESPACE))
+
+        assertEquals(0, result.candidateGroups.size)
+    }
+
+    @Test
     fun entityMaintenanceRefreshesSummaryAfterReplacementClaim() = runBlocking {
         val pantryPilot = entity(
             id = MemoryEntity.Id("entity-pantry-pilot"),

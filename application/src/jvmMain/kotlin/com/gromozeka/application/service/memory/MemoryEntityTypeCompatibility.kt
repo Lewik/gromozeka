@@ -7,6 +7,12 @@ internal fun MemoryEntity.Type.entityMergeFamilyKey(): String =
         MemoryEntity.Type.USER,
         MemoryEntity.Type.PERSON -> "HUMAN"
 
+        MemoryEntity.Type.TECHNOLOGY,
+        MemoryEntity.Type.PRODUCT,
+        MemoryEntity.Type.CONCEPT,
+        MemoryEntity.Type.SERVICE,
+        MemoryEntity.Type.ENVIRONMENT -> "TECHNICAL_OBJECT"
+
         else -> name
     }
 
