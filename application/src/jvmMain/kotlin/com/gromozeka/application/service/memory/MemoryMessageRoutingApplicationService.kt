@@ -155,7 +155,7 @@ class MemoryMessageRoutingApplicationService(
         val sections = MarkdownDocumentSlicer.slice(document.markdown)
         require(sections.isNotEmpty()) { "Imported markdown document has no non-blank sections." }
 
-        val parentRun = MemoryRun(
+        var parentRun = MemoryRun(
             id = MemoryRun.Id("document-ingest:run:${com.gromozeka.shared.uuid.uuid7()}"),
             namespace = namespace,
             runType = MemoryRun.Type.DOCUMENT_INGEST,
@@ -164,7 +164,7 @@ class MemoryMessageRoutingApplicationService(
             sourceIds = listOf(parentSource.id),
             progress = MemoryRun.Progress(
                 totalUnits = sections.size,
-                completedUnits = sections.size,
+                completedUnits = 0,
             ),
             inputHash = documentHash,
             output = buildJsonObject {
@@ -184,9 +184,9 @@ class MemoryMessageRoutingApplicationService(
                 put("importedAt", now.toString())
                 document.title?.let { put("title", it) }
             },
+            status = MemoryRun.Status.RUNNING,
             createdAt = now,
             startedAt = now,
-            completedAt = now,
         )
 
         store.apply(MemoryUpdateBatch(sources = listOf(parentSource), runs = listOf(parentRun)))
@@ -221,6 +221,57 @@ class MemoryMessageRoutingApplicationService(
 
         val sectionResults = processedSections.flatMap { it.results }
         val sectionFailures = processedSections.flatMap { it.failedSections }
+        val expandedSections = processedSections.sumOf { it.attemptedSections }
+        val adaptiveSplits = processedSections.sumOf { it.splitCount }
+        val finalStatus = when {
+            sectionFailures.isEmpty() -> MemoryRun.Status.SUCCESS
+            sectionResults.isEmpty() -> MemoryRun.Status.FAILED
+            else -> MemoryRun.Status.PARTIAL
+        }
+        val completedAt = Clock.System.now()
+        parentRun = parentRun.copy(
+            status = finalStatus,
+            childRunIds = sectionResults.flatMap { result -> result.memoryBatch.runs.map { it.id } }.distinct(),
+            progress = MemoryRun.Progress(
+                totalUnits = expandedSections,
+                completedUnits = sectionResults.size + sectionFailures.size,
+                failedUnits = sectionFailures.size,
+            ),
+            summary = "Pasted markdown document ingest ${finalStatus.name.lowercase()}: ${sectionResults.size}/$expandedSections sections",
+            output = buildJsonObject {
+                put("document_type", MemoryDocumentType.MARKDOWN.name)
+                put("input_kind", "PASTED_CHAT_DOCUMENT")
+                put("title", document.title.orEmpty())
+                put("source_ref", document.sourceRef)
+                put("ingested_at", now.toString())
+                put("completed_at", completedAt.toString())
+                put("parent_source_id", parentSource.id.value)
+                put("sections_total", sections.size)
+                put("sections_expanded_total", expandedSections)
+                put("adaptive_splits", adaptiveSplits)
+                put("sections_processed", sectionResults.size)
+                put("sections_failed", sectionFailures.size)
+                putJsonArray("failures") {
+                    sectionFailures.take(50).forEach { failure ->
+                        add(
+                            buildJsonObject {
+                                put("section_index", failure.section.index)
+                                put("heading", failure.section.headingLabel)
+                                put("message", failure.message)
+                            }
+                        )
+                    }
+                    if (sectionFailures.size > 50) {
+                        add(JsonPrimitive("... ${sectionFailures.size - 50} more failures"))
+                    }
+                }
+            },
+            errorText = sectionFailures.firstOrNull()?.message,
+            latencyMs = completedAt.toEpochMilliseconds() - now.toEpochMilliseconds(),
+            completedAt = completedAt,
+        )
+        store.apply(MemoryUpdateBatch(runs = listOf(parentRun)))
+
         if (sectionFailures.isNotEmpty()) {
             log.warn {
                 "Memory pasted document partial failures: $logContext parentRun=${parentRun.id.value} " +
@@ -257,7 +308,7 @@ class MemoryMessageRoutingApplicationService(
         log.info {
             "Memory pasted document routed: $logContext parentRun=${parentRun.id.value} " +
                 "sections=${sections.size} completed=${completedResults.size} " +
-                "adaptiveSplits=${processedSections.sumOf { it.splitCount }} failures=${sectionFailures.size} " +
+                "adaptiveSplits=$adaptiveSplits failures=${sectionFailures.size} " +
                 "notes=${aggregate.memoryBatch.notes.size} claims=${aggregate.memoryBatch.claims.size} tasks=${aggregate.memoryBatch.tasks.size}"
         }
 
