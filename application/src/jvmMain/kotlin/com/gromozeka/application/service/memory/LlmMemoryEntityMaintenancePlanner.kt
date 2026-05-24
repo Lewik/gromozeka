@@ -49,8 +49,9 @@ class LlmMemoryEntityMaintenancePlanner(
                 "entities=${candidateGroups.sumOf { it.entities.size }} runtimeSystemPrompts=${runtimeSystemPrompts.size} runtimeTools=${runtimeTools.size}"
         }
 
-        val response = runtime.callMemoryStageWithRetry(
-            AiRuntimeRequest(
+        val candidateIds = candidateGroups.flatMapTo(mutableSetOf()) { group -> group.entities.map { it.id.value } }
+        val result = runtime.callMemoryStructuredStage(
+            request = AiRuntimeRequest(
                 systemPrompts = runtimeSystemPrompts,
                 messages = stageMessages,
                 tools = runtimeTools,
@@ -66,33 +67,24 @@ class LlmMemoryEntityMaintenancePlanner(
             ),
             stageName = "memory-entity-maintenance-planner",
             logContext = "namespace=${request.namespace.value}",
+            parse = { jsonText ->
+                val parsed = json.decodeFromString<EntityMaintenancePlannerResponse>(jsonText)
+                MemoryEntityMaintenancePlan(
+                    actions = parsed.actions.mapNotNull { it.toAction(candidateIds) },
+                    summary = parsed.summary.trim(),
+                )
+            },
         )
 
-        val rawText = response.messages
-            .flatMap { it.content }
-            .filterIsInstance<Conversation.Message.ContentItem.AssistantMessage>()
-            .joinToString("\n") { it.structured.fullText }
-            .trim()
-
         log.info {
-            "Memory entity maintenance planner raw response: namespace=${request.namespace.value} chars=${rawText.length} " +
-                "response=${rawText.oneLineForEntityMaintenanceLog(4_000)}"
+            "Memory entity maintenance planner raw response: namespace=${request.namespace.value} chars=${result.rawText.length} " +
+                "response=${result.rawText.oneLineForEntityMaintenanceLog(4_000)}"
         }
 
-        val jsonText = rawText.extractJsonObject()
-            ?: throw IllegalStateException("Memory entity maintenance planner did not return JSON: ${rawText.take(500)}")
-
-        val candidateIds = candidateGroups.flatMapTo(mutableSetOf()) { group -> group.entities.map { it.id.value } }
-        val parsed = json.decodeFromString<EntityMaintenancePlannerResponse>(jsonText)
-        val actions = parsed.actions.mapNotNull { it.toAction(candidateIds) }
-
-        val plan = MemoryEntityMaintenancePlan(
-            actions = actions,
-            summary = parsed.summary.trim(),
-        )
+        val plan = result.value
 
         log.info {
-            "Memory entity maintenance planner mapped result: namespace=${request.namespace.value} actions=${actions.size} " +
+            "Memory entity maintenance planner mapped result: namespace=${request.namespace.value} actions=${plan.actions.size} " +
                 "summary=${plan.summary.oneLineForEntityMaintenanceLog(500)}"
         }
 

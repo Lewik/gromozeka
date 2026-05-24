@@ -67,8 +67,11 @@ class LlmMemoryTaskUpdater(
                 "runtimeSystemPrompts=${runtimeSystemPrompts.size} runtimeTools=${runtimeTools.size} stageMessages=${stageMessages.size}"
         }
 
-        val response = runtime.callMemoryStageWithRetry(
-            AiRuntimeRequest(
+        val existingTasks = retrievedHits
+            .filterIsInstance<MemoryStore.SearchHit.TaskHit>()
+            .map { it.task }
+        val result = runtime.callMemoryStructuredStage(
+            request = AiRuntimeRequest(
                 systemPrompts = runtimeSystemPrompts,
                 messages = stageMessages,
                 tools = runtimeTools,
@@ -86,28 +89,19 @@ class LlmMemoryTaskUpdater(
             ),
             stageName = "task-updater",
             logContext = "namespace=${request.namespace.value} source=${request.source.id.value}",
+            parse = { jsonText ->
+                json.decodeFromString<TaskUpdaterResponse>(jsonText)
+                    .operations
+                    .mapNotNull { it.toOp(request, existingTasks, entityOps) }
+            },
         )
-
-        val rawText = response.messages
-            .flatMap { it.content }
-            .filterIsInstance<Conversation.Message.ContentItem.AssistantMessage>()
-            .joinToString("\n") { it.structured.fullText }
-            .trim()
 
         log.info {
             "Memory task updater raw response: namespace=${request.namespace.value} source=${request.source.id.value} " +
-                "chars=${rawText.length} response=${rawText.oneLineForTaskMemoryLog(4_000)}"
+                "chars=${result.rawText.length} response=${result.rawText.oneLineForTaskMemoryLog(4_000)}"
         }
 
-        val jsonText = rawText.extractJsonObject()
-            ?: throw IllegalStateException("Memory task updater did not return JSON: ${rawText.take(500)}")
-
-        val existingTasks = retrievedHits
-            .filterIsInstance<MemoryStore.SearchHit.TaskHit>()
-            .map { it.task }
-        val ops = json.decodeFromString<TaskUpdaterResponse>(jsonText)
-            .operations
-            .mapNotNull { it.toOp(request, existingTasks, entityOps) }
+        val ops = result.value
 
         log.info {
             "Memory task updater mapped ops: namespace=${request.namespace.value} source=${request.source.id.value} " +

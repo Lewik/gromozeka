@@ -1,6 +1,5 @@
 package com.gromozeka.application.service.memory
 
-import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ai.AiRuntimeOptions
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.model.ai.AiToolChoice
@@ -17,6 +16,7 @@ import klog.KLoggers
 import kotlinx.datetime.Clock
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 
 class LlmMemoryForgetPlanner(
@@ -47,8 +47,9 @@ class LlmMemoryForgetPlanner(
                 "candidates=${candidates.size} runtimeSystemPrompts=${runtimeSystemPrompts.size} runtimeTools=${runtimeTools.size}"
         }
 
-        val response = runtime.callMemoryStageWithRetry(
-            AiRuntimeRequest(
+        val candidateRefs = candidates.mapTo(mutableSetOf()) { it.toForgetItemRef() }
+        val result = runtime.callMemoryStructuredStage(
+            request = AiRuntimeRequest(
                 systemPrompts = runtimeSystemPrompts,
                 messages = stageMessages,
                 tools = runtimeTools,
@@ -65,37 +66,26 @@ class LlmMemoryForgetPlanner(
             ),
             stageName = "forget-planner",
             logContext = "namespace=${request.namespace.value} source=${request.source.id.value}",
+            parse = { jsonText ->
+                val parsed = json.decodeFromString<ForgetPlannerResponse>(jsonText)
+                MemoryForgetPlan(
+                    forgetActions = parsed.forgetActions.mapNotNull { it.toAction(candidateRefs) },
+                    summary = parsed.summary.trim(),
+                )
+            },
         )
-
-        val rawText = response.messages
-            .flatMap { it.content }
-            .filterIsInstance<Conversation.Message.ContentItem.AssistantMessage>()
-            .joinToString("\n") { it.structured.fullText }
-            .trim()
 
         log.info {
             "Memory forget planner raw response: namespace=${request.namespace.value} source=${request.source.id.value} " +
-                "chars=${rawText.length} response=${rawText.oneLineForForgetPlannerLog(4_000)}"
+                "chars=${result.rawText.length} response=${result.rawText.oneLineForForgetPlannerLog(4_000)}"
         }
-
-        val jsonText = rawText.extractJsonObject()
-            ?: throw IllegalStateException("Memory forget planner did not return JSON: ${rawText.take(500)}")
-
-        val parsed = json.decodeFromString<ForgetPlannerResponse>(jsonText)
-        val candidateRefs = candidates.mapTo(mutableSetOf()) { it.toForgetItemRef() }
-        val actions = parsed.forgetActions.mapNotNull { it.toAction(candidateRefs) }
-
-        val plan = MemoryForgetPlan(
-            forgetActions = actions,
-            summary = parsed.summary.trim(),
-        )
 
         log.info {
-            "Memory forget planner mapped result: namespace=${request.namespace.value} actions=${actions.size} " +
-                "summary=${plan.summary.oneLineForForgetPlannerLog(500)}"
+            "Memory forget planner mapped result: namespace=${request.namespace.value} actions=${result.value.forgetActions.size} " +
+                "summary=${result.value.summary.oneLineForForgetPlannerLog(500)}"
         }
 
-        return plan
+        return result.value
     }
 
     private fun buildPrompt(

@@ -65,8 +65,8 @@ class LlmMemoryNoteConsolidator(
                 "selectedNotes=${selectedNotes.size} relatedHits=${relatedHits.size} runtimeSystemPrompts=${runtimeSystemPrompts.size} runtimeTools=${runtimeTools.size}"
         }
 
-        val response = runtime.callMemoryStageWithRetry(
-            AiRuntimeRequest(
+        val structuredResult = runtime.callMemoryStructuredStage(
+            request = AiRuntimeRequest(
                 systemPrompts = runtimeSystemPrompts,
                 messages = stageMessages,
                 tools = runtimeTools,
@@ -82,23 +82,15 @@ class LlmMemoryNoteConsolidator(
             ),
             stageName = "note-consolidator",
             logContext = "namespace=${request.namespace.value}",
+            parse = { json.decodeFromString<NoteConsolidatorResponse>(it) },
         )
 
-        val rawText = response.messages
-            .flatMap { it.content }
-            .filterIsInstance<Conversation.Message.ContentItem.AssistantMessage>()
-            .joinToString("\n") { it.structured.fullText }
-            .trim()
-
         log.info {
-            "Memory note consolidator raw response: namespace=${request.namespace.value} chars=${rawText.length} " +
-                "response=${rawText.oneLineForMaintenanceLog(5_000)}"
+            "Memory note consolidator raw response: namespace=${request.namespace.value} chars=${structuredResult.rawText.length} " +
+                "response=${structuredResult.rawText.oneLineForMaintenanceLog(5_000)}"
         }
 
-        val jsonText = rawText.extractJsonObject()
-            ?: throw IllegalStateException("Note consolidator did not return JSON: ${rawText.take(500)}")
-
-        val parsed = json.decodeFromString<NoteConsolidatorResponse>(jsonText)
+        val parsed = structuredResult.value
         val selectedById = selectedNotes.associateBy { it.id }
         val allowedEntityIds = snapshot.entities.mapTo(mutableSetOf()) { it.id } +
             selectedNotes.flatMap { note -> note.entityRefs.map { it.entityId } + listOfNotNull(note.anchorEntityId) }

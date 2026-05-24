@@ -1,6 +1,5 @@
 package com.gromozeka.application.service.memory
 
-import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ai.AiRuntimeOptions
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.model.ai.AiToolChoice
@@ -46,8 +45,8 @@ class LlmMemoryEntityCanonicalizer(
             taskPrompt = buildCanonicalizerUserPrompt(request, retrievalPlan, retrievedHits),
         )
 
-        val response = runtime.callMemoryStageWithRetry(
-            AiRuntimeRequest(
+        val result = runtime.callMemoryStructuredStage(
+            request = AiRuntimeRequest(
                 systemPrompts = runtimeSystemPrompts,
                 messages = stageMessages,
                 tools = runtimeTools,
@@ -64,36 +63,30 @@ class LlmMemoryEntityCanonicalizer(
             ),
             stageName = "entity-canonicalizer",
             logContext = "namespace=${request.namespace.value} source=${request.source.id.value}",
+            jsonRoot = MemoryStructuredJsonRoot.OBJECT_OR_ARRAY,
+            parse = { jsonText ->
+                val responses = if (jsonText.trimStart().startsWith("{")) {
+                    json.decodeFromString<EntityCanonicalizerResponseEnvelope>(jsonText).operations
+                } else {
+                    json.decodeFromString<List<EntityCanonicalizerResponse>>(jsonText)
+                }
+                responses
+                    .mapNotNull { it.toOp(request) }
+                    .normalizeStableUserOps(request, retrievedHits)
+            },
         )
-
-        val rawText = response.messages
-            .flatMap { it.content }
-            .filterIsInstance<Conversation.Message.ContentItem.AssistantMessage>()
-            .joinToString("\n") { it.structured.fullText }
-            .trim()
 
         log.info {
             "Memory entity canonicalizer raw response: namespace=${request.namespace.value} source=${request.source.id.value} " +
-                "chars=${rawText.length} response=${rawText.oneLineForLlmMemoryLog(4_000)}"
+                "chars=${result.rawText.length} response=${result.rawText.oneLineForLlmMemoryLog(4_000)}"
         }
-
-        val jsonText = rawText.extractJsonObject() ?: rawText.extractJsonArray()
-            ?: throw IllegalStateException("Entity canonicalizer did not return JSON: ${rawText.take(500)}")
 
         log.info {
             "Memory entity canonicalizer parsed JSON: namespace=${request.namespace.value} source=${request.source.id.value} " +
-                "json=${jsonText.oneLineForLlmMemoryLog(4_000)}"
+                "json=${result.jsonText.oneLineForLlmMemoryLog(4_000)}"
         }
 
-        val responses = if (jsonText.trimStart().startsWith("{")) {
-            json.decodeFromString<EntityCanonicalizerResponseEnvelope>(jsonText).operations
-        } else {
-            json.decodeFromString<List<EntityCanonicalizerResponse>>(jsonText)
-        }
-
-        val ops = responses
-            .mapNotNull { it.toOp(request) }
-            .normalizeStableUserOps(request, retrievedHits)
+        val ops = result.value
 
         log.info {
             "Memory entity canonicalizer mapped ops: namespace=${request.namespace.value} source=${request.source.id.value} " +

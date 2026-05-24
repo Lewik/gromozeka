@@ -1,6 +1,5 @@
 package com.gromozeka.application.service.memory
 
-import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ai.AiRuntimeOptions
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.model.ai.AiToolChoice
@@ -56,8 +55,8 @@ class LlmMemoryClaimReconciler(
                 "threadContext=${request.memoryThreadContextSummaryForLog()} stageMessages=${stageMessages.size}"
         }
 
-        val response = runtime.callMemoryStageWithRetry(
-            AiRuntimeRequest(
+        val result = runtime.callMemoryStructuredStage(
+            request = AiRuntimeRequest(
                 systemPrompts = runtimeSystemPrompts,
                 messages = stageMessages,
                 tools = runtimeTools,
@@ -74,23 +73,19 @@ class LlmMemoryClaimReconciler(
             ),
             stageName = "claim-reconciler",
             logContext = "namespace=${request.namespace.value} source=${request.source.id.value}",
+            parse = { jsonText ->
+                json.decodeFromString<ClaimReconcilerResponse>(jsonText)
+                    .operations
+                    .mapNotNull { it.toOp(claimCandidates, existingClaims, request, predicateCatalog) }
+            },
         )
-
-        val rawText = response.messages
-            .flatMap { it.content }
-            .filterIsInstance<Conversation.Message.ContentItem.AssistantMessage>()
-            .joinToString("\n") { it.structured.fullText }
-            .trim()
 
         log.info {
             "Memory claim reconciler raw response: namespace=${request.namespace.value} source=${request.source.id.value} " +
-                "chars=${rawText.length} response=${rawText.oneLineForReconcilerMemoryLog(4_000)}"
+                "chars=${result.rawText.length} response=${result.rawText.oneLineForReconcilerMemoryLog(4_000)}"
         }
 
-        val jsonText = rawText.extractJsonObject()
-            ?: throw IllegalStateException("Memory claim reconciler did not return JSON: ${rawText.take(500)}")
-        val parsed = json.decodeFromString<ClaimReconcilerResponse>(jsonText)
-        val ops = parsed.operations.mapNotNull { it.toOp(claimCandidates, existingClaims, request, predicateCatalog) }
+        val ops = result.value
 
         log.info {
             "Memory claim reconciler mapped ops: namespace=${request.namespace.value} source=${request.source.id.value} " +

@@ -1,6 +1,5 @@
 package com.gromozeka.application.service.memory
 
-import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ai.AiRuntimeOptions
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.model.ai.AiToolChoice
@@ -69,8 +68,8 @@ class LlmMemoryNoteConstructor(
                 "runtimeSystemPrompts=${runtimeSystemPrompts.size} runtimeTools=${runtimeTools.size} stageMessages=${stageMessages.size}"
         }
 
-        val response = runtime.callMemoryStageWithRetry(
-            AiRuntimeRequest(
+        val result = runtime.callMemoryStructuredStage(
+            request = AiRuntimeRequest(
                 systemPrompts = runtimeSystemPrompts,
                 messages = stageMessages,
                 tools = runtimeTools,
@@ -88,29 +87,23 @@ class LlmMemoryNoteConstructor(
             ),
             stageName = "note-constructor",
             logContext = "namespace=${request.namespace.value} source=${request.source.id.value}",
+            jsonRoot = MemoryStructuredJsonRoot.OBJECT_OR_ARRAY,
+            parse = { jsonText ->
+                val responses = if (jsonText.trimStart().startsWith("{")) {
+                    json.decodeFromString<NoteConstructorResponseEnvelope>(jsonText).notes
+                } else {
+                    json.decodeFromString<List<NoteConstructorResponse>>(jsonText)
+                }
+                responses.mapNotNull { it.toCandidate(request, entityOps) }
+            },
         )
-
-        val rawText = response.messages
-            .flatMap { it.content }
-            .filterIsInstance<Conversation.Message.ContentItem.AssistantMessage>()
-            .joinToString("\n") { it.structured.fullText }
-            .trim()
 
         log.info {
             "Memory note constructor raw response: namespace=${request.namespace.value} source=${request.source.id.value} " +
-                "chars=${rawText.length} response=${rawText.oneLineForNoteMemoryLog(4_000)}"
+                "chars=${result.rawText.length} response=${result.rawText.oneLineForNoteMemoryLog(4_000)}"
         }
 
-        val jsonText = rawText.extractJsonObject() ?: rawText.extractJsonArray()
-            ?: throw IllegalStateException("Note constructor did not return JSON: ${rawText.take(500)}")
-
-        val responses = if (jsonText.trimStart().startsWith("{")) {
-            json.decodeFromString<NoteConstructorResponseEnvelope>(jsonText).notes
-        } else {
-            json.decodeFromString<List<NoteConstructorResponse>>(jsonText)
-        }
-
-        val candidates = responses.mapNotNull { it.toCandidate(request, entityOps) }
+        val candidates = result.value
 
         log.info {
             "Memory note constructor mapped candidates: namespace=${request.namespace.value} source=${request.source.id.value} " +

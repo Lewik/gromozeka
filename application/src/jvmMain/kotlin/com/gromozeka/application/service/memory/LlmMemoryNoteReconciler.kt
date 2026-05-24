@@ -19,6 +19,7 @@ import com.gromozeka.domain.tool.AiToolCallback
 import klog.KLoggers
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -69,8 +70,8 @@ class LlmMemoryNoteReconciler(
                 "threadContext=${request.memoryThreadContextSummaryForLog()} stageMessages=${stageMessages.size}"
         }
 
-        val response = runtime.callMemoryStageWithRetry(
-            AiRuntimeRequest(
+        val result = runtime.callMemoryStructuredStage(
+            request = AiRuntimeRequest(
                 systemPrompts = runtimeSystemPrompts,
                 messages = stageMessages,
                 tools = runtimeTools,
@@ -87,23 +88,19 @@ class LlmMemoryNoteReconciler(
             ),
             stageName = "note-reconciler",
             logContext = "namespace=${request.namespace.value} source=${request.source.id.value}",
+            parse = { jsonText ->
+                json.decodeFromString<NoteReconcilerResponse>(jsonText)
+                    .operations
+                    .mapNotNull { it.toOp(request, noteCandidates, existingNotes) }
+            },
         )
-
-        val rawText = response.messages
-            .flatMap { it.content }
-            .filterIsInstance<Conversation.Message.ContentItem.AssistantMessage>()
-            .joinToString("\n") { it.structured.fullText }
-            .trim()
 
         log.info {
             "Memory note reconciler raw response: namespace=${request.namespace.value} source=${request.source.id.value} " +
-                "chars=${rawText.length} response=${rawText.oneLineForNoteReconcilerLog(4_000)}"
+                "chars=${result.rawText.length} response=${result.rawText.oneLineForNoteReconcilerLog(4_000)}"
         }
 
-        val jsonText = rawText.extractJsonObject()
-            ?: throw IllegalStateException("Memory note reconciler did not return JSON: ${rawText.take(500)}")
-        val parsed = json.decodeFromString<NoteReconcilerResponse>(jsonText)
-        val ops = parsed.operations.mapNotNull { it.toOp(request, noteCandidates, existingNotes) }
+        val ops = result.value
 
         log.info {
             "Memory note reconciler mapped ops: namespace=${request.namespace.value} source=${request.source.id.value} " +

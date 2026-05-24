@@ -50,8 +50,9 @@ class LlmMemoryRepairPlanner(
                 "runtimeSystemPrompts=${runtimeSystemPrompts.size} runtimeTools=${runtimeTools.size}"
         }
 
-        val response = runtime.callMemoryStageWithRetry(
-            AiRuntimeRequest(
+        val existingRefs = candidateClusters.flatMapTo(mutableSetOf()) { cluster -> cluster.hits.map { it.toRepairItemRef() } }
+        val result = runtime.callMemoryStructuredStage(
+            request = AiRuntimeRequest(
                 systemPrompts = runtimeSystemPrompts,
                 messages = stageMessages,
                 tools = runtimeTools,
@@ -67,33 +68,24 @@ class LlmMemoryRepairPlanner(
             ),
             stageName = "memory-repair-planner",
             logContext = "namespace=${request.namespace.value}",
+            parse = { jsonText ->
+                val parsed = json.decodeFromString<RepairPlannerResponse>(jsonText)
+                MemoryRepairPlan(
+                    repairActions = parsed.repairActions.mapNotNull { it.toAction(existingRefs) },
+                    summary = parsed.summary.trim(),
+                )
+            },
         )
 
-        val rawText = response.messages
-            .flatMap { it.content }
-            .filterIsInstance<Conversation.Message.ContentItem.AssistantMessage>()
-            .joinToString("\n") { it.structured.fullText }
-            .trim()
-
         log.info {
-            "Memory repair planner raw response: namespace=${request.namespace.value} chars=${rawText.length} " +
-                "response=${rawText.oneLineForRepairPlannerLog(4_000)}"
+            "Memory repair planner raw response: namespace=${request.namespace.value} chars=${result.rawText.length} " +
+                "response=${result.rawText.oneLineForRepairPlannerLog(4_000)}"
         }
 
-        val jsonText = rawText.extractJsonObject()
-            ?: throw IllegalStateException("Memory repair planner did not return JSON: ${rawText.take(500)}")
-
-        val parsed = json.decodeFromString<RepairPlannerResponse>(jsonText)
-        val existingRefs = candidateClusters.flatMapTo(mutableSetOf()) { cluster -> cluster.hits.map { it.toRepairItemRef() } }
-        val actions = parsed.repairActions.mapNotNull { it.toAction(existingRefs) }
-
-        val plan = MemoryRepairPlan(
-            repairActions = actions,
-            summary = parsed.summary.trim(),
-        )
+        val plan = result.value
 
         log.info {
-            "Memory repair planner mapped result: namespace=${request.namespace.value} actions=${actions.size} " +
+            "Memory repair planner mapped result: namespace=${request.namespace.value} actions=${plan.repairActions.size} " +
                 "summary=${plan.summary.oneLineForRepairPlannerLog(500)}"
         }
 

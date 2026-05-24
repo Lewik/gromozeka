@@ -1,6 +1,5 @@
 package com.gromozeka.application.service.memory
 
-import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ai.AiRuntimeOptions
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.model.ai.AiToolChoice
@@ -51,8 +50,8 @@ class LlmMemoryWriteRetrievalPlanner(
                 "runtimeSystemPrompts=${runtimeSystemPrompts.size} runtimeTools=${runtimeTools.size} stageMessages=${stageMessages.size}"
         }
 
-        val response = runtime.callMemoryStageWithRetry(
-            AiRuntimeRequest(
+        val result = runtime.callMemoryStructuredStage(
+            request = AiRuntimeRequest(
                 systemPrompts = runtimeSystemPrompts,
                 messages = stageMessages,
                 tools = runtimeTools,
@@ -70,25 +69,19 @@ class LlmMemoryWriteRetrievalPlanner(
             ),
             stageName = "write-retrieval-planner",
             logContext = "namespace=${request.namespace.value} source=${request.source.id.value}",
+            parse = {
+                json.decodeFromString<RetrievalPlannerResponse>(it)
+                    .toPlan()
+                    .withRouteTaskGrounding(routeDecision)
+            },
         )
-
-        val rawText = response.messages
-            .flatMap { it.content }
-            .filterIsInstance<Conversation.Message.ContentItem.AssistantMessage>()
-            .joinToString("\n") { it.structured.fullText }
-            .trim()
 
         log.info {
             "Memory write retrieval planner raw response: namespace=${request.namespace.value} source=${request.source.id.value} " +
-                "chars=${rawText.length} response=${rawText.oneLineForWriteRetrievalMemoryLog(4_000)}"
+                "chars=${result.rawText.length} response=${result.rawText.oneLineForWriteRetrievalMemoryLog(4_000)}"
         }
 
-        val jsonText = extractJsonObject(rawText)
-            ?: throw IllegalStateException("Write-time retrieval planner did not return JSON: ${rawText.take(500)}")
-
-        return json.decodeFromString<RetrievalPlannerResponse>(jsonText)
-            .toPlan()
-            .withRouteTaskGrounding(routeDecision)
+        return result.value
     }
 
     private fun buildPlannerUserPrompt(
@@ -114,24 +107,6 @@ class LlmMemoryWriteRetrievalPlanner(
         TARGET_MESSAGE source data:
         ${request.source.renderLatestTurn()}
     """.trimIndent()
-
-    private fun extractJsonObject(rawText: String): String? {
-        val fenced = Regex("```(?:json)?\\s*(\\{.*\\})\\s*```", setOf(RegexOption.DOT_MATCHES_ALL))
-            .find(rawText)
-            ?.groupValues
-            ?.getOrNull(1)
-        if (fenced != null) {
-            return fenced.trim()
-        }
-
-        val start = rawText.indexOf('{')
-        val end = rawText.lastIndexOf('}')
-        if (start >= 0 && end > start) {
-            return rawText.substring(start, end + 1)
-        }
-
-        return null
-    }
 
     @Serializable
     private data class RetrievalPlannerResponse(

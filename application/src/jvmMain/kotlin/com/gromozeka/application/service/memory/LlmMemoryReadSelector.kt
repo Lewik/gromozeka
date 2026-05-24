@@ -49,8 +49,9 @@ class LlmMemoryReadSelector(
                 "chars=${renderedCandidates.length} preview=${renderedCandidates.oneLineForReadSelectorLog(8_000)}"
         }
 
-        val response = runtime.callMemoryStageWithRetry(
-            AiRuntimeRequest(
+        val hitsByRef = request.candidateHits.associateBy { it.toReadSelectorItemRef() }
+        val result = runtime.callMemoryStructuredStage(
+            request = AiRuntimeRequest(
                 systemPrompts = runtimeSystemPrompts,
                 messages = stageMessages,
                 tools = runtimeTools,
@@ -68,23 +69,15 @@ class LlmMemoryReadSelector(
             ),
             stageName = "read-selector-reranker",
             logContext = "namespace=${request.readRequest.namespace.value}",
+            parse = { json.decodeFromString<ReadSelectorResponse>(it) },
         )
 
-        val rawText = response.messages
-            .flatMap { it.content }
-            .filterIsInstance<Conversation.Message.ContentItem.AssistantMessage>()
-            .joinToString("\n") { it.structured.fullText }
-            .trim()
-
         log.info {
-            "Memory read selector raw response: namespace=${request.readRequest.namespace.value} chars=${rawText.length} " +
-                "response=${rawText.oneLineForReadSelectorLog(4_000)}"
+            "Memory read selector raw response: namespace=${request.readRequest.namespace.value} chars=${result.rawText.length} " +
+                "response=${result.rawText.oneLineForReadSelectorLog(4_000)}"
         }
 
-        val jsonText = rawText.extractJsonObject()
-            ?: throw IllegalStateException("Memory read selector did not return JSON: ${rawText.take(500)}")
-        val selectorResponse = json.decodeFromString<ReadSelectorResponse>(jsonText)
-        val hitsByRef = request.candidateHits.associateBy { it.toReadSelectorItemRef() }
+        val selectorResponse = result.value
         val selectedRefs = selectorResponse.selectedItems
             .sortedWith(compareBy<SelectedItem> { it.rank.coerceAtLeast(0) }.thenBy { it.itemId })
             .mapNotNull { it.toItemRef() }

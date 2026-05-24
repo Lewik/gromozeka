@@ -1,6 +1,5 @@
 package com.gromozeka.application.service.memory
 
-import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ai.AiRuntimeOptions
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.model.ai.AiToolChoice
@@ -78,8 +77,8 @@ class LlmMemoryClaimExtractor(
             ),
         )
 
-        val response = runtime.callMemoryStageWithRetry(
-            AiRuntimeRequest(
+        val result = runtime.callMemoryStructuredStage(
+            request = AiRuntimeRequest(
                 systemPrompts = runtimeSystemPrompts,
                 messages = stageMessages,
                 tools = runtimeTools,
@@ -97,35 +96,28 @@ class LlmMemoryClaimExtractor(
             ),
             stageName = "claim-extractor",
             logContext = "namespace=${request.namespace.value} source=${request.source.id.value}",
+            jsonRoot = MemoryStructuredJsonRoot.OBJECT_OR_ARRAY,
+            parse = { jsonText ->
+                val responses = if (jsonText.trimStart().startsWith("{")) {
+                    json.decodeFromString<ClaimExtractorResponseEnvelope>(jsonText).claims
+                } else {
+                    json.decodeFromString<List<ClaimExtractorResponse>>(jsonText)
+                }
+                responses.mapNotNull { it.toClaimCandidate(request, entityOps, predicateCatalog) }
+            },
         )
-
-        val rawText = response.messages
-            .flatMap { it.content }
-            .filterIsInstance<Conversation.Message.ContentItem.AssistantMessage>()
-            .joinToString("\n") { it.structured.fullText }
-            .trim()
 
         log.info {
             "Memory claim extractor raw response: namespace=${request.namespace.value} source=${request.source.id.value} " +
-                "chars=${rawText.length} response=${rawText.oneLineForClaimMemoryLog(4_000)}"
+                "chars=${result.rawText.length} response=${result.rawText.oneLineForClaimMemoryLog(4_000)}"
         }
-
-        val jsonText = rawText.extractJsonObject() ?: rawText.extractJsonArray()
-            ?: throw IllegalStateException("Claim extractor did not return JSON: ${rawText.take(500)}")
 
         log.info {
             "Memory claim extractor parsed JSON: namespace=${request.namespace.value} source=${request.source.id.value} " +
-                "json=${jsonText.oneLineForClaimMemoryLog(4_000)}"
+                "json=${result.jsonText.oneLineForClaimMemoryLog(4_000)}"
         }
 
-        val responses = if (jsonText.trimStart().startsWith("{")) {
-            json.decodeFromString<ClaimExtractorResponseEnvelope>(jsonText).claims
-        } else {
-            json.decodeFromString<List<ClaimExtractorResponse>>(jsonText)
-        }
-
-        val candidates = responses
-            .mapNotNull { it.toClaimCandidate(request, entityOps, predicateCatalog) }
+        val candidates = result.value
 
         log.info {
             "Memory claim extractor mapped candidates: namespace=${request.namespace.value} source=${request.source.id.value} " +

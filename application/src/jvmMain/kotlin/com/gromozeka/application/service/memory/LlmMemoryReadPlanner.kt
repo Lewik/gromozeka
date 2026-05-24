@@ -15,6 +15,7 @@ import klog.KLoggers
 import kotlinx.datetime.Clock
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 
@@ -39,8 +40,8 @@ class LlmMemoryReadPlanner(
                 "runtimeSystemPrompts=${runtimeSystemPrompts.size} runtimeTools=${runtimeTools.size} stageMessages=${stageMessages.size}"
         }
 
-        val response = runtime.callMemoryStageWithRetry(
-            AiRuntimeRequest(
+        val result = runtime.callMemoryStructuredStage(
+            request = AiRuntimeRequest(
                 systemPrompts = runtimeSystemPrompts,
                 messages = stageMessages,
                 tools = runtimeTools,
@@ -56,25 +57,19 @@ class LlmMemoryReadPlanner(
             ),
             stageName = "read-retrieval-planner",
             logContext = "namespace=${request.namespace.value}",
+            parse = {
+                json.decodeFromString<ReadPlannerResponse>(it)
+                    .toPlan()
+                    .withRationaleNoteRequest(request)
+            },
         )
 
-        val rawText = response.messages
-            .flatMap { it.content }
-            .filterIsInstance<Conversation.Message.ContentItem.AssistantMessage>()
-            .joinToString("\n") { it.structured.fullText }
-            .trim()
-
         log.info {
-            "Memory read planner raw response: namespace=${request.namespace.value} chars=${rawText.length} " +
-                "response=${rawText.oneLineForReadMemoryLog(4_000)}"
+            "Memory read planner raw response: namespace=${request.namespace.value} chars=${result.rawText.length} " +
+                "response=${result.rawText.oneLineForReadMemoryLog(4_000)}"
         }
 
-        val jsonText = extractJsonObject(rawText)
-            ?: throw IllegalStateException("Memory read planner did not return JSON: ${rawText.take(500)}")
-
-        val plan = json.decodeFromString<ReadPlannerResponse>(jsonText)
-            .toPlan()
-            .withRationaleNoteRequest(request)
+        val plan = result.value
         if (plan.needMemory) return plan
 
         val verifiedPlan = verifyNoMemoryDecision(request, plan)
@@ -115,8 +110,8 @@ class LlmMemoryReadPlanner(
                 "threadContext=${request.memoryThreadContextSummaryForLog()} stageMessages=${stageMessages.size}"
         }
 
-        val response = runtime.callMemoryStageWithRetry(
-            AiRuntimeRequest(
+        val result = runtime.callMemoryStructuredStage(
+            request = AiRuntimeRequest(
                 systemPrompts = runtimeSystemPrompts,
                 messages = stageMessages,
                 tools = runtimeTools,
@@ -132,22 +127,15 @@ class LlmMemoryReadPlanner(
             ),
             stageName = "read-need-verifier",
             logContext = "namespace=${request.namespace.value}",
+            parse = { json.decodeFromString<ReadNeedVerifierResponse>(it) },
         )
 
-        val rawText = response.messages
-            .flatMap { it.content }
-            .filterIsInstance<Conversation.Message.ContentItem.AssistantMessage>()
-            .joinToString("\n") { it.structured.fullText }
-            .trim()
-
         log.info {
-            "Memory read need verifier raw response: namespace=${request.namespace.value} chars=${rawText.length} " +
-                "response=${rawText.oneLineForReadMemoryLog(2_000)}"
+            "Memory read need verifier raw response: namespace=${request.namespace.value} chars=${result.rawText.length} " +
+                "response=${result.rawText.oneLineForReadMemoryLog(2_000)}"
         }
 
-        val jsonText = extractJsonObject(rawText)
-            ?: throw IllegalStateException("Memory read need verifier did not return JSON: ${rawText.take(500)}")
-        val verifier = json.decodeFromString<ReadNeedVerifierResponse>(jsonText)
+        val verifier = result.value
         if (!verifier.needsMemory) {
             log.info {
                 "Memory read need verifier accepted no-memory plan: namespace=${request.namespace.value} " +
@@ -500,24 +488,6 @@ private fun String.toCoreBlock(): MemoryReadPlan.CoreBlock? =
         "session_summary", "summary" -> MemoryReadPlan.CoreBlock.SESSION_SUMMARY
         else -> null
     }
-
-private fun extractJsonObject(rawText: String): String? {
-    val fenced = Regex("```(?:json)?\\s*(\\{.*\\})\\s*```", setOf(RegexOption.DOT_MATCHES_ALL))
-        .find(rawText)
-        ?.groupValues
-        ?.getOrNull(1)
-    if (fenced != null) {
-        return fenced.trim()
-    }
-
-    val start = rawText.indexOf('{')
-    val end = rawText.lastIndexOf('}')
-    if (start >= 0 && end > start) {
-        return rawText.substring(start, end + 1)
-    }
-
-    return null
-}
 
 private fun String.oneLineForReadMemoryLog(maxChars: Int): String {
     val oneLine = trim()
