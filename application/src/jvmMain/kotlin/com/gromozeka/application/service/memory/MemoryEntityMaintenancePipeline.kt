@@ -274,7 +274,7 @@ class MemoryEntityMaintenancePipeline(
         val winner = entityUpdates[winnerId] ?: candidateEntities[winnerId] ?: return emptyList()
         val losers = loserIds.mapNotNull { id -> entityUpdates[id] ?: candidateEntities[id] }
             .filter { it.status == MemoryEntity.Status.ACTIVE }
-            .filter { it.entityType == winner.entityType }
+            .filter { it.canMergeEntityTypeWith(winner) }
         if (winner.status != MemoryEntity.Status.ACTIVE || losers.isEmpty()) {
             return emptyList()
         }
@@ -448,7 +448,7 @@ private fun MemoryNamespaceSnapshot.detectEntityMaintenanceCandidateGroups(): Li
     }
 
     activeEntities
-        .flatMap { entity -> entity.entityMaintenanceCompactKeys().map { key -> "${entity.entityType.name}:$key" to entity } }
+        .flatMap { entity -> entity.entityMaintenanceCompactKeys().map { key -> "${entity.entityMaintenanceMergeFamilyKey()}:$key" to entity } }
         .groupBy({ it.first }, { it.second })
         .values
         .filter { it.map { entity -> entity.id }.distinct().size > 1 }
@@ -461,7 +461,7 @@ private fun MemoryNamespaceSnapshot.detectEntityMaintenanceCandidateGroups(): Li
 
     activeEntities.forEachIndexed { index, first ->
         activeEntities.drop(index + 1)
-            .filter { it.entityType == first.entityType }
+            .filter { it.canMergeEntityTypeWith(first) }
             .forEach { second ->
                 val reason = first.nearDuplicateEntityReason(second)
                 if (reason != null) link(first, second, reason)
@@ -555,6 +555,21 @@ private fun MemoryEntity.nearDuplicateEntityReason(other: MemoryEntity): String?
 
     return null
 }
+
+private fun MemoryEntity.canMergeEntityTypeWith(other: MemoryEntity): Boolean =
+    entityMaintenanceMergeFamilyKey() == other.entityMaintenanceMergeFamilyKey()
+
+private fun MemoryEntity.entityMaintenanceMergeFamilyKey(): String =
+    when (entityType) {
+        MemoryEntity.Type.TECHNOLOGY,
+        MemoryEntity.Type.PRODUCT,
+        MemoryEntity.Type.CONCEPT,
+        MemoryEntity.Type.SERVICE,
+        MemoryEntity.Type.ENVIRONMENT,
+        -> "TECHNICAL_OBJECT"
+
+        else -> entityType.name
+    }
 
 private fun MemoryEntity.entityMaintenanceCompactKeys(): Set<String> =
     buildSet {
