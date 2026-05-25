@@ -13,6 +13,9 @@ internal fun MemoryEntity.Type.entityMergeFamilyKey(): String =
         MemoryEntity.Type.SERVICE,
         MemoryEntity.Type.ENVIRONMENT -> "TECHNICAL_OBJECT"
 
+        MemoryEntity.Type.FILE,
+        MemoryEntity.Type.DOCUMENT -> "DOCUMENT_ARTIFACT"
+
         else -> name
     }
 

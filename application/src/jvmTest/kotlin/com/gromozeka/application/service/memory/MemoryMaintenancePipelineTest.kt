@@ -1403,6 +1403,66 @@ class MemoryMaintenancePipelineTest {
     }
 
     @Test
+    fun entityMaintenanceMergesFileDocumentArtifactsAndPreservesObservedTypes() = runBlocking {
+        val file = entity(
+            id = MemoryEntity.Id("entity-readme-file"),
+            entityType = MemoryEntity.Type.FILE,
+            canonicalName = "README.md",
+            normalizedName = "readme md",
+        )
+        val document = entity(
+            id = MemoryEntity.Id("entity-readme-document"),
+            entityType = MemoryEntity.Type.DOCUMENT,
+            canonicalName = "README.md",
+            normalizedName = "readme md",
+        )
+        val claim = claim(
+            id = "claim-readme",
+            subjectEntityId = document.id,
+            predicate = "has_constraint",
+            normalizedText = "README.md documents the local development workflow.",
+        )
+        val store = InMemoryMemoryStore(
+            MemoryNamespaceSnapshot(
+                entities = listOf(file, document),
+                claims = listOf(claim),
+            )
+        )
+
+        val result = MemoryEntityMaintenancePipeline(
+            store = store,
+            planner = FixedEntityMaintenancePlanner(
+                MemoryEntityMaintenancePlan(
+                    actions = listOf(
+                        MemoryEntityMaintenancePlan.Action(
+                            action = MemoryEntityMaintenancePlan.Action.Type.MERGE,
+                            winnerEntityId = file.id.value,
+                            loserEntityIds = listOf(document.id.value),
+                            aliasTexts = listOf("README.md"),
+                            reason = "Both entities identify the same stored markdown artifact.",
+                        )
+                    ),
+                    summary = "Merged duplicate README artifact entities.",
+                )
+            ),
+            idFactory = SequentialMemoryIdFactory("entity-maintenance"),
+            profileUpdater = ProjectionMemoryProfileUpdater(store),
+            clock = FixedMemoryClock(NOW),
+        ).run(MemoryMaintenanceRequest(TEST_NAMESPACE))
+
+        val snapshot = store.loadNamespaceSnapshot(TEST_NAMESPACE, includeArchived = true)
+        val updatedFile = snapshot.entityById(file.id.value)
+
+        assertEquals(1, result.candidateGroups.size)
+        assertTrue(result.candidateGroups.single().entities.map { it.id }.containsAll(listOf(file.id, document.id)))
+        assertEquals(MemoryEntity.Status.ACTIVE, updatedFile.status)
+        assertEquals(MemoryEntity.Status.MERGED, snapshot.entityById(document.id.value).status)
+        assertEquals(file.id, snapshot.entityById(document.id.value).mergedIntoEntityId)
+        assertEquals(file.id, snapshot.claimById(claim.id.value).subjectEntityId)
+        assertEquals(setOf(MemoryEntity.Type.FILE, MemoryEntity.Type.DOCUMENT), updatedFile.observedTypes)
+    }
+
+    @Test
     fun entityMaintenanceKeepsIncompatibleSameNameEntityTypesSeparate() = runBlocking {
         val project = entity(
             id = MemoryEntity.Id("entity-gromozeka-project"),
