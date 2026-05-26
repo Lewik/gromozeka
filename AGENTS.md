@@ -66,8 +66,8 @@ Pattern: `-q` first (saves tokens), full output only on error.
   can account for recognition mistakes and spoken phrasing.
 - External-world awareness: research and design future device/location/audio/
   screenshot/camera context as possible Gromozeka inputs.
-- Postgres direction: memory/vector work should move toward PostgreSQL JSONB
-  plus pgvector. Do not over-invest in Mongo-only embedding infrastructure.
+- Postgres direction: memory/vector work should use PostgreSQL JSONB plus pgvector.
+  Do not reintroduce Mongo-only embedding infrastructure.
 
 ## Codex Run Actions
 
@@ -84,10 +84,10 @@ Current high-value commands:
 ./gradlew :server:test --tests 'com.gromozeka.server.MemoryRealModelE2eTest' -Dgromozeka.memory.e2e=true -Dgromozeka.llm.cassette.mode=replay-only -q
 ```
 
-Mongo is intentionally explicit:
+Postgres is intentionally explicit:
 ```bash
-GROMOZEKA_HOME="$PWD/dev-data/client/.gromozeka" docker compose -f "$PWD/server/src/main/resources/docker-compose.yml" up -d mongodb
-docker compose -f "$PWD/server/src/main/resources/docker-compose.yml" stop mongodb
+GROMOZEKA_HOME="$PWD/dev-data/client/.gromozeka" docker compose -f "$PWD/server/src/main/resources/docker-compose.yml" up -d postgres
+docker compose -f "$PWD/server/src/main/resources/docker-compose.yml" stop postgres
 ```
 
 ## Tailscale Web Access

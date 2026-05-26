@@ -29,7 +29,6 @@ reactor-kotlin = "1.2.3"
 xmlutil = "0.91.2"
 jagged = "1.0.0"
 exposed = "1.0.0-rc-2"
-sqlite = "3.47.1.0"
 postgresql = "42.7.4"
 hikaricp = "6.2.1"
 flyway = "11.1.0"
@@ -39,7 +38,6 @@ lsp4j = "0.23.1"
 openai-java = "4.35.0"
 anthropic-java = "2.30.0"
 aws-sdk = "2.33.1"
-mongodb-driver = "5.6.4"
 androidx-activity-compose = "1.10.1"
 
 [libraries]
@@ -88,9 +86,6 @@ reactor-kotlin-extensions = { module = "io.projectreactor.kotlin:reactor-kotlin-
 # Jackson
 jackson-module-kotlin = { module = "com.fasterxml.jackson.module:jackson-module-kotlin" }
 
-# SQLite
-sqlite-jdbc = { module = "org.xerial:sqlite-jdbc", version.ref = "sqlite" }
-
 # PostgreSQL
 postgresql-jdbc = { module = "org.postgresql:postgresql", version.ref = "postgresql" }
 hikaricp = { module = "com.zaxxer:HikariCP", version.ref = "hikaricp" }
@@ -105,6 +100,7 @@ exposed-migration-jdbc = { module = "org.jetbrains.exposed:exposed-migration-jdb
 
 # Flyway migrations
 flyway-core = { module = "org.flywaydb:flyway-core", version.ref = "flyway" }
+flyway-database-postgresql = { module = "org.flywaydb:flyway-database-postgresql", version.ref = "flyway" }
 
 # Batik (for SVG to PNG conversion)
 batik-transcoder = { module = "org.apache.xmlgraphics:batik-transcoder", version.ref = "batik" }
@@ -144,10 +140,6 @@ xmlutil-serialization = { module = "io.github.pdvrieze.xmlutil:serialization", v
 jagged-api = { module = "com.exceptionfactory.jagged:jagged-api", version.ref = "jagged" }
 jagged-x25519 = { module = "com.exceptionfactory.jagged:jagged-x25519", version.ref = "jagged" }
 jagged-framework = { module = "com.exceptionfactory.jagged:jagged-framework", version.ref = "jagged" }
-
-# MongoDB
-mongodb-driver-kotlin-coroutine = { module = "org.mongodb:mongodb-driver-kotlin-coroutine", version.ref = "mongodb-driver" }
-mongodb-bson-kotlinx = { module = "org.mongodb:bson-kotlinx", version.ref = "mongodb-driver" }
 
 # Android
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "androidx-activity-compose" }

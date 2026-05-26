@@ -1,8 +1,17 @@
 services:
-  mongodb:
-    image: mongo:8.0
-    container_name: gromozeka-dev-mongodb
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: gromozeka-dev-postgres
+    environment:
+      POSTGRES_DB: gromozeka
+      POSTGRES_USER: gromozeka
+      POSTGRES_PASSWORD: gromozeka
     ports:
-      - "27017:27017"
+      - "5432:5432"
     volumes:
-      - ${GROMOZEKA_HOME:-../../../../dev-data/client/.gromozeka}/mongo:/data/db
+      - ${GROMOZEKA_HOME:-../../../../dev-data/client/.gromozeka}/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gromozeka -d gromozeka"]
+      interval: 5s
+      timeout: 5s
+      retries: 10

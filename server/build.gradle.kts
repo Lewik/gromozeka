@@ -42,7 +42,6 @@ dependencies {
 
     testImplementation(project(":remote-client"))
     testImplementation(libs.spring.boot.starter.test)
-    testImplementation(libs.mongodb.driver.kotlin.coroutine)
     testImplementation(libs.kotlinx.datetime)
     testImplementation(kotlin("test"))
 }

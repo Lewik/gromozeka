@@ -14,7 +14,7 @@ import com.gromozeka.domain.model.Project
  * ## Implementation Responsibilities
  *
  * Business Logic Agent implements this service delegating to ProjectRepository.
- * Repository handles all storage coordination (SQL + JSON + Neo4j).
+ * Repository handles storage coordination.
  * Service focuses on business rules and orchestration.
  *
  * @see Project for domain model
@@ -30,8 +30,8 @@ interface ProjectDomainService {
      * - Reads configuration from .gromozeka/project.json
      *
      * On creation:
-     * - Creates .gromozeka/project.json with defaults (name from path, empty description)
-     * - Saves to SQL + JSON + Neo4j via repository
+     * - Creates a project record with defaults (name from path, empty description)
+     * - Saves it via repository
      *
      * This is a TRANSACTIONAL operation - either find+update or create.
      *

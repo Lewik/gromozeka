@@ -9,6 +9,8 @@ import kotlinx.datetime.Instant
 internal object Projects : Table("projects") {
     val id = varchar("id", 255)
     val path = varchar("path", 500)
+    val name = varchar("name", 255)
+    val description = text("description").nullable()
     val createdAt = timestamp("created_at")
     val lastUsedAt = timestamp("last_used_at")
 
@@ -34,6 +36,9 @@ internal object Agents : Table("agents") {
     val id = varchar("id", 255)
     val name = varchar("name", 255)
     val promptsJson = text("prompts_json")  // JSON array of Prompt IDs
+    val runtimeSelectionJson = text("runtime_selection_json")
+    val runtimeOverridesJson = text("runtime_overrides_json")
+    val toolsJson = text("tools_json")
     val description = text("description").nullable()
     val type = varchar("type", 50)
     val createdAt = timestamp("created_at")
@@ -137,5 +142,5 @@ internal object EmbeddingCache : Table("embedding_cache") {
     val model = varchar("model", 100)
     val createdAt = timestamp("created_at")
 
-    override val primaryKey = PrimaryKey(textHash)
+    override val primaryKey = PrimaryKey(textHash, model)
 }

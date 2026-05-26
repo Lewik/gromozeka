@@ -17,7 +17,7 @@ The project is currently a local research/development application, not a polishe
 - Domain contracts and memory models: `:domain`.
 - AI integrations and tool implementations: `:infrastructure-ai`.
 - Persistence and search implementations: `:infrastructure-db`.
-- Active long-term memory backend: MongoDB through `MemoryStore`.
+- Active long-term memory backend: PostgreSQL through `MemoryStore`.
 
 The current development shape is split:
 
@@ -25,7 +25,7 @@ The current development shape is split:
 - `:presentation` owns UI code and can run either as a JVM desktop client or as a Wasm web client.
 - The server listens on `/ws` for remote UI traffic and serves already-built Wasm static files from `presentation/build/dist/wasmJs/developmentExecutable` by default.
 
-Legacy and auxiliary integrations still exist in the codebase, but the current default development path is the OpenAI subscription runtime plus Mongo-backed typed memory.
+Legacy and auxiliary integrations still exist in the codebase, but the current default development path is the OpenAI subscription runtime plus PostgreSQL-backed typed memory.
 
 ## What Gromozeka Does
 
@@ -64,7 +64,7 @@ Runtime read path:
 
 1. Plan whether memory is needed with `LlmMemoryReadPlanner`.
 2. Verify no-memory decisions with a model-based verifier when needed.
-3. Search typed memory in MongoDB.
+3. Search typed memory in PostgreSQL.
 4. Select/rerank final memory context.
 5. Inject the retrieved memory into the main LLM call as runtime-only context.
 
@@ -82,21 +82,21 @@ Useful memory docs:
 
 - macOS development machine.
 - JDK 21.
-- Docker, for local MongoDB.
+- Docker, for local PostgreSQL with pgvector.
 - OpenAI subscription auth file in Gromozeka home for the current dogfooding runtime.
 - Microphone permissions if you want to use voice input.
 
 ## Running Locally
 
-MongoDB is intentionally explicit. The app should fail fast if Mongo is not available.
+PostgreSQL is intentionally explicit. The app should fail fast if Postgres is not available.
 
-The server and UI clients are separate processes. Start MongoDB first, then the server, then one of the UI clients.
+The server and UI clients are separate processes. Start Postgres first, then the server, then one of the UI clients.
 
-Start MongoDB:
+Start Postgres:
 
 ```bash
 GROMOZEKA_HOME="$PWD/dev-data/client/.gromozeka" \
-docker compose -f "$PWD/server/src/main/resources/docker-compose.yml" up
+docker compose -f "$PWD/server/src/main/resources/docker-compose.yml" up postgres
 ```
 
 Run the server:
@@ -213,10 +213,10 @@ If static files need to be served from a custom directory, set:
 GROMOZEKA_WEB_STATIC_DIR="/absolute/path/to/web/dist"
 ```
 
-Stop MongoDB:
+Stop Postgres:
 
 ```bash
-docker compose -f "$PWD/server/src/main/resources/docker-compose.yml" stop mongodb
+docker compose -f "$PWD/server/src/main/resources/docker-compose.yml" stop postgres
 ```
 
 ## Verification
@@ -279,7 +279,7 @@ For `gromozeka.memory.e2e=true`, cassette mode defaults to `replay-only`. This p
 domain/             Domain models, service contracts, tool contracts
 application/        Use cases and orchestration pipelines
 infrastructure-ai/  LLM runtimes, tools, MCP-related integrations
-infrastructure-db/  Mongo persistence, search, repository implementations
+infrastructure-db/  PostgreSQL persistence, search, repository implementations
 server/             Spring/server runtime composition, Ktor remote endpoint, server-owned resources
 presentation/       Compose JVM Desktop and Wasm web UI clients
 shared/             Shared utilities
@@ -293,7 +293,7 @@ docs/               Architecture notes, diagrams, research, guides
 - Memory debug quality is judged by traces and E2E artifacts, not only by compilation.
 - The current E2E suite intentionally uses real LLM calls when recording cassettes and deterministic replay afterward.
 - Logs are verbose by design while the memory MVP is still being hardened.
-- MongoDB data lives under `GROMOZEKA_HOME/mongo` when started through the provided compose file.
+- Postgres data lives under `GROMOZEKA_HOME/postgres` when started through the provided compose file.
 
 ## Philosophy
 

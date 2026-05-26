@@ -15,8 +15,9 @@ kotlin {
             dependencies {
                 implementation(project(":domain"))  // Transitively provides :shared
 
-                // SQL + Exposed
-                implementation(libs.sqlite.jdbc)
+                // PostgreSQL + Exposed
+                implementation(libs.postgresql.jdbc)
+                implementation(libs.hikaricp)
                 implementation(libs.exposed.core)
                 implementation(libs.exposed.dao)
                 implementation(libs.exposed.jdbc)
@@ -24,8 +25,7 @@ kotlin {
                 implementation(libs.exposed.migration.core)
                 implementation(libs.exposed.migration.jdbc)
                 implementation(libs.flyway.core)
-                implementation(libs.mongodb.driver.kotlin.coroutine)
-                implementation(libs.mongodb.bson.kotlinx)
+                implementation(libs.flyway.database.postgresql)
 
                 // Spring Boot
                 implementation(libs.spring.boot.starter)

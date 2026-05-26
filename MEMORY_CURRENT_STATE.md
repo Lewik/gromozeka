@@ -1,10 +1,10 @@
 # Memory Current State
 
-This document is a short engineering snapshot of the current memory MVP after the Mongo-based typed memory implementation and real-model E2E stabilization.
+This document is a short engineering snapshot of the current memory MVP after the PostgreSQL typed memory implementation and real-model E2E stabilization.
 
 ## What Exists Now
 
-Gromozeka now has one active runtime memory path: typed project-scoped memory stored in MongoDB through `MemoryStore`.
+Gromozeka now has one active runtime memory path: typed project-scoped memory stored in PostgreSQL through `MemoryStore`.
 
 The core domain model lives in:
 
@@ -16,9 +16,9 @@ The core domain model lives in:
 
 The main storage implementation is:
 
-- `infrastructure-db/src/jvmMain/kotlin/com/gromozeka/infrastructure/db/memory/MongoMemoryStore.kt`
+- `infrastructure-db/src/jvmMain/kotlin/com/gromozeka/infrastructure/db/memory/PostgresMemoryStore.kt`
 
-The old SQLite memory storage and the old Neo4j-backed knowledge-memory prototype were removed. SQLite may still exist for non-memory application persistence.
+The old Mongo memory storage, SQLite application persistence, and Neo4j-backed knowledge-memory prototype were removed from the active runtime.
 
 ## Runtime Write Path
 
@@ -48,7 +48,7 @@ The read pipeline shape is:
 
 1. Plan whether memory is needed with `LlmMemoryReadPlanner`.
 2. If the planner says no memory is needed, run the model-based no-memory verifier before accepting that decision.
-3. Search Mongo through `MemoryStore`.
+3. Search PostgreSQL through `MemoryStore`.
 4. Apply source retrieval policy and retrieval budget.
 5. Select final context with `LlmMemoryReadSelector`.
 6. Compose a runtime memory prompt.
@@ -111,7 +111,7 @@ The suite covers direct claims, abstention, deduplication, temporal updates, mul
 The implementation is intentionally still MVP-grade:
 
 - Live `record-missing` E2E can be slow; replay-only verification should be fast.
-- Search is still Mongo/local scoring, not vector search.
+- Search is still PostgreSQL/local scoring, not vector search.
 - Runtime memory prompt wording and assistant answer style are not polished.
 - Maintenance is manual, not background async.
 - Logs are intentionally verbose for development.
