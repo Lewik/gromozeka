@@ -23,6 +23,7 @@ import com.gromozeka.domain.model.Settings
 import com.gromozeka.domain.model.UserDeviceSettings
 import com.gromozeka.domain.model.UserProfile
 import com.gromozeka.domain.model.ai.AiConnection
+import com.gromozeka.domain.model.ai.AiModelCapability
 import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.model.ai.AiModelSpec
 import com.gromozeka.domain.model.ai.AiRuntimeAssignment
@@ -1520,19 +1521,21 @@ private fun AiModelConfigurationSettingsCard(
                 onValueChange = { onConfigurationChange(configuration.copy(providerModelId = it)) }
             )
 
-            DropdownSettingItem(
-                label = "Assistant response format",
-                description = "JSON_SCHEMA is the default. Use XML_INLINE/XML_STRUCTURED for providers without native structured output.",
-                value = configuration.assistantResponseFormat.name,
-                options = AiModelConfiguration.AssistantResponseFormat.entries.map { it.name },
-                onValueChange = {
-                    onConfigurationChange(
-                        configuration.copy(
-                            assistantResponseFormat = AiModelConfiguration.AssistantResponseFormat.valueOf(it)
+            if (modelSpec?.capabilities?.contains(AiModelCapability.TEXT_GENERATION) == true) {
+                DropdownSettingItem(
+                    label = "Assistant response format",
+                    description = "JSON_SCHEMA is the default. Use XML_INLINE/XML_STRUCTURED for providers without native structured output.",
+                    value = configuration.assistantResponseFormat.name,
+                    options = AiModelConfiguration.AssistantResponseFormat.entries.map { it.name },
+                    onValueChange = {
+                        onConfigurationChange(
+                            configuration.copy(
+                                assistantResponseFormat = AiModelConfiguration.AssistantResponseFormat.valueOf(it)
+                            )
                         )
-                    )
-                }
-            )
+                    }
+                )
+            }
 
             Text(
                 text = modelSpec?.let {

@@ -21,6 +21,7 @@ object UserProfileAiDefaults {
         assignment(AiRuntimeAssignment.Purpose.MEMORY_READ, "openai-subscription-gpt-5.5"),
         assignment(AiRuntimeAssignment.Purpose.MEMORY_WRITE, "openai-subscription-gpt-5.5"),
         assignment(AiRuntimeAssignment.Purpose.MEMORY_MAINTENANCE, "openai-subscription-gpt-5.5"),
+        assignment(AiRuntimeAssignment.Purpose.MEMORY_EMBEDDINGS, "openai-api-text-embedding-3-large"),
         assignment(AiRuntimeAssignment.Purpose.LIVE_TRANSCRIPT_STABILIZER, "openai-subscription-gpt-5.5"),
         assignment(AiRuntimeAssignment.Purpose.LIVE_TRANSLATION, "openai-subscription-gpt-5.5"),
         assignment(AiRuntimeAssignment.Purpose.SPEECH_TO_TEXT, "openai-api-gpt-4o-transcribe"),
@@ -83,6 +84,13 @@ object UserProfileAiDefaults {
             assistantResponseFormat = AiModelConfiguration.AssistantResponseFormat.TEXT,
         ),
         AiModelConfiguration(
+            id = AiModelConfiguration.Id("openai-api-text-embedding-3-small"),
+            connectionId = AiConnection.Id("openai-api"),
+            providerModelId = "text-embedding-3-small",
+            displayName = "OpenAI text-embedding-3-small",
+            assistantResponseFormat = AiModelConfiguration.AssistantResponseFormat.TEXT,
+        ),
+        AiModelConfiguration(
             id = AiModelConfiguration.Id("openai-api-gpt-4o-transcribe"),
             connectionId = AiConnection.Id("openai-api"),
             providerModelId = "gpt-4o-transcribe",
@@ -113,6 +121,14 @@ object UserProfileAiDefaults {
             capabilities = setOf(AiModelCapability.EMBEDDINGS),
             limits = AiModelSpec.Limits(
                 embeddings = AiModelSpec.Limits.Embeddings(dimensions = 3_072, maxInputTokens = 8_191)
+            ),
+        ),
+        AiModelSpec(
+            id = "text-embedding-3-small",
+            provider = AiProvider.OPENAI,
+            capabilities = setOf(AiModelCapability.EMBEDDINGS),
+            limits = AiModelSpec.Limits(
+                embeddings = AiModelSpec.Limits.Embeddings(dimensions = 1_536, maxInputTokens = 8_191)
             ),
         ),
         AiModelSpec(

@@ -506,6 +506,7 @@ class PersistentMemoryTraceSink(
             put("tasks", tasks.size)
             put("profiles", profiles.size)
             put("episodes", episodes.size)
+            put("embeddings", embeddings.size)
         }
 
     private fun MemoryUpdateBatch.refsJson(): JsonObject =
@@ -518,6 +519,7 @@ class PersistentMemoryTraceSink(
             putJsonArray("tasks") { tasks.forEach { add(JsonPrimitive(it.id.value)) } }
             putJsonArray("profiles") { profiles.forEach { add(JsonPrimitive(it.id.value)) } }
             putJsonArray("episodes") { episodes.forEach { add(JsonPrimitive(it.id.value)) } }
+            putJsonArray("embeddings") { embeddings.forEach { add(JsonPrimitive(it.id.value)) } }
         }
 
     private fun MemoryUpdateBatch.toAppliedTraceOps(): JsonArray =
@@ -540,6 +542,7 @@ class PersistentMemoryTraceSink(
             addMany("task", tasks.map { it.id.value })
             addMany("profile", profiles.map { it.id.value })
             addMany("episode", episodes.map { it.id.value })
+            addMany("embedding", embeddings.map { it.id.value })
         }
 
     private fun MemorySource.toSourcePreviewJson(): JsonObject =
@@ -639,7 +642,7 @@ class PersistentMemoryTraceSink(
         }
 
     private fun MemoryUpdateBatch.countsForTraceSummary(): String =
-        "runs=${runs.size} entities=${entities.size} claims=${claims.size} notes=${notes.size} tasks=${tasks.size} profiles=${profiles.size} episodes=${episodes.size}"
+        "runs=${runs.size} entities=${entities.size} claims=${claims.size} notes=${notes.size} tasks=${tasks.size} profiles=${profiles.size} episodes=${episodes.size} embeddings=${embeddings.size}"
 
     private fun String.oneLineTrace(maxChars: Int): String =
         replace(Regex("\\s+"), " ").trim().let { text ->

@@ -143,6 +143,7 @@ class DirectStructuredMemoryWritePipeline(
     private val materializer: DirectStructuredMemoryWriteMaterializer,
     private val profileUpdater: MemoryProfileUpdater = NoOpMemoryProfileUpdater,
     private val forgetPipeline: ExplicitMemoryForgetPipeline? = null,
+    private val embeddingIndexer: MemoryEmbeddingIndexer = NoOpMemoryEmbeddingIndexer,
     private val clock: MemoryClock = SystemMemoryClock,
     branchParallelism: Int = MemoryPipelineParallelism.writeBranchParallelism(),
 ) : DirectStructuredMemoryWriteService {
@@ -253,8 +254,11 @@ class DirectStructuredMemoryWritePipeline(
                 reason = "Source policy blocked structured extraction: ${routeDecision.reason}",
             )
         }
+        val effectiveSourceBatch = embeddingIndexer.withEmbeddings(MemoryUpdateBatch(sources = listOf(effectiveSource)))
+        if (effectiveSource != sourceForCapture || effectiveSourceBatch.embeddings.isNotEmpty()) {
+            store.apply(effectiveSourceBatch)
+        }
         if (effectiveSource != sourceForCapture) {
-            store.apply(MemoryUpdateBatch(sources = listOf(effectiveSource)))
             log.info {
                 "Memory source policy updated: namespace=${request.namespace.value} source=${request.source.id.value} " +
                     "allowStructuredExtraction=${effectiveSource.usagePolicy.allowStructuredExtraction} " +
@@ -452,30 +456,34 @@ class DirectStructuredMemoryWritePipeline(
                 "batch=${structuredMemoryBatch.batchDetailsForLog()}"
         }
 
-        store.apply(structuredMemoryBatch)
+        val indexedStructuredMemoryBatch = embeddingIndexer.withEmbeddings(structuredMemoryBatch)
+        store.apply(indexedStructuredMemoryBatch)
 
         val profileBatch = profileUpdater.update(
             request = effectiveRequest,
-            appliedBatch = structuredMemoryBatch,
+            appliedBatch = indexedStructuredMemoryBatch,
             completedAt = completedAt,
         )
 
-        if (profileBatch.isNotEmpty()) {
-            store.apply(profileBatch)
+        val indexedProfileBatch = embeddingIndexer.withEmbeddings(profileBatch)
+        if (indexedProfileBatch.isNotEmpty()) {
+            store.apply(indexedProfileBatch)
             log.info {
                 "Memory profile batch applied: namespace=${request.namespace.value} source=${request.source.id.value} " +
-                    "profiles=${profileBatch.profiles.size} batch=${profileBatch.batchDetailsForLog()}"
+                    "profiles=${indexedProfileBatch.profiles.size} embeddings=${indexedProfileBatch.embeddings.size} " +
+                    "batch=${indexedProfileBatch.batchDetailsForLog()}"
             }
         }
 
-        val memoryBatch = structuredMemoryBatch + profileBatch
+        val memoryBatch = indexedStructuredMemoryBatch + indexedProfileBatch
 
         log.info {
             "Memory write pipeline completed: namespace=${request.namespace.value} source=${request.source.id.value} " +
                 "route=${structuredRouteDecision.decision.name} retrievalHits=${retrievedHits.size} entityOps=${entityOps.size} " +
                 "noteCandidates=${noteCandidates.size} noteOps=${noteOps.size} claimCandidates=${claimCandidates.size} claimOps=${claimOps.size} taskOps=${taskOps.size} " +
                 "appliedSources=${sourceBatch.sources.size} appliedRuns=${memoryBatch.runs.size} appliedEntities=${memoryBatch.entities.size} " +
-                "appliedNotes=${memoryBatch.notes.size} appliedClaims=${memoryBatch.claims.size} appliedTasks=${memoryBatch.tasks.size} appliedProfiles=${memoryBatch.profiles.size}"
+                "appliedNotes=${memoryBatch.notes.size} appliedClaims=${memoryBatch.claims.size} appliedTasks=${memoryBatch.tasks.size} " +
+                "appliedProfiles=${memoryBatch.profiles.size} appliedEmbeddings=${memoryBatch.embeddings.size}"
         }
 
         return DirectStructuredMemoryWriteResult(
@@ -1226,7 +1234,7 @@ private fun MemoryUpdateBatch.batchDetailsForLog(): String {
     val notes = notes.joinToString("|") { "${it.id.value}:${it.status.name}:${it.noteType.name}:${it.title.oneLineForLog(140)}" }.ifBlank { "none" }
     val tasks = tasks.joinToString("|") { "${it.id.value}:${it.status.name}:${it.title.oneLineForLog(140)}" }.ifBlank { "none" }
     val profilesSummary = profiles.joinToString("|") { "${it.id.value}:${it.ownerEntityId.value}:${it.profileText.oneLineForLog(140)}" }.ifBlank { "none" }
-    return "predicates=[$predicates] runs=[$runs] entities=[$entities] notes=[$notes] claims=[$claims] tasks=[$tasks] profiles=[$profilesSummary]"
+    return "predicates=[$predicates] runs=[$runs] entities=[$entities] notes=[$notes] claims=[$claims] tasks=[$tasks] profiles=[$profilesSummary] embeddings=${embeddings.size}"
 }
 
 private operator fun MemoryUpdateBatch.plus(other: MemoryUpdateBatch): MemoryUpdateBatch =
@@ -1240,6 +1248,7 @@ private operator fun MemoryUpdateBatch.plus(other: MemoryUpdateBatch): MemoryUpd
         tasks = tasks + other.tasks,
         profiles = profiles + other.profiles,
         episodes = episodes + other.episodes,
+        embeddings = embeddings + other.embeddings,
     )
 
 private fun MemoryUpdateBatch.isNotEmpty(): Boolean =
@@ -1251,7 +1260,8 @@ private fun MemoryUpdateBatch.isNotEmpty(): Boolean =
         notes.isNotEmpty() ||
         tasks.isNotEmpty() ||
         profiles.isNotEmpty() ||
-        episodes.isNotEmpty()
+        episodes.isNotEmpty() ||
+        embeddings.isNotEmpty()
 
     private suspend fun retrieve(
         request: DirectStructuredMemoryWriteRequest,
@@ -1270,6 +1280,7 @@ private fun MemoryUpdateBatch.isNotEmpty(): Boolean =
                 scopes = retrievalPlan.searchScopes(),
                 filters = MemoryStore.SearchFilters(),
                 timeWindow = retrievalPlan.timeWindow,
+                embedding = embeddingIndexer.searchEmbedding(retrievalPlan.searchQuery(request.source)),
                 limit = retrievalPlan.limit(),
             ),
         )
@@ -1312,6 +1323,7 @@ private fun MemoryUpdateBatch.isNotEmpty(): Boolean =
                     query = searchQuery,
                     namespace = request.namespace,
                     scopes = setOf(MemoryStore.SearchScope.ENTITIES),
+                    embedding = embeddingIndexer.searchEmbedding(searchQuery),
                     limit = maxOf(ENTITY_CANDIDATE_LIMIT, lookupNames.size * 2),
                 ),
             ).filterIsInstance<MemoryStore.SearchHit.EntityHit>()

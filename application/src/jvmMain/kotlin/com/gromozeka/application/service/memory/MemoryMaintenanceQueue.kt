@@ -29,6 +29,7 @@ import org.springframework.stereotype.Service
 class MemoryMaintenanceQueue(
     private val memoryStore: MemoryStore,
     private val memoryApplicationService: MemoryApplicationService,
+    private val embeddingIndexer: MemoryEmbeddingIndexer,
     @Qualifier("supervisorScope") private val coroutineScope: CoroutineScope,
 ) {
     private val log = KLoggers.logger(this)
@@ -270,6 +271,21 @@ class MemoryMaintenanceQueue(
                     },
                 )
             }
+
+            MemoryMaintenanceAction.REBUILD_EMBEDDINGS -> {
+                val result = embeddingIndexer.rebuildNamespace(job.namespace)
+                MemoryMaintenanceExecutionResult(
+                    summary = result.summary,
+                    memoryBatch = result.memoryBatch,
+                    details = buildJsonObject {
+                        put("model_configuration_id", result.modelConfigurationId)
+                        put("provider_model_id", result.providerModelId)
+                        put("dimensions", result.dimensions)
+                        put("embeddable_items", result.embeddableItems)
+                        put("embeddings", result.embeddings)
+                    },
+                )
+            }
         }
 
     private suspend fun failJob(
@@ -316,7 +332,8 @@ enum class MemoryMaintenanceAction(
     CONSOLIDATE("consolidate", "Memory consolidation", MemoryRun.Type.CONSOLIDATE_NOTES),
     REPAIR("repair", "Memory repair", MemoryRun.Type.REPAIR_MEMORY),
     MAINTAIN_ENTITIES("maintain_entities", "Memory entity maintenance", MemoryRun.Type.MAINTAIN_ENTITIES),
-    APPLY_RETENTION("apply_retention", "Memory retention", MemoryRun.Type.APPLY_RETENTION);
+    APPLY_RETENTION("apply_retention", "Memory retention", MemoryRun.Type.APPLY_RETENTION),
+    REBUILD_EMBEDDINGS("rebuild_embeddings", "Memory embedding rebuild", MemoryRun.Type.REBUILD_EMBEDDINGS);
 
     companion object {
         fun from(value: String): MemoryMaintenanceAction =
@@ -406,6 +423,7 @@ private fun MemoryUpdateBatch.toMaintenanceCountsJson(): JsonObject =
         put("tasks", tasks.size)
         put("profiles", profiles.size)
         put("episodes", episodes.size)
+        put("embeddings", embeddings.size)
     }
 
 private fun String.oneLineForMaintenanceQueueLog(maxChars: Int = 500): String {

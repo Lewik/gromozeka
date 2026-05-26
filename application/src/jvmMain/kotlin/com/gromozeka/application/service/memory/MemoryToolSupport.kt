@@ -218,6 +218,7 @@ object MemoryToolResultRenderer {
     fun queueStatusJsonString(
         documentStatus: MemoryDocumentIngestQueueStatus,
         maintenanceStatus: MemoryMaintenanceQueueStatus,
+        embeddingStatus: MemoryEmbeddingIndexStatus,
     ): String =
         buildJsonObject {
             put("status", "completed")
@@ -272,6 +273,19 @@ object MemoryToolResultRenderer {
                     put("total_completed_jobs", maintenanceStatus.totalCompletedJobs)
                     put("total_fatally_failed_jobs", maintenanceStatus.totalFatallyFailedJobs)
                     put("worker_count", 1)
+                }
+            )
+            put(
+                "embeddings",
+                buildJsonObject {
+                    put("mode", "synchronous_write_path")
+                    put("pending_jobs", 0)
+                    put("has_active_job", false)
+                    put("total_embedding_requests", embeddingStatus.totalEmbeddingRequests)
+                    put("total_embedded_items", embeddingStatus.totalEmbeddedItems)
+                    put("total_rebuilds", embeddingStatus.totalRebuilds)
+                    put("total_failed_requests", embeddingStatus.totalFailedRequests)
+                    put("worker_count", 0)
                 }
             )
             put("worker_count", 2)
@@ -412,6 +426,7 @@ private fun List<MemoryUpdateBatch>.aggregateCountsJson() =
         put("tasks", sumOf { it.tasks.size })
         put("profiles", sumOf { it.profiles.size })
         put("episodes", sumOf { it.episodes.size })
+        put("embeddings", sumOf { it.embeddings.size })
     }
 
 private fun MemoryUpdateBatch.toCountsJson() =
@@ -425,6 +440,7 @@ private fun MemoryUpdateBatch.toCountsJson() =
         put("tasks", tasks.size)
         put("profiles", profiles.size)
         put("episodes", episodes.size)
+        put("embeddings", embeddings.size)
     }
 
 private fun String.shortForMemoryToolResult(maxLength: Int = 300): String {

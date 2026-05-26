@@ -121,6 +121,11 @@ data class AiRuntimeAssignment(
             displayName = "Memory maintenance / Entity planner",
             description = "Optional override for merging and repairing entity identities.",
         ),
+        MEMORY_EMBEDDINGS(
+            requiredCapabilities = setOf(AiModelCapability.EMBEDDINGS),
+            displayName = "Memory embeddings",
+            description = "Embedding model used for vector indexes and semantic memory retrieval.",
+        ),
         LIVE_TRANSCRIPT_STABILIZER(
             requiredCapabilities = setOf(AiModelCapability.TEXT_GENERATION),
             displayName = "Live transcript stabilizer",

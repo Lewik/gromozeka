@@ -2,6 +2,7 @@ package com.gromozeka.infrastructure.db.memory
 
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.memory.MemoryClaim
+import com.gromozeka.domain.model.memory.MemoryEmbeddingRecord
 import com.gromozeka.domain.model.memory.MemoryEntity
 import com.gromozeka.domain.model.memory.MemoryEpisode
 import com.gromozeka.domain.model.memory.MemoryItemRef
@@ -56,6 +57,7 @@ class PostgresMemoryStore(
                 validBatch.tasks.forEach { connection.upsertTask(it) }
                 validBatch.profiles.forEach { connection.upsertProfile(it) }
                 validBatch.episodes.forEach { connection.upsertEpisode(it) }
+                validBatch.embeddings.forEach { connection.upsertEmbedding(it) }
                 connection.commit()
             } catch (error: Throwable) {
                 connection.rollback()
@@ -70,16 +72,29 @@ class PostgresMemoryStore(
         val snapshot = loadSnapshot(request.namespace, request.includeArchived)
         val includeAll = request.scopes.contains(MemoryStore.SearchScope.ALL)
         val entityById = snapshot.entities.associateBy { it.id }
+        val vectorScores = request.vectorScores()
 
         val candidates = buildList {
             if (includeAll || request.scopes.contains(MemoryStore.SearchScope.SOURCES)) {
                 snapshot.sources
-                    .mapTo(this) { MemoryStore.SearchHit.SourceHit(it, score = MemorySearchScorer.sourceScore(request.query, it)) }
+                    .mapTo(this) {
+                        MemoryStore.SearchHit.SourceHit(
+                            it,
+                            score = MemorySearchScorer.sourceScore(request.query, it) +
+                                vectorScores.boost(MemoryItemRef(MemoryItemRef.Type.SOURCE, it.id.value)),
+                        )
+                    }
             }
             if (includeAll || request.scopes.contains(MemoryStore.SearchScope.ENTITIES)) {
                 snapshot.entities
                     .filter { request.filters.entityIds.isEmpty() || it.id in request.filters.entityIds }
-                    .mapTo(this) { MemoryStore.SearchHit.EntityHit(it, score = MemorySearchScorer.entityScore(request.query, it)) }
+                    .mapTo(this) {
+                        MemoryStore.SearchHit.EntityHit(
+                            it,
+                            score = MemorySearchScorer.entityScore(request.query, it) +
+                                vectorScores.boost(MemoryItemRef(MemoryItemRef.Type.ENTITY, it.id.value)),
+                        )
+                    }
             }
             if (includeAll || request.scopes.contains(MemoryStore.SearchScope.CLAIMS)) {
                 snapshot.claims
@@ -95,7 +110,7 @@ class PostgresMemoryStore(
                                 claim = it,
                                 subjectEntity = entityById[it.subjectEntityId],
                                 objectEntity = it.objectEntityId?.let(entityById::get),
-                            ),
+                            ) + vectorScores.boost(MemoryItemRef(MemoryItemRef.Type.CLAIM, it.id.value)),
                         )
                     }
             }
@@ -116,7 +131,7 @@ class PostgresMemoryStore(
                                 query = request.query,
                                 note = it,
                                 linkedEntities = it.linkedEntities(entityById),
-                            ),
+                            ) + vectorScores.boost(MemoryItemRef(MemoryItemRef.Type.NOTE, it.id.value)),
                         )
                     }
             }
@@ -137,7 +152,7 @@ class PostgresMemoryStore(
                                 query = request.query,
                                 task = it,
                                 linkedEntities = it.linkedEntities(entityById),
-                            ),
+                            ) + vectorScores.boost(MemoryItemRef(MemoryItemRef.Type.TASK, it.id.value)),
                         )
                     }
             }
@@ -151,7 +166,7 @@ class PostgresMemoryStore(
                                 query = request.query,
                                 profile = it,
                                 ownerEntity = entityById[it.ownerEntityId],
-                            ),
+                            ) + vectorScores.boost(MemoryItemRef(MemoryItemRef.Type.PROFILE, it.id.value)),
                         )
                     }
             }
@@ -165,7 +180,7 @@ class PostgresMemoryStore(
                                 query = request.query,
                                 episode = it,
                                 ownerEntity = it.ownerEntityId?.let(entityById::get),
-                            ),
+                            ) + vectorScores.boost(MemoryItemRef(MemoryItemRef.Type.EPISODE, it.id.value)),
                         )
                     }
             }
@@ -188,6 +203,7 @@ class PostgresMemoryStore(
         log.info {
             "Postgres memory search: namespace=${request.namespace?.value ?: "all"} scopes=${request.scopes.joinToString { it.name }} " +
                 "query=${request.query.oneLineForMemorySearchLog(120)} filters=${request.filters.filtersForLog()} " +
+                "embedding=${request.embedding?.let { "${it.modelConfigurationId}/${it.dimensions}" } ?: "none"} " +
                 "snapshot=${snapshot.countsForLog()} candidates=${candidates.size} eligible=${eligibleCandidates.size} result=${result.size} " +
                 "top=${result.joinToString("|") { it.hitForLog() }.ifBlank { "none" }}"
         }
@@ -496,6 +512,100 @@ class PostgresMemoryStore(
             ),
         )
 
+    private fun Connection.upsertEmbedding(item: MemoryEmbeddingRecord) {
+        val vectorColumn = when (item.dimensions) {
+            1_536 -> "embedding_1536"
+            3_072 -> "embedding_3072"
+            else -> error("Unsupported memory embedding dimensions: ${item.dimensions}")
+        }
+        val otherVectorColumn = if (vectorColumn == "embedding_1536") "embedding_3072" else "embedding_1536"
+        val sql = """
+            INSERT INTO memory_embeddings (
+                id, namespace, memory_type, memory_id, model_configuration_id, provider_model_id,
+                dimensions, content_hash, $vectorColumn, $otherVectorColumn, created_at, updated_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?::vector, NULL, ?, ?)
+            ON CONFLICT (id) DO UPDATE SET
+                namespace = EXCLUDED.namespace,
+                memory_type = EXCLUDED.memory_type,
+                memory_id = EXCLUDED.memory_id,
+                model_configuration_id = EXCLUDED.model_configuration_id,
+                provider_model_id = EXCLUDED.provider_model_id,
+                dimensions = EXCLUDED.dimensions,
+                content_hash = EXCLUDED.content_hash,
+                $vectorColumn = EXCLUDED.$vectorColumn,
+                $otherVectorColumn = NULL,
+                updated_at = EXCLUDED.updated_at
+        """.trimIndent()
+
+        prepareStatement(sql).use { statement ->
+            statement.setString(1, item.id.value)
+            statement.setString(2, item.namespace.value)
+            statement.setString(3, item.itemRef.type.name)
+            statement.setString(4, item.itemRef.id)
+            statement.setString(5, item.modelConfigurationId)
+            statement.setString(6, item.providerModelId)
+            statement.setInt(7, item.dimensions)
+            statement.setString(8, item.contentHash)
+            statement.setString(9, item.vector.toPostgresVectorLiteral())
+            statement.setTimestamp(10, Timestamp.from(java.time.Instant.parse(item.createdAt.toString())))
+            statement.setTimestamp(11, Timestamp.from(java.time.Instant.parse(item.updatedAt.toString())))
+            statement.executeUpdate()
+        }
+    }
+
+    private fun MemoryStore.SearchRequest.vectorScores(): Map<MemoryItemRef, Double> {
+        val searchEmbedding = embedding ?: return emptyMap()
+        if (query.isBlank()) return emptyMap()
+        val vectorColumn = when (searchEmbedding.dimensions) {
+            1_536 -> "embedding_1536"
+            3_072 -> "embedding_3072"
+            else -> return emptyMap()
+        }
+        val memoryTypes = scopes.toEmbeddableMemoryTypes()
+        if (memoryTypes.isEmpty()) return emptyMap()
+
+        val namespaceFilter = namespace?.let { "namespace = ? AND " }.orEmpty()
+        val typePlaceholders = memoryTypes.joinToString(",") { "?" }
+        val vectorLimit = (limit * 10).coerceIn(50, 500)
+        val sql = """
+            SELECT memory_type, memory_id, 1 - ($vectorColumn <=> ?::vector) AS score
+            FROM memory_embeddings
+            WHERE ${namespaceFilter}model_configuration_id = ?
+              AND dimensions = ?
+              AND memory_type IN ($typePlaceholders)
+              AND $vectorColumn IS NOT NULL
+            ORDER BY $vectorColumn <=> ?::vector
+            LIMIT ?
+        """.trimIndent()
+
+        val vectorLiteral = searchEmbedding.vector.toPostgresVectorLiteral()
+        return dataSource.connection.use { connection ->
+            connection.prepareStatement(sql).use { statement ->
+                var index = 1
+                statement.setString(index++, vectorLiteral)
+                namespace?.let { statement.setString(index++, it.value) }
+                statement.setString(index++, searchEmbedding.modelConfigurationId)
+                statement.setInt(index++, searchEmbedding.dimensions)
+                memoryTypes.forEach { statement.setString(index++, it.name) }
+                statement.setString(index++, vectorLiteral)
+                statement.setInt(index, vectorLimit)
+                statement.executeQuery().use { resultSet ->
+                    buildMap {
+                        while (resultSet.next()) {
+                            val ref = MemoryItemRef(
+                                type = MemoryItemRef.Type.valueOf(resultSet.getString("memory_type")),
+                                id = resultSet.getString("memory_id"),
+                            )
+                            val score = resultSet.getDouble("score").coerceAtLeast(0.0)
+                            put(ref, score)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     private fun Connection.upsertJson(
         tableName: String,
         id: String,
@@ -716,6 +826,29 @@ private fun MemoryNamespaceSnapshot.filterNamespace(namespace: MemoryNamespace):
         profiles = profiles.filter { it.namespace == namespace },
         episodes = episodes.filter { it.namespace == namespace },
     )
+
+private fun Map<MemoryItemRef, Double>.boost(ref: MemoryItemRef): Double =
+    (this[ref] ?: 0.0) * 1.25
+
+private fun Set<MemoryStore.SearchScope>.toEmbeddableMemoryTypes(): Set<MemoryItemRef.Type> {
+    val requestedScopes = this
+    val includeAll = requestedScopes.contains(MemoryStore.SearchScope.ALL)
+    return buildSet<MemoryItemRef.Type> {
+        if (includeAll || requestedScopes.contains(MemoryStore.SearchScope.SOURCES)) add(MemoryItemRef.Type.SOURCE)
+        if (includeAll || requestedScopes.contains(MemoryStore.SearchScope.ENTITIES)) add(MemoryItemRef.Type.ENTITY)
+        if (includeAll || requestedScopes.contains(MemoryStore.SearchScope.CLAIMS)) add(MemoryItemRef.Type.CLAIM)
+        if (includeAll || requestedScopes.contains(MemoryStore.SearchScope.NOTES)) add(MemoryItemRef.Type.NOTE)
+        if (includeAll || requestedScopes.contains(MemoryStore.SearchScope.TASKS)) add(MemoryItemRef.Type.TASK)
+        if (includeAll || requestedScopes.contains(MemoryStore.SearchScope.PROFILES)) add(MemoryItemRef.Type.PROFILE)
+        if (includeAll || requestedScopes.contains(MemoryStore.SearchScope.EPISODES)) add(MemoryItemRef.Type.EPISODE)
+    }
+}
+
+private fun List<Float>.toPostgresVectorLiteral(): String =
+    joinToString(prefix = "[", postfix = "]") { value ->
+        require(value.isFinite()) { "Memory embedding vector must contain only finite values" }
+        value.toString()
+    }
 
 private fun Double.scoreForLog(): String =
     "%.3f".format(this)

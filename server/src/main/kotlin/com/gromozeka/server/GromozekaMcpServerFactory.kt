@@ -252,7 +252,7 @@ class GromozekaMcpServerFactory(
 
             - `memory_run_status`: inspect one memory run by id.
             - `memory_queue_status`: inspect queued/running memory document ingest and maintenance work.
-            - `memory_maintenance`: schedule maintenance actions such as consolidation, entity maintenance, stale/supersede cleanup, or targeted repairs.
+            - `memory_maintenance`: schedule maintenance actions such as consolidation, entity maintenance, stale/supersede cleanup, targeted repairs, or embedding rebuild.
 
             Maintenance tools operate on existing memory and return immediately with a run id. Use `memory_run_status` or `memory_queue_status` to observe completion. Prefer status tools before starting broad maintenance if a run is already active.
 
@@ -275,10 +275,10 @@ class GromozekaMcpServerFactory(
             "List readable memory namespaces, item counts, and the configured default namespace."
 
         const val MCP_MEMORY_MAINTENANCE_DESCRIPTION =
-            "Schedule one explicit maintenance action over existing memory and return a run_id: consolidate, repair, maintain_entities, or apply_retention."
+            "Schedule one explicit maintenance action over existing memory and return a run_id: consolidate, repair, maintain_entities, apply_retention, or rebuild_embeddings."
 
         const val MCP_MEMORY_QUEUE_STATUS_DESCRIPTION =
-            "Read process-local memory document ingest and maintenance queue status: pending jobs, active runs, and lifetime counters."
+            "Read process-local memory document ingest, maintenance, and synchronous embedding index status."
 
         const val MCP_MEMORY_RUN_STATUS_DESCRIPTION =
             "Read persisted status, timings, errors, and child runs for one memory run by run_id."

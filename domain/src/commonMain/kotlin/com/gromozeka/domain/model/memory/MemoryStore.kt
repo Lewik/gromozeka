@@ -59,9 +59,24 @@ interface MemoryStore {
         val scopes: Set<SearchScope> = setOf(SearchScope.ALL),
         val filters: SearchFilters = SearchFilters(),
         val timeWindow: MemoryTimeWindow? = null,
+        val embedding: SearchEmbedding? = null,
         val includeArchived: Boolean = false,
         val limit: Int = 10,
     )
+
+    data class SearchEmbedding(
+        val modelConfigurationId: String,
+        val providerModelId: String,
+        val vector: List<Float>,
+    ) {
+        val dimensions: Int = vector.size
+
+        init {
+            require(modelConfigurationId.isNotBlank()) { "Memory search embedding model configuration id must not be blank" }
+            require(providerModelId.isNotBlank()) { "Memory search embedding provider model id must not be blank" }
+            require(vector.isNotEmpty()) { "Memory search embedding vector must not be empty" }
+        }
+    }
 
     /**
      * Structured constraints that narrow search independently from the query text.

@@ -40,6 +40,7 @@ class MemoryMessageRoutingApplicationService(
     private val store: MemoryStore,
     private val threadMessageRepository: ThreadMessageRepository,
     private val writeTraceSinks: List<MemoryWriteTraceSink>,
+    private val embeddingIndexer: MemoryEmbeddingIndexer,
 ) {
     private val log = KLoggers.logger(this)
     private val sourceMapper = ConversationMessageMemorySourceMapper()
@@ -434,6 +435,7 @@ class MemoryMessageRoutingApplicationService(
                 idFactory = UuidMemoryIdFactory("hot-path-forget"),
                 profileUpdater = ProjectionMemoryProfileUpdater(store),
             ),
+            embeddingIndexer = embeddingIndexer,
         )
 
         return runCatching {
@@ -686,6 +688,7 @@ private operator fun MemoryUpdateBatch.plus(other: MemoryUpdateBatch): MemoryUpd
         tasks = tasks + other.tasks,
         profiles = profiles + other.profiles,
         episodes = episodes + other.episodes,
+        embeddings = embeddings + other.embeddings,
     )
 
 private fun String.sha256(): String {

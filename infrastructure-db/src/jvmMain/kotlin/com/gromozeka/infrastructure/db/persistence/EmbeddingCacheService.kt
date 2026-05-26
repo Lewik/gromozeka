@@ -1,6 +1,7 @@
 package com.gromozeka.infrastructure.db.persistence
 
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.springframework.stereotype.Service
 import java.security.MessageDigest
 import javax.sql.DataSource
@@ -9,14 +10,15 @@ import javax.sql.DataSource
 class EmbeddingCacheService(
     private val dataSource: DataSource,
 ) {
-    fun getCachedEmbedding(text: String, model: String): FloatArray? = runBlocking {
+    suspend fun getCachedEmbedding(text: String, model: String, dimensions: Int): FloatArray? = withContext(Dispatchers.IO) {
         val hash = computeHash(text)
+        val cacheModel = cacheModel(model, dimensions)
         dataSource.connection.use { connection ->
             connection.prepareStatement("SELECT embedding_vector FROM embedding_cache WHERE text_hash = ? AND model = ?").use { statement ->
                 statement.setString(1, hash)
-                statement.setString(2, model)
+                statement.setString(2, cacheModel)
                 statement.executeQuery().use { resultSet ->
-                    if (!resultSet.next()) return@runBlocking null
+                    if (!resultSet.next()) return@withContext null
                     resultSet.getString(1)
                         .split(',')
                         .filter { it.isNotBlank() }
@@ -27,8 +29,9 @@ class EmbeddingCacheService(
         }
     }
 
-    fun cacheEmbedding(text: String, model: String, embedding: FloatArray) = runBlocking {
+    suspend fun cacheEmbedding(text: String, model: String, dimensions: Int, embedding: FloatArray) = withContext(Dispatchers.IO) {
         val hash = computeHash(text)
+        val cacheModel = cacheModel(model, dimensions)
         dataSource.connection.use { connection ->
             connection.prepareStatement(
                 """
@@ -38,12 +41,15 @@ class EmbeddingCacheService(
                 """.trimIndent()
             ).use { statement ->
                 statement.setString(1, hash)
-                statement.setString(2, model)
+                statement.setString(2, cacheModel)
                 statement.setString(3, embedding.joinToString(","))
                 statement.executeUpdate()
             }
         }
     }
+
+    private fun cacheModel(model: String, dimensions: Int): String =
+        "$model#$dimensions"
 
     private fun computeHash(text: String): String {
         val digest = MessageDigest.getInstance("SHA-256")

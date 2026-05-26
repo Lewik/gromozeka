@@ -91,6 +91,12 @@ class MemoryStatusToolRendererTest {
                     totalCompletedJobs = 1,
                     totalFatallyFailedJobs = 0,
                 ),
+                embeddingStatus = MemoryEmbeddingIndexStatus(
+                    totalEmbeddedItems = 8,
+                    totalEmbeddingRequests = 3,
+                    totalRebuilds = 1,
+                    totalFailedRequests = 0,
+                ),
             )
         ).jsonObject
 
@@ -108,6 +114,11 @@ class MemoryStatusToolRendererTest {
             json.getValue("maintenance").jsonObject
                 .getValue("active_job").jsonObject
                 .getValue("run_id").jsonPrimitive.content,
+        )
+        assertEquals(
+            "8",
+            json.getValue("embeddings").jsonObject
+                .getValue("total_embedded_items").jsonPrimitive.content,
         )
         assertEquals("false", json.getValue("durable_resume").jsonPrimitive.content)
     }

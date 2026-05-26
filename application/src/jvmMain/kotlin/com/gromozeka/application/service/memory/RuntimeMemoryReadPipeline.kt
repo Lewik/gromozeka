@@ -28,6 +28,7 @@ class RuntimeMemoryReadPipeline(
     private val planner: MemoryReadPlanner,
     private val selector: MemoryReadSelector = PassthroughMemoryReadSelector,
     private val composer: RuntimeMemoryPromptComposer = RuntimeMemoryPromptComposer,
+    private val embeddingIndexer: MemoryEmbeddingIndexer = NoOpMemoryEmbeddingIndexer,
 ) : RuntimeMemoryReadService {
     private val log = KLoggers.logger(this)
 
@@ -94,6 +95,7 @@ class RuntimeMemoryReadPipeline(
     ): RuntimeMemoryRetrievedHits {
         val snapshot = store.loadNamespaceSnapshot(request.namespace)
         val targetEntities = snapshot.resolveTargetEntitiesForRead(request, plan)
+        val queryEmbeddings = mutableMapOf<String, MemoryStore.SearchEmbedding?>()
         val hits = mutableListOf<MemoryStore.SearchHit>()
         hits += targetEntities.hits
         if (targetEntities.hits.isNotEmpty()) {
@@ -125,6 +127,7 @@ class RuntimeMemoryReadPipeline(
                             scopes = setOf(MemoryStore.SearchScope.PROFILES),
                             filters = MemoryStore.SearchFilters()
                                 .withTargetEntityIds(MemorySemanticType.PROFILE, targetEntities.filterEntityIds),
+                            embedding = queryEmbedding(request.targetQueryText(), queryEmbeddings),
                             limit = plan.retrievalBudget.profilesLimit(),
                         )
                     )
@@ -160,6 +163,7 @@ class RuntimeMemoryReadPipeline(
                                     MemoryTask.Status.BLOCKED,
                                 ),
                             ).withTargetEntityIds(MemorySemanticType.TASK, targetEntities.filterEntityIds),
+                            embedding = queryEmbedding(request.targetQueryText(), queryEmbeddings),
                             limit = plan.retrievalBudget.tasksLimit(default = 2),
                         )
                     )
@@ -202,6 +206,7 @@ class RuntimeMemoryReadPipeline(
                     scopes = setOf(scope),
                     filters = retrievalRequest.memoryType.defaultFilters()
                         .withTargetEntityIds(retrievalRequest.memoryType, targetEntities.filterEntityIds),
+                    embedding = queryEmbedding(searchQuery, queryEmbeddings),
                     limit = searchLimit,
                 )
             )
@@ -240,6 +245,7 @@ class RuntimeMemoryReadPipeline(
                     namespace = request.namespace,
                     scopes = setOf(MemoryStore.SearchScope.SOURCES),
                     filters = MemoryStore.SearchFilters(),
+                    embedding = queryEmbedding(sourceFallbackQuery, queryEmbeddings),
                     limit = sourceFallbackSearchLimit,
                 )
             )
@@ -383,6 +389,18 @@ class RuntimeMemoryReadPipeline(
             selectorDecisions = selectorDecisions,
             sourceSafety = sourceSafety,
         )
+    }
+
+    private suspend fun queryEmbedding(
+        query: String,
+        cache: MutableMap<String, MemoryStore.SearchEmbedding?>,
+    ): MemoryStore.SearchEmbedding? {
+        val normalizedQuery = query.trim()
+        if (normalizedQuery.isBlank()) return null
+        if (cache.containsKey(normalizedQuery)) return cache[normalizedQuery]
+        val embedding = embeddingIndexer.searchEmbedding(normalizedQuery)
+        cache[normalizedQuery] = embedding
+        return embedding
     }
 
     private suspend fun hydrateLinkedEntities(

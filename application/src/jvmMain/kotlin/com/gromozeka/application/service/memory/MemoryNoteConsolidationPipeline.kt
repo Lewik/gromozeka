@@ -39,6 +39,7 @@ class MemoryNoteConsolidationPipeline(
     private val consolidator: MemoryNoteConsolidator,
     private val idFactory: MemoryIdFactory,
     private val profileUpdater: ProjectionMemoryProfileUpdater,
+    private val embeddingIndexer: MemoryEmbeddingIndexer = NoOpMemoryEmbeddingIndexer,
     private val clock: MemoryClock = SystemMemoryClock,
 ) {
     private val log = KLoggers.logger(this)
@@ -95,20 +96,22 @@ class MemoryNoteConsolidationPipeline(
             consolidation = consolidation,
         )
 
-        store.apply(structuredBatch)
+        val indexedStructuredBatch = embeddingIndexer.withEmbeddings(structuredBatch)
+        store.apply(indexedStructuredBatch)
 
         val profileBatch = profileUpdater.updateNamespaceProfiles(
             namespace = request.namespace,
             logSubject = "maintenance=note_consolidation",
-            appliedBatch = structuredBatch,
+            appliedBatch = indexedStructuredBatch,
             completedAt = completedAt,
         )
+        val indexedProfileBatch = embeddingIndexer.withEmbeddings(profileBatch)
 
-        if (profileBatch.isNotEmptyForMaintenance()) {
-            store.apply(profileBatch)
+        if (indexedProfileBatch.isNotEmptyForMaintenance()) {
+            store.apply(indexedProfileBatch)
         }
 
-        val memoryBatch = structuredBatch + profileBatch
+        val memoryBatch = indexedStructuredBatch + indexedProfileBatch
 
         log.info {
             "Memory note consolidation completed: namespace=${request.namespace.value} " +
@@ -539,7 +542,8 @@ private fun MemoryUpdateBatch.isNotEmptyForMaintenance(): Boolean =
         notes.isNotEmpty() ||
         tasks.isNotEmpty() ||
         profiles.isNotEmpty() ||
-        episodes.isNotEmpty()
+        episodes.isNotEmpty() ||
+        embeddings.isNotEmpty()
 
 private operator fun MemoryUpdateBatch.plus(other: MemoryUpdateBatch): MemoryUpdateBatch =
     MemoryUpdateBatch(
@@ -552,6 +556,7 @@ private operator fun MemoryUpdateBatch.plus(other: MemoryUpdateBatch): MemoryUpd
         tasks = tasks + other.tasks,
         profiles = profiles + other.profiles,
         episodes = episodes + other.episodes,
+        embeddings = embeddings + other.embeddings,
     )
 
 private fun MemoryNamespaceSnapshot.countsForConsolidationLog(): String =

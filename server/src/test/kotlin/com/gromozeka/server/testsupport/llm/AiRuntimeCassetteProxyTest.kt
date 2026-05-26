@@ -353,9 +353,11 @@ class AiRuntimeCassetteProxyTest {
                     AiModelCapability.TEXT_GENERATION,
                     AiModelCapability.SPEECH_TO_TEXT,
                     AiModelCapability.TEXT_TO_SPEECH,
+                    AiModelCapability.EMBEDDINGS,
                 ),
                 limits = AiModelSpec.Limits(
-                    textGeneration = AiModelSpec.Limits.TextGeneration(contextWindowTokens = 128_000)
+                    textGeneration = AiModelSpec.Limits.TextGeneration(contextWindowTokens = 128_000),
+                    embeddings = AiModelSpec.Limits.Embeddings(dimensions = 1_536, maxInputTokens = 8_191),
                 ),
             )
         }

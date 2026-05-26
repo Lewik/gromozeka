@@ -877,6 +877,7 @@ data class MemoryRun(
         MAINTAIN_ENTITIES,
         REPAIR_MEMORY,
         APPLY_RETENTION,
+        REBUILD_EMBEDDINGS,
         FORGET_MEMORY,
         READ_PLAN,
         COMPOSE_ANSWER,
@@ -927,6 +928,37 @@ data class MemoryItemRef(
 }
 
 /**
+ * Vector index row for one memory item under one embedding model configuration.
+ */
+data class MemoryEmbeddingRecord(
+    val id: Id,
+    val namespace: MemoryNamespace,
+    val itemRef: MemoryItemRef,
+    val modelConfigurationId: String,
+    val providerModelId: String,
+    val dimensions: Int,
+    val contentHash: String,
+    val vector: List<Float>,
+    val createdAt: Instant,
+    val updatedAt: Instant,
+) {
+    init {
+        require(modelConfigurationId.isNotBlank()) { "Memory embedding model configuration id must not be blank" }
+        require(providerModelId.isNotBlank()) { "Memory embedding provider model id must not be blank" }
+        require(dimensions > 0) { "Memory embedding dimensions must be positive" }
+        require(vector.size == dimensions) { "Memory embedding vector size must match dimensions" }
+        require(contentHash.isNotBlank()) { "Memory embedding content hash must not be blank" }
+    }
+
+    @JvmInline
+    value class Id(val value: String) {
+        init {
+            require(value.isNotBlank()) { "Memory embedding id must not be blank" }
+        }
+    }
+}
+
+/**
  * Transactional set of memory changes produced by a pipeline step.
  */
 data class MemoryUpdateBatch(
@@ -939,6 +971,7 @@ data class MemoryUpdateBatch(
     val tasks: List<MemoryTask> = emptyList(),
     val profiles: List<MemoryProfile> = emptyList(),
     val episodes: List<MemoryEpisode> = emptyList(),
+    val embeddings: List<MemoryEmbeddingRecord> = emptyList(),
 )
 
 /**

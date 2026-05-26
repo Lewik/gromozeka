@@ -35,6 +35,7 @@ class MemoryRepairPipeline(
     private val planner: MemoryRepairPlanner,
     private val idFactory: MemoryIdFactory,
     private val profileUpdater: ProjectionMemoryProfileUpdater,
+    private val embeddingIndexer: MemoryEmbeddingIndexer = NoOpMemoryEmbeddingIndexer,
     private val clock: MemoryClock = SystemMemoryClock,
 ) {
     private val log = KLoggers.logger(this)
@@ -62,22 +63,24 @@ class MemoryRepairPipeline(
             plan = plan,
         )
 
-        store.apply(structuredBatch)
+        val indexedStructuredBatch = embeddingIndexer.withEmbeddings(structuredBatch)
+        store.apply(indexedStructuredBatch)
 
         val shouldRefreshProfiles = plan.repairActions.any { it.action == MemoryRepairPlan.Action.Type.REFRESH_PROFILE }
         val profileBatch = profileUpdater.updateNamespaceProfiles(
             namespace = request.namespace,
             logSubject = "maintenance=memory_repair",
-            appliedBatch = structuredBatch,
+            appliedBatch = indexedStructuredBatch,
             completedAt = completedAt,
             force = shouldRefreshProfiles,
         )
+        val indexedProfileBatch = embeddingIndexer.withEmbeddings(profileBatch)
 
-        if (profileBatch.isNotEmptyForRepair()) {
-            store.apply(profileBatch)
+        if (indexedProfileBatch.isNotEmptyForRepair()) {
+            store.apply(indexedProfileBatch)
         }
 
-        val memoryBatch = structuredBatch + profileBatch
+        val memoryBatch = indexedStructuredBatch + indexedProfileBatch
 
         log.info {
             "Memory repair completed: namespace=${request.namespace.value} suspiciousHits=${suspiciousHits.size} " +
@@ -656,7 +659,8 @@ private fun MemoryUpdateBatch.isNotEmptyForRepair(): Boolean =
         notes.isNotEmpty() ||
         tasks.isNotEmpty() ||
         profiles.isNotEmpty() ||
-        episodes.isNotEmpty()
+        episodes.isNotEmpty() ||
+        embeddings.isNotEmpty()
 
 private operator fun MemoryUpdateBatch.plus(other: MemoryUpdateBatch): MemoryUpdateBatch =
     MemoryUpdateBatch(
@@ -669,6 +673,7 @@ private operator fun MemoryUpdateBatch.plus(other: MemoryUpdateBatch): MemoryUpd
         tasks = tasks + other.tasks,
         profiles = profiles + other.profiles,
         episodes = episodes + other.episodes,
+        embeddings = embeddings + other.embeddings,
     )
 
 private fun MemoryNamespaceSnapshot.countsForRepairLog(): String =

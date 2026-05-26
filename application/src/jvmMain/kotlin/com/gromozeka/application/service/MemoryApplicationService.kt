@@ -18,6 +18,7 @@ import com.gromozeka.application.service.memory.MemoryRepairPipeline
 import com.gromozeka.application.service.memory.MemoryRepairPipelineResult
 import com.gromozeka.application.service.memory.MemoryRetentionPipeline
 import com.gromozeka.application.service.memory.MemoryRetentionPipelineResult
+import com.gromozeka.application.service.memory.MemoryEmbeddingIndexer
 import com.gromozeka.application.service.memory.MemoryReadTraceEvent
 import com.gromozeka.application.service.memory.MemoryReadTraceSink
 import com.gromozeka.application.service.memory.PolicyMemoryRetentionPlanner
@@ -52,6 +53,7 @@ class MemoryApplicationService(
     private val store: MemoryStore,
     private val readTraceSinks: List<MemoryReadTraceSink>,
     private val maintenanceTraceSinks: List<MemoryMaintenanceTraceSink>,
+    private val embeddingIndexer: MemoryEmbeddingIndexer,
 ) {
     private val log = KLoggers.logger(this)
 
@@ -137,6 +139,7 @@ class MemoryApplicationService(
                 runtimeSystemPrompts = runtimeSystemPrompts,
                 runtimeTools = runtimeTools,
             ),
+            embeddingIndexer = embeddingIndexer,
         )
         val result = pipeline.read(
             MemoryReadRequest(
@@ -208,6 +211,7 @@ class MemoryApplicationService(
             ),
             idFactory = UuidMemoryIdFactory("note-consolidation"),
             profileUpdater = ProjectionMemoryProfileUpdater(store),
+            embeddingIndexer = embeddingIndexer,
         )
         val result = pipeline.run(
             MemoryMaintenanceRequest(
@@ -251,6 +255,7 @@ class MemoryApplicationService(
             ),
             idFactory = UuidMemoryIdFactory("memory-repair"),
             profileUpdater = ProjectionMemoryProfileUpdater(store),
+            embeddingIndexer = embeddingIndexer,
         )
         val result = pipeline.run(
             MemoryMaintenanceRequest(
@@ -294,6 +299,7 @@ class MemoryApplicationService(
             ),
             idFactory = UuidMemoryIdFactory("entity-maintenance"),
             profileUpdater = ProjectionMemoryProfileUpdater(store),
+            embeddingIndexer = embeddingIndexer,
         )
         val result = pipeline.run(
             MemoryMaintenanceRequest(

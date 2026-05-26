@@ -6,6 +6,7 @@ import com.gromozeka.application.service.memory.MEMORY_MAINTENANCE_TOOL_NAME
 import com.gromozeka.application.service.memory.MEMORY_REMEMBER_TOOL_NAME
 import com.gromozeka.application.service.memory.MemoryDocumentIngestJob
 import com.gromozeka.application.service.memory.MemoryDocumentIngestQueue
+import com.gromozeka.application.service.memory.MemoryEmbeddingIndexer
 import com.gromozeka.application.service.memory.MemoryMaintenanceAction
 import com.gromozeka.application.service.memory.MemoryMaintenanceQueue
 import com.gromozeka.application.service.memory.MemoryMessageRoutingApplicationService
@@ -58,6 +59,7 @@ class MemoryToolApplicationService(
     private val memoryMessageRoutingApplicationService: MemoryMessageRoutingApplicationService,
     private val memoryDocumentIngestQueue: MemoryDocumentIngestQueue,
     private val memoryMaintenanceQueue: MemoryMaintenanceQueue,
+    private val memoryEmbeddingIndexer: MemoryEmbeddingIndexer,
     private val memoryStore: MemoryStore,
 ) {
     private val log = KLoggers.logger(this)
@@ -452,6 +454,7 @@ class MemoryToolApplicationService(
         MemoryToolResultRenderer.queueStatusJsonString(
             documentStatus = memoryDocumentIngestQueue.status(),
             maintenanceStatus = memoryMaintenanceQueue.status(),
+            embeddingStatus = memoryEmbeddingIndexer.status(),
         )
 
     suspend fun listNamespaces(): String =

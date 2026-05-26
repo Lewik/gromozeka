@@ -16,10 +16,13 @@ class UserProfileAiSettingsTest {
         val aiSettings = UserProfileAiDefaults.aiSettings()
         val chatModel = aiSettings.modelConfigurations.first { it.id.value == "openai-subscription-gpt-5.5" }
         val speechModel = aiSettings.modelConfigurations.first { it.id.value == "openai-api-gpt-4o-transcribe" }
+        val embeddingModel = aiSettings.modelConfigurations.first { it.id.value == "openai-api-text-embedding-3-large" }
 
         assertTrue(aiSettings.supportsPurpose(chatModel, AiRuntimeAssignment.Purpose.DEFAULT_CHAT))
         assertFalse(aiSettings.supportsPurpose(speechModel, AiRuntimeAssignment.Purpose.DEFAULT_CHAT))
         assertTrue(aiSettings.supportsPurpose(speechModel, AiRuntimeAssignment.Purpose.SPEECH_TO_TEXT))
+        assertTrue(aiSettings.supportsPurpose(embeddingModel, AiRuntimeAssignment.Purpose.MEMORY_EMBEDDINGS))
+        assertFalse(aiSettings.supportsPurpose(chatModel, AiRuntimeAssignment.Purpose.MEMORY_EMBEDDINGS))
     }
 
     @Test

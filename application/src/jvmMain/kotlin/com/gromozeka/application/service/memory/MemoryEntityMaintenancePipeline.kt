@@ -34,6 +34,7 @@ class MemoryEntityMaintenancePipeline(
     private val planner: MemoryEntityMaintenancePlanner,
     private val idFactory: MemoryIdFactory,
     private val profileUpdater: ProjectionMemoryProfileUpdater,
+    private val embeddingIndexer: MemoryEmbeddingIndexer = NoOpMemoryEmbeddingIndexer,
     private val clock: MemoryClock = SystemMemoryClock,
 ) {
     private val log = KLoggers.logger(this)
@@ -60,21 +61,23 @@ class MemoryEntityMaintenancePipeline(
             plan = plan,
         )
 
-        store.apply(structuredBatch)
+        val indexedStructuredBatch = embeddingIndexer.withEmbeddings(structuredBatch)
+        store.apply(indexedStructuredBatch)
 
         val profileBatch = profileUpdater.updateNamespaceProfiles(
             namespace = request.namespace,
             logSubject = "maintenance=entity_maintenance",
-            appliedBatch = structuredBatch,
+            appliedBatch = indexedStructuredBatch,
             completedAt = completedAt,
-            force = structuredBatch.entities.any { it.status == MemoryEntity.Status.MERGED },
+            force = indexedStructuredBatch.entities.any { it.status == MemoryEntity.Status.MERGED },
         )
+        val indexedProfileBatch = embeddingIndexer.withEmbeddings(profileBatch)
 
-        if (profileBatch.isNotEmptyForEntityMaintenance()) {
-            store.apply(profileBatch)
+        if (indexedProfileBatch.isNotEmptyForEntityMaintenance()) {
+            store.apply(indexedProfileBatch)
         }
 
-        val memoryBatch = structuredBatch + profileBatch
+        val memoryBatch = indexedStructuredBatch + indexedProfileBatch
 
         log.info {
             "Memory entity maintenance completed: namespace=${request.namespace.value} groups=${candidateGroups.size} " +
@@ -652,7 +655,8 @@ private fun MemoryUpdateBatch.isNotEmptyForEntityMaintenance(): Boolean =
         notes.isNotEmpty() ||
         tasks.isNotEmpty() ||
         profiles.isNotEmpty() ||
-        episodes.isNotEmpty()
+        episodes.isNotEmpty() ||
+        embeddings.isNotEmpty()
 
 private operator fun MemoryUpdateBatch.plus(other: MemoryUpdateBatch): MemoryUpdateBatch =
     MemoryUpdateBatch(
@@ -665,6 +669,7 @@ private operator fun MemoryUpdateBatch.plus(other: MemoryUpdateBatch): MemoryUpd
         tasks = tasks + other.tasks,
         profiles = profiles + other.profiles,
         episodes = episodes + other.episodes,
+        embeddings = embeddings + other.embeddings,
     )
 
 private fun MemoryNamespaceSnapshot.countsForEntityMaintenanceLog(): String =

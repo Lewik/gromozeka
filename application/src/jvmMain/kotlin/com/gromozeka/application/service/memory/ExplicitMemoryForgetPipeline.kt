@@ -382,7 +382,8 @@ private fun MemoryUpdateBatch.isNotEmptyForForget(): Boolean =
         notes.isNotEmpty() ||
         tasks.isNotEmpty() ||
         profiles.isNotEmpty() ||
-        episodes.isNotEmpty()
+        episodes.isNotEmpty() ||
+        embeddings.isNotEmpty()
 
 private operator fun MemoryUpdateBatch.plus(other: MemoryUpdateBatch): MemoryUpdateBatch =
     MemoryUpdateBatch(
@@ -395,6 +396,7 @@ private operator fun MemoryUpdateBatch.plus(other: MemoryUpdateBatch): MemoryUpd
         tasks = tasks + other.tasks,
         profiles = profiles + other.profiles,
         episodes = episodes + other.episodes,
+        embeddings = embeddings + other.embeddings,
     )
 
 private fun String.oneLineForForgetPipelineLog(maxChars: Int): String {
