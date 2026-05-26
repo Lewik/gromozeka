@@ -1,0 +1,115 @@
+package com.gromozeka.server
+
+import com.gromozeka.application.service.memory.MEMORY_REMEMBER_TOOL_NAME
+import com.gromozeka.domain.service.AiToolProvider
+import com.gromozeka.domain.tool.AiToolCallback
+import com.gromozeka.domain.tool.AiToolDefinition
+import com.gromozeka.domain.tool.ToolExecutionContext
+import io.modelcontextprotocol.kotlin.sdk.CallToolRequest
+import io.modelcontextprotocol.kotlin.sdk.TextContent
+import kotlin.test.Test
+import kotlin.test.assertContains
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
+import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
+
+class GromozekaMcpServerFactoryMemoryRememberTest {
+    @Test
+    fun `memory remember MCP schema exposes only explicit content inputs`() = withMcpTools(MEMORY_REMEMBER_TOOL_NAME) {
+        val callback = CapturingToolCallback()
+        val server = GromozekaMcpServerFactory(FakeToolProvider(callback)).create()
+
+        val tool = server.tools.getValue(MEMORY_REMEMBER_TOOL_NAME).tool
+
+        assertFalse(tool.description.orEmpty().contains("previous_user_message"))
+        assertFalse(tool.inputSchema.properties.containsKey("target"))
+        assertFalse(tool.inputSchema.properties.containsKey("target_message_id"))
+        assertFalse(tool.inputSchema.properties.containsKey("user_consent_confirmed"))
+        assertTrue(tool.inputSchema.properties.containsKey("text"))
+        assertTrue(tool.inputSchema.properties.containsKey("file_path"))
+        assertTrue(tool.inputSchema.properties.containsKey("raw_url"))
+    }
+
+    @Test
+    fun `memory remember MCP call injects provided content target and user consent`() = withMcpTools(MEMORY_REMEMBER_TOOL_NAME) {
+        val callback = CapturingToolCallback()
+        val server = GromozekaMcpServerFactory(FakeToolProvider(callback)).create()
+
+        runBlocking {
+            val result = server.tools.getValue(MEMORY_REMEMBER_TOOL_NAME).handler(
+                CallToolRequest(
+                    name = MEMORY_REMEMBER_TOOL_NAME,
+                    arguments = buildJsonObject {
+                        put("text", "Remember that the API endpoint is https://example.test")
+                    },
+                )
+            )
+
+            assertFalse(result.isError == true)
+        }
+
+        assertContains(callback.lastToolInput.orEmpty(), """"target":"provided_text"""")
+        assertContains(callback.lastToolInput.orEmpty(), """"user_consent_confirmed":true""")
+    }
+
+    @Test
+    fun `memory remember MCP call rejects conversation targets`() = withMcpTools(MEMORY_REMEMBER_TOOL_NAME) {
+        val callback = CapturingToolCallback()
+        val server = GromozekaMcpServerFactory(FakeToolProvider(callback)).create()
+
+        val result = runBlocking {
+            server.tools.getValue(MEMORY_REMEMBER_TOOL_NAME).handler(
+                CallToolRequest(
+                    name = MEMORY_REMEMBER_TOOL_NAME,
+                    arguments = buildJsonObject {
+                        put("target", "previous_user_message")
+                    },
+                )
+            )
+        }
+
+        assertTrue(result.isError == true)
+        assertContains((result.content.single() as TextContent).text.orEmpty(), "Unsupported fields: [target]")
+        assertNull(callback.lastToolInput)
+    }
+
+    private fun withMcpTools(value: String, block: () -> Unit) {
+        val property = "gromozeka.mcp.exposed.tools"
+        val previous = System.getProperty(property)
+        try {
+            System.setProperty(property, value)
+            block()
+        } finally {
+            if (previous == null) {
+                System.clearProperty(property)
+            } else {
+                System.setProperty(property, previous)
+            }
+        }
+    }
+
+    private class FakeToolProvider(
+        private val callback: AiToolCallback,
+    ) : AiToolProvider {
+        override fun getTools(): List<AiToolCallback> = listOf(callback)
+    }
+
+    private class CapturingToolCallback : AiToolCallback {
+        var lastToolInput: String? = null
+
+        override val definition: AiToolDefinition = AiToolDefinition(
+            name = MEMORY_REMEMBER_TOOL_NAME,
+            description = "Internal memory remember description.",
+            inputSchema = """{"type":"object","properties":{"target":{"type":"string"}}}""",
+        )
+
+        override fun call(toolInput: String, context: ToolExecutionContext?): String {
+            lastToolInput = toolInput
+            return """{"status":"completed"}"""
+        }
+    }
+}
