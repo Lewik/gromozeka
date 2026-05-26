@@ -30,6 +30,8 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.springframework.stereotype.Service
 
+internal const val MCP_MEMORY_HELP_TOOL_NAME = "memory_help"
+
 @Service
 class GromozekaMcpServerFactory(
     private val aiToolProvider: AiToolProvider,
@@ -46,7 +48,7 @@ class GromozekaMcpServerFactory(
         val providedTools = aiToolProvider.getTools()
         val availableToolNames = providedTools
             .map { it.definition.name }
-            .toSet()
+            .toSet() + MCP_MEMORY_HELP_TOOL_NAME
         toolExposure.validateAgainst(availableToolNames)
 
         val server = Server(
@@ -65,6 +67,9 @@ class GromozekaMcpServerFactory(
             .filter { toolExposure.exposes(it.definition.name) }
             .sortedBy { it.definition.name }
         exposedProvidedTools.forEach { callback -> server.addAiToolCallback(callback) }
+        if (toolExposure.exposes(MCP_MEMORY_HELP_TOOL_NAME)) {
+            server.addMemoryHelpTool()
+        }
 
         val hiddenToolNames = availableToolNames - server.tools.keys
         log.info {
@@ -104,14 +109,31 @@ class GromozekaMcpServerFactory(
         }
     }
 
+    private fun Server.addMemoryHelpTool() {
+        addTool(
+            name = MCP_MEMORY_HELP_TOOL_NAME,
+            description = "Read the Gromozeka typed-memory MCP guide: memory concepts, namespaces, write/read workflows, and when to use each memory tool.",
+            inputSchema = Tool.Input(),
+        ) {
+            CallToolResult(
+                content = listOf(TextContent(MCP_MEMORY_HELP_CONTENT)),
+                isError = false,
+            )
+        }
+    }
+
     private fun AiToolDefinition.toMcpDefinition(): AiToolDefinition =
-        if (name == MEMORY_REMEMBER_TOOL_NAME) {
-            copy(
+        when (name) {
+            MEMORY_REMEMBER_TOOL_NAME -> copy(
                 description = MCP_MEMORY_REMEMBER_DESCRIPTION,
                 inputSchema = MCP_MEMORY_REMEMBER_INPUT_SCHEMA,
             )
-        } else {
-            this
+            MEMORY_ENRICH_CONTEXT_TOOL_NAME -> copy(description = MCP_MEMORY_ENRICH_CONTEXT_DESCRIPTION)
+            MEMORY_LIST_NAMESPACES_TOOL_NAME -> copy(description = MCP_MEMORY_LIST_NAMESPACES_DESCRIPTION)
+            MEMORY_MAINTENANCE_TOOL_NAME -> copy(description = MCP_MEMORY_MAINTENANCE_DESCRIPTION)
+            MEMORY_QUEUE_STATUS_TOOL_NAME -> copy(description = MCP_MEMORY_QUEUE_STATUS_DESCRIPTION)
+            MEMORY_RUN_STATUS_TOOL_NAME -> copy(description = MCP_MEMORY_RUN_STATUS_DESCRIPTION)
+            else -> this
         }
 
     private fun com.gromozeka.domain.tool.AiToolDefinition.toMcpInputSchema(): Tool.Input =
@@ -173,8 +195,93 @@ class GromozekaMcpServerFactory(
             contains("\"isError\":true", ignoreCase = true)
 
     private companion object {
+        val MCP_MEMORY_HELP_CONTENT = """
+            # Gromozeka typed memory MCP guide
+
+            Use this guide before calling memory tools from an external MCP client. Tool descriptions stay focused on each tool; this guide explains the domain model and safe workflows.
+
+            ## Core model
+
+            Gromozeka stores typed memory, not raw chat history. A write may create or update:
+
+            - `source`: original evidence text or document section kept as provenance.
+            - `claim`: durable reusable fact, preference, constraint, decision, relationship, or project knowledge.
+            - `note`: softer contextual memory that is useful but not a clean factual claim.
+            - `task`: remembered work item, todo, follow-up, or tracked intention.
+            - `episode`: event-like memory about something that happened in a specific interaction or period.
+            - `entity`: canonical person, project, file/document, technology, concept, organization, place, or other named thing referenced by memories.
+
+            The router decides which typed records are appropriate. Do not force a type from the MCP side unless a tool explicitly asks for it.
+
+            ## Namespaces
+
+            A namespace is a strict memory boundary. Examples: `global`, `user:lewik`, `work:hebrew`, `project:<project-id>`.
+
+            - Omit `namespace` to use the configured default or current project namespace.
+            - Pass an explicit namespace only when you intentionally want to read or write that isolated memory area.
+            - Use `memory_list_namespaces` before choosing a namespace if you are unsure.
+
+            ## Writing memory
+
+            Use `memory_remember` only when the user explicitly asks to remember, store, import, or preserve information.
+
+            MCP `memory_remember` accepts explicit content only:
+
+            - `text`: exact user-approved text to remember.
+            - `file_path`: local raw text/markdown file to ingest as a document.
+            - `raw_url`: URL returning raw text/markdown, not HTML.
+            - `document_type`: currently `markdown`; use it when `text` should be treated as a document.
+
+            MCP callers cannot target previous conversation messages. If the user wants a prior message remembered, pass the relevant text explicitly.
+
+            `force_write=true` means "the user explicitly wants this content stored even if the router would normally skip it". Use it sparingly.
+
+            ## Reading memory
+
+            Use `memory_enrich_context` to enrich a context, not to ask a question.
+
+            Good inputs look like:
+
+            - `project memory ingestion pipeline and document chunking`
+            - `what I know about Lewik's Toyota RunX`
+            - `current task: debug Bedrock JSON schema errors in memory note constructor`
+
+            The tool returns structured JSON containing a rendered `memory_context` block plus trace/status metadata. Inject the returned `memory_context` into your reasoning or answer only when it is relevant. Treat selected memory as strong remembered context, but still reject it if it is clearly stale, contradicted, irrelevant, or insufficient.
+
+            ## Maintenance and status
+
+            - `memory_run_status`: inspect one memory run by id.
+            - `memory_queue_status`: inspect queued/running memory work.
+            - `memory_maintenance`: run maintenance actions such as consolidation, entity maintenance, stale/supersede cleanup, or targeted repairs.
+
+            Maintenance tools operate on existing memory. Prefer status tools before starting broad maintenance if a run is already active.
+
+            ## Practical workflow
+
+            1. Call `memory_help` if unsure how to use the memory MCP surface.
+            2. Call `memory_list_namespaces` if namespace choice is not obvious.
+            3. Call `memory_enrich_context` before answering or acting when remembered context may matter.
+            4. Call `memory_remember` only for explicit user-approved content.
+            5. Call `memory_run_status` or `memory_queue_status` when a write/import looks slow or unclear.
+        """.trimIndent()
+
         const val MCP_MEMORY_REMEMBER_DESCRIPTION =
-            "Persist explicit user-approved text or a raw markdown/text document into typed memory. MCP callers cannot target previous conversation messages: pass exactly one of text, file_path, or raw_url. The provided content is treated as user-confirmed input, captured as source evidence, and then routed by Gromozeka into claim/note/task/source memory when appropriate. Use document_type='markdown' for text that should be ingested as a document; file_path and raw_url are treated as markdown documents by default. raw_url must return raw text/markdown, not HTML. Optional namespace is a strict memory boundary such as global, user:lewik, work:hebrew, or project:<project-id>; omit it to use the configured default or current project namespace."
+            "Persist explicit user-approved text or a raw markdown/text document. MCP callers must pass explicit content: text, file_path, or raw_url. Use memory_help for typed-memory concepts, namespaces, and workflow."
+
+        const val MCP_MEMORY_ENRICH_CONTEXT_DESCRIPTION =
+            "Retrieve persisted memory relevant to a supplied context. This enriches a topic/task/current turn; it is not a question-answering tool. Use memory_help for interpretation guidance."
+
+        const val MCP_MEMORY_LIST_NAMESPACES_DESCRIPTION =
+            "List readable memory namespaces, item counts, and the configured default namespace."
+
+        const val MCP_MEMORY_MAINTENANCE_DESCRIPTION =
+            "Run one explicit maintenance action over existing memory: consolidate, repair, maintain_entities, or apply_retention."
+
+        const val MCP_MEMORY_QUEUE_STATUS_DESCRIPTION =
+            "Read process-local memory ingest queue status: pending jobs, active run, and lifetime counters."
+
+        const val MCP_MEMORY_RUN_STATUS_DESCRIPTION =
+            "Read persisted status, timings, errors, and child runs for one memory run by run_id."
 
         val MCP_MEMORY_REMEMBER_INPUT_SCHEMA = """
             {
@@ -238,6 +345,7 @@ internal class GromozekaMcpToolExposure private constructor(
 
     companion object {
         val DEFAULT_TOOL_NAMES = setOf(
+            MCP_MEMORY_HELP_TOOL_NAME,
             MEMORY_QUEUE_STATUS_TOOL_NAME,
             MEMORY_ENRICH_CONTEXT_TOOL_NAME,
             MEMORY_LIST_NAMESPACES_TOOL_NAME,
