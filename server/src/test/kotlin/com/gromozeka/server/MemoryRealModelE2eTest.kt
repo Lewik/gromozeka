@@ -402,7 +402,7 @@ class MemoryRealModelE2eTest {
                 "consolidate_notes", "note_consolidation" -> conversationEngineService.consolidateCurrentMemory(maintenanceConversation.id, agent)
                 "repair_memory", "memory_repair" -> conversationEngineService.repairCurrentMemory(maintenanceConversation.id, agent)
                 "maintain_entities", "entity_maintenance", "maintain_memory_entities" -> conversationEngineService.maintainMemoryEntities(maintenanceConversation.id, agent)
-                "apply_retention", "retention_apply", "memory_retention" -> conversationEngineService.applyCurrentMemoryRetention(maintenanceConversation.id)
+                "apply_retention", "retention_apply", "memory_retention" -> conversationEngineService.runCurrentMemoryRetention(maintenanceConversation.id)
                 else -> error("Unknown memory maintenance action '$action' in case ${case.id}")
             }
             val traces = maintenanceTraceCollector.take(maintenanceConversation.id)

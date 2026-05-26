@@ -10,7 +10,7 @@ import com.gromozeka.domain.service.QueuedMessagePlacement
 import com.gromozeka.remote.protocol.CancelQueuedMessageRequest
 import com.gromozeka.remote.protocol.ControlConversationRuntimeRequest
 import com.gromozeka.remote.protocol.EnqueueMessageRequest
-import com.gromozeka.remote.protocol.MemoryActionCompletedResponse
+import com.gromozeka.remote.protocol.MemoryActionAcceptedResponse
 import com.gromozeka.remote.protocol.MemoryActionRequest
 import com.gromozeka.remote.protocol.OperationResultResponse
 import com.gromozeka.remote.protocol.SubmitMessageRequest
@@ -73,6 +73,6 @@ internal class RemoteConversationRuntimeService(
         runMemoryAction(conversationId, MemoryAction.APPLY_RETENTION)
 
     private suspend fun runMemoryAction(conversationId: Conversation.Id, action: MemoryAction) {
-        client.requestTyped<MemoryActionRequest, MemoryActionCompletedResponse>(MemoryActionRequest(conversationId, action))
+        client.requestTyped<MemoryActionRequest, MemoryActionAcceptedResponse>(MemoryActionRequest(conversationId, action))
     }
 }

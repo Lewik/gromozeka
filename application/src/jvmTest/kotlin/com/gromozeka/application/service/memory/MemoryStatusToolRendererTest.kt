@@ -61,7 +61,7 @@ class MemoryStatusToolRendererTest {
     fun queueStatusRendersProcessLocalCounters() {
         val json = Json.parseToJsonElement(
             MemoryToolResultRenderer.queueStatusJsonString(
-                MemoryDocumentIngestQueueStatus(
+                documentStatus = MemoryDocumentIngestQueueStatus(
                     pendingJobs = 2,
                     activeJob = ActiveDocumentIngestJob(
                         runId = MemoryRun.Id("document-ingest:run:active"),
@@ -74,15 +74,64 @@ class MemoryStatusToolRendererTest {
                     totalStartedJobs = 3,
                     totalCompletedJobs = 2,
                     totalFatallyFailedJobs = 1,
-                )
+                ),
+                maintenanceStatus = MemoryMaintenanceQueueStatus(
+                    pendingJobs = 1,
+                    activeJob = ActiveMemoryMaintenanceJob(
+                        runId = MemoryRun.Id("maintenance:maintain_entities:run:active"),
+                        action = MemoryMaintenanceAction.MAINTAIN_ENTITIES,
+                        targetKind = "namespace",
+                        targetValue = "project:test",
+                        namespace = namespace,
+                        conversationId = com.gromozeka.domain.model.Conversation.Id("conversation:test"),
+                        startedAt = createdAt,
+                    ),
+                    totalEnqueuedJobs = 4,
+                    totalStartedJobs = 2,
+                    totalCompletedJobs = 1,
+                    totalFatallyFailedJobs = 0,
+                ),
             )
         ).jsonObject
 
         assertEquals("completed", json.getValue("status").jsonPrimitive.content)
-        assertEquals("2", json.getValue("pending_jobs").jsonPrimitive.content)
+        assertEquals("3", json.getValue("pending_jobs").jsonPrimitive.content)
         assertEquals("true", json.getValue("has_active_job").jsonPrimitive.content)
-        assertEquals("document-ingest:run:active", json.getValue("active_job").jsonObject.getValue("run_id").jsonPrimitive.content)
+        assertEquals(
+            "document-ingest:run:active",
+            json.getValue("document_ingest").jsonObject
+                .getValue("active_job").jsonObject
+                .getValue("run_id").jsonPrimitive.content,
+        )
+        assertEquals(
+            "maintenance:maintain_entities:run:active",
+            json.getValue("maintenance").jsonObject
+                .getValue("active_job").jsonObject
+                .getValue("run_id").jsonPrimitive.content,
+        )
         assertEquals("false", json.getValue("durable_resume").jsonPrimitive.content)
+    }
+
+    @Test
+    fun maintenanceQueuedResultRendersRunIdForStatusPolling() {
+        val json = Json.parseToJsonElement(
+            MemoryToolResultRenderer.maintenanceQueuedResultJsonString(
+                MemoryMaintenanceQueuedResult(
+                    runId = MemoryRun.Id("maintenance:repair:run:test"),
+                    action = MemoryMaintenanceAction.REPAIR,
+                    targetKind = "namespace",
+                    targetValue = "project:test",
+                    namespace = namespace,
+                    conversationId = com.gromozeka.domain.model.Conversation.Id("conversation:test"),
+                    queueSize = 2,
+                )
+            )
+        ).jsonObject
+
+        assertEquals("queued", json.getValue("status").jsonPrimitive.content)
+        assertEquals("maintenance:repair:run:test", json.getValue("run_id").jsonPrimitive.content)
+        assertEquals("repair", json.getValue("action").jsonPrimitive.content)
+        assertEquals("2", json.getValue("queue_size").jsonPrimitive.content)
     }
 
     @Test

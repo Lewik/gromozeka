@@ -555,8 +555,11 @@ data class TextResponse(
 ) : ServerResponse
 
 @Serializable
-@SerialName("memory_action_completed")
-data object MemoryActionCompletedResponse : ServerResponse
+@SerialName("memory_action_accepted")
+data class MemoryActionAcceptedResponse(
+    val status: String = "accepted",
+    val message: String = "Memory action accepted.",
+) : ServerResponse
 
 @Serializable
 @SerialName("memory_tasks")

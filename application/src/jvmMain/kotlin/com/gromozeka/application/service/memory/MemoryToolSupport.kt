@@ -1,7 +1,6 @@
 package com.gromozeka.application.service.memory
 
 import com.gromozeka.domain.model.memory.DirectStructuredMemoryWriteResult
-import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.memory.MemoryReadResult
 import com.gromozeka.domain.model.memory.MemoryNamespace
 import com.gromozeka.domain.model.memory.MemoryNamespaceSummary
@@ -31,17 +30,6 @@ private val memoryManagementToolNames = setOf(
     MEMORY_QUEUE_STATUS_TOOL_NAME,
     MEMORY_MAINTENANCE_TOOL_NAME,
     MEMORY_LIST_NAMESPACES_TOOL_NAME,
-)
-
-data class MemoryMaintenanceToolResult(
-    val action: String,
-    val targetKind: String,
-    val targetValue: String,
-    val namespace: MemoryNamespace,
-    val conversationId: Conversation.Id,
-    val summary: String,
-    val memoryBatch: MemoryUpdateBatch,
-    val details: JsonObject,
 )
 
 object MemoryToolResultRenderer {
@@ -201,6 +189,19 @@ object MemoryToolResultRenderer {
             put("sections", result.sections.toSectionSummaryJson())
         }.toString()
 
+    fun maintenanceQueuedResultJsonString(result: MemoryMaintenanceQueuedResult): String =
+        buildJsonObject {
+            put("status", "queued")
+            put("run_id", result.runId.value)
+            put("action", result.action.toolName)
+            put("target_kind", result.targetKind)
+            put("target_value", result.targetValue)
+            put("namespace", result.namespace.value)
+            put("conversation_id", result.conversationId.value)
+            put("queue_size", result.queueSize)
+            put("message", "Memory maintenance was accepted and will continue in the memory maintenance queue.")
+        }.toString()
+
     fun runStatusJsonString(
         rootRun: MemoryRun,
         descendants: List<MemoryRun>,
@@ -214,29 +215,66 @@ object MemoryToolResultRenderer {
             put("run", rootRun.toStatusJson(descendants, maxDepth))
         }.toString()
 
-    fun queueStatusJsonString(status: MemoryDocumentIngestQueueStatus): String =
+    fun queueStatusJsonString(
+        documentStatus: MemoryDocumentIngestQueueStatus,
+        maintenanceStatus: MemoryMaintenanceQueueStatus,
+    ): String =
         buildJsonObject {
             put("status", "completed")
-            put("kind", "memory_document_ingest_queue")
-            put("pending_jobs", status.pendingJobs)
-            put("has_active_job", status.activeJob != null)
-            status.activeJob?.let { active ->
-                put(
-                    "active_job",
-                    buildJsonObject {
-                        put("run_id", active.runId.value)
-                        put("parent_source_id", active.parentSourceId.value)
-                        put("source_ref", active.sourceRef)
-                        put("sections_total", active.sectionsTotal)
-                        put("started_at", active.startedAt.toString())
+            put("kind", "memory_work_queues")
+            put("pending_jobs", documentStatus.pendingJobs + maintenanceStatus.pendingJobs)
+            put("has_active_job", documentStatus.activeJob != null || maintenanceStatus.activeJob != null)
+            put(
+                "document_ingest",
+                buildJsonObject {
+                    put("pending_jobs", documentStatus.pendingJobs)
+                    put("has_active_job", documentStatus.activeJob != null)
+                    documentStatus.activeJob?.let { active ->
+                        put(
+                            "active_job",
+                            buildJsonObject {
+                                put("run_id", active.runId.value)
+                                put("parent_source_id", active.parentSourceId.value)
+                                put("source_ref", active.sourceRef)
+                                put("sections_total", active.sectionsTotal)
+                                put("started_at", active.startedAt.toString())
+                            }
+                        )
                     }
-                )
-            }
-            put("total_enqueued_jobs", status.totalEnqueuedJobs)
-            put("total_started_jobs", status.totalStartedJobs)
-            put("total_completed_jobs", status.totalCompletedJobs)
-            put("total_fatally_failed_jobs", status.totalFatallyFailedJobs)
-            put("worker_count", 1)
+                    put("total_enqueued_jobs", documentStatus.totalEnqueuedJobs)
+                    put("total_started_jobs", documentStatus.totalStartedJobs)
+                    put("total_completed_jobs", documentStatus.totalCompletedJobs)
+                    put("total_fatally_failed_jobs", documentStatus.totalFatallyFailedJobs)
+                    put("worker_count", 1)
+                }
+            )
+            put(
+                "maintenance",
+                buildJsonObject {
+                    put("pending_jobs", maintenanceStatus.pendingJobs)
+                    put("has_active_job", maintenanceStatus.activeJob != null)
+                    maintenanceStatus.activeJob?.let { active ->
+                        put(
+                            "active_job",
+                            buildJsonObject {
+                                put("run_id", active.runId.value)
+                                put("action", active.action.toolName)
+                                put("target_kind", active.targetKind)
+                                put("target_value", active.targetValue)
+                                put("namespace", active.namespace.value)
+                                put("conversation_id", active.conversationId.value)
+                                put("started_at", active.startedAt.toString())
+                            }
+                        )
+                    }
+                    put("total_enqueued_jobs", maintenanceStatus.totalEnqueuedJobs)
+                    put("total_started_jobs", maintenanceStatus.totalStartedJobs)
+                    put("total_completed_jobs", maintenanceStatus.totalCompletedJobs)
+                    put("total_fatally_failed_jobs", maintenanceStatus.totalFatallyFailedJobs)
+                    put("worker_count", 1)
+                }
+            )
+            put("worker_count", 2)
             put("process_local", true)
             put("durable_resume", false)
         }.toString()
@@ -272,28 +310,6 @@ object MemoryToolResultRenderer {
                                 put("episodes", summary.counts.episodes)
                             }
                         )
-                    })
-                }
-            }
-        }.toString()
-
-    fun maintenanceResultJsonString(result: MemoryMaintenanceToolResult): String =
-        buildJsonObject {
-            put("status", "completed")
-            put("action", result.action)
-            put("target_kind", result.targetKind)
-            put("target_value", result.targetValue)
-            put("namespace", result.namespace.value)
-            put("conversation_id", result.conversationId.value)
-            put("summary", result.summary.shortForMemoryToolResult())
-            put("counts", result.memoryBatch.toCountsJson())
-            put("details", result.details)
-            putJsonArray("runs") {
-                result.memoryBatch.runs.forEach { run ->
-                    add(buildJsonObject {
-                        put("id", run.id.value)
-                        put("type", run.runType.name)
-                        put("summary", run.summary.shortForMemoryToolResult())
                     })
                 }
             }

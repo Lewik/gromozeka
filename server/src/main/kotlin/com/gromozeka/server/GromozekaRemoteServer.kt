@@ -209,7 +209,7 @@ class GromozekaRemoteServer(
 
                 is MemoryActionRequest -> {
                     runMemoryAction(request.conversationId, request.action)
-                    MemoryActionCompletedResponse
+                    MemoryActionAcceptedResponse()
                 }
                 is SubmitMessageRequest -> OperationResultResponse(
                     conversationRuntimeService.submitMessage(

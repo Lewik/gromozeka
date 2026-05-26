@@ -8,8 +8,11 @@ import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.TokenUsageStatistics
 import com.gromozeka.application.service.memory.MEMORY_ENRICH_CONTEXT_TOOL_NAME
 import com.gromozeka.application.service.memory.MEMORY_REMEMBER_TOOL_NAME
+import com.gromozeka.application.service.memory.MemoryMaintenanceAction
+import com.gromozeka.application.service.memory.MemoryMaintenanceQueue
 import com.gromozeka.application.service.memory.MemoryMessageRoutingApplicationService
 import com.gromozeka.application.service.memory.MemoryToolResultRenderer
+import com.gromozeka.application.service.memory.defaultMemoryNamespace
 import com.gromozeka.application.service.memory.withoutMemoryManagementTools
 import com.gromozeka.domain.model.memory.DirectStructuredMemoryWriteResult
 import com.gromozeka.domain.repository.AiModelSpecRepository
@@ -75,6 +78,7 @@ class ConversationEngineService(
     private val tokenUsageStatisticsRepository: TokenUsageStatisticsRepository,
     @Qualifier("supervisorScope") private val coroutineScope: CoroutineScope,
     private val memoryApplicationService: MemoryApplicationService,
+    private val memoryMaintenanceQueue: MemoryMaintenanceQueue,
     private val memoryMessageRoutingApplicationService: MemoryMessageRoutingApplicationService,
     private val toolCallSequenceFixerService: ToolCallSequenceFixerService,
     private val settingsProvider: com.gromozeka.domain.service.SettingsProvider,
@@ -864,7 +868,7 @@ class ConversationEngineService(
             ?: throw IllegalStateException("Conversation not found: $conversationId")
         val agent = agentDomainService.findById(conversation.agentDefinitionId)
             ?: throw IllegalStateException("Agent not found: ${conversation.agentDefinitionId}")
-        consolidateCurrentMemory(conversationId, agent)
+        enqueueCurrentMemoryMaintenance(conversationId, agent, MemoryMaintenanceAction.CONSOLIDATE)
     }
 
     suspend fun consolidateCurrentMemory(
@@ -889,7 +893,7 @@ class ConversationEngineService(
             ?: throw IllegalStateException("Conversation not found: $conversationId")
         val agent = agentDomainService.findById(conversation.agentDefinitionId)
             ?: throw IllegalStateException("Agent not found: ${conversation.agentDefinitionId}")
-        repairCurrentMemory(conversationId, agent)
+        enqueueCurrentMemoryMaintenance(conversationId, agent, MemoryMaintenanceAction.REPAIR)
     }
 
     suspend fun repairCurrentMemory(
@@ -914,7 +918,7 @@ class ConversationEngineService(
             ?: throw IllegalStateException("Conversation not found: $conversationId")
         val agent = agentDomainService.findById(conversation.agentDefinitionId)
             ?: throw IllegalStateException("Agent not found: ${conversation.agentDefinitionId}")
-        maintainMemoryEntities(conversationId, agent)
+        enqueueCurrentMemoryMaintenance(conversationId, agent, MemoryMaintenanceAction.MAINTAIN_ENTITIES)
     }
 
     suspend fun maintainMemoryEntities(
@@ -935,9 +939,41 @@ class ConversationEngineService(
     }
 
     override suspend fun applyCurrentMemoryRetention(conversationId: Conversation.Id) {
+        val conversation = conversationService.findById(conversationId)
+            ?: throw IllegalStateException("Conversation not found: $conversationId")
+        val agent = agentDomainService.findById(conversation.agentDefinitionId)
+            ?: throw IllegalStateException("Agent not found: ${conversation.agentDefinitionId}")
+        enqueueCurrentMemoryMaintenance(conversationId, agent, MemoryMaintenanceAction.APPLY_RETENTION)
+    }
+
+    suspend fun runCurrentMemoryRetention(conversationId: Conversation.Id) {
         val project = conversationService.getProject(conversationId)
         memoryApplicationService.runRetention(conversationId, project)
         log.info { "Ran memory retention for conversation $conversationId" }
+    }
+
+    private suspend fun enqueueCurrentMemoryMaintenance(
+        conversationId: Conversation.Id,
+        agent: AgentDefinition,
+        action: MemoryMaintenanceAction,
+    ) {
+        val project = conversationService.getProject(conversationId)
+        val systemPrompts = agentDomainService.assembleSystemPrompt(agent, project)
+        val memoryPipelineTools = aiToolProvider.getTools().withoutMemoryManagementTools()
+        val result = memoryMaintenanceQueue.enqueue(
+            action = action,
+            targetKind = "conversation_id",
+            targetValue = conversationId.value,
+            conversationId = conversationId,
+            agent = agent,
+            project = project,
+            namespace = project.defaultMemoryNamespace(),
+            runtimeSystemPrompts = systemPrompts,
+            runtimeTools = memoryPipelineTools,
+        )
+        log.info {
+            "Queued memory maintenance for conversation $conversationId: action=${action.toolName} run=${result.runId.value}"
+        }
     }
 
     private fun buildSyntheticMemoryToolPair(

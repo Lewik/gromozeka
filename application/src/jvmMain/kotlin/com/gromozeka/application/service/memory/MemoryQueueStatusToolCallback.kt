@@ -12,8 +12,8 @@ class MemoryQueueStatusToolCallback(
 ) : AiToolCallback {
     override val definition: AiToolDefinition = AiToolDefinition(
         name = MEMORY_QUEUE_STATUS_TOOL_NAME,
-        description = "Read process-local memory document ingest queue status: " +
-            "pending jobs, active run, and lifetime queue counters.",
+        description = "Read process-local memory work queue status for document ingest and maintenance: " +
+            "pending jobs, active runs, and lifetime queue counters.",
         inputSchema = """
             {
               "type": "object",

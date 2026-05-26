@@ -6,12 +6,9 @@ import com.gromozeka.application.service.memory.MEMORY_MAINTENANCE_TOOL_NAME
 import com.gromozeka.application.service.memory.MEMORY_REMEMBER_TOOL_NAME
 import com.gromozeka.application.service.memory.MemoryDocumentIngestJob
 import com.gromozeka.application.service.memory.MemoryDocumentIngestQueue
-import com.gromozeka.application.service.memory.MemoryEntityMaintenancePipelineResult
-import com.gromozeka.application.service.memory.MemoryMaintenanceToolResult
+import com.gromozeka.application.service.memory.MemoryMaintenanceAction
+import com.gromozeka.application.service.memory.MemoryMaintenanceQueue
 import com.gromozeka.application.service.memory.MemoryMessageRoutingApplicationService
-import com.gromozeka.application.service.memory.MemoryNoteConsolidationPipelineResult
-import com.gromozeka.application.service.memory.MemoryRepairPipelineResult
-import com.gromozeka.application.service.memory.MemoryRetentionPipelineResult
 import com.gromozeka.application.service.memory.MarkdownDocumentSlicer
 import com.gromozeka.application.service.memory.MemoryRememberContentRequest
 import com.gromozeka.application.service.memory.MemoryRememberContentResolver
@@ -60,6 +57,7 @@ class MemoryToolApplicationService(
     private val memoryApplicationService: MemoryApplicationService,
     private val memoryMessageRoutingApplicationService: MemoryMessageRoutingApplicationService,
     private val memoryDocumentIngestQueue: MemoryDocumentIngestQueue,
+    private val memoryMaintenanceQueue: MemoryMaintenanceQueue,
     private val memoryStore: MemoryStore,
 ) {
     private val log = KLoggers.logger(this)
@@ -451,7 +449,10 @@ class MemoryToolApplicationService(
         }
 
     fun memoryQueueStatus(): String =
-        MemoryToolResultRenderer.queueStatusJsonString(memoryDocumentIngestQueue.status())
+        MemoryToolResultRenderer.queueStatusJsonString(
+            documentStatus = memoryDocumentIngestQueue.status(),
+            maintenanceStatus = memoryMaintenanceQueue.status(),
+        )
 
     suspend fun listNamespaces(): String =
         runCatching {
@@ -482,7 +483,7 @@ class MemoryToolApplicationService(
         namespaceValue: String? = null,
     ): String =
         runCatching {
-            val action = MemoryMaintenanceToolAction.from(actionValue)
+            val action = MemoryMaintenanceAction.from(actionValue)
             val target = resolveMaintenanceTarget(
                 conversationIdValue = conversationIdValue,
                 targetTypeValue = targetTypeValue,
@@ -492,59 +493,24 @@ class MemoryToolApplicationService(
                 namespaceValue = namespaceValue,
             )
             val context = resolveMaintenanceContext(target)
-
-            val result = when (action) {
-                MemoryMaintenanceToolAction.CONSOLIDATE -> {
-                    val pipelineResult = memoryApplicationService.runNoteConsolidation(
-                        conversationId = context.conversationId,
-                        agent = context.agent,
-                        project = context.project,
-                        runtimeSystemPrompts = context.systemPrompts,
-                        runtimeTools = context.memoryTools,
-                        namespace = context.namespace,
-                    )
-                    pipelineResult.toMaintenanceToolResult(action, target, context)
-                }
-
-                MemoryMaintenanceToolAction.REPAIR -> {
-                    val pipelineResult = memoryApplicationService.runMemoryRepair(
-                        conversationId = context.conversationId,
-                        agent = context.agent,
-                        project = context.project,
-                        runtimeSystemPrompts = context.systemPrompts,
-                        runtimeTools = context.memoryTools,
-                        namespace = context.namespace,
-                    )
-                    pipelineResult.toMaintenanceToolResult(action, target, context)
-                }
-
-                MemoryMaintenanceToolAction.MAINTAIN_ENTITIES -> {
-                    val pipelineResult = memoryApplicationService.runEntityMaintenance(
-                        conversationId = context.conversationId,
-                        agent = context.agent,
-                        project = context.project,
-                        runtimeSystemPrompts = context.systemPrompts,
-                        runtimeTools = context.memoryTools,
-                        namespace = context.namespace,
-                    )
-                    pipelineResult.toMaintenanceToolResult(action, target, context)
-                }
-
-                MemoryMaintenanceToolAction.APPLY_RETENTION -> {
-                    val pipelineResult = memoryApplicationService.runRetention(
-                        conversationId = context.conversationId,
-                        project = context.project,
-                        namespace = context.namespace,
-                    )
-                    pipelineResult.toMaintenanceToolResult(action, target, context)
-                }
-            }
+            val result = memoryMaintenanceQueue.enqueue(
+                action = action,
+                targetKind = target.kind.toolName,
+                targetValue = target.value,
+                conversationId = context.conversationId,
+                agent = context.agent,
+                project = context.project,
+                namespace = context.namespace,
+                runtimeSystemPrompts = context.systemPrompts,
+                runtimeTools = context.memoryTools,
+            )
 
             log.info {
-                "Memory maintenance tool completed: action=${action.toolName} target=${target.kind.toolName}:${target.value} " +
-                    "namespace=${context.namespace.value} conversation=${context.conversationId.value} summary=${result.summary}"
+                "Memory maintenance tool queued: run=${result.runId.value} action=${action.toolName} " +
+                    "target=${target.kind.toolName}:${target.value} namespace=${context.namespace.value} " +
+                    "conversation=${context.conversationId.value} queueSize=${result.queueSize}"
             }
-            MemoryToolResultRenderer.maintenanceResultJsonString(result)
+            MemoryToolResultRenderer.maintenanceQueuedResultJsonString(result)
         }.onFailure { error ->
             log.warn(error) {
                 "Memory tool failed: tool=$MEMORY_MAINTENANCE_TOOL_NAME action=$actionValue " +
@@ -788,91 +754,6 @@ class MemoryToolApplicationService(
             memoryTools = memoryTools,
         )
 
-    private fun MemoryNoteConsolidationPipelineResult.toMaintenanceToolResult(
-        action: MemoryMaintenanceToolAction,
-        target: MemoryMaintenanceTarget,
-        context: MemoryMaintenanceContext,
-    ): MemoryMaintenanceToolResult =
-        MemoryMaintenanceToolResult(
-            action = action.toolName,
-            targetKind = target.kind.toolName,
-            targetValue = target.value,
-            namespace = context.namespace,
-            conversationId = context.conversationId,
-            summary = consolidationResult.summary,
-            memoryBatch = memoryBatch,
-            details = buildJsonObject {
-                put("selected_notes", selectedNotes.size)
-                put("related_hits", relatedHits.size)
-                put("raw_claim_candidates", rawConsolidationResult.claimCandidates.size)
-                put("final_claim_candidates", consolidationResult.claimCandidates.size)
-                put("raw_note_actions", rawConsolidationResult.noteActions.size)
-                put("final_note_actions", consolidationResult.noteActions.size)
-                put("raw_task_actions", rawConsolidationResult.taskActions.size)
-                put("final_task_actions", consolidationResult.taskActions.size)
-                put("raw_episode_candidates", rawConsolidationResult.episodeCandidates.size)
-                put("final_episode_candidates", consolidationResult.episodeCandidates.size)
-            },
-        )
-
-    private fun MemoryRepairPipelineResult.toMaintenanceToolResult(
-        action: MemoryMaintenanceToolAction,
-        target: MemoryMaintenanceTarget,
-        context: MemoryMaintenanceContext,
-    ): MemoryMaintenanceToolResult =
-        MemoryMaintenanceToolResult(
-            action = action.toolName,
-            targetKind = target.kind.toolName,
-            targetValue = target.value,
-            namespace = context.namespace,
-            conversationId = context.conversationId,
-            summary = repairPlan.summary,
-            memoryBatch = memoryBatch,
-            details = buildJsonObject {
-                put("candidate_clusters", candidateClusters.size)
-                put("suspicious_hits", suspiciousHits.size)
-                put("repair_actions", repairPlan.repairActions.size)
-            },
-        )
-
-    private fun MemoryEntityMaintenancePipelineResult.toMaintenanceToolResult(
-        action: MemoryMaintenanceToolAction,
-        target: MemoryMaintenanceTarget,
-        context: MemoryMaintenanceContext,
-    ): MemoryMaintenanceToolResult =
-        MemoryMaintenanceToolResult(
-            action = action.toolName,
-            targetKind = target.kind.toolName,
-            targetValue = target.value,
-            namespace = context.namespace,
-            conversationId = context.conversationId,
-            summary = maintenancePlan.summary,
-            memoryBatch = memoryBatch,
-            details = buildJsonObject {
-                put("candidate_groups", candidateGroups.size)
-                put("maintenance_actions", maintenancePlan.actions.size)
-            },
-        )
-
-    private fun MemoryRetentionPipelineResult.toMaintenanceToolResult(
-        action: MemoryMaintenanceToolAction,
-        target: MemoryMaintenanceTarget,
-        context: MemoryMaintenanceContext,
-    ): MemoryMaintenanceToolResult =
-        MemoryMaintenanceToolResult(
-            action = action.toolName,
-            targetKind = target.kind.toolName,
-            targetValue = target.value,
-            namespace = context.namespace,
-            conversationId = context.conversationId,
-            summary = retentionPlan.summary,
-            memoryBatch = memoryBatch,
-            details = buildJsonObject {
-                put("candidates", candidates.size)
-                put("retention_actions", retentionPlan.retentionActions.size)
-            },
-        )
-
     private fun defaultStandaloneProjectPath(): String =
         System.getProperty("gromozeka.project.root")
             ?: settingsService.homeDirectory
@@ -940,19 +821,6 @@ class MemoryToolApplicationService(
                     entries.firstOrNull { it.toolName == value.trim().lowercase() || it.name == value.trim().uppercase() }
                         ?: throw IllegalArgumentException("Unsupported memory_maintenance target_type: $value")
             }
-        }
-    }
-
-    private enum class MemoryMaintenanceToolAction(val toolName: String) {
-        CONSOLIDATE("consolidate"),
-        REPAIR("repair"),
-        MAINTAIN_ENTITIES("maintain_entities"),
-        APPLY_RETENTION("apply_retention");
-
-        companion object {
-            fun from(value: String): MemoryMaintenanceToolAction =
-                entries.firstOrNull { it.toolName == value.trim().lowercase() || it.name == value.trim().uppercase() }
-                    ?: throw IllegalArgumentException("Unsupported memory_maintenance action: $value")
         }
     }
 
