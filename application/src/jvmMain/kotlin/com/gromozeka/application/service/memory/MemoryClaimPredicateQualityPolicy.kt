@@ -5,7 +5,12 @@ import com.gromozeka.domain.model.memory.MemoryClaimReconciliationOp
 import com.gromozeka.domain.model.memory.MemoryReconciliationAction
 
 internal object MemoryClaimPredicateQualityPolicy {
-    private val forbiddenPredicates = setOf("is_described_as")
+    private val forbiddenPredicates = setOf(
+        "defined_as",
+        "has_property",
+        "is_a",
+        "is_described_as",
+    )
 
     fun validateCandidates(candidates: List<MemoryClaimCandidate>) {
         candidates.firstOrNull { it.hasForbiddenPredicate() }?.let { candidate ->
