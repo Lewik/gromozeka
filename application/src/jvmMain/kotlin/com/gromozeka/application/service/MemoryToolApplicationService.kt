@@ -501,6 +501,7 @@ class MemoryToolApplicationService(
                         project = context.project,
                         runtimeSystemPrompts = context.systemPrompts,
                         runtimeTools = context.memoryTools,
+                        namespace = context.namespace,
                     )
                     pipelineResult.toMaintenanceToolResult(action, target, context)
                 }
@@ -512,6 +513,7 @@ class MemoryToolApplicationService(
                         project = context.project,
                         runtimeSystemPrompts = context.systemPrompts,
                         runtimeTools = context.memoryTools,
+                        namespace = context.namespace,
                     )
                     pipelineResult.toMaintenanceToolResult(action, target, context)
                 }
@@ -523,6 +525,7 @@ class MemoryToolApplicationService(
                         project = context.project,
                         runtimeSystemPrompts = context.systemPrompts,
                         runtimeTools = context.memoryTools,
+                        namespace = context.namespace,
                     )
                     pipelineResult.toMaintenanceToolResult(action, target, context)
                 }
@@ -531,6 +534,7 @@ class MemoryToolApplicationService(
                     val pipelineResult = memoryApplicationService.runRetention(
                         conversationId = context.conversationId,
                         project = context.project,
+                        namespace = context.namespace,
                     )
                     pipelineResult.toMaintenanceToolResult(action, target, context)
                 }
@@ -744,31 +748,31 @@ class MemoryToolApplicationService(
             MemoryMaintenanceTarget.Kind.RUN_ID -> {
                 val run = memoryStore.findRunById(MemoryRun.Id(target.value))
                     ?: throw IllegalArgumentException("Memory run not found: ${target.value}")
-                resolveProjectNamespace(run.namespace).toStandaloneMaintenanceContext()
+                run.namespace.toStandaloneMaintenanceContext()
             }
 
             MemoryMaintenanceTarget.Kind.NAMESPACE -> {
-                resolveProjectNamespace(MemoryNamespace(target.value)).toStandaloneMaintenanceContext()
+                MemoryNamespace(target.value).toStandaloneMaintenanceContext()
             }
         }
 
-    private suspend fun resolveProjectNamespace(namespace: MemoryNamespace): Project {
-        val projectId = namespace.value.removePrefix(PROJECT_MEMORY_NAMESPACE_PREFIX)
-        require(projectId != namespace.value && projectId.isNotBlank()) {
-            "Only project namespaces are supported by memory_maintenance target resolution: ${namespace.value}"
-        }
-        return projectService.findById(Project.Id(projectId))
-            ?: throw IllegalArgumentException("Project not found for namespace: ${namespace.value}")
+    private suspend fun Project.toStandaloneMaintenanceContext(): MemoryMaintenanceContext {
+        return toStandaloneMaintenanceContext(namespace = defaultMemoryNamespace())
     }
 
-    private suspend fun Project.toStandaloneMaintenanceContext(): MemoryMaintenanceContext {
+    private suspend fun MemoryNamespace.toStandaloneMaintenanceContext(): MemoryMaintenanceContext {
+        val project = projectService.getOrCreate(defaultStandaloneProjectPath())
+        return project.toStandaloneMaintenanceContext(namespace = this)
+    }
+
+    private suspend fun Project.toStandaloneMaintenanceContext(namespace: MemoryNamespace): MemoryMaintenanceContext {
         val agent = defaultAgentProvider.getDefault()
         val systemPrompts = agentDomainService.assembleSystemPrompt(agent, this)
         return MemoryMaintenanceContext(
             conversationId = Conversation.Id("memory_maintenance:standalone:${uuid7()}"),
             agent = agent,
             project = this,
-            namespace = defaultMemoryNamespace(),
+            namespace = namespace,
             systemPrompts = systemPrompts,
             memoryTools = aiToolProvider.getTools().withoutMemoryManagementTools(),
         )

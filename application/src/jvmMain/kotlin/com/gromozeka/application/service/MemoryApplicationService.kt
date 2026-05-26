@@ -195,8 +195,8 @@ class MemoryApplicationService(
         project: Project,
         runtimeSystemPrompts: List<String>,
         runtimeTools: List<AiToolCallback>,
+        namespace: MemoryNamespace = project.defaultMemoryNamespace(),
     ): MemoryNoteConsolidationPipelineResult {
-        val namespace = MemoryNamespace("project:${project.id.value}")
         val runtimes = MemoryServiceStageRuntimes(project)
         val pipeline = MemoryNoteConsolidationPipeline(
             store = store,
@@ -239,8 +239,8 @@ class MemoryApplicationService(
         project: Project,
         runtimeSystemPrompts: List<String>,
         runtimeTools: List<AiToolCallback>,
+        namespace: MemoryNamespace = project.defaultMemoryNamespace(),
     ): MemoryRepairPipelineResult {
-        val namespace = MemoryNamespace("project:${project.id.value}")
         val runtimes = MemoryServiceStageRuntimes(project)
         val pipeline = MemoryRepairPipeline(
             store = store,
@@ -282,8 +282,8 @@ class MemoryApplicationService(
         project: Project,
         runtimeSystemPrompts: List<String>,
         runtimeTools: List<AiToolCallback>,
+        namespace: MemoryNamespace = project.defaultMemoryNamespace(),
     ): MemoryEntityMaintenancePipelineResult {
-        val namespace = MemoryNamespace("project:${project.id.value}")
         val runtimes = MemoryServiceStageRuntimes(project)
         val pipeline = MemoryEntityMaintenancePipeline(
             store = store,
@@ -323,8 +323,8 @@ class MemoryApplicationService(
     suspend fun runRetention(
         conversationId: Conversation.Id,
         project: Project,
+        namespace: MemoryNamespace = project.defaultMemoryNamespace(),
     ): MemoryRetentionPipelineResult {
-        val namespace = MemoryNamespace("project:${project.id.value}")
         val pipeline = MemoryRetentionPipeline(
             store = store,
             planner = PolicyMemoryRetentionPlanner(),
