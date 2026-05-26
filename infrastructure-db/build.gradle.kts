@@ -27,9 +27,6 @@ kotlin {
                 implementation(libs.mongodb.driver.kotlin.coroutine)
                 implementation(libs.mongodb.bson.kotlinx)
 
-                // Knowledge Graph
-                implementation(libs.neo4j.driver)
-                
                 // Spring Boot
                 implementation(libs.spring.boot.starter)
                 implementation(libs.kotlinx.coroutines.reactor)

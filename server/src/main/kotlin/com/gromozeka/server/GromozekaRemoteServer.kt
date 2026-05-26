@@ -178,9 +178,6 @@ class GromozekaRemoteServer(
                 )
                 is LoadCurrentMessagesRequest -> MessagesResponse(conversationDomainService.loadCurrentMessages(request.conversationId))
                 is GetTokenStatsRequest -> TokenStatsResponse(conversationTokenStatsService.getTokenStats(request.conversationId))
-                is UpdateStrideEnabledRequest -> ConversationResponse(
-                    conversationDomainService.updateStrideEnabled(request.conversationId, request.enabled)
-                )
                 is EditMessageRequest -> ConversationResponse(
                     conversationDomainService.editMessage(request.conversationId, request.messageId, request.newContent)
                 )

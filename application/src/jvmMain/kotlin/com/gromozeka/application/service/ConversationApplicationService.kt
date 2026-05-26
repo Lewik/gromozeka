@@ -152,25 +152,6 @@ class ConversationApplicationService(
     }
 
     /**
-     * Updates Stride Engine activation state.
-     *
-     * Enables/disables semantic decomposition and step-by-step execution.
-     * When enabled, first LLM call enforces create_plan tool (tool_choice=REQUIRED).
-     *
-     * @param conversationId conversation identifier
-     * @param enabled true to activate Stride Engine, false for normal mode
-     * @return updated conversation if exists, null otherwise
-     */
-    @Transactional
-    override suspend fun updateStrideEnabled(
-        conversationId: Conversation.Id,
-        enabled: Boolean
-    ): Conversation? {
-        conversationRepo.updateStrideEnabled(conversationId, enabled)
-        return conversationRepo.findById(conversationId)
-    }
-
-    /**
      * Creates independent copy of conversation with duplicate message history.
      *
      * Forks create new conversation in same project with:

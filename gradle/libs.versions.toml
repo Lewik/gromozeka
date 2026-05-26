@@ -34,7 +34,6 @@ postgresql = "42.7.4"
 hikaricp = "6.2.1"
 flyway = "11.1.0"
 uuid-creator = "5.3.7"
-neo4j-driver = "5.26.0"
 ktreesitter = "0.24.1"
 lsp4j = "0.23.1"
 openai-java = "4.35.0"
@@ -145,9 +144,6 @@ xmlutil-serialization = { module = "io.github.pdvrieze.xmlutil:serialization", v
 jagged-api = { module = "com.exceptionfactory.jagged:jagged-api", version.ref = "jagged" }
 jagged-x25519 = { module = "com.exceptionfactory.jagged:jagged-x25519", version.ref = "jagged" }
 jagged-framework = { module = "com.exceptionfactory.jagged:jagged-framework", version.ref = "jagged" }
-
-# Neo4j Driver (Knowledge Graph - Phase 2)
-neo4j-driver = { module = "org.neo4j.driver:neo4j-java-driver", version.ref = "neo4j-driver" }
 
 # MongoDB
 mongodb-driver-kotlin-coroutine = { module = "org.mongodb:mongodb-driver-kotlin-coroutine", version.ref = "mongodb-driver" }

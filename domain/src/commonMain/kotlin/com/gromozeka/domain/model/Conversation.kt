@@ -29,7 +29,6 @@ import kotlin.jvm.JvmInline
  * @property agentDefinitionId agent definition used for this conversation
  * @property displayName human-readable conversation title (can be blank)
  * @property currentThread currently active thread ID (conversation can switch threads)
- * @property strideEnabled when true, Stride Engine is active (semantic decomposition + step-by-step execution)
  * @property createdAt timestamp when conversation was created
  * @property updatedAt timestamp of last modification
  */
@@ -40,7 +39,6 @@ data class Conversation(
     val agentDefinitionId: AgentDefinition.Id,
     val displayName: String = "",
     val currentThread: Thread.Id,
-    val strideEnabled: Boolean = false,
     val createdAt: Instant,
     val updatedAt: Instant,
 ) {

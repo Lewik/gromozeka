@@ -21,7 +21,6 @@ import com.gromozeka.remote.protocol.ProjectResponse
 import com.gromozeka.remote.protocol.SavedResponse
 import com.gromozeka.remote.protocol.SquashMessagesRequest
 import com.gromozeka.remote.protocol.UpdateConversationDisplayNameRequest
-import com.gromozeka.remote.protocol.UpdateStrideEnabledRequest
 
 internal class RemoteConversationService(
     private val client: GromozekaWsClient,
@@ -53,11 +52,6 @@ internal class RemoteConversationService(
     override suspend fun updateDisplayName(conversationId: Conversation.Id, displayName: String): Conversation? =
         client.requestTyped<UpdateConversationDisplayNameRequest, ConversationResponse>(
             UpdateConversationDisplayNameRequest(conversationId, displayName)
-        ).conversation
-
-    override suspend fun updateStrideEnabled(conversationId: Conversation.Id, enabled: Boolean): Conversation? =
-        client.requestTyped<UpdateStrideEnabledRequest, ConversationResponse>(
-            UpdateStrideEnabledRequest(conversationId, enabled)
         ).conversation
 
     override suspend fun fork(conversationId: Conversation.Id): Conversation =

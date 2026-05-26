@@ -90,12 +90,6 @@ class MongoConversationRepository(
         }
     }
 
-    override suspend fun updateStrideEnabled(id: Conversation.Id, enabled: Boolean) {
-        update(id) { conversation ->
-            conversation.copy(strideEnabled = enabled, updatedAt = Clock.System.now())
-        }
-    }
-
     private suspend fun update(
         id: Conversation.Id,
         transform: (Conversation) -> Conversation,

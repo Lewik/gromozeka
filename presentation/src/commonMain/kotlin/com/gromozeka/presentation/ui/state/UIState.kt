@@ -37,9 +37,6 @@ data class UIState(
         val initiator: ConversationInitiator = ConversationInitiator.User,
         val customPrompts: List<String> = emptyList(),
 
-        // Stride Engine state
-        val strideEnabled: Boolean = false,
-
         // Message editing state
         val editMode: Boolean = false,
         val selectedMessageIds: Set<Conversation.Message.Id> = emptySet(),

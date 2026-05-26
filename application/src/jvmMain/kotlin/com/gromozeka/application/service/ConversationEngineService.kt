@@ -4,7 +4,6 @@ import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.Conversation.Message.BlockState
 import com.gromozeka.domain.model.Conversation.Message.ContentItem
-import com.gromozeka.domain.model.Plan
 import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.TokenUsageStatistics
 import com.gromozeka.application.service.memory.MEMORY_ENRICH_CONTEXT_TOOL_NAME
@@ -16,7 +15,6 @@ import com.gromozeka.domain.model.memory.DirectStructuredMemoryWriteResult
 import com.gromozeka.domain.repository.AiModelSpecRepository
 import com.gromozeka.domain.model.ai.AiRuntimeOptions
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
-import com.gromozeka.domain.model.ai.AiToolChoice
 import com.gromozeka.domain.service.AgentDomainService
 import com.gromozeka.domain.service.AiRuntimeProvider
 import com.gromozeka.domain.service.AiToolProvider
@@ -81,8 +79,6 @@ class ConversationEngineService(
     private val toolCallSequenceFixerService: ToolCallSequenceFixerService,
     private val settingsProvider: com.gromozeka.domain.service.SettingsProvider,
     private val aiModelSpecRepository: AiModelSpecRepository,
-    private val strideEngineService: com.gromozeka.domain.service.StrideEngineService,
-    private val planRepository: com.gromozeka.domain.repository.PlanRepository,
     private val runtimeCoordinator: ConversationRuntimeCoordinator,
     private val runtimeEventBus: ConversationRuntimeEventBus,
 ) : ConversationRuntimeService {
@@ -450,7 +446,6 @@ class ConversationEngineService(
 
         var iterationCount = 0
         val maxIterations = 200
-        val maxStrideIterations = 50 // Separate limit for Stride mode to prevent infinite loops
 
         while (iterationCount < maxIterations) {
             if (!awaitExecutionCanContinue(conversationId)) {
@@ -458,104 +453,21 @@ class ConversationEngineService(
             }
             iterationCount++
 
-            // Stride Engine: Domain-Driven State Machine
-            // Check active plan state BEFORE each LLM call to determine tool_choice
-            val activePlan = if (conversation.strideEnabled) {
-                strideEngineService.findActivePlan(conversationId)
-            } else {
-                null
-            }
-
-            // Stride Engine: Force tool execution based on plan state (not iteration count)
-            // Three states: PLANNING (no plans yet), STEPPING (active plan), NORMAL (plan completed)
-            val hasCompletedPlans = if (conversation.strideEnabled && activePlan == null) {
-                planRepository.findByConversationId(conversationId).isNotEmpty()
-            } else false
-
-            val toolChoice = when {
-                // Plan completed → normal mode (LLM decides, no forced tools)
-                conversation.strideEnabled && activePlan == null && hasCompletedPlans -> {
-                    log.info { "Stride Engine: plan completed, switching to normal mode" }
-                    AiToolChoice.Auto
-                }
-
-                // No plans at all → force create_plan tool
-                conversation.strideEnabled && activePlan == null -> {
-                    log.info { "Stride Engine: PLANNING state - forcing create_plan tool" }
-                    AiToolChoice.RequiredTool("create_plan")
-                }
-                
-                // Plan active → force ANY tool (keep stepping until plan completes)
-                conversation.strideEnabled && activePlan != null -> {
-                    log.info { "Stride Engine: STEPPING state - plan ${activePlan.id} active, forcing tool execution" }
-                    
-                    // Check iteration limit for Stride mode
-                    if (iterationCount > maxStrideIterations) {
-                        log.error { "Stride Engine: max iterations ($maxStrideIterations) exceeded with active plan ${activePlan.id}" }
-                        try {
-                            planRepository.updateStatus(activePlan.id, Plan.Status.FAILED)
-                            log.info { "Stride Engine: marked plan ${activePlan.id} as FAILED due to max iterations" }
-                        } catch (e: Exception) {
-                            log.error(e) { "Failed to mark plan as failed: ${e.message}" }
-                        }
-                        break
-                    }
-
-                    AiToolChoice.RequiredAny
-                }
-                
-                // Normal mode (no Stride) → auto (LLM decides)
-                else -> AiToolChoice.Auto
-            }
-
             val currentMessages = if (iterationCount == 1) finalMessages else conversationService.loadCurrentMessages(conversationId)
-            
-            // Stride Engine: Add PLANNING instruction to last USER message (only if no plans exist yet)
-            val messagesWithStrideInstruction = if (conversation.strideEnabled && activePlan == null && !hasCompletedPlans && iterationCount == 1) {
-                log.info { "Stride Engine: Adding PLANNING instruction to user message" }
-                
-                // Find target USER message
-                val lastUserMessageIndex = currentMessages.indexOfFirst { it.id == userMessage.id }
-                
-                if (lastUserMessageIndex >= 0) {
-                    val lastUserMessage = currentMessages[lastUserMessageIndex]
-                    val planningInstruction = Conversation.Message.Instruction.UserInstruction(
-                        id = "stride_planning",
-                        title = "Stride Planning",
-                        description = "Create execution plan by calling create_plan tool"
-                    )
-                    
-                    // Add instruction to message
-                    val modifiedMessage = lastUserMessage.copy(
-                        instructions = lastUserMessage.instructions + planningInstruction
-                    )
-                    
-                    // Replace in list
-                    currentMessages.toMutableList().apply {
-                        set(lastUserMessageIndex, modifiedMessage)
-                    }
-                } else {
-                    currentMessages
-                }
-            } else {
-                currentMessages
-            }
-            
+
             val runtimeRequest = AiRuntimeRequest(
                 systemPrompts = runtimeSystemPrompts,
-                messages = messagesWithStrideInstruction,
+                messages = currentMessages,
                 tools = availableTools,
                 options = AiRuntimeOptions(
                     maxOutputTokens = agent.runtimeOverrides.maxOutputTokens,
                     reasoning = agent.runtimeOverrides.reasoning,
                     autoCompactionThresholdTokens = autoCompactionThresholdTokens,
-                    toolChoice = toolChoice,
                     responseFormat = AssistantResponseFormatContract.runtimeResponseFormat(assistantResponseFormat),
                     assistantResponseFormat = assistantResponseFormat,
                     toolContext = mapOf(
                         "projectPath" to project.path,
                         "conversationId" to conversationId.value,
-                        "planId" to activePlan?.id?.value,
                         "aiProvider" to provider.name,
                         "modelName" to modelName
                     )
@@ -597,35 +509,6 @@ class ConversationEngineService(
             }
 
             val allToolCalls = runtimeResponse.toolCalls
-
-            // Stride Engine: Violation Detection
-            // If plan is ACTIVE but LLM didn't call any tools → protocol violation
-            if (allToolCalls.isEmpty() && activePlan != null) {
-                log.error { 
-                    "STRIDE VIOLATION: Plan ${activePlan.id} is ACTIVE but LLM response contains no tool calls. " +
-                    "This violates Stride Engine protocol (tool_choice should force tool execution). " +
-                    "Marking plan as FAILED."
-                }
-                try {
-                    planRepository.updateStatus(activePlan.id, Plan.Status.FAILED)
-                    
-                    // Emit error message to user
-                    val violationMessage = AiConversationMessageMapper.createErrorMessage(
-                        conversationId,
-                        "Stride Engine protocol violation: Plan execution interrupted unexpectedly. " +
-                        "The AI model stopped executing steps without properly completing the plan.",
-                        "stride_violation"
-                    )
-                    emit(violationMessage)
-                    conversationService.addMessage(conversationId, violationMessage)
-                    if (automaticMemoryRememberEnabled) {
-                        routeMessageThroughMemoryRouter(conversationId, conversation.currentThread, violationMessage, agent, project, memorySystemPrompts, memoryPipelineTools)
-                    }
-                } catch (e: Exception) {
-                    log.error(e) { "Failed to handle Stride violation: ${e.message}" }
-                }
-                break
-            }
 
             val assistantMessages = AiConversationMessageMapper.toConversationMessages(conversationId, runtimeResponse)
 
@@ -697,12 +580,10 @@ class ConversationEngineService(
                     break
                 }
 
-                // Use activePlan from loop scope (already fetched at iteration start)
                 val toolContext = ToolExecutionContext(
                     mapOf(
                         "projectPath" to project.path,
                         "conversationId" to conversationId.value,
-                        "planId" to activePlan?.id?.value,
                         "aiProvider" to provider.name,
                         "modelName" to modelName
                     )

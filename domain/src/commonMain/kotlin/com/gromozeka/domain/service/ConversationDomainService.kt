@@ -92,34 +92,6 @@ interface ConversationDomainService {
     ): Conversation?
 
     /**
-     * Updates Stride Engine activation state for conversation.
-     *
-     * When strideEnabled = true:
-     * - First LLM call in sendMessage MUST use tool_choice = REQUIRED("create_plan")
-     * - User message decomposed into semantic steps via create_plan tool
-     * - Execution follows plan step-by-step
-     *
-     * When strideEnabled = false:
-     * - Normal conversation mode (direct LLM response)
-     * - No semantic decomposition or step tracking
-     *
-     * State transition behavior:
-     * - Can toggle at any time (no execution state checks)
-     * - Enabling mid-conversation: Stride activates on NEXT user message
-     * - Disabling mid-execution: current plan completes naturally (not aborted)
-     *
-     * This is a transactional operation.
-     *
-     * @param conversationId conversation to update
-     * @param enabled true to activate Stride Engine, false for normal mode
-     * @return updated conversation, or null if conversation not found
-     */
-    suspend fun updateStrideEnabled(
-        conversationId: Conversation.Id,
-        enabled: Boolean
-    ): Conversation?
-
-    /**
      * Creates independent copy of conversation.
      *
      * Copies conversation metadata, current thread, all messages, and message ordering.
