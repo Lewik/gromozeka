@@ -4,10 +4,6 @@ spring:
   banner:
     location: classpath:banner.txt
 
-# Knowledge Graph Configuration
-knowledge-graph:
-  enabled: true
-
 # Reranker Configuration
 reranker:
   auto-start: false

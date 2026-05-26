@@ -70,7 +70,6 @@ class PromptApplicationService(
             updatedAt = now
         )
 
-        // Save to repository (will be stored in memory cache for environment prompts)
         return promptRepository.save(prompt)
     }
 

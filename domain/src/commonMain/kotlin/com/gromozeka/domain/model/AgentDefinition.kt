@@ -96,7 +96,7 @@ data class AgentDefinition(
 
         /**
          * Inline agent created dynamically (e.g., via MCP).
-         * Exists only in memory, not persisted to filesystem.
+         * Persisted by the runtime repository, not as a filesystem agent file.
          * ID format: UUID string
          */
         @Serializable

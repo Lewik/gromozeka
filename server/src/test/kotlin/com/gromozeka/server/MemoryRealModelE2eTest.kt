@@ -48,7 +48,6 @@ import com.gromozeka.server.testsupport.llm.AiRuntimeCassetteSettings
 import com.gromozeka.server.testsupport.llm.AiRuntimeCassetteUsageRegistry
 import com.gromozeka.server.testsupport.llm.AiRuntimeCassetteUsageReporter
 import com.gromozeka.shared.uuid.uuid7
-import com.mongodb.kotlin.client.coroutine.MongoDatabase
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardOpenOption
@@ -110,8 +109,8 @@ class MemoryRealModelE2eTest {
         AiRuntimeCassetteUsageRegistry.reset()
         val cassetteSettings = AiRuntimeCassetteSettings.fromSystemProperties()
         val modelName = System.getProperty(MODEL_NAME_PROPERTY)?.trim().orEmpty().ifBlank { DEFAULT_MODEL_NAME }
-        val databaseName = "gromozeka_memory_e2e_${uuid7().replace("-", "_")}"
-        val runId = "${Clock.System.now()}-$databaseName".sanitizePathSegment()
+        val postgresSchema = "memory_e2e_${uuid7().replace("-", "_")}"
+        val runId = "${Clock.System.now()}-$postgresSchema".sanitizePathSegment()
         val settings = Settings(
             userProfile = ServerTestHarness.openAiSubscriptionProfile(modelName).copy(
                 memorySettings = UserProfile.MemorySettings(
@@ -125,7 +124,7 @@ class MemoryRealModelE2eTest {
             settings = settings,
             subscriptionSession = subscriptionSession,
             systemProperties = mapOf(
-                "gromozeka.mongodb.database" to databaseName,
+                "gromozeka.postgres.schema" to postgresSchema,
                 "gromozeka.ai.openai-subscription.websocket-response-timeout-ms" to
                     System.getProperty(WEBSOCKET_RESPONSE_TIMEOUT_MS_PROPERTY, "90000"),
                 "gromozeka.memory.llm.maxAttempts" to "1",
@@ -138,7 +137,6 @@ class MemoryRealModelE2eTest {
             val conversationEngineService = context.getBean(ConversationEngineService::class.java)
             val promptDomainService = context.getBean(PromptDomainService::class.java)
             val store = context.getBean(MemoryStore::class.java)
-            val mongoDatabase = context.getBean(MongoDatabase::class.java)
             val traceCollector = context.getBean(MemoryE2eReadTraceCollector::class.java)
             val writeTraceCollector = context.getBean(MemoryE2eWriteTraceCollector::class.java)
             val maintenanceTraceCollector = context.getBean(MemoryE2eMaintenanceTraceCollector::class.java)
@@ -152,12 +150,11 @@ class MemoryRealModelE2eTest {
             progressPath.writeText("")
             appendProgress(
                 progressPath,
-                "suite_start database=$databaseName model=$modelName cases=${cases.size} subscription=$subscriptionPath artifacts=$artifactDirectory"
+                "suite_start postgresSchema=$postgresSchema model=$modelName cases=${cases.size} subscription=$subscriptionPath artifacts=$artifactDirectory"
             )
 
             val failures = mutableListOf<String>()
             runBlocking {
-                mongoDatabase.drop()
                 cases.forEachIndexed { caseIndex, case ->
                     val caseStartedAt = System.currentTimeMillis()
                     appendProgress(
@@ -185,7 +182,7 @@ class MemoryRealModelE2eTest {
                         val report = renderCaseStartupFailure(
                             case = case,
                             modelName = modelName,
-                            databaseName = databaseName,
+                            postgresSchema = postgresSchema,
                             error = error,
                         )
                         reportPath.writeText(report)
@@ -232,7 +229,7 @@ class MemoryRealModelE2eTest {
             val summaryPath = artifactDirectory.resolve("summary.md")
             summaryPath.writeText(
                 renderSuiteSummary(
-                    databaseName = databaseName,
+                    postgresSchema = postgresSchema,
                     subscriptionPath = subscriptionPath,
                     modelName = modelName,
                     caseCount = cases.size,
@@ -241,7 +238,7 @@ class MemoryRealModelE2eTest {
             )
             copyDevLogArtifact(
                 source = harness.homeDirectory.resolve("logs").resolve("dev.log"),
-                target = artifactDirectory.resolve("$databaseName-dev.log"),
+                target = artifactDirectory.resolve("$postgresSchema-dev.log"),
             )
             AiRuntimeCassetteUsageReporter.writeReportIfEnabled(
                 settings = cassetteSettings,
@@ -256,7 +253,7 @@ class MemoryRealModelE2eTest {
             }
             appendProgress(
                 progressPath,
-                "suite_end database=$databaseName status=${if (failures.isEmpty()) "PASS" else "FAIL"} failures=${failures.size}"
+                "suite_end postgresSchema=$postgresSchema status=${if (failures.isEmpty()) "PASS" else "FAIL"} failures=${failures.size}"
             )
 
             if (failures.isNotEmpty()) {
@@ -2288,14 +2285,14 @@ class MemoryRealModelE2eTest {
     private fun renderCaseStartupFailure(
         case: MemoryE2eCase,
         modelName: String,
-        databaseName: String,
+        postgresSchema: String,
         error: Throwable,
     ): String = buildString {
         appendLine("# ${case.id}")
         appendLine()
         appendLine("category | ${case.category}")
         appendLine("model | $modelName")
-        appendLine("database | $databaseName")
+        appendLine("postgresSchema | $postgresSchema")
         appendLine("timeoutSeconds | ${case.timeoutSeconds}")
         appendLine("status | FAIL")
         appendLine()
@@ -2309,7 +2306,7 @@ class MemoryRealModelE2eTest {
     }
 
     private fun renderSuiteSummary(
-        databaseName: String,
+        postgresSchema: String,
         subscriptionPath: Path,
         modelName: String,
         caseCount: Int,
@@ -2317,11 +2314,11 @@ class MemoryRealModelE2eTest {
     ): String = buildString {
         appendLine("# Memory Real Model E2E Summary")
         appendLine()
-        appendLine("database | $databaseName")
+        appendLine("postgresSchema | $postgresSchema")
         appendLine("subscription | $subscriptionPath")
         appendLine("model | $modelName")
         appendLine("caseCount | $caseCount")
-        appendLine("databaseCleanup | dropped before run, retained after run")
+        appendLine("databaseCleanup | unique schema per run, retained after run")
         appendLine("status | ${if (failures.isEmpty()) "PASS" else "FAIL"}")
         appendLine()
         if (failures.isNotEmpty()) {

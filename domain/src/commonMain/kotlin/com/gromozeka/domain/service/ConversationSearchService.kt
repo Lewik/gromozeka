@@ -13,9 +13,9 @@ import kotlinx.datetime.Instant
  *
  * ## Implementation Strategy
  *
- * **Infrastructure layer implements this using:**
- * - Neo4j fulltext index for KEYWORD search (BM25 ranking)
- * - Neo4j vector index for SEMANTIC search (cosine similarity)
+ * **Infrastructure layer can implement this using:**
+ * - PostgreSQL full-text/trigram indexes for KEYWORD search
+ * - pgvector indexes for SEMANTIC search
  * - Weighted score combination for HYBRID search
  *
  * **Vectorization:**
@@ -24,19 +24,18 @@ import kotlinx.datetime.Instant
  * - Uses OpenAI text-embedding-3-large (3072 dimensions)
  *
  * **Storage:**
- * - Messages stored as ConversationMessage nodes in Neo4j
- * - Properties: id, content, threadId, role, embedding, createdAt
- * - Indexes: vector index (HNSW), fulltext index (BM25)
+ * - Messages stored as repository records with searchable text and optional embeddings
+ * - Indexes: vector index for embeddings, full-text/trigram indexes for lexical search
  *
  * ## Search Modes
  *
  * **KEYWORD:**
- * - Fulltext search via Neo4j BM25 index
+ * - Full-text/trigram search via PostgreSQL indexes
  * - Fast (50-100ms), precise word matching
  * - Good for: exact terms, code snippets, error messages
  *
  * **SEMANTIC:**
- * - Vector similarity via Neo4j HNSW index
+ * - Vector similarity via pgvector index
  * - Slower (100-200ms), understands meaning
  * - Good for: natural language, conceptual queries
  *
@@ -98,8 +97,8 @@ interface ConversationSearchService {
      * Searches for messages matching criteria.
      *
      * Supports three search modes:
-     * - KEYWORD: Fulltext matching via Neo4j BM25 index (fast, precise)
-     * - SEMANTIC: Vector similarity via Neo4j HNSW index (understands meaning, slower)
+     * - KEYWORD: Full-text/trigram matching via PostgreSQL indexes (fast, precise)
+     * - SEMANTIC: Vector similarity via pgvector index (understands meaning, slower)
      * - HYBRID: Combines both with weighted scoring (best results, slowest)
      *
      * Results ordered by relevance score (descending).

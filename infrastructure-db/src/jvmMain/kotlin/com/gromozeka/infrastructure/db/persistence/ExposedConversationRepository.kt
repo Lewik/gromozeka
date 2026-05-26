@@ -10,11 +10,9 @@ import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.*
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
-import org.springframework.context.annotation.Profile
 import org.springframework.stereotype.Service
 
 @Service
-@Profile("sqlite")
 class ExposedConversationRepository : ConversationRepository {
 
     override suspend fun create(conversation: Conversation): Conversation = dbQuery {
@@ -24,7 +22,6 @@ class ExposedConversationRepository : ConversationRepository {
             it[agentDefinitionId] = conversation.agentDefinitionId.value
             it[displayName] = conversation.displayName
             it[currentThreadId] = conversation.currentThread.value
-            it[strideEnabled] = conversation.strideEnabled
             it[createdAt] = conversation.createdAt.toKotlin()
             it[updatedAt] = conversation.updatedAt.toKotlin()
         }
@@ -70,20 +67,12 @@ class ExposedConversationRepository : ConversationRepository {
         }
     }
 
-    override suspend fun updateStrideEnabled(id: Conversation.Id, enabled: Boolean): Unit = dbQuery {
-        Conversations.update({ Conversations.id eq id.value }) {
-            it[strideEnabled] = enabled
-            it[updatedAt] = Clock.System.now().toKotlin()
-        }
-    }
-
     private fun ResultRow.toConversation() = Conversation(
         id = Conversation.Id(this[Conversations.id]),
         projectId = Project.Id(this[Conversations.projectId]),
         agentDefinitionId = com.gromozeka.domain.model.AgentDefinition.Id(this[Conversations.agentDefinitionId]),
         displayName = this[Conversations.displayName],
         currentThread = Conversation.Thread.Id(this[Conversations.currentThreadId]),
-        strideEnabled = this[Conversations.strideEnabled],
         createdAt = this[Conversations.createdAt].toKotlinx(),
         updatedAt = this[Conversations.updatedAt].toKotlinx()
     )

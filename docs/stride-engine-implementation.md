@@ -1,4 +1,27 @@
-# Stride Engine - Implementation Guide
+# Stride Engine - Archived Concept
+
+This feature is intentionally removed from active runtime code. The remaining
+document preserves the idea, tool protocol and prompt shape in case we want to
+reuse the concept later without carrying the old implementation.
+
+## Concept Worth Keeping
+
+Stride treated a user message as a set of semantic units instead of one opaque
+request. The model first had to decompose the message into explicit steps, then
+react to every step through tool-result feedback:
+
+- `create_plan` forced the model to convert the user message into typed steps.
+- Each step carried text, type, certainty, entities and dependencies.
+- Tool results drove the model into the next step, so it could not silently skip
+  parts of a dense message.
+- `step_complete`, `update_plan`, `request_user_input` and `notify` made the
+  model expose progress and uncertainty instead of burying it inside prose.
+- Informational units were still processed, not only command-like tasks: facts,
+  corrections, opinions, commitments and conditions all got explicit reactions.
+
+The real implementation became too heavy for the current architecture, so the
+runtime, UI toggle, Neo4j repositories and active tool beans are archived. The
+prompts and examples below are historical notes, not current behavior.
 
 ## Core Principle
 

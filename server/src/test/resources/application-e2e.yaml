@@ -1,6 +1,3 @@
-knowledge-graph:
-  enabled: false
-
 gromozeka:
   vector:
     enabled: false

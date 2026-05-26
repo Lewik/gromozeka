@@ -247,13 +247,6 @@ data class GetTokenStatsRequest(
 ) : ClientRequest
 
 @Serializable
-@SerialName("update_stride_enabled")
-data class UpdateStrideEnabledRequest(
-    val conversationId: Conversation.Id,
-    val enabled: Boolean,
-) : ClientRequest
-
-@Serializable
 @SerialName("edit_message")
 data class EditMessageRequest(
     val conversationId: Conversation.Id,
