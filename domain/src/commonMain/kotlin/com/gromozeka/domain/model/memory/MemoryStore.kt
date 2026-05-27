@@ -31,6 +31,11 @@ interface MemoryStore {
 
     suspend fun findSourcesByIds(sourceIds: List<MemorySource.Id>): List<MemorySource>
 
+    suspend fun findTypedMemoryByEvidenceSourceIds(
+        namespace: MemoryNamespace,
+        sourceIds: Set<MemorySource.Id>,
+    ): List<SearchHit>
+
     suspend fun findRunById(runId: MemoryRun.Id): MemoryRun?
 
     suspend fun findRunsByParentRunId(parentRunId: MemoryRun.Id): List<MemoryRun>

@@ -4,6 +4,7 @@ import com.gromozeka.domain.model.memory.MemoryClaim
 import com.gromozeka.domain.model.memory.MemoryEntity
 import com.gromozeka.domain.model.memory.MemoryEvidenceRef
 import com.gromozeka.domain.model.memory.MemoryItemRef
+import com.gromozeka.domain.model.memory.MemoryNamespace
 import com.gromozeka.domain.model.memory.MemoryNamespaceSnapshot
 import com.gromozeka.domain.model.memory.MemoryNote
 import com.gromozeka.domain.model.memory.MemoryReadPlan
@@ -93,8 +94,7 @@ class RuntimeMemoryReadPipeline(
         plan: MemoryReadPlan,
         searchSteps: MutableList<MemoryReadTrace.SearchStep>,
     ): RuntimeMemoryRetrievedHits {
-        val snapshot = store.loadNamespaceSnapshot(request.namespace)
-        val targetEntities = snapshot.resolveTargetEntitiesForRead(request, plan)
+        val targetEntities = resolveTargetEntitiesForRead(request, plan)
         val queryEmbeddings = mutableMapOf<String, MemoryStore.SearchEmbedding?>()
         val hits = mutableListOf<MemoryStore.SearchHit>()
         hits += targetEntities.hits
@@ -104,7 +104,7 @@ class RuntimeMemoryReadPipeline(
                 query = request.entityResolutionText(plan),
                 scope = MemoryStore.SearchScope.ENTITIES.name,
                 requestedLimit = 4,
-                rawCount = snapshot.entities.size,
+                rawCount = targetEntities.hits.size,
                 candidateCount = targetEntities.hits.size,
                 selectedCount = targetEntities.hits.size,
                 rawTopHits = targetEntities.hits.toTraceHits(limit = 5),
@@ -285,7 +285,7 @@ class RuntimeMemoryReadPipeline(
         )
         val activeTypedRefsBeforeSourceSupport = sourceSelection.hits.currentTruthBearingTypedRefs()
         val sourceTypedSupportHits = sourceSelection.hits
-            .withActiveTypedSupportForSourceCandidates(snapshot)
+            .withTypedEvidenceSupport(request.namespace)
         val rawSourceDeferral = sourceTypedSupportHits.deferRawSourceCandidatesToEvidenceHydration(
             plan = plan,
             activeTypedRefs = activeTypedRefsBeforeSourceSupport,
@@ -299,17 +299,16 @@ class RuntimeMemoryReadPipeline(
             }
         }
         val budgetedHits = rawSourceDeferral.hits
-            .withActiveTypedReplacementsForSourceCandidates(snapshot)
             .enforceBudget(plan, expandForSelector = true)
         val selectorCandidateHits = budgetedHits
-            .withActiveTypedSupportForSourceCandidates(snapshot)
-            .withActiveTypedReplacementsForSourceCandidates(snapshot)
+            .withTypedEvidenceSupport(request.namespace)
+        val selectorSnapshot = selectorCandidateHits.toReadPartialSnapshot(request.namespace)
         val selectionResult = selector.select(
             MemoryReadSelectionRequest(
                 readRequest = request,
                 plan = plan,
                 candidateHits = selectorCandidateHits,
-                snapshot = snapshot,
+                snapshot = selectorSnapshot,
             )
         )
         val coreProfileSelection = selectionResult.selectedHits.keepPlannerRequestedProfiles(
@@ -336,7 +335,7 @@ class RuntimeMemoryReadPipeline(
                     "droppedSourceIds=${sourceFilteredHits.droppedSources.joinToString("|") { it.source.id.value }}"
             }
         }
-        val sourceSafety = sourceFilteredHits.hits.applyActiveTypedMemorySourceSafety(snapshot, selectorCandidateHits)
+        val sourceSafety = sourceFilteredHits.hits.applyActiveTypedMemorySourceSafety(selectorSnapshot, selectorCandidateHits)
         if (sourceSafety.changed) {
             log.info {
                 "Memory read source freshness guard: namespace=${request.namespace.value} " +
@@ -346,7 +345,7 @@ class RuntimeMemoryReadPipeline(
             }
         }
         val selectedHits = sourceSafety.hits
-        val evidenceHydratedHits = hydrateEvidenceSources(request, plan, selectedHits, snapshot)
+        val evidenceHydratedHits = hydrateEvidenceSources(request, plan, selectedHits, selectorSnapshot)
         val entityHydratedHits = hydrateLinkedEntities(request, evidenceHydratedHits)
         searchSteps += MemoryReadTrace.SearchStep(
             stage = "selector",
@@ -389,6 +388,49 @@ class RuntimeMemoryReadPipeline(
             selectorDecisions = selectorDecisions,
             sourceSafety = sourceSafety,
         )
+    }
+
+    private suspend fun resolveTargetEntitiesForRead(
+        request: MemoryReadRequest,
+        plan: MemoryReadPlan,
+    ): RuntimeMemoryTargetEntities {
+        val query = request.entityResolutionText(plan)
+        if (query.isBlank()) return RuntimeMemoryTargetEntities(emptyList())
+
+        val queryHits = store.search(
+            MemoryStore.SearchRequest(
+                query = query,
+                namespace = request.namespace,
+                scopes = setOf(MemoryStore.SearchScope.ENTITIES),
+                limit = 8,
+            )
+        ).filterIsInstance<MemoryStore.SearchHit.EntityHit>()
+            .mapNotNull { hit ->
+                hit.entity.entityResolutionScore(query.normalizedEntityResolutionText())?.let { score ->
+                    MemoryStore.SearchHit.EntityHit(hit.entity, score)
+                }
+            }
+            .sortedWith(compareByDescending<MemoryStore.SearchHit.EntityHit> { it.score }.thenByDescending { it.entity.updatedAt })
+        val subjectHits = queryHits.filter { it.entity.entityType.isSubjectAnchorType() }
+        val profileAnchorHits = if (plan.requestsProfileContext() && query.hasFirstPersonSingularReference()) {
+            store.search(
+                MemoryStore.SearchRequest(
+                    query = "user profile preferences constraints",
+                    namespace = request.namespace,
+                    scopes = setOf(MemoryStore.SearchScope.ENTITIES),
+                    limit = 8,
+                )
+            ).filterIsInstance<MemoryStore.SearchHit.EntityHit>()
+                .filter { it.entity.entityType == MemoryEntity.Type.USER }
+                .take(1)
+        } else {
+            emptyList()
+        }
+        val hits = (profileAnchorHits + subjectHits.ifEmpty { queryHits })
+            .distinctBy { it.entity.id }
+            .take(4)
+
+        return RuntimeMemoryTargetEntities(hits)
     }
 
     private suspend fun queryEmbedding(
@@ -485,6 +527,26 @@ class RuntimeMemoryReadPipeline(
         }
 
         return (hits + sourceHits).keepLinkedEvidenceSources(evidenceSourceIds)
+    }
+
+    private suspend fun List<MemoryStore.SearchHit>.withTypedEvidenceSupport(
+        namespace: MemoryNamespace,
+    ): List<MemoryStore.SearchHit> {
+        val sourceIds = filterIsInstance<MemoryStore.SearchHit.SourceHit>()
+            .mapTo(mutableSetOf()) { it.source.id }
+        if (sourceIds.isEmpty()) return this
+
+        val existingRefs = mapTo(mutableSetOf()) { it.toItemRef() }
+        val supportHits = store.findTypedMemoryByEvidenceSourceIds(namespace, sourceIds)
+            .filterNot { it.toItemRef() in existingRefs }
+        if (supportHits.isEmpty()) return this
+
+        log.info {
+            "Memory read source typed support: namespace=${namespace.value} sources=${sourceIds.size} " +
+                "support=${supportHits.breakdownForRuntimeMemoryLog()} refs=${supportHits.summaryForRuntimeMemoryLog()}"
+        }
+
+        return this + supportHits
     }
 }
 
@@ -615,51 +677,6 @@ private fun MemoryReadRequest.entityResolutionText(plan: MemoryReadPlan): String
         }
     }.joinToString("\n").trim()
 
-private fun MemoryNamespaceSnapshot.resolveTargetEntitiesForRead(
-    request: MemoryReadRequest,
-    plan: MemoryReadPlan,
-): RuntimeMemoryTargetEntities {
-    val query = request.entityResolutionText(plan).normalizedEntityResolutionText()
-    if (query.isBlank()) return RuntimeMemoryTargetEntities(emptyList())
-
-    val matchedHits = entities
-        .asSequence()
-        .filter { it.status == MemoryEntity.Status.ACTIVE }
-        .mapNotNull { entity ->
-            entity.entityResolutionScore(query)?.let { score ->
-                MemoryStore.SearchHit.EntityHit(entity, score)
-            }
-        }
-        .sortedWith(
-            compareByDescending<MemoryStore.SearchHit.EntityHit> { it.score }
-                .thenByDescending { it.entity.updatedAt }
-        )
-        .toList()
-    val subjectHits = matchedHits.filter { it.entity.entityType.isSubjectAnchorType() }
-    val profileAnchorHits = entities.profileAnchorHitsForRead(query, plan)
-    val hits = (profileAnchorHits + subjectHits.ifEmpty { matchedHits })
-        .distinctBy { it.entity.id }
-        .take(4)
-
-    return RuntimeMemoryTargetEntities(hits)
-}
-
-private fun List<MemoryEntity>.profileAnchorHitsForRead(
-    query: String,
-    plan: MemoryReadPlan,
-): List<MemoryStore.SearchHit.EntityHit> {
-    if (!plan.requestsProfileContext() || !query.hasFirstPersonSingularReference()) {
-        return emptyList()
-    }
-
-    return asSequence()
-        .filter { it.status == MemoryEntity.Status.ACTIVE }
-        .filter { it.entityType == MemoryEntity.Type.USER }
-        .map { MemoryStore.SearchHit.EntityHit(it, score = 2.0) }
-        .take(1)
-        .toList()
-}
-
 private fun MemoryReadPlan.requestsProfileContext(): Boolean =
     MemoryReadPlan.CoreBlock.PROFILE in coreBlocks ||
         retrievalRequests.any { it.memoryType == MemorySemanticType.PROFILE }
@@ -714,14 +731,11 @@ private fun String.containsEntityPhrase(phrase: String): Boolean {
 }
 
 private fun String.normalizedEntityResolutionText(): String =
-    expandCamelCaseForEntityResolution()
+    replace(Regex("(?<=[\\p{Ll}\\p{N}])(?=\\p{Lu})"), " ")
         .lowercase()
         .replace(Regex("[^\\p{L}\\p{N}_]+"), " ")
         .replace(Regex("\\s+"), " ")
         .trim()
-
-private fun String.expandCamelCaseForEntityResolution(): String =
-    replace(Regex("(?<=[\\p{Ll}\\p{N}])(?=\\p{Lu})"), " ")
 
 private fun MemorySemanticType.toSearchScope(): MemoryStore.SearchScope? =
     when (this) {
@@ -1233,6 +1247,43 @@ private fun List<MemoryStore.SearchHit>.keepLinkedEvidenceSources(
     }
 }
 
+private fun List<MemoryStore.SearchHit>.toReadPartialSnapshot(namespace: MemoryNamespace): MemoryNamespaceSnapshot =
+    MemoryNamespaceSnapshot(
+        predicateDefinitions = emptyList(),
+        sources = filterIsInstance<MemoryStore.SearchHit.SourceHit>()
+            .map { it.source }
+            .filter { it.namespace == namespace }
+            .distinctBy { it.id },
+        runs = filterIsInstance<MemoryStore.SearchHit.RunHit>()
+            .map { it.run }
+            .filter { it.namespace == namespace }
+            .distinctBy { it.id },
+        entities = filterIsInstance<MemoryStore.SearchHit.EntityHit>()
+            .map { it.entity }
+            .filter { it.namespace == namespace }
+            .distinctBy { it.id },
+        claims = filterIsInstance<MemoryStore.SearchHit.ClaimHit>()
+            .map { it.claim }
+            .filter { it.namespace == namespace }
+            .distinctBy { it.id },
+        notes = filterIsInstance<MemoryStore.SearchHit.NoteHit>()
+            .map { it.note }
+            .filter { it.namespace == namespace }
+            .distinctBy { it.id },
+        tasks = filterIsInstance<MemoryStore.SearchHit.TaskHit>()
+            .map { it.task }
+            .filter { it.namespace == namespace }
+            .distinctBy { it.id },
+        profiles = filterIsInstance<MemoryStore.SearchHit.ProfileHit>()
+            .map { it.profile }
+            .filter { it.namespace == namespace }
+            .distinctBy { it.id },
+        episodes = filterIsInstance<MemoryStore.SearchHit.EpisodeHit>()
+            .map { it.episode }
+            .filter { it.namespace == namespace }
+            .distinctBy { it.id },
+    )
+
 private fun List<MemoryStore.SearchHit>.applyActiveTypedMemorySourceSafety(
     snapshot: MemoryNamespaceSnapshot,
     candidateHits: List<MemoryStore.SearchHit>,
@@ -1261,68 +1312,6 @@ private fun List<MemoryStore.SearchHit>.applyActiveTypedMemorySourceSafety(
         restoredTypedHits = restoredHits,
     )
 }
-
-private fun List<MemoryStore.SearchHit>.withActiveTypedReplacementsForSourceCandidates(
-    snapshot: MemoryNamespaceSnapshot,
-): List<MemoryStore.SearchHit> {
-    val sourceIds = filterIsInstance<MemoryStore.SearchHit.SourceHit>()
-        .mapTo(mutableSetOf()) { it.source.id }
-    if (sourceIds.isEmpty()) return this
-
-    val existingRefs = mapTo(mutableSetOf()) { it.toItemRef() }
-    val replacements = snapshot.activeTypedReplacementHitsForSources(
-        sourceIds = sourceIds,
-        candidateHits = this,
-    ).filterNot { it.toItemRef() in existingRefs }
-    if (replacements.isEmpty()) return this
-
-    return this + replacements
-}
-
-private fun List<MemoryStore.SearchHit>.withActiveTypedSupportForSourceCandidates(
-    snapshot: MemoryNamespaceSnapshot,
-): List<MemoryStore.SearchHit> {
-    val sourceIds = filterIsInstance<MemoryStore.SearchHit.SourceHit>()
-        .mapTo(mutableSetOf()) { it.source.id }
-    if (sourceIds.isEmpty()) return this
-
-    val existingRefs = mapTo(mutableSetOf()) { it.toItemRef() }
-    val supportedHits = snapshot.activeTypedSupportHitsForSources(sourceIds)
-        .filterNot { it.toItemRef() in existingRefs }
-    if (supportedHits.isEmpty()) return this
-
-    return this + supportedHits
-}
-
-private fun MemoryNamespaceSnapshot.activeTypedSupportHitsForSources(
-    sourceIds: Set<MemorySource.Id>,
-): List<MemoryStore.SearchHit> =
-    buildList {
-        claims
-            .filter { claim ->
-                claim.status == MemoryClaim.Status.ACTIVE &&
-                    claim.evidenceRefs.any { it.sourceId in sourceIds }
-            }
-            .mapTo(this) { MemoryStore.SearchHit.ClaimHit(it, score = 1.0) }
-        notes
-            .filter { note ->
-                note.status == MemoryNote.Status.ACTIVE &&
-                    note.evidenceRefs.any { it.sourceId in sourceIds }
-            }
-            .mapTo(this) { MemoryStore.SearchHit.NoteHit(it, score = 1.0) }
-        tasks
-            .filter { task ->
-                task.archivedAt == null &&
-                    task.evidenceRefs.any { it.sourceId in sourceIds }
-            }
-            .mapTo(this) { MemoryStore.SearchHit.TaskHit(it, score = 1.0) }
-        episodes
-            .filter { episode ->
-                episode.archivedAt == null &&
-                    episode.evidenceRefs.any { it.sourceId in sourceIds }
-            }
-            .mapTo(this) { MemoryStore.SearchHit.EpisodeHit(it, score = 1.0) }
-    }.distinctBy { it.toItemRef() }
 
 private fun MemoryNamespaceSnapshot.sourceIdsWithActiveTypedReplacement(): Set<MemorySource.Id> =
     buildSet {

@@ -34,6 +34,9 @@ import java.sql.PreparedStatement
 import java.sql.Timestamp
 import javax.sql.DataSource
 
+private const val SEARCH_PROJECTION_MAX_CHARS = 12_000
+private const val SOURCE_CONTENT_SEARCH_PREVIEW_CHARS = 4_000
+
 @Service
 @Primary
 class PostgresMemoryStore(
@@ -69,14 +72,31 @@ class PostgresMemoryStore(
     }
 
     override suspend fun search(request: MemoryStore.SearchRequest): List<MemoryStore.SearchHit> {
-        val snapshot = loadSnapshot(request.namespace, request.includeArchived)
-        val includeAll = request.scopes.contains(MemoryStore.SearchScope.ALL)
-        val entityById = snapshot.entities.associateBy { it.id }
         val vectorScores = request.vectorScores()
+        val vectorRefs = vectorScores.keys
+        return dataSource.connection.use { connection ->
+            val payloads = connection.selectSearchPayloads(request, vectorRefs)
+            val sources = payloads.sources.map { json.decodeFromString<MemorySource>(it.payload) }
+            val runs = payloads.runs.map { json.decodeFromString<MemoryRun>(it.payload) }
+            val entities = payloads.entities.map { json.decodeFromString<MemoryEntity>(it.payload) }
+            val claims = payloads.claims.map { json.decodeFromString<MemoryClaim>(it.payload) }
+            val notes = payloads.notes.map { json.decodeFromString<MemoryNote>(it.payload) }
+            val tasks = payloads.tasks.map { json.decodeFromString<MemoryTask>(it.payload) }
+            val profiles = payloads.profiles.map { json.decodeFromString<MemoryProfile>(it.payload) }
+            val episodes = payloads.episodes.map { json.decodeFromString<MemoryEpisode>(it.payload) }
+            val entityById = connection.selectEntitiesForSearch(
+                explicitEntities = entities,
+                claims = claims,
+                notes = notes,
+                tasks = tasks,
+                profiles = profiles,
+                episodes = episodes,
+                filterEntityIds = request.filters.entityIds,
+            )
 
-        val candidates = buildList {
-            if (includeAll || request.scopes.contains(MemoryStore.SearchScope.SOURCES)) {
-                snapshot.sources
+            val candidates = buildList {
+                sources
+                    .filter { it.matchesSearchRequest(request) }
                     .mapTo(this) {
                         MemoryStore.SearchHit.SourceHit(
                             it,
@@ -84,10 +104,8 @@ class PostgresMemoryStore(
                                 vectorScores.boost(MemoryItemRef(MemoryItemRef.Type.SOURCE, it.id.value)),
                         )
                     }
-            }
-            if (includeAll || request.scopes.contains(MemoryStore.SearchScope.ENTITIES)) {
-                snapshot.entities
-                    .filter { request.filters.entityIds.isEmpty() || it.id in request.filters.entityIds }
+                entities
+                    .filter { it.matchesSearchRequest(request) }
                     .mapTo(this) {
                         MemoryStore.SearchHit.EntityHit(
                             it,
@@ -95,13 +113,8 @@ class PostgresMemoryStore(
                                 vectorScores.boost(MemoryItemRef(MemoryItemRef.Type.ENTITY, it.id.value)),
                         )
                     }
-            }
-            if (includeAll || request.scopes.contains(MemoryStore.SearchScope.CLAIMS)) {
-                snapshot.claims
-                    .filter { request.filters.claimStatuses.isEmpty() || it.status in request.filters.claimStatuses }
-                    .filter { it.matchesEntityFilter(request.filters.entityIds, entityById) }
-                    .filter { request.filters.claimPredicates.isEmpty() || it.predicate in request.filters.claimPredicates }
-                    .filter { request.filters.scopes.isEmpty() || it.scope in request.filters.scopes }
+                claims
+                    .filter { it.matchesSearchRequest(request, entityById) }
                     .mapTo(this) {
                         MemoryStore.SearchHit.ClaimHit(
                             it,
@@ -113,17 +126,8 @@ class PostgresMemoryStore(
                             ) + vectorScores.boost(MemoryItemRef(MemoryItemRef.Type.CLAIM, it.id.value)),
                         )
                     }
-            }
-            if (includeAll || request.scopes.contains(MemoryStore.SearchScope.NOTES)) {
-                snapshot.notes
-                    .filter { request.filters.noteStatuses.isEmpty() || it.status in request.filters.noteStatuses }
-                    .filter { request.filters.noteTypes.isEmpty() || it.noteType in request.filters.noteTypes }
-                    .filter {
-                        request.filters.entityIds.isEmpty() ||
-                            it.anchorEntityId in request.filters.entityIds ||
-                            it.entityRefs.any { ref -> ref.entityId in request.filters.entityIds }
-                    }
-                    .filter { request.filters.scopes.isEmpty() || it.scope in request.filters.scopes }
+                notes
+                    .filter { it.matchesSearchRequest(request) }
                     .mapTo(this) {
                         MemoryStore.SearchHit.NoteHit(
                             it,
@@ -134,17 +138,8 @@ class PostgresMemoryStore(
                             ) + vectorScores.boost(MemoryItemRef(MemoryItemRef.Type.NOTE, it.id.value)),
                         )
                     }
-            }
-            if (includeAll || request.scopes.contains(MemoryStore.SearchScope.TASKS)) {
-                snapshot.tasks
-                    .filter { request.filters.taskStatuses.isEmpty() || it.status in request.filters.taskStatuses }
-                    .filter {
-                        request.filters.entityIds.isEmpty() ||
-                            it.ownerEntityId in request.filters.entityIds ||
-                            it.assigneeEntityId in request.filters.entityIds ||
-                            it.relatedEntityIds.any { entityId -> entityId in request.filters.entityIds }
-                    }
-                    .filter { request.filters.scopes.isEmpty() || it.scope in request.filters.scopes }
+                tasks
+                    .filter { it.matchesSearchRequest(request) }
                     .mapTo(this) {
                         MemoryStore.SearchHit.TaskHit(
                             it,
@@ -155,10 +150,8 @@ class PostgresMemoryStore(
                             ) + vectorScores.boost(MemoryItemRef(MemoryItemRef.Type.TASK, it.id.value)),
                         )
                     }
-            }
-            if (includeAll || request.scopes.contains(MemoryStore.SearchScope.PROFILES)) {
-                snapshot.profiles
-                    .filter { request.filters.entityIds.isEmpty() || it.ownerEntityId in request.filters.entityIds }
+                profiles
+                    .filter { it.matchesSearchRequest(request) }
                     .mapTo(this) {
                         MemoryStore.SearchHit.ProfileHit(
                             it,
@@ -169,10 +162,8 @@ class PostgresMemoryStore(
                             ) + vectorScores.boost(MemoryItemRef(MemoryItemRef.Type.PROFILE, it.id.value)),
                         )
                     }
-            }
-            if (includeAll || request.scopes.contains(MemoryStore.SearchScope.EPISODES)) {
-                snapshot.episodes
-                    .filter { request.filters.entityIds.isEmpty() || it.ownerEntityId in request.filters.entityIds }
+                episodes
+                    .filter { it.matchesSearchRequest(request) }
                     .mapTo(this) {
                         MemoryStore.SearchHit.EpisodeHit(
                             it,
@@ -183,32 +174,31 @@ class PostgresMemoryStore(
                             ) + vectorScores.boost(MemoryItemRef(MemoryItemRef.Type.EPISODE, it.id.value)),
                         )
                     }
+                runs.mapTo(this) { MemoryStore.SearchHit.RunHit(it, score = MemorySearchScorer.runScore(request.query, it)) }
             }
-            if (includeAll || request.scopes.contains(MemoryStore.SearchScope.RUNS)) {
-                snapshot.runs.mapTo(this) { MemoryStore.SearchHit.RunHit(it, score = MemorySearchScorer.runScore(request.query, it)) }
+
+            val positiveCandidates = candidates.filter { it.score > 0.0 }
+            val eligibleCandidates = when {
+                request.query.isBlank() -> candidates
+                positiveCandidates.isNotEmpty() -> positiveCandidates
+                else -> candidates.filter { it.allowsLowScoreFallback() }
             }
+
+            val result = eligibleCandidates
+                .sortedWith(compareByDescending<MemoryStore.SearchHit> { it.score }.thenByDescending { it.sortInstant() })
+                .take(request.limit)
+
+            log.info {
+                "Postgres memory search: namespace=${request.namespace?.value ?: "all"} scopes=${request.scopes.joinToString { it.name }} " +
+                    "query=${request.query.oneLineForMemorySearchLog(120)} filters=${request.filters.filtersForLog()} " +
+                    "embedding=${request.embedding?.let { "${it.modelConfigurationId}/${it.dimensions}" } ?: "none"} " +
+                    "vectorRefs=${vectorRefs.size} payloads=${payloads.countsForLog()} candidates=${candidates.size} " +
+                    "eligible=${eligibleCandidates.size} result=${result.size} " +
+                    "top=${result.joinToString("|") { it.hitForLog() }.ifBlank { "none" }}"
+            }
+
+            result
         }
-
-        val positiveCandidates = candidates.filter { it.score > 0.0 }
-        val eligibleCandidates = when {
-            request.query.isBlank() -> candidates
-            positiveCandidates.isNotEmpty() -> positiveCandidates
-            else -> candidates.filter { it.allowsLowScoreFallback() }
-        }
-
-        val result = eligibleCandidates
-            .sortedWith(compareByDescending<MemoryStore.SearchHit> { it.score }.thenByDescending { it.sortInstant() })
-            .take(request.limit)
-
-        log.info {
-            "Postgres memory search: namespace=${request.namespace?.value ?: "all"} scopes=${request.scopes.joinToString { it.name }} " +
-                "query=${request.query.oneLineForMemorySearchLog(120)} filters=${request.filters.filtersForLog()} " +
-                "embedding=${request.embedding?.let { "${it.modelConfigurationId}/${it.dimensions}" } ?: "none"} " +
-                "snapshot=${snapshot.countsForLog()} candidates=${candidates.size} eligible=${eligibleCandidates.size} result=${result.size} " +
-                "top=${result.joinToString("|") { it.hitForLog() }.ifBlank { "none" }}"
-        }
-
-        return result
     }
 
     override suspend fun loadNamespaceSnapshot(
@@ -258,6 +248,52 @@ class PostgresMemoryStore(
         return dataSource.connection.use { connection ->
             connection.selectPayloadsByIds("memory_sources", sourceIds.map { it.value })
                 .map { json.decodeFromString<MemorySource>(it) }
+        }
+    }
+
+    override suspend fun findTypedMemoryByEvidenceSourceIds(
+        namespace: MemoryNamespace,
+        sourceIds: Set<MemorySource.Id>,
+    ): List<MemoryStore.SearchHit> {
+        if (sourceIds.isEmpty()) return emptyList()
+        return dataSource.connection.use { connection ->
+            val directClaims = connection.selectPayloadsByEvidenceSourceIds("memory_claims", namespace, sourceIds)
+                .map { json.decodeFromString<MemoryClaim>(it) }
+            val replacedClaimIds = directClaims
+                .filter { it.status != MemoryClaim.Status.ACTIVE }
+                .mapTo(mutableSetOf()) { it.id.value }
+            val activeClaimIdsByRetraction = directClaims
+                .mapNotNullTo(mutableSetOf()) { it.retractedByClaimId?.value }
+            val replacementClaims = connection.selectActiveReplacementClaims(namespace, replacedClaimIds, activeClaimIdsByRetraction)
+
+            val directNotes = connection.selectPayloadsByEvidenceSourceIds("memory_notes", namespace, sourceIds)
+                .map { json.decodeFromString<MemoryNote>(it) }
+            val replacedNoteIds = directNotes
+                .filter { it.status != MemoryNote.Status.ACTIVE }
+                .mapTo(mutableSetOf()) { it.id.value }
+            val replacementNotes = connection.selectActiveReplacementNotes(namespace, replacedNoteIds)
+
+            val directTasks = connection.selectPayloadsByEvidenceSourceIds("memory_tasks", namespace, sourceIds)
+                .map { json.decodeFromString<MemoryTask>(it) }
+                .filter { it.archivedAt == null }
+            val directEpisodes = connection.selectPayloadsByEvidenceSourceIds("memory_episodes", namespace, sourceIds)
+                .map { json.decodeFromString<MemoryEpisode>(it) }
+                .filter { it.archivedAt == null }
+
+            buildList {
+                (directClaims + replacementClaims)
+                    .distinctBy { it.id }
+                    .mapTo(this) { MemoryStore.SearchHit.ClaimHit(it, score = 1.0) }
+                (directNotes + replacementNotes)
+                    .distinctBy { it.id }
+                    .mapTo(this) { MemoryStore.SearchHit.NoteHit(it, score = 1.0) }
+                directTasks
+                    .distinctBy { it.id }
+                    .mapTo(this) { MemoryStore.SearchHit.TaskHit(it, score = 1.0) }
+                directEpisodes
+                    .distinctBy { it.id }
+                    .mapTo(this) { MemoryStore.SearchHit.EpisodeHit(it, score = 1.0) }
+            }.distinctBy { it.toPostgresMemoryStoreItemRef() }
         }
     }
 
@@ -411,7 +447,7 @@ class PostgresMemoryStore(
             columns = mapOf(
                 "content_hash" to item.contentHash,
                 "conversation_id" to item.conversationIdValue(),
-                "search_text" to item.searchText,
+                "search_text" to item.searchTextForStore(),
                 "created_at" to item.createdAt,
             ),
         )
@@ -426,6 +462,7 @@ class PostgresMemoryStore(
                 "parent_run_id" to item.parentRunId?.value,
                 "status" to item.status.name,
                 "run_type" to item.runType.name,
+                "search_text" to item.searchTextForStore(),
                 "created_at" to item.createdAt,
             ),
         )
@@ -440,6 +477,7 @@ class PostgresMemoryStore(
                 "normalized_name" to item.normalizedName,
                 "entity_type" to item.entityType.name,
                 "status" to item.status.name,
+                "search_text" to item.searchTextForStore(),
                 "updated_at" to item.updatedAt,
             ),
         )
@@ -456,6 +494,10 @@ class PostgresMemoryStore(
                 "predicate" to item.predicate,
                 "status" to item.status.name,
                 "scope_text" to item.scope.text,
+                "search_text" to item.searchTextForStore(),
+                "evidence_source_ids" to item.evidenceSourceIdValues(),
+                "supersedes_claim_id" to item.supersedesClaimId?.value,
+                "retracted_by_claim_id" to item.retractedByClaimId?.value,
                 "updated_at" to item.updatedAt,
             ),
         )
@@ -470,6 +512,10 @@ class PostgresMemoryStore(
                 "anchor_entity_id" to item.anchorEntityId?.value,
                 "status" to item.status.name,
                 "note_type" to item.noteType.name,
+                "search_text" to item.searchTextForStore(),
+                "evidence_source_ids" to item.evidenceSourceIdValues(),
+                "entity_ids" to item.linkedEntityIdValues(),
+                "supersedes_note_id" to item.supersedesNoteId?.value,
                 "updated_at" to item.updatedAt,
             ),
         )
@@ -484,6 +530,9 @@ class PostgresMemoryStore(
                 "owner_entity_id" to item.ownerEntityId?.value,
                 "assignee_entity_id" to item.assigneeEntityId?.value,
                 "status" to item.status.name,
+                "search_text" to item.searchTextForStore(),
+                "evidence_source_ids" to item.evidenceSourceIdValues(),
+                "entity_ids" to item.linkedEntityIdValues(),
                 "updated_at" to item.updatedAt,
             ),
         )
@@ -496,6 +545,7 @@ class PostgresMemoryStore(
             payload = json.encodeToString(item),
             columns = mapOf(
                 "owner_entity_id" to item.ownerEntityId.value,
+                "search_text" to item.searchTextForStore(),
                 "updated_at" to item.updatedAt,
             ),
         )
@@ -508,6 +558,8 @@ class PostgresMemoryStore(
             payload = json.encodeToString(item),
             columns = mapOf(
                 "owner_entity_id" to item.ownerEntityId?.value,
+                "search_text" to item.searchTextForStore(),
+                "evidence_source_ids" to item.evidenceSourceIdValues(),
                 "updated_at" to item.updatedAt,
             ),
         )
@@ -610,6 +662,131 @@ class PostgresMemoryStore(
         }
     }
 
+    private fun Connection.selectSearchPayloads(
+        request: MemoryStore.SearchRequest,
+        vectorRefs: Set<MemoryItemRef>,
+    ): MemorySearchPayloads =
+        MemorySearchPayloads(
+            sources = selectSearchPayloadsFor(MemorySearchTable.SOURCE, request, vectorRefs),
+            runs = selectSearchPayloadsFor(MemorySearchTable.RUN, request, vectorRefs),
+            entities = selectSearchPayloadsFor(MemorySearchTable.ENTITY, request, vectorRefs),
+            claims = selectSearchPayloadsFor(MemorySearchTable.CLAIM, request, vectorRefs),
+            notes = selectSearchPayloadsFor(MemorySearchTable.NOTE, request, vectorRefs),
+            tasks = selectSearchPayloadsFor(MemorySearchTable.TASK, request, vectorRefs),
+            profiles = selectSearchPayloadsFor(MemorySearchTable.PROFILE, request, vectorRefs),
+            episodes = selectSearchPayloadsFor(MemorySearchTable.EPISODE, request, vectorRefs),
+        )
+
+    private fun Connection.selectSearchPayloadsFor(
+        table: MemorySearchTable,
+        request: MemoryStore.SearchRequest,
+        vectorRefs: Set<MemoryItemRef>,
+    ): List<MemorySearchPayload> {
+        if (!request.scopes.includes(table.searchScope)) return emptyList()
+
+        val conditions = mutableListOf<SearchSqlCondition>()
+        request.namespace?.let { conditions += SearchSqlCondition("namespace = ?", listOf(it.value)) }
+        conditions += table.strictFilterConditions(request)
+
+        val candidateConditions = mutableListOf<SearchSqlCondition>()
+        if (request.query.isNotBlank()) {
+            candidateConditions += request.query.searchTextSqlCondition()
+        }
+        val vectorIds = vectorRefs
+            .filter { it.type == table.itemRefType }
+            .map { it.id }
+        if (vectorIds.isNotEmpty()) {
+            candidateConditions += idsSqlCondition(vectorIds)
+        }
+        table.entityCandidateCondition(request.filters.entityIds)?.let {
+            candidateConditions += it
+        }
+        if (candidateConditions.isNotEmpty()) {
+            conditions += candidateConditions.joinWithOr()
+        }
+
+        val whereSql = conditions.joinToString(separator = " AND ", prefix = "WHERE ") { "(${it.sql})" }
+            .takeIf { conditions.isNotEmpty() }
+            .orEmpty()
+        val orderSql = if (request.query.isBlank()) {
+            "ORDER BY ${table.orderColumn} DESC"
+        } else {
+            "ORDER BY GREATEST(similarity(search_text, ?), CASE WHEN search_text ILIKE ? ESCAPE '\\' THEN 1.0 ELSE 0.0 END) DESC, ${table.orderColumn} DESC"
+        }
+        val sql = """
+            SELECT id, payload::text
+            FROM ${table.tableName}
+            $whereSql
+            $orderSql
+            LIMIT ?
+        """.trimIndent()
+
+        val orderParams = if (request.query.isBlank()) {
+            emptyList()
+        } else {
+            listOf(request.query.sqlSearchText(), request.query.sqlLikePattern())
+        }
+        val params = conditions.flatMap { it.params } + orderParams + request.sqlCandidateLimit()
+        val searchPayloads = prepareStatement(sql).use { statement ->
+            params.forEachIndexed { index, value -> statement.setPostgresValue(index + 1, value) }
+            statement.executeQuery().use { resultSet ->
+                buildList {
+                    while (resultSet.next()) {
+                        add(MemorySearchPayload(resultSet.getString(1), resultSet.getString(2)))
+                    }
+                }
+            }
+        }
+        val loadedIds = searchPayloads.mapTo(mutableSetOf()) { it.id }
+        val missingVectorIds = vectorIds.filterNot { it in loadedIds }
+        if (missingVectorIds.isEmpty()) return searchPayloads
+
+        return (searchPayloads + selectSearchPayloadsByIds(table, missingVectorIds))
+            .distinctBy { it.id }
+    }
+
+    private fun Connection.selectEntitiesForSearch(
+        explicitEntities: List<MemoryEntity>,
+        claims: List<MemoryClaim>,
+        notes: List<MemoryNote>,
+        tasks: List<MemoryTask>,
+        profiles: List<MemoryProfile>,
+        episodes: List<MemoryEpisode>,
+        filterEntityIds: Set<MemoryEntity.Id>,
+    ): Map<MemoryEntity.Id, MemoryEntity> {
+        val explicitById = explicitEntities.associateBy { it.id }
+        val entityIds = buildSet {
+            addAll(explicitById.keys)
+            addAll(filterEntityIds)
+            claims.forEach {
+                add(it.subjectEntityId)
+                it.objectEntityId?.let(::add)
+            }
+            notes.forEach {
+                it.anchorEntityId?.let(::add)
+                it.entityRefs.mapTo(this) { ref -> ref.entityId }
+            }
+            tasks.forEach {
+                it.ownerEntityId?.let(::add)
+                it.assigneeEntityId?.let(::add)
+                addAll(it.relatedEntityIds)
+            }
+            profiles.mapTo(this) { it.ownerEntityId }
+            episodes.mapNotNullTo(this) { it.ownerEntityId }
+        }
+        val missingIds = entityIds
+            .filterNot { it in explicitById }
+            .map { it.value }
+        val loadedById = if (missingIds.isEmpty()) {
+            emptyMap()
+        } else {
+            selectPayloadsByIds("memory_entities", missingIds)
+                .map { json.decodeFromString<MemoryEntity>(it) }
+                .associateBy { it.id }
+        }
+        return explicitById + loadedById
+    }
+
     private fun Connection.upsertJson(
         tableName: String,
         id: String,
@@ -660,6 +837,21 @@ class PostgresMemoryStore(
         }
     }
 
+    private fun Connection.selectSearchPayloadsByIds(table: MemorySearchTable, ids: List<String>): List<MemorySearchPayload> {
+        if (ids.isEmpty()) return emptyList()
+        val placeholders = ids.joinToString(",") { "?" }
+        return prepareStatement("SELECT id, payload::text FROM ${table.tableName} WHERE id IN ($placeholders)").use { statement ->
+            ids.forEachIndexed { index, id -> statement.setString(index + 1, id) }
+            statement.executeQuery().use { resultSet ->
+                buildList {
+                    while (resultSet.next()) {
+                        add(MemorySearchPayload(resultSet.getString(1), resultSet.getString(2)))
+                    }
+                }
+            }
+        }
+    }
+
     private fun Connection.selectPayloads(tableName: String, namespace: MemoryNamespace?): List<String> {
         val sql = if (namespace == null) {
             "SELECT payload::text FROM $tableName"
@@ -677,7 +869,275 @@ class PostgresMemoryStore(
             }
         }
     }
+
+    private fun Connection.selectPayloadsByEvidenceSourceIds(
+        tableName: String,
+        namespace: MemoryNamespace,
+        sourceIds: Set<MemorySource.Id>,
+    ): List<String> {
+        if (sourceIds.isEmpty()) return emptyList()
+        val sql = """
+            SELECT payload::text
+            FROM $tableName
+            WHERE namespace = ?
+              AND evidence_source_ids && ?::text[]
+        """.trimIndent()
+        return prepareStatement(sql).use { statement ->
+            statement.setString(1, namespace.value)
+            statement.setArray(2, createArrayOf("text", sourceIds.map { it.value }.toTypedArray()))
+            statement.executeQuery().use { resultSet ->
+                buildList {
+                    while (resultSet.next()) {
+                        add(resultSet.getString(1))
+                    }
+                }
+            }
+        }
+    }
+
+    private fun Connection.selectActiveReplacementClaims(
+        namespace: MemoryNamespace,
+        replacedClaimIds: Set<String>,
+        activeClaimIdsByRetraction: Set<String>,
+    ): List<MemoryClaim> {
+        if (replacedClaimIds.isEmpty() && activeClaimIdsByRetraction.isEmpty()) return emptyList()
+        val conditions = buildList {
+            if (replacedClaimIds.isNotEmpty()) add(inSqlCondition("supersedes_claim_id", replacedClaimIds.toList()))
+            if (activeClaimIdsByRetraction.isNotEmpty()) add(idsSqlCondition(activeClaimIdsByRetraction.toList()))
+        }.joinWithOr()
+        val sql = """
+            SELECT payload::text
+            FROM memory_claims
+            WHERE namespace = ?
+              AND status = ?
+              AND (${conditions.sql})
+        """.trimIndent()
+        return prepareStatement(sql).use { statement ->
+            statement.setString(1, namespace.value)
+            statement.setString(2, MemoryClaim.Status.ACTIVE.name)
+            conditions.params.forEachIndexed { index, value -> statement.setPostgresValue(index + 3, value) }
+            statement.executeQuery().use { resultSet ->
+                buildList {
+                    while (resultSet.next()) {
+                        add(json.decodeFromString<MemoryClaim>(resultSet.getString(1)))
+                    }
+                }
+            }
+        }
+    }
+
+    private fun Connection.selectActiveReplacementNotes(
+        namespace: MemoryNamespace,
+        replacedNoteIds: Set<String>,
+    ): List<MemoryNote> {
+        if (replacedNoteIds.isEmpty()) return emptyList()
+        val condition = inSqlCondition("supersedes_note_id", replacedNoteIds.toList())
+        val sql = """
+            SELECT payload::text
+            FROM memory_notes
+            WHERE namespace = ?
+              AND status = ?
+              AND (${condition.sql})
+        """.trimIndent()
+        return prepareStatement(sql).use { statement ->
+            statement.setString(1, namespace.value)
+            statement.setString(2, MemoryNote.Status.ACTIVE.name)
+            condition.params.forEachIndexed { index, value -> statement.setPostgresValue(index + 3, value) }
+            statement.executeQuery().use { resultSet ->
+                buildList {
+                    while (resultSet.next()) {
+                        add(json.decodeFromString<MemoryNote>(resultSet.getString(1)))
+                    }
+                }
+            }
+        }
+    }
 }
+
+private data class MemorySearchPayload(
+    val id: String,
+    val payload: String,
+)
+
+private data class MemorySearchPayloads(
+    val sources: List<MemorySearchPayload>,
+    val runs: List<MemorySearchPayload>,
+    val entities: List<MemorySearchPayload>,
+    val claims: List<MemorySearchPayload>,
+    val notes: List<MemorySearchPayload>,
+    val tasks: List<MemorySearchPayload>,
+    val profiles: List<MemorySearchPayload>,
+    val episodes: List<MemorySearchPayload>,
+) {
+    fun countsForLog(): String =
+        "sources=${sources.size},runs=${runs.size},entities=${entities.size},claims=${claims.size},notes=${notes.size},tasks=${tasks.size},profiles=${profiles.size},episodes=${episodes.size}"
+}
+
+private fun MemoryStore.SearchHit.toPostgresMemoryStoreItemRef(): MemoryItemRef =
+    when (this) {
+        is MemoryStore.SearchHit.SourceHit -> MemoryItemRef(MemoryItemRef.Type.SOURCE, source.id.value)
+        is MemoryStore.SearchHit.EntityHit -> MemoryItemRef(MemoryItemRef.Type.ENTITY, entity.id.value)
+        is MemoryStore.SearchHit.ClaimHit -> MemoryItemRef(MemoryItemRef.Type.CLAIM, claim.id.value)
+        is MemoryStore.SearchHit.NoteHit -> MemoryItemRef(MemoryItemRef.Type.NOTE, note.id.value)
+        is MemoryStore.SearchHit.TaskHit -> MemoryItemRef(MemoryItemRef.Type.TASK, task.id.value)
+        is MemoryStore.SearchHit.ProfileHit -> MemoryItemRef(MemoryItemRef.Type.PROFILE, profile.id.value)
+        is MemoryStore.SearchHit.EpisodeHit -> MemoryItemRef(MemoryItemRef.Type.EPISODE, episode.id.value)
+        is MemoryStore.SearchHit.RunHit -> MemoryItemRef(MemoryItemRef.Type.RUN, run.id.value)
+    }
+
+private enum class MemorySearchTable(
+    val itemRefType: MemoryItemRef.Type,
+    val searchScope: MemoryStore.SearchScope,
+    val tableName: String,
+    val orderColumn: String,
+) {
+    SOURCE(MemoryItemRef.Type.SOURCE, MemoryStore.SearchScope.SOURCES, "memory_sources", "created_at"),
+    RUN(MemoryItemRef.Type.RUN, MemoryStore.SearchScope.RUNS, "memory_runs", "created_at"),
+    ENTITY(MemoryItemRef.Type.ENTITY, MemoryStore.SearchScope.ENTITIES, "memory_entities", "updated_at"),
+    CLAIM(MemoryItemRef.Type.CLAIM, MemoryStore.SearchScope.CLAIMS, "memory_claims", "updated_at"),
+    NOTE(MemoryItemRef.Type.NOTE, MemoryStore.SearchScope.NOTES, "memory_notes", "updated_at"),
+    TASK(MemoryItemRef.Type.TASK, MemoryStore.SearchScope.TASKS, "memory_tasks", "updated_at"),
+    PROFILE(MemoryItemRef.Type.PROFILE, MemoryStore.SearchScope.PROFILES, "memory_profiles", "updated_at"),
+    EPISODE(MemoryItemRef.Type.EPISODE, MemoryStore.SearchScope.EPISODES, "memory_episodes", "updated_at"),
+}
+
+private data class SearchSqlCondition(
+    val sql: String,
+    val params: List<Any?> = emptyList(),
+)
+
+private fun MemorySearchTable.strictFilterConditions(request: MemoryStore.SearchRequest): List<SearchSqlCondition> =
+    buildList {
+        when (this@strictFilterConditions) {
+            MemorySearchTable.CLAIM -> {
+                if (request.filters.claimStatuses.isNotEmpty()) {
+                    add(inSqlCondition("status", request.filters.claimStatuses.map { it.name }))
+                }
+                if (request.filters.claimPredicates.isNotEmpty()) {
+                    add(inSqlCondition("predicate", request.filters.claimPredicates.toList()))
+                }
+            }
+
+            MemorySearchTable.NOTE -> {
+                if (request.filters.noteStatuses.isNotEmpty()) {
+                    add(inSqlCondition("status", request.filters.noteStatuses.map { it.name }))
+                }
+                if (request.filters.noteTypes.isNotEmpty()) {
+                    add(inSqlCondition("note_type", request.filters.noteTypes.map { it.name }))
+                }
+            }
+
+            MemorySearchTable.TASK -> {
+                if (request.filters.taskStatuses.isNotEmpty()) {
+                    add(inSqlCondition("status", request.filters.taskStatuses.map { it.name }))
+                }
+            }
+
+            MemorySearchTable.SOURCE,
+            MemorySearchTable.RUN,
+            MemorySearchTable.ENTITY,
+            MemorySearchTable.PROFILE,
+            MemorySearchTable.EPISODE,
+            -> Unit
+        }
+    }
+
+private fun MemorySearchTable.entityCandidateCondition(entityIds: Set<MemoryEntity.Id>): SearchSqlCondition? {
+    if (entityIds.isEmpty()) return null
+    val ids = entityIds.map { it.value }
+    return when (this) {
+        MemorySearchTable.ENTITY -> idsSqlCondition(ids)
+        MemorySearchTable.CLAIM -> {
+            val placeholders = ids.joinToString(",") { "?" }
+            SearchSqlCondition(
+                sql = "subject_entity_id IN ($placeholders) OR object_entity_id IN ($placeholders)",
+                params = ids + ids,
+            )
+        }
+
+        MemorySearchTable.NOTE -> arrayOverlapSqlCondition("entity_ids", ids)
+        MemorySearchTable.TASK -> arrayOverlapSqlCondition("entity_ids", ids)
+
+        MemorySearchTable.PROFILE -> inSqlCondition("owner_entity_id", ids)
+        MemorySearchTable.EPISODE -> inSqlCondition("owner_entity_id", ids)
+        MemorySearchTable.SOURCE,
+        MemorySearchTable.RUN,
+        -> null
+    }
+}
+
+private fun inSqlCondition(
+    columnName: String,
+    values: List<String>,
+): SearchSqlCondition {
+    require(values.isNotEmpty()) { "SQL IN condition must have at least one value" }
+    val placeholders = values.joinToString(",") { "?" }
+    return SearchSqlCondition("$columnName IN ($placeholders)", values)
+}
+
+private fun idsSqlCondition(ids: List<String>): SearchSqlCondition = inSqlCondition("id", ids)
+
+private fun arrayOverlapSqlCondition(
+    columnName: String,
+    values: List<String>,
+): SearchSqlCondition {
+    require(values.isNotEmpty()) { "SQL array overlap condition must have at least one value" }
+    return SearchSqlCondition("$columnName && ?::text[]", listOf(values))
+}
+
+private fun SearchSqlCondition.joinWithOr(other: SearchSqlCondition): SearchSqlCondition =
+    SearchSqlCondition(
+        sql = "$sql OR ${other.sql}",
+        params = params + other.params,
+    )
+
+private fun List<SearchSqlCondition>.joinWithOr(): SearchSqlCondition {
+    require(isNotEmpty()) { "Cannot join empty SQL condition list" }
+    return reduce { left, right -> left.joinWithOr(right) }
+}
+
+private fun String.searchTextSqlCondition(): SearchSqlCondition {
+    val queryText = sqlSearchText()
+    val tokenPatterns = sqlSearchTokens()
+        .take(8)
+        .map { it.sqlLikePattern() }
+    val parts = mutableListOf("search_text % ?", "search_text ILIKE ? ESCAPE '\\'")
+    val params = mutableListOf<Any?>(queryText, sqlLikePattern())
+    tokenPatterns.forEach {
+        parts += "search_text ILIKE ? ESCAPE '\\'"
+        params += it
+    }
+    return SearchSqlCondition(parts.joinToString(" OR "), params)
+}
+
+private fun String.sqlSearchText(): String =
+    trim()
+        .replace(Regex("\\s+"), " ")
+        .take(240)
+
+private fun String.sqlSearchTokens(): List<String> =
+    lowercase()
+        .replace(Regex("[^\\p{L}\\p{N}_]+"), " ")
+        .split(Regex("\\s+"))
+        .map { it.trim() }
+        .filter { it.length >= 3 }
+        .distinct()
+
+private fun String.sqlLikePattern(): String = "%${escapeSqlLike()}%"
+
+private fun String.escapeSqlLike(): String =
+    replace("\\", "\\\\")
+        .replace("%", "\\%")
+        .replace("_", "\\_")
+
+private fun MemoryStore.SearchRequest.sqlCandidateLimit(): Int =
+    when {
+        query.isBlank() -> (limit * 4).coerceIn(20, 200)
+        else -> (limit * 25).coerceIn(80, 1_000)
+    }
+
+private fun Set<MemoryStore.SearchScope>.includes(scope: MemoryStore.SearchScope): Boolean =
+    contains(MemoryStore.SearchScope.ALL) || contains(scope)
 
 private fun PreparedStatement.setNullableString(index: Int, value: String?) {
     if (value == null) {
@@ -695,6 +1155,7 @@ private fun PreparedStatement.setPostgresValue(index: Int, value: Any?) {
         is Int -> setInt(index, value)
         is Long -> setLong(index, value)
         is Instant -> setTimestamp(index, Timestamp.from(java.time.Instant.parse(value.toString())))
+        is List<*> -> setArray(index, connection.createArrayOf("text", value.map { it.toString() }.toTypedArray()))
         else -> setObject(index, value)
     }
 }
@@ -708,10 +1169,141 @@ private fun MemorySource.conversationIdValue(): String? =
         -> null
     }
 
+private fun MemorySource.searchTextForStore(): String =
+    searchProjection(searchText.orEmpty(), contentText.take(SOURCE_CONTENT_SEARCH_PREVIEW_CHARS))
+
+private fun MemoryRun.searchTextForStore(): String =
+    searchProjection(runType.name, status.name, summary)
+
+private fun MemoryEntity.searchTextForStore(): String =
+    searchProjection(
+        entityType.name,
+        observedTypes.joinToString(" ") { it.name },
+        canonicalName,
+        normalizedName,
+        summary.orEmpty(),
+        aliases.joinToString(" ") { "${it.text} ${it.normalizedText}" },
+        attributes.toString(),
+    )
+
+private fun MemoryClaim.searchTextForStore(): String =
+    searchProjection(
+        normalizedText,
+        contextText.orEmpty(),
+        predicate,
+        predicateFamily.orEmpty(),
+        objectValue?.toString().orEmpty(),
+        scope.text,
+        qualifiers.toString(),
+    )
+
+private fun MemoryClaim.evidenceSourceIdValues(): List<String> =
+    evidenceRefs.map { it.sourceId.value }.distinct()
+
+private fun MemoryNote.searchTextForStore(): String =
+    searchProjection(
+        noteType.name,
+        title,
+        summary,
+        scope.text,
+        keywords.joinToString(" "),
+        tags.joinToString(" "),
+        candidateClaimHints.toString(),
+        metadata.toString(),
+    )
+
+private fun MemoryNote.evidenceSourceIdValues(): List<String> =
+    evidenceRefs.map { it.sourceId.value }.distinct()
+
+private fun MemoryNote.linkedEntityIdValues(): List<String> =
+    (listOfNotNull(anchorEntityId) + entityRefs.map { it.entityId })
+        .map { it.value }
+        .distinct()
+
+private fun MemoryTask.searchTextForStore(): String =
+    searchProjection(
+        status.name,
+        priority.name,
+        title,
+        description.orEmpty(),
+        scope.text,
+        acceptanceCriteria.joinToString(" "),
+        blockers.joinToString(" "),
+    )
+
+private fun MemoryTask.evidenceSourceIdValues(): List<String> =
+    evidenceRefs.map { it.sourceId.value }.distinct()
+
+private fun MemoryTask.linkedEntityIdValues(): List<String> =
+    (listOfNotNull(ownerEntityId, assigneeEntityId) + relatedEntityIds)
+        .map { it.value }
+        .distinct()
+
+private fun MemoryProfile.searchTextForStore(): String =
+    searchProjection(profileText, profileJson.toString())
+
+private fun MemoryEpisode.searchTextForStore(): String =
+    searchProjection(situation, action, result, lesson, tags.joinToString(" "))
+
+private fun MemoryEpisode.evidenceSourceIdValues(): List<String> =
+    evidenceRefs.map { it.sourceId.value }.distinct()
+
+private fun searchProjection(vararg parts: String): String =
+    parts.asSequence()
+        .map { it.trim() }
+        .filter { it.isNotBlank() }
+        .joinToString("\n")
+        .take(SEARCH_PROJECTION_MAX_CHARS)
+
 private fun MemoryNote.linkedEntities(entityById: Map<MemoryEntity.Id, MemoryEntity>): List<MemoryEntity> =
     (listOfNotNull(anchorEntityId) + entityRefs.map { it.entityId })
         .distinct()
         .mapNotNull(entityById::get)
+
+private fun MemorySource.matchesSearchRequest(request: MemoryStore.SearchRequest): Boolean =
+    request.includeArchived || (deletedAt == null && usagePolicy.allowRecall)
+
+private fun MemoryEntity.matchesSearchRequest(request: MemoryStore.SearchRequest): Boolean =
+    request.filters.entityIds.isEmpty() || id in request.filters.entityIds
+
+private fun MemoryClaim.matchesSearchRequest(
+    request: MemoryStore.SearchRequest,
+    entityById: Map<MemoryEntity.Id, MemoryEntity>,
+): Boolean =
+    (request.includeArchived || archivedAt == null) &&
+        (request.filters.claimStatuses.isEmpty() || status in request.filters.claimStatuses) &&
+        (request.filters.claimPredicates.isEmpty() || predicate in request.filters.claimPredicates) &&
+        (request.filters.scopes.isEmpty() || scope in request.filters.scopes) &&
+        matchesEntityFilter(request.filters.entityIds, entityById)
+
+private fun MemoryNote.matchesSearchRequest(request: MemoryStore.SearchRequest): Boolean =
+    (request.includeArchived || archivedAt == null) &&
+        (request.filters.noteStatuses.isEmpty() || status in request.filters.noteStatuses) &&
+        (request.filters.noteTypes.isEmpty() || noteType in request.filters.noteTypes) &&
+        (request.filters.scopes.isEmpty() || scope in request.filters.scopes) &&
+        (
+            request.filters.entityIds.isEmpty() ||
+                anchorEntityId in request.filters.entityIds ||
+                entityRefs.any { it.entityId in request.filters.entityIds }
+            )
+
+private fun MemoryTask.matchesSearchRequest(request: MemoryStore.SearchRequest): Boolean =
+    (request.includeArchived || archivedAt == null) &&
+        (request.filters.taskStatuses.isEmpty() || status in request.filters.taskStatuses) &&
+        (request.filters.scopes.isEmpty() || scope in request.filters.scopes) &&
+        (
+            request.filters.entityIds.isEmpty() ||
+                ownerEntityId in request.filters.entityIds ||
+                assigneeEntityId in request.filters.entityIds ||
+                relatedEntityIds.any { it in request.filters.entityIds }
+            )
+
+private fun MemoryProfile.matchesSearchRequest(request: MemoryStore.SearchRequest): Boolean =
+    request.filters.entityIds.isEmpty() || ownerEntityId in request.filters.entityIds
+
+private fun MemoryEpisode.matchesSearchRequest(request: MemoryStore.SearchRequest): Boolean =
+    (request.includeArchived || archivedAt == null) &&
+        (request.filters.entityIds.isEmpty() || ownerEntityId in request.filters.entityIds)
 
 private fun MemoryClaim.matchesEntityFilter(
     entityIds: Set<MemoryEntity.Id>,
@@ -832,7 +1424,7 @@ private fun MemoryNamespaceSnapshot.filterNamespace(namespace: MemoryNamespace):
     )
 
 private fun Map<MemoryItemRef, Double>.boost(ref: MemoryItemRef): Double =
-    (this[ref] ?: 0.0) * 1.25
+    MemorySearchScorer.vectorBoost(this[ref])
 
 private fun Set<MemoryStore.SearchScope>.toEmbeddableMemoryTypes(): Set<MemoryItemRef.Type> {
     val requestedScopes = this

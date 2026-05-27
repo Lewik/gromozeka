@@ -11,6 +11,30 @@ import kotlinx.datetime.Instant
 class MemorySearchScorerTest {
 
     @Test
+    fun hybridScoreLetsVectorOnlyCandidateCompete() {
+        val score = MemorySearchScorer.hybridScore(
+            lexicalOrTypedScore = 0.0,
+            vectorSimilarity = 0.82,
+        )
+
+        assertTrue(score > 1.0, "score=$score")
+    }
+
+    @Test
+    fun hybridScoreAddsVectorSignalWithoutReplacingTypedScore() {
+        val lexicalOnly = MemorySearchScorer.hybridScore(
+            lexicalOrTypedScore = 0.7,
+            vectorSimilarity = null,
+        )
+        val hybrid = MemorySearchScorer.hybridScore(
+            lexicalOrTypedScore = 0.7,
+            vectorSimilarity = 0.8,
+        )
+
+        assertTrue(hybrid > lexicalOnly, "lexicalOnly=$lexicalOnly hybrid=$hybrid")
+    }
+
+    @Test
     fun episodeScorePrefersTargetLessonOverSimilarButDifferentEpisode() {
         val target = episode(
             id = "target",

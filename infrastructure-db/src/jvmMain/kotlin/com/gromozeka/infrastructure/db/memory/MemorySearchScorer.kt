@@ -10,6 +10,15 @@ import com.gromozeka.domain.model.memory.MemorySource
 import com.gromozeka.domain.model.memory.MemoryTask
 
 internal object MemorySearchScorer {
+    fun hybridScore(
+        lexicalOrTypedScore: Double,
+        vectorSimilarity: Double?,
+    ): Double =
+        lexicalOrTypedScore + vectorBoost(vectorSimilarity)
+
+    fun vectorBoost(vectorSimilarity: Double?): Double =
+        (vectorSimilarity?.coerceIn(0.0, 1.0) ?: 0.0) * 1.25
+
     fun sourceScore(
         query: String,
         source: MemorySource,

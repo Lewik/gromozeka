@@ -163,6 +163,52 @@ class InMemoryMemoryStore(
         return sources.filter { it.id in ids }
     }
 
+    override suspend fun findTypedMemoryByEvidenceSourceIds(
+        namespace: MemoryNamespace,
+        sourceIds: Set<MemorySource.Id>,
+    ): List<MemoryStore.SearchHit> {
+        if (sourceIds.isEmpty()) return emptyList()
+        val directClaims = claims.filter {
+            it.namespace == namespace && it.evidenceRefs.any { ref -> ref.sourceId in sourceIds }
+        }
+        val replacedClaimIds = directClaims
+            .filter { it.status != MemoryClaim.Status.ACTIVE }
+            .mapTo(mutableSetOf()) { it.id }
+        val activeClaimIdsByRetraction = directClaims
+            .mapNotNullTo(mutableSetOf()) { it.retractedByClaimId }
+        val replacementClaims = claims.filter {
+            it.namespace == namespace &&
+                it.status == MemoryClaim.Status.ACTIVE &&
+                (it.supersedesClaimId in replacedClaimIds || it.id in activeClaimIdsByRetraction)
+        }
+        val directNotes = notes.filter {
+            it.namespace == namespace && it.evidenceRefs.any { ref -> ref.sourceId in sourceIds }
+        }
+        val replacedNoteIds = directNotes
+            .filter { it.status != MemoryNote.Status.ACTIVE }
+            .mapTo(mutableSetOf()) { it.id }
+        val replacementNotes = notes.filter {
+            it.namespace == namespace &&
+                it.status == MemoryNote.Status.ACTIVE &&
+                it.supersedesNoteId in replacedNoteIds
+        }
+
+        return buildList {
+            (directClaims + replacementClaims)
+                .distinctBy { it.id }
+                .mapTo(this) { MemoryStore.SearchHit.ClaimHit(it, score = 1.0) }
+            (directNotes + replacementNotes)
+                .distinctBy { it.id }
+                .mapTo(this) { MemoryStore.SearchHit.NoteHit(it, score = 1.0) }
+            tasks
+                .filter { it.namespace == namespace && it.archivedAt == null && it.evidenceRefs.any { ref -> ref.sourceId in sourceIds } }
+                .mapTo(this) { MemoryStore.SearchHit.TaskHit(it, score = 1.0) }
+            episodes
+                .filter { it.namespace == namespace && it.archivedAt == null && it.evidenceRefs.any { ref -> ref.sourceId in sourceIds } }
+                .mapTo(this) { MemoryStore.SearchHit.EpisodeHit(it, score = 1.0) }
+        }.distinctBy { it.toMemoryStoreItemRef() }
+    }
+
     override suspend fun findRunById(runId: MemoryRun.Id): MemoryRun? =
         runs.firstOrNull { it.id == runId }
 
@@ -239,3 +285,15 @@ class InMemoryMemoryStore(
         addAll(items)
     }
 }
+
+private fun MemoryStore.SearchHit.toMemoryStoreItemRef(): MemoryItemRef =
+    when (this) {
+        is MemoryStore.SearchHit.SourceHit -> MemoryItemRef(MemoryItemRef.Type.SOURCE, source.id.value)
+        is MemoryStore.SearchHit.EntityHit -> MemoryItemRef(MemoryItemRef.Type.ENTITY, entity.id.value)
+        is MemoryStore.SearchHit.ClaimHit -> MemoryItemRef(MemoryItemRef.Type.CLAIM, claim.id.value)
+        is MemoryStore.SearchHit.NoteHit -> MemoryItemRef(MemoryItemRef.Type.NOTE, note.id.value)
+        is MemoryStore.SearchHit.TaskHit -> MemoryItemRef(MemoryItemRef.Type.TASK, task.id.value)
+        is MemoryStore.SearchHit.ProfileHit -> MemoryItemRef(MemoryItemRef.Type.PROFILE, profile.id.value)
+        is MemoryStore.SearchHit.EpisodeHit -> MemoryItemRef(MemoryItemRef.Type.EPISODE, episode.id.value)
+        is MemoryStore.SearchHit.RunHit -> MemoryItemRef(MemoryItemRef.Type.RUN, run.id.value)
+    }
