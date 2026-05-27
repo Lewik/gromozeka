@@ -15,6 +15,10 @@ import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.model.ai.AiRuntimeResponse
 import com.gromozeka.domain.model.ai.AiRuntimeSelection
 import com.gromozeka.domain.model.ai.AiUsage
+import com.gromozeka.domain.service.AiEmbeddingProvider
+import com.gromozeka.domain.service.AiEmbeddingRequest
+import com.gromozeka.domain.service.AiEmbeddingResponse
+import com.gromozeka.domain.service.AiEmbeddingVector
 import com.gromozeka.domain.service.AiRuntime
 import com.gromozeka.infrastructure.ai.runtime.AiRuntimeBackend
 import kotlinx.coroutines.flow.Flow
@@ -97,6 +101,45 @@ class AiRuntimeCassetteProxyTest {
                 root.resolve("OPENAI")
                     .resolve("fake_model_1")
                     .resolve("call")
+                    .listDirectoryEntries("*.json")
+                    .size,
+            )
+        } finally {
+            root.toFile().deleteRecursively()
+        }
+    }
+
+    @Test
+    fun embeddingRecordMissingWritesCassetteAndReplaysByCanonicalRequest() = runBlocking {
+        val root = Files.createTempDirectory("embedding-cassettes-test-")
+        try {
+            val delegate = CountingEmbeddingProvider()
+            val provider = CassetteAiEmbeddingProvider(
+                delegate = delegate,
+                userProfile = testUserProfile(listOf("text-embedding-3-small")),
+                settings = AiRuntimeCassetteSettings(
+                    mode = AiRuntimeCassetteMode.RECORD_MISSING,
+                    rootDirectory = root,
+                ),
+            )
+            val request = AiEmbeddingRequest(
+                selection = runtimeSelection("text-embedding-3-small"),
+                inputs = listOf("memory embedding cassette input"),
+                projectPath = "/tmp/gromozeka-e2e-111/projects/case-a",
+            )
+
+            val first = provider.embed(request)
+            val second = provider.embed(
+                request.copy(projectPath = "/tmp/gromozeka-e2e-222/projects/case-a")
+            )
+
+            assertEquals(1, delegate.callCount)
+            assertEquals(first.vectors.single().values, second.vectors.single().values)
+            assertEquals(
+                1,
+                root.resolve("OPENAI")
+                    .resolve("text-embedding-3-small")
+                    .resolve("embed")
                     .listDirectoryEntries("*.json")
                     .size,
             )
@@ -437,6 +480,22 @@ class AiRuntimeCassetteProxyTest {
                     )
                 ).asFlow()
             }
+        }
+    }
+
+    private class CountingEmbeddingProvider : AiEmbeddingProvider {
+        var callCount: Int = 0
+
+        override suspend fun embed(request: AiEmbeddingRequest): AiEmbeddingResponse {
+            callCount += 1
+            return AiEmbeddingResponse(
+                modelId = "text-embedding-3-small",
+                dimensions = 3,
+                vectors = request.inputs.mapIndexed { index, _ ->
+                    AiEmbeddingVector(index = index, values = listOf(1.0f, callCount.toFloat(), index.toFloat()))
+                },
+                promptTokens = request.inputs.size,
+            )
         }
     }
 

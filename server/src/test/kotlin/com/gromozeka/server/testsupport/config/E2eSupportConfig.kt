@@ -1,13 +1,16 @@
 package com.gromozeka.server.testsupport.config
 
 import com.gromozeka.domain.service.AiRuntimeProvider
+import com.gromozeka.domain.service.AiEmbeddingProvider
 import com.gromozeka.domain.service.AudioController
 import com.gromozeka.domain.service.SettingsProvider
+import com.gromozeka.infrastructure.ai.openai.OpenAiSdkEmbeddingProvider
 import com.gromozeka.infrastructure.ai.platform.GlobalHotkeyController
 import com.gromozeka.infrastructure.ai.platform.NoOpGlobalHotkeyController
 import com.gromozeka.infrastructure.ai.platform.ScreenCaptureController
 import com.gromozeka.infrastructure.ai.platform.SystemAudioController
 import com.gromozeka.infrastructure.ai.runtime.AiRuntimeBackend
+import com.gromozeka.server.testsupport.llm.CassetteAiEmbeddingProvider
 import com.gromozeka.server.testsupport.llm.AiRuntimeCassetteSettings
 import com.gromozeka.server.testsupport.llm.CassetteAiRuntimeProvider
 import org.springframework.boot.test.context.TestConfiguration
@@ -27,6 +30,19 @@ class E2eSupportConfig {
     ): AiRuntimeProvider {
         return CassetteAiRuntimeProvider(
             backends = backends,
+            settingsProvider = settingsProvider,
+            settings = AiRuntimeCassetteSettings.fromSystemProperties(),
+        )
+    }
+
+    @Bean
+    @Primary
+    fun aiEmbeddingProvider(
+        delegate: OpenAiSdkEmbeddingProvider,
+        settingsProvider: SettingsProvider,
+    ): AiEmbeddingProvider {
+        return CassetteAiEmbeddingProvider(
+            delegate = delegate,
             settingsProvider = settingsProvider,
             settings = AiRuntimeCassetteSettings.fromSystemProperties(),
         )

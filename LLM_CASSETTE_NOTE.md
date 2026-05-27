@@ -6,17 +6,19 @@ LLM cassettes: record/replay слой для тестов, которые реа
 
 ## Где стоит слой
 
-Слой стоит не на уровне HTTP и не на уровне prompt text, а на уровне доменного AI runtime:
+Слой стоит не на уровне HTTP и не на уровне prompt text, а на уровне доменных AI contracts:
 
 - `AiRuntimeProvider` оборачивается в test profile `e2e`.
 - Любой `AiRuntime.call(...)` и `AiRuntime.stream(...)` проходит через cassette proxy.
+- `AiEmbeddingProvider.embed(...)` в test profile `e2e` тоже проходит через cassette proxy, чтобы memory embeddings не уходили live при replay.
 - Ключ cassette строится из canonical JSON полного `AiRuntimeRequest`, provider, model и operation.
 - Поэтому в fingerprint попадают не только текстовые сообщения, но и structured response schema, tools, options, instructions и прочие runtime-параметры.
 
 Главные файлы:
 
-- `presentation/src/jvmTest/kotlin/com/gromozeka/presentation/testsupport/llm/AiRuntimeCassetteProxy.kt`
-- `presentation/src/jvmTest/resources/llm-cassettes/`
+- `server/src/test/kotlin/com/gromozeka/server/testsupport/llm/AiRuntimeCassetteProxy.kt`
+- `server/src/test/kotlin/com/gromozeka/server/testsupport/llm/AiEmbeddingCassetteProxy.kt`
+- `server/src/test/resources/llm-cassettes/`
 
 ## Режимы
 
