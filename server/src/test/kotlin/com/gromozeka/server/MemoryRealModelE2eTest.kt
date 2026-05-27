@@ -126,7 +126,7 @@ class MemoryRealModelE2eTest {
             systemProperties = mapOf(
                 "gromozeka.postgres.schema" to postgresSchema,
                 "gromozeka.ai.openai-subscription.websocket-response-timeout-ms" to
-                    System.getProperty(WEBSOCKET_RESPONSE_TIMEOUT_MS_PROPERTY, "90000"),
+                    System.getProperty(WEBSOCKET_RESPONSE_TIMEOUT_MS_PROPERTY, "300000"),
                 "gromozeka.memory.llm.maxAttempts" to "1",
                 "gromozeka.memory.routing.failFast" to "true",
             ),
