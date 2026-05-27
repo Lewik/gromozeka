@@ -8,6 +8,7 @@ import com.gromozeka.domain.model.memory.MemoryEntityMaintenancePlanner
 import com.gromozeka.domain.model.memory.MemoryEpisode
 import com.gromozeka.domain.model.memory.MemoryItemRef
 import com.gromozeka.domain.model.memory.MemoryMaintenanceRequest
+import com.gromozeka.domain.model.memory.MemoryNamespace
 import com.gromozeka.domain.model.memory.MemoryNamespaceSnapshot
 import com.gromozeka.domain.model.memory.MemoryNote
 import com.gromozeka.domain.model.memory.MemoryRun
@@ -42,11 +43,13 @@ class MemoryEntityMaintenancePipeline(
     suspend fun run(request: MemoryMaintenanceRequest): MemoryEntityMaintenancePipelineResult {
         val startedAt = clock.now()
         val snapshot = store.loadNamespaceSnapshot(request.namespace)
-        val candidateGroups = snapshot.detectEntityMaintenanceCandidateGroups()
+        val heuristicGroups = snapshot.detectEntityMaintenanceCandidateGroups()
+        val vectorGroups = findVectorEntityMaintenanceCandidateGroups(request.namespace, snapshot, heuristicGroups)
+        val candidateGroups = (heuristicGroups + vectorGroups).mergeEntityMaintenanceCandidateGroups()
 
         log.info {
             "Memory entity maintenance selected: namespace=${request.namespace.value} conversation=${request.conversationId?.value ?: "none"} " +
-                "snapshot=${snapshot.countsForEntityMaintenanceLog()} groups=${candidateGroups.size} " +
+                "snapshot=${snapshot.countsForEntityMaintenanceLog()} heuristicGroups=${heuristicGroups.size} vectorGroups=${vectorGroups.size} groups=${candidateGroups.size} " +
                 "groupsDetail=${candidateGroups.joinToString("|") { it.entityMaintenanceGroupForLog() }.ifBlank { "none" }}"
         }
 
@@ -92,6 +95,55 @@ class MemoryEntityMaintenancePipeline(
             maintenancePlan = plan,
             memoryBatch = memoryBatch,
         )
+    }
+
+    private suspend fun findVectorEntityMaintenanceCandidateGroups(
+        namespace: MemoryNamespace,
+        snapshot: MemoryNamespaceSnapshot,
+        heuristicGroups: List<MemoryEntityMaintenanceCandidateGroup>,
+    ): List<MemoryEntityMaintenanceCandidateGroup> {
+        val activeEntities = snapshot.entities
+            .filter { it.status == MemoryEntity.Status.ACTIVE }
+            .sortedWith(compareByDescending<MemoryEntity> { it.updatedAt }.thenBy { it.id.value })
+        if (activeEntities.size < 2) return emptyList()
+
+        val heuristicEntityIds = heuristicGroups
+            .flatMapTo(mutableSetOf()) { group -> group.entities.map { it.id } }
+        val activeById = activeEntities.associateBy { it.id }
+        val seedEntities = (activeEntities.filter { it.id !in heuristicEntityIds } + activeEntities.filter { it.id in heuristicEntityIds })
+            .distinctBy { it.id }
+            .take(MAX_ENTITY_VECTOR_SEEDS)
+
+        return seedEntities.mapNotNull { seed ->
+            val query = seed.entityMaintenanceVectorQuery()
+            val embedding = embeddingIndexer.searchEmbedding(query) ?: return@mapNotNull null
+            val candidates = store.search(
+                MemoryStore.SearchRequest(
+                    query = query,
+                    namespace = namespace,
+                    scopes = setOf(MemoryStore.SearchScope.ENTITIES),
+                    embedding = embedding,
+                    limit = MAX_ENTITY_VECTOR_NEIGHBORS,
+                )
+            )
+                .mapNotNull { hit -> (hit as? MemoryStore.SearchHit.EntityHit)?.entity }
+                .mapNotNull { activeById[it.id] }
+                .filter { it.id != seed.id }
+                .filter { it.status == MemoryEntity.Status.ACTIVE }
+                .filter { it.entityType.isEntityMergeCompatibleWith(seed.entityType) }
+                .distinctBy { it.id }
+                .take(MAX_ENTITY_VECTOR_NEIGHBORS)
+
+            if (candidates.isEmpty()) {
+                null
+            } else {
+                MemoryEntityMaintenanceCandidateGroup(
+                    id = "entity-vector-group-${seed.id.value}",
+                    entities = (listOf(seed) + candidates).sortedBy { it.canonicalName.lowercase() },
+                    reason = "embedding-near entity names or descriptions",
+                )
+            }
+        }
     }
 
     private fun materialize(
@@ -512,6 +564,62 @@ private fun MemoryNamespaceSnapshot.detectEntityMaintenanceCandidateGroups(): Li
         .take(MAX_ENTITY_MAINTENANCE_GROUPS)
 }
 
+private fun List<MemoryEntityMaintenanceCandidateGroup>.mergeEntityMaintenanceCandidateGroups(): List<MemoryEntityMaintenanceCandidateGroup> {
+    if (isEmpty()) return emptyList()
+    val entityById = flatMap { it.entities }.associateBy { it.id }
+    val singleEntityGroupIds = filter { it.entities.size == 1 }
+        .mapTo(mutableSetOf()) { it.entities.single().id }
+    val adjacency = entityById.keys.associateWith { mutableSetOf<MemoryEntity.Id>() }.toMutableMap()
+    val reasonByEntityId = mutableMapOf<MemoryEntity.Id, MutableList<String>>()
+
+    forEach { group ->
+        group.entities.forEach { entity ->
+            reasonByEntityId.getOrPut(entity.id) { mutableListOf() }.add(group.reason)
+        }
+        val ids = group.entities.map { it.id }
+        ids.forEachIndexed { index, first ->
+            ids.drop(index + 1).forEach { second ->
+                adjacency.getValue(first).add(second)
+                adjacency.getValue(second).add(first)
+            }
+        }
+    }
+
+    val visited = mutableSetOf<MemoryEntity.Id>()
+    val groups = mutableListOf<MemoryEntityMaintenanceCandidateGroup>()
+    entityById.keys.sortedBy { it.value }.forEach { start ->
+        if (!visited.add(start)) return@forEach
+        val queue = ArrayDeque<MemoryEntity.Id>()
+        val component = mutableListOf<MemoryEntity.Id>()
+        queue += start
+        while (queue.isNotEmpty()) {
+            val current = queue.removeFirst()
+            component += current
+            adjacency[current].orEmpty().forEach { next ->
+                if (visited.add(next)) queue += next
+            }
+        }
+        if (component.size > 1 || component.any { it in singleEntityGroupIds }) {
+            val componentEntities = component.mapNotNull(entityById::get).sortedBy { it.canonicalName.lowercase() }
+            val reason = component
+                .flatMap { reasonByEntityId[it].orEmpty() }
+                .distinct()
+                .take(4)
+                .joinToString("; ")
+                .ifBlank { "near duplicate entities" }
+            groups += MemoryEntityMaintenanceCandidateGroup(
+                id = "entity-maintenance-group-${groups.size + 1}",
+                entities = componentEntities,
+                reason = reason,
+            )
+        }
+    }
+
+    return groups
+        .sortedWith(compareByDescending<MemoryEntityMaintenanceCandidateGroup> { it.entities.size }.thenBy { it.id })
+        .take(MAX_ENTITY_MAINTENANCE_GROUPS)
+}
+
 private fun MemoryNamespaceSnapshot.detectEntitySummaryRefreshCandidateGroups(
     activeEntities: List<MemoryEntity>,
 ): List<MemoryEntityMaintenanceCandidateGroup> {
@@ -579,6 +687,17 @@ private fun MemoryEntity.entityMaintenanceTokens(): Set<String> =
             addAll(alias.normalizedText.entityMaintenanceTokens())
         }
     }
+
+private fun MemoryEntity.entityMaintenanceVectorQuery(): String =
+    buildList {
+        add(canonicalName)
+        if (normalizedName != canonicalName) add(normalizedName)
+        summary?.takeIf { it.isNotBlank() }?.let(::add)
+        aliases.mapTo(this) { it.text }
+    }
+        .distinct()
+        .joinToString("\n")
+        .oneLineForEntityMaintenancePipelineLog(800)
 
 private fun List<MemoryEntity.Alias>.plusAliases(
     texts: List<String>,
@@ -711,6 +830,8 @@ private data class AppliedEntityMaintenanceOp(
 )
 
 private const val MAX_ENTITY_MAINTENANCE_GROUPS = 40
+private const val MAX_ENTITY_VECTOR_SEEDS = 40
+private const val MAX_ENTITY_VECTOR_NEIGHBORS = 8
 
 private val ENTITY_MAINTENANCE_STOP_WORDS = setOf(
     "the",

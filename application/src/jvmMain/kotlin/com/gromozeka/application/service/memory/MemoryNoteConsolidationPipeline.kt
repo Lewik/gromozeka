@@ -48,7 +48,7 @@ class MemoryNoteConsolidationPipeline(
         val startedAt = clock.now()
         val snapshot = store.loadNamespaceSnapshot(request.namespace)
         val selectedNotes = snapshot.selectNotesForConsolidation()
-        val relatedHits = snapshot.relatedHitsForConsolidation(selectedNotes)
+        val relatedHits = relatedHitsForConsolidation(request, snapshot, selectedNotes)
 
         log.info {
             "Memory note consolidation selected: namespace=${request.namespace.value} conversation=${request.conversationId?.value ?: "none"} " +
@@ -131,6 +131,46 @@ class MemoryNoteConsolidationPipeline(
             consolidationResult = consolidation,
             memoryBatch = memoryBatch,
         )
+    }
+
+    private suspend fun relatedHitsForConsolidation(
+        request: MemoryMaintenanceRequest,
+        snapshot: MemoryNamespaceSnapshot,
+        selectedNotes: List<MemoryNote>,
+    ): List<MemoryStore.SearchHit> {
+        val deterministicHits = snapshot.relatedHitsForConsolidation(selectedNotes)
+        val query = selectedNotes.consolidationRelatedSearchQuery()
+        val semanticHits = if (query.isBlank()) {
+            emptyList()
+        } else {
+            val embedding = embeddingIndexer.searchEmbedding(query)
+            if (embedding == null) {
+                emptyList()
+            } else {
+                val selectedNoteIds = selectedNotes.mapTo(mutableSetOf()) { it.id }
+                store.search(
+                    MemoryStore.SearchRequest(
+                        query = query,
+                        namespace = request.namespace,
+                        scopes = setOf(
+                            MemoryStore.SearchScope.CLAIMS,
+                            MemoryStore.SearchScope.NOTES,
+                            MemoryStore.SearchScope.TASKS,
+                            MemoryStore.SearchScope.PROFILES,
+                            MemoryStore.SearchScope.EPISODES,
+                        ),
+                        embedding = embedding,
+                        limit = MAX_CONSOLIDATION_SEMANTIC_RELATED_HITS,
+                    )
+                ).filterNot { hit ->
+                    hit is MemoryStore.SearchHit.NoteHit && hit.note.id in selectedNoteIds
+                }
+            }
+        }
+
+        return (deterministicHits + semanticHits)
+            .distinctBy { "${it.toMaintenancePipelineItemRef().type.name}:${it.toMaintenancePipelineItemRef().id}" }
+            .take(MAX_CONSOLIDATION_RELATED_HITS)
     }
 
     private fun materialize(
@@ -477,6 +517,18 @@ private fun MemoryNamespaceSnapshot.relatedHitsForConsolidation(selectedNotes: L
     }
 }
 
+private fun List<MemoryNote>.consolidationRelatedSearchQuery(): String =
+    joinToString("\n\n") { note ->
+        buildList {
+            add(note.title)
+            add(note.summary)
+            if (note.keywords.isNotEmpty()) add(note.keywords.joinToString(" "))
+            if (note.tags.isNotEmpty()) add(note.tags.joinToString(" "))
+        }
+            .filter { it.isNotBlank() }
+            .joinToString("\n")
+    }.oneLineForMaintenancePipelineLog(2_000)
+
 private fun MemoryNote.applyLifecycle(
     op: MemoryNoteLifecycleOp,
     completedAt: kotlinx.datetime.Instant,
@@ -587,3 +639,6 @@ private fun String.oneLineForMaintenancePipelineLog(maxChars: Int): String {
         .replace(Regex("\\s+"), " ")
     return if (oneLine.length <= maxChars) oneLine else oneLine.take(maxChars) + "...[truncated ${oneLine.length - maxChars} chars]"
 }
+
+private const val MAX_CONSOLIDATION_SEMANTIC_RELATED_HITS = 40
+private const val MAX_CONSOLIDATION_RELATED_HITS = 100

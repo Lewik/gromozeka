@@ -1616,6 +1616,52 @@ class MemoryMaintenancePipelineTest {
     }
 
     @Test
+    fun entityMaintenanceUsesEmbeddingsToFindHiddenDuplicateCandidates() = runBlocking {
+        val first = entity(
+            id = MemoryEntity.Id("entity-mercury-planner"),
+            entityType = MemoryEntity.Type.CONCEPT,
+            canonicalName = "Mercury Planner",
+            normalizedName = "mercury planner",
+            summary = "Concept for planning meetings from short agenda notes.",
+        )
+        val second = entity(
+            id = MemoryEntity.Id("entity-quick-agenda-flow"),
+            entityType = MemoryEntity.Type.CONCEPT,
+            canonicalName = "Quick Agenda Flow",
+            normalizedName = "quick agenda flow",
+            summary = "Concept for planning meetings from short agenda notes.",
+        )
+        val delegate = InMemoryMemoryStore(MemoryNamespaceSnapshot(entities = listOf(first, second)))
+        val store = SearchInterceptingMemoryStore(delegate) { request ->
+            when {
+                request.scopes == setOf(MemoryStore.SearchScope.ENTITIES) && request.query.contains("Mercury Planner") ->
+                    listOf(MemoryStore.SearchHit.EntityHit(second, score = 0.92))
+
+                request.scopes == setOf(MemoryStore.SearchScope.ENTITIES) && request.query.contains("Quick Agenda Flow") ->
+                    listOf(MemoryStore.SearchHit.EntityHit(first, score = 0.92))
+
+                else -> delegate.search(request)
+            }
+        }
+        val embeddingIndexer = FixedSearchEmbeddingIndexer()
+
+        val result = MemoryEntityMaintenancePipeline(
+            store = store,
+            planner = FixedEntityMaintenancePlanner(MemoryEntityMaintenancePlan(summary = "No action.")),
+            idFactory = SequentialMemoryIdFactory("entity-maintenance"),
+            profileUpdater = ProjectionMemoryProfileUpdater(store),
+            embeddingIndexer = embeddingIndexer,
+            clock = FixedMemoryClock(NOW),
+        ).run(MemoryMaintenanceRequest(TEST_NAMESPACE))
+
+        assertEquals(1, result.candidateGroups.size)
+        assertEquals(setOf(first.id, second.id), result.candidateGroups.single().entities.map { it.id }.toSet())
+        assertTrue(result.candidateGroups.single().reason.contains("embedding-near"))
+        assertTrue(store.searchRequests.any { it.embedding != null && it.scopes == setOf(MemoryStore.SearchScope.ENTITIES) })
+        assertTrue(embeddingIndexer.queries.any { it.contains("Mercury Planner") })
+    }
+
+    @Test
     fun noteConsolidationMaterializesEpisodeAndConsolidatesOriginNote() = runBlocking {
         val source = source("lesson-source", "We tried lexical heuristics for recall and replaced them with a short LLM verification call.")
         val originNote = note(
@@ -1672,6 +1718,55 @@ class MemoryMaintenancePipelineTest {
         assertEquals(MemoryNote.Status.RESOLVED, updatedNote.status)
         assertEquals(MemoryNote.Maturity.CONSOLIDATED, updatedNote.maturity)
         assertTrue(snapshot.runs.any { it.runType == MemoryRun.Type.CONSOLIDATE_NOTES })
+    }
+
+    @Test
+    fun noteConsolidationUsesEmbeddingsForRelatedContext() = runBlocking {
+        val originNote = note(
+            id = "note-origin",
+            title = "Audio pipeline lesson",
+            summary = "Local transcription should keep bounded rolling context when stabilizing speech drafts.",
+            maturity = MemoryNote.Maturity.STABILIZING,
+            confidence = 0.8,
+            importance = 9,
+        )
+        val semanticNeighbor = note(
+            id = "note-semantic-neighbor",
+            title = "Live interpreter draft stabilization",
+            summary = "The live interpreter keeps unstable draft text separate until the stabilizer commits final deltas.",
+        )
+        val delegate = InMemoryMemoryStore(MemoryNamespaceSnapshot(notes = listOf(originNote)))
+        val store = SearchInterceptingMemoryStore(delegate) { request ->
+            when {
+                request.scopes.contains(MemoryStore.SearchScope.NOTES) && request.embedding != null ->
+                    listOf(MemoryStore.SearchHit.NoteHit(semanticNeighbor, score = 0.88))
+
+                else -> delegate.search(request)
+            }
+        }
+        val capturedRelatedHits = mutableListOf<MemoryStore.SearchHit>()
+
+        MemoryNoteConsolidationPipeline(
+            store = store,
+            consolidator = object : MemoryNoteConsolidator {
+                override suspend fun consolidate(
+                    request: MemoryMaintenanceRequest,
+                    selectedNotes: List<MemoryNote>,
+                    relatedHits: List<MemoryStore.SearchHit>,
+                    snapshot: MemoryNamespaceSnapshot,
+                ): NoteConsolidationResult {
+                    capturedRelatedHits += relatedHits
+                    return NoteConsolidationResult(summary = "No action.")
+                }
+            },
+            idFactory = SequentialMemoryIdFactory("note-consolidation"),
+            profileUpdater = ProjectionMemoryProfileUpdater(store),
+            embeddingIndexer = FixedSearchEmbeddingIndexer(),
+            clock = FixedMemoryClock(NOW),
+        ).run(MemoryMaintenanceRequest(TEST_NAMESPACE))
+
+        assertTrue(capturedRelatedHits.any { it is MemoryStore.SearchHit.NoteHit && it.note.id == semanticNeighbor.id })
+        assertTrue(store.searchRequests.any { it.embedding != null && it.scopes.contains(MemoryStore.SearchScope.NOTES) })
     }
 
     @Test
@@ -3315,6 +3410,38 @@ private class FixedNoteConsolidator(
         relatedHits: List<MemoryStore.SearchHit>,
         snapshot: MemoryNamespaceSnapshot,
     ): NoteConsolidationResult = scriptedResult
+}
+
+private class SearchInterceptingMemoryStore(
+    private val delegate: MemoryStore,
+    private val searchHandler: suspend (MemoryStore.SearchRequest) -> List<MemoryStore.SearchHit>,
+) : MemoryStore by delegate {
+    val searchRequests = mutableListOf<MemoryStore.SearchRequest>()
+
+    override suspend fun search(request: MemoryStore.SearchRequest): List<MemoryStore.SearchHit> {
+        searchRequests += request
+        return searchHandler(request)
+    }
+}
+
+private class FixedSearchEmbeddingIndexer : MemoryEmbeddingIndexer {
+    val queries = mutableListOf<String>()
+
+    override suspend fun withEmbeddings(batch: MemoryUpdateBatch): MemoryUpdateBatch = batch
+
+    override suspend fun searchEmbedding(query: String): MemoryStore.SearchEmbedding {
+        queries += query
+        return MemoryStore.SearchEmbedding(
+            modelConfigurationId = "test-embedding-config",
+            providerModelId = "test-embedding-model",
+            vector = listOf(1.0f),
+        )
+    }
+
+    override suspend fun rebuildNamespace(namespace: MemoryNamespace): MemoryEmbeddingRebuildResult =
+        NoOpMemoryEmbeddingIndexer.rebuildNamespace(namespace)
+
+    override fun status(): MemoryEmbeddingIndexStatus = MemoryEmbeddingIndexStatus()
 }
 
 private class FixedReadPlanner(
