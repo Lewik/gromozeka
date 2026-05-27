@@ -516,6 +516,15 @@ class ConversationEngineService(
 
             val assistantMessages = AiConversationMessageMapper.toConversationMessages(conversationId, runtimeResponse)
 
+            // Emit and save all assistant messages (thinking, tool calls, text - as separate messages)
+            assistantMessages.forEach { message ->
+                emit(message)
+                conversationService.addMessage(conversationId, message)
+                if (automaticMemoryRememberEnabled) {
+                    routeMessageThroughMemoryRouter(conversationId, conversation.currentThread, message, agent, project, memorySystemPrompts, memoryPipelineTools)
+                }
+            }
+
             // Save usage statistics with reference to the last assistant message
             val lastAssistantMessage = assistantMessages.lastOrNull()
             if (lastAssistantMessage != null) {
@@ -523,13 +532,13 @@ class ConversationEngineService(
                     try {
                         val totalInputTokens = usage.totalInputTokens
                         val totalOutputTokens = usage.totalOutputTokens
-                        
-                        log.info { 
+
+                        log.info {
                             "Tokens: prompt=${usage.promptTokens} (new), cache_creation=${usage.cacheCreationTokens}, cache_read=${usage.cacheReadTokens}, " +
-                            "total_input=$totalInputTokens, completion=${usage.completionTokens}, thinking=${usage.thinkingTokens}, " +
-                            "total_output=$totalOutputTokens, total=${totalInputTokens + totalOutputTokens}"
+                                "total_input=$totalInputTokens, completion=${usage.completionTokens}, thinking=${usage.thinkingTokens}, " +
+                                "total_output=$totalOutputTokens, total=${totalInputTokens + totalOutputTokens}"
                         }
-                        
+
                         if (usage.thinkingTokens > 0) {
                             log.info { "Extended thinking was used: ${usage.thinkingTokens} thinking tokens generated" }
                         }
@@ -552,15 +561,6 @@ class ConversationEngineService(
                     } catch (e: Exception) {
                         log.error(e) { "Failed to save token usage statistics" }
                     }
-                }
-            }
-
-            // Emit and save all assistant messages (thinking, tool calls, text - as separate messages)
-            assistantMessages.forEach { message ->
-                emit(message)
-                conversationService.addMessage(conversationId, message)
-                if (automaticMemoryRememberEnabled) {
-                    routeMessageThroughMemoryRouter(conversationId, conversation.currentThread, message, agent, project, memorySystemPrompts, memoryPipelineTools)
                 }
             }
 
