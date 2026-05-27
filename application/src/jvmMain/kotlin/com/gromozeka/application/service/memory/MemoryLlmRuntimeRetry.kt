@@ -27,7 +27,7 @@ internal suspend fun AiRuntime.callMemoryStageWithRetry(
     stageName: String,
     logContext: String,
     maxAttempts: Int = memoryLlmMaxAttempts(),
-    timeoutMs: Long = 90_000L,
+    timeoutMs: Long = memoryLlmTimeoutMs(),
 ): AiRuntimeResponse {
     var attempt = 1
     var delayMs = 750L
@@ -81,6 +81,13 @@ private fun memoryLlmMaxAttempts(): Int =
         ?.toIntOrNull()
         ?.coerceAtLeast(1)
         ?: 3
+
+private fun memoryLlmTimeoutMs(): Long =
+    System.getProperty("gromozeka.memory.llm.timeoutMs")
+        ?.trim()
+        ?.toLongOrNull()
+        ?.coerceAtLeast(1_000L)
+        ?: 90_000L
 
 private fun AiRuntimeResponse.memoryStageUsageLogLine(
     stageName: String,

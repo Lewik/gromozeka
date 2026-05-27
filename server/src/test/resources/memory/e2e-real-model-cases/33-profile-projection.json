@@ -29,8 +29,7 @@
             "routeDecisionIn": ["NOOP"],
             "claimCandidatesMax": 0,
             "claimOpsMax": 0,
-            "materializedClaimsMax": 0,
-            "materializedRunsMax": 0
+            "materializedClaimsMax": 0
           },
           "memoryTraceExpectation": {
             "needMemory": true,

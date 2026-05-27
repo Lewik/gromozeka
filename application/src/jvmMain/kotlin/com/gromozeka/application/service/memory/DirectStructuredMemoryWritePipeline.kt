@@ -238,6 +238,7 @@ class DirectStructuredMemoryWritePipeline(
 
         val routeDecision = router.route(requestForCapture)
             .withForcedOrDocumentIngestFallback(requestForCapture.source)
+            .withDocumentIngestNoteOnly(requestForCapture.source)
             .withSafeNoopSourcePolicy()
         val effectiveSource = sourceForCapture
             .withUsagePolicy(routeDecision.sourcePolicy)
@@ -867,6 +868,22 @@ private fun MemoryRouteDecision.withForcedOrDocumentIngestFallback(source: Memor
         sourcePolicy = MemorySourceUsagePolicy.STANDARD.copy(reason = fallbackReason),
         sourceSearchText = sourceSearchText ?: source.defaultIngestSearchText(),
         reason = "$fallbackReason Original router reason: $reason",
+    )
+}
+
+private fun MemoryRouteDecision.withDocumentIngestNoteOnly(source: MemorySource): MemoryRouteDecision {
+    if (!source.isDocumentIngestSource()) {
+        return this
+    }
+    if (decision == MemoryRouteDecision.Decision.NOOP || decision == MemoryRouteDecision.Decision.FORGET_REQUEST) {
+        return this
+    }
+
+    return copy(
+        decision = MemoryRouteDecision.Decision.NOTE_WRITE,
+        memoryTypes = setOf(MemorySemanticType.NOTE, MemorySemanticType.SOURCE, MemorySemanticType.ENTITY),
+        sourceSearchText = sourceSearchText ?: source.defaultIngestSearchText(),
+        reason = "Document ingest is note/source-only in the hot path; hard claims/tasks can be produced by later consolidation. Original router reason: $reason",
     )
 }
 

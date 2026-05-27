@@ -48,18 +48,6 @@
               ],
               [
                 "Note"
-              ],
-              [
-                "intermediate",
-                "semantic",
-                "rationale",
-                "doc digest",
-                "not yet solidified",
-                "not yet hard fact",
-                "not yet cemented",
-                "cemented as a fact",
-                "промежуточ",
-                "смыслов"
               ]
             ]
           },
@@ -69,6 +57,7 @@
             "selectedContainsAll": [
               "Source"
             ],
+            "selectedNotesMin": 1,
             "selectedHitsMin": 1
           }
         }

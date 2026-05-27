@@ -40,6 +40,8 @@ class OpenAiSubscriptionResponsesClient(
     private val websocketIdleMs: Long,
     @Value("\${gromozeka.ai.openai-subscription.websocket-response-timeout-ms:300000}")
     private val websocketResponseTimeoutMs: Long,
+    @Value("\${gromozeka.ai.openai-subscription.websocket-transport-timeout-ms:30000}")
+    private val websocketTransportTimeoutMs: Long,
 ) {
     private val log = KLoggers.logger(this)
     private val json = Json {
@@ -146,6 +148,7 @@ class OpenAiSubscriptionResponsesClient(
                     conversationKey = conversationKey,
                     websocketUrl = websocketUrl,
                     responseTimeoutMs = websocketResponseTimeoutMs,
+                    transportTimeoutMs = websocketTransportTimeoutMs,
                 )
         }!!
 
@@ -322,9 +325,11 @@ class OpenAiSubscriptionResponsesClient(
         private val conversationKey: String,
         private val websocketUrl: String,
         private val responseTimeoutMs: Long,
+        private val transportTimeoutMs: Long,
     ) {
         private val log = KLoggers.logger(this)
         private val boundedResponseTimeoutMs = responseTimeoutMs.coerceAtLeast(1L)
+        private val boundedTransportTimeoutMs = transportTimeoutMs.coerceAtLeast(1L)
         private val httpClient = HttpClient.newBuilder().build()
         private val inboundEvents = LinkedBlockingQueue<WebSocketInboundEvent>()
         private val requestMutex = Mutex()
@@ -533,7 +538,7 @@ class OpenAiSubscriptionResponsesClient(
             }
 
             val builder = httpClient.newWebSocketBuilder()
-                .connectTimeout(Duration.ofMillis(boundedResponseTimeoutMs))
+                .connectTimeout(Duration.ofMillis(boundedTransportTimeoutMs))
                 .header("Authorization", "Bearer ${session.accessToken}")
                 .header("OpenAI-Beta", "responses=experimental")
                 .header("originator", "gromozeka")
@@ -638,7 +643,7 @@ class OpenAiSubscriptionResponsesClient(
 
         private fun <T> CompletableFuture<T>.awaitTransport(action: String): T {
             try {
-                return get(boundedResponseTimeoutMs, TimeUnit.MILLISECONDS)
+                return get(boundedTransportTimeoutMs, TimeUnit.MILLISECONDS)
             } catch (error: TimeoutException) {
                 cancel(true)
                 throw OpenAiSubscriptionTransportException(

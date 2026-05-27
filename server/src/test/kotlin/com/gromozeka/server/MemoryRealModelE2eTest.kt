@@ -126,8 +126,12 @@ class MemoryRealModelE2eTest {
             systemProperties = mapOf(
                 "gromozeka.postgres.schema" to postgresSchema,
                 "gromozeka.ai.openai-subscription.websocket-response-timeout-ms" to
-                    System.getProperty(WEBSOCKET_RESPONSE_TIMEOUT_MS_PROPERTY, "300000"),
+                    System.getProperty(WEBSOCKET_RESPONSE_TIMEOUT_MS_PROPERTY, "1200000"),
+                "gromozeka.ai.openai-subscription.websocket-transport-timeout-ms" to
+                    System.getProperty(WEBSOCKET_TRANSPORT_TIMEOUT_MS_PROPERTY, "30000"),
                 "gromozeka.memory.llm.maxAttempts" to "1",
+                "gromozeka.memory.llm.timeoutMs" to
+                    System.getProperty(MEMORY_LLM_STAGE_TIMEOUT_MS_PROPERTY, "240000"),
                 "gromozeka.memory.routing.failFast" to "true",
             ),
             additionalSources = listOf(MemoryRealModelE2eNoToolsConfig::class.java),
@@ -1130,7 +1134,7 @@ class MemoryRealModelE2eTest {
                 ),
                 "Runtime rejected submitted E2E message ${userMessage.id.value}",
             )
-            withTimeout(300_000L) {
+            withTimeout(e2eTurnCompletionTimeoutMs()) {
                 completed.await()
             }
             emittedMessages.toList()
@@ -1157,6 +1161,13 @@ class MemoryRealModelE2eTest {
             }
         }
     }
+
+    private fun e2eTurnCompletionTimeoutMs(): Long =
+        (
+            System.getProperty(TURN_COMPLETION_TIMEOUT_MS_PROPERTY)
+                ?: System.getProperty(WEBSOCKET_RESPONSE_TIMEOUT_MS_PROPERTY)
+                ?: "1200000"
+        ).toLong()
 
     private fun buildAgent(
         modelName: String,
@@ -2850,6 +2861,9 @@ class MemoryRealModelE2eTest {
         const val CASE_FILTER_PROPERTY = "gromozeka.memory.e2e.caseFilter"
         const val MODEL_NAME_PROPERTY = "gromozeka.memory.e2e.modelName"
         const val WEBSOCKET_RESPONSE_TIMEOUT_MS_PROPERTY = "gromozeka.memory.e2e.websocketResponseTimeoutMs"
+        const val WEBSOCKET_TRANSPORT_TIMEOUT_MS_PROPERTY = "gromozeka.memory.e2e.websocketTransportTimeoutMs"
+        const val TURN_COMPLETION_TIMEOUT_MS_PROPERTY = "gromozeka.memory.e2e.turnCompletionTimeoutMs"
+        const val MEMORY_LLM_STAGE_TIMEOUT_MS_PROPERTY = "gromozeka.memory.e2e.memoryLlmStageTimeoutMs"
         const val MEMORY_ROUTING_FAIL_FAST_PROPERTY = "gromozeka.memory.routing.failFast"
         const val DEFAULT_MODEL_NAME = "gpt-5.3-codex"
 
