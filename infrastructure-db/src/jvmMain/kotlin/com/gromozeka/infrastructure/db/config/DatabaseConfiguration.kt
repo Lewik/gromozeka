@@ -20,12 +20,15 @@ class PostgresDatabaseConfiguration {
         @Value("\${gromozeka.postgres.username:\${GROMOZEKA_POSTGRES_USERNAME:gromozeka}}") username: String,
         @Value("\${gromozeka.postgres.password:\${GROMOZEKA_POSTGRES_PASSWORD:gromozeka}}") password: String,
         @Value("\${gromozeka.postgres.maximum-pool-size:10}") maximumPoolSize: Int,
+        @Value("\${gromozeka.postgres.schema:\${GROMOZEKA_POSTGRES_SCHEMA:public}}") schema: String,
     ): HikariDataSource {
+        validateSchemaName(schema)
         val config = HikariConfig()
         config.jdbcUrl = jdbcUrl
         config.username = username
         config.password = password
         config.maximumPoolSize = maximumPoolSize
+        config.connectionInitSql = "SET search_path TO ${quoteIdentifier(schema)}, public"
         config.poolName = "gromozeka-postgres"
         return HikariDataSource(config)
     }
@@ -36,7 +39,7 @@ class PostgresDatabaseConfiguration {
         dataSource: DataSource,
         @Value("\${gromozeka.postgres.schema:\${GROMOZEKA_POSTGRES_SCHEMA:public}}") schema: String,
     ): Flyway {
-        require(schema.matches(Regex("[A-Za-z_][A-Za-z0-9_]*"))) { "Invalid Postgres schema name: $schema" }
+        validateSchemaName(schema)
 
         val flyway = Flyway.configure()
             .dataSource(dataSource)
@@ -58,4 +61,10 @@ class PostgresDatabaseConfiguration {
         dataSource: DataSource,
         @Qualifier("postgresFlyway") flyway: Flyway,
     ): Database = Database.connect(dataSource)
+
+    private fun validateSchemaName(schema: String) {
+        require(schema.matches(Regex("[A-Za-z_][A-Za-z0-9_]*"))) { "Invalid Postgres schema name: $schema" }
+    }
+
+    private fun quoteIdentifier(identifier: String): String = "\"$identifier\""
 }

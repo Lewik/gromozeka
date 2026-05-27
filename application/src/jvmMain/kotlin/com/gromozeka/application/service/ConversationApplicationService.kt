@@ -72,8 +72,6 @@ class ConversationApplicationService(
             updatedAt = now,
         )
 
-        threadRepo.save(initialThread)
-
         val conversation = Conversation(
             id = conversationId,
             projectId = project.id,
@@ -84,7 +82,9 @@ class ConversationApplicationService(
             updatedAt = now,
         )
 
-        return conversationRepo.create(conversation)
+        val createdConversation = conversationRepo.create(conversation)
+        threadRepo.save(initialThread)
+        return createdConversation
     }
 
     /**
@@ -182,8 +182,6 @@ class ConversationApplicationService(
             updatedAt = now,
         )
         
-        threadRepo.save(newThread)
-        
         val newConversation = Conversation(
             id = newConversationId,
             projectId = sourceConversation.projectId,
@@ -195,6 +193,7 @@ class ConversationApplicationService(
         )
         
         conversationRepo.create(newConversation)
+        threadRepo.save(newThread)
         
         val sourceMessages = threadMessageRepo.getMessagesByThread(sourceConversation.currentThread)
         val sourceLinks = threadMessageRepo.getByThread(sourceConversation.currentThread)
