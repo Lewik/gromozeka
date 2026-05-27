@@ -4,6 +4,7 @@ import com.gromozeka.application.service.memory.MEMORY_ENRICH_CONTEXT_TOOL_NAME
 import com.gromozeka.application.service.memory.MEMORY_LIST_NAMESPACES_TOOL_NAME
 import com.gromozeka.application.service.memory.MEMORY_MAINTENANCE_TOOL_NAME
 import com.gromozeka.application.service.memory.MEMORY_QUEUE_STATUS_TOOL_NAME
+import com.gromozeka.application.service.memory.MEMORY_REBUILD_EMBEDDINGS_TOOL_NAME
 import com.gromozeka.application.service.memory.MEMORY_REMEMBER_TOOL_NAME
 import com.gromozeka.application.service.memory.MEMORY_RUN_STATUS_TOOL_NAME
 import com.gromozeka.domain.service.AiToolProvider
@@ -46,6 +47,7 @@ class GromozekaMcpServerFactoryMemoryHelpTest {
         assertContains(text, "`claim`")
         assertContains(text, "`memory_enrich_context`")
         assertContains(text, "`memory_remember`")
+        assertContains(text, "`memory_rebuild_embeddings`")
         assertContains(text, "`memory_context`")
         assertContains(text, "namespace")
     }
@@ -98,6 +100,7 @@ class GromozekaMcpServerFactoryMemoryHelpTest {
             SimpleToolCallback(MEMORY_ENRICH_CONTEXT_TOOL_NAME),
             SimpleToolCallback(MEMORY_LIST_NAMESPACES_TOOL_NAME),
             SimpleToolCallback(MEMORY_MAINTENANCE_TOOL_NAME),
+            SimpleToolCallback(MEMORY_REBUILD_EMBEDDINGS_TOOL_NAME),
             SimpleToolCallback(MEMORY_REMEMBER_TOOL_NAME),
             SimpleToolCallback(MEMORY_RUN_STATUS_TOOL_NAME),
         )

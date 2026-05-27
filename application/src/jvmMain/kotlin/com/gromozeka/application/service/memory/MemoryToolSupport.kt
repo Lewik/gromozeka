@@ -18,6 +18,7 @@ const val MEMORY_ENRICH_CONTEXT_TOOL_NAME = "memory_enrich_context"
 const val MEMORY_RUN_STATUS_TOOL_NAME = "memory_run_status"
 const val MEMORY_QUEUE_STATUS_TOOL_NAME = "memory_queue_status"
 const val MEMORY_MAINTENANCE_TOOL_NAME = "memory_maintenance"
+const val MEMORY_REBUILD_EMBEDDINGS_TOOL_NAME = "memory_rebuild_embeddings"
 const val MEMORY_LIST_NAMESPACES_TOOL_NAME = "memory_list_namespaces"
 
 fun List<AiToolCallback>.withoutMemoryManagementTools(): List<AiToolCallback> =
@@ -29,6 +30,7 @@ private val memoryManagementToolNames = setOf(
     MEMORY_RUN_STATUS_TOOL_NAME,
     MEMORY_QUEUE_STATUS_TOOL_NAME,
     MEMORY_MAINTENANCE_TOOL_NAME,
+    MEMORY_REBUILD_EMBEDDINGS_TOOL_NAME,
     MEMORY_LIST_NAMESPACES_TOOL_NAME,
 )
 

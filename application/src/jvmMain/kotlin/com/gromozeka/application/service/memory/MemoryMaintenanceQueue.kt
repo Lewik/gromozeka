@@ -283,6 +283,7 @@ class MemoryMaintenanceQueue(
                         put("dimensions", result.dimensions)
                         put("embeddable_items", result.embeddableItems)
                         put("embeddings", result.embeddings)
+                        put("deleted_embeddings", result.deletedEmbeddings)
                     },
                 )
             }

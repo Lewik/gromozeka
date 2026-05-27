@@ -47,6 +47,7 @@ object NoOpMemoryEmbeddingIndexer : MemoryEmbeddingIndexer {
             dimensions = 0,
             embeddableItems = 0,
             embeddings = 0,
+            deletedEmbeddings = 0,
             memoryBatch = MemoryUpdateBatch(),
         )
 
@@ -107,13 +108,11 @@ class DefaultMemoryEmbeddingIndexer(
         )
         val indexedBatch = withEmbeddings(batch)
         val embeddingBatch = MemoryUpdateBatch(embeddings = indexedBatch.embeddings)
-        if (embeddingBatch.embeddings.isNotEmpty()) {
-            store.apply(embeddingBatch)
-        }
+        val deletedEmbeddings = store.replaceEmbeddings(namespace, embeddingBatch.embeddings)
         totalRebuilds.incrementAndGet()
         log.info {
             "Memory embeddings rebuilt: namespace=${namespace.value} model=${resolved.modelConfigurationId}/${resolved.providerModelId} " +
-                "items=${indexedBatch.embeddings.size} dimensions=${resolved.dimensions}"
+                "deleted=$deletedEmbeddings items=${indexedBatch.embeddings.size} dimensions=${resolved.dimensions}"
         }
         return MemoryEmbeddingRebuildResult(
             namespace = namespace,
@@ -122,6 +121,7 @@ class DefaultMemoryEmbeddingIndexer(
             dimensions = resolved.dimensions,
             embeddableItems = batch.embeddableItemCount(),
             embeddings = indexedBatch.embeddings.size,
+            deletedEmbeddings = deletedEmbeddings,
             memoryBatch = embeddingBatch,
         )
     }
@@ -235,10 +235,11 @@ data class MemoryEmbeddingRebuildResult(
     val dimensions: Int,
     val embeddableItems: Int,
     val embeddings: Int,
+    val deletedEmbeddings: Int,
     val memoryBatch: MemoryUpdateBatch,
 ) {
     val summary: String =
-        "Rebuilt $embeddings/$embeddableItems memory embeddings for ${namespace.value} using $modelConfigurationId."
+        "Reset $deletedEmbeddings old embeddings and rebuilt $embeddings/$embeddableItems memory embeddings for ${namespace.value} using $modelConfigurationId."
 }
 
 private data class EmbeddingInput(

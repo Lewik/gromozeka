@@ -4,6 +4,7 @@ import com.gromozeka.application.service.memory.MEMORY_QUEUE_STATUS_TOOL_NAME
 import com.gromozeka.application.service.memory.MEMORY_ENRICH_CONTEXT_TOOL_NAME
 import com.gromozeka.application.service.memory.MEMORY_LIST_NAMESPACES_TOOL_NAME
 import com.gromozeka.application.service.memory.MEMORY_MAINTENANCE_TOOL_NAME
+import com.gromozeka.application.service.memory.MEMORY_REBUILD_EMBEDDINGS_TOOL_NAME
 import com.gromozeka.application.service.memory.MEMORY_REMEMBER_TOOL_NAME
 import com.gromozeka.application.service.memory.MEMORY_RUN_STATUS_TOOL_NAME
 import com.gromozeka.domain.service.AiToolProvider
@@ -131,6 +132,7 @@ class GromozekaMcpServerFactory(
             MEMORY_ENRICH_CONTEXT_TOOL_NAME -> copy(description = MCP_MEMORY_ENRICH_CONTEXT_DESCRIPTION)
             MEMORY_LIST_NAMESPACES_TOOL_NAME -> copy(description = MCP_MEMORY_LIST_NAMESPACES_DESCRIPTION)
             MEMORY_MAINTENANCE_TOOL_NAME -> copy(description = MCP_MEMORY_MAINTENANCE_DESCRIPTION)
+            MEMORY_REBUILD_EMBEDDINGS_TOOL_NAME -> copy(description = MCP_MEMORY_REBUILD_EMBEDDINGS_DESCRIPTION)
             MEMORY_QUEUE_STATUS_TOOL_NAME -> copy(description = MCP_MEMORY_QUEUE_STATUS_DESCRIPTION)
             MEMORY_RUN_STATUS_TOOL_NAME -> copy(description = MCP_MEMORY_RUN_STATUS_DESCRIPTION)
             else -> this
@@ -253,6 +255,7 @@ class GromozekaMcpServerFactory(
             - `memory_run_status`: inspect one memory run by id.
             - `memory_queue_status`: inspect queued/running memory document ingest and maintenance work.
             - `memory_maintenance`: schedule maintenance actions such as consolidation, entity maintenance, stale/supersede cleanup, targeted repairs, or embedding rebuild.
+            - `memory_rebuild_embeddings`: reset and rebuild vector embeddings for a namespace.
 
             Maintenance tools operate on existing memory and return immediately with a run id. Use `memory_run_status` or `memory_queue_status` to observe completion. Prefer status tools before starting broad maintenance if a run is already active.
 
@@ -275,7 +278,10 @@ class GromozekaMcpServerFactory(
             "List readable memory namespaces, item counts, and the configured default namespace."
 
         const val MCP_MEMORY_MAINTENANCE_DESCRIPTION =
-            "Schedule one explicit maintenance action over existing memory and return a run_id: consolidate, repair, maintain_entities, apply_retention, or rebuild_embeddings."
+            "Schedule one explicit maintenance action over existing memory and return a run_id: consolidate, repair, maintain_entities, apply_retention, or rebuild_embeddings. The rebuild_embeddings action resets and rebuilds vector embeddings for the target namespace."
+
+        const val MCP_MEMORY_REBUILD_EMBEDDINGS_DESCRIPTION =
+            "Reset and rebuild memory vector embeddings for one target namespace. Returns a run_id immediately; use memory_run_status or memory_queue_status to observe completion."
 
         const val MCP_MEMORY_QUEUE_STATUS_DESCRIPTION =
             "Read process-local memory document ingest, maintenance, and synchronous embedding index status."
@@ -350,6 +356,7 @@ internal class GromozekaMcpToolExposure private constructor(
             MEMORY_ENRICH_CONTEXT_TOOL_NAME,
             MEMORY_LIST_NAMESPACES_TOOL_NAME,
             MEMORY_MAINTENANCE_TOOL_NAME,
+            MEMORY_REBUILD_EMBEDDINGS_TOOL_NAME,
             MEMORY_REMEMBER_TOOL_NAME,
             MEMORY_RUN_STATUS_TOOL_NAME,
         )

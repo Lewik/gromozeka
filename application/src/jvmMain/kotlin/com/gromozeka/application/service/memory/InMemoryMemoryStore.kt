@@ -2,6 +2,7 @@ package com.gromozeka.application.service.memory
 
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.memory.MemoryClaim
+import com.gromozeka.domain.model.memory.MemoryEmbeddingRecord
 import com.gromozeka.domain.model.memory.MemoryEntity
 import com.gromozeka.domain.model.memory.MemoryItemRef
 import com.gromozeka.domain.model.memory.MemoryNamespace
@@ -33,6 +34,7 @@ class InMemoryMemoryStore(
     private val tasks = initialSnapshot.tasks.toMutableList()
     private val profiles = initialSnapshot.profiles.toMutableList()
     private val episodes = initialSnapshot.episodes.toMutableList()
+    private val embeddings = mutableListOf<MemoryEmbeddingRecord>()
 
     override suspend fun apply(batch: MemoryUpdateBatch) {
         val validBatch = batch.requireValidEntityIds()
@@ -45,6 +47,7 @@ class InMemoryMemoryStore(
         tasks.upsertAll(validBatch.tasks) { it.id.value }
         profiles.upsertAll(validBatch.profiles) { it.id.value }
         episodes.upsertAll(validBatch.episodes) { it.id.value }
+        embeddings.upsertAll(validBatch.embeddings) { it.id.value }
     }
 
     override suspend fun search(request: MemoryStore.SearchRequest): List<MemoryStore.SearchHit> {
@@ -207,6 +210,19 @@ class InMemoryMemoryStore(
                 .filter { it.namespace == namespace && it.archivedAt == null && it.evidenceRefs.any { ref -> ref.sourceId in sourceIds } }
                 .mapTo(this) { MemoryStore.SearchHit.EpisodeHit(it, score = 1.0) }
         }.distinctBy { it.toMemoryStoreItemRef() }
+    }
+
+    override suspend fun replaceEmbeddings(
+        namespace: MemoryNamespace,
+        embeddings: List<MemoryEmbeddingRecord>,
+    ): Int {
+        require(embeddings.all { it.namespace == namespace }) {
+            "Replacement memory embeddings must all belong to namespace ${namespace.value}"
+        }
+        val removed = this.embeddings.count { it.namespace == namespace }
+        this.embeddings.removeAll { it.namespace == namespace }
+        this.embeddings.upsertAll(embeddings) { it.id.value }
+        return removed
     }
 
     override suspend fun findRunById(runId: MemoryRun.Id): MemoryRun? =

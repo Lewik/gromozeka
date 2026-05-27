@@ -10,14 +10,13 @@ import kotlinx.serialization.json.Json
 import org.springframework.stereotype.Component
 
 @Component
-class MemoryMaintenanceToolCallback(
+class MemoryRebuildEmbeddingsToolCallback(
     private val memoryToolApplicationService: MemoryToolApplicationService,
 ) : AiToolCallback {
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
 
     @Serializable
     private data class Input(
-        val action: String = "",
         val target_type: String? = null,
         val target: String? = null,
         val conversation_id: String? = null,
@@ -27,16 +26,12 @@ class MemoryMaintenanceToolCallback(
     )
 
     override val definition: AiToolDefinition = AiToolDefinition(
-        name = MEMORY_MAINTENANCE_TOOL_NAME,
-        description = "Schedule one explicit maintenance pass over typed memory and return immediately with a run_id. Actions: consolidate promotes mature notes into durable claims/tasks/episodes; repair fixes suspicious duplicate or conflicting memory; maintain_entities normalizes entity aliases/merges/summaries; apply_retention cools, archives, or hides stale memory; rebuild_embeddings resets and rebuilds vector indexes for the target namespace. The caller should pass a target such as project_path, conversation_id, run_id, or namespace. If called inside a conversation with no target, the current conversation is used. Use memory_run_status with the returned run_id or memory_queue_status to observe progress.",
+        name = MEMORY_REBUILD_EMBEDDINGS_TOOL_NAME,
+        description = "Reset and rebuild memory vector embeddings for one target namespace. This queues a background run that first generates a fresh embedding set, then atomically replaces all existing embeddings in that namespace. Use memory_run_status with the returned run_id or memory_queue_status to observe progress.",
         inputSchema = """
             {
               "type": "object",
               "properties": {
-                "action": {
-                  "type": "string",
-                  "description": "Maintenance action to queue: consolidate, repair, maintain_entities, apply_retention, or rebuild_embeddings."
-                },
                 "target_type": {
                   "type": "string",
                   "description": "Optional generic target kind: project_path, conversation_id, run_id, or namespace."
@@ -47,22 +42,21 @@ class MemoryMaintenanceToolCallback(
                 },
                 "conversation_id": {
                   "type": "string",
-                  "description": "Conversation id whose project namespace should be maintained."
+                  "description": "Conversation id whose project namespace should have embeddings rebuilt."
                 },
                 "project_path": {
                   "type": "string",
-                  "description": "Absolute or relative project path whose project namespace should be maintained."
+                  "description": "Absolute or relative project path whose project namespace should have embeddings rebuilt."
                 },
                 "run_id": {
                   "type": "string",
-                  "description": "MemoryRun id. The run namespace is used as the maintenance target."
+                  "description": "MemoryRun id. The run namespace is used as the rebuild target."
                 },
                 "namespace": {
                   "type": "string",
-                  "description": "Explicit memory namespace, currently only project:<project-id> is supported."
+                  "description": "Explicit memory namespace, currently usually project:<project-id>."
                 }
-              },
-              "required": ["action"]
+              }
             }
         """.trimIndent()
     )
@@ -78,7 +72,7 @@ class MemoryMaintenanceToolCallback(
             input.namespace,
         ).any { !it.isNullOrBlank() }
         memoryToolApplicationService.runMaintenance(
-            actionValue = input.action,
+            actionValue = MemoryMaintenanceAction.REBUILD_EMBEDDINGS.toolName,
             conversationIdValue = input.conversation_id ?: context?.getString("conversationId")?.takeUnless { explicitTargetProvided },
             targetTypeValue = input.target_type,
             targetValue = input.target,

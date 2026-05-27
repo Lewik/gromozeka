@@ -297,6 +297,30 @@ class PostgresMemoryStore(
         }
     }
 
+    override suspend fun replaceEmbeddings(
+        namespace: MemoryNamespace,
+        embeddings: List<MemoryEmbeddingRecord>,
+    ): Int {
+        require(embeddings.all { it.namespace == namespace }) {
+            "Replacement memory embeddings must all belong to namespace ${namespace.value}"
+        }
+        return dataSource.connection.use { connection ->
+            val originalAutoCommit = connection.autoCommit
+            try {
+                connection.autoCommit = false
+                val deleted = connection.deleteEmbeddings(namespace)
+                embeddings.forEach { connection.upsertEmbedding(it) }
+                connection.commit()
+                deleted
+            } catch (error: Throwable) {
+                connection.rollback()
+                throw error
+            } finally {
+                connection.autoCommit = originalAutoCommit
+            }
+        }
+    }
+
     override suspend fun findRunById(runId: MemoryRun.Id): MemoryRun? =
         dataSource.connection.use { connection ->
             connection.selectPayloadById("memory_runs", runId.value)
@@ -952,6 +976,12 @@ class PostgresMemoryStore(
             }
         }
     }
+
+    private fun Connection.deleteEmbeddings(namespace: MemoryNamespace): Int =
+        prepareStatement("DELETE FROM memory_embeddings WHERE namespace = ?").use { statement ->
+            statement.setString(1, namespace.value)
+            statement.executeUpdate()
+        }
 }
 
 private data class MemorySearchPayload(
