@@ -521,14 +521,15 @@ class PostgresMemoryStore(
         val otherVectorColumn = if (vectorColumn == "embedding_1536") "embedding_3072" else "embedding_1536"
         val sql = """
             INSERT INTO memory_embeddings (
-                id, namespace, memory_type, memory_id, model_configuration_id, provider_model_id,
+                id, namespace, memory_type, memory_id, embedding_kind, model_configuration_id, provider_model_id,
                 dimensions, content_hash, $vectorColumn, $otherVectorColumn, created_at, updated_at
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?::vector, NULL, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?::halfvec, NULL, ?, ?)
             ON CONFLICT (id) DO UPDATE SET
                 namespace = EXCLUDED.namespace,
                 memory_type = EXCLUDED.memory_type,
                 memory_id = EXCLUDED.memory_id,
+                embedding_kind = EXCLUDED.embedding_kind,
                 model_configuration_id = EXCLUDED.model_configuration_id,
                 provider_model_id = EXCLUDED.provider_model_id,
                 dimensions = EXCLUDED.dimensions,
@@ -543,13 +544,14 @@ class PostgresMemoryStore(
             statement.setString(2, item.namespace.value)
             statement.setString(3, item.itemRef.type.name)
             statement.setString(4, item.itemRef.id)
-            statement.setString(5, item.modelConfigurationId)
-            statement.setString(6, item.providerModelId)
-            statement.setInt(7, item.dimensions)
-            statement.setString(8, item.contentHash)
-            statement.setString(9, item.vector.toPostgresVectorLiteral())
-            statement.setTimestamp(10, Timestamp.from(java.time.Instant.parse(item.createdAt.toString())))
-            statement.setTimestamp(11, Timestamp.from(java.time.Instant.parse(item.updatedAt.toString())))
+            statement.setString(5, item.kind.name)
+            statement.setString(6, item.modelConfigurationId)
+            statement.setString(7, item.providerModelId)
+            statement.setInt(8, item.dimensions)
+            statement.setString(9, item.contentHash)
+            statement.setString(10, item.vector.toPostgresVectorLiteral())
+            statement.setTimestamp(11, Timestamp.from(java.time.Instant.parse(item.createdAt.toString())))
+            statement.setTimestamp(12, Timestamp.from(java.time.Instant.parse(item.updatedAt.toString())))
             statement.executeUpdate()
         }
     }
@@ -569,13 +571,14 @@ class PostgresMemoryStore(
         val typePlaceholders = memoryTypes.joinToString(",") { "?" }
         val vectorLimit = (limit * 10).coerceIn(50, 500)
         val sql = """
-            SELECT memory_type, memory_id, 1 - ($vectorColumn <=> ?::vector) AS score
+            SELECT memory_type, memory_id, 1 - ($vectorColumn <=> ?::halfvec) AS score
             FROM memory_embeddings
             WHERE ${namespaceFilter}model_configuration_id = ?
+              AND embedding_kind = ?
               AND dimensions = ?
               AND memory_type IN ($typePlaceholders)
               AND $vectorColumn IS NOT NULL
-            ORDER BY $vectorColumn <=> ?::vector
+            ORDER BY $vectorColumn <=> ?::halfvec
             LIMIT ?
         """.trimIndent()
 
@@ -586,6 +589,7 @@ class PostgresMemoryStore(
                 statement.setString(index++, vectorLiteral)
                 namespace?.let { statement.setString(index++, it.value) }
                 statement.setString(index++, searchEmbedding.modelConfigurationId)
+                statement.setString(index++, MemoryEmbeddingRecord.Kind.PRIMARY.name)
                 statement.setInt(index++, searchEmbedding.dimensions)
                 memoryTypes.forEach { statement.setString(index++, it.name) }
                 statement.setString(index++, vectorLiteral)

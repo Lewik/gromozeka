@@ -3,12 +3,13 @@ CREATE TABLE memory_embeddings (
     namespace TEXT NOT NULL,
     memory_type TEXT NOT NULL,
     memory_id TEXT NOT NULL,
+    embedding_kind TEXT NOT NULL,
     model_configuration_id TEXT NOT NULL,
     provider_model_id TEXT NOT NULL,
     dimensions INTEGER NOT NULL,
     content_hash TEXT NOT NULL,
-    embedding_1536 vector(1536) NULL,
-    embedding_3072 vector(3072) NULL,
+    embedding_1536 halfvec(1536) NULL,
+    embedding_3072 halfvec(3072) NULL,
     created_at TIMESTAMPTZ NOT NULL,
     updated_at TIMESTAMPTZ NOT NULL,
     CHECK (
@@ -19,15 +20,15 @@ CREATE TABLE memory_embeddings (
 );
 
 CREATE UNIQUE INDEX idx_memory_embeddings_item_model
-    ON memory_embeddings(namespace, memory_type, memory_id, model_configuration_id);
+    ON memory_embeddings(namespace, memory_type, memory_id, embedding_kind, model_configuration_id);
 
 CREATE INDEX idx_memory_embeddings_lookup
-    ON memory_embeddings(namespace, model_configuration_id, dimensions, memory_type);
+    ON memory_embeddings(namespace, model_configuration_id, embedding_kind, dimensions, memory_type);
 
 CREATE INDEX idx_memory_embeddings_1536_hnsw
-    ON memory_embeddings USING hnsw (embedding_1536 vector_cosine_ops)
+    ON memory_embeddings USING hnsw (embedding_1536 halfvec_cosine_ops)
     WHERE embedding_1536 IS NOT NULL;
 
 CREATE INDEX idx_memory_embeddings_3072_hnsw
-    ON memory_embeddings USING hnsw (embedding_3072 vector_cosine_ops)
+    ON memory_embeddings USING hnsw (embedding_3072 halfvec_cosine_ops)
     WHERE embedding_3072 IS NOT NULL;

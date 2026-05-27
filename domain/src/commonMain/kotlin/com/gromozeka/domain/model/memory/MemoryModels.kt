@@ -934,6 +934,7 @@ data class MemoryEmbeddingRecord(
     val id: Id,
     val namespace: MemoryNamespace,
     val itemRef: MemoryItemRef,
+    val kind: Kind = Kind.PRIMARY,
     val modelConfigurationId: String,
     val providerModelId: String,
     val dimensions: Int,
@@ -955,6 +956,10 @@ data class MemoryEmbeddingRecord(
         init {
             require(value.isNotBlank()) { "Memory embedding id must not be blank" }
         }
+    }
+
+    enum class Kind {
+        PRIMARY,
     }
 }
 

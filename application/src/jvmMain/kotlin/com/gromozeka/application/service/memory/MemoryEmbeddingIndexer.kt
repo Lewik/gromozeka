@@ -152,6 +152,7 @@ class DefaultMemoryEmbeddingIndexer(
                         id = input.embeddingId,
                         namespace = input.namespace,
                         itemRef = input.itemRef,
+                        kind = input.kind,
                         modelConfigurationId = resolved.modelConfigurationId,
                         providerModelId = response.modelId,
                         dimensions = response.dimensions,
@@ -244,6 +245,7 @@ private data class EmbeddingInput(
     val embeddingId: MemoryEmbeddingRecord.Id,
     val namespace: MemoryNamespace,
     val itemRef: MemoryItemRef,
+    val kind: MemoryEmbeddingRecord.Kind,
     val contentHash: String,
     val text: String,
 )
@@ -411,15 +413,17 @@ private fun toEmbeddingInput(
     providerModelId: String,
     text: String,
     maxInputTokens: Int?,
+    kind: MemoryEmbeddingRecord.Kind = MemoryEmbeddingRecord.Kind.PRIMARY,
 ): EmbeddingInput? {
     val normalizedText = text.trim().replace(Regex("\\s+"), " ")
     if (normalizedText.isBlank()) return null
     val truncatedText = normalizedText.truncateForEmbedding(maxInputTokens)
-    val stableKey = "${namespace.value}|${ref.type.name}|${ref.id}|$modelConfigurationId"
+    val stableKey = "${namespace.value}|${ref.type.name}|${ref.id}|${kind.name}|$modelConfigurationId"
     return EmbeddingInput(
         embeddingId = MemoryEmbeddingRecord.Id("embedding:${stableKey.sha256()}"),
         namespace = namespace,
         itemRef = ref,
+        kind = kind,
         contentHash = "${providerModelId}:${truncatedText.sha256()}",
         text = truncatedText,
     )
