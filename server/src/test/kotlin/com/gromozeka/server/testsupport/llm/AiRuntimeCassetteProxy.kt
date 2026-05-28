@@ -195,7 +195,11 @@ private class CassetteAiRuntime(
             return existing.singleResponse(AiRuntimeCassetteReplayContext.from(key, request))
         }
         if (mode == AiRuntimeCassetteMode.REPLAY_ONLY) {
-            error("LLM cassette miss: provider=$provider model=$modelName operation=call hash=${key.hash} path=${key.path}")
+            val debugPath = store.writeMissDebugIfEnabled(key)
+            error(
+                "LLM cassette miss: provider=$provider model=$modelName operation=call hash=${key.hash} " +
+                    "path=${key.path}${debugPath?.let { " debug=$it" }.orEmpty()}"
+            )
         }
 
         log.info { "LLM cassette record: provider=$provider model=$modelName operation=call hash=${key.hash}" }
@@ -215,7 +219,11 @@ private class CassetteAiRuntime(
             return existing.responses(AiRuntimeCassetteReplayContext.from(key, request)).asFlow()
         }
         if (mode == AiRuntimeCassetteMode.REPLAY_ONLY) {
-            error("LLM cassette miss: provider=$provider model=$modelName operation=stream hash=${key.hash} path=${key.path}")
+            val debugPath = store.writeMissDebugIfEnabled(key)
+            error(
+                "LLM cassette miss: provider=$provider model=$modelName operation=stream hash=${key.hash} " +
+                    "path=${key.path}${debugPath?.let { " debug=$it" }.orEmpty()}"
+            )
         }
 
         return kotlinx.coroutines.flow.flow {
@@ -501,6 +509,28 @@ internal class AiRuntimeCassetteStore(
             java.nio.file.StandardCopyOption.REPLACE_EXISTING,
             java.nio.file.StandardCopyOption.ATOMIC_MOVE,
         )
+    }
+
+    fun writeMissDebugIfEnabled(key: AiRuntimeCassetteKey): Path? {
+        if (!java.lang.Boolean.getBoolean("gromozeka.llm.cassette.writeMissDebug")) return null
+
+        key.path.parent.createDirectories()
+        val debugPath = key.path.resolveSibling("${key.hash}.miss-debug.json")
+        debugPath.writeText(
+            json.encodeToString(
+                buildJsonObject {
+                    put("version", CASSETTE_VERSION)
+                    put("provider", key.provider)
+                    put("model", key.modelName)
+                    put("operation", key.operation.serialName)
+                    put("hash", key.hash)
+                    put("projectPath", key.projectPath?.let(::normalizeRuntimeText))
+                    put("canonicalRequest", key.canonicalRequest)
+                    put("debugRequest", key.debugRequest)
+                }
+            )
+        )
+        return debugPath
     }
 
     companion object {
@@ -1201,28 +1231,42 @@ private val runtimeOutputInstantFieldNames = setOf(
     "updated_at",
     "observed_at",
     "recorded_at",
+    "imported_at",
+    "first_seen_at",
+    "last_seen_at",
     "validFrom",
     "validTo",
     "createdAt",
     "updatedAt",
     "observedAt",
     "recordedAt",
+    "importedAt",
+    "firstSeenAt",
+    "lastSeenAt",
 )
 
 private const val UUID_PATTERN = "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
 private const val INSTANT_PATTERN = "\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?Z"
 private val runtimeCurrentTimeRegex = Regex("(?m)(Current time:\\s*)$INSTANT_PATTERN")
 private val runtimeLabeledInstantRegex = Regex(
-    "\\b(validFrom|validTo|createdAt|updatedAt|observedAt|recordedAt|firstSeenAt|lastSeenAt|timestamp)=" +
+    "\\b(validFrom|validTo|createdAt|updatedAt|observedAt|recordedAt|firstSeenAt|lastSeenAt|" +
+        "valid_from|valid_to|created_at|updated_at|observed_at|recorded_at|first_seen_at|last_seen_at|" +
+        "importedAt|imported_at|timestamp)=" +
         "($INSTANT_PATTERN|null)"
 )
 private val runtimeJsonInstantFieldRegex = Regex(
     "(\"(?:valid_from|valid_to|created_at|updated_at|observed_at|recorded_at|first_seen_at|last_seen_at|" +
-        "validFrom|validTo|createdAt|updatedAt|observedAt|recordedAt|firstSeenAt|lastSeenAt|timestamp)\"\\s*:\\s*\")" +
+        "imported_at|validFrom|validTo|createdAt|updatedAt|observedAt|recordedAt|firstSeenAt|lastSeenAt|" +
+        "importedAt|timestamp)\"\\s*:\\s*\")" +
         "($INSTANT_PATTERN|null)(\")"
+)
+private val runtimeHumanLabeledInstantRegex = Regex(
+    "\\b((?:Document imported at|Imported at|Observed at|Recorded at|Created at|Updated at):\\s*)$INSTANT_PATTERN"
 )
 private val runtimeScopedIdRegex =
     Regex("\\b(project|chat|memory|source|claim|note|task|entity|episode|profile|run):[A-Za-z0-9][A-Za-z0-9._:-]*")
+private val runtimePipelineItemIdRegex =
+    Regex("\\b([a-z][a-z0-9-]*):(run|source|claim|note|task|entity|episode|profile):[A-Za-z0-9][A-Za-z0-9._:-]*")
 private val runtimeTargetMessageIdRegex = Regex("(?m)(Target message id:\\s*)$UUID_PATTERN")
 private val gromozekaE2eDirectoryRegex = Regex("(/[^\\s\"']*)?gromozeka-e2e-[0-9]+")
 
@@ -1247,13 +1291,8 @@ private fun List<String>.isRuntimeFieldPath(): Boolean {
 
     if (key == "id") return true
     if (key == "value" && previousKey in setOf("id", "conversationId", "toolUseId", "fileId")) return true
-    return key in setOf(
-        "id",
+    return key in runtimeOutputInstantFieldNames || key in setOf(
         "conversationId",
-        "createdAt",
-        "updatedAt",
-        "observedAt",
-        "recordedAt",
         "timestamp",
         "messageId",
         "responseId",
@@ -1277,7 +1316,7 @@ private fun stableRuntimeValueForField(
     return when (fieldName) {
         "conversationId", "conversationKey" -> STABLE_CONVERSATION_KEY
         "promptCacheKey" -> STABLE_PROMPT_CACHE_KEY
-        "createdAt", "updatedAt", "observedAt", "recordedAt", "timestamp" -> STABLE_INSTANT
+        in runtimeOutputInstantFieldNames, "timestamp" -> STABLE_INSTANT
         "responseId" -> STABLE_RESPONSE_ID
         "messageId" -> STABLE_MESSAGE_ID
         "toolUseId" -> STABLE_TOOL_CALL_ID_PREFIX
@@ -1300,7 +1339,7 @@ private fun rehydrateRuntimeValueForField(
     return when (fieldName) {
         "conversationId", "conversationKey" -> context.conversationKey
         "promptCacheKey" -> context.conversationKey.removePrefix("memory:")
-        "createdAt", "updatedAt", "observedAt", "recordedAt", "timestamp" -> context.currentInstant
+        in runtimeOutputInstantFieldNames, "timestamp" -> context.currentInstant
         "responseId" -> context.responseId()
         "messageId" -> context.messageId(0)
         "toolUseId" -> rehydrateToolCallId(value, context, 0, 0)
@@ -1368,11 +1407,15 @@ private fun normalizeRuntimeText(
     return runtimeBindings.normalizeText(value)
         .replace(runtimeCurrentTimeRegex) { match -> "${match.groupValues[1]}<instant>" }
         .replace(runtimeLabeledInstantRegex) { match -> "${match.groupValues[1]}=$STABLE_INSTANT" }
+        .replace(runtimeHumanLabeledInstantRegex) { match -> "${match.groupValues[1]}$STABLE_INSTANT" }
         .replace(runtimeJsonInstantFieldRegex) { match -> "${match.groupValues[1]}$STABLE_INSTANT${match.groupValues[3]}" }
         .replace(runtimeTargetMessageIdRegex) { match -> "${match.groupValues[1]}$STABLE_UUID" }
         .replace(runtimeScopedIdRegex) { match ->
             val prefix = match.value.substringBefore(":")
             "$prefix:<id>"
+        }
+        .replace(runtimePipelineItemIdRegex) { match ->
+            "${match.groupValues[1]}:${match.groupValues[2]}:<id>"
         }
         .replace(gromozekaE2eDirectoryRegex) { match ->
             val suffix = match.value.substringAfterLast("gromozeka-e2e-")
@@ -1417,7 +1460,9 @@ private fun Any?.stabilizeDynamicMetadataValue(
             "conversationKey" -> STABLE_CONVERSATION_KEY
             "responseId" -> STABLE_RESPONSE_ID
             "messageId" -> STABLE_MESSAGE_ID
-            "createdAt", "updatedAt", "observedAt", "recordedAt", "timestamp" -> STABLE_INSTANT
+            "createdAt", "updatedAt", "observedAt", "recordedAt",
+            "importedAt", "imported_at", "firstSeenAt", "first_seen_at", "lastSeenAt", "last_seen_at",
+            "timestamp" -> STABLE_INSTANT
             "encrypted_content" -> STABLE_ENCRYPTED_CONTENT
             "signature" -> STABLE_SIGNATURE
             "fileId" -> STABLE_FILE_ID

@@ -37,6 +37,11 @@ import javax.sql.DataSource
 private const val SEARCH_PROJECTION_MAX_CHARS = 12_000
 private const val SOURCE_CONTENT_SEARCH_PREVIEW_CHARS = 4_000
 
+private val memorySearchHitComparator =
+    compareByDescending<MemoryStore.SearchHit> { it.score }
+        .thenBy { it.stableSearchTypeRank() }
+        .thenBy { it.stableSearchSortKey() }
+
 @Service
 @Primary
 class PostgresMemoryStore(
@@ -185,7 +190,7 @@ class PostgresMemoryStore(
             }
 
             val result = eligibleCandidates
-                .sortedWith(compareByDescending<MemoryStore.SearchHit> { it.score }.thenByDescending { it.sortInstant() })
+                .sortedWith(memorySearchHitComparator)
                 .take(request.limit)
 
             log.info {
@@ -1374,17 +1379,84 @@ private fun MemoryStore.SearchHit.allowsLowScoreFallback(): Boolean =
         -> false
     }
 
-private fun MemoryStore.SearchHit.sortInstant(): Instant =
+private fun MemoryStore.SearchHit.stableSearchTypeRank(): Int =
     when (this) {
-        is MemoryStore.SearchHit.SourceHit -> source.createdAt
-        is MemoryStore.SearchHit.EntityHit -> entity.updatedAt
-        is MemoryStore.SearchHit.ClaimHit -> claim.updatedAt
-        is MemoryStore.SearchHit.NoteHit -> note.updatedAt
-        is MemoryStore.SearchHit.TaskHit -> task.updatedAt
-        is MemoryStore.SearchHit.ProfileHit -> profile.updatedAt
-        is MemoryStore.SearchHit.EpisodeHit -> episode.updatedAt
-        is MemoryStore.SearchHit.RunHit -> run.createdAt
+        is MemoryStore.SearchHit.ClaimHit -> 0
+        is MemoryStore.SearchHit.NoteHit -> 1
+        is MemoryStore.SearchHit.TaskHit -> 2
+        is MemoryStore.SearchHit.ProfileHit -> 3
+        is MemoryStore.SearchHit.EpisodeHit -> 4
+        is MemoryStore.SearchHit.EntityHit -> 5
+        is MemoryStore.SearchHit.SourceHit -> 6
+        is MemoryStore.SearchHit.RunHit -> 7
     }
+
+private fun MemoryStore.SearchHit.stableSearchSortKey(): String =
+    when (this) {
+        is MemoryStore.SearchHit.SourceHit -> listOf(
+            source.contentHash,
+            source.searchText.orEmpty(),
+            source.contentText,
+        )
+
+        is MemoryStore.SearchHit.EntityHit -> listOf(
+            entity.entityType.name,
+            entity.canonicalName,
+            entity.normalizedName,
+            entity.aliases.joinToString(" ") { it.normalizedText },
+        )
+
+        is MemoryStore.SearchHit.ClaimHit -> listOf(
+            claim.predicate,
+            claim.normalizedText,
+            claim.contextText.orEmpty(),
+            claim.scope.text,
+            claim.objectValue?.toString().orEmpty(),
+        )
+
+        is MemoryStore.SearchHit.NoteHit -> listOf(
+            note.noteType.name,
+            note.title,
+            note.summary,
+            note.scope.text,
+            note.keywords.joinToString(" "),
+            note.tags.joinToString(" "),
+        )
+
+        is MemoryStore.SearchHit.TaskHit -> listOf(
+            task.status.name,
+            task.priority.name,
+            task.title,
+            task.description.orEmpty(),
+            task.scope.text,
+        )
+
+        is MemoryStore.SearchHit.ProfileHit -> listOf(
+            profile.profileText,
+            profile.profileJson.toString(),
+        )
+
+        is MemoryStore.SearchHit.EpisodeHit -> listOf(
+            episode.situation,
+            episode.action,
+            episode.result,
+            episode.lesson,
+            episode.tags.joinToString(" "),
+        )
+
+        is MemoryStore.SearchHit.RunHit -> listOf(
+            run.runType.name,
+            run.summary,
+            run.inputHash.orEmpty(),
+            run.promptName.orEmpty(),
+            run.promptVersion.orEmpty(),
+        )
+    }.joinToString("\u001f").stableMemorySearchSortText()
+
+private fun String.stableMemorySearchSortText(): String =
+    lowercase()
+        .replace(Regex("\\s+"), " ")
+        .trim()
 
 private fun String.containsEntityFilterName(entity: MemoryEntity): Boolean {
     val names = (listOf(entity.canonicalName, entity.normalizedName) + entity.aliases.flatMap { listOf(it.text, it.normalizedText) })

@@ -10,11 +10,13 @@ internal object MemoryDocumentAdaptiveIngest {
     suspend fun <T> processSection(
         section: MarkdownDocumentSection,
         maxSplitDepth: Int = DEFAULT_MAX_SPLIT_DEPTH,
+        failFastOnError: Boolean = false,
         processor: suspend (MarkdownDocumentSection) -> T,
     ): MemoryDocumentAdaptiveSectionResult<T> =
         processSection(
             section = section,
             maxSplitDepth = maxSplitDepth,
+            failFastOnError = failFastOnError,
             depth = 0,
             processor = processor,
         )
@@ -22,6 +24,7 @@ internal object MemoryDocumentAdaptiveIngest {
     private suspend fun <T> processSection(
         section: MarkdownDocumentSection,
         maxSplitDepth: Int,
+        failFastOnError: Boolean,
         depth: Int,
         processor: suspend (MarkdownDocumentSection) -> T,
     ): MemoryDocumentAdaptiveSectionResult<T> {
@@ -48,6 +51,10 @@ internal object MemoryDocumentAdaptiveIngest {
                 }
 
                 if (parts.size < 2) {
+                    if (failFastOnError) {
+                        throw error
+                    }
+
                     return MemoryDocumentAdaptiveSectionResult(
                         results = emptyList(),
                         processedSections = 0,
@@ -72,6 +79,7 @@ internal object MemoryDocumentAdaptiveIngest {
                         processSection(
                             section = part,
                             maxSplitDepth = maxSplitDepth,
+                            failFastOnError = failFastOnError,
                             depth = depth + 1,
                             processor = processor,
                         )

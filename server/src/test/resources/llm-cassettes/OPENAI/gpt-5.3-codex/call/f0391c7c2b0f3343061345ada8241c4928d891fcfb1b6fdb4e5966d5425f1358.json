@@ -1,0 +1,247 @@
+{
+    "version": 1,
+    "hash": "f0391c7c2b0f3343061345ada8241c4928d891fcfb1b6fdb4e5966d5425f1358",
+    "provider": "OPENAI",
+    "model": "gpt-5.3-codex",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>/projects/memory-repair-duplicate-claims",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                MEMORY-ONLY MAINTENANCE TASK\n\n                This is a private memory pipeline call, not a normal assistant reply.\n                Do not answer as a chat assistant.\n                Do not call tools.\n                Execute only the maintenance stage below.\n\n                Output contract:\n                Return exactly one valid JSON object matching the response schema.\n                No prose, no markdown fences, no explanation.\n\n                        You are MemoryRepairPlanner v1.\n\n        Goal:\n        Review suspicious memory clusters and propose conservative repair actions that improve memory hygiene without destroying useful history.\n\n        Current time: <instant>\n        Namespace: project:<0>\n\n        Candidate clusters:\n        Cluster repair-cluster-1: kind=DUPLICATE_CLAIMS; reason=Active claims have the same subject, predicate, and normalized text.\n- claim memory-repair-duplicate-claims-fixture-1-claim-first: status=ACTIVE; predicate=uses_runtime_language; family=fixture_duplicate_fact; subject=memory-repair-duplicate-claims-fixture-1-entity-subject; object=\"Kotlin\"; text=The Atlas planner sandbox uses Kotlin for workflow orchestration.; updated=2026-01-01T00:00:00Z\n- claim memory-repair-duplicate-claims-fixture-1-claim-second: status=ACTIVE; predicate=uses_runtime_language; family=fixture_duplicate_fact; subject=memory-repair-duplicate-claims-fixture-1-entity-subject; object=\"Kotlin\"; text=The Atlas planner sandbox uses Kotlin for workflow orchestration.; updated=2026-01-02T00:00:00Z\n\n        Supporting evidence:\n        - source memory-repair-duplicate-claims-fixture-1-source-second: The Atlas planner sandbox uses Kotlin for workflow orchestration.\n- source memory-repair-duplicate-claims-fixture-1-source-first: The Atlas planner sandbox uses Kotlin for workflow orchestration.\n\n        Return JSON:\n        {\n          \"repair_actions\": [\n            {\n              \"action\": \"merge_duplicates | supersede_item | archive_item | refresh_profile | noop\",\n              \"target_type\": \"note | claim | task | profile | entity | episode\",\n              \"target_ids\": [\"id\"],\n              \"reason\": \"short explanation\"\n            }\n          ],\n          \"summary\": \"short summary\"\n        }\n\n        Rules:\n        - Be conservative.\n        - Decide per cluster. If a cluster is not safely repairable, return noop for that cluster or omit it.\n        - Prefer preserving history with status changes or archive over destructive edits.\n        - Use merge_duplicates only for items that are exact or near-exact duplicates.\n        - Use archive_item only when an item is stale or duplicate but still explainable.\n        - Use supersede_item only when active memory is clearly replaced by a newer active item.\n        - Use refresh_profile when profile text can drift from active claims, notes, or tasks.\n        - For duplicate_claims, duplicate_notes, duplicate_tasks, and duplicate_episodes clusters, use merge_duplicates targeting all duplicate item ids when the cluster items really say the same thing. Do not use archive_item for duplicate clusters unless only one clearly bad item is targeted and a separate active keeper remains.\n        - For conflicting_claims clusters, prefer supersede_item targeting the older claim ids that were clearly replaced by newer claims. Do not supersede the newest claim.\n        - For profile_drift clusters, prefer refresh_profile targeting the profile id.\n        - Do not invent target ids. Use only ids from candidate clusters.\n        - Return valid JSON only.",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Plan conservative repairs for suspicious memory clusters.",
+                "name": "memory_repair_planner",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "repair_actions": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "action": {
+                                        "enum": [
+                                            "merge_duplicates",
+                                            "supersede_item",
+                                            "archive_item",
+                                            "refresh_profile",
+                                            "noop"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    },
+                                    "target_ids": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "target_type": {
+                                        "enum": [
+                                            "note",
+                                            "claim",
+                                            "task",
+                                            "profile",
+                                            "entity",
+                                            "episode"
+                                        ],
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "action",
+                                    "target_type",
+                                    "target_ids",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        },
+                        "summary": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "repair_actions",
+                        "summary"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "memoryNamespace": "project:<0>",
+                "memoryRepairPlanner": true
+            }
+        },
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                MEMORY-ONLY MAINTENANCE TASK\n\n                This is a private memory pipeline call, not a normal assistant reply.\n                Do not answer as a chat assistant.\n                Do not call tools.\n                Execute only the maintenance stage below.\n\n                Output contract:\n                Return exactly one valid JSON object matching the response schema.\n                No prose, no markdown fences, no explanation.\n\n                        You are MemoryRepairPlanner v1.\n\n        Goal:\n        Review suspicious memory clusters and propose conservative repair actions that improve memory hygiene without destroying useful history.\n\n        Current time: <instant>\n        Namespace: project:<0>\n\n        Candidate clusters:\n        Cluster repair-cluster-1: kind=DUPLICATE_CLAIMS; reason=Active claims have the same subject, predicate, and normalized text.\n- claim memory-repair-duplicate-claims-fixture-1-claim-first: status=ACTIVE; predicate=uses_runtime_language; family=fixture_duplicate_fact; subject=memory-repair-duplicate-claims-fixture-1-entity-subject; object=\"Kotlin\"; text=The Atlas planner sandbox uses Kotlin for workflow orchestration.; updated=2026-01-01T00:00:00Z\n- claim memory-repair-duplicate-claims-fixture-1-claim-second: status=ACTIVE; predicate=uses_runtime_language; family=fixture_duplicate_fact; subject=memory-repair-duplicate-claims-fixture-1-entity-subject; object=\"Kotlin\"; text=The Atlas planner sandbox uses Kotlin for workflow orchestration.; updated=2026-01-02T00:00:00Z\n\n        Supporting evidence:\n        - source memory-repair-duplicate-claims-fixture-1-source-second: The Atlas planner sandbox uses Kotlin for workflow orchestration.\n- source memory-repair-duplicate-claims-fixture-1-source-first: The Atlas planner sandbox uses Kotlin for workflow orchestration.\n\n        Return JSON:\n        {\n          \"repair_actions\": [\n            {\n              \"action\": \"merge_duplicates | supersede_item | archive_item | refresh_profile | noop\",\n              \"target_type\": \"note | claim | task | profile | entity | episode\",\n              \"target_ids\": [\"id\"],\n              \"reason\": \"short explanation\"\n            }\n          ],\n          \"summary\": \"short summary\"\n        }\n\n        Rules:\n        - Be conservative.\n        - Decide per cluster. If a cluster is not safely repairable, return noop for that cluster or omit it.\n        - Prefer preserving history with status changes or archive over destructive edits.\n        - Use merge_duplicates only for items that are exact or near-exact duplicates.\n        - Use archive_item only when an item is stale or duplicate but still explainable.\n        - Use supersede_item only when active memory is clearly replaced by a newer active item.\n        - Use refresh_profile when profile text can drift from active claims, notes, or tasks.\n        - For duplicate_claims, duplicate_notes, duplicate_tasks, and duplicate_episodes clusters, use merge_duplicates targeting all duplicate item ids when the cluster items really say the same thing. Do not use archive_item for duplicate clusters unless only one clearly bad item is targeted and a separate active keeper remains.\n        - For conflicting_claims clusters, prefer supersede_item targeting the older claim ids that were clearly replaced by newer claims. Do not supersede the newest claim.\n        - For profile_drift clusters, prefer refresh_profile targeting the profile id.\n        - Do not invent target ids. Use only ids from candidate clusters.\n        - Return valid JSON only.",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "memory_repair_planner",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "repair_actions": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "action": {
+                                        "enum": [
+                                            "merge_duplicates",
+                                            "supersede_item",
+                                            "archive_item",
+                                            "refresh_profile",
+                                            "noop"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    },
+                                    "target_ids": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "target_type": {
+                                        "enum": [
+                                            "note",
+                                            "claim",
+                                            "task",
+                                            "profile",
+                                            "entity",
+                                            "episode"
+                                        ],
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "action",
+                                    "target_type",
+                                    "target_ids",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        },
+                        "summary": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "repair_actions",
+                        "summary"
+                    ],
+                    "type": "object"
+                },
+                "description": "Plan conservative repairs for suspicious memory clusters.",
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "memoryNamespace": "project:<0>",
+                "memoryRepairPlanner": true
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"repair_actions\":[{\"action\":\"merge_duplicates\",\"reason\":\"Exact duplicate active claims with same subject, predicate, object, and text; safe to merge while preserving history.\",\"target_ids\":[\"memory-repair-duplicate-claims-fixture-1-claim-first\",\"memory-repair-duplicate-claims-fixture-1-claim-second\"],\"target_type\":\"claim\"}],\"summary\":\"Merged the duplicate Kotlin runtime-language claims into a single canonical memory record.\"}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 924,
+                "completionTokens": 103,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

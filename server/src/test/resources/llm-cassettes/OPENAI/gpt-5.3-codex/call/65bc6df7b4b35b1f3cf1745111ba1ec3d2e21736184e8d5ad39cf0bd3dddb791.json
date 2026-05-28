@@ -1,0 +1,511 @@
+{
+    "version": 1,
+    "hash": "65bc6df7b4b35b1f3cf1745111ba1ec3d2e21736184e8d5ad39cf0bd3dddb791",
+    "provider": "OPENAI",
+    "model": "gpt-5.3-codex",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>/projects/handoff-prompts-document-ingestion",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteConstructor v1.\n        Current time: <instant>\n        Timezone: Asia/Jerusalem\n        Namespace: project:<0>\n\n        Router decision: NOTE_WRITE\n        Router memory types: NOTE, SOURCE, ENTITY\n        Router reason: Document ingest is note/source-only in the hot path; hard claims/tasks can be produced by later consolidation. Original router reason: Imported document content is a procedural/design reference with durable workflow rules and output formats, best stored as reusable note evidence.\n\n        Stage instructions:\n        You are NoteConstructor v1 for a long-term AI agent.\n\nGoal:\nConstruct reusable semantic notes from TARGET_MESSAGE when the material is contextual rather than a clean atomic fact.\n\nA note is for decisions, rationale, design direction, plans, hypotheses, lessons, trade-offs, troubleshooting procedures, and compact document/context digests.\nA note must add reusable meaning. It must not be a generic summary of the target turn.\n\nReturn JSON:\n{\n  \"notes\": [\n    {\n      \"title\": \"short English title\",\n      \"summary\": \"self-contained English semantic fragment\",\n      \"note_type\": \"decision | direction | hypothesis | plan | lesson | doc_digest | context\",\n      \"scope_json\": {\n        \"kind\": \"global | conversation | entity | environment | document | project\",\n        \"text\": \"human-readable applicability boundary\",\n        \"basis\": \"explicit | inferred | summarized | imported\"\n      },\n      \"entity_refs\": [\n        {\"entity_id\": \"resolved-entity-id\", \"role\": \"primary | secondary | mentioned | owner | subject\"}\n      ],\n      \"keywords\": [\"short search keyword\"],\n      \"tags\": [\"short_tag\"],\n      \"candidate_claim_hints\": [],\n      \"confidence\": 0.0,\n      \"importance\": 1,\n      \"valid_from\": \"ISO-8601 or null\",\n      \"valid_to\": \"ISO-8601 or null\",\n      \"evidence_quote\": \"exact substring from TARGET_MESSAGE\",\n      \"evidence_kind\": \"direct | summarized | imported | inferred | derived_from_note\",\n      \"evidence_reason\": \"why this source supports the note\",\n      \"rationale\": \"why this should be a note, not a claim\"\n    }\n  ]\n}\n\nRules:\n- Write title, summary, keywords, tags, evidence_reason, and rationale in English.\n- Preserve proper names, product names, repo names, file names, exact commands, exact identifiers, dates, and quoted terms.\n- Use only entity IDs listed in Resolved entities.\n- Never write raw labels such as \"user\", \"assistant\", \"project\", or \"document\" into entity_refs. If a note is about the user, use the resolved USER entity id from Resolved entities.\n- For project-level notes without a more specific subject, use the resolved namespace/project subject entity.\n- Use TARGET_MESSAGE as the only evidence. Earlier messages are context only.\n- evidence_quote must be an exact short substring copied from TARGET_MESSAGE source data.\n- Do not construct notes from greetings, phatic chatter, pure questions, one-off commands with no durable rationale, or memory mechanics discussion that contains no reusable project/user decision.\n- Do not construct notes from a single weak uncertain factual observation when source recall is enough and there is no rationale, decision, plan, lesson, or reusable analysis.\n- Do not duplicate a claim candidate as a note when a precise claim is enough.\n- Do use a note when the target captures \"why\", \"how\", \"we decided\", \"current approach\", trade-offs, working agreements, troubleshooting order, or a design direction.\n- If TARGET_MESSAGE is a document or document section, preserve document title/source/section names and create section-scoped notes for important definitions, component roles, workflows, policies, and lists.\n- For dense technical documents and prompt packs, prefer several strong section-scoped notes over one broad document summary. Keep only reusable notes; do not summarize every paragraph.\n- For one document section, return at most two notes. If a section defines one compact component or policy, return one note.\n- If source metadata force_memory_write=true, create a note when the content is reusable context but not a clean claim/task/profile update.\n- For named components, include the exact component names in title, summary, keywords, or tags so later retrieval can find the component role.\n- A troubleshooting/procedure note is allowed, but do not create a task unless the target creates a commitment.\n- Keep each note self-contained: future recall should understand it without the original conversation.\n- Keep summary concise: usually one or two sentences.\n- Prefer zero notes over broad summary spam.\n- Return valid JSON only.\n\n        Relevant persisted memory for dedup/context only:\n        - note hot-path:note:<0> DOC_DIGEST; Task Updater v3 invocation policy and task lifecycle action schema; In 03. Prompt Pack section 9, Task Updater v3 is invoked when turns include commitments, deadlines, or task lifecycle changes, and it returns task operations (`insert`, `update`, `close`, `cancel`, `noop`) with structured task fields and reasoning; rules emphasize that plain requests are not automatic commitments and deadlines should be normalized to absolute time when possible.; scope=03. Prompt Pack / 9. Task Updater v3 in agent_memory_handoff/03_prompts.md\n- note hot-path:note:<1> DOC_DIGEST; Profile Updater v3 trigger and compact profile projection contract; In 03. Prompt Pack section 8, Profile Updater v3 is called after claim/task updates (and sometimes after note consolidation) to rebuild a compact always-in-context profile projection from explicit instructions, stable claims, and selected long-lived context, returning `profile_json`, `profile_text`, and `reason`.; scope=03. Prompt Pack / 8. Profile Updater v3 in agent_memory_handoff/03_prompts.md\n- note hot-path:note:<2> DOC_DIGEST; Note Reconciler v2 lifecycle decision policy; Note Reconciler v2 runs after NoteConstructor to choose note lifecycle actions (`insert`, `update`, `supersede`, `retract`, `noop`) by comparing candidate notes with nearby notes, with policy guidance on duplicates, clarity updates, supersession, and scope-based coexistence.; scope=03. Prompt Pack / 5. Note Reconciler v2 in agent_memory_handoff/03_prompts.md\n- note hot-path:note:<3> DOC_DIGEST; Note Constructor v2 role, trigger, and output contract; In 03. Prompt Pack, Note Constructor v2 is invoked when router selects `note_write` or `mixed`, and it produces reusable semantic note candidates (not hard facts) as structured JSON with note type, scope, entity refs, confidence/importance, lifecycle hints, and rationale.; scope=03. Prompt Pack / 4. Note Constructor v2 in agent_memory_handoff/03_prompts.md\n- note hot-path:note:<4> DOC_DIGEST; Claim Extractor v3 trigger and atomic-claim output contract; In 03. Prompt Pack section 6, Claim Extractor v3 runs when the router selects `direct_structured_write` or `mixed` (and may also be called by a background consolidator) to produce atomic semantic claims as a JSON array with subject/predicate/object, scope/qualifiers, confidence/importance, validity interval, and reason.; scope=03. Prompt Pack / 6. Claim Extractor v3 in agent_memory_handoff/03_prompts.md\n- note hot-path:note:<5> DOC_DIGEST; Entity Canonicalizer v1 resolution policy and action schema; Entity Canonicalizer v1 runs after retrieval candidate entities/aliases and resolves mentions by linking existing entities, creating new ones, adding aliases, or no-op, with a strict JSON array schema and precision-first rules that avoid weak merges and unnecessary entity creation.; scope=03. Prompt Pack / 3. Entity Canonicalizer v1\n- note hot-path:note:<6> DOC_DIGEST; Claim Reconciler v3 update-ops policy after extraction; In 03. Prompt Pack section 7, Claim Reconciler v3 is invoked after ClaimExtractor to compare candidate and existing claims and return update operations (`insert`, `update`, `supersede`, `retract`, `noop`), with policy guidance to prefer supersede over silent overwrite, use coexistence by differing scope, and reserve retract for clear contradiction.; scope=03. Prompt Pack / 7. Claim Reconciler v3 in agent_memory_handoff/03_prompts.md\n- note hot-path:note:<7> DOC_DIGEST; Write-Time Retrieval Planner v3 sequencing, goal, and output contract; In 03. Prompt Pack, Write-Time Retrieval Planner v3 is invoked after router and before extraction/reconciliation to produce a precise retrieval plan for deduplication, contradiction detection, temporal updates, and scope alignment, using a fixed JSON schema with query buckets, memory types, optional time filters, and per-type limits.; scope=03. Prompt Pack / 2. Write-Time Retrieval Planner v3\n- note hot-path:note:<8> DOC_DIGEST; Global rules for memory prompts in 03. Prompt Pack; The section defines required runtime inputs, technical constraints, and semantic safety rules for all memory prompts: pass core context fields, enforce strict JSON validation with retries, prefer explicit over inferred statements, convert relative to absolute time, keep one reusable unit per memory item, and use scope_json to limit overgeneralization.; scope=03. Prompt Pack / 0. Общие правила для всех memory prompts\n- note hot-path:note:<9> DIRECTION; Memory Router v3 decision contract and policy; Memory Router v3 is invoked immediately after Source save to decide whether to run memory writing and which mode to use (`noop`, `direct_structured_write`, `note_write`, `mixed`), returning JSON with decision, memory_types, salience, and reason; policy emphasizes avoiding memory pollution and mapping content type to the correct write mode.; scope=03. Prompt Pack / 1. Memory Router v3\n- note hot-path:note:<10> DIRECTION; v3 Prompt Pack uses narrow, verifiable step prompts instead of one monolithic lifecycle prompt; The section defines the design direction for `v3`: the starter prompt pack should decompose memory lifecycle work into narrow, checkable steps rather than a single giant prompt.; scope=03. Prompt Pack section in agent_memory_handoff/03_prompts.md describing prompt-pack design approach for v3\n\n        Resolved entities:\n        - mention=Note Consolidator v2; action=CREATE_NEW; id=entity:<0>; type=CONCEPT; name=Note Consolidator v2; reason=Mentioned as a distinct named component; no matching existing entity candidate.\n- mention=Memory Repair Planner v1; action=CREATE_NEW; id=entity:<1>; type=CONCEPT; name=Memory Repair Planner v1; reason=Mentioned as a distinct named component; no matching existing entity candidate.\n- mention=current project; action=CREATE_NEW; id=entity:<2>; type=PROJECT; name=Current project; reason=Default current-project subject for claims without a more specific resolved subject\n\n        Retrieval plan context:\n        entity_queries=Note Consolidator v2|Memory Repair Planner v1|agent_memory_handoff/03_prompts.md|03. Prompt Pack\n        text_queries=Note Consolidator v2 output schema claim_candidates task_actions profile_patch episode_candidates note_actions summary|Memory Repair Planner v1 repair_actions merge_duplicates supersede_item archive_item downgrade_retrieval_state refresh_profile noop|mature notes to durable structured memory consolidation rules|suspicious clusters degraded memory repair conservative actions\n        predicate_hints=\n\n        TARGET_MESSAGE source data:\n        [external:document-section:0a82d68ae575b50017295f47188b1919] EXTERNAL\nSource metadata: source_kind=document; origin=pasted_document_section; document_type=MARKDOWN; source_ref=agent_memory_handoff/03_prompts.md; title=03. Prompt Pack; heading=03. Prompt Pack / 10. Note Consolidator v2 .. 11. Memory Repair Planner v1; imported_at=1970-01-01T00:00:00Z\nDocument title: 03. Prompt Pack\nDocument source: agent_memory_handoff/03_prompts.md\nDocument section: 03. Prompt Pack / 10. Note Consolidator v2 .. 11. Memory Repair Planner v1\nDocument lines: 690-820\n\n## 10. Note Consolidator v2\n\n### Когда вызывать\nВ фоне, после debounce или batch window.\n\n### Цель\nПонять, можно ли mature notes превратить в durable structured memory.\n\n### Выход\n\n```json\n{\n  \"claim_candidates\": [],\n  \"task_actions\": [],\n  \"profile_patch\": null,\n  \"episode_candidates\": [],\n  \"note_actions\": [],\n  \"summary\": \"short summary\"\n}\n```\n\n### Prompt\n\n```text\nYou are NoteConsolidator v2.\n\nGoal:\nReview mature notes and decide whether any of them should now produce durable structured memory.\n\nCurrent time: {{current_time_iso}}\nTimezone: {{timezone}}\nNamespace: {{namespace_id}}\n\nSelected notes:\n{{selected_notes}}\n\nRelated active claims:\n{{related_claims}}\n\nRelated tasks:\n{{related_tasks}}\n\nExisting profile:\n{{existing_profile_json}}\n\nReturn JSON:\n{\n  \"claim_candidates\": [],\n  \"task_actions\": [],\n  \"profile_patch\": null,\n  \"episode_candidates\": [],\n  \"note_actions\": [\n    {\n      \"note_id\": \"uuid\",\n      \"action\": \"keep_active | mark_resolved | mark_stale | supersede | mark_consolidated\",\n      \"reason\": \"short explanation\"\n    }\n  ],\n  \"summary\": \"short summary\"\n}\n\nRules:\n- Consolidate only when the signal is strong enough.\n- Do not force every note into a claim.\n- Promote to claim when the meaning is stable, queryable, and precise enough.\n- Promote to task only when future action is clearly required.\n- Promote to episode only when there is a reusable lesson.\n- Return valid JSON only.\n```\n\n## 11. Memory Repair Planner v1\n\n### Когда вызывать\nВ фоне, для suspicious clusters или после prompt/model changes.\n\n### Цель\nПредложить repair ops для деградировавшей памяти.\n\n### Выход\n\n```json\n{\n  \"repair_actions\": [\n    {\n      \"action\": \"merge_duplicates | supersede_item | archive_item | downgrade_retrieval_state | refresh_profile | noop\",\n      \"target_type\": \"note | claim | task | profile | entity\",\n      \"target_ids\": [\"uuid\"],\n      \"reason\": \"short explanation\"\n    }\n  ],\n  \"summary\": \"short summary\"\n}\n```\n\n### Prompt\n\n```text\nYou are MemoryRepairPlanner v1.\n\nGoal:\nReview suspicious memory clusters and propose conservative repair actions that improve memory hygiene without destroying useful history.\n\nCurrent time: {{current_time_iso}}\nNamespace: {{namespace_id}}\n\nSuspicious items:\n{{suspicious_items}}\n\nSupporting evidence:\n{{supporting_evidence}}\n\nReturn JSON:\n{\n  \"repair_actions\": [\n    {\n      \"action\": \"merge_duplicates | supersede_item | archive_item | downgrade_retrieval_state | refresh_profile | noop\",\n      \"target_type\": \"note | claim | task | profile | entity\",\n      \"target_ids\": [\"uuid\"],\n      \"reason\": \"short explanation\"\n    }\n  ],\n  \"summary\": \"short summary\"\n}\n\nRules:\n- Be conservative.\n- Prefer preserving history with links/status changes over destructive edits.\n- Use archive/downgrade when an item is stale but still explainable.\n- Return valid JSON only.\n```",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Construct contextual memory note candidates from one target message.",
+                "name": "memory_note_constructor",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "notes": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "candidate_claim_hints": {
+                                        "items": {
+                                            "anyOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "number"
+                                                },
+                                                {
+                                                    "type": "integer"
+                                                },
+                                                {
+                                                    "type": "boolean"
+                                                },
+                                                {
+                                                    "type": "null"
+                                                }
+                                            ]
+                                        },
+                                        "type": "array"
+                                    },
+                                    "confidence": {
+                                        "type": "number"
+                                    },
+                                    "entity_refs": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "entity_id": {
+                                                    "type": "string"
+                                                },
+                                                "role": {
+                                                    "enum": [
+                                                        "primary",
+                                                        "secondary",
+                                                        "mentioned",
+                                                        "owner",
+                                                        "subject"
+                                                    ],
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "entity_id",
+                                                "role"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "evidence_kind": {
+                                        "enum": [
+                                            "direct",
+                                            "summarized",
+                                            "imported",
+                                            "inferred",
+                                            "derived_from_note"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "evidence_quote": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "evidence_reason": {
+                                        "type": "string"
+                                    },
+                                    "importance": {
+                                        "type": "integer"
+                                    },
+                                    "keywords": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "note_type": {
+                                        "enum": [
+                                            "decision",
+                                            "direction",
+                                            "hypothesis",
+                                            "plan",
+                                            "lesson",
+                                            "doc_digest",
+                                            "context"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "rationale": {
+                                        "type": "string"
+                                    },
+                                    "scope_json": {
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "basis": {
+                                                "enum": [
+                                                    "explicit",
+                                                    "inferred",
+                                                    "summarized",
+                                                    "imported"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "kind": {
+                                                "enum": [
+                                                    "global",
+                                                    "conversation",
+                                                    "entity",
+                                                    "environment",
+                                                    "document",
+                                                    "project"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "text": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "kind",
+                                            "text",
+                                            "basis"
+                                        ],
+                                        "type": "object"
+                                    },
+                                    "summary": {
+                                        "type": "string"
+                                    },
+                                    "tags": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "title": {
+                                        "type": "string"
+                                    },
+                                    "valid_from": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "valid_to": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "title",
+                                    "summary",
+                                    "note_type",
+                                    "scope_json",
+                                    "entity_refs",
+                                    "keywords",
+                                    "tags",
+                                    "candidate_claim_hints",
+                                    "confidence",
+                                    "importance",
+                                    "valid_from",
+                                    "valid_to",
+                                    "evidence_quote",
+                                    "evidence_kind",
+                                    "evidence_reason",
+                                    "rationale"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "notes"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "memoryNamespace": "project:<0>",
+                "memoryNoteConstructor": true,
+                "memoryRouteDecision": "NOTE_WRITE",
+                "memorySourceId": "external:document-section:0a82d68ae575b50017295f47188b1919"
+            }
+        },
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteConstructor v1.\n        Current time: <instant>\n        Timezone: Asia/Jerusalem\n        Namespace: project:<0>\n\n        Router decision: NOTE_WRITE\n        Router memory types: NOTE, SOURCE, ENTITY\n        Router reason: Document ingest is note/source-only in the hot path; hard claims/tasks can be produced by later consolidation. Original router reason: Imported document content is a procedural/design reference with durable workflow rules and output formats, best stored as reusable note evidence.\n\n        Stage instructions:\n        You are NoteConstructor v1 for a long-term AI agent.\n\nGoal:\nConstruct reusable semantic notes from TARGET_MESSAGE when the material is contextual rather than a clean atomic fact.\n\nA note is for decisions, rationale, design direction, plans, hypotheses, lessons, trade-offs, troubleshooting procedures, and compact document/context digests.\nA note must add reusable meaning. It must not be a generic summary of the target turn.\n\nReturn JSON:\n{\n  \"notes\": [\n    {\n      \"title\": \"short English title\",\n      \"summary\": \"self-contained English semantic fragment\",\n      \"note_type\": \"decision | direction | hypothesis | plan | lesson | doc_digest | context\",\n      \"scope_json\": {\n        \"kind\": \"global | conversation | entity | environment | document | project\",\n        \"text\": \"human-readable applicability boundary\",\n        \"basis\": \"explicit | inferred | summarized | imported\"\n      },\n      \"entity_refs\": [\n        {\"entity_id\": \"resolved-entity-id\", \"role\": \"primary | secondary | mentioned | owner | subject\"}\n      ],\n      \"keywords\": [\"short search keyword\"],\n      \"tags\": [\"short_tag\"],\n      \"candidate_claim_hints\": [],\n      \"confidence\": 0.0,\n      \"importance\": 1,\n      \"valid_from\": \"ISO-8601 or null\",\n      \"valid_to\": \"ISO-8601 or null\",\n      \"evidence_quote\": \"exact substring from TARGET_MESSAGE\",\n      \"evidence_kind\": \"direct | summarized | imported | inferred | derived_from_note\",\n      \"evidence_reason\": \"why this source supports the note\",\n      \"rationale\": \"why this should be a note, not a claim\"\n    }\n  ]\n}\n\nRules:\n- Write title, summary, keywords, tags, evidence_reason, and rationale in English.\n- Preserve proper names, product names, repo names, file names, exact commands, exact identifiers, dates, and quoted terms.\n- Use only entity IDs listed in Resolved entities.\n- Never write raw labels such as \"user\", \"assistant\", \"project\", or \"document\" into entity_refs. If a note is about the user, use the resolved USER entity id from Resolved entities.\n- For project-level notes without a more specific subject, use the resolved namespace/project subject entity.\n- Use TARGET_MESSAGE as the only evidence. Earlier messages are context only.\n- evidence_quote must be an exact short substring copied from TARGET_MESSAGE source data.\n- Do not construct notes from greetings, phatic chatter, pure questions, one-off commands with no durable rationale, or memory mechanics discussion that contains no reusable project/user decision.\n- Do not construct notes from a single weak uncertain factual observation when source recall is enough and there is no rationale, decision, plan, lesson, or reusable analysis.\n- Do not duplicate a claim candidate as a note when a precise claim is enough.\n- Do use a note when the target captures \"why\", \"how\", \"we decided\", \"current approach\", trade-offs, working agreements, troubleshooting order, or a design direction.\n- If TARGET_MESSAGE is a document or document section, preserve document title/source/section names and create section-scoped notes for important definitions, component roles, workflows, policies, and lists.\n- For dense technical documents and prompt packs, prefer several strong section-scoped notes over one broad document summary. Keep only reusable notes; do not summarize every paragraph.\n- For one document section, return at most two notes. If a section defines one compact component or policy, return one note.\n- If source metadata force_memory_write=true, create a note when the content is reusable context but not a clean claim/task/profile update.\n- For named components, include the exact component names in title, summary, keywords, or tags so later retrieval can find the component role.\n- A troubleshooting/procedure note is allowed, but do not create a task unless the target creates a commitment.\n- Keep each note self-contained: future recall should understand it without the original conversation.\n- Keep summary concise: usually one or two sentences.\n- Prefer zero notes over broad summary spam.\n- Return valid JSON only.\n\n        Relevant persisted memory for dedup/context only:\n        - note hot-path:note:<0> DOC_DIGEST; Task Updater v3 invocation policy and task lifecycle action schema; In 03. Prompt Pack section 9, Task Updater v3 is invoked when turns include commitments, deadlines, or task lifecycle changes, and it returns task operations (`insert`, `update`, `close`, `cancel`, `noop`) with structured task fields and reasoning; rules emphasize that plain requests are not automatic commitments and deadlines should be normalized to absolute time when possible.; scope=03. Prompt Pack / 9. Task Updater v3 in agent_memory_handoff/03_prompts.md\n- note hot-path:note:<1> DOC_DIGEST; Profile Updater v3 trigger and compact profile projection contract; In 03. Prompt Pack section 8, Profile Updater v3 is called after claim/task updates (and sometimes after note consolidation) to rebuild a compact always-in-context profile projection from explicit instructions, stable claims, and selected long-lived context, returning `profile_json`, `profile_text`, and `reason`.; scope=03. Prompt Pack / 8. Profile Updater v3 in agent_memory_handoff/03_prompts.md\n- note hot-path:note:<2> DOC_DIGEST; Note Reconciler v2 lifecycle decision policy; Note Reconciler v2 runs after NoteConstructor to choose note lifecycle actions (`insert`, `update`, `supersede`, `retract`, `noop`) by comparing candidate notes with nearby notes, with policy guidance on duplicates, clarity updates, supersession, and scope-based coexistence.; scope=03. Prompt Pack / 5. Note Reconciler v2 in agent_memory_handoff/03_prompts.md\n- note hot-path:note:<3> DOC_DIGEST; Note Constructor v2 role, trigger, and output contract; In 03. Prompt Pack, Note Constructor v2 is invoked when router selects `note_write` or `mixed`, and it produces reusable semantic note candidates (not hard facts) as structured JSON with note type, scope, entity refs, confidence/importance, lifecycle hints, and rationale.; scope=03. Prompt Pack / 4. Note Constructor v2 in agent_memory_handoff/03_prompts.md\n- note hot-path:note:<4> DOC_DIGEST; Claim Extractor v3 trigger and atomic-claim output contract; In 03. Prompt Pack section 6, Claim Extractor v3 runs when the router selects `direct_structured_write` or `mixed` (and may also be called by a background consolidator) to produce atomic semantic claims as a JSON array with subject/predicate/object, scope/qualifiers, confidence/importance, validity interval, and reason.; scope=03. Prompt Pack / 6. Claim Extractor v3 in agent_memory_handoff/03_prompts.md\n- note hot-path:note:<5> DOC_DIGEST; Entity Canonicalizer v1 resolution policy and action schema; Entity Canonicalizer v1 runs after retrieval candidate entities/aliases and resolves mentions by linking existing entities, creating new ones, adding aliases, or no-op, with a strict JSON array schema and precision-first rules that avoid weak merges and unnecessary entity creation.; scope=03. Prompt Pack / 3. Entity Canonicalizer v1\n- note hot-path:note:<6> DOC_DIGEST; Claim Reconciler v3 update-ops policy after extraction; In 03. Prompt Pack section 7, Claim Reconciler v3 is invoked after ClaimExtractor to compare candidate and existing claims and return update operations (`insert`, `update`, `supersede`, `retract`, `noop`), with policy guidance to prefer supersede over silent overwrite, use coexistence by differing scope, and reserve retract for clear contradiction.; scope=03. Prompt Pack / 7. Claim Reconciler v3 in agent_memory_handoff/03_prompts.md\n- note hot-path:note:<7> DOC_DIGEST; Write-Time Retrieval Planner v3 sequencing, goal, and output contract; In 03. Prompt Pack, Write-Time Retrieval Planner v3 is invoked after router and before extraction/reconciliation to produce a precise retrieval plan for deduplication, contradiction detection, temporal updates, and scope alignment, using a fixed JSON schema with query buckets, memory types, optional time filters, and per-type limits.; scope=03. Prompt Pack / 2. Write-Time Retrieval Planner v3\n- note hot-path:note:<8> DOC_DIGEST; Global rules for memory prompts in 03. Prompt Pack; The section defines required runtime inputs, technical constraints, and semantic safety rules for all memory prompts: pass core context fields, enforce strict JSON validation with retries, prefer explicit over inferred statements, convert relative to absolute time, keep one reusable unit per memory item, and use scope_json to limit overgeneralization.; scope=03. Prompt Pack / 0. Общие правила для всех memory prompts\n- note hot-path:note:<9> DIRECTION; Memory Router v3 decision contract and policy; Memory Router v3 is invoked immediately after Source save to decide whether to run memory writing and which mode to use (`noop`, `direct_structured_write`, `note_write`, `mixed`), returning JSON with decision, memory_types, salience, and reason; policy emphasizes avoiding memory pollution and mapping content type to the correct write mode.; scope=03. Prompt Pack / 1. Memory Router v3\n- note hot-path:note:<10> DIRECTION; v3 Prompt Pack uses narrow, verifiable step prompts instead of one monolithic lifecycle prompt; The section defines the design direction for `v3`: the starter prompt pack should decompose memory lifecycle work into narrow, checkable steps rather than a single giant prompt.; scope=03. Prompt Pack section in agent_memory_handoff/03_prompts.md describing prompt-pack design approach for v3\n\n        Resolved entities:\n        - mention=Note Consolidator v2; action=CREATE_NEW; id=entity:<0>; type=CONCEPT; name=Note Consolidator v2; reason=Mentioned as a distinct named component; no matching existing entity candidate.\n- mention=Memory Repair Planner v1; action=CREATE_NEW; id=entity:<1>; type=CONCEPT; name=Memory Repair Planner v1; reason=Mentioned as a distinct named component; no matching existing entity candidate.\n- mention=current project; action=CREATE_NEW; id=entity:<2>; type=PROJECT; name=Current project; reason=Default current-project subject for claims without a more specific resolved subject\n\n        Retrieval plan context:\n        entity_queries=Note Consolidator v2|Memory Repair Planner v1|agent_memory_handoff/03_prompts.md|03. Prompt Pack\n        text_queries=Note Consolidator v2 output schema claim_candidates task_actions profile_patch episode_candidates note_actions summary|Memory Repair Planner v1 repair_actions merge_duplicates supersede_item archive_item downgrade_retrieval_state refresh_profile noop|mature notes to durable structured memory consolidation rules|suspicious clusters degraded memory repair conservative actions\n        predicate_hints=\n\n        TARGET_MESSAGE source data:\n        [external:document-section:0a82d68ae575b50017295f47188b1919] EXTERNAL\nSource metadata: source_kind=document; origin=pasted_document_section; document_type=MARKDOWN; source_ref=agent_memory_handoff/03_prompts.md; title=03. Prompt Pack; heading=03. Prompt Pack / 10. Note Consolidator v2 .. 11. Memory Repair Planner v1; imported_at=1970-01-01T00:00:00Z\nDocument title: 03. Prompt Pack\nDocument source: agent_memory_handoff/03_prompts.md\nDocument section: 03. Prompt Pack / 10. Note Consolidator v2 .. 11. Memory Repair Planner v1\nDocument lines: 690-820\n\n## 10. Note Consolidator v2\n\n### Когда вызывать\nВ фоне, после debounce или batch window.\n\n### Цель\nПонять, можно ли mature notes превратить в durable structured memory.\n\n### Выход\n\n```json\n{\n  \"claim_candidates\": [],\n  \"task_actions\": [],\n  \"profile_patch\": null,\n  \"episode_candidates\": [],\n  \"note_actions\": [],\n  \"summary\": \"short summary\"\n}\n```\n\n### Prompt\n\n```text\nYou are NoteConsolidator v2.\n\nGoal:\nReview mature notes and decide whether any of them should now produce durable structured memory.\n\nCurrent time: {{current_time_iso}}\nTimezone: {{timezone}}\nNamespace: {{namespace_id}}\n\nSelected notes:\n{{selected_notes}}\n\nRelated active claims:\n{{related_claims}}\n\nRelated tasks:\n{{related_tasks}}\n\nExisting profile:\n{{existing_profile_json}}\n\nReturn JSON:\n{\n  \"claim_candidates\": [],\n  \"task_actions\": [],\n  \"profile_patch\": null,\n  \"episode_candidates\": [],\n  \"note_actions\": [\n    {\n      \"note_id\": \"uuid\",\n      \"action\": \"keep_active | mark_resolved | mark_stale | supersede | mark_consolidated\",\n      \"reason\": \"short explanation\"\n    }\n  ],\n  \"summary\": \"short summary\"\n}\n\nRules:\n- Consolidate only when the signal is strong enough.\n- Do not force every note into a claim.\n- Promote to claim when the meaning is stable, queryable, and precise enough.\n- Promote to task only when future action is clearly required.\n- Promote to episode only when there is a reusable lesson.\n- Return valid JSON only.\n```\n\n## 11. Memory Repair Planner v1\n\n### Когда вызывать\nВ фоне, для suspicious clusters или после prompt/model changes.\n\n### Цель\nПредложить repair ops для деградировавшей памяти.\n\n### Выход\n\n```json\n{\n  \"repair_actions\": [\n    {\n      \"action\": \"merge_duplicates | supersede_item | archive_item | downgrade_retrieval_state | refresh_profile | noop\",\n      \"target_type\": \"note | claim | task | profile | entity\",\n      \"target_ids\": [\"uuid\"],\n      \"reason\": \"short explanation\"\n    }\n  ],\n  \"summary\": \"short summary\"\n}\n```\n\n### Prompt\n\n```text\nYou are MemoryRepairPlanner v1.\n\nGoal:\nReview suspicious memory clusters and propose conservative repair actions that improve memory hygiene without destroying useful history.\n\nCurrent time: {{current_time_iso}}\nNamespace: {{namespace_id}}\n\nSuspicious items:\n{{suspicious_items}}\n\nSupporting evidence:\n{{supporting_evidence}}\n\nReturn JSON:\n{\n  \"repair_actions\": [\n    {\n      \"action\": \"merge_duplicates | supersede_item | archive_item | downgrade_retrieval_state | refresh_profile | noop\",\n      \"target_type\": \"note | claim | task | profile | entity\",\n      \"target_ids\": [\"uuid\"],\n      \"reason\": \"short explanation\"\n    }\n  ],\n  \"summary\": \"short summary\"\n}\n\nRules:\n- Be conservative.\n- Prefer preserving history with links/status changes over destructive edits.\n- Use archive/downgrade when an item is stale but still explainable.\n- Return valid JSON only.\n```",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "memory_note_constructor",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "notes": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "candidate_claim_hints": {
+                                        "items": {
+                                            "anyOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "number"
+                                                },
+                                                {
+                                                    "type": "integer"
+                                                },
+                                                {
+                                                    "type": "boolean"
+                                                },
+                                                {
+                                                    "type": "null"
+                                                }
+                                            ]
+                                        },
+                                        "type": "array"
+                                    },
+                                    "confidence": {
+                                        "type": "number"
+                                    },
+                                    "entity_refs": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "entity_id": {
+                                                    "type": "string"
+                                                },
+                                                "role": {
+                                                    "enum": [
+                                                        "primary",
+                                                        "secondary",
+                                                        "mentioned",
+                                                        "owner",
+                                                        "subject"
+                                                    ],
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "entity_id",
+                                                "role"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "evidence_kind": {
+                                        "enum": [
+                                            "direct",
+                                            "summarized",
+                                            "imported",
+                                            "inferred",
+                                            "derived_from_note"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "evidence_quote": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "evidence_reason": {
+                                        "type": "string"
+                                    },
+                                    "importance": {
+                                        "type": "integer"
+                                    },
+                                    "keywords": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "note_type": {
+                                        "enum": [
+                                            "decision",
+                                            "direction",
+                                            "hypothesis",
+                                            "plan",
+                                            "lesson",
+                                            "doc_digest",
+                                            "context"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "rationale": {
+                                        "type": "string"
+                                    },
+                                    "scope_json": {
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "basis": {
+                                                "enum": [
+                                                    "explicit",
+                                                    "inferred",
+                                                    "summarized",
+                                                    "imported"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "kind": {
+                                                "enum": [
+                                                    "global",
+                                                    "conversation",
+                                                    "entity",
+                                                    "environment",
+                                                    "document",
+                                                    "project"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "text": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "kind",
+                                            "text",
+                                            "basis"
+                                        ],
+                                        "type": "object"
+                                    },
+                                    "summary": {
+                                        "type": "string"
+                                    },
+                                    "tags": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "title": {
+                                        "type": "string"
+                                    },
+                                    "valid_from": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "valid_to": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "title",
+                                    "summary",
+                                    "note_type",
+                                    "scope_json",
+                                    "entity_refs",
+                                    "keywords",
+                                    "tags",
+                                    "candidate_claim_hints",
+                                    "confidence",
+                                    "importance",
+                                    "valid_from",
+                                    "valid_to",
+                                    "evidence_quote",
+                                    "evidence_kind",
+                                    "evidence_reason",
+                                    "rationale"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "notes"
+                    ],
+                    "type": "object"
+                },
+                "description": "Construct contextual memory note candidates from one target message.",
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "memoryNamespace": "project:<0>",
+                "memoryNoteConstructor": true,
+                "memoryRouteDecision": "NOTE_WRITE",
+                "memorySourceId": "external:document-section:0a82d68ae575b50017295f47188b1919"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"notes\":[{\"candidate_claim_hints\":[],\"confidence\":0.96,\"entity_refs\":[{\"entity_id\":\"entity:<0>\",\"role\":\"primary\"}],\"evidence_kind\":\"direct\",\"evidence_quote\":\"Consolidate only when the signal is strong enough.\",\"evidence_reason\":\"The section explicitly defines when to call Note Consolidator v2, its goal, output JSON fields, and decision rules for selective promotion and note lifecycle actions.\",\"importance\":4,\"keywords\":[\"Note Consolidator v2\",\"mature notes\",\"durable structured memory\",\"note_actions\",\"claim_candidates\"],\"note_type\":\"doc_digest\",\"rationale\":\"This is reusable procedural design guidance and output-contract context, not a single atomic fact.\",\"scope_json\":{\"basis\":\"imported\",\"kind\":\"document\",\"text\":\"03. Prompt Pack / 10. Note Consolidator v2 in agent_memory_handoff/03_prompts.md\"},\"summary\":\"In 03. Prompt Pack section 10, Note Consolidator v2 runs in the background after a debounce or batch window to review mature notes and selectively promote strong signals into durable structured memory (claims/tasks/episodes/profile), while also applying note lifecycle actions.\",\"tags\":[\"prompt_pack\",\"memory_consolidation\",\"schema\"],\"title\":\"Note Consolidator v2 background consolidation policy and action schema\",\"valid_from\":\"1970-01-01T00:00:00Z\",\"valid_to\":null},{\"candidate_claim_hints\":[],\"confidence\":0.97,\"entity_refs\":[{\"entity_id\":\"entity:<1>\",\"role\":\"primary\"}],\"evidence_kind\":\"direct\",\"evidence_quote\":\"Review suspicious memory clusters and propose conservative repair actions that improve memory hygiene without destroying useful history.\",\"evidence_reason\":\"The quote and surrounding section directly state trigger conditions, objective, action schema, and conservative safety rules.\",\"importance\":4,\"keywords\":[\"Memory Repair Planner v1\",\"suspicious clusters\",\"repair_actions\",\"conservative\",\"archive_item\"],\"note_type\":\"doc_digest\",\"rationale\":\"This captures durable workflow policy and repair trade-offs suitable for later retrieval, beyond a simple atomic claim.\",\"scope_json\":{\"basis\":\"imported\",\"kind\":\"document\",\"text\":\"03. Prompt Pack / 11. Memory Repair Planner v1 in agent_memory_handoff/03_prompts.md\"},\"summary\":\"In 03. Prompt Pack section 11, Memory Repair Planner v1 is a background component for suspicious clusters or post prompt/model changes, returning conservative repair actions (`merge_duplicates`, `supersede_item`, `archive_item`, `downgrade_retrieval_state`, `refresh_profile`, `noop`) to improve memory hygiene while preserving history.\",\"tags\":[\"prompt_pack\",\"memory_repair\",\"hygiene\"],\"title\":\"Memory Repair Planner v1 conservative repair strategy for suspicious memory clusters\",\"valid_from\":\"1970-01-01T00:00:00Z\",\"valid_to\":null}]}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 3948,
+                "completionTokens": 612,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

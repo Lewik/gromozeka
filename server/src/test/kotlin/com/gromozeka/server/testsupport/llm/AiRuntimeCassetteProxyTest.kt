@@ -305,8 +305,15 @@ class AiRuntimeCassetteProxyTest {
                 "Project path: /tmp/gromozeka-e2e-$dynamicPart/projects/case-a\n" +
                     "Current time: 2026-05-07T21:38:${dynamicPart.takeLast(2).padStart(2, '0')}.123456Z\n" +
                     "candidate validFrom=2026-05-07T21:38:${dynamicPart.takeLast(2).padStart(2, '0')}.123456Z " +
+                    "imported_at=2026-05-07T21:38:${dynamicPart.takeLast(2).padStart(2, '0')}.123456Z " +
+                    "importedAt=2026-05-07T21:38:${dynamicPart.takeLast(2).padStart(2, '0')}.123456Z " +
                     "validTo=null\n" +
-                    "{\"valid_from\":\"2026-05-07T21:38:${dynamicPart.takeLast(2).padStart(2, '0')}.123456Z\"}"
+                    "Document imported at: 2026-05-07T21:38:${dynamicPart.takeLast(2).padStart(2, '0')}.123456Z\n" +
+                    "selector candidate id hot-path:note:${"019e0460-a81e-782c-b9cf-$dynamicPart".padEnd(36, '9')}\n" +
+                    "{\"valid_from\":\"2026-05-07T21:38:${dynamicPart.takeLast(2).padStart(2, '0')}.123456Z\"," +
+                    "\"item_id\":\"hot-path:note:${"019e0460-a81e-782c-b9cf-$dynamicPart".padEnd(36, '9')}\"," +
+                    "\"imported_at\":\"2026-05-07T21:38:${dynamicPart.takeLast(2).padStart(2, '0')}.123456Z\"," +
+                    "\"importedAt\":\"2026-05-07T21:38:${dynamicPart.takeLast(2).padStart(2, '0')}.123456Z\"}"
             ),
             messages = listOf(
                 Conversation.Message(

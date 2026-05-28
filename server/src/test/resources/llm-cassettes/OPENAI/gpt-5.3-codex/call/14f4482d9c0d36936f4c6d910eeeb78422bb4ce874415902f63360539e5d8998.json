@@ -1,0 +1,1059 @@
+{
+    "version": 1,
+    "hash": "14f4482d9c0d36936f4c6d910eeeb78422bb4ce874415902f63360539e5d8998",
+    "provider": "OPENAI",
+    "model": "gpt-5.3-codex",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>/projects/episode-competing-recall",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                MEMORY-ONLY MAINTENANCE TASK\n\n                This is a private memory pipeline call, not a normal assistant reply.\n                Do not answer as a chat assistant.\n                Do not call tools.\n                Execute only the maintenance stage below.\n\n                Output contract:\n                Return exactly one valid JSON object matching the response schema.\n                No prose, no markdown fences, no explanation.\n\n                        You are NoteConsolidator v2 for a long-term AI agent memory system.\n\n        Goal:\n        Review selected notes and decide whether any of them should now produce durable structured memory.\n\n        Current time: <instant>\n        Timezone: Asia/Jerusalem\n        Namespace: project:<0>\n\n        Selected notes:\n        - id=hot-path:note:<0>; type=LESSON; status=ACTIVE; maturity=FRESH; importance=8; confidence=0.98; title=NoMemoryVerifier lesson: verify ambiguous no-memory recall decisions with a model call; summary=In Memory MVP, when ReadTimeRetrievalPlanner returns need_memory=false on ambiguous recall questions, NoMemoryVerifier should run a short model-based verification before accepting the no-memory plan and avoid hard-coded substring heuristics.; scope=Applies to Memory MVP retrieval-planning behavior for ambiguous recall intent decisions.; anchor=entity:<0>; entities=entity:<1>;entity:<2>;entity:<3>; evidence=chat:<0> for ambiguous no-memory recall decisions, prefer a cheap model-based verifier over substring matching.; candidate_claims=[]\n- id=hot-path:note:<1>; type=LESSON; status=ACTIVE; maturity=FRESH; importance=8; confidence=0.97; title=SourceHydrator lesson: bounded quote hydration on evidence fallback; summary=In Memory MVP, SourceHydrator should retrieve a small bounded set of source quotes only when evidence fallback is requested, after interpreted claims are retrieved, to keep answers grounded without overloading the runtime prompt.; scope=Applies to Memory MVP SourceHydrator source-evidence hydration strategy.; anchor=entity:<4>; entities=entity:<5>;entity:<6>;entity:<7>; evidence=chat:<1> for source evidence hydration, prefer bounded quote hydration over dumping all sources into the runtime prompt.; candidate_claims=[]\n\n        Entity catalog:\n        - id=entity:<0>; type=CONCEPT; name=NoMemoryVerifier; summary=Concept named NoMemoryVerifier.\n- id=entity:<8>; type=CONCEPT; name=ReadTimeRetrievalPlanner; summary=Concept named ReadTimeRetrievalPlanner.\n- id=entity:<9>; type=PROJECT; name=Current project; summary=Project named Current project.\n- id=entity:<10>; type=PROJECT; name=Memory MVP; summary=Project named Memory MVP.\n- id=entity:<4>; type=SERVICE; name=SourceHydrator; summary=Service named SourceHydrator.\n\n        Related active claims:\n        none\n\n        Related active notes:\n        none\n\n        Related tasks:\n        none\n\n        Existing profile:\n        none\n\n        Return JSON:\n        {\n          \"claim_candidates\": [],\n          \"task_actions\": [],\n          \"profile_patch\": null,\n          \"episode_candidates\": [],\n          \"note_actions\": [\n            {\n              \"note_id\": \"note-id\",\n              \"action\": \"keep_active | mark_resolved | mark_stale | supersede | mark_consolidated\",\n              \"reason\": \"short explanation\"\n            }\n          ],\n          \"summary\": \"short summary\"\n        }\n\n        Rules:\n        - Consolidate only when the signal is strong enough.\n        - Do not force every note into a claim.\n        - Promote to claim when the meaning is stable, queryable, and precise enough.\n        - Promote to task only when future action is clearly required and already represented by the selected note.\n        - Return one episode_candidate for each selected LESSON note that clearly contains a reusable situation-action-result-lesson pattern.\n        - Do not collapse several unrelated selected lessons into one episode_candidate.\n        - For episode_candidates, owner_entity_id should be the most specific component/service/person/concept the lesson applies to. Use the project entity only when no more specific owner exists.\n        - If a selected note is a useful stable rule but not reusable experience, promote it to claim without creating an episode_candidate.\n        - Write claim text, task text, profile text, episode text, and reasons in English.\n        - Preserve proper names, component names, repo names, exact identifiers, dates, commands, and quoted terms.\n        - Every claim candidate must include origin_note_id from Selected notes.\n        - Use only entity ids from Entity catalog.\n        - If no entity is better, use the selected note anchor entity.\n        - Use object_entity_id for entity objects and object_value_json for scalar/string objects, never both.\n        - evidence_quote may be null for derived memory; provenance will use the origin note evidence refs.\n        - Existing claims and tasks are dedup/context only.\n        - If a selected note already has a matching active claim or task, prefer note_actions with mark_consolidated or keep_active instead of duplicating memory.\n        - Use mark_consolidated only when durable memory was created or already exists.\n        - Use keep_active for unresolved rationale, hypotheses, weak ideas, or notes that remain useful as notes.\n        - Return valid JSON only.",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Consolidate mature notes into durable memory objects and note lifecycle actions.",
+                "name": "memory_note_consolidator",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "claim_candidates": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "confidence": {
+                                        "type": "number"
+                                    },
+                                    "context_text": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "evidence_kind": {
+                                        "enum": [
+                                            "direct",
+                                            "summarized",
+                                            "imported",
+                                            "inferred",
+                                            "derived_from_note"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "evidence_quote": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "evidence_reason": {
+                                        "type": "string"
+                                    },
+                                    "importance": {
+                                        "type": "integer"
+                                    },
+                                    "normalized_text": {
+                                        "type": "string"
+                                    },
+                                    "object_entity_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "object_value_json": {
+                                        "anyOf": [
+                                            {
+                                                "type": "string"
+                                            },
+                                            {
+                                                "type": "number"
+                                            },
+                                            {
+                                                "type": "integer"
+                                            },
+                                            {
+                                                "type": "boolean"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "origin_note_id": {
+                                        "type": "string"
+                                    },
+                                    "predicate": {
+                                        "type": "string"
+                                    },
+                                    "qualifiers_json": {
+                                        "additionalProperties": false,
+                                        "properties": {},
+                                        "required": [],
+                                        "type": "object"
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    },
+                                    "scope_json": {
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "basis": {
+                                                "enum": [
+                                                    "explicit",
+                                                    "inferred",
+                                                    "summarized",
+                                                    "imported"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "kind": {
+                                                "enum": [
+                                                    "global",
+                                                    "conversation",
+                                                    "entity",
+                                                    "environment",
+                                                    "document",
+                                                    "project"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "text": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "kind",
+                                            "text",
+                                            "basis"
+                                        ],
+                                        "type": "object"
+                                    },
+                                    "subject_entity_id": {
+                                        "type": "string"
+                                    },
+                                    "valid_from": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "valid_to": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "origin_note_id",
+                                    "subject_entity_id",
+                                    "predicate",
+                                    "object_entity_id",
+                                    "object_value_json",
+                                    "normalized_text",
+                                    "context_text",
+                                    "scope_json",
+                                    "qualifiers_json",
+                                    "confidence",
+                                    "importance",
+                                    "valid_from",
+                                    "valid_to",
+                                    "evidence_quote",
+                                    "evidence_kind",
+                                    "evidence_reason",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        },
+                        "episode_candidates": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "action": {
+                                        "type": "string"
+                                    },
+                                    "lesson": {
+                                        "type": "string"
+                                    },
+                                    "origin_note_id": {
+                                        "type": "string"
+                                    },
+                                    "owner_entity_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    },
+                                    "result": {
+                                        "type": "string"
+                                    },
+                                    "situation": {
+                                        "type": "string"
+                                    },
+                                    "success_score": {
+                                        "type": "number"
+                                    },
+                                    "tags": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    }
+                                },
+                                "required": [
+                                    "origin_note_id",
+                                    "owner_entity_id",
+                                    "situation",
+                                    "action",
+                                    "result",
+                                    "lesson",
+                                    "tags",
+                                    "success_score",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        },
+                        "note_actions": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "action": {
+                                        "enum": [
+                                            "keep_active",
+                                            "mark_resolved",
+                                            "mark_stale",
+                                            "supersede",
+                                            "mark_consolidated"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "note_id": {
+                                        "type": "string"
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "note_id",
+                                    "action",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        },
+                        "profile_patch": {
+                            "anyOf": [
+                                {
+                                    "additionalProperties": false,
+                                    "properties": {
+                                        "profile_text": {
+                                            "type": "string"
+                                        },
+                                        "reason": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "profile_text",
+                                        "reason"
+                                    ],
+                                    "type": "object"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ]
+                        },
+                        "summary": {
+                            "type": "string"
+                        },
+                        "task_actions": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "action": {
+                                        "enum": [
+                                            "insert",
+                                            "update",
+                                            "close",
+                                            "cancel",
+                                            "noop"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "origin_note_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    },
+                                    "target_task_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "task": {
+                                        "anyOf": [
+                                            {
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "acceptance_criteria": {
+                                                        "items": {
+                                                            "type": "string"
+                                                        },
+                                                        "type": "array"
+                                                    },
+                                                    "assignee_entity_id": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "blockers": {
+                                                        "items": {
+                                                            "type": "string"
+                                                        },
+                                                        "type": "array"
+                                                    },
+                                                    "confidence": {
+                                                        "type": "number"
+                                                    },
+                                                    "description": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "due_at": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "evidence_kind": {
+                                                        "enum": [
+                                                            "direct",
+                                                            "summarized",
+                                                            "imported",
+                                                            "inferred",
+                                                            "derived_from_note"
+                                                        ],
+                                                        "type": "string"
+                                                    },
+                                                    "evidence_quote": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "evidence_reason": {
+                                                        "type": "string"
+                                                    },
+                                                    "owner_entity_id": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "priority": {
+                                                        "enum": [
+                                                            "low",
+                                                            "normal",
+                                                            "high"
+                                                        ],
+                                                        "type": "string"
+                                                    },
+                                                    "related_entity_ids": {
+                                                        "items": {
+                                                            "type": "string"
+                                                        },
+                                                        "type": "array"
+                                                    },
+                                                    "scope_json": {
+                                                        "additionalProperties": false,
+                                                        "properties": {
+                                                            "basis": {
+                                                                "enum": [
+                                                                    "explicit",
+                                                                    "inferred",
+                                                                    "summarized",
+                                                                    "imported"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            "kind": {
+                                                                "enum": [
+                                                                    "global",
+                                                                    "conversation",
+                                                                    "entity",
+                                                                    "environment",
+                                                                    "document",
+                                                                    "project"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            "text": {
+                                                                "type": "string"
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "kind",
+                                                            "text",
+                                                            "basis"
+                                                        ],
+                                                        "type": "object"
+                                                    },
+                                                    "status": {
+                                                        "enum": [
+                                                            "open",
+                                                            "in_progress",
+                                                            "blocked",
+                                                            "done",
+                                                            "cancelled"
+                                                        ],
+                                                        "type": "string"
+                                                    },
+                                                    "title": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "required": [
+                                                    "title",
+                                                    "description",
+                                                    "status",
+                                                    "priority",
+                                                    "due_at",
+                                                    "scope_json",
+                                                    "owner_entity_id",
+                                                    "assignee_entity_id",
+                                                    "acceptance_criteria",
+                                                    "blockers",
+                                                    "related_entity_ids",
+                                                    "confidence",
+                                                    "evidence_quote",
+                                                    "evidence_kind",
+                                                    "evidence_reason"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "action",
+                                    "target_task_id",
+                                    "origin_note_id",
+                                    "task",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "claim_candidates",
+                        "task_actions",
+                        "profile_patch",
+                        "episode_candidates",
+                        "note_actions",
+                        "summary"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "memoryNamespace": "project:<0>",
+                "memoryNoteConsolidator": true
+            }
+        },
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                MEMORY-ONLY MAINTENANCE TASK\n\n                This is a private memory pipeline call, not a normal assistant reply.\n                Do not answer as a chat assistant.\n                Do not call tools.\n                Execute only the maintenance stage below.\n\n                Output contract:\n                Return exactly one valid JSON object matching the response schema.\n                No prose, no markdown fences, no explanation.\n\n                        You are NoteConsolidator v2 for a long-term AI agent memory system.\n\n        Goal:\n        Review selected notes and decide whether any of them should now produce durable structured memory.\n\n        Current time: <instant>\n        Timezone: Asia/Jerusalem\n        Namespace: project:<0>\n\n        Selected notes:\n        - id=hot-path:note:<0>; type=LESSON; status=ACTIVE; maturity=FRESH; importance=8; confidence=0.98; title=NoMemoryVerifier lesson: verify ambiguous no-memory recall decisions with a model call; summary=In Memory MVP, when ReadTimeRetrievalPlanner returns need_memory=false on ambiguous recall questions, NoMemoryVerifier should run a short model-based verification before accepting the no-memory plan and avoid hard-coded substring heuristics.; scope=Applies to Memory MVP retrieval-planning behavior for ambiguous recall intent decisions.; anchor=entity:<0>; entities=entity:<1>;entity:<2>;entity:<3>; evidence=chat:<0> for ambiguous no-memory recall decisions, prefer a cheap model-based verifier over substring matching.; candidate_claims=[]\n- id=hot-path:note:<1>; type=LESSON; status=ACTIVE; maturity=FRESH; importance=8; confidence=0.97; title=SourceHydrator lesson: bounded quote hydration on evidence fallback; summary=In Memory MVP, SourceHydrator should retrieve a small bounded set of source quotes only when evidence fallback is requested, after interpreted claims are retrieved, to keep answers grounded without overloading the runtime prompt.; scope=Applies to Memory MVP SourceHydrator source-evidence hydration strategy.; anchor=entity:<4>; entities=entity:<5>;entity:<6>;entity:<7>; evidence=chat:<1> for source evidence hydration, prefer bounded quote hydration over dumping all sources into the runtime prompt.; candidate_claims=[]\n\n        Entity catalog:\n        - id=entity:<0>; type=CONCEPT; name=NoMemoryVerifier; summary=Concept named NoMemoryVerifier.\n- id=entity:<8>; type=CONCEPT; name=ReadTimeRetrievalPlanner; summary=Concept named ReadTimeRetrievalPlanner.\n- id=entity:<9>; type=PROJECT; name=Current project; summary=Project named Current project.\n- id=entity:<10>; type=PROJECT; name=Memory MVP; summary=Project named Memory MVP.\n- id=entity:<4>; type=SERVICE; name=SourceHydrator; summary=Service named SourceHydrator.\n\n        Related active claims:\n        none\n\n        Related active notes:\n        none\n\n        Related tasks:\n        none\n\n        Existing profile:\n        none\n\n        Return JSON:\n        {\n          \"claim_candidates\": [],\n          \"task_actions\": [],\n          \"profile_patch\": null,\n          \"episode_candidates\": [],\n          \"note_actions\": [\n            {\n              \"note_id\": \"note-id\",\n              \"action\": \"keep_active | mark_resolved | mark_stale | supersede | mark_consolidated\",\n              \"reason\": \"short explanation\"\n            }\n          ],\n          \"summary\": \"short summary\"\n        }\n\n        Rules:\n        - Consolidate only when the signal is strong enough.\n        - Do not force every note into a claim.\n        - Promote to claim when the meaning is stable, queryable, and precise enough.\n        - Promote to task only when future action is clearly required and already represented by the selected note.\n        - Return one episode_candidate for each selected LESSON note that clearly contains a reusable situation-action-result-lesson pattern.\n        - Do not collapse several unrelated selected lessons into one episode_candidate.\n        - For episode_candidates, owner_entity_id should be the most specific component/service/person/concept the lesson applies to. Use the project entity only when no more specific owner exists.\n        - If a selected note is a useful stable rule but not reusable experience, promote it to claim without creating an episode_candidate.\n        - Write claim text, task text, profile text, episode text, and reasons in English.\n        - Preserve proper names, component names, repo names, exact identifiers, dates, commands, and quoted terms.\n        - Every claim candidate must include origin_note_id from Selected notes.\n        - Use only entity ids from Entity catalog.\n        - If no entity is better, use the selected note anchor entity.\n        - Use object_entity_id for entity objects and object_value_json for scalar/string objects, never both.\n        - evidence_quote may be null for derived memory; provenance will use the origin note evidence refs.\n        - Existing claims and tasks are dedup/context only.\n        - If a selected note already has a matching active claim or task, prefer note_actions with mark_consolidated or keep_active instead of duplicating memory.\n        - Use mark_consolidated only when durable memory was created or already exists.\n        - Use keep_active for unresolved rationale, hypotheses, weak ideas, or notes that remain useful as notes.\n        - Return valid JSON only.",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "memory_note_consolidator",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "claim_candidates": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "confidence": {
+                                        "type": "number"
+                                    },
+                                    "context_text": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "evidence_kind": {
+                                        "enum": [
+                                            "direct",
+                                            "summarized",
+                                            "imported",
+                                            "inferred",
+                                            "derived_from_note"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "evidence_quote": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "evidence_reason": {
+                                        "type": "string"
+                                    },
+                                    "importance": {
+                                        "type": "integer"
+                                    },
+                                    "normalized_text": {
+                                        "type": "string"
+                                    },
+                                    "object_entity_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "object_value_json": {
+                                        "anyOf": [
+                                            {
+                                                "type": "string"
+                                            },
+                                            {
+                                                "type": "number"
+                                            },
+                                            {
+                                                "type": "integer"
+                                            },
+                                            {
+                                                "type": "boolean"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "origin_note_id": {
+                                        "type": "string"
+                                    },
+                                    "predicate": {
+                                        "type": "string"
+                                    },
+                                    "qualifiers_json": {
+                                        "additionalProperties": false,
+                                        "properties": {},
+                                        "required": [],
+                                        "type": "object"
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    },
+                                    "scope_json": {
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "basis": {
+                                                "enum": [
+                                                    "explicit",
+                                                    "inferred",
+                                                    "summarized",
+                                                    "imported"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "kind": {
+                                                "enum": [
+                                                    "global",
+                                                    "conversation",
+                                                    "entity",
+                                                    "environment",
+                                                    "document",
+                                                    "project"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "text": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "kind",
+                                            "text",
+                                            "basis"
+                                        ],
+                                        "type": "object"
+                                    },
+                                    "subject_entity_id": {
+                                        "type": "string"
+                                    },
+                                    "valid_from": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "valid_to": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "origin_note_id",
+                                    "subject_entity_id",
+                                    "predicate",
+                                    "object_entity_id",
+                                    "object_value_json",
+                                    "normalized_text",
+                                    "context_text",
+                                    "scope_json",
+                                    "qualifiers_json",
+                                    "confidence",
+                                    "importance",
+                                    "valid_from",
+                                    "valid_to",
+                                    "evidence_quote",
+                                    "evidence_kind",
+                                    "evidence_reason",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        },
+                        "episode_candidates": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "action": {
+                                        "type": "string"
+                                    },
+                                    "lesson": {
+                                        "type": "string"
+                                    },
+                                    "origin_note_id": {
+                                        "type": "string"
+                                    },
+                                    "owner_entity_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    },
+                                    "result": {
+                                        "type": "string"
+                                    },
+                                    "situation": {
+                                        "type": "string"
+                                    },
+                                    "success_score": {
+                                        "type": "number"
+                                    },
+                                    "tags": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    }
+                                },
+                                "required": [
+                                    "origin_note_id",
+                                    "owner_entity_id",
+                                    "situation",
+                                    "action",
+                                    "result",
+                                    "lesson",
+                                    "tags",
+                                    "success_score",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        },
+                        "note_actions": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "action": {
+                                        "enum": [
+                                            "keep_active",
+                                            "mark_resolved",
+                                            "mark_stale",
+                                            "supersede",
+                                            "mark_consolidated"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "note_id": {
+                                        "type": "string"
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "note_id",
+                                    "action",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        },
+                        "profile_patch": {
+                            "anyOf": [
+                                {
+                                    "additionalProperties": false,
+                                    "properties": {
+                                        "profile_text": {
+                                            "type": "string"
+                                        },
+                                        "reason": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "profile_text",
+                                        "reason"
+                                    ],
+                                    "type": "object"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ]
+                        },
+                        "summary": {
+                            "type": "string"
+                        },
+                        "task_actions": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "action": {
+                                        "enum": [
+                                            "insert",
+                                            "update",
+                                            "close",
+                                            "cancel",
+                                            "noop"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "origin_note_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    },
+                                    "target_task_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "task": {
+                                        "anyOf": [
+                                            {
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "acceptance_criteria": {
+                                                        "items": {
+                                                            "type": "string"
+                                                        },
+                                                        "type": "array"
+                                                    },
+                                                    "assignee_entity_id": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "blockers": {
+                                                        "items": {
+                                                            "type": "string"
+                                                        },
+                                                        "type": "array"
+                                                    },
+                                                    "confidence": {
+                                                        "type": "number"
+                                                    },
+                                                    "description": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "due_at": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "evidence_kind": {
+                                                        "enum": [
+                                                            "direct",
+                                                            "summarized",
+                                                            "imported",
+                                                            "inferred",
+                                                            "derived_from_note"
+                                                        ],
+                                                        "type": "string"
+                                                    },
+                                                    "evidence_quote": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "evidence_reason": {
+                                                        "type": "string"
+                                                    },
+                                                    "owner_entity_id": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "priority": {
+                                                        "enum": [
+                                                            "low",
+                                                            "normal",
+                                                            "high"
+                                                        ],
+                                                        "type": "string"
+                                                    },
+                                                    "related_entity_ids": {
+                                                        "items": {
+                                                            "type": "string"
+                                                        },
+                                                        "type": "array"
+                                                    },
+                                                    "scope_json": {
+                                                        "additionalProperties": false,
+                                                        "properties": {
+                                                            "basis": {
+                                                                "enum": [
+                                                                    "explicit",
+                                                                    "inferred",
+                                                                    "summarized",
+                                                                    "imported"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            "kind": {
+                                                                "enum": [
+                                                                    "global",
+                                                                    "conversation",
+                                                                    "entity",
+                                                                    "environment",
+                                                                    "document",
+                                                                    "project"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            "text": {
+                                                                "type": "string"
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "kind",
+                                                            "text",
+                                                            "basis"
+                                                        ],
+                                                        "type": "object"
+                                                    },
+                                                    "status": {
+                                                        "enum": [
+                                                            "open",
+                                                            "in_progress",
+                                                            "blocked",
+                                                            "done",
+                                                            "cancelled"
+                                                        ],
+                                                        "type": "string"
+                                                    },
+                                                    "title": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "required": [
+                                                    "title",
+                                                    "description",
+                                                    "status",
+                                                    "priority",
+                                                    "due_at",
+                                                    "scope_json",
+                                                    "owner_entity_id",
+                                                    "assignee_entity_id",
+                                                    "acceptance_criteria",
+                                                    "blockers",
+                                                    "related_entity_ids",
+                                                    "confidence",
+                                                    "evidence_quote",
+                                                    "evidence_kind",
+                                                    "evidence_reason"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "action",
+                                    "target_task_id",
+                                    "origin_note_id",
+                                    "task",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "claim_candidates",
+                        "task_actions",
+                        "profile_patch",
+                        "episode_candidates",
+                        "note_actions",
+                        "summary"
+                    ],
+                    "type": "object"
+                },
+                "description": "Consolidate mature notes into durable memory objects and note lifecycle actions.",
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "memoryNamespace": "project:<0>",
+                "memoryNoteConsolidator": true
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"claim_candidates\":[{\"confidence\":0.96,\"context_text\":\"Memory MVP retrieval-planning behavior for ambiguous recall intent decisions.\",\"evidence_kind\":\"direct\",\"evidence_quote\":\"Lesson: for ambiguous no-memory recall decisions, prefer a cheap model-based verifier over substring matching.\",\"evidence_reason\":\"Direct lesson statement with high-confidence implementation guidance.\",\"importance\":8,\"normalized_text\":\"NoMemoryVerifier should perform model-based verification for ambiguous no-memory recall decisions instead of substring heuristics.\",\"object_entity_id\":null,\"object_value_json\":\"When ReadTimeRetrievalPlanner returns need_memory=false for ambiguous recall questions, run a short model-based verification before accepting the no-memory plan, and avoid hard-coded substring heuristics.\",\"origin_note_id\":\"hot-path:note:<0>\",\"predicate\":\"recommended_behavior\",\"qualifiers_json\":{},\"reason\":\"Stable, precise retrieval-planning rule tied to a named component and condition.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"project\",\"text\":\"Memory MVP\"},\"subject_entity_id\":\"entity:<0>\",\"valid_from\":null,\"valid_to\":null},{\"confidence\":0.95,\"context_text\":\"Memory MVP SourceHydrator source-evidence hydration strategy.\",\"evidence_kind\":\"direct\",\"evidence_quote\":\"Lesson: for source evidence hydration, prefer bounded quote hydration over dumping all sources into the runtime prompt.\",\"evidence_reason\":\"Direct lesson statement with clear strategy and trigger condition.\",\"importance\":8,\"normalized_text\":\"SourceHydrator should use bounded quote hydration on evidence fallback after interpreted claims retrieval.\",\"object_entity_id\":null,\"object_value_json\":\"Retrieve a small bounded set of source quotes only when evidence fallback is requested, after interpreted claims are retrieved, instead of dumping all sources into the runtime prompt.\",\"origin_note_id\":\"hot-path:note:<1>\",\"predicate\":\"recommended_behavior\",\"qualifiers_json\":{},\"reason\":\"Stable, queryable strategy rule for a specific service and execution phase.\",\"scope_json\":{\"basis\":\"summarized\",\"kind\":\"project\",\"text\":\"Memory MVP\"},\"subject_entity_id\":\"entity:<4>\",\"valid_from\":null,\"valid_to\":null}],\"episode_candidates\":[{\"action\":\"Introduce/require NoMemoryVerifier to run a cheap model-based verification before accepting the no-memory decision, replacing substring-based heuristics.\",\"lesson\":\"For ambiguous no-memory recall decisions, prefer a short model-based verifier over hard-coded substring matching.\",\"origin_note_id\":\"hot-path:note:<0>\",\"owner_entity_id\":\"entity:<0>\",\"reason\":\"Clear reusable situation-action-result pattern for a specific component.\",\"result\":\"Lower risk of incorrect no-memory outcomes on ambiguous recall intent while keeping verification lightweight.\",\"situation\":\"In Memory MVP, ambiguous recall questions were being classified by ReadTimeRetrievalPlanner with need_memory=false.\",\"success_score\":0.9,\"tags\":[\"memory-mvp\",\"retrieval-planning\",\"verification\",\"heuristics\",\"no-memory\"]},{\"action\":\"Hydrate only a small bounded set of quotes, and only when evidence fallback is requested, after interpreted claims are retrieved.\",\"lesson\":\"Use bounded, conditional quote hydration for evidence fallback rather than dumping all sources into the runtime prompt.\",\"origin_note_id\":\"hot-path:note:<1>\",\"owner_entity_id\":\"entity:<4>\",\"reason\":\"Explicit operational pattern with clear trigger, action ordering, and outcome.\",\"result\":\"Grounded evidence is available when needed without excessive prompt bloat.\",\"situation\":\"In Memory MVP, source evidence hydration risked overloading runtime prompts when too much source text was injected.\",\"success_score\":0.91,\"tags\":[\"memory-mvp\",\"sourcehydrator\",\"evidence-fallback\",\"prompt-budget\",\"grounding\"]}],\"note_actions\":[{\"action\":\"mark_consolidated\",\"note_id\":\"hot-path:note:<0>\",\"reason\":\"Promoted to durable claim and reusable episode.\"},{\"action\":\"mark_consolidated\",\"note_id\":\"hot-path:note:<1>\",\"reason\":\"Promoted to durable claim and reusable episode.\"}],\"profile_patch\":null,\"summary\":\"Consolidated both high-confidence LESSON notes into durable project-scoped behavioral claims and created one reusable episode per lesson; no tasks or profile updates needed.\",\"task_actions\":[]}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 2214,
+                "completionTokens": 999,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

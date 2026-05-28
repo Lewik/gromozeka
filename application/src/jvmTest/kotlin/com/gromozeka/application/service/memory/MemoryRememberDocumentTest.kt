@@ -11,6 +11,7 @@ import java.nio.file.Files
 import kotlin.io.path.writeText
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
 class MemoryRememberDocumentTest {
@@ -384,6 +385,28 @@ class MemoryRememberDocumentTest {
         assertEquals(0, result.processedSections)
         assertEquals(1, result.failedSections.size)
         assertEquals(0, result.splitCount)
+    }
+
+    @Test
+    fun adaptiveIngestRethrowsUnrelatedFailuresWhenFailFastIsEnabled() = runBlocking {
+        val section = MarkdownDocumentSection(
+            index = 3,
+            headingPath = listOf("Provider"),
+            startLine = 1,
+            endLine = 3,
+            text = "# Provider\n\nBody.",
+        )
+
+        val error = assertFailsWith<IllegalStateException> {
+            MemoryDocumentAdaptiveIngest.processSection(
+                section = section,
+                failFastOnError = true,
+            ) {
+                throw IllegalStateException("Cassette missing for hash deadbeef")
+            }
+        }
+
+        assertEquals("Cassette missing for hash deadbeef", error.message)
     }
 
     @Test

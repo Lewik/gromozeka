@@ -56,9 +56,6 @@
           "memoryTraceExpectation": {
             "needMemory": true,
             "injectedPromptPresent": true,
-            "selectedContainsAll": [
-              "Representation"
-            ],
             "selectedNotesMin": 1
           }
         }

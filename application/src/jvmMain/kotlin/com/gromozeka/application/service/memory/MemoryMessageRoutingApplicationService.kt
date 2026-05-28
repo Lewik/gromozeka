@@ -198,26 +198,75 @@ class MemoryMessageRoutingApplicationService(
         }
 
         val processedSections = sections.map { section ->
-            MemoryDocumentAdaptiveIngest.processSection(section) { effectiveSection ->
-                routeSourceInternal(
-                    namespace = namespace,
-                    source = parentSource.toDocumentSectionSource(
-                        section = effectiveSection,
-                        document = document,
-                        documentHash = documentHash,
-                        parentRun = parentRun,
-                    ),
-                    threadContext = null,
-                    parentRunId = parentRun.id,
-                    agent = agent,
-                    project = project,
-                    runtimeSystemPrompts = runtimeSystemPrompts,
-                    runtimeTools = runtimeTools,
-                    logContext = "$logContext documentSection=${effectiveSection.index}/${sections.size}",
-                    traceContext = null,
-                    throwOnError = true,
-                ) ?: throw IllegalStateException("Section routing returned no result.")
+            val sectionStartedAt = Clock.System.now()
+            log.info {
+                "Memory pasted document section start: $logContext parentRun=${parentRun.id.value} " +
+                    "section=${section.index}/${sections.size} heading=${section.headingLabel.forMemoryDocumentLog()} " +
+                    "lines=${section.startLine}-${section.endLine} chars=${section.text.length}"
             }
+
+            val result = MemoryDocumentAdaptiveIngest.processSection(
+                section = section,
+                failFastOnError = failFastOnError,
+            ) { effectiveSection ->
+                val effectiveStartedAt = Clock.System.now()
+                log.info {
+                    "Memory pasted document effective section start: $logContext parentRun=${parentRun.id.value} " +
+                        "section=${effectiveSection.index}/${sections.size} originalSection=${section.index} " +
+                        "heading=${effectiveSection.headingLabel.forMemoryDocumentLog()} " +
+                        "lines=${effectiveSection.startLine}-${effectiveSection.endLine} chars=${effectiveSection.text.length}"
+                }
+
+                runCatching {
+                    routeSourceInternal(
+                        namespace = namespace,
+                        source = parentSource.toDocumentSectionSource(
+                            section = effectiveSection,
+                            document = document,
+                            documentHash = documentHash,
+                            parentRun = parentRun,
+                        ),
+                        threadContext = null,
+                        parentRunId = parentRun.id,
+                        agent = agent,
+                        project = project,
+                        runtimeSystemPrompts = runtimeSystemPrompts,
+                        runtimeTools = runtimeTools,
+                        logContext = "$logContext documentSection=${effectiveSection.index}/${sections.size}",
+                        traceContext = null,
+                        throwOnError = true,
+                    ) ?: throw IllegalStateException("Section routing returned no result.")
+                }.onSuccess { sectionResult ->
+                    log.info {
+                        "Memory pasted document effective section end: $logContext parentRun=${parentRun.id.value} " +
+                            "section=${effectiveSection.index}/${sections.size} originalSection=${section.index} " +
+                            "durationMs=${Clock.System.now().toEpochMilliseconds() - effectiveStartedAt.toEpochMilliseconds()} " +
+                            "route=${sectionResult.routeDecision.decision.name} retrieved=${sectionResult.retrievedHits.size} " +
+                            "entityOps=${sectionResult.entityOps.size} " +
+                            "notes=${sectionResult.memoryBatch.notes.size} claims=${sectionResult.memoryBatch.claims.size} " +
+                            "tasks=${sectionResult.memoryBatch.tasks.size} runs=${sectionResult.memoryBatch.runs.size}"
+                    }
+                }.onFailure { error ->
+                    log.warn(error) {
+                        "Memory pasted document effective section failed: $logContext parentRun=${parentRun.id.value} " +
+                            "section=${effectiveSection.index}/${sections.size} originalSection=${section.index} " +
+                            "durationMs=${Clock.System.now().toEpochMilliseconds() - effectiveStartedAt.toEpochMilliseconds()} " +
+                            "heading=${effectiveSection.headingLabel.forMemoryDocumentLog()} error=${error.message}"
+                    }
+                }.getOrThrow()
+            }
+
+            log.info {
+                "Memory pasted document section end: $logContext parentRun=${parentRun.id.value} " +
+                    "section=${section.index}/${sections.size} " +
+                    "durationMs=${Clock.System.now().toEpochMilliseconds() - sectionStartedAt.toEpochMilliseconds()} " +
+                    "attempted=${result.attemptedSections} processed=${result.processedSections} " +
+                    "splits=${result.splitCount} failures=${result.failedSections.size} results=${result.results.size} " +
+                    "notes=${result.results.sumOf { it.memoryBatch.notes.size }} " +
+                    "claims=${result.results.sumOf { it.memoryBatch.claims.size }} " +
+                    "tasks=${result.results.sumOf { it.memoryBatch.tasks.size }}"
+            }
+            result
         }
 
         val sectionResults = processedSections.flatMap { it.results }
@@ -518,7 +567,7 @@ class MemoryMessageRoutingApplicationService(
             contentText = section.toMemorySourceText(
                 title = document.title,
                 sourceRef = document.sourceRef,
-                importedAt = now,
+                importedAt = null,
             ),
             contentPayload = buildJsonObject {
                 put("memoryToolOrigin", "pasted_document_section")
@@ -675,6 +724,11 @@ private fun List<com.gromozeka.domain.model.memory.MemoryClaimCandidate>.claimPr
         .entries
         .sortedBy { it.key }
         .joinToString(",") { "${it.key}=${it.value}" }
+}
+
+private fun String.forMemoryDocumentLog(limit: Int = 180): String {
+    val compact = replace(Regex("\\s+"), " ").trim()
+    return if (compact.length <= limit) compact else "${compact.take(limit)}...[truncated ${compact.length - limit} chars]"
 }
 
 private operator fun MemoryUpdateBatch.plus(other: MemoryUpdateBatch): MemoryUpdateBatch =

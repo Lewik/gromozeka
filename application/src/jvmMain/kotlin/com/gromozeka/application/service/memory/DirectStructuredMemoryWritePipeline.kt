@@ -58,6 +58,8 @@ import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
 
 private val memoryRunJson = Json { encodeDefaults = true }
+private val memoryRuntimeSearchIdRegex =
+    Regex("\\b(project|chat|memory|source|claim|note|task|entity|episode|profile|run):[0-9a-fA-F][A-Za-z0-9._:-]*")
 
 fun interface MemoryClock {
     fun now(): Instant
@@ -2129,6 +2131,7 @@ private fun MemoryRouteDecision.shouldRunNoteWrite(): Boolean {
 
 private fun MemoryWriteRetrievalPlan.searchQuery(source: MemorySource): String {
     return (entityQueries + textQueries)
+        .semanticSearchTerms()
         .filter { it.isNotBlank() }
         .joinToString("\n")
         .ifBlank { source.contentText }
@@ -2136,7 +2139,7 @@ private fun MemoryWriteRetrievalPlan.searchQuery(source: MemorySource): String {
 
 private fun MemoryWriteRetrievalPlan.entityLookupQueries(source: MemorySource): List<String> {
     return buildList {
-        addAll(entityQueries)
+        addAll(entityQueries.semanticSearchTerms())
         if (source.requiresStableUserEntity()) {
             add("user")
         }
@@ -2148,6 +2151,16 @@ private fun MemoryWriteRetrievalPlan.entitySearchQuery(source: MemorySource): St
         .filter { it.isNotBlank() }
         .joinToString("\n")
 }
+
+private fun List<String>.semanticSearchTerms(): List<String> =
+    map { it.withoutRuntimeSearchIds() }
+        .filter { it.isNotBlank() }
+        .distinct()
+
+private fun String.withoutRuntimeSearchIds(): String =
+    replace(memoryRuntimeSearchIdRegex, " ")
+        .replace(Regex("\\s+"), " ")
+        .trim()
 
 private fun MemoryWriteRetrievalPlan.searchScopes(): Set<MemoryStore.SearchScope> {
     val scopes = memoryTypes.mapNotNull { it.toSearchScope() }.toSet()

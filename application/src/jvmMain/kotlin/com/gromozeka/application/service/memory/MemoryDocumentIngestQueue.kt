@@ -133,7 +133,10 @@ class MemoryDocumentIngestQueue(
             )
             persist(parentRun)
 
-            val sectionResult = MemoryDocumentAdaptiveIngest.processSection(section) { effectiveSection ->
+            val sectionResult = MemoryDocumentAdaptiveIngest.processSection(
+                section = section,
+                failFastOnError = java.lang.Boolean.getBoolean("gromozeka.memory.routing.failFast"),
+            ) { effectiveSection ->
                 memoryMessageRoutingApplicationService.routeSource(
                     namespace = job.namespace,
                     source = job.toSectionSource(effectiveSection),
@@ -257,7 +260,7 @@ class MemoryDocumentIngestQueue(
             contentText = section.toMemorySourceText(
                 title = title,
                 sourceRef = sourceRef,
-                importedAt = now,
+                importedAt = null,
             ),
             contentPayload = buildJsonObject {
                 put("memoryToolOrigin", "provided_document_section")

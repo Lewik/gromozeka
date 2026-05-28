@@ -18,6 +18,7 @@ import com.gromozeka.domain.service.AiEmbeddingProvider
 import com.gromozeka.domain.service.AiEmbeddingRequest
 import com.gromozeka.domain.service.SettingsProvider
 import klog.KLoggers
+import kotlinx.coroutines.CancellationException
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import org.springframework.stereotype.Service
@@ -67,31 +68,49 @@ class DefaultMemoryEmbeddingIndexer(
     private val totalFailedRequests = AtomicLong(0)
 
     override suspend fun withEmbeddings(batch: MemoryUpdateBatch): MemoryUpdateBatch {
-        val resolved = resolveEmbeddingRuntime()
-        val entries = batch.toEmbeddingInputs(
-            modelConfigurationId = resolved.modelConfigurationId,
-            providerModelId = resolved.providerModelId,
-            maxInputTokens = resolved.maxInputTokens,
-        )
-        if (entries.isEmpty()) return batch
-
-        val embeddings = embedEntries(resolved, entries)
-        return batch.copy(embeddings = batch.embeddings + embeddings)
+        return runCatching {
+            val resolved = resolveEmbeddingRuntime()
+            val entries = batch.toEmbeddingInputs(
+                modelConfigurationId = resolved.modelConfigurationId,
+                providerModelId = resolved.providerModelId,
+                maxInputTokens = resolved.maxInputTokens,
+            )
+            if (entries.isEmpty()) {
+                batch
+            } else {
+                val embeddings = embedEntries(resolved, entries)
+                batch.copy(embeddings = batch.embeddings + embeddings)
+            }
+        }.getOrElse { error ->
+            if (error is CancellationException) throw error
+            log.warn(error) {
+                "Memory embeddings skipped: items=${batch.embeddableItemCount()} existingEmbeddings=${batch.embeddings.size} error=${error.message}"
+            }
+            batch
+        }
     }
 
     override suspend fun searchEmbedding(query: String): MemoryStore.SearchEmbedding? {
         val normalizedQuery = query.trim()
         if (normalizedQuery.isBlank()) return null
-        val resolved = resolveEmbeddingRuntime()
-        val truncatedQuery = normalizedQuery.truncateForEmbedding(resolved.maxInputTokens)
-        val response = requestEmbeddings(resolved, listOf(truncatedQuery))
-        val vector = response.vectors.singleOrNull()?.values
-            ?: error("AI embedding response returned ${response.vectors.size} vectors for one search query")
-        return MemoryStore.SearchEmbedding(
-            modelConfigurationId = resolved.modelConfigurationId,
-            providerModelId = response.modelId,
-            vector = vector,
-        )
+        return runCatching {
+            val resolved = resolveEmbeddingRuntime()
+            val truncatedQuery = normalizedQuery.truncateForEmbedding(resolved.maxInputTokens)
+            val response = requestEmbeddings(resolved, listOf(truncatedQuery))
+            val vector = response.vectors.singleOrNull()?.values
+                ?: error("AI embedding response returned ${response.vectors.size} vectors for one search query")
+            MemoryStore.SearchEmbedding(
+                modelConfigurationId = resolved.modelConfigurationId,
+                providerModelId = response.modelId,
+                vector = vector,
+            )
+        }.getOrElse { error ->
+            if (error is CancellationException) throw error
+            log.warn(error) {
+                "Memory search embedding skipped: queryChars=${normalizedQuery.length} error=${error.message}"
+            }
+            null
+        }
     }
 
     override suspend fun rebuildNamespace(namespace: MemoryNamespace): MemoryEmbeddingRebuildResult {

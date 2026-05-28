@@ -1,0 +1,327 @@
+{
+    "version": 1,
+    "hash": "1248e29a1b77782fc25c6d8be73fa37d17a0e6c54028ee8f495022bf172e6e7e",
+    "provider": "OPENAI",
+    "model": "gpt-5.3-codex",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>/projects/handoff-prompts-document-ingestion",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: WriteTimeRetrievalPlanner v3.\n        Current time: <instant>\n        Timezone: Asia/Jerusalem\n        Namespace: project:<0>\n\n        Router decision: NOTE_WRITE\n        Router memory types: NOTE, SOURCE, ENTITY\n        Router reason: Document ingest is note/source-only in the hot path; hard claims/tasks can be produced by later consolidation. Original router reason: Imported document content provides durable procedural guidance and output formats; best stored as reusable notes rather than user claim/task.\n\n        Predicate catalog excerpt:\n        - avoids: Negative preference, exclusion, or avoid instruction; subject=any; object=ENTITY; cardinality=MULTI; temporal=STATUS_LIKE; conflict=COEXIST; importance=7\n- believes: Attributed belief, opinion, or viewpoint held by the subject; subject=any; object=STRING; cardinality=MULTI; temporal=STATUS_LIKE; conflict=COEXIST; importance=7\n- has_constraint: Stable user or project constraint; subject=any; object=STRING; cardinality=MULTI; temporal=STATUS_LIKE; conflict=COEXIST; importance=8\n- has_experience_with: Experience with a technology or domain; subject=PERSON; object=ENTITY; cardinality=MULTI; temporal=ATEMPORAL; conflict=COEXIST; importance=6\n- has_goal: Active or declared goal; subject=any; object=STRING; cardinality=MULTI; temporal=STATUS_LIKE; conflict=COEXIST; importance=8\n- owns_vehicle: Vehicle owned or used by the subject; subject=PERSON; object=ENTITY; cardinality=MULTI; temporal=STATUS_LIKE; conflict=COEXIST; importance=6\n- preferred_name: Preferred display name for the subject; subject=PERSON; object=STRING; cardinality=SINGLE; temporal=ATEMPORAL; conflict=REPLACE; importance=8\n- prefers: Generic positive preference when no named current/default/primary/chosen slot predicate is more precise; subject=PERSON; object=ENTITY; cardinality=MULTI; temporal=STATUS_LIKE; conflict=COEXIST; importance=7\n- prefers_answer_detail: Preferred answer detail level; subject=PERSON; object=STRING; cardinality=SINGLE; temporal=STATUS_LIKE; conflict=REPLACE; importance=8\n- prefers_code_comment_language: Preferred language for code comments; subject=PERSON; object=STRING; cardinality=SINGLE; temporal=STATUS_LIKE; conflict=REPLACE; importance=9\n- prefers_framework: Preferred framework or library; subject=PERSON; object=ENTITY; cardinality=MULTI; temporal=STATUS_LIKE; conflict=COEXIST; importance=6\n- prefers_response_language: Preferred language for assistant responses; subject=PERSON; object=STRING; cardinality=SINGLE; temporal=STATUS_LIKE; conflict=REPLACE; importance=9\n- prefers_storage: Preferred storage solution; subject=PERSON; object=ENTITY; cardinality=MULTI; temporal=STATUS_LIKE; conflict=COEXIST; importance=7\n- prefers_tone: Preferred response tone; subject=PERSON; object=STRING; cardinality=SINGLE; temporal=STATUS_LIKE; conflict=REPLACE; importance=7\n- primary_storage_backend: Primary storage or persistence backend for a project or service; subject=PROJECT; object=ENTITY; cardinality=SINGLE; temporal=STATUS_LIKE; conflict=REPLACE; importance=8\n- responsible_for: Subject owns or is responsible for a workstream, component, process, account duty, or operational area; subject=any; object=ENTITY; cardinality=MULTI; temporal=STATUS_LIKE; conflict=COEXIST; importance=8\n- speaks_language: Language known or used by the subject; subject=PERSON; object=STRING; cardinality=MULTI; temporal=ATEMPORAL; conflict=COEXIST; importance=7\n- timezone: Timezone of the subject; subject=PERSON; object=STRING; cardinality=SINGLE; temporal=STATUS_LIKE; conflict=REPLACE; importance=7\n- uses_persistence_database: Persistence database used by a project or service in a specific environment, phase, or time window; subject=PROJECT; object=ENTITY; cardinality=MULTI; temporal=TIME_SCOPED; conflict=RANGE_SPLIT; importance=6\n- uses_search_backend: Search backend used by a project or service in a specific environment, phase, or time window; subject=any; object=ENTITY; cardinality=SINGLE; temporal=TIME_SCOPED; conflict=RANGE_SPLIT; importance=7\n- works_on_project: Association with a project when no more specific role, responsibility, ownership, or project-state predicate is available; subject=PERSON; object=ENTITY; cardinality=MULTI; temporal=TIME_SCOPED; conflict=RANGE_SPLIT; importance=7\n- works_with: Current or ongoing technology/tool usage; subject=PERSON; object=ENTITY; cardinality=MULTI; temporal=STATUS_LIKE; conflict=COEXIST; importance=7\n\n        Stage instructions:\n        You are WriteTimeRetrievalPlanner v3.\n\nGoal:\nCreate a retrieval plan for memory update. Fetch only the memories and evidence most likely to help with deduplication, contradiction detection, scope alignment, and temporal updates.\n\nReturn JSON:\n{\n  \"need_retrieval\": true,\n  \"entity_queries\": [\"...\"],\n  \"text_queries\": [\"...\"],\n  \"predicate_hints\": [\"...\"],\n  \"memory_types\": [\"profile\", \"claim\", \"note\", \"task\", \"source\", \"entity\"],\n  \"time_filters\": {\n    \"from_iso\": null,\n    \"to_iso\": null\n  },\n  \"limits\": {\n    \"claims\": 20,\n    \"notes\": 10,\n    \"tasks\": 10,\n    \"sources\": 8\n  }\n}\n\nRules:\n- Bias retrieval toward possible duplicates, contradictions, and relevant scope boundaries.\n- Use predicate catalog names in predicate_hints when a catalog predicate likely fits the target message.\n- Do not invent predicate synonyms in predicate_hints when an existing catalog predicate captures the same relation.\n- Include notes when the material looks rationale-heavy or plan-heavy.\n- Include claims when preferences, status, or factual updates are likely.\n- Include tasks when TARGET_MESSAGE may create, update, close, cancel, deduplicate, or discuss an explicit follow-up/task/deadline.\n- Include tasks when TARGET_MESSAGE says a remembered follow-up is done, finished, completed, closed, cancelled, no longer needed, blocked, unblocked, reprioritized, or changed.\n- Include entity retrieval for concrete people, products, projects, repos, files, technologies, and the stable user subject.\n- Add time filters when the turns mention \"now\", \"before\", \"used to\", \"from now on\", \"no longer\", deadlines, or relative dates.\n- Include source retrieval when conflicts or grounding-quality checks are likely to matter.\n- Keep the plan precise; fewer better queries are preferred.\n- Return valid JSON only.\n\n        TARGET_MESSAGE source data:\n        [external:document-section:98c6f839f98d6765bc63c5ca22c2276e] EXTERNAL\nSource metadata: source_kind=document; origin=pasted_document_section; document_type=MARKDOWN; source_ref=agent_memory_handoff/03_prompts.md; title=03. Prompt Pack; heading=03. Prompt Pack / 8. Profile Updater v3 .. 9. Task Updater v3; imported_at=1970-01-01T00:00:00Z\nDocument title: 03. Prompt Pack\nDocument source: agent_memory_handoff/03_prompts.md\nDocument section: 03. Prompt Pack / 8. Profile Updater v3 .. 9. Task Updater v3\nDocument lines: 568-689\n\n## 8. Profile Updater v3\n\n### Когда вызывать\nПосле claim/task updates, иногда после note consolidation.\n\n### Цель\nПересобрать compact profile как projection.\n\n### Выход\n\n```json\n{\n  \"profile_json\": {},\n  \"profile_text\": \"short compact projection\",\n  \"reason\": \"short explanation\"\n}\n```\n\n### Prompt\n\n```text\nYou are ProfileUpdater v3.\n\nGoal:\nBuild a compact always-in-context profile projection from explicit user instructions, stable claims, and selected long-lived context.\n\nCurrent time: {{current_time_iso}}\nNamespace: {{namespace_id}}\n\nExisting profile:\n{{existing_profile}}\n\nRelevant active claims:\n{{relevant_claims}}\n\nReturn JSON:\n{\n  \"profile_json\": {},\n  \"profile_text\": \"short compact projection\",\n  \"reason\": \"short explanation\"\n}\n\nRules:\n- Keep the profile short.\n- Prefer explicit facts over inference.\n- Do not stuff rationale notes into the profile unless they are clearly stable and operationally useful.\n- Return valid JSON only.\n```\n\n## 9. Task Updater v3\n\n### Когда вызывать\nКогда turns содержат commitments, deadlines или lifecycle updates задач.\n\n### Выход\n\n```json\n[\n  {\n    \"action\": \"insert | update | close | cancel | noop\",\n    \"target_task_id\": \"uuid-or-null\",\n    \"task\": {\n      \"title\": \"string\",\n      \"description\": \"string or null\",\n      \"status\": \"open | in_progress | blocked | done | cancelled\",\n      \"priority\": \"low | normal | high\",\n      \"due_at\": \"ISO-8601 or null\",\n      \"scope_json\": {},\n      \"acceptance_criteria\": [\"...\"],\n      \"blockers\": [\"...\"],\n      \"related_entity_ids\": [\"uuid\"]\n    },\n    \"reason\": \"short explanation\"\n  }\n]\n```\n\n### Prompt\n\n```text\nYou are TaskUpdater v3.\n\nGoal:\nCreate or update operational tasks from explicit commitments, deadlines, or task lifecycle changes.\n\nCurrent time: {{current_time_iso}}\nTimezone: {{timezone}}\nNamespace: {{namespace_id}}\n\nLatest turns:\n{{latest_turns}}\n\nExisting tasks:\n{{existing_tasks}}\n\nReturn JSON array:\n[\n  {\n    \"action\": \"insert | update | close | cancel | noop\",\n    \"target_task_id\": \"uuid-or-null\",\n    \"task\": {\n      \"title\": \"string\",\n      \"description\": \"string or null\",\n      \"status\": \"open | in_progress | blocked | done | cancelled\",\n      \"priority\": \"low | normal | high\",\n      \"due_at\": \"ISO-8601 or null\",\n      \"scope_json\": {},\n      \"acceptance_criteria\": [\"...\"],\n      \"blockers\": [\"...\"],\n      \"related_entity_ids\": [\"uuid\"]\n    },\n    \"reason\": \"short explanation\"\n  }\n]\n\nRules:\n- A plain user request is not automatically a commitment.\n- Convert relative deadlines to absolute time when possible.\n- Prefer one clear task over several vague tasks.\n- Return valid JSON only.\n```",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Plan memory retrieval before updating structured memory.",
+                "name": "memory_write_retrieval_plan",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "entity_queries": {
+                            "items": {
+                                "type": "string"
+                            },
+                            "type": "array"
+                        },
+                        "limits": {
+                            "additionalProperties": false,
+                            "properties": {
+                                "claims": {
+                                    "type": "integer"
+                                },
+                                "notes": {
+                                    "type": "integer"
+                                },
+                                "sources": {
+                                    "type": "integer"
+                                },
+                                "tasks": {
+                                    "type": "integer"
+                                }
+                            },
+                            "required": [
+                                "claims",
+                                "notes",
+                                "tasks",
+                                "sources"
+                            ],
+                            "type": "object"
+                        },
+                        "memory_types": {
+                            "items": {
+                                "enum": [
+                                    "profile",
+                                    "claim",
+                                    "note",
+                                    "task",
+                                    "source",
+                                    "entity"
+                                ],
+                                "type": "string"
+                            },
+                            "type": "array"
+                        },
+                        "need_retrieval": {
+                            "type": "boolean"
+                        },
+                        "predicate_hints": {
+                            "items": {
+                                "type": "string"
+                            },
+                            "type": "array"
+                        },
+                        "text_queries": {
+                            "items": {
+                                "type": "string"
+                            },
+                            "type": "array"
+                        },
+                        "time_filters": {
+                            "additionalProperties": false,
+                            "properties": {
+                                "from_iso": {
+                                    "type": [
+                                        "string",
+                                        "null"
+                                    ]
+                                },
+                                "to_iso": {
+                                    "type": [
+                                        "string",
+                                        "null"
+                                    ]
+                                }
+                            },
+                            "required": [
+                                "from_iso",
+                                "to_iso"
+                            ],
+                            "type": "object"
+                        }
+                    },
+                    "required": [
+                        "need_retrieval",
+                        "entity_queries",
+                        "text_queries",
+                        "predicate_hints",
+                        "memory_types",
+                        "time_filters",
+                        "limits"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "memoryNamespace": "project:<0>",
+                "memoryRouteDecision": "NOTE_WRITE",
+                "memorySourceId": "external:document-section:98c6f839f98d6765bc63c5ca22c2276e",
+                "memoryWriteRetrievalPlanner": true
+            }
+        },
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: WriteTimeRetrievalPlanner v3.\n        Current time: <instant>\n        Timezone: Asia/Jerusalem\n        Namespace: project:<0>\n\n        Router decision: NOTE_WRITE\n        Router memory types: NOTE, SOURCE, ENTITY\n        Router reason: Document ingest is note/source-only in the hot path; hard claims/tasks can be produced by later consolidation. Original router reason: Imported document content provides durable procedural guidance and output formats; best stored as reusable notes rather than user claim/task.\n\n        Predicate catalog excerpt:\n        - avoids: Negative preference, exclusion, or avoid instruction; subject=any; object=ENTITY; cardinality=MULTI; temporal=STATUS_LIKE; conflict=COEXIST; importance=7\n- believes: Attributed belief, opinion, or viewpoint held by the subject; subject=any; object=STRING; cardinality=MULTI; temporal=STATUS_LIKE; conflict=COEXIST; importance=7\n- has_constraint: Stable user or project constraint; subject=any; object=STRING; cardinality=MULTI; temporal=STATUS_LIKE; conflict=COEXIST; importance=8\n- has_experience_with: Experience with a technology or domain; subject=PERSON; object=ENTITY; cardinality=MULTI; temporal=ATEMPORAL; conflict=COEXIST; importance=6\n- has_goal: Active or declared goal; subject=any; object=STRING; cardinality=MULTI; temporal=STATUS_LIKE; conflict=COEXIST; importance=8\n- owns_vehicle: Vehicle owned or used by the subject; subject=PERSON; object=ENTITY; cardinality=MULTI; temporal=STATUS_LIKE; conflict=COEXIST; importance=6\n- preferred_name: Preferred display name for the subject; subject=PERSON; object=STRING; cardinality=SINGLE; temporal=ATEMPORAL; conflict=REPLACE; importance=8\n- prefers: Generic positive preference when no named current/default/primary/chosen slot predicate is more precise; subject=PERSON; object=ENTITY; cardinality=MULTI; temporal=STATUS_LIKE; conflict=COEXIST; importance=7\n- prefers_answer_detail: Preferred answer detail level; subject=PERSON; object=STRING; cardinality=SINGLE; temporal=STATUS_LIKE; conflict=REPLACE; importance=8\n- prefers_code_comment_language: Preferred language for code comments; subject=PERSON; object=STRING; cardinality=SINGLE; temporal=STATUS_LIKE; conflict=REPLACE; importance=9\n- prefers_framework: Preferred framework or library; subject=PERSON; object=ENTITY; cardinality=MULTI; temporal=STATUS_LIKE; conflict=COEXIST; importance=6\n- prefers_response_language: Preferred language for assistant responses; subject=PERSON; object=STRING; cardinality=SINGLE; temporal=STATUS_LIKE; conflict=REPLACE; importance=9\n- prefers_storage: Preferred storage solution; subject=PERSON; object=ENTITY; cardinality=MULTI; temporal=STATUS_LIKE; conflict=COEXIST; importance=7\n- prefers_tone: Preferred response tone; subject=PERSON; object=STRING; cardinality=SINGLE; temporal=STATUS_LIKE; conflict=REPLACE; importance=7\n- primary_storage_backend: Primary storage or persistence backend for a project or service; subject=PROJECT; object=ENTITY; cardinality=SINGLE; temporal=STATUS_LIKE; conflict=REPLACE; importance=8\n- responsible_for: Subject owns or is responsible for a workstream, component, process, account duty, or operational area; subject=any; object=ENTITY; cardinality=MULTI; temporal=STATUS_LIKE; conflict=COEXIST; importance=8\n- speaks_language: Language known or used by the subject; subject=PERSON; object=STRING; cardinality=MULTI; temporal=ATEMPORAL; conflict=COEXIST; importance=7\n- timezone: Timezone of the subject; subject=PERSON; object=STRING; cardinality=SINGLE; temporal=STATUS_LIKE; conflict=REPLACE; importance=7\n- uses_persistence_database: Persistence database used by a project or service in a specific environment, phase, or time window; subject=PROJECT; object=ENTITY; cardinality=MULTI; temporal=TIME_SCOPED; conflict=RANGE_SPLIT; importance=6\n- uses_search_backend: Search backend used by a project or service in a specific environment, phase, or time window; subject=any; object=ENTITY; cardinality=SINGLE; temporal=TIME_SCOPED; conflict=RANGE_SPLIT; importance=7\n- works_on_project: Association with a project when no more specific role, responsibility, ownership, or project-state predicate is available; subject=PERSON; object=ENTITY; cardinality=MULTI; temporal=TIME_SCOPED; conflict=RANGE_SPLIT; importance=7\n- works_with: Current or ongoing technology/tool usage; subject=PERSON; object=ENTITY; cardinality=MULTI; temporal=STATUS_LIKE; conflict=COEXIST; importance=7\n\n        Stage instructions:\n        You are WriteTimeRetrievalPlanner v3.\n\nGoal:\nCreate a retrieval plan for memory update. Fetch only the memories and evidence most likely to help with deduplication, contradiction detection, scope alignment, and temporal updates.\n\nReturn JSON:\n{\n  \"need_retrieval\": true,\n  \"entity_queries\": [\"...\"],\n  \"text_queries\": [\"...\"],\n  \"predicate_hints\": [\"...\"],\n  \"memory_types\": [\"profile\", \"claim\", \"note\", \"task\", \"source\", \"entity\"],\n  \"time_filters\": {\n    \"from_iso\": null,\n    \"to_iso\": null\n  },\n  \"limits\": {\n    \"claims\": 20,\n    \"notes\": 10,\n    \"tasks\": 10,\n    \"sources\": 8\n  }\n}\n\nRules:\n- Bias retrieval toward possible duplicates, contradictions, and relevant scope boundaries.\n- Use predicate catalog names in predicate_hints when a catalog predicate likely fits the target message.\n- Do not invent predicate synonyms in predicate_hints when an existing catalog predicate captures the same relation.\n- Include notes when the material looks rationale-heavy or plan-heavy.\n- Include claims when preferences, status, or factual updates are likely.\n- Include tasks when TARGET_MESSAGE may create, update, close, cancel, deduplicate, or discuss an explicit follow-up/task/deadline.\n- Include tasks when TARGET_MESSAGE says a remembered follow-up is done, finished, completed, closed, cancelled, no longer needed, blocked, unblocked, reprioritized, or changed.\n- Include entity retrieval for concrete people, products, projects, repos, files, technologies, and the stable user subject.\n- Add time filters when the turns mention \"now\", \"before\", \"used to\", \"from now on\", \"no longer\", deadlines, or relative dates.\n- Include source retrieval when conflicts or grounding-quality checks are likely to matter.\n- Keep the plan precise; fewer better queries are preferred.\n- Return valid JSON only.\n\n        TARGET_MESSAGE source data:\n        [external:document-section:98c6f839f98d6765bc63c5ca22c2276e] EXTERNAL\nSource metadata: source_kind=document; origin=pasted_document_section; document_type=MARKDOWN; source_ref=agent_memory_handoff/03_prompts.md; title=03. Prompt Pack; heading=03. Prompt Pack / 8. Profile Updater v3 .. 9. Task Updater v3; imported_at=1970-01-01T00:00:00Z\nDocument title: 03. Prompt Pack\nDocument source: agent_memory_handoff/03_prompts.md\nDocument section: 03. Prompt Pack / 8. Profile Updater v3 .. 9. Task Updater v3\nDocument lines: 568-689\n\n## 8. Profile Updater v3\n\n### Когда вызывать\nПосле claim/task updates, иногда после note consolidation.\n\n### Цель\nПересобрать compact profile как projection.\n\n### Выход\n\n```json\n{\n  \"profile_json\": {},\n  \"profile_text\": \"short compact projection\",\n  \"reason\": \"short explanation\"\n}\n```\n\n### Prompt\n\n```text\nYou are ProfileUpdater v3.\n\nGoal:\nBuild a compact always-in-context profile projection from explicit user instructions, stable claims, and selected long-lived context.\n\nCurrent time: {{current_time_iso}}\nNamespace: {{namespace_id}}\n\nExisting profile:\n{{existing_profile}}\n\nRelevant active claims:\n{{relevant_claims}}\n\nReturn JSON:\n{\n  \"profile_json\": {},\n  \"profile_text\": \"short compact projection\",\n  \"reason\": \"short explanation\"\n}\n\nRules:\n- Keep the profile short.\n- Prefer explicit facts over inference.\n- Do not stuff rationale notes into the profile unless they are clearly stable and operationally useful.\n- Return valid JSON only.\n```\n\n## 9. Task Updater v3\n\n### Когда вызывать\nКогда turns содержат commitments, deadlines или lifecycle updates задач.\n\n### Выход\n\n```json\n[\n  {\n    \"action\": \"insert | update | close | cancel | noop\",\n    \"target_task_id\": \"uuid-or-null\",\n    \"task\": {\n      \"title\": \"string\",\n      \"description\": \"string or null\",\n      \"status\": \"open | in_progress | blocked | done | cancelled\",\n      \"priority\": \"low | normal | high\",\n      \"due_at\": \"ISO-8601 or null\",\n      \"scope_json\": {},\n      \"acceptance_criteria\": [\"...\"],\n      \"blockers\": [\"...\"],\n      \"related_entity_ids\": [\"uuid\"]\n    },\n    \"reason\": \"short explanation\"\n  }\n]\n```\n\n### Prompt\n\n```text\nYou are TaskUpdater v3.\n\nGoal:\nCreate or update operational tasks from explicit commitments, deadlines, or task lifecycle changes.\n\nCurrent time: {{current_time_iso}}\nTimezone: {{timezone}}\nNamespace: {{namespace_id}}\n\nLatest turns:\n{{latest_turns}}\n\nExisting tasks:\n{{existing_tasks}}\n\nReturn JSON array:\n[\n  {\n    \"action\": \"insert | update | close | cancel | noop\",\n    \"target_task_id\": \"uuid-or-null\",\n    \"task\": {\n      \"title\": \"string\",\n      \"description\": \"string or null\",\n      \"status\": \"open | in_progress | blocked | done | cancelled\",\n      \"priority\": \"low | normal | high\",\n      \"due_at\": \"ISO-8601 or null\",\n      \"scope_json\": {},\n      \"acceptance_criteria\": [\"...\"],\n      \"blockers\": [\"...\"],\n      \"related_entity_ids\": [\"uuid\"]\n    },\n    \"reason\": \"short explanation\"\n  }\n]\n\nRules:\n- A plain user request is not automatically a commitment.\n- Convert relative deadlines to absolute time when possible.\n- Prefer one clear task over several vague tasks.\n- Return valid JSON only.\n```",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "memory_write_retrieval_plan",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "entity_queries": {
+                            "items": {
+                                "type": "string"
+                            },
+                            "type": "array"
+                        },
+                        "limits": {
+                            "additionalProperties": false,
+                            "properties": {
+                                "claims": {
+                                    "type": "integer"
+                                },
+                                "notes": {
+                                    "type": "integer"
+                                },
+                                "sources": {
+                                    "type": "integer"
+                                },
+                                "tasks": {
+                                    "type": "integer"
+                                }
+                            },
+                            "required": [
+                                "claims",
+                                "notes",
+                                "tasks",
+                                "sources"
+                            ],
+                            "type": "object"
+                        },
+                        "memory_types": {
+                            "items": {
+                                "enum": [
+                                    "profile",
+                                    "claim",
+                                    "note",
+                                    "task",
+                                    "source",
+                                    "entity"
+                                ],
+                                "type": "string"
+                            },
+                            "type": "array"
+                        },
+                        "need_retrieval": {
+                            "type": "boolean"
+                        },
+                        "predicate_hints": {
+                            "items": {
+                                "type": "string"
+                            },
+                            "type": "array"
+                        },
+                        "text_queries": {
+                            "items": {
+                                "type": "string"
+                            },
+                            "type": "array"
+                        },
+                        "time_filters": {
+                            "additionalProperties": false,
+                            "properties": {
+                                "from_iso": {
+                                    "type": [
+                                        "string",
+                                        "null"
+                                    ]
+                                },
+                                "to_iso": {
+                                    "type": [
+                                        "string",
+                                        "null"
+                                    ]
+                                }
+                            },
+                            "required": [
+                                "from_iso",
+                                "to_iso"
+                            ],
+                            "type": "object"
+                        }
+                    },
+                    "required": [
+                        "need_retrieval",
+                        "entity_queries",
+                        "text_queries",
+                        "predicate_hints",
+                        "memory_types",
+                        "time_filters",
+                        "limits"
+                    ],
+                    "type": "object"
+                },
+                "description": "Plan memory retrieval before updating structured memory.",
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "memoryNamespace": "project:<0>",
+                "memoryRouteDecision": "NOTE_WRITE",
+                "memorySourceId": "external:document-section:98c6f839f98d6765bc63c5ca22c2276e",
+                "memoryWriteRetrievalPlanner": true
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"entity_queries\":[\"Profile Updater v3\",\"Task Updater v3\",\"03. Prompt Pack\",\"agent_memory_handoff/03_prompts.md\"],\"limits\":{\"claims\":20,\"notes\":10,\"sources\":8,\"tasks\":10},\"memory_types\":[\"note\",\"source\",\"entity\"],\"need_retrieval\":true,\"predicate_hints\":[],\"text_queries\":[\"Profile Updater v3 prompt and output schema\",\"Task Updater v3 prompt and output schema\",\"when to call Profile Updater v3\",\"when turns contain commitments deadlines or lifecycle updates tasks\"],\"time_filters\":{\"from_iso\":null,\"to_iso\":null}}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 2557,
+                "completionTokens": 140,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

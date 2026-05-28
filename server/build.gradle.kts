@@ -80,4 +80,7 @@ tasks.withType<Test> {
     System.getProperty("gromozeka.llm.cassette.deleteUnused")?.let {
         systemProperty("gromozeka.llm.cassette.deleteUnused", it)
     }
+    System.getProperty("gromozeka.llm.cassette.writeMissDebug")?.let {
+        systemProperty("gromozeka.llm.cassette.writeMissDebug", it)
+    }
 }

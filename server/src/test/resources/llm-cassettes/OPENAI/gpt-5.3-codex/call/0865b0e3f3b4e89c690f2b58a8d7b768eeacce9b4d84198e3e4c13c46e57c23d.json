@@ -1,0 +1,391 @@
+{
+    "version": 1,
+    "hash": "0865b0e3f3b4e89c690f2b58a8d7b768eeacce9b4d84198e3e4c13c46e57c23d",
+    "provider": "OPENAI",
+    "model": "gpt-5.3-codex",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>/projects/handoff-architecture-document-ingestion",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "Memory ingestion source document. Treat the following as a pasted handoff architecture document, not as an immediate task.\n\nFile: agent_memory_handoff/01_architecture.md\n\n# 01. Architecture\n\n## 1. Цель системы\n\nНужна memory layer для AI-агента, которая:\n\n- переживает границы одной сессии\n- умеет хранить факты, preferences, задачи, rationale и evolving plans\n- поддерживает обновление знаний, а не только накопление\n- позволяет объяснить, **откуда** взялась память\n- не превращает каждый turn в permanent knowledge\n- умеет старить, архивировать и чинить память\n\n## 2. Центральная архитектурная идея\n\nВ `v3` у памяти четыре оси, а не одна:\n\n1. **Representation**\n   - `Source`\n   - `Claim`\n   - `Note`\n   - `Profile`\n   - `Task`\n   - `Episode`\n\n2. **Lifecycle**\n   - write\n   - reconcile\n   - consolidate\n   - repair\n   - retain / archive / delete\n\n3. **Retrieval policy**\n   - `claim-first`\n   - `note-first`\n   - `mixed`\n   - `evidence-first`\n   - bounded budgets\n\n4. **Scope and lineage**\n   - `scope_json`\n   - `scope_text`\n   - source refs\n   - origin note\n   - memory runs\n\nБез этих четырех осей память быстро превращается либо в transcript dump, либо в brittle fact store.\n\n## 3. Основная модель записи\n\nТеперь у системы два semantic path и два maintenance path.\n\n### Semantic write paths\n\n1. **Direct structured path**\n   Для вещей, которые уже можно безопасно нормализовать:\n   - explicit facts\n   - stable preferences\n   - commitments / tasks\n   - clear status changes\n\n2. **Note path**\n   Для вещей, которые уже важны, но еще не должны становиться hard facts:\n   - design direction\n   - rationale / trade-offs\n   - evolving plans\n   - lessons / patterns\n   - document digests\n   - contextual framing\n\n### Maintenance paths\n\n1. **Consolidation**\n   Переводит mature notes в claims / tasks / profile / episodes, если сигнал стал достаточно сильным.\n\n2. **Repair**\n   Чинит деградацию памяти:\n   - duplicate clusters\n   - stale items\n   - contradictory active items\n   - note spam\n   - profile drift\n   - bad merges\n\n## 4. Рекомендуемая архитектура\n\n```mermaid\nflowchart TD\n    A[User / Tool / Document] --> B[Source Log]\n    B --> C[Memory Router]\n\n    C -->|noop| Z[Stop]\n\n    C -->|direct_structured_write| D[Write-Time Retrieval]\n    C -->|note_write| D\n    C -->|mixed| D\n\n    D --> E[Entity Canonicalizer]\n\n    E --> F[Claim Extractor]\n    E --> G[Task Updater]\n    E --> H[Profile Updater]\n    E --> N[Note Constructor]\n\n    F --> I[Claim Reconciler]\n    N --> O[Note Reconciler]\n\n    I --> P[(Postgres + pgvector)]\n    G --> P\n    H --> P\n    O --> P\n\n    P --> Q[Background Consolidator]\n    P --> R[Memory Repair Worker]\n    P --> S[Retention / Forgetting Worker]\n\n    Q --> P\n    R --> P\n    S --> P\n\n    U[Assistant Runtime] --> V[Read-Time Retrieval Planner]\n    V --> P\n    P --> W[Answer Composer]\n    W --> U\n```\n\n## 5. Storage tiers\n\n### Tier A. Core / in-context memory\nЭто маленькие блоки, которые почти всегда идут в prompt.\n\nЧто туда класть:\n- краткий user profile\n- active tasks\n- очень короткий session summary\n- system-level behavior preferences\n\nЧто туда не класть:\n- все claims подряд\n- все notes подряд\n- raw transcript\n- длинные списки фактов\n\n### Tier B. Structured long-term memory\nОсновное typed memory-хранилище.\n\nТипы:\n- `Entity`\n- `Claim`\n- `Profile`\n- `Task`\n- `Episode`\n- `Source`\n- `MemoryRun`\n\n### Tier C. Rich note memory\nПромежуточный semantic layer:\n\n- `Note`\n- `NoteSource`\n- `NoteEntity`\n- `NoteLink`\n\nНужен для:\n- design direction\n- rationale\n- local conclusions\n- plan fragments\n- document digests\n- lessons\n\n### Tier D. Raw evidence\nImmutable или почти immutable слой:\n- chat turns\n- tool outputs\n- imported records\n\n### Tier E. Retrieval indexes\nДаже если физически все сидит в одном Postgres:\n- vector indexes на `sources`, `notes`, `claims`, `episodes`\n- full-text indexes на `content_text`, `summary`, `normalized_text`\n- filters по `namespace`, `entity`, `status`, `retrieval_state`, `time`, `type`\n\n## 6. Structured scope\n\n`v2` уже хорошо чувствовал важность scope, но `v3` делает это явным.\n\nНужно хранить одновременно:\n\n- `scope_text`\n  - человеческое объяснение границ\n- `scope_json`\n  - машинно-обрабатываемый envelope\n\nМинимум в `scope_json`:\n- `scope_kind`\n- `project_id`\n- `environment`\n- `subject_entity_id`\n- `conversation_id`\n- `modality`\n- `audience`\n\nПочему это важно:\n- reconciliation становится предсказуемее\n- retrieval меньше переобобщает\n- notes не конфликтуют ложно только потому, что обе “про базу”\n\n## 7. Когда писать `Claim`, а когда `Note`\n\n### Писать `Claim`\nКогда информация:\n- явная\n- нормализуемая\n- пригодна для точного ответа\n- может быть сравнена с другими claims по predicate policy\n\nПримеры:\n- “отвечай мне на русском”\n- “комментарии в коде должны быть на английском”\n- “сейчас работаю с Python”\n- “дедлайн в пятницу”\n\n### Писать `Note`\nКогда информация:\n- уже важна\n- полезна для будущего retrieval\n- но слишком богата контекстом или слишком ранняя для hard fact\n\nПримеры:\n- “пока склоняемся к Postgres как source of truth”\n- “Neo4j отложили, потому что нет traversal-heavy use case”\n- “по памяти лучше разделять cheap router и сильный reconciler”\n- “из документа следует, что стратегия еще обсуждается”\n\n### Писать и то, и другое\nКогда в одном материале есть:\n- explicit facts / tasks\n- плюс rationale / direction\n\n## 8. Truth state и retrieval state\n\nЭто отдельные вещи, и их нельзя смешивать.\n\n### Truth state\nОтвечает на вопрос: актуально ли это как знание?\n\nДля claims:\n- `active`\n- `superseded`\n- `retracted`\n- `expired`\n- `candidate`\n\nДля notes:\n- `active`\n- `superseded`\n- `retracted`\n- `resolved`\n- `stale`\n- `candidate`\n\n### Retrieval state\nОтвечает на вопрос: как это искать и держать в hot path?\n\nОбщий паттерн:\n- `active`\n- `warm`\n- `cold`\n- `archived`\n- `deleted`\n\nПример:\n- note может быть `resolved`, но еще `warm`, потому что полезен для rationale retrieval\n- claim может быть `superseded`, но оставаться `warm` как historical evidence\n\n## 9. Главная мысль: update не должен быть append-only\n\nНа записи у системы четыре обязательные задачи:\n\n1. понять, стоит ли вообще писать память\n2. найти похожие или конфликтующие items\n3. превратить input в typed candidates\n4. применить policy:\n   - `insert`\n   - `update`\n   - `supersede`\n   - `retract`\n   - `noop`\n\nЕсли пропустить retrieval/reconciliation, база быстро зарастает:\n- дублями\n- stale preferences\n- conflicting notes\n- task explosion\n- summary spam\n\n## 10. Разделение ответственности\n\n### 10.1 User-facing runtime\nДелает:\n- диалог\n- tool orchestration\n- read-time retrieval\n- cheap routing / escalation\n\nОн не должен тащить на себе тяжелый reconciliation и repair.\n\n### 10.2 Memory worker / manager\nДелает:\n- routing\n- retrieval-before-update\n- canonicalization\n- note/claim extraction\n- reconciliation\n- consolidation\n- repair\n- retention\n\n### 10.3 Storage layer\nОтвечает за:\n- immutable evidence\n- typed tables\n- transactional updates\n- lineage\n- indexes\n- audit trail\n\n## 11. Write path\n\n### Step 1. Persist source\nСохраняем raw input:\n- text\n- source type\n- speaker\n- timestamp\n- namespace\n- thread/conversation ids\n- optional embedding\n\n### Step 2. Route\nRouter решает:\n- `noop`\n- `direct_structured_write`\n- `note_write`\n- `mixed`\n\n### Step 3. Retrieve candidate memories\nПеред extraction достаем:\n- похожие claims\n- похожие notes\n- open tasks\n- existing profile\n- candidate entities / aliases\n- recent evidence\n\n### Step 4. Canonicalize entities\nПривязать mentions к existing entities или создать новые.\n\n### Step 5. Extract\nРазные prompts для:\n- claim extraction\n- note construction\n- task update\n- profile update\n\n### Step 6. Reconcile\nСравниваем candidate items с existing items.\n\n### Step 7. Apply transaction\nОдной транзакцией:\n- upsert entities\n- apply claim ops\n- apply note ops\n- apply task ops\n- update profile projection\n- store memory run log\n\n### Step 8. Schedule maintenance\nПо debounce или cron:\n- note consolidation\n- duplicate merge\n- stale cleanup\n- profile repair\n- alias merge\n- retention / archive\n\n## 12. Read path\n\n### Step 1. Decide whether memory is needed\nMemory search нужен, если вопрос:\n- user-specific\n- history-aware\n- task-aware\n- rationale-heavy\n- temporal\n- high-stakes\n\n### Step 2. Load core blocks\nПодтягиваем:\n- short profile\n- active tasks\n- optional session summary\n\n### Step 3. Choose retrieval mode\n\n#### Claim-first\nДля:\n- factual questions\n- preferences\n- current status\n- short “кто/что/когда”\n\n#### Note-first\nДля:\n- “почему решили?”\n- “к чему склонялись?”\n- “что обсуждали?”\n- “какой паттерн уже был?”\n\n#### Mixed\nДля:\n- factual + rationale\n- history + current state\n- task with supporting discussion\n\n#### Evidence-first / evidence-fallback\nДля:\n- конфликтов\n- запросов на подтверждение / цитату\n- высокой ставки\n\n### Step 4. Respect retrieval budget\n`v3` требует явных budget caps.\n\nРекомендуемый старт:\n\n- `factual`\n  - up to `6 claims`\n  - up to `2 tasks`\n  - up to `2 evidence snippets`\n\n- `rationale`\n  - up to `4 notes`\n  - up to `2 claims`\n  - up to `4 evidence snippets`\n\n- `task`\n  - up to `4 tasks`\n  - up to `2 notes`\n  - up to `2 evidence snippets`\n\n- `mixed`\n  - up to `4 claims`\n  - up to `3 notes`\n  - up to `2 tasks`\n  - up to `3 evidence snippets`\n\n### Step 5. Compose answer\nAnswer composer обязан:\n- различать verified vs provisional\n- учитывать conflicts\n- уважать scope boundaries\n- уметь abstain\n- не выдавать note как hard fact без оговорки\n\n## 13. Note maturity\n\nЧтобы `Note` не превратился в summary-store, нужен lifecycle зрелости.\n\nПолезный паттерн:\n- `fresh`\n- `stabilizing`\n- `mature`\n- `consolidated`\n\nЧто может повышать maturity:\n- note использовался в retrieval\n- note подтвержден несколькими sources\n- note не конфликтует с новыми данными\n- note пережил какое-то время без supersede\n- note важен для recurring rationale questions\n\nЧто может понижать или закрывать note:\n- явный supersede\n- устаревший scope\n- отсутствие использования\n- слабая поддержка evidence\n\n## 14. Memory repair\n\nRepair — это отдельный background workflow.\n\nЧто он чинит:\n- duplicate notes / claims\n- contradictory active items\n- profile drift\n- stale task states\n- bad entity merges\n- note spam\n- budget leakage в retrieval\n\nПочему это надо выделять отдельно:\n- consolidation делает память богаче\n- repair делает память здоровее\n\nЭто разные работы.\n\n## 15. Retention / forgetting\n\nВ `v3` forgetting — не случайное “пусть старое реже ищется”, а policy.\n\nМинимальные действия:\n- downgrade retrieval state\n- archive\n- soft delete\n- hard delete by request\n\nМинимальные триггеры:\n- namespace policy\n- age\n- low use_count\n- legal/privacy request\n- explicit user forget/delete command\n\n## 16. Optional fast/slow execution path\n\nЭто уже не обязательный MVP, но хороший следующий шаг.\n\n### Fast path\n- user-facing\n- lower latency\n- cheap retrieval\n- cheap draft\n- escalation gate\n\n### Slow path\n- stronger model / worker\n- conflict resolution\n- answer verification\n- note consolidation\n- memory repair\n\n### Важный момент\nМежду fast и slow path лучше гонять **typed handoff objects**, а не свободный текст.\n\n## 17. Почему не надо начинать с graph DB\n\n`Entity + Claim + NoteLink + scope_json` уже дают graph-like semantics.\nДля memory layer обычно хватает:\n\n- Postgres\n- JSONB\n- pgvector\n- full-text indexes\n- lineage tables\n\nGraph DB нужен, когда traversal/path queries становятся частью продукта, а не просто внутренним удобством.\n",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            },
+            {
+                "content": [
+                    {
+                        "call": {
+                            "input": {
+                                "mode": "automatic_hot_path",
+                                "target": "previous_user_message",
+                                "target_message_id": "<uuid>"
+                            },
+                            "name": "memory_remember"
+                        },
+                        "id": "<id>",
+                        "state": "COMPLETE",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolCall"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "ASSISTANT"
+            },
+            {
+                "content": [
+                    {
+                        "isError": false,
+                        "result": [
+                            {
+                                "content": "{\"status\":\"completed\",\"decision\":\"NOTE_WRITE\",\"memory_types\":[\"NOTE\",\"SOURCE\"],\"salience\":1.0,\"reason\":\"Pasted markdown document was ingested through 9 structure-aware sections.\",\"source_id\":\"chat:<0>\",\"counts\":{\"predicate_definitions\":0,\"sources\":0,\"runs\":10,\"entities\":43,\"claims\":0,\"notes\":19,\"tasks\":0,\"profiles\":0,\"episodes\":0,\"embeddings\":0},\"runs\":[{\"id\":\"document-ingest:run:<0>\",\"type\":\"DOCUMENT_INGEST\",\"summary\":\"Pasted markdown document ingest success: 9/9 sections\"},{\"id\":\"hot-path:run:<1>\",\"type\":\"RECONCILE_NOTES\",\"summary\":\"Direct structured write applied: notes=2, claims=0, tasks=0, entities=6; noop ops: notes=0, claims=0, tasks=0\"},{\"id\":\"hot-path:run:<2>\",\"type\":\"RECONCILE_NOTES\",\"summary\":\"Direct structured write applied: notes=2, claims=0, tasks=0, entities=15; noop ops: notes=0, claims=0, tasks=0\"},{\"id\":\"hot-path:run:<3>\",\"type\":\"RECONCILE_NOTES\",\"summary\":\"Direct structured write applied: notes=2, claims=0, tasks=0, entities=1; noop ops: notes=0, claims=0, tasks=0\"},{\"id\":\"hot-path:run:<4>\",\"type\":\"RECONCILE_NOTES\",\"summary\":\"Direct structured write applied: notes=2, claims=0, tasks=0, entities=4; noop ops: notes=0, claims=0, tasks=0\"},{\"id\":\"hot-path:run:<5>\",\"type\":\"RECONCILE_NOTES\",\"summary\":\"Direct structured write applied: notes=2, claims=0, tasks=0, entities=1; noop ops: notes=0, claims=0, tasks=0\"},{\"id\":\"hot-path:run:<6>\",\"type\":\"RECONCILE_NOTES\",\"summary\":\"Direct structured write applied: notes=2, claims=0, tasks=0, entities=4; noop ops: notes=0, claims=0, tasks=0\"},{\"id\":\"hot-path:run:<7>\",\"type\":\"RECONCILE_NOTES\",\"summary\":\"Direct structured write applied: notes=3, claims=0, tasks=0, entities=4; noop ops: notes=0, claims=0, tasks=0\"},{\"id\":\"hot-path:run:<8>\",\"type\":\"RECONCILE_NOTES\",\"summary\":\"Direct structured write applied: notes=2, claims=0, tasks=0, entities=1; noop ops: notes=0, claims=0, tasks=0\"},{\"id\":\"hot-path:run:<9>\",\"type\":\"RECONCILE_NOTES\",\"summary\":\"Direct structured write applied: notes=2, claims=0, tasks=0, entities=7; noop ops: notes=0, claims=0, tasks=0\"}],\"claims\":[],\"notes\":[{\"id\":\"hot-path:note:<0>\",\"type\":\"DOC_DIGEST\",\"status\":\"ACTIVE\",\"title\":\"Memory architecture v3 is organized around four axes\",\"summary\":\"The architecture defines memory as a 4-axis system (Representation, Lifecycle, Retrieval policy, Scope and lineage) to avoid degenerate designs like transcript dumps or brittle fact stores.\"},{\"id\":\"hot-path:note:<1>\",\"type\":\"DOC_DIGEST\",\"status\":\"ACTIVE\",\"title\":\"AI agent memory layer goals emphasize durable, updateable, and traceable memory\",\"summary\":\"The system goal is a memory layer that persists across sessions, stores multiple knowledge types (facts, preferences, tasks, rationale, plans), supports knowledge updates, preserves provenance, avoids writing every turn permanently, and includes aging/archive/repair behaviors.\"},{\"id\":\"hot-path:note:<2>\",\"type\":\"DOC_DIGEST\",\"status\":\"ACTIVE\",\"title\":\"Memory architecture uses two semantic write paths and two maintenance paths\",\"summary\":\"In Memory architecture v3, writes are split between a direct structured path for safely normalizable items and a note path for important but not-yet-hard knowledge; maintenance is split into consolidation (promoting mature notes) and repair (fixing memory degradation).\"},{\"id\":\"hot-path:note:<3>\",\"type\":\"DOC_DIGEST\",\"status\":\"ACTIVE\",\"title\":\"Recommended flow routes all write modes through Write-Time Retrieval and Entity Canonicalizer before specialized updaters\",\"summary\":\"The recommended architecture routes noop/direct_structured_write/note_write/mixed decisions from Memory Router, and all non-noop writes pass through Write-Time Retrieval then Entity Canonicalizer before Claim Extractor, Task Updater, Profile Updater, and Note Constructor, with reconciliation and ...\"},{\"id\":\"hot-path:note:<4>\",\"type\":\"DOC_DIGEST\",\"status\":\"ACTIVE\",\"title\":\"Storage tiers define a five-layer memory architecture with distinct roles\",\"summary\":\"The architecture separates memory into Tier A (core prompt context), Tier B (typed long-term records), Tier C (rich semantic notes), Tier D (raw evidence), and Tier E (retrieval indexes), with each tier explicitly defining what should and should not be stored there.\"},{\"id\":\"hot-path:note:<5>\",\"type\":\"DIRECTION\",\"status\":\"ACTIVE\",\"title\":\"Structured scope v3 requires dual scope representation with mandatory scope_json fields\",\"summary\":\"In v3, scope must be stored both as human-readable `scope_text` and machine-readable `scope_json`; at minimum `scope_json` includes `scope_kind`, `project_id`, `environment`, `subject_entity_id`, `conversation_id`, `modality`, and `audience` to improve reconciliation and reduce retrieval overgene...\"},{\"id\":\"hot-path:note:<6>\",\"type\":\"DIRECTION\",\"status\":\"ACTIVE\",\"title\":\"Claim vs Note write policy in memory architecture\",\"summary\":\"The section defines a decision rule: write Claim for explicit, normalizable, precision-answerable information comparable by predicate policy; write Note for important retrieval-relevant context that is too rich or too early for hard facts; write both when material contains explicit facts/tasks pl...\"},{\"id\":\"hot-path:note:<7>\",\"type\":\"DOC_DIGEST\",\"status\":\"ACTIVE\",\"title\":\"Truth state and Retrieval state are orthogonal status dimensions\",\"summary\":\"The architecture treats Truth state and Retrieval state as separate dimensions: Truth state tracks knowledge validity per record type (different enums for claims and notes), while Retrieval state tracks hot-path/search handling (`active`, `warm`, `cold`, `archived`, `deleted`). A record can combi...\"}],\"tasks\":[],\"entities\":[{\"id\":\"entity:<0>\",\"type\":\"CONCEPT\",\"name\":\"AI agent memory layer\"},{\"id\":\"entity:<1>\",\"type\":\"CONCEPT\",\"name\":\"Memory architecture v3\"},{\"id\":\"entity:<2>\",\"type\":\"CONCEPT\",\"name\":\"Representation axis\"},{\"id\":\"entity:<3>\",\"type\":\"CONCEPT\",\"name\":\"Lifecycle axis\"},{\"id\":\"entity:<4>\",\"type\":\"CONCEPT\",\"name\":\"Retrieval policy axis\"},{\"id\":\"entity:<5>\",\"type\":\"CONCEPT\",\"name\":\"Scope and lineage axis\"},{\"id\":\"entity:<6>\",\"type\":\"SERVICE\",\"name\":\"Memory Router\"},{\"id\":\"entity:<7>\",\"type\":\"SERVICE\",\"name\":\"Write-Time Retrieval\"},{\"id\":\"entity:<8>\",\"type\":\"SERVICE\",\"name\":\"Entity Canonicalizer\"},{\"id\":\"entity:<9>\",\"type\":\"SERVICE\",\"name\":\"Claim Extractor\"},{\"id\":\"entity:<10>\",\"type\":\"SERVICE\",\"name\":\"Task Updater\"},{\"id\":\"entity:<11>\",\"type\":\"SERVICE\",\"name\":\"Profile Updater\"}]}",
+                                "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult.Data.Text"
+                            }
+                        ],
+                        "state": "COMPLETE",
+                        "toolName": "memory_remember",
+                        "toolUseId": "tool-call",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            },
+            {
+                "content": [
+                    {
+                        "call": {
+                            "input": {
+                                "mode": "automatic_runtime_context_enrichment",
+                                "target": "previous_user_message",
+                                "target_message_id": "<uuid>"
+                            },
+                            "name": "memory_enrich_context"
+                        },
+                        "id": "<id>",
+                        "state": "COMPLETE",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolCall"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "ASSISTANT"
+            },
+            {
+                "content": [
+                    {
+                        "isError": false,
+                        "result": [
+                            {
+                                "content": "{\"status\":\"completed\",\"need_memory\":false,\"answer_mode\":\"FACTUAL\",\"retrieved_count\":0,\"usage_guidance\":\"Selected memory is the strongest available remembered context for the target context. Use it unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message. Do not replace selected memory with guesses or general defaults. For exact quote, exact wording, source, or when-said questions, prefer complete source text from memory_context over shorter evidence excerpts.\",\"memory_context\":\"No relevant persisted memory was retrieved for the target context.\",\"selected_refs\":[],\"selector_decisions\":[]}",
+                                "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult.Data.Text"
+                            }
+                        ],
+                        "state": "COMPLETE",
+                        "toolName": "memory_enrich_context",
+                        "toolUseId": "tool-call",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "JSON_SCHEMA",
+            "autoCompactionThreshold": 320000,
+            "maxOutputTokens": 2048,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Structured assistant response for visual UI and optional text-to-speech.",
+                "name": "gromozeka_assistant_response",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "fullText": {
+                            "description": "Complete visible answer. Markdown is allowed.",
+                            "type": "string"
+                        },
+                        "ttsText": {
+                            "description": "Short speakable main answer. Empty string means no automatic TTS.",
+                            "type": "string"
+                        },
+                        "voiceTone": {
+                            "description": "Short English voice style hint. Empty string when ttsText is empty.",
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "fullText",
+                        "ttsText",
+                        "voiceTone"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "auto"
+            },
+            "toolContext": {
+                "aiProvider": "OPENAI",
+                "conversationId": "<conversation-key>",
+                "modelName": "gpt-5.3-codex",
+                "projectPath": "gromozeka-e2e-<id>/projects/handoff-architecture-document-ingestion"
+            }
+        },
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value.",
+            "Return the assistant answer as the configured structured response.\nfullText: complete visible answer, markdown is allowed.\nttsText: short speakable main answer, or empty string when nothing should be spoken.\nvoiceTone: short English voice style hint for TTS, or empty string when ttsText is empty."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value.",
+            "Return the assistant answer as the configured structured response.\nfullText: complete visible answer, markdown is allowed.\nttsText: short speakable main answer, or empty string when nothing should be spoken.\nvoiceTone: short English voice style hint for TTS, or empty string when ttsText is empty."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "Memory ingestion source document. Treat the following as a pasted handoff architecture document, not as an immediate task.\n\nFile: agent_memory_handoff/01_architecture.md\n\n# 01. Architecture\n\n## 1. Цель системы\n\nНужна memory layer для AI-агента, которая:\n\n- переживает границы одной сессии\n- умеет хранить факты, preferences, задачи, rationale и evolving plans\n- поддерживает обновление знаний, а не только накопление\n- позволяет объяснить, **откуда** взялась память\n- не превращает каждый turn в permanent knowledge\n- умеет старить, архивировать и чинить память\n\n## 2. Центральная архитектурная идея\n\nВ `v3` у памяти четыре оси, а не одна:\n\n1. **Representation**\n   - `Source`\n   - `Claim`\n   - `Note`\n   - `Profile`\n   - `Task`\n   - `Episode`\n\n2. **Lifecycle**\n   - write\n   - reconcile\n   - consolidate\n   - repair\n   - retain / archive / delete\n\n3. **Retrieval policy**\n   - `claim-first`\n   - `note-first`\n   - `mixed`\n   - `evidence-first`\n   - bounded budgets\n\n4. **Scope and lineage**\n   - `scope_json`\n   - `scope_text`\n   - source refs\n   - origin note\n   - memory runs\n\nБез этих четырех осей память быстро превращается либо в transcript dump, либо в brittle fact store.\n\n## 3. Основная модель записи\n\nТеперь у системы два semantic path и два maintenance path.\n\n### Semantic write paths\n\n1. **Direct structured path**\n   Для вещей, которые уже можно безопасно нормализовать:\n   - explicit facts\n   - stable preferences\n   - commitments / tasks\n   - clear status changes\n\n2. **Note path**\n   Для вещей, которые уже важны, но еще не должны становиться hard facts:\n   - design direction\n   - rationale / trade-offs\n   - evolving plans\n   - lessons / patterns\n   - document digests\n   - contextual framing\n\n### Maintenance paths\n\n1. **Consolidation**\n   Переводит mature notes в claims / tasks / profile / episodes, если сигнал стал достаточно сильным.\n\n2. **Repair**\n   Чинит деградацию памяти:\n   - duplicate clusters\n   - stale items\n   - contradictory active items\n   - note spam\n   - profile drift\n   - bad merges\n\n## 4. Рекомендуемая архитектура\n\n```mermaid\nflowchart TD\n    A[User / Tool / Document] --> B[Source Log]\n    B --> C[Memory Router]\n\n    C -->|noop| Z[Stop]\n\n    C -->|direct_structured_write| D[Write-Time Retrieval]\n    C -->|note_write| D\n    C -->|mixed| D\n\n    D --> E[Entity Canonicalizer]\n\n    E --> F[Claim Extractor]\n    E --> G[Task Updater]\n    E --> H[Profile Updater]\n    E --> N[Note Constructor]\n\n    F --> I[Claim Reconciler]\n    N --> O[Note Reconciler]\n\n    I --> P[(Postgres + pgvector)]\n    G --> P\n    H --> P\n    O --> P\n\n    P --> Q[Background Consolidator]\n    P --> R[Memory Repair Worker]\n    P --> S[Retention / Forgetting Worker]\n\n    Q --> P\n    R --> P\n    S --> P\n\n    U[Assistant Runtime] --> V[Read-Time Retrieval Planner]\n    V --> P\n    P --> W[Answer Composer]\n    W --> U\n```\n\n## 5. Storage tiers\n\n### Tier A. Core / in-context memory\nЭто маленькие блоки, которые почти всегда идут в prompt.\n\nЧто туда класть:\n- краткий user profile\n- active tasks\n- очень короткий session summary\n- system-level behavior preferences\n\nЧто туда не класть:\n- все claims подряд\n- все notes подряд\n- raw transcript\n- длинные списки фактов\n\n### Tier B. Structured long-term memory\nОсновное typed memory-хранилище.\n\nТипы:\n- `Entity`\n- `Claim`\n- `Profile`\n- `Task`\n- `Episode`\n- `Source`\n- `MemoryRun`\n\n### Tier C. Rich note memory\nПромежуточный semantic layer:\n\n- `Note`\n- `NoteSource`\n- `NoteEntity`\n- `NoteLink`\n\nНужен для:\n- design direction\n- rationale\n- local conclusions\n- plan fragments\n- document digests\n- lessons\n\n### Tier D. Raw evidence\nImmutable или почти immutable слой:\n- chat turns\n- tool outputs\n- imported records\n\n### Tier E. Retrieval indexes\nДаже если физически все сидит в одном Postgres:\n- vector indexes на `sources`, `notes`, `claims`, `episodes`\n- full-text indexes на `content_text`, `summary`, `normalized_text`\n- filters по `namespace`, `entity`, `status`, `retrieval_state`, `time`, `type`\n\n## 6. Structured scope\n\n`v2` уже хорошо чувствовал важность scope, но `v3` делает это явным.\n\nНужно хранить одновременно:\n\n- `scope_text`\n  - человеческое объяснение границ\n- `scope_json`\n  - машинно-обрабатываемый envelope\n\nМинимум в `scope_json`:\n- `scope_kind`\n- `project_id`\n- `environment`\n- `subject_entity_id`\n- `conversation_id`\n- `modality`\n- `audience`\n\nПочему это важно:\n- reconciliation становится предсказуемее\n- retrieval меньше переобобщает\n- notes не конфликтуют ложно только потому, что обе “про базу”\n\n## 7. Когда писать `Claim`, а когда `Note`\n\n### Писать `Claim`\nКогда информация:\n- явная\n- нормализуемая\n- пригодна для точного ответа\n- может быть сравнена с другими claims по predicate policy\n\nПримеры:\n- “отвечай мне на русском”\n- “комментарии в коде должны быть на английском”\n- “сейчас работаю с Python”\n- “дедлайн в пятницу”\n\n### Писать `Note`\nКогда информация:\n- уже важна\n- полезна для будущего retrieval\n- но слишком богата контекстом или слишком ранняя для hard fact\n\nПримеры:\n- “пока склоняемся к Postgres как source of truth”\n- “Neo4j отложили, потому что нет traversal-heavy use case”\n- “по памяти лучше разделять cheap router и сильный reconciler”\n- “из документа следует, что стратегия еще обсуждается”\n\n### Писать и то, и другое\nКогда в одном материале есть:\n- explicit facts / tasks\n- плюс rationale / direction\n\n## 8. Truth state и retrieval state\n\nЭто отдельные вещи, и их нельзя смешивать.\n\n### Truth state\nОтвечает на вопрос: актуально ли это как знание?\n\nДля claims:\n- `active`\n- `superseded`\n- `retracted`\n- `expired`\n- `candidate`\n\nДля notes:\n- `active`\n- `superseded`\n- `retracted`\n- `resolved`\n- `stale`\n- `candidate`\n\n### Retrieval state\nОтвечает на вопрос: как это искать и держать в hot path?\n\nОбщий паттерн:\n- `active`\n- `warm`\n- `cold`\n- `archived`\n- `deleted`\n\nПример:\n- note может быть `resolved`, но еще `warm`, потому что полезен для rationale retrieval\n- claim может быть `superseded`, но оставаться `warm` как historical evidence\n\n## 9. Главная мысль: update не должен быть append-only\n\nНа записи у системы четыре обязательные задачи:\n\n1. понять, стоит ли вообще писать память\n2. найти похожие или конфликтующие items\n3. превратить input в typed candidates\n4. применить policy:\n   - `insert`\n   - `update`\n   - `supersede`\n   - `retract`\n   - `noop`\n\nЕсли пропустить retrieval/reconciliation, база быстро зарастает:\n- дублями\n- stale preferences\n- conflicting notes\n- task explosion\n- summary spam\n\n## 10. Разделение ответственности\n\n### 10.1 User-facing runtime\nДелает:\n- диалог\n- tool orchestration\n- read-time retrieval\n- cheap routing / escalation\n\nОн не должен тащить на себе тяжелый reconciliation и repair.\n\n### 10.2 Memory worker / manager\nДелает:\n- routing\n- retrieval-before-update\n- canonicalization\n- note/claim extraction\n- reconciliation\n- consolidation\n- repair\n- retention\n\n### 10.3 Storage layer\nОтвечает за:\n- immutable evidence\n- typed tables\n- transactional updates\n- lineage\n- indexes\n- audit trail\n\n## 11. Write path\n\n### Step 1. Persist source\nСохраняем raw input:\n- text\n- source type\n- speaker\n- timestamp\n- namespace\n- thread/conversation ids\n- optional embedding\n\n### Step 2. Route\nRouter решает:\n- `noop`\n- `direct_structured_write`\n- `note_write`\n- `mixed`\n\n### Step 3. Retrieve candidate memories\nПеред extraction достаем:\n- похожие claims\n- похожие notes\n- open tasks\n- existing profile\n- candidate entities / aliases\n- recent evidence\n\n### Step 4. Canonicalize entities\nПривязать mentions к existing entities или создать новые.\n\n### Step 5. Extract\nРазные prompts для:\n- claim extraction\n- note construction\n- task update\n- profile update\n\n### Step 6. Reconcile\nСравниваем candidate items с existing items.\n\n### Step 7. Apply transaction\nОдной транзакцией:\n- upsert entities\n- apply claim ops\n- apply note ops\n- apply task ops\n- update profile projection\n- store memory run log\n\n### Step 8. Schedule maintenance\nПо debounce или cron:\n- note consolidation\n- duplicate merge\n- stale cleanup\n- profile repair\n- alias merge\n- retention / archive\n\n## 12. Read path\n\n### Step 1. Decide whether memory is needed\nMemory search нужен, если вопрос:\n- user-specific\n- history-aware\n- task-aware\n- rationale-heavy\n- temporal\n- high-stakes\n\n### Step 2. Load core blocks\nПодтягиваем:\n- short profile\n- active tasks\n- optional session summary\n\n### Step 3. Choose retrieval mode\n\n#### Claim-first\nДля:\n- factual questions\n- preferences\n- current status\n- short “кто/что/когда”\n\n#### Note-first\nДля:\n- “почему решили?”\n- “к чему склонялись?”\n- “что обсуждали?”\n- “какой паттерн уже был?”\n\n#### Mixed\nДля:\n- factual + rationale\n- history + current state\n- task with supporting discussion\n\n#### Evidence-first / evidence-fallback\nДля:\n- конфликтов\n- запросов на подтверждение / цитату\n- высокой ставки\n\n### Step 4. Respect retrieval budget\n`v3` требует явных budget caps.\n\nРекомендуемый старт:\n\n- `factual`\n  - up to `6 claims`\n  - up to `2 tasks`\n  - up to `2 evidence snippets`\n\n- `rationale`\n  - up to `4 notes`\n  - up to `2 claims`\n  - up to `4 evidence snippets`\n\n- `task`\n  - up to `4 tasks`\n  - up to `2 notes`\n  - up to `2 evidence snippets`\n\n- `mixed`\n  - up to `4 claims`\n  - up to `3 notes`\n  - up to `2 tasks`\n  - up to `3 evidence snippets`\n\n### Step 5. Compose answer\nAnswer composer обязан:\n- различать verified vs provisional\n- учитывать conflicts\n- уважать scope boundaries\n- уметь abstain\n- не выдавать note как hard fact без оговорки\n\n## 13. Note maturity\n\nЧтобы `Note` не превратился в summary-store, нужен lifecycle зрелости.\n\nПолезный паттерн:\n- `fresh`\n- `stabilizing`\n- `mature`\n- `consolidated`\n\nЧто может повышать maturity:\n- note использовался в retrieval\n- note подтвержден несколькими sources\n- note не конфликтует с новыми данными\n- note пережил какое-то время без supersede\n- note важен для recurring rationale questions\n\nЧто может понижать или закрывать note:\n- явный supersede\n- устаревший scope\n- отсутствие использования\n- слабая поддержка evidence\n\n## 14. Memory repair\n\nRepair — это отдельный background workflow.\n\nЧто он чинит:\n- duplicate notes / claims\n- contradictory active items\n- profile drift\n- stale task states\n- bad entity merges\n- note spam\n- budget leakage в retrieval\n\nПочему это надо выделять отдельно:\n- consolidation делает память богаче\n- repair делает память здоровее\n\nЭто разные работы.\n\n## 15. Retention / forgetting\n\nВ `v3` forgetting — не случайное “пусть старое реже ищется”, а policy.\n\nМинимальные действия:\n- downgrade retrieval state\n- archive\n- soft delete\n- hard delete by request\n\nМинимальные триггеры:\n- namespace policy\n- age\n- low use_count\n- legal/privacy request\n- explicit user forget/delete command\n\n## 16. Optional fast/slow execution path\n\nЭто уже не обязательный MVP, но хороший следующий шаг.\n\n### Fast path\n- user-facing\n- lower latency\n- cheap retrieval\n- cheap draft\n- escalation gate\n\n### Slow path\n- stronger model / worker\n- conflict resolution\n- answer verification\n- note consolidation\n- memory repair\n\n### Важный момент\nМежду fast и slow path лучше гонять **typed handoff objects**, а не свободный текст.\n\n## 17. Почему не надо начинать с graph DB\n\n`Entity + Claim + NoteLink + scope_json` уже дают graph-like semantics.\nДля memory layer обычно хватает:\n\n- Postgres\n- JSONB\n- pgvector\n- full-text indexes\n- lineage tables\n\nGraph DB нужен, когда traversal/path queries становятся частью продукта, а не просто внутренним удобством.\n",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "ASSISTANT",
+                "content": [
+                    {
+                        "call": {
+                            "input": {
+                                "mode": "automatic_hot_path",
+                                "target": "previous_user_message",
+                                "target_message_id": "<uuid>"
+                            },
+                            "name": "memory_remember"
+                        },
+                        "id": "<id>",
+                        "state": "COMPLETE",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolCall"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {
+                    "synthetic": true,
+                    "syntheticKind": "memory",
+                    "targetMessageId": "<uuid>"
+                },
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "isError": false,
+                        "result": [
+                            {
+                                "content": "{\"status\":\"completed\",\"decision\":\"NOTE_WRITE\",\"memory_types\":[\"NOTE\",\"SOURCE\"],\"salience\":1.0,\"reason\":\"Pasted markdown document was ingested through 9 structure-aware sections.\",\"source_id\":\"chat:<0>\",\"counts\":{\"predicate_definitions\":0,\"sources\":0,\"runs\":10,\"entities\":43,\"claims\":0,\"notes\":19,\"tasks\":0,\"profiles\":0,\"episodes\":0,\"embeddings\":0},\"runs\":[{\"id\":\"document-ingest:run:<0>\",\"type\":\"DOCUMENT_INGEST\",\"summary\":\"Pasted markdown document ingest success: 9/9 sections\"},{\"id\":\"hot-path:run:<1>\",\"type\":\"RECONCILE_NOTES\",\"summary\":\"Direct structured write applied: notes=2, claims=0, tasks=0, entities=6; noop ops: notes=0, claims=0, tasks=0\"},{\"id\":\"hot-path:run:<2>\",\"type\":\"RECONCILE_NOTES\",\"summary\":\"Direct structured write applied: notes=2, claims=0, tasks=0, entities=15; noop ops: notes=0, claims=0, tasks=0\"},{\"id\":\"hot-path:run:<3>\",\"type\":\"RECONCILE_NOTES\",\"summary\":\"Direct structured write applied: notes=2, claims=0, tasks=0, entities=1; noop ops: notes=0, claims=0, tasks=0\"},{\"id\":\"hot-path:run:<4>\",\"type\":\"RECONCILE_NOTES\",\"summary\":\"Direct structured write applied: notes=2, claims=0, tasks=0, entities=4; noop ops: notes=0, claims=0, tasks=0\"},{\"id\":\"hot-path:run:<5>\",\"type\":\"RECONCILE_NOTES\",\"summary\":\"Direct structured write applied: notes=2, claims=0, tasks=0, entities=1; noop ops: notes=0, claims=0, tasks=0\"},{\"id\":\"hot-path:run:<6>\",\"type\":\"RECONCILE_NOTES\",\"summary\":\"Direct structured write applied: notes=2, claims=0, tasks=0, entities=4; noop ops: notes=0, claims=0, tasks=0\"},{\"id\":\"hot-path:run:<7>\",\"type\":\"RECONCILE_NOTES\",\"summary\":\"Direct structured write applied: notes=3, claims=0, tasks=0, entities=4; noop ops: notes=0, claims=0, tasks=0\"},{\"id\":\"hot-path:run:<8>\",\"type\":\"RECONCILE_NOTES\",\"summary\":\"Direct structured write applied: notes=2, claims=0, tasks=0, entities=1; noop ops: notes=0, claims=0, tasks=0\"},{\"id\":\"hot-path:run:<9>\",\"type\":\"RECONCILE_NOTES\",\"summary\":\"Direct structured write applied: notes=2, claims=0, tasks=0, entities=7; noop ops: notes=0, claims=0, tasks=0\"}],\"claims\":[],\"notes\":[{\"id\":\"hot-path:note:<0>\",\"type\":\"DOC_DIGEST\",\"status\":\"ACTIVE\",\"title\":\"Memory architecture v3 is organized around four axes\",\"summary\":\"The architecture defines memory as a 4-axis system (Representation, Lifecycle, Retrieval policy, Scope and lineage) to avoid degenerate designs like transcript dumps or brittle fact stores.\"},{\"id\":\"hot-path:note:<1>\",\"type\":\"DOC_DIGEST\",\"status\":\"ACTIVE\",\"title\":\"AI agent memory layer goals emphasize durable, updateable, and traceable memory\",\"summary\":\"The system goal is a memory layer that persists across sessions, stores multiple knowledge types (facts, preferences, tasks, rationale, plans), supports knowledge updates, preserves provenance, avoids writing every turn permanently, and includes aging/archive/repair behaviors.\"},{\"id\":\"hot-path:note:<2>\",\"type\":\"DOC_DIGEST\",\"status\":\"ACTIVE\",\"title\":\"Memory architecture uses two semantic write paths and two maintenance paths\",\"summary\":\"In Memory architecture v3, writes are split between a direct structured path for safely normalizable items and a note path for important but not-yet-hard knowledge; maintenance is split into consolidation (promoting mature notes) and repair (fixing memory degradation).\"},{\"id\":\"hot-path:note:<3>\",\"type\":\"DOC_DIGEST\",\"status\":\"ACTIVE\",\"title\":\"Recommended flow routes all write modes through Write-Time Retrieval and Entity Canonicalizer before specialized updaters\",\"summary\":\"The recommended architecture routes noop/direct_structured_write/note_write/mixed decisions from Memory Router, and all non-noop writes pass through Write-Time Retrieval then Entity Canonicalizer before Claim Extractor, Task Updater, Profile Updater, and Note Constructor, with reconciliation and ...\"},{\"id\":\"hot-path:note:<4>\",\"type\":\"DOC_DIGEST\",\"status\":\"ACTIVE\",\"title\":\"Storage tiers define a five-layer memory architecture with distinct roles\",\"summary\":\"The architecture separates memory into Tier A (core prompt context), Tier B (typed long-term records), Tier C (rich semantic notes), Tier D (raw evidence), and Tier E (retrieval indexes), with each tier explicitly defining what should and should not be stored there.\"},{\"id\":\"hot-path:note:<5>\",\"type\":\"DIRECTION\",\"status\":\"ACTIVE\",\"title\":\"Structured scope v3 requires dual scope representation with mandatory scope_json fields\",\"summary\":\"In v3, scope must be stored both as human-readable `scope_text` and machine-readable `scope_json`; at minimum `scope_json` includes `scope_kind`, `project_id`, `environment`, `subject_entity_id`, `conversation_id`, `modality`, and `audience` to improve reconciliation and reduce retrieval overgene...\"},{\"id\":\"hot-path:note:<6>\",\"type\":\"DIRECTION\",\"status\":\"ACTIVE\",\"title\":\"Claim vs Note write policy in memory architecture\",\"summary\":\"The section defines a decision rule: write Claim for explicit, normalizable, precision-answerable information comparable by predicate policy; write Note for important retrieval-relevant context that is too rich or too early for hard facts; write both when material contains explicit facts/tasks pl...\"},{\"id\":\"hot-path:note:<7>\",\"type\":\"DOC_DIGEST\",\"status\":\"ACTIVE\",\"title\":\"Truth state and Retrieval state are orthogonal status dimensions\",\"summary\":\"The architecture treats Truth state and Retrieval state as separate dimensions: Truth state tracks knowledge validity per record type (different enums for claims and notes), while Retrieval state tracks hot-path/search handling (`active`, `warm`, `cold`, `archived`, `deleted`). A record can combi...\"}],\"tasks\":[],\"entities\":[{\"id\":\"entity:<0>\",\"type\":\"CONCEPT\",\"name\":\"AI agent memory layer\"},{\"id\":\"entity:<1>\",\"type\":\"CONCEPT\",\"name\":\"Memory architecture v3\"},{\"id\":\"entity:<2>\",\"type\":\"CONCEPT\",\"name\":\"Representation axis\"},{\"id\":\"entity:<3>\",\"type\":\"CONCEPT\",\"name\":\"Lifecycle axis\"},{\"id\":\"entity:<4>\",\"type\":\"CONCEPT\",\"name\":\"Retrieval policy axis\"},{\"id\":\"entity:<5>\",\"type\":\"CONCEPT\",\"name\":\"Scope and lineage axis\"},{\"id\":\"entity:<6>\",\"type\":\"SERVICE\",\"name\":\"Memory Router\"},{\"id\":\"entity:<7>\",\"type\":\"SERVICE\",\"name\":\"Write-Time Retrieval\"},{\"id\":\"entity:<8>\",\"type\":\"SERVICE\",\"name\":\"Entity Canonicalizer\"},{\"id\":\"entity:<9>\",\"type\":\"SERVICE\",\"name\":\"Claim Extractor\"},{\"id\":\"entity:<10>\",\"type\":\"SERVICE\",\"name\":\"Task Updater\"},{\"id\":\"entity:<11>\",\"type\":\"SERVICE\",\"name\":\"Profile Updater\"}]}",
+                                "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult.Data.Text"
+                            }
+                        ],
+                        "state": "COMPLETE",
+                        "toolName": "memory_remember",
+                        "toolUseId": "tool-call",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {
+                    "synthetic": true,
+                    "syntheticKind": "memory",
+                    "targetMessageId": "<uuid>"
+                },
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "ASSISTANT",
+                "content": [
+                    {
+                        "call": {
+                            "input": {
+                                "mode": "automatic_runtime_context_enrichment",
+                                "target": "previous_user_message",
+                                "target_message_id": "<uuid>"
+                            },
+                            "name": "memory_enrich_context"
+                        },
+                        "id": "<id>",
+                        "state": "COMPLETE",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolCall"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {
+                    "synthetic": true,
+                    "syntheticKind": "memory",
+                    "targetMessageId": "<uuid>"
+                },
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "isError": false,
+                        "result": [
+                            {
+                                "content": "{\"status\":\"completed\",\"need_memory\":false,\"answer_mode\":\"FACTUAL\",\"retrieved_count\":0,\"usage_guidance\":\"Selected memory is the strongest available remembered context for the target context. Use it unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message. Do not replace selected memory with guesses or general defaults. For exact quote, exact wording, source, or when-said questions, prefer complete source text from memory_context over shorter evidence excerpts.\",\"memory_context\":\"No relevant persisted memory was retrieved for the target context.\",\"selected_refs\":[],\"selector_decisions\":[]}",
+                                "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult.Data.Text"
+                            }
+                        ],
+                        "state": "COMPLETE",
+                        "toolName": "memory_enrich_context",
+                        "toolUseId": "tool-call",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {
+                    "synthetic": true,
+                    "syntheticKind": "memory",
+                    "targetMessageId": "<uuid>"
+                },
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 2048,
+            "reasoning": null,
+            "autoCompactionThreshold": 320000,
+            "toolChoice": {
+                "type": "auto"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "gromozeka_assistant_response",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "fullText": {
+                            "description": "Complete visible answer. Markdown is allowed.",
+                            "type": "string"
+                        },
+                        "ttsText": {
+                            "description": "Short speakable main answer. Empty string means no automatic TTS.",
+                            "type": "string"
+                        },
+                        "voiceTone": {
+                            "description": "Short English voice style hint. Empty string when ttsText is empty.",
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "fullText",
+                        "ttsText",
+                        "voiceTone"
+                    ],
+                    "type": "object"
+                },
+                "description": "Structured assistant response for visual UI and optional text-to-speech.",
+                "strict": true
+            },
+            "assistantResponseFormat": "JSON_SCHEMA",
+            "toolContext": {
+                "aiProvider": "OPENAI",
+                "conversationId": "<conversation-key>",
+                "modelName": "gpt-5.3-codex",
+                "projectPath": "gromozeka-e2e-<id>/projects/handoff-architecture-document-ingestion"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "Принял. Документ `agent_memory_handoff/01_architecture.md` рассматриваю как source для ingestion/handoff, не как immediate task.",
+                                "ttsText": "",
+                                "voiceTone": "",
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 2773,
+                "completionTokens": 56,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 2816
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}
