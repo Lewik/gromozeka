@@ -296,6 +296,58 @@ class AiRuntimeCassetteProxyTest {
         }
     }
 
+    @Test
+    fun usageReportProtectsCassettesUsedByPreviousPassingRuns() {
+        val root = Files.createTempDirectory("llm-cassettes-test-")
+        val artifactsRoot = Files.createTempDirectory("llm-cassettes-artifacts-")
+        AiRuntimeCassetteUsageRegistry.reset()
+        try {
+            val cassetteDirectory = root.resolve("OPENAI")
+                .resolve("fake_model_1")
+                .resolve("call")
+            Files.createDirectories(cassetteDirectory)
+            val historicallyUsedCassette = cassetteDirectory.resolve("historically-used.json")
+            val neverUsedCassette = cassetteDirectory.resolve("never-used.json")
+            Files.writeString(historicallyUsedCassette, "{}")
+            Files.writeString(neverUsedCassette, "{}")
+
+            val previousArtifacts = artifactsRoot.resolve("previous-run")
+            Files.createDirectories(previousArtifacts)
+            Files.writeString(previousArtifacts.resolve("summary.md"), "status | PASS\n")
+            Files.writeString(
+                previousArtifacts.resolve("llm-cassette-usage.md"),
+                """
+                # LLM Cassette Usage
+
+                ## Used Cassettes
+                - OPENAI/fake_model_1/call/historically-used.json accesses=record provider=OPENAI model=fake_model_1 operation=call hash=historically-used
+
+                ## Unused Cassettes
+                - none
+                """.trimIndent()
+            )
+
+            val currentArtifacts = artifactsRoot.resolve("current-run")
+            val report = AiRuntimeCassetteUsageReporter.writeReport(
+                rootDirectory = root,
+                artifactDirectory = currentArtifacts,
+                deleteUnused = true,
+            )
+            val reportText = Files.readString(report.reportPath)
+
+            assertEquals(1, report.unusedCount)
+            assertEquals(1, report.deletedCount)
+            require("historically-used.json" in reportText)
+            require("never-used.json" in reportText)
+            require(Files.exists(historicallyUsedCassette))
+            require(!Files.exists(neverUsedCassette))
+        } finally {
+            AiRuntimeCassetteUsageRegistry.reset()
+            root.toFile().deleteRecursively()
+            artifactsRoot.toFile().deleteRecursively()
+        }
+    }
+
     private fun requestWithDynamicIds(
         dynamicPart: String,
         text: String,

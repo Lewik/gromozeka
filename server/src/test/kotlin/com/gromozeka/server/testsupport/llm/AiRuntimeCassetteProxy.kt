@@ -319,9 +319,14 @@ internal object AiRuntimeCassetteUsageReporter {
         val used = AiRuntimeCassetteUsageRegistry.snapshot()
             .filter { it.path.startsWith(root) }
         val usedPaths = used.mapTo(mutableSetOf()) { it.path.toAbsolutePath().normalize() }
+        val historicallyUsedPaths = loadHistoricallyUsedCassettePaths(
+            root = root,
+            currentArtifactDirectory = artifactDirectory.toAbsolutePath().normalize(),
+        )
         val diskPaths = listCassetteFiles(root)
         val diskPathSet = diskPaths.toSet()
-        val unusedPaths = diskPaths.filterNot(usedPaths::contains)
+        val protectedPaths = usedPaths + historicallyUsedPaths
+        val unusedPaths = diskPaths.filterNot(protectedPaths::contains)
         val missingUsedPaths = usedPaths.filterNot(diskPathSet::contains).sortedBy { it.toString() }
         val deletedPaths = if (deleteUnused) {
             unusedPaths.filter { Files.deleteIfExists(it) }
@@ -334,6 +339,7 @@ internal object AiRuntimeCassetteUsageReporter {
             renderReport(
                 root = root,
                 used = used,
+                historicallyUsedPaths = historicallyUsedPaths.toList().sortedBy { it.toString() },
                 diskPaths = diskPaths,
                 unusedPaths = unusedPaths,
                 missingUsedPaths = missingUsedPaths,
@@ -356,6 +362,7 @@ internal object AiRuntimeCassetteUsageReporter {
     private fun renderReport(
         root: Path,
         used: List<AiRuntimeCassetteUsage>,
+        historicallyUsedPaths: List<Path>,
         diskPaths: List<Path>,
         unusedPaths: List<Path>,
         missingUsedPaths: List<Path>,
@@ -366,6 +373,7 @@ internal object AiRuntimeCassetteUsageReporter {
         appendLine()
         appendLine("root | $root")
         appendLine("used | ${used.size}")
+        appendLine("historicallyUsed | ${historicallyUsedPaths.size}")
         appendLine("disk | ${diskPaths.size}")
         appendLine("unused | ${unusedPaths.size}")
         appendLine("missingUsed | ${missingUsedPaths.size}")
@@ -385,6 +393,9 @@ internal object AiRuntimeCassetteUsageReporter {
             }.ifBlank { "- none" }
         )
         appendLine()
+        appendLine("## Historically Used Cassettes")
+        appendLine(historicallyUsedPaths.joinToString("\n") { "- ${root.relativeReportPath(it)}" }.ifBlank { "- none" })
+        appendLine()
         appendLine("## Missing Used Cassettes")
         appendLine(missingUsedPaths.joinToString("\n") { "- ${root.relativeReportPath(it)}" }.ifBlank { "- none" })
         appendLine()
@@ -403,6 +414,55 @@ internal object AiRuntimeCassetteUsageReporter {
             }
         }
         return files.sortedBy { it.toString() }
+    }
+
+    private fun loadHistoricallyUsedCassettePaths(
+        root: Path,
+        currentArtifactDirectory: Path,
+    ): Set<Path> {
+        val artifactRoot = currentArtifactDirectory.parent ?: return emptySet()
+        if (!Files.exists(artifactRoot)) return emptySet()
+
+        val paths = mutableSetOf<Path>()
+        Files.list(artifactRoot).use { entries ->
+            entries
+                .filter { Files.isDirectory(it) }
+                .filter { it.toAbsolutePath().normalize() != currentArtifactDirectory }
+                .filter { it.hasPassingSummary() }
+                .forEach { artifactDirectory ->
+                    val reportPath = artifactDirectory.resolve("llm-cassette-usage.md")
+                    if (Files.exists(reportPath)) {
+                        paths.addAll(parseUsedCassettePaths(root, reportPath))
+                    }
+                }
+        }
+        return paths
+    }
+
+    private fun Path.hasPassingSummary(): Boolean {
+        val summaryPath = resolve("summary.md")
+        if (!Files.exists(summaryPath)) return false
+        return Files.readString(summaryPath).lineSequence()
+            .any { it.trim() == "status | PASS" }
+    }
+
+    private fun parseUsedCassettePaths(
+        root: Path,
+        reportPath: Path,
+    ): Set<Path> {
+        val paths = mutableSetOf<Path>()
+        var inUsedSection = false
+        Files.readString(reportPath).lineSequence().forEach { line ->
+            when {
+                line == "## Used Cassettes" -> inUsedSection = true
+                line.startsWith("## ") -> inUsedSection = false
+                inUsedSection && line.startsWith("- ") && line != "- none" -> {
+                    val relativePath = line.removePrefix("- ").substringBefore(" accesses=")
+                    paths.add(root.resolve(relativePath).toAbsolutePath().normalize())
+                }
+            }
+        }
+        return paths
     }
 
     private fun Path.relativeReportPath(path: Path): String {
