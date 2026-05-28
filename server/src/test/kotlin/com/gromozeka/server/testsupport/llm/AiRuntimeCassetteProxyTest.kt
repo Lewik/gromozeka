@@ -41,6 +41,7 @@ class AiRuntimeCassetteProxyTest {
     fun defaultDirectoryUsesTestResourcesInMemoryE2eMode() {
         withSystemProperties(
             "gromozeka.llm.cassette.dir" to null,
+            "gromozeka.llm.cassette.mode" to null,
             "GROMOZEKA_HOME" to "/tmp/prod-home",
             "GROMOZEKA_MODE" to null,
             "gromozeka.memory.e2e" to "true",
@@ -56,6 +57,7 @@ class AiRuntimeCassetteProxyTest {
     fun defaultDirectoryUsesGromozekaHomeOutsideTests() {
         withSystemProperties(
             "gromozeka.llm.cassette.dir" to null,
+            "gromozeka.llm.cassette.mode" to null,
             "GROMOZEKA_HOME" to "/tmp/prod-home",
             "GROMOZEKA_MODE" to "prod",
             "gromozeka.memory.e2e" to null,
