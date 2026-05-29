@@ -30,9 +30,26 @@ interface MemoryEmbeddingIndexer {
 
     suspend fun searchEmbedding(query: String): MemoryStore.SearchEmbedding?
 
-    suspend fun rebuildNamespace(namespace: MemoryNamespace): MemoryEmbeddingRebuildResult
+    suspend fun rebuildNamespace(
+        namespace: MemoryNamespace,
+        mode: MemoryEmbeddingRebuildMode = MemoryEmbeddingRebuildMode.FULL,
+    ): MemoryEmbeddingRebuildResult
 
     fun status(): MemoryEmbeddingIndexStatus
+}
+
+enum class MemoryEmbeddingRebuildMode {
+    FULL,
+    MISSING;
+
+    companion object {
+        fun from(value: String?): MemoryEmbeddingRebuildMode =
+            when (value?.trim()?.lowercase()) {
+                null, "", "full", "reset", "rebuild" -> FULL
+                "missing", "missing_only", "missing-only", "gaps", "fill_gaps" -> MISSING
+                else -> throw IllegalArgumentException("Unsupported memory embedding rebuild mode: $value")
+            }
+    }
 }
 
 object NoOpMemoryEmbeddingIndexer : MemoryEmbeddingIndexer {
@@ -40,13 +57,19 @@ object NoOpMemoryEmbeddingIndexer : MemoryEmbeddingIndexer {
 
     override suspend fun searchEmbedding(query: String): MemoryStore.SearchEmbedding? = null
 
-    override suspend fun rebuildNamespace(namespace: MemoryNamespace): MemoryEmbeddingRebuildResult =
+    override suspend fun rebuildNamespace(
+        namespace: MemoryNamespace,
+        mode: MemoryEmbeddingRebuildMode,
+    ): MemoryEmbeddingRebuildResult =
         MemoryEmbeddingRebuildResult(
             namespace = namespace,
+            mode = mode,
             modelConfigurationId = "",
             providerModelId = "",
             dimensions = 0,
             embeddableItems = 0,
+            existingEmbeddings = 0,
+            missingEmbeddings = 0,
             embeddings = 0,
             deletedEmbeddings = 0,
             memoryBatch = MemoryUpdateBatch(),
@@ -113,7 +136,10 @@ class DefaultMemoryEmbeddingIndexer(
         }
     }
 
-    override suspend fun rebuildNamespace(namespace: MemoryNamespace): MemoryEmbeddingRebuildResult {
+    override suspend fun rebuildNamespace(
+        namespace: MemoryNamespace,
+        mode: MemoryEmbeddingRebuildMode,
+    ): MemoryEmbeddingRebuildResult {
         val resolved = resolveEmbeddingRuntime()
         val snapshot = store.loadNamespaceSnapshot(namespace)
         val batch = MemoryUpdateBatch(
@@ -125,22 +151,76 @@ class DefaultMemoryEmbeddingIndexer(
             profiles = snapshot.profiles,
             episodes = snapshot.episodes,
         )
-        val indexedBatch = withEmbeddings(batch)
-        val embeddingBatch = MemoryUpdateBatch(embeddings = indexedBatch.embeddings)
-        val deletedEmbeddings = store.replaceEmbeddings(namespace, embeddingBatch.embeddings)
+        val entries = batch.toEmbeddingInputs(
+            modelConfigurationId = resolved.modelConfigurationId,
+            providerModelId = resolved.providerModelId,
+            maxInputTokens = resolved.maxInputTokens,
+        )
+        return when (mode) {
+            MemoryEmbeddingRebuildMode.FULL -> rebuildFull(namespace, resolved, batch, entries)
+            MemoryEmbeddingRebuildMode.MISSING -> rebuildMissing(namespace, resolved, batch, entries)
+        }
+    }
+
+    private suspend fun rebuildFull(
+        namespace: MemoryNamespace,
+        resolved: ResolvedEmbeddingRuntime,
+        batch: MemoryUpdateBatch,
+        entries: List<EmbeddingInput>,
+    ): MemoryEmbeddingRebuildResult {
+        val embeddings = embedEntries(resolved, entries)
+        val embeddingBatch = MemoryUpdateBatch(embeddings = embeddings)
+        val deletedEmbeddings = store.replaceEmbeddings(namespace, embeddings)
         totalRebuilds.incrementAndGet()
         log.info {
-            "Memory embeddings rebuilt: namespace=${namespace.value} model=${resolved.modelConfigurationId}/${resolved.providerModelId} " +
-                "deleted=$deletedEmbeddings items=${indexedBatch.embeddings.size} dimensions=${resolved.dimensions}"
+            "Memory embeddings rebuilt: mode=full namespace=${namespace.value} model=${resolved.modelConfigurationId}/${resolved.providerModelId} " +
+                "deleted=$deletedEmbeddings items=${embeddings.size}/${entries.size} dimensions=${resolved.dimensions}"
         }
         return MemoryEmbeddingRebuildResult(
             namespace = namespace,
+            mode = MemoryEmbeddingRebuildMode.FULL,
             modelConfigurationId = resolved.modelConfigurationId,
             providerModelId = resolved.providerModelId,
             dimensions = resolved.dimensions,
             embeddableItems = batch.embeddableItemCount(),
-            embeddings = indexedBatch.embeddings.size,
+            existingEmbeddings = 0,
+            missingEmbeddings = entries.size,
+            embeddings = embeddings.size,
             deletedEmbeddings = deletedEmbeddings,
+            memoryBatch = embeddingBatch,
+        )
+    }
+
+    private suspend fun rebuildMissing(
+        namespace: MemoryNamespace,
+        resolved: ResolvedEmbeddingRuntime,
+        batch: MemoryUpdateBatch,
+        entries: List<EmbeddingInput>,
+    ): MemoryEmbeddingRebuildResult {
+        val entryIds = entries.mapTo(mutableSetOf()) { it.embeddingId }
+        val existingIds = store.findEmbeddingIds(namespace, entryIds)
+        val missingEntries = entries.filterNot { it.embeddingId in existingIds }
+        val embeddings = embedEntries(resolved, missingEntries)
+        val embeddingBatch = MemoryUpdateBatch(embeddings = embeddings)
+        if (embeddings.isNotEmpty()) {
+            store.apply(embeddingBatch)
+        }
+        totalRebuilds.incrementAndGet()
+        log.info {
+            "Memory embeddings rebuilt: mode=missing namespace=${namespace.value} model=${resolved.modelConfigurationId}/${resolved.providerModelId} " +
+                "existing=${existingIds.size} missing=${missingEntries.size} inserted=${embeddings.size} dimensions=${resolved.dimensions}"
+        }
+        return MemoryEmbeddingRebuildResult(
+            namespace = namespace,
+            mode = MemoryEmbeddingRebuildMode.MISSING,
+            modelConfigurationId = resolved.modelConfigurationId,
+            providerModelId = resolved.providerModelId,
+            dimensions = resolved.dimensions,
+            embeddableItems = batch.embeddableItemCount(),
+            existingEmbeddings = existingIds.size,
+            missingEmbeddings = missingEntries.size,
+            embeddings = embeddings.size,
+            deletedEmbeddings = 0,
             memoryBatch = embeddingBatch,
         )
     }
@@ -249,16 +329,25 @@ data class MemoryEmbeddingIndexStatus(
 
 data class MemoryEmbeddingRebuildResult(
     val namespace: MemoryNamespace,
+    val mode: MemoryEmbeddingRebuildMode,
     val modelConfigurationId: String,
     val providerModelId: String,
     val dimensions: Int,
     val embeddableItems: Int,
+    val existingEmbeddings: Int,
+    val missingEmbeddings: Int,
     val embeddings: Int,
     val deletedEmbeddings: Int,
     val memoryBatch: MemoryUpdateBatch,
 ) {
     val summary: String =
-        "Reset $deletedEmbeddings old embeddings and rebuilt $embeddings/$embeddableItems memory embeddings for ${namespace.value} using $modelConfigurationId."
+        when (mode) {
+            MemoryEmbeddingRebuildMode.FULL ->
+                "Reset $deletedEmbeddings old embeddings and rebuilt $embeddings/$embeddableItems memory embeddings for ${namespace.value} using $modelConfigurationId."
+
+            MemoryEmbeddingRebuildMode.MISSING ->
+                "Filled $embeddings/$missingEmbeddings missing memory embeddings for ${namespace.value} using $modelConfigurationId."
+        }
 }
 
 private data class EmbeddingInput(

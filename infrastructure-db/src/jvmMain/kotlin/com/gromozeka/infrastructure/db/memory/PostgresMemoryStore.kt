@@ -326,6 +326,37 @@ class PostgresMemoryStore(
         }
     }
 
+    override suspend fun findEmbeddingIds(
+        namespace: MemoryNamespace,
+        ids: Set<MemoryEmbeddingRecord.Id>,
+    ): Set<MemoryEmbeddingRecord.Id> {
+        if (ids.isEmpty()) return emptySet()
+        return dataSource.connection.use { connection ->
+            ids.chunked(500).flatMapTo(mutableSetOf()) { chunk ->
+                val placeholders = chunk.joinToString(",") { "?" }
+                val sql = """
+                    SELECT id
+                    FROM memory_embeddings
+                    WHERE namespace = ?
+                      AND id IN ($placeholders)
+                """.trimIndent()
+                connection.prepareStatement(sql).use { statement ->
+                    statement.setString(1, namespace.value)
+                    chunk.forEachIndexed { index, id ->
+                        statement.setString(index + 2, id.value)
+                    }
+                    statement.executeQuery().use { resultSet ->
+                        buildList {
+                            while (resultSet.next()) {
+                                add(MemoryEmbeddingRecord.Id(resultSet.getString("id")))
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     override suspend fun findRunById(runId: MemoryRun.Id): MemoryRun? =
         dataSource.connection.use { connection ->
             connection.selectPayloadById("memory_runs", runId.value)

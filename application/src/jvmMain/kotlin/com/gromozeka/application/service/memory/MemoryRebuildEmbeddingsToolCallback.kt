@@ -23,11 +23,12 @@ class MemoryRebuildEmbeddingsToolCallback(
         val project_path: String? = null,
         val run_id: String? = null,
         val namespace: String? = null,
+        val mode: String? = null,
     )
 
     override val definition: AiToolDefinition = AiToolDefinition(
         name = MEMORY_REBUILD_EMBEDDINGS_TOOL_NAME,
-        description = "Reset and rebuild memory vector embeddings for one target namespace. This queues a background run that first generates a fresh embedding set, then atomically replaces all existing embeddings in that namespace. Use memory_run_status with the returned run_id or memory_queue_status to observe progress.",
+        description = "Rebuild memory vector embeddings for one target namespace. mode=full first generates a complete fresh embedding set and then atomically replaces all existing embeddings only if generation succeeded. mode=missing inserts only currently absent embeddings and never deletes or rewrites existing rows. Returns a run_id immediately; use memory_run_status or memory_queue_status to observe progress.",
         inputSchema = """
             {
               "type": "object",
@@ -55,6 +56,11 @@ class MemoryRebuildEmbeddingsToolCallback(
                 "namespace": {
                   "type": "string",
                   "description": "Explicit memory namespace, currently usually project:<project-id>."
+                },
+                "mode": {
+                  "type": "string",
+                  "enum": ["full", "missing"],
+                  "description": "full resets and rebuilds the namespace after successful generation; missing fills only absent embeddings. Defaults to full."
                 }
               }
             }
@@ -79,6 +85,7 @@ class MemoryRebuildEmbeddingsToolCallback(
             projectPathValue = input.project_path,
             runIdValue = input.run_id,
             namespaceValue = input.namespace,
+            embeddingRebuildModeValue = input.mode,
         )
     }
 

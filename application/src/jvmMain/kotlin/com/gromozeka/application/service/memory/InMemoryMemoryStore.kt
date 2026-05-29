@@ -225,6 +225,16 @@ class InMemoryMemoryStore(
         return removed
     }
 
+    override suspend fun findEmbeddingIds(
+        namespace: MemoryNamespace,
+        ids: Set<MemoryEmbeddingRecord.Id>,
+    ): Set<MemoryEmbeddingRecord.Id> {
+        if (ids.isEmpty()) return emptySet()
+        return embeddings
+            .filter { it.namespace == namespace && it.id in ids }
+            .mapTo(mutableSetOf()) { it.id }
+    }
+
     override suspend fun findRunById(runId: MemoryRun.Id): MemoryRun? =
         runs.firstOrNull { it.id == runId }
 

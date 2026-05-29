@@ -74,6 +74,7 @@ class MemoryMaintenanceQueue(
         namespace: MemoryNamespace,
         runtimeSystemPrompts: List<String>,
         runtimeTools: List<AiToolCallback>,
+        embeddingRebuildMode: MemoryEmbeddingRebuildMode = MemoryEmbeddingRebuildMode.FULL,
     ): MemoryMaintenanceQueuedResult {
         val now = Clock.System.now()
         val run = MemoryRun(
@@ -88,12 +89,18 @@ class MemoryMaintenanceQueue(
                 put("target_kind", targetKind)
                 put("target_value", targetValue)
                 put("conversation_id", conversationId.value)
+                if (action == MemoryMaintenanceAction.REBUILD_EMBEDDINGS) {
+                    put("embedding_rebuild_mode", embeddingRebuildMode.name.lowercase())
+                }
             },
             metadata = buildJsonObject {
                 put("queue", "memory_maintenance")
                 put("action", action.toolName)
                 put("targetKind", targetKind)
                 put("targetValue", targetValue)
+                if (action == MemoryMaintenanceAction.REBUILD_EMBEDDINGS) {
+                    put("embeddingRebuildMode", embeddingRebuildMode.name.lowercase())
+                }
             },
             status = MemoryRun.Status.QUEUED,
             createdAt = now,
@@ -113,6 +120,7 @@ class MemoryMaintenanceQueue(
             namespace = namespace,
             runtimeSystemPrompts = runtimeSystemPrompts,
             runtimeTools = runtimeTools,
+            embeddingRebuildMode = embeddingRebuildMode,
         )
         val result = jobs.trySend(job)
         if (result.isFailure) {
@@ -273,15 +281,18 @@ class MemoryMaintenanceQueue(
             }
 
             MemoryMaintenanceAction.REBUILD_EMBEDDINGS -> {
-                val result = embeddingIndexer.rebuildNamespace(job.namespace)
+                val result = embeddingIndexer.rebuildNamespace(job.namespace, job.embeddingRebuildMode)
                 MemoryMaintenanceExecutionResult(
                     summary = result.summary,
                     memoryBatch = result.memoryBatch,
                     details = buildJsonObject {
+                        put("mode", result.mode.name.lowercase())
                         put("model_configuration_id", result.modelConfigurationId)
                         put("provider_model_id", result.providerModelId)
                         put("dimensions", result.dimensions)
                         put("embeddable_items", result.embeddableItems)
+                        put("existing_embeddings", result.existingEmbeddings)
+                        put("missing_embeddings", result.missingEmbeddings)
                         put("embeddings", result.embeddings)
                         put("deleted_embeddings", result.deletedEmbeddings)
                     },
@@ -383,6 +394,7 @@ private data class MemoryMaintenanceJob(
     val namespace: MemoryNamespace,
     val runtimeSystemPrompts: List<String>,
     val runtimeTools: List<AiToolCallback>,
+    val embeddingRebuildMode: MemoryEmbeddingRebuildMode,
 )
 
 private data class MemoryMaintenanceExecutionResult(

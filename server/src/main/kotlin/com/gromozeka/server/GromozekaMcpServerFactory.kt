@@ -255,7 +255,7 @@ class GromozekaMcpServerFactory(
             - `memory_run_status`: inspect one memory run by id.
             - `memory_queue_status`: inspect queued/running memory document ingest and maintenance work.
             - `memory_maintenance`: schedule maintenance actions such as consolidation, entity maintenance, stale/supersede cleanup, targeted repairs, or embedding rebuild.
-            - `memory_rebuild_embeddings`: reset and rebuild vector embeddings for a namespace.
+            - `memory_rebuild_embeddings`: rebuild vector embeddings for a namespace (`full` reset/replace or `missing` fill-only).
 
             Maintenance tools operate on existing memory and return immediately with a run id. Use `memory_run_status` or `memory_queue_status` to observe completion. Prefer status tools before starting broad maintenance if a run is already active.
 
@@ -278,10 +278,10 @@ class GromozekaMcpServerFactory(
             "List readable memory namespaces, item counts, and the configured default namespace."
 
         const val MCP_MEMORY_MAINTENANCE_DESCRIPTION =
-            "Schedule one explicit maintenance action over existing memory and return a run_id: consolidate, repair, maintain_entities, apply_retention, or rebuild_embeddings. The rebuild_embeddings action resets and rebuilds vector embeddings for the target namespace."
+            "Schedule one explicit maintenance action over existing memory and return a run_id: consolidate, repair, maintain_entities, apply_retention, or rebuild_embeddings. The rebuild_embeddings action supports embedding_mode=full for reset/replace and embedding_mode=missing for fill-only."
 
         const val MCP_MEMORY_REBUILD_EMBEDDINGS_DESCRIPTION =
-            "Reset and rebuild memory vector embeddings for one target namespace. Returns a run_id immediately; use memory_run_status or memory_queue_status to observe completion."
+            "Rebuild memory vector embeddings for one target namespace. mode=full generates a fresh complete set and then replaces existing rows; mode=missing inserts only absent rows. Returns a run_id immediately; use memory_run_status or memory_queue_status to observe completion."
 
         const val MCP_MEMORY_QUEUE_STATUS_DESCRIPTION =
             "Read process-local memory document ingest, maintenance, and synchronous embedding index status."

@@ -7,6 +7,7 @@ import com.gromozeka.application.service.memory.MEMORY_REMEMBER_TOOL_NAME
 import com.gromozeka.application.service.memory.MemoryDocumentIngestJob
 import com.gromozeka.application.service.memory.MemoryDocumentIngestQueue
 import com.gromozeka.application.service.memory.MemoryEmbeddingIndexer
+import com.gromozeka.application.service.memory.MemoryEmbeddingRebuildMode
 import com.gromozeka.application.service.memory.MemoryMaintenanceAction
 import com.gromozeka.application.service.memory.MemoryMaintenanceQueue
 import com.gromozeka.application.service.memory.MemoryMessageRoutingApplicationService
@@ -484,9 +485,11 @@ class MemoryToolApplicationService(
         projectPathValue: String? = null,
         runIdValue: String? = null,
         namespaceValue: String? = null,
+        embeddingRebuildModeValue: String? = null,
     ): String =
         runCatching {
             val action = MemoryMaintenanceAction.from(actionValue)
+            val embeddingRebuildMode = MemoryEmbeddingRebuildMode.from(embeddingRebuildModeValue)
             val target = resolveMaintenanceTarget(
                 conversationIdValue = conversationIdValue,
                 targetTypeValue = targetTypeValue,
@@ -506,11 +509,13 @@ class MemoryToolApplicationService(
                 namespace = context.namespace,
                 runtimeSystemPrompts = context.systemPrompts,
                 runtimeTools = context.memoryTools,
+                embeddingRebuildMode = embeddingRebuildMode,
             )
 
             log.info {
                 "Memory maintenance tool queued: run=${result.runId.value} action=${action.toolName} " +
                     "target=${target.kind.toolName}:${target.value} namespace=${context.namespace.value} " +
+                    "embeddingMode=${embeddingRebuildMode.name.lowercase()} " +
                     "conversation=${context.conversationId.value} queueSize=${result.queueSize}"
             }
             MemoryToolResultRenderer.maintenanceQueuedResultJsonString(result)

@@ -41,6 +41,11 @@ interface MemoryStore {
         embeddings: List<MemoryEmbeddingRecord>,
     ): Int
 
+    suspend fun findEmbeddingIds(
+        namespace: MemoryNamespace,
+        ids: Set<MemoryEmbeddingRecord.Id>,
+    ): Set<MemoryEmbeddingRecord.Id>
+
     suspend fun findRunById(runId: MemoryRun.Id): MemoryRun?
 
     suspend fun findRunsByParentRunId(parentRunId: MemoryRun.Id): List<MemoryRun>

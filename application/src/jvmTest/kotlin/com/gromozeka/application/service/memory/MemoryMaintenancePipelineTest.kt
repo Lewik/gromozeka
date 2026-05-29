@@ -3443,8 +3443,11 @@ private class FixedSearchEmbeddingIndexer : MemoryEmbeddingIndexer {
         )
     }
 
-    override suspend fun rebuildNamespace(namespace: MemoryNamespace): MemoryEmbeddingRebuildResult =
-        NoOpMemoryEmbeddingIndexer.rebuildNamespace(namespace)
+    override suspend fun rebuildNamespace(
+        namespace: MemoryNamespace,
+        mode: MemoryEmbeddingRebuildMode,
+    ): MemoryEmbeddingRebuildResult =
+        NoOpMemoryEmbeddingIndexer.rebuildNamespace(namespace, mode)
 
     override fun status(): MemoryEmbeddingIndexStatus = MemoryEmbeddingIndexStatus()
 }
