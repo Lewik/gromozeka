@@ -101,6 +101,46 @@ class LlmMemoryEntityCanonicalizerTest {
     }
 
     @Test
+    fun candidateEntityPromptDoesNotDependOnRetrievedHitOrder() = runBlocking {
+        val entityCandidate = entity(
+            id = MemoryEntity.Id("entity:0000000000000001"),
+            name = "Entity",
+            type = MemoryEntity.Type.CONCEPT,
+            aliases = listOf(
+                MemoryEntity.Alias(text = "entity model", normalizedText = "entity model", createdAt = NOW),
+                MemoryEntity.Alias(text = "Entity", normalizedText = "entity", createdAt = NOW),
+            ),
+        )
+        val profileCandidate = entity(
+            id = MemoryEntity.Id("entity:0000000000000002"),
+            name = "Profile",
+            type = MemoryEntity.Type.CONCEPT,
+        )
+
+        val firstPrompt = captureEntityCanonicalizerPrompt(
+            retrievedHits = listOf(
+                MemoryStore.SearchHit.EntityHit(profileCandidate, score = 1.0),
+                MemoryStore.SearchHit.EntityHit(entityCandidate, score = 1.0),
+            ),
+        )
+        val secondPrompt = captureEntityCanonicalizerPrompt(
+            retrievedHits = listOf(
+                MemoryStore.SearchHit.EntityHit(entityCandidate, score = 1.0),
+                MemoryStore.SearchHit.EntityHit(profileCandidate, score = 1.0),
+            ),
+        )
+
+        assertEquals(firstPrompt.candidateExistingEntitiesBlock(), secondPrompt.candidateExistingEntitiesBlock())
+        assertTrue(
+            firstPrompt.candidateExistingEntitiesBlock().indexOf("name=Profile") <
+                firstPrompt.candidateExistingEntitiesBlock().indexOf("name=Entity")
+        )
+        assertTrue(
+            firstPrompt.candidateExistingEntitiesBlock().indexOf("aliases=Entity, entity model") >= 0
+        )
+    }
+
+    @Test
     fun repairsDocumentFileEntityWithoutAboutFileAssertion() = runBlocking {
         val runtime = SequencedJsonRuntime(
             responses = ArrayDeque(
@@ -169,6 +209,22 @@ class LlmMemoryEntityCanonicalizerTest {
         assertEquals(true, runtime.requests.last().options.toolContext["memoryStageRepair"])
     }
 
+    private suspend fun captureEntityCanonicalizerPrompt(
+        retrievedHits: List<MemoryStore.SearchHit>,
+    ): String {
+        val runtime = RecordingJsonRuntime()
+        LlmMemoryEntityCanonicalizer(
+            runtime = runtime,
+            runtimeSystemPrompts = emptyList(),
+            runtimeTools = emptyList(),
+        ).canonicalize(
+            request = request("The data model has Entity and Profile concepts."),
+            retrievalPlan = MemoryWriteRetrievalPlan(entityQueries = listOf("Profile", "Entity")),
+            retrievedHits = retrievedHits,
+        )
+        return runtime.prompt()
+    }
+
     private class FixedJsonRuntime(
         private val responseText: String,
     ) : AiRuntime {
@@ -188,6 +244,37 @@ class LlmMemoryEntityCanonicalizerTest {
             )
 
         override fun stream(request: AiRuntimeRequest): Flow<AiRuntimeResponse> = emptyFlow()
+    }
+
+    private class RecordingJsonRuntime : AiRuntime {
+        private var request: AiRuntimeRequest? = null
+        override val capabilities: AiRuntimeCapabilities = AiRuntimeCapabilities()
+
+        override suspend fun call(request: AiRuntimeRequest): AiRuntimeResponse {
+            this.request = request
+            return AiRuntimeResponse(
+                messages = listOf(
+                    AiAssistantMessage(
+                        content = listOf(
+                            Conversation.Message.ContentItem.AssistantMessage(
+                                structured = Conversation.Message.StructuredText("""{"operations":[]}"""),
+                            )
+                        )
+                    )
+                )
+            )
+        }
+
+        override fun stream(request: AiRuntimeRequest): Flow<AiRuntimeResponse> = emptyFlow()
+
+        fun prompt(): String {
+            val message = request?.messages?.single()
+                ?: error("Entity canonicalizer did not call runtime")
+            return message.content
+                .filterIsInstance<Conversation.Message.ContentItem.UserMessage>()
+                .single()
+                .text
+        }
     }
 
     private class SequencedJsonRuntime(
@@ -257,13 +344,19 @@ class LlmMemoryEntityCanonicalizerTest {
                 ),
             )
 
-        fun entity(id: MemoryEntity.Id, name: String): MemoryEntity =
+        fun entity(
+            id: MemoryEntity.Id,
+            name: String,
+            type: MemoryEntity.Type = MemoryEntity.Type.PERSON,
+            aliases: List<MemoryEntity.Alias> = emptyList(),
+        ): MemoryEntity =
             MemoryEntity(
                 id = id,
                 namespace = TEST_NAMESPACE,
-                entityType = MemoryEntity.Type.PERSON,
+                entityType = type,
                 canonicalName = name,
                 normalizedName = name.lowercase(),
+                aliases = aliases,
                 attributes = JsonObject(emptyMap()),
                 firstSeenAt = NOW,
                 lastSeenAt = NOW,
@@ -272,3 +365,11 @@ class LlmMemoryEntityCanonicalizerTest {
             )
     }
 }
+
+private fun String.candidateExistingEntitiesBlock(): String =
+    Regex("""Candidate existing entities:\s*\n(.*?)\n\s*Relevant retrieval context""", RegexOption.DOT_MATCHES_ALL)
+        .find(this)
+        ?.groupValues
+        ?.get(1)
+        ?.trim()
+        ?: error("Candidate existing entities block not found")

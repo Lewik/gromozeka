@@ -119,7 +119,7 @@ class LlmMemoryEntityCanonicalizer(
         ${request.source.renderRawMentionHint()}
 
         Candidate existing entities:
-        ${retrievedHits.renderCandidateEntities()}
+        ${retrievedHits.renderCandidateEntities(request, retrievalPlan)}
 
         Relevant retrieval context for ambiguous mention resolution:
         ${retrievedHits.renderEntityResolutionContext()}
@@ -443,16 +443,24 @@ internal fun MemorySource.renderLatestTurn(): String {
     }
 }
 
-private fun List<MemoryStore.SearchHit>.renderCandidateEntities(): String {
+private fun List<MemoryStore.SearchHit>.renderCandidateEntities(
+    request: DirectStructuredMemoryWriteRequest,
+    retrievalPlan: MemoryWriteRetrievalPlan,
+): String {
+    val lookupNames = retrievalPlan.entityCanonicalizerLookupNames(request.source)
     val entities = filterIsInstance<MemoryStore.SearchHit.EntityHit>()
-        .map { it.entity }
+        .sortedWith(entityCanonicalizerCandidateComparator(lookupNames))
 
     if (entities.isEmpty()) {
         return "none"
     }
 
-    return entities.joinToString("\n") { entity ->
-        val aliases = entity.aliases.joinToString(", ") { it.text }.ifBlank { "none" }
+    return entities.joinToString("\n") { hit ->
+        val entity = hit.entity
+        val aliases = entity.aliases
+            .sortedWith(compareBy<MemoryEntity.Alias> { it.normalizedText }.thenBy { it.text })
+            .joinToString(", ") { it.text }
+            .ifBlank { "none" }
         "- id=${entity.id.value}; type=${entity.entityType.name}; name=${entity.canonicalName}; aliases=$aliases; summary=${entity.summary ?: "none"}"
     }
 }
@@ -477,6 +485,49 @@ private fun List<MemoryStore.SearchHit>.renderEntityResolutionContext(): String 
 
     return rendered.joinToString("\n")
 }
+
+private fun entityCanonicalizerCandidateComparator(
+    lookupNames: List<String>,
+): Comparator<MemoryStore.SearchHit.EntityHit> =
+    compareByDescending<MemoryStore.SearchHit.EntityHit> { it.score }
+        .thenBy { it.entity.entityCanonicalizerLookupRank(lookupNames) }
+        .thenBy { it.entity.entityType.name }
+        .thenBy { it.entity.canonicalName.stableEntityCanonicalizerSortText() }
+        .thenBy { it.entity.id.value }
+
+private fun MemoryWriteRetrievalPlan.entityCanonicalizerLookupNames(source: MemorySource): List<String> =
+    buildList {
+        entityQueries
+            .map { it.withoutEntityCanonicalizerRuntimeSearchIds() }
+            .filter { it.isNotBlank() }
+            .forEach { add(it) }
+        if (source is MemorySource.ChatTurn && source.speakerRole == MemorySource.ActorRole.USER) {
+            add("user")
+        }
+    }
+        .map { it.normalizeEntityCanonicalizerLookupText() }
+        .filter { it.isNotBlank() }
+        .distinct()
+
+private fun MemoryEntity.entityCanonicalizerLookupRank(lookupNames: List<String>): Int {
+    val rank = lookupNames.indexOfFirst { lookupName ->
+        normalizedName == lookupName || aliases.any { it.normalizedText == lookupName }
+    }
+    return rank.takeIf { it >= 0 } ?: Int.MAX_VALUE
+}
+
+private fun String.withoutEntityCanonicalizerRuntimeSearchIds(): String =
+    replace(Regex("\\bruntime:[A-Za-z0-9_:\\-]+\\b"), " ")
+        .replace(Regex("\\s+"), " ")
+        .trim()
+
+private fun String.normalizeEntityCanonicalizerLookupText(): String =
+    trim().lowercase()
+
+private fun String.stableEntityCanonicalizerSortText(): String =
+    lowercase()
+        .replace(Regex("\\s+"), " ")
+        .trim()
 
 internal fun String.extractJsonArray(): String? {
     val fenced = Regex("```(?:json)?\\s*(\\[.*])\\s*```", setOf(RegexOption.DOT_MATCHES_ALL))

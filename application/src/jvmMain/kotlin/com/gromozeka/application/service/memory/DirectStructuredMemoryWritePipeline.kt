@@ -1324,14 +1324,16 @@ private fun MemoryUpdateBatch.isNotEmpty(): Boolean =
         request: DirectStructuredMemoryWriteRequest,
         retrievalPlan: MemoryWriteRetrievalPlan,
     ): List<MemoryStore.SearchHit.EntityHit> {
-        val lookupNames = retrievalPlan.entityLookupQueries(request.source)
+        val lookupNameOrder = retrievalPlan.entityLookupQueries(request.source)
             .map { it.normalizeMemoryText() }
             .filter { it.isNotBlank() }
-            .toSet()
+            .distinct()
+        val lookupNames = lookupNameOrder.toSet()
 
         val exactHits = store.findEntitiesByNormalizedNames(request.namespace, lookupNames)
             .filter { it.status == MemoryEntity.Status.ACTIVE }
             .map { MemoryStore.SearchHit.EntityHit(it, score = 1.0) }
+            .sortedWith(writeEntityCandidateComparator(lookupNameOrder))
 
         val searchQuery = retrievalPlan.entitySearchQuery(request.source)
         val searchHits = if (searchQuery.isBlank()) {
@@ -1349,7 +1351,8 @@ private fun MemoryUpdateBatch.isNotEmpty(): Boolean =
                 .filter { it.entity.status == MemoryEntity.Status.ACTIVE }
         }
 
-        val hits = (exactHits + searchHits).distinctBy { it.entity.id }
+        val hits = (exactHits + searchHits)
+            .distinctBy { it.entity.id }
 
         log.info {
             "Memory write entity candidates: namespace=${request.namespace.value} source=${request.source.id.value} " +
@@ -2220,6 +2223,27 @@ private fun MemoryStore.SearchHit.itemKey(): String =
         is MemoryStore.SearchHit.EpisodeHit -> "episode:${episode.id.value}"
         is MemoryStore.SearchHit.RunHit -> "run:${run.id.value}"
     }
+
+private fun writeEntityCandidateComparator(
+    lookupNames: List<String>,
+): Comparator<MemoryStore.SearchHit.EntityHit> =
+    compareByDescending<MemoryStore.SearchHit.EntityHit> { it.score }
+        .thenBy { it.entity.writeEntityCandidateLookupRank(lookupNames) }
+        .thenBy { it.entity.entityType.name }
+        .thenBy { it.entity.canonicalName.stableWriteEntityCandidateSortText() }
+        .thenBy { it.entity.id.value }
+
+private fun MemoryEntity.writeEntityCandidateLookupRank(lookupNames: List<String>): Int {
+    val rank = lookupNames.indexOfFirst { lookupName ->
+        normalizedName == lookupName || aliases.any { it.normalizedText == lookupName }
+    }
+    return rank.takeIf { it >= 0 } ?: Int.MAX_VALUE
+}
+
+private fun String.stableWriteEntityCandidateSortText(): String =
+    lowercase()
+        .replace(Regex("\\s+"), " ")
+        .trim()
 
 private fun MemorySource.requiresStableUserEntity(): Boolean =
     this is MemorySource.ChatTurn && speakerRole == MemorySource.ActorRole.USER

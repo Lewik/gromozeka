@@ -106,9 +106,10 @@ class MemoryRepairPipeline(
         plan: MemoryRepairPlan,
     ): MemoryUpdateBatch {
         val runId = idFactory.newRunId()
-        val suspiciousRefs = candidateClusters.flatMapTo(mutableSetOf()) { cluster ->
-            cluster.hits.map { it.toRepairPipelineItemRef() }
-        }
+        val suspiciousRefList = candidateClusters
+            .flatMap { cluster -> cluster.hits.sortedWith(repairPipelineHitComparator).map { it.toRepairPipelineItemRef() } }
+            .distinctBy { "${it.type.name}:${it.id}" }
+        val suspiciousRefs = suspiciousRefList.toSet()
         val repairedClaims = mutableMapOf<MemoryClaim.Id, MemoryClaim>()
         val repairedNotes = mutableMapOf<MemoryNote.Id, MemoryNote>()
         val repairedTasks = mutableMapOf<MemoryTask.Id, MemoryTask>()
@@ -142,7 +143,7 @@ class MemoryRepairPipeline(
             runType = MemoryRun.Type.REPAIR_MEMORY,
             triggerMode = request.triggerMode,
             summary = plan.summary.ifBlank { "Memory repair completed." },
-            retrievedItemRefs = suspiciousRefs.toList(),
+            retrievedItemRefs = suspiciousRefList,
             promptName = "MemoryRepairPlanner",
             promptVersion = "v1",
             output = plan.toRepairOutputJson(candidateClusters),
@@ -411,13 +412,15 @@ private fun MemoryNamespaceSnapshot.detectRepairCandidateClusters(): List<Memory
     claims
         .filter { it.archivedAt == null && it.status == MemoryClaim.Status.ACTIVE }
         .groupBy { it.repairDuplicateKey() }
-        .values
+        .entries
+        .sortedBy { it.key }
+        .map { it.value }
         .filter { it.size > 1 }
         .forEach { duplicateClaims ->
             clusters += MemoryRepairCandidateCluster(
                 id = "repair-cluster-${clusters.size + 1}",
                 kind = MemoryRepairCandidateCluster.Kind.DUPLICATE_CLAIMS,
-                hits = duplicateClaims.sortedBy { it.updatedAt }.map { MemoryStore.SearchHit.ClaimHit(it, score = 1.0) },
+                hits = duplicateClaims.sortedWith(repairClaimComparator).map { MemoryStore.SearchHit.ClaimHit(it, score = 1.0) },
                 reason = "Active claims have the same subject, predicate, and normalized text.",
             )
         }
@@ -426,7 +429,9 @@ private fun MemoryNamespaceSnapshot.detectRepairCandidateClusters(): List<Memory
         .filter { it.archivedAt == null && it.status == MemoryClaim.Status.ACTIVE }
         .mapNotNull { claim -> claim.repairConflictKey(this)?.let { it to claim } }
         .groupBy({ it.first }, { it.second })
-        .values
+        .entries
+        .sortedBy { it.key }
+        .map { it.value }
         .filter { group ->
             group.size > 1 &&
                 group.map { it.repairObjectKey() }.distinct().size > 1
@@ -435,7 +440,7 @@ private fun MemoryNamespaceSnapshot.detectRepairCandidateClusters(): List<Memory
             clusters += MemoryRepairCandidateCluster(
                 id = "repair-cluster-${clusters.size + 1}",
                 kind = MemoryRepairCandidateCluster.Kind.CONFLICTING_CLAIMS,
-                hits = conflictingClaims.sortedBy { it.updatedAt }.map { MemoryStore.SearchHit.ClaimHit(it, score = 0.95) },
+                hits = conflictingClaims.sortedWith(repairClaimComparator).map { MemoryStore.SearchHit.ClaimHit(it, score = 0.95) },
                 reason = "Active replacement-style claims share subject, predicate, and scope but disagree on object/value.",
             )
         }
@@ -443,13 +448,15 @@ private fun MemoryNamespaceSnapshot.detectRepairCandidateClusters(): List<Memory
     notes
         .filter { it.archivedAt == null && it.status == MemoryNote.Status.ACTIVE }
         .groupBy { it.repairDuplicateKey() }
-        .values
+        .entries
+        .sortedBy { it.key }
+        .map { it.value }
         .filter { it.size > 1 }
         .forEach { duplicateNotes ->
             clusters += MemoryRepairCandidateCluster(
                 id = "repair-cluster-${clusters.size + 1}",
                 kind = MemoryRepairCandidateCluster.Kind.DUPLICATE_NOTES,
-                hits = duplicateNotes.sortedBy { it.updatedAt }.map { MemoryStore.SearchHit.NoteHit(it, score = 0.9) },
+                hits = duplicateNotes.sortedWith(repairNoteComparator).map { MemoryStore.SearchHit.NoteHit(it, score = 0.9) },
                 reason = "Active notes have the same type, title, summary, and scope.",
             )
         }
@@ -457,13 +464,15 @@ private fun MemoryNamespaceSnapshot.detectRepairCandidateClusters(): List<Memory
     tasks
         .filter { it.archivedAt == null && it.status in setOf(MemoryTask.Status.OPEN, MemoryTask.Status.IN_PROGRESS, MemoryTask.Status.BLOCKED) }
         .groupBy { it.repairDuplicateKey() }
-        .values
+        .entries
+        .sortedBy { it.key }
+        .map { it.value }
         .filter { it.size > 1 }
         .forEach { duplicateTasks ->
             clusters += MemoryRepairCandidateCluster(
                 id = "repair-cluster-${clusters.size + 1}",
                 kind = MemoryRepairCandidateCluster.Kind.DUPLICATE_TASKS,
-                hits = duplicateTasks.sortedBy { it.updatedAt }.map { MemoryStore.SearchHit.TaskHit(it, score = 0.8) },
+                hits = duplicateTasks.sortedWith(repairTaskComparator).map { MemoryStore.SearchHit.TaskHit(it, score = 0.8) },
                 reason = "Open task-like memory items have the same title, scope, and status.",
             )
         }
@@ -471,18 +480,21 @@ private fun MemoryNamespaceSnapshot.detectRepairCandidateClusters(): List<Memory
     episodes
         .filter { it.archivedAt == null }
         .groupBy { it.repairDuplicateKey() }
-        .values
+        .entries
+        .sortedBy { it.key }
+        .map { it.value }
         .filter { it.size > 1 }
         .forEach { duplicateEpisodes ->
             clusters += MemoryRepairCandidateCluster(
                 id = "repair-cluster-${clusters.size + 1}",
                 kind = MemoryRepairCandidateCluster.Kind.DUPLICATE_EPISODES,
-                hits = duplicateEpisodes.sortedBy { it.updatedAt }.map { MemoryStore.SearchHit.EpisodeHit(it, score = 0.75) },
+                hits = duplicateEpisodes.sortedWith(repairEpisodeComparator).map { MemoryStore.SearchHit.EpisodeHit(it, score = 0.75) },
                 reason = "Episodes have the same owner, situation, action, result, and lesson.",
             )
         }
 
     profiles
+        .sortedBy { it.id.value }
         .forEach { profile ->
             val latestRelevantUpdate = listOf(
                 claims.filter { it.archivedAt == null && it.subjectEntityId == profile.ownerEntityId }.maxOfOrNull { it.updatedAt },
@@ -583,7 +595,7 @@ private fun List<MemoryEvidenceRef>.distinctEvidenceRefs(): List<MemoryEvidenceR
     distinctBy { "${it.sourceId.value}:${it.kind.name}:${it.cachedQuote ?: ""}:${it.span}" }
 
 private fun List<MemoryRepairCandidateCluster>.flattenRepairHits(): List<MemoryStore.SearchHit> =
-    flatMap { it.hits }
+    flatMap { it.hits.sortedWith(repairPipelineHitComparator) }
         .distinctBy { "${it.toRepairPipelineItemRef().type.name}:${it.toRepairPipelineItemRef().id}" }
         .take(MAX_REPAIR_SUSPICIOUS_HITS)
 
@@ -687,6 +699,35 @@ private fun MemoryRepairCandidateCluster.Kind.repairPriority(): Int =
         MemoryRepairCandidateCluster.Kind.DUPLICATE_TASKS -> 70
         MemoryRepairCandidateCluster.Kind.DUPLICATE_EPISODES -> 60
         MemoryRepairCandidateCluster.Kind.PROFILE_DRIFT -> 50
+    }
+
+private val repairClaimComparator: Comparator<MemoryClaim> =
+    compareBy<MemoryClaim> { it.updatedAt }.thenBy { it.id.value }
+
+private val repairNoteComparator: Comparator<MemoryNote> =
+    compareBy<MemoryNote> { it.updatedAt }.thenBy { it.id.value }
+
+private val repairTaskComparator: Comparator<MemoryTask> =
+    compareBy<MemoryTask> { it.updatedAt }.thenBy { it.id.value }
+
+private val repairEpisodeComparator: Comparator<MemoryEpisode> =
+    compareBy<MemoryEpisode> { it.updatedAt }.thenBy { it.id.value }
+
+private val repairPipelineHitComparator: Comparator<MemoryStore.SearchHit> =
+    compareBy<MemoryStore.SearchHit> { it.repairPipelineSortTime()?.toString().orEmpty() }
+        .thenBy { it.toRepairPipelineItemRef().type.name }
+        .thenBy { it.toRepairPipelineItemRef().id }
+
+private fun MemoryStore.SearchHit.repairPipelineSortTime(): kotlinx.datetime.Instant? =
+    when (this) {
+        is MemoryStore.SearchHit.SourceHit -> source.observedAt
+        is MemoryStore.SearchHit.EntityHit -> entity.updatedAt
+        is MemoryStore.SearchHit.ClaimHit -> claim.updatedAt
+        is MemoryStore.SearchHit.NoteHit -> note.updatedAt
+        is MemoryStore.SearchHit.TaskHit -> task.updatedAt
+        is MemoryStore.SearchHit.ProfileHit -> profile.updatedAt
+        is MemoryStore.SearchHit.EpisodeHit -> episode.updatedAt
+        is MemoryStore.SearchHit.RunHit -> run.completedAt ?: run.createdAt
     }
 
 private fun com.gromozeka.domain.model.memory.MemoryScope.repairScopeKey(): String =

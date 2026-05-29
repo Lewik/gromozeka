@@ -213,7 +213,7 @@ private fun List<MemoryRepairCandidateCluster>.renderRepairCandidateClusters(): 
     joinToString("\n\n") { cluster ->
         buildString {
             appendLine("Cluster ${cluster.id}: kind=${cluster.kind.name}; reason=${cluster.reason}")
-            cluster.hits.forEach { hit ->
+            cluster.hits.sortedWith(repairPlannerHitComparator).forEach { hit ->
                 appendLine(hit.renderSuspiciousItemForRepair())
             }
         }.trim()
@@ -232,26 +232,24 @@ private fun MemoryStore.SearchHit.renderSuspiciousItemForRepair(): String =
     }
 
 private fun MemoryNamespaceSnapshot.renderRepairSupportingEvidence(candidateClusters: List<MemoryRepairCandidateCluster>): String {
-    val suspiciousRefs = candidateClusters.flatMapTo(mutableSetOf()) { cluster -> cluster.hits.map { it.toRepairItemRef() } }
-    val sourceIds = buildSet {
-        claims.filter { MemoryItemRef(MemoryItemRef.Type.CLAIM, it.id.value) in suspiciousRefs }
-            .flatMapTo(this) { claim -> claim.evidenceRefs.map { it.sourceId } }
-        notes.filter { MemoryItemRef(MemoryItemRef.Type.NOTE, it.id.value) in suspiciousRefs }
-            .flatMapTo(this) { note -> note.evidenceRefs.map { it.sourceId } }
-        tasks.filter { MemoryItemRef(MemoryItemRef.Type.TASK, it.id.value) in suspiciousRefs }
-            .flatMapTo(this) { task -> task.evidenceRefs.map { it.sourceId } }
-        episodes.filter { MemoryItemRef(MemoryItemRef.Type.EPISODE, it.id.value) in suspiciousRefs }
-            .flatMapTo(this) { episode -> episode.evidenceRefs.map { it.sourceId } }
-    }
+    val sourceIds = candidateClusters
+        .flatMap { cluster ->
+            cluster.hits
+                .sortedWith(repairPlannerHitComparator)
+                .flatMap { hit -> hit.repairEvidenceSourceIds() }
+        }
+        .distinctBy { it.value }
+    val sourcesById = sources.associateBy { it.id }
 
-    val renderedSources = sources
-        .filter { it.id in sourceIds }
+    val renderedSources = sourceIds
+        .mapNotNull { sourceId -> sourcesById[sourceId] }
         .take(12)
         .joinToString("\n") { source ->
             "- source ${source.id.value}: ${source.contentText.trim()}"
         }
 
     val renderedProfiles = profiles
+        .sortedBy { it.id.value }
         .take(8)
         .joinToString("\n") { profile ->
             "- profile ${profile.id.value}: ${profile.profileText.oneLineForRepairPlannerLog(500)}"
@@ -273,6 +271,36 @@ private fun MemoryStore.SearchHit.toRepairItemRef(): MemoryItemRef =
         is MemoryStore.SearchHit.ProfileHit -> MemoryItemRef(MemoryItemRef.Type.PROFILE, profile.id.value)
         is MemoryStore.SearchHit.EpisodeHit -> MemoryItemRef(MemoryItemRef.Type.EPISODE, episode.id.value)
         is MemoryStore.SearchHit.RunHit -> MemoryItemRef(MemoryItemRef.Type.RUN, run.id.value)
+    }
+
+private val repairPlannerHitComparator: Comparator<MemoryStore.SearchHit> =
+    compareBy<MemoryStore.SearchHit> { it.repairPlannerSortTime()?.toString().orEmpty() }
+        .thenBy { it.toRepairItemRef().type.name }
+        .thenBy { it.toRepairItemRef().id }
+
+private fun MemoryStore.SearchHit.repairPlannerSortTime(): kotlinx.datetime.Instant? =
+    when (this) {
+        is MemoryStore.SearchHit.SourceHit -> source.observedAt
+        is MemoryStore.SearchHit.EntityHit -> entity.updatedAt
+        is MemoryStore.SearchHit.ClaimHit -> claim.updatedAt
+        is MemoryStore.SearchHit.NoteHit -> note.updatedAt
+        is MemoryStore.SearchHit.TaskHit -> task.updatedAt
+        is MemoryStore.SearchHit.ProfileHit -> profile.updatedAt
+        is MemoryStore.SearchHit.EpisodeHit -> episode.updatedAt
+        is MemoryStore.SearchHit.RunHit -> run.completedAt ?: run.createdAt
+    }
+
+private fun MemoryStore.SearchHit.repairEvidenceSourceIds() =
+    when (this) {
+        is MemoryStore.SearchHit.SourceHit -> listOf(source.id)
+        is MemoryStore.SearchHit.ClaimHit -> claim.evidenceRefs.map { it.sourceId }
+        is MemoryStore.SearchHit.NoteHit -> note.evidenceRefs.map { it.sourceId }
+        is MemoryStore.SearchHit.TaskHit -> task.evidenceRefs.map { it.sourceId }
+        is MemoryStore.SearchHit.EpisodeHit -> episode.evidenceRefs.map { it.sourceId }
+        is MemoryStore.SearchHit.EntityHit,
+        is MemoryStore.SearchHit.ProfileHit,
+        is MemoryStore.SearchHit.RunHit,
+        -> emptyList()
     }
 
 private fun String.toRepairActionType(): MemoryRepairPlan.Action.Type? =
