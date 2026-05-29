@@ -87,6 +87,31 @@ internal fun MemorySource.defaultIngestSearchText(): String =
         .trim()
         .take(4_000)
 
+internal fun MemorySource.documentIngestSearchHints(): List<String> =
+    buildList {
+        contentPayloadObject()?.let { metadata ->
+            addAll(
+                listOfNotNull(
+                    metadata.stringValue("title"),
+                    metadata.stringValue("sourceRef"),
+                    metadata.stringValue("heading"),
+                    metadata.stringValue("documentType"),
+                )
+            )
+        }
+        addAll(
+            listOfNotNull(
+                contentText.metadataValue("Document title:"),
+                contentText.metadataValue("Document source:"),
+                contentText.metadataValue("Document section:"),
+            )
+        )
+    }
+        .map { it.replace(Regex("\\s+"), " ").trim() }
+        .filter { it.isNotBlank() }
+        .distinct()
+        .take(12)
+
 internal fun MemorySource.withContentPayloadFields(fields: JsonObject): MemorySource {
     val current = contentPayloadObject()?.toMap().orEmpty()
     val merged = JsonObject(current + fields.toMap())
@@ -113,3 +138,10 @@ private fun JsonObject.booleanValue(key: String): Boolean =
 
 private fun JsonElement.booleanOrNullCompat(): Boolean? =
     runCatching { jsonPrimitive.booleanOrNull }.getOrNull()
+
+private fun String.metadataValue(prefix: String): String? =
+    lineSequence()
+        .firstOrNull { it.trimStart().startsWith(prefix) }
+        ?.substringAfter(prefix)
+        ?.trim()
+        ?.takeIf { it.isNotBlank() }

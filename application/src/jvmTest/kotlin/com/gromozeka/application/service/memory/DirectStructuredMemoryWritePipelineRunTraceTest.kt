@@ -17,6 +17,8 @@ import com.gromozeka.domain.model.memory.MemoryStore
 import com.gromozeka.domain.model.memory.MemoryTaskUpdateOp
 import com.gromozeka.domain.model.memory.MemoryTaskUpdater
 import com.gromozeka.domain.model.memory.MemoryWriteRetrievalPlan
+import com.gromozeka.domain.model.memory.MemoryWriteRetrievalPlanner
+import com.gromozeka.domain.model.memory.MemoryWriteRouter
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.test.Test
@@ -77,8 +79,8 @@ class DirectStructuredMemoryWritePipelineRunTraceTest {
     }
 
     @Test
-    fun documentIngestSourceOverridesRouterNoop() = runBlocking {
-        val result = noopRouterPipeline().write(
+    fun documentIngestSourceBypassesRouterAndRetrievalPlanner() = runBlocking {
+        val result = documentBypassPipeline().write(
             DirectStructuredMemoryWriteRequest(
                 namespace = NAMESPACE,
                 source = MemorySource.ExternalRecord(
@@ -98,7 +100,10 @@ class DirectStructuredMemoryWritePipelineRunTraceTest {
                     contentPayload = buildJsonObject {
                         put("memoryToolOrigin", "provided_document_section")
                         put("sourceKind", "document")
+                        put("title", "Doc")
                         put("sourceRef", "doc.md")
+                        put("heading", "Architecture")
+                        put("documentType", "markdown")
                         put("importedAt", NOW.toString())
                     },
                     contentHash = "document-hash",
@@ -110,9 +115,18 @@ class DirectStructuredMemoryWritePipelineRunTraceTest {
         )
 
         assertEquals(MemoryRouteDecision.Decision.NOTE_WRITE, result.routeDecision.decision)
-        assertTrue(result.routeDecision.reason.contains("Document ingest source overrode router NOOP"))
+        assertTrue(result.routeDecision.reason.contains("deterministic note/source/entity route"))
         assertTrue(result.routeDecision.sourcePolicy.allowStructuredExtraction)
-        assertTrue(MemorySemanticType.NOTE in result.routeDecision.memoryTypes)
+        assertEquals(
+            setOf(MemorySemanticType.NOTE, MemorySemanticType.SOURCE, MemorySemanticType.ENTITY),
+            result.routeDecision.memoryTypes,
+        )
+        val retrievalPlan = assertNotNull(result.retrievalPlan)
+        assertEquals(
+            setOf(MemorySemanticType.NOTE, MemorySemanticType.SOURCE, MemorySemanticType.ENTITY),
+            retrievalPlan.memoryTypes,
+        )
+        assertEquals(listOf("Doc", "doc.md", "Architecture", "markdown"), retrievalPlan.entityQueries)
     }
 
     @Test
@@ -189,6 +203,21 @@ class DirectStructuredMemoryWritePipelineRunTraceTest {
                 )
             ),
             retrievalPlanner = FixedMemoryWriteRetrievalPlanner(),
+            entityCanonicalizer = FixedMemoryEntityCanonicalizer(),
+            noteConstructor = FixedMemoryNoteConstructor(),
+            noteReconciler = InsertOnlyMemoryNoteReconciler,
+            claimExtractor = FixedMemoryClaimExtractor(),
+            claimReconciler = InsertOnlyMemoryClaimReconciler,
+            taskUpdater = FixedMemoryTaskUpdater(),
+            materializer = DefaultDirectStructuredMemoryWriteMaterializer(SequentialMemoryIdFactory("trace-test")),
+            clock = FixedMemoryClock(NOW),
+        )
+
+    private fun documentBypassPipeline(): DirectStructuredMemoryWritePipeline =
+        DirectStructuredMemoryWritePipeline(
+            store = InMemoryMemoryStore(),
+            router = ThrowingMemoryWriteRouter,
+            retrievalPlanner = ThrowingMemoryWriteRetrievalPlanner,
             entityCanonicalizer = FixedMemoryEntityCanonicalizer(),
             noteConstructor = FixedMemoryNoteConstructor(),
             noteReconciler = InsertOnlyMemoryNoteReconciler,
@@ -368,5 +397,21 @@ private class CoordinatedMemoryTaskUpdater(
     ): List<MemoryTaskUpdateOp> {
         probe.markStarted(branch)
         return emptyList()
+    }
+}
+
+private object ThrowingMemoryWriteRouter : MemoryWriteRouter {
+    override suspend fun route(request: DirectStructuredMemoryWriteRequest): MemoryRouteDecision {
+        error("Document ingest sources must not call the LLM memory router")
+    }
+}
+
+private object ThrowingMemoryWriteRetrievalPlanner : MemoryWriteRetrievalPlanner {
+    override suspend fun plan(
+        request: DirectStructuredMemoryWriteRequest,
+        routeDecision: MemoryRouteDecision,
+        predicateCatalog: MemoryPredicateCatalog,
+    ): MemoryWriteRetrievalPlan {
+        error("Document ingest sources must not call the LLM write retrieval planner")
     }
 }

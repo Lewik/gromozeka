@@ -25,6 +25,7 @@ import com.gromozeka.domain.model.memory.MemoryPredicateDefinition
 import com.gromozeka.domain.model.memory.MemoryProfile
 import com.gromozeka.domain.model.memory.MemoryProfileUpdater
 import com.gromozeka.domain.model.memory.MemoryReconciliationAction
+import com.gromozeka.domain.model.memory.MemoryRetrievalBudget
 import com.gromozeka.domain.model.memory.MemoryRouteDecision
 import com.gromozeka.domain.model.memory.MemoryRun
 import com.gromozeka.domain.model.memory.MemoryScope
@@ -116,20 +117,20 @@ private data class MemoryWriteBranchResults(
 )
 
 private data class MemoryWriteNoteBranchResult(
-    val noteCandidates: List<MemoryNoteCandidate>,
-    val rawNoteOps: List<MemoryNoteReconciliationOp>,
-    val noteOps: List<MemoryNoteReconciliationOp>,
+    val noteCandidates: List<MemoryNoteCandidate> = emptyList(),
+    val rawNoteOps: List<MemoryNoteReconciliationOp> = emptyList(),
+    val noteOps: List<MemoryNoteReconciliationOp> = emptyList(),
 )
 
 private data class MemoryWriteClaimBranchResult(
-    val claimCandidates: List<MemoryClaimCandidate>,
-    val rawClaimOps: List<MemoryClaimReconciliationOp>,
-    val claimOps: List<MemoryClaimReconciliationOp>,
+    val claimCandidates: List<MemoryClaimCandidate> = emptyList(),
+    val rawClaimOps: List<MemoryClaimReconciliationOp> = emptyList(),
+    val claimOps: List<MemoryClaimReconciliationOp> = emptyList(),
 )
 
 private data class MemoryWriteTaskBranchResult(
-    val rawTaskOps: List<MemoryTaskUpdateOp>,
-    val taskOps: List<MemoryTaskUpdateOp>,
+    val rawTaskOps: List<MemoryTaskUpdateOp> = emptyList(),
+    val taskOps: List<MemoryTaskUpdateOp> = emptyList(),
 )
 
 class DirectStructuredMemoryWritePipeline(
@@ -238,10 +239,11 @@ class DirectStructuredMemoryWritePipeline(
             )
         }
 
-        val routeDecision = router.route(requestForCapture)
-            .withForcedOrDocumentIngestFallback(requestForCapture.source)
-            .withDocumentIngestNoteOnly(requestForCapture.source)
-            .withSafeNoopSourcePolicy()
+        val routeDecision = requestForCapture.source.documentIngestRouteDecision()
+            ?: router.route(requestForCapture)
+                .withForcedOrDocumentIngestFallback(requestForCapture.source)
+                .withDocumentIngestNoteOnly(requestForCapture.source)
+                .withSafeNoopSourcePolicy()
         val effectiveSource = sourceForCapture
             .withUsagePolicy(routeDecision.sourcePolicy)
             .withSearchText(routeDecision.sourceSearchText)
@@ -359,13 +361,23 @@ class DirectStructuredMemoryWritePipeline(
             )
         }
 
-        val predicateCatalog = store.loadPredicateCatalog(request.namespace)
-        log.info {
-            "Memory predicate catalog loaded: namespace=${request.namespace.value} definitions=${predicateCatalog.size} " +
-                "predicates=${predicateCatalog.joinToString("|") { "${it.predicate}:${it.cardinality.name}/${it.temporalPolicy.name}/${it.conflictPolicy.name}" }.oneLineForLog(1_500)}"
+        val predicateCatalog = if (structuredRouteDecision.shouldRunClaimBranch()) {
+            store.loadPredicateCatalog(request.namespace).also { catalog ->
+                log.info {
+                    "Memory predicate catalog loaded: namespace=${request.namespace.value} definitions=${catalog.size} " +
+                        "predicates=${catalog.joinToString("|") { "${it.predicate}:${it.cardinality.name}/${it.temporalPolicy.name}/${it.conflictPolicy.name}" }.oneLineForLog(1_500)}"
+                }
+            }
+        } else {
+            log.info {
+                "Memory predicate catalog skipped: namespace=${request.namespace.value} source=${request.source.id.value} " +
+                    "decision=${structuredRouteDecision.decision.name} types=${structuredRouteDecision.memoryTypes.joinToString { it.name }}"
+            }
+            emptyList()
         }
 
-        val retrievalPlan = retrievalPlanner.plan(effectiveRequest, structuredRouteDecision, predicateCatalog)
+        val retrievalPlan = effectiveRequest.documentIngestRetrievalPlan(structuredRouteDecision)
+            ?: retrievalPlanner.plan(effectiveRequest, structuredRouteDecision, predicateCatalog)
         val retrievedHits = retrieve(effectiveRequest, retrievalPlan)
 
         log.info {
@@ -523,34 +535,58 @@ class DirectStructuredMemoryWritePipeline(
 
         if (branchParallelism == 1) {
             return MemoryWriteBranchResults(
-                note = runNoteBranch(effectiveRequest, structuredRouteDecision, retrievalPlan, retrievedHits, entityOps),
-                claim = runClaimBranch(effectiveRequest, structuredRouteDecision, retrievalPlan, retrievedHits, entityOps, predicateCatalog),
-                task = runTaskBranch(effectiveRequest, structuredRouteDecision, retrievalPlan, retrievedHits, entityOps),
+                note = if (structuredRouteDecision.shouldRunNoteBranch()) {
+                    runNoteBranch(effectiveRequest, structuredRouteDecision, retrievalPlan, retrievedHits, entityOps)
+                } else {
+                    MemoryWriteNoteBranchResult()
+                },
+                claim = if (structuredRouteDecision.shouldRunClaimBranch()) {
+                    runClaimBranch(effectiveRequest, structuredRouteDecision, retrievalPlan, retrievedHits, entityOps, predicateCatalog)
+                } else {
+                    MemoryWriteClaimBranchResult()
+                },
+                task = if (structuredRouteDecision.shouldRunTaskBranch()) {
+                    runTaskBranch(effectiveRequest, structuredRouteDecision, retrievalPlan, retrievedHits, entityOps)
+                } else {
+                    MemoryWriteTaskBranchResult()
+                },
             )
         }
 
         return coroutineScope {
             val semaphore = Semaphore(branchParallelism)
-            val note = async {
-                semaphore.withPermit {
-                    runNoteBranch(effectiveRequest, structuredRouteDecision, retrievalPlan, retrievedHits, entityOps)
+            val note = if (structuredRouteDecision.shouldRunNoteBranch()) {
+                async {
+                    semaphore.withPermit {
+                        runNoteBranch(effectiveRequest, structuredRouteDecision, retrievalPlan, retrievedHits, entityOps)
+                    }
                 }
+            } else {
+                null
             }
-            val claim = async {
-                semaphore.withPermit {
-                    runClaimBranch(effectiveRequest, structuredRouteDecision, retrievalPlan, retrievedHits, entityOps, predicateCatalog)
+            val claim = if (structuredRouteDecision.shouldRunClaimBranch()) {
+                async {
+                    semaphore.withPermit {
+                        runClaimBranch(effectiveRequest, structuredRouteDecision, retrievalPlan, retrievedHits, entityOps, predicateCatalog)
+                    }
                 }
+            } else {
+                null
             }
-            val task = async {
-                semaphore.withPermit {
-                    runTaskBranch(effectiveRequest, structuredRouteDecision, retrievalPlan, retrievedHits, entityOps)
+            val task = if (structuredRouteDecision.shouldRunTaskBranch()) {
+                async {
+                    semaphore.withPermit {
+                        runTaskBranch(effectiveRequest, structuredRouteDecision, retrievalPlan, retrievedHits, entityOps)
+                    }
                 }
+            } else {
+                null
             }
 
             MemoryWriteBranchResults(
-                note = note.await(),
-                claim = claim.await(),
-                task = task.await(),
+                note = note?.await() ?: MemoryWriteNoteBranchResult(),
+                claim = claim?.await() ?: MemoryWriteClaimBranchResult(),
+                task = task?.await() ?: MemoryWriteTaskBranchResult(),
             )
         }
     }
@@ -820,6 +856,62 @@ class DirectStructuredMemoryWritePipeline(
         MemoryRun.Type.UPDATE_TASKS,
         MemoryRun.Type.FORGET_MEMORY,
     )
+
+private val documentIngestMemoryTypes = setOf(
+    MemorySemanticType.NOTE,
+    MemorySemanticType.SOURCE,
+    MemorySemanticType.ENTITY,
+)
+
+private fun MemorySource.documentIngestRouteDecision(): MemoryRouteDecision? {
+    if (!isDocumentIngestSource()) {
+        return null
+    }
+
+    val reason = "Document ingest uses deterministic note/source/entity route; hard claims/tasks can be produced by later consolidation."
+    return MemoryRouteDecision(
+        decision = MemoryRouteDecision.Decision.NOTE_WRITE,
+        memoryTypes = documentIngestMemoryTypes,
+        salience = if (isForcedMemoryWriteSource()) 0.95 else 0.85,
+        sourcePolicy = MemorySourceUsagePolicy.STANDARD.copy(reason = reason),
+        sourceSearchText = defaultIngestSearchText(),
+        reason = reason,
+    )
+}
+
+private fun MemoryRouteDecision.shouldRunNoteBranch(): Boolean =
+    decision != MemoryRouteDecision.Decision.NOOP &&
+        MemorySemanticType.NOTE in memoryTypes
+
+private fun MemoryRouteDecision.shouldRunClaimBranch(): Boolean =
+    decision != MemoryRouteDecision.Decision.NOOP &&
+        (MemorySemanticType.CLAIM in memoryTypes || MemorySemanticType.PROFILE in memoryTypes)
+
+private fun MemoryRouteDecision.shouldRunTaskBranch(): Boolean =
+    decision != MemoryRouteDecision.Decision.NOOP &&
+        MemorySemanticType.TASK in memoryTypes
+
+private fun DirectStructuredMemoryWriteRequest.documentIngestRetrievalPlan(
+    routeDecision: MemoryRouteDecision,
+): MemoryWriteRetrievalPlan? {
+    if (!source.isDocumentIngestSource()) {
+        return null
+    }
+    if (routeDecision.decision == MemoryRouteDecision.Decision.NOOP ||
+        routeDecision.decision == MemoryRouteDecision.Decision.FORGET_REQUEST
+    ) {
+        return null
+    }
+
+    val sourceSearchText = source.searchText ?: source.defaultIngestSearchText()
+    return MemoryWriteRetrievalPlan(
+        needRetrieval = true,
+        entityQueries = source.documentIngestSearchHints(),
+        textQueries = listOf(sourceSearchText).filter { it.isNotBlank() },
+        memoryTypes = documentIngestMemoryTypes,
+        retrievalBudget = MemoryRetrievalBudget(notes = 8, sources = 6),
+    )
+}
 
 private fun MemorySource.isAssistantChatTurn(): Boolean =
     this is MemorySource.ChatTurn && speakerRole == MemorySource.ActorRole.ASSISTANT
