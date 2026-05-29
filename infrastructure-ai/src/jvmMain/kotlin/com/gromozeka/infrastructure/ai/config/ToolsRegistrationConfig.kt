@@ -20,7 +20,6 @@ import kotlin.reflect.jvm.jvmErasure
 class ToolsRegistrationConfig {
     private val objectMapper: ObjectMapper = jacksonObjectMapper().findAndRegisterModules()
     private val logger = LoggerFactory.getLogger(ToolsRegistrationConfig::class.java)
-    private val disabledToolNames = setOf("unified_search")
 
     @Bean
     fun toolCallbacksRegistrar(
@@ -33,16 +32,9 @@ class ToolsRegistrationConfig {
             logger.info("  - Tool bean: ${tool::class.qualifiedName}, name='${tool.name}', description='${tool.description.take(50)}...'")
         }
 
-        val enabledTools = tools.filterNot { it.name in disabledToolNames }
-        val disabledTools = tools.filter { it.name in disabledToolNames }
+        logger.info("Registering ${tools.size} tools as individual AiToolCallback beans: ${tools.map { it.name }}")
 
-        if (disabledTools.isNotEmpty()) {
-            logger.info("Skipping disabled tools: ${disabledTools.map { it.name }}")
-        }
-
-        logger.info("Registering ${enabledTools.size} tools as individual AiToolCallback beans: ${enabledTools.map { it.name }}")
-
-        enabledTools.forEach { tool ->
+        tools.forEach { tool ->
             val callback = adaptToolToCallback(tool)
             val beanName = "${tool.name}AiToolCallback"
 
@@ -50,7 +42,7 @@ class ToolsRegistrationConfig {
             logger.debug("Registered AiToolCallback bean: $beanName")
         }
 
-        return ToolCallbacksRegistrar(enabledTools.size)
+        return ToolCallbacksRegistrar(tools.size)
     }
 
     private fun <TRequest, TResponse> adaptToolToCallback(

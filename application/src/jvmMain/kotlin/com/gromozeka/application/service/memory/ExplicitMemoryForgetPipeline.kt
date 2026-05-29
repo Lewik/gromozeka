@@ -32,6 +32,7 @@ class ExplicitMemoryForgetPipeline(
     private val planner: MemoryForgetPlanner,
     private val idFactory: MemoryIdFactory,
     private val profileUpdater: MemoryProfileUpdater = NoOpMemoryProfileUpdater,
+    private val embeddingIndexer: MemoryEmbeddingIndexer = NoOpMemoryEmbeddingIndexer,
     private val clock: MemoryClock = SystemMemoryClock,
 ) {
     private val log = KLoggers.logger(this)
@@ -62,19 +63,21 @@ class ExplicitMemoryForgetPipeline(
             plan = plan,
         )
 
-        store.apply(structuredBatch)
+        val indexedStructuredBatch = embeddingIndexer.withEmbeddings(structuredBatch)
+        store.apply(indexedStructuredBatch)
 
         val profileBatch = profileUpdater.update(
             request = request,
-            appliedBatch = structuredBatch,
+            appliedBatch = indexedStructuredBatch,
             completedAt = completedAt,
         )
 
-        if (profileBatch.isNotEmptyForForget()) {
-            store.apply(profileBatch)
+        val indexedProfileBatch = embeddingIndexer.withEmbeddings(profileBatch)
+        if (indexedProfileBatch.isNotEmptyForForget()) {
+            store.apply(indexedProfileBatch)
         }
 
-        val memoryBatch = structuredBatch + profileBatch
+        val memoryBatch = indexedStructuredBatch + indexedProfileBatch
 
         log.info {
             "Memory forget completed: namespace=${request.namespace.value} source=${request.source.id.value} " +
@@ -102,6 +105,7 @@ class ExplicitMemoryForgetPipeline(
                 query = query,
                 namespace = request.namespace,
                 scopes = setOf(MemoryStore.SearchScope.ALL),
+                embedding = embeddingIndexer.searchEmbedding(query),
                 includeArchived = false,
                 limit = 80,
             )

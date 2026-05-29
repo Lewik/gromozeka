@@ -104,28 +104,6 @@ private fun buildDetailedParameters(toolName: String, input: JsonElement, projec
                 val url = json["url"]?.jsonPrimitive?.content ?: ""
                 "URL: $url"
             }
-            "unified_search" -> {
-                val query = json["query"]?.jsonPrimitive?.content ?: ""
-                val scopes = json["scopes"]?.jsonArray
-                    ?.mapNotNull { it.jsonPrimitive.contentOrNull }
-                    ?.takeIf { it.isNotEmpty() }
-                    ?: listOf("ALL")
-                val limit = json["limit"]?.jsonPrimitive?.intOrNull ?: 5
-                val standings = json["standings"]?.jsonArray
-                    ?.mapNotNull { it.jsonPrimitive.contentOrNull }
-                    ?.takeIf { it.isNotEmpty() }
-                val bases = json["bases"]?.jsonArray
-                    ?.mapNotNull { it.jsonPrimitive.contentOrNull }
-                    ?.takeIf { it.isNotEmpty() }
-                
-                buildString {
-                    append("Query: $query\n")
-                    append("Scopes: ${scopes.joinToString(", ")}")
-                    standings?.let { append("\nStanding: ${it.joinToString(", ")}") }
-                    bases?.let { append("\nBasis: ${it.joinToString(", ")}") }
-                    append("\nLimit: $limit results")
-                }
-            }
             "create_agent" -> {
                 val agentName = json["agent_name"]?.jsonPrimitive?.content ?: ""
                 val agentProjectPath = json["project_path"]?.jsonPrimitive?.content ?: ""
@@ -176,7 +154,6 @@ private fun getToolDisplayName(toolName: String): String = when (toolName) {
     "brave_web_search" -> "Web Search"
     "brave_local_search" -> "Local Search"
     "jina_read_url" -> "Read URL"
-    "unified_search" -> "Memory Search"
     "create_agent" -> "Create Agent"
     "tell_agent" -> "Tell Agent"
     "switch_tab" -> "Switch Tab"
@@ -197,7 +174,6 @@ private fun getToolIcon(toolName: String): ImageVector = when (toolName) {
     "brave_web_search" -> Icons.Default.Public
     "brave_local_search" -> Icons.Default.Public
     "jina_read_url" -> Icons.Default.Public
-    "unified_search" -> Icons.Default.Psychology
     "create_agent" -> Icons.Default.DeveloperBoard
     "tell_agent" -> Icons.Default.DeveloperBoard
     "switch_tab" -> Icons.Default.Tab
@@ -217,7 +193,6 @@ private fun getToolSecondaryIcon(toolName: String): ImageVector? = when (toolNam
     "brave_web_search" -> Icons.Default.Search
     "brave_local_search" -> Icons.Default.Search
     "jina_read_url" -> Icons.Default.ArrowForward
-    "unified_search" -> Icons.Default.Search
     "create_agent" -> Icons.Default.Add
     "tell_agent" -> Icons.Default.ArrowBack
     else -> null
@@ -252,9 +227,6 @@ private fun extractKeyParameters(toolName: String, input: JsonElement, projectPa
             "jina_read_url" -> {
                 val url = json["url"]?.jsonPrimitive?.content ?: ""
                 if (url.length > 50) url.take(47) + "..." else url
-            }
-            "unified_search" -> {
-                json["query"]?.jsonPrimitive?.content ?: ""
             }
             "create_agent" -> {
                 val agentName = json["agent_name"]?.jsonPrimitive?.content ?: ""

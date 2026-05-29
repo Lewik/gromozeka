@@ -17,7 +17,6 @@ class GromozekaMcpToolExposureTest {
         assertTrue(exposure.exposes("memory_maintenance"))
         assertTrue(exposure.exposes("memory_remember"))
         assertTrue(exposure.exposes("memory_run_status"))
-        assertFalse(exposure.exposes("unified_search"))
         assertFalse(exposure.exposes("grz_execute_command"))
     }
 
@@ -41,7 +40,6 @@ class GromozekaMcpToolExposureTest {
         assertTrue(exposure.exposes("memory_maintenance"))
         assertTrue(exposure.exposes("memory_remember"))
         assertTrue(exposure.exposes("memory_run_status"))
-        assertFalse(exposure.exposes("unified_search"))
         assertFalse(exposure.exposes("brave_web_search"))
     }
 

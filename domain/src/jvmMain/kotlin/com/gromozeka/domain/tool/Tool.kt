@@ -106,9 +106,6 @@ package com.gromozeka.domain.tool
  * @see com.gromozeka.domain.tool.filesystem.GrzEditFileTool Exact string replacement in files
  * @see com.gromozeka.domain.tool.filesystem.GrzExecuteCommandTool Execute shell commands
  * 
- * **Knowledge Memory Tools:**
- * @see com.gromozeka.domain.tool.memory.UnifiedSearchTool Search the typed long-term memory
- * 
  * **Web Tools (3):**
  * @see com.gromozeka.domain.tool.web.BraveWebSearchTool Web search via Brave API
  * @see com.gromozeka.domain.tool.web.BraveLocalSearchTool Local business search

@@ -483,6 +483,7 @@ class MemoryMessageRoutingApplicationService(
                 ),
                 idFactory = UuidMemoryIdFactory("hot-path-forget"),
                 profileUpdater = ProjectionMemoryProfileUpdater(store),
+                embeddingIndexer = embeddingIndexer,
             ),
             embeddingIndexer = embeddingIndexer,
         )

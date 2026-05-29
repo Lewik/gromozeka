@@ -229,13 +229,15 @@ class MemoryMaintenancePipelineTest {
             sourceId = oldSource.id.value,
             normalizedText = "The user prefers Toyota RunX for daily driving.",
         )
-        val store = InMemoryMemoryStore(
+        val backingStore = InMemoryMemoryStore(
             MemoryNamespaceSnapshot(
                 sources = listOf(oldSource, forgetSource),
                 entities = listOf(entity()),
                 claims = listOf(claim),
             )
         )
+        val store = SearchInterceptingMemoryStore(backingStore) { backingStore.search(it) }
+        val embeddingIndexer = FixedSearchEmbeddingIndexer()
         val planner = FixedForgetPlanner(
             MemoryForgetPlan(
                 forgetActions = listOf(
@@ -266,6 +268,7 @@ class MemoryMaintenancePipelineTest {
             store = store,
             planner = planner,
             idFactory = SequentialMemoryIdFactory("forget"),
+            embeddingIndexer = embeddingIndexer,
             clock = FixedMemoryClock(NOW),
         ).run(
             request = DirectStructuredMemoryWriteRequest(TEST_NAMESPACE, forgetSource),
@@ -290,6 +293,8 @@ class MemoryMaintenancePipelineTest {
         assertNull(snapshot.sourceById(forgetSource.id.value).deletedAt)
         assertEquals(NOW, snapshot.claimById(claim.id.value).archivedAt)
         assertTrue(snapshot.runs.any { it.runType == MemoryRun.Type.FORGET_MEMORY })
+        assertTrue(store.searchRequests.any { it.scopes == setOf(MemoryStore.SearchScope.ALL) && it.embedding != null })
+        assertTrue("Toyota RunX preference" in embeddingIndexer.queries)
     }
 
     @Test
