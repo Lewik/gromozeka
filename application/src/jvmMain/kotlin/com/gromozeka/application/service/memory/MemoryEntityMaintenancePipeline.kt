@@ -53,7 +53,7 @@ class MemoryEntityMaintenancePipeline(
                 "groupsDetail=${candidateGroups.joinToString("|") { it.entityMaintenanceGroupForLog() }.ifBlank { "none" }}"
         }
 
-        val plan = planner.plan(request, candidateGroups, snapshot)
+        val plan = planEntityMaintenance(request, candidateGroups, snapshot)
         val completedAt = clock.now()
         val structuredBatch = materialize(
             request = request,
@@ -94,6 +94,33 @@ class MemoryEntityMaintenancePipeline(
             candidateGroups = candidateGroups,
             maintenancePlan = plan,
             memoryBatch = memoryBatch,
+        )
+    }
+
+    private suspend fun planEntityMaintenance(
+        request: MemoryMaintenanceRequest,
+        candidateGroups: List<MemoryEntityMaintenanceCandidateGroup>,
+        snapshot: MemoryNamespaceSnapshot,
+    ): MemoryEntityMaintenancePlan {
+        if (candidateGroups.size <= ENTITY_MAINTENANCE_PLANNER_GROUP_BATCH_SIZE) {
+            return planner.plan(request, candidateGroups, snapshot)
+        }
+
+        val plans = candidateGroups
+            .chunked(ENTITY_MAINTENANCE_PLANNER_GROUP_BATCH_SIZE)
+            .mapIndexed { index, batch ->
+                log.info {
+                    "Memory entity maintenance planner batch: namespace=${request.namespace.value} " +
+                        "batch=${index + 1} groups=${batch.size} totalGroups=${candidateGroups.size}"
+                }
+                planner.plan(request, batch, snapshot)
+            }
+
+        return MemoryEntityMaintenancePlan(
+            actions = plans.flatMap { it.actions },
+            summary = plans.joinToString(" ") { it.summary }.ifBlank {
+                "Entity maintenance planned over ${plans.size} batches."
+            },
         )
     }
 
@@ -832,6 +859,7 @@ private data class AppliedEntityMaintenanceOp(
 private const val MAX_ENTITY_MAINTENANCE_GROUPS = 40
 private const val MAX_ENTITY_VECTOR_SEEDS = 40
 private const val MAX_ENTITY_VECTOR_NEIGHBORS = 8
+private const val ENTITY_MAINTENANCE_PLANNER_GROUP_BATCH_SIZE = 8
 
 private val ENTITY_MAINTENANCE_STOP_WORDS = setOf(
     "the",

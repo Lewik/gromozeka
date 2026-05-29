@@ -175,14 +175,14 @@ class LlmMemoryForgetPlanner(
 private fun List<MemoryStore.SearchHit>.renderForgetCandidates(): String =
     joinToString("\n") { hit ->
         when (hit) {
-            is MemoryStore.SearchHit.SourceHit -> "- source ${hit.source.id.value}: ${hit.source.contentText.trim()}"
-            is MemoryStore.SearchHit.ClaimHit -> "- claim ${hit.claim.id.value}: status=${hit.claim.status.name}; predicate=${hit.claim.predicate}; text=${hit.claim.normalizedText}; evidence=${hit.claim.evidenceRefs.map { it.sourceId.value }.joinToString("|")}"
-            is MemoryStore.SearchHit.NoteHit -> "- note ${hit.note.id.value}: status=${hit.note.status.name}; maturity=${hit.note.maturity.name}; title=${hit.note.title}; summary=${hit.note.summary}; evidence=${hit.note.evidenceRefs.map { it.sourceId.value }.joinToString("|")}"
-            is MemoryStore.SearchHit.TaskHit -> "- task ${hit.task.id.value}: status=${hit.task.status.name}; title=${hit.task.title}; description=${hit.task.description.orEmpty()}; evidence=${hit.task.evidenceRefs.map { it.sourceId.value }.joinToString("|")}"
-            is MemoryStore.SearchHit.EpisodeHit -> "- episode ${hit.episode.id.value}: situation=${hit.episode.situation}; lesson=${hit.episode.lesson}; evidence=${hit.episode.evidenceRefs.map { it.sourceId.value }.joinToString("|")}"
-            is MemoryStore.SearchHit.EntityHit -> "- entity ${hit.entity.id.value}: type=${hit.entity.entityType.name}; name=${hit.entity.canonicalName}; summary=${hit.entity.summary.orEmpty()}"
+            is MemoryStore.SearchHit.SourceHit -> "- source ${hit.source.id.value}: ${hit.source.contentText.oneLineForForgetPlannerLog(MAX_FORGET_SOURCE_TEXT_CHARS)}"
+            is MemoryStore.SearchHit.ClaimHit -> "- claim ${hit.claim.id.value}: status=${hit.claim.status.name}; predicate=${hit.claim.predicate}; text=${hit.claim.normalizedText.oneLineForForgetPlannerLog(MAX_FORGET_ITEM_TEXT_CHARS)}; evidence=${hit.claim.evidenceRefs.map { it.sourceId.value }.joinToString("|")}"
+            is MemoryStore.SearchHit.NoteHit -> "- note ${hit.note.id.value}: status=${hit.note.status.name}; maturity=${hit.note.maturity.name}; title=${hit.note.title.oneLineForForgetPlannerLog(MAX_FORGET_ITEM_TEXT_CHARS)}; summary=${hit.note.summary.oneLineForForgetPlannerLog(MAX_FORGET_ITEM_TEXT_CHARS)}; evidence=${hit.note.evidenceRefs.map { it.sourceId.value }.joinToString("|")}"
+            is MemoryStore.SearchHit.TaskHit -> "- task ${hit.task.id.value}: status=${hit.task.status.name}; title=${hit.task.title.oneLineForForgetPlannerLog(MAX_FORGET_ITEM_TEXT_CHARS)}; description=${hit.task.description.orEmpty().oneLineForForgetPlannerLog(MAX_FORGET_ITEM_TEXT_CHARS)}; evidence=${hit.task.evidenceRefs.map { it.sourceId.value }.joinToString("|")}"
+            is MemoryStore.SearchHit.EpisodeHit -> "- episode ${hit.episode.id.value}: situation=${hit.episode.situation.oneLineForForgetPlannerLog(MAX_FORGET_ITEM_TEXT_CHARS)}; lesson=${hit.episode.lesson.oneLineForForgetPlannerLog(MAX_FORGET_ITEM_TEXT_CHARS)}; evidence=${hit.episode.evidenceRefs.map { it.sourceId.value }.joinToString("|")}"
+            is MemoryStore.SearchHit.EntityHit -> "- entity ${hit.entity.id.value}: type=${hit.entity.entityType.name}; name=${hit.entity.canonicalName.oneLineForForgetPlannerLog(MAX_FORGET_ITEM_TEXT_CHARS)}; summary=${hit.entity.summary.orEmpty().oneLineForForgetPlannerLog(MAX_FORGET_ITEM_TEXT_CHARS)}"
             is MemoryStore.SearchHit.ProfileHit -> "- profile ${hit.profile.id.value}: owner=${hit.profile.ownerEntityId.value}; text=${hit.profile.profileText.oneLineForForgetPlannerLog(500)}"
-            is MemoryStore.SearchHit.RunHit -> "- run ${hit.run.id.value}: type=${hit.run.runType.name}; summary=${hit.run.summary}"
+            is MemoryStore.SearchHit.RunHit -> "- run ${hit.run.id.value}: type=${hit.run.runType.name}; summary=${hit.run.summary.oneLineForForgetPlannerLog(MAX_FORGET_ITEM_TEXT_CHARS)}"
         }
     }.ifBlank { "none" }
 
@@ -210,7 +210,7 @@ private fun MemoryNamespaceSnapshot.renderForgetSupportingSources(
         .filter { it.id in sourceIds && it.id != currentSourceId }
         .take(16)
         .joinToString("\n") { source ->
-            "- source ${source.id.value}: ${source.contentText.trim()}"
+            "- source ${source.id.value}: ${source.contentText.oneLineForForgetPlannerLog(MAX_FORGET_SUPPORTING_SOURCE_TEXT_CHARS)}"
         }
         .ifBlank { "none" }
 }
@@ -268,3 +268,7 @@ private fun String.oneLineForForgetPlannerLog(maxChars: Int): String {
         .replace(Regex("\\s+"), " ")
     return if (oneLine.length <= maxChars) oneLine else oneLine.take(maxChars) + "...[truncated ${oneLine.length - maxChars} chars]"
 }
+
+private const val MAX_FORGET_SOURCE_TEXT_CHARS = 1_200
+private const val MAX_FORGET_SUPPORTING_SOURCE_TEXT_CHARS = 1_200
+private const val MAX_FORGET_ITEM_TEXT_CHARS = 500

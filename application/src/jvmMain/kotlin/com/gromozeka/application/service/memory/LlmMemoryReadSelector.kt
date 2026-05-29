@@ -33,20 +33,62 @@ class LlmMemoryReadSelector(
             return MemoryReadSelectionResult(selectedHits = emptyList(), summary = "No candidates.")
         }
 
+        val candidateBatches = request.candidateHits.chunked(READ_SELECTOR_CANDIDATE_BATCH_SIZE)
+        if (candidateBatches.size == 1) {
+            return selectBatch(request, batchLabel = null)
+        }
+
+        log.info {
+            "Memory read selector batching: namespace=${request.readRequest.namespace.value} " +
+                "candidates=${request.candidateHits.size} batches=${candidateBatches.size} batchSize=$READ_SELECTOR_CANDIDATE_BATCH_SIZE"
+        }
+
+        val batchResults = candidateBatches.mapIndexed { index, batch ->
+            selectBatch(
+                request = request.copy(candidateHits = batch),
+                batchLabel = "batch=${index + 1}/${candidateBatches.size}",
+            )
+        }
+        val selectedHits = batchResults
+            .flatMap { it.selectedHits }
+            .distinctBy { it.toReadSelectorItemRef() }
+        val decisions = batchResults
+            .flatMap { it.decisions }
+            .distinctBy { it.ref }
+        val selectedRefs = selectedHits.map { it.toReadSelectorItemRef() }
+
+        log.info {
+            "Memory read selector batched result: namespace=${request.readRequest.namespace.value} " +
+                "candidates=${request.candidateHits.size} batches=${candidateBatches.size} selected=${selectedHits.size} " +
+                "selectedRefs=${selectedRefs.joinToString("|") { "${it.type.name.lowercase()}:${it.id}" }}"
+        }
+
+        return MemoryReadSelectionResult(
+            selectedHits = selectedHits,
+            decisions = decisions,
+            summary = "Batched selector over ${candidateBatches.size} candidate batches.",
+        )
+    }
+
+    private suspend fun selectBatch(
+        request: MemoryReadSelectionRequest,
+        batchLabel: String?,
+    ): MemoryReadSelectionResult {
         val renderedCandidates = MemoryReadSelectorCandidateRenderer.render(request.candidateHits, request.snapshot)
         val stageMessages = request.readRequest.toMemoryStageMessages(
             stageName = "read-selector-reranker",
             taskPrompt = buildSelectorPrompt(request, renderedCandidates),
         )
+        val logSuffix = batchLabel?.let { " $it" }.orEmpty()
 
         log.info {
             "Memory read selector LLM call: namespace=${request.readRequest.namespace.value} " +
                 "candidates=${request.candidateHits.size} answerMode=${request.plan.answerMode.name} " +
-                "runtimeSystemPrompts=${runtimeSystemPrompts.size} runtimeTools=${runtimeTools.size} stageMessages=${stageMessages.size}"
+                "runtimeSystemPrompts=${runtimeSystemPrompts.size} runtimeTools=${runtimeTools.size} stageMessages=${stageMessages.size}$logSuffix"
         }
         log.info {
             "Memory read selector candidates rendered: namespace=${request.readRequest.namespace.value} " +
-                "chars=${renderedCandidates.length} preview=${renderedCandidates.oneLineForReadSelectorLog(8_000)}"
+                "chars=${renderedCandidates.length}$logSuffix preview=${renderedCandidates.oneLineForReadSelectorLog(8_000)}"
         }
 
         val hitsByRef = request.candidateHits.associateBy { it.toReadSelectorItemRef() }
@@ -68,13 +110,13 @@ class LlmMemoryReadSelector(
                 ),
             ),
             stageName = "read-selector-reranker",
-            logContext = "namespace=${request.readRequest.namespace.value}",
+            logContext = "namespace=${request.readRequest.namespace.value}$logSuffix",
             parse = { json.decodeFromString<ReadSelectorResponse>(it) },
         )
 
         log.info {
             "Memory read selector raw response: namespace=${request.readRequest.namespace.value} chars=${result.rawText.length} " +
-                "response=${result.rawText.oneLineForReadSelectorLog(4_000)}"
+                "$logSuffix response=${result.rawText.oneLineForReadSelectorLog(4_000)}"
         }
 
         val selectorResponse = result.value
@@ -89,7 +131,7 @@ class LlmMemoryReadSelector(
             "Memory read selector completed: namespace=${request.readRequest.namespace.value} " +
                 "candidates=${request.candidateHits.size} selected=${selectedHits.size} rejected=${selectorResponse.rejectedItems.size} " +
                 "selectedRefs=${selectedRefs.joinToString("|") { "${it.type.name.lowercase()}:${it.id}" }} " +
-                "summary=${selectorResponse.summary.oneLineForReadSelectorLog(500)}"
+                "$logSuffix summary=${selectorResponse.summary.oneLineForReadSelectorLog(500)}"
         }
 
         return MemoryReadSelectionResult(
@@ -282,3 +324,5 @@ private fun String.limitForReadSelectorPrompt(maxChars: Int): String {
 
 private fun String.oneLineForReadSelectorLog(maxChars: Int): String =
     limitForReadSelectorPrompt(maxChars)
+
+private const val READ_SELECTOR_CANDIDATE_BATCH_SIZE = 20

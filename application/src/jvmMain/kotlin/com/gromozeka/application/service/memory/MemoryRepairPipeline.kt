@@ -52,7 +52,7 @@ class MemoryRepairPipeline(
                 "clustersDetail=${candidateClusters.joinToString("|") { it.repairClusterForLog() }.ifBlank { "none" }}"
         }
 
-        val plan = planner.plan(request, candidateClusters, snapshot)
+        val plan = planRepair(request, candidateClusters, snapshot)
         val completedAt = clock.now()
         val structuredBatch = materialize(
             request = request,
@@ -94,6 +94,33 @@ class MemoryRepairPipeline(
             suspiciousHits = suspiciousHits,
             repairPlan = plan,
             memoryBatch = memoryBatch,
+        )
+    }
+
+    private suspend fun planRepair(
+        request: MemoryMaintenanceRequest,
+        candidateClusters: List<MemoryRepairCandidateCluster>,
+        snapshot: MemoryNamespaceSnapshot,
+    ): MemoryRepairPlan {
+        if (candidateClusters.size <= REPAIR_PLANNER_CLUSTER_BATCH_SIZE) {
+            return planner.plan(request, candidateClusters, snapshot)
+        }
+
+        val plans = candidateClusters
+            .chunked(REPAIR_PLANNER_CLUSTER_BATCH_SIZE)
+            .mapIndexed { index, batch ->
+                log.info {
+                    "Memory repair planner batch: namespace=${request.namespace.value} " +
+                        "batch=${index + 1} clusters=${batch.size} totalClusters=${candidateClusters.size}"
+                }
+                planner.plan(request, batch, snapshot)
+            }
+
+        return MemoryRepairPlan(
+            repairActions = plans.flatMap { it.repairActions },
+            summary = plans.joinToString(" ") { it.summary }.ifBlank {
+                "Memory repair planned over ${plans.size} batches."
+            },
         )
     }
 
@@ -753,3 +780,4 @@ private fun String.oneLineForRepairPipelineLog(maxChars: Int): String {
 
 private const val MAX_REPAIR_CANDIDATE_CLUSTERS = 40
 private const val MAX_REPAIR_SUSPICIOUS_HITS = 80
+private const val REPAIR_PLANNER_CLUSTER_BATCH_SIZE = 8

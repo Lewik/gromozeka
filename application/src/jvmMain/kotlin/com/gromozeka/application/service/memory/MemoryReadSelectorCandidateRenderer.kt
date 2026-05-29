@@ -112,9 +112,16 @@ internal object MemoryReadSelectorCandidateRenderer {
 
     private fun MemorySource.sourceTextForSelectorView(): String =
         listOfNotNull(
-            searchText?.trim()?.takeIf { it.isNotBlank() }?.let { "search_text:\n$it" },
-            "source_text:\n${contentText.trim()}",
-        ).joinToString("\n\n")
+            searchText
+                ?.trim()
+                ?.takeIf { it.isNotBlank() }
+                ?.limitForSelectorView(MAX_SOURCE_SEARCH_TEXT_CHARS)
+                ?.let { "search_text:\n$it" },
+            contentText
+                .trim()
+                .limitForSelectorView(MAX_SOURCE_CONTENT_TEXT_CHARS)
+                .let { "source_text:\n$it" },
+        ).distinct().joinToString("\n\n")
 
     private fun MemoryClaim.toClaimCandidateView(
         score: Double,
@@ -442,3 +449,6 @@ private fun String.limitForSelectorView(maxChars: Int): String {
     if (normalized.length <= maxChars) return normalized
     return normalized.take(maxChars) + "...[truncated ${normalized.length - maxChars} chars]"
 }
+
+private const val MAX_SOURCE_SEARCH_TEXT_CHARS = 1_200
+private const val MAX_SOURCE_CONTENT_TEXT_CHARS = 2_400

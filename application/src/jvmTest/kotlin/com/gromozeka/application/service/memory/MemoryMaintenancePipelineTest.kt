@@ -603,6 +603,42 @@ class MemoryMaintenancePipelineTest {
     }
 
     @Test
+    fun repairBatchesLargeCandidateClusterSets() = runBlocking {
+        val duplicateClaims = (1..9).flatMap { index ->
+            listOf(
+                claim(
+                    id = "claim-tool-$index-a",
+                    normalizedText = "The user prefers Tool $index.",
+                ),
+                claim(
+                    id = "claim-tool-$index-b",
+                    normalizedText = "The user prefers Tool $index.",
+                ),
+            )
+        }
+        val store = InMemoryMemoryStore(
+            MemoryNamespaceSnapshot(
+                sources = listOf(source()),
+                entities = listOf(entity()),
+                claims = duplicateClaims,
+            )
+        )
+        val planner = CapturingRepairPlanner()
+
+        val result = MemoryRepairPipeline(
+            store = store,
+            planner = planner,
+            idFactory = SequentialMemoryIdFactory("repair-batches"),
+            profileUpdater = ProjectionMemoryProfileUpdater(store),
+            clock = FixedMemoryClock(NOW),
+        ).run(MemoryMaintenanceRequest(TEST_NAMESPACE))
+
+        assertEquals(9, result.candidateClusters.size)
+        assertEquals(listOf(8, 1), planner.batchSizes)
+        assertEquals(0, result.repairPlan.repairActions.size)
+    }
+
+    @Test
     fun profileProjectionIgnoresExpiredAndLowConfidenceMemory() = runBlocking {
         val profile = profile(
             id = "profile-user",
@@ -1496,6 +1532,40 @@ class MemoryMaintenancePipelineTest {
         ).run(MemoryMaintenanceRequest(TEST_NAMESPACE))
 
         assertEquals(0, result.candidateGroups.size)
+    }
+
+    @Test
+    fun entityMaintenanceBatchesLargeCandidateGroupSets() = runBlocking {
+        val entities = (1..9).flatMap { index ->
+            listOf(
+                entity(
+                    id = MemoryEntity.Id("entity-tool-$index-technology"),
+                    entityType = MemoryEntity.Type.TECHNOLOGY,
+                    canonicalName = "Tool $index",
+                    normalizedName = "tool $index",
+                ),
+                entity(
+                    id = MemoryEntity.Id("entity-tool-$index-concept"),
+                    entityType = MemoryEntity.Type.CONCEPT,
+                    canonicalName = "Tool $index",
+                    normalizedName = "tool $index",
+                ),
+            )
+        }
+        val store = InMemoryMemoryStore(MemoryNamespaceSnapshot(entities = entities))
+        val planner = CapturingEntityMaintenancePlanner()
+
+        val result = MemoryEntityMaintenancePipeline(
+            store = store,
+            planner = planner,
+            idFactory = SequentialMemoryIdFactory("entity-maintenance"),
+            profileUpdater = ProjectionMemoryProfileUpdater(store),
+            clock = FixedMemoryClock(NOW),
+        ).run(MemoryMaintenanceRequest(TEST_NAMESPACE))
+
+        assertEquals(9, result.candidateGroups.size)
+        assertEquals(listOf(8, 1), planner.batchSizes)
+        assertEquals(0, result.maintenancePlan.actions.size)
     }
 
     @Test
@@ -2923,12 +2993,12 @@ class MemoryMaintenancePipelineTest {
     }
 
     @Test
-    fun readSelectorCandidateViewKeepsFullSourceText() {
+    fun readSelectorCandidateViewBoundsSourceTextButKeepsSearchText() {
         val longSourceText = buildString {
             appendLine("Source beginning")
-            append("x".repeat(1_200))
+            append("x".repeat(5_000))
             appendLine()
-            appendLine("selector-source-marker-after-old-limit")
+            appendLine("selector-source-marker-after-selector-limit")
             append("Source end")
         }
         val longSource = source("selector-long-source", longSourceText, searchText = "short search paraphrase")
@@ -2939,9 +3009,9 @@ class MemoryMaintenancePipelineTest {
         )
 
         assertTrue(rendered.contains("short search paraphrase"))
-        assertTrue(rendered.contains("selector-source-marker-after-old-limit"))
+        assertFalse(rendered.contains("selector-source-marker-after-selector-limit"))
         assertTrue(rendered.contains("source_text"))
-        assertFalse(rendered.contains("[truncated"))
+        assertTrue(rendered.contains("[truncated"))
     }
 
     @Test
@@ -3396,6 +3466,19 @@ private class FixedRepairPlanner(
     ): MemoryRepairPlan = scriptedPlan
 }
 
+private class CapturingRepairPlanner : MemoryRepairPlanner {
+    val batchSizes = mutableListOf<Int>()
+
+    override suspend fun plan(
+        request: MemoryMaintenanceRequest,
+        candidateClusters: List<MemoryRepairCandidateCluster>,
+        snapshot: MemoryNamespaceSnapshot,
+    ): MemoryRepairPlan {
+        batchSizes += candidateClusters.size
+        return MemoryRepairPlan(summary = "Planned repair batch ${batchSizes.size}.")
+    }
+}
+
 private class FixedEntityMaintenancePlanner(
     private val scriptedPlan: MemoryEntityMaintenancePlan,
 ) : MemoryEntityMaintenancePlanner {
@@ -3404,6 +3487,19 @@ private class FixedEntityMaintenancePlanner(
         candidateGroups: List<MemoryEntityMaintenanceCandidateGroup>,
         snapshot: MemoryNamespaceSnapshot,
     ): MemoryEntityMaintenancePlan = scriptedPlan
+}
+
+private class CapturingEntityMaintenancePlanner : MemoryEntityMaintenancePlanner {
+    val batchSizes = mutableListOf<Int>()
+
+    override suspend fun plan(
+        request: MemoryMaintenanceRequest,
+        candidateGroups: List<MemoryEntityMaintenanceCandidateGroup>,
+        snapshot: MemoryNamespaceSnapshot,
+    ): MemoryEntityMaintenancePlan {
+        batchSizes += candidateGroups.size
+        return MemoryEntityMaintenancePlan(summary = "Planned entity maintenance batch ${batchSizes.size}.")
+    }
 }
 
 private class FixedNoteConsolidator(

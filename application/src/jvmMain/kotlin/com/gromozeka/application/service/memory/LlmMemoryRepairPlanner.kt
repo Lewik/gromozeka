@@ -211,24 +211,29 @@ private fun repairMaintenanceTaskMessage(
 
 private fun List<MemoryRepairCandidateCluster>.renderRepairCandidateClusters(): String =
     joinToString("\n\n") { cluster ->
+        val sortedHits = cluster.hits.sortedWith(repairPlannerHitComparator)
+        val renderedHits = sortedHits.take(MAX_REPAIR_RENDERED_ITEMS_PER_CLUSTER)
         buildString {
             appendLine("Cluster ${cluster.id}: kind=${cluster.kind.name}; reason=${cluster.reason}")
-            cluster.hits.sortedWith(repairPlannerHitComparator).forEach { hit ->
+            renderedHits.forEach { hit ->
                 appendLine(hit.renderSuspiciousItemForRepair())
+            }
+            if (sortedHits.size > renderedHits.size) {
+                appendLine("- omitted ${sortedHits.size - renderedHits.size} more cluster items; process them in a later maintenance pass.")
             }
         }.trim()
     }.ifBlank { "none" }
 
 private fun MemoryStore.SearchHit.renderSuspiciousItemForRepair(): String =
     when (this) {
-        is MemoryStore.SearchHit.ClaimHit -> "- claim ${claim.id.value}: status=${claim.status.name}; predicate=${claim.predicate}; family=${claim.predicateFamily ?: "null"}; subject=${claim.subjectEntityId.value}; object=${claim.objectEntityId?.value ?: claim.objectValue?.toString() ?: "null"}; text=${claim.normalizedText}; updated=${claim.updatedAt}"
-        is MemoryStore.SearchHit.NoteHit -> "- note ${note.id.value}: status=${note.status.name}; maturity=${note.maturity.name}; type=${note.noteType.name}; title=${note.title}; summary=${note.summary}; updated=${note.updatedAt}"
-        is MemoryStore.SearchHit.TaskHit -> "- task ${task.id.value}: status=${task.status.name}; title=${task.title}; updated=${task.updatedAt}"
+        is MemoryStore.SearchHit.ClaimHit -> "- claim ${claim.id.value}: status=${claim.status.name}; predicate=${claim.predicate}; family=${claim.predicateFamily ?: "null"}; subject=${claim.subjectEntityId.value}; object=${claim.objectEntityId?.value ?: claim.objectValue?.toString() ?: "null"}; text=${claim.normalizedText.oneLineForRepairPlannerLog(MAX_REPAIR_ITEM_TEXT_CHARS)}; updated=${claim.updatedAt}"
+        is MemoryStore.SearchHit.NoteHit -> "- note ${note.id.value}: status=${note.status.name}; maturity=${note.maturity.name}; type=${note.noteType.name}; title=${note.title.oneLineForRepairPlannerLog(MAX_REPAIR_ITEM_TEXT_CHARS)}; summary=${note.summary.oneLineForRepairPlannerLog(MAX_REPAIR_ITEM_TEXT_CHARS)}; updated=${note.updatedAt}"
+        is MemoryStore.SearchHit.TaskHit -> "- task ${task.id.value}: status=${task.status.name}; title=${task.title.oneLineForRepairPlannerLog(MAX_REPAIR_ITEM_TEXT_CHARS)}; updated=${task.updatedAt}"
         is MemoryStore.SearchHit.ProfileHit -> "- profile ${profile.id.value}: owner=${profile.ownerEntityId.value}; version=${profile.version}; updated=${profile.updatedAt}; text=${profile.profileText.oneLineForRepairPlannerLog(500)}"
-        is MemoryStore.SearchHit.EpisodeHit -> "- episode ${episode.id.value}: situation=${episode.situation}; lesson=${episode.lesson}; updated=${episode.updatedAt}"
-        is MemoryStore.SearchHit.EntityHit -> "- entity ${entity.id.value}: type=${entity.entityType.name}; name=${entity.canonicalName}; updated=${entity.updatedAt}"
-        is MemoryStore.SearchHit.SourceHit -> "- source ${source.id.value}: text=${source.contentText.trim()}"
-        is MemoryStore.SearchHit.RunHit -> "- run ${run.id.value}: type=${run.runType.name}; summary=${run.summary}"
+        is MemoryStore.SearchHit.EpisodeHit -> "- episode ${episode.id.value}: situation=${episode.situation.oneLineForRepairPlannerLog(MAX_REPAIR_ITEM_TEXT_CHARS)}; lesson=${episode.lesson.oneLineForRepairPlannerLog(MAX_REPAIR_ITEM_TEXT_CHARS)}; updated=${episode.updatedAt}"
+        is MemoryStore.SearchHit.EntityHit -> "- entity ${entity.id.value}: type=${entity.entityType.name}; name=${entity.canonicalName.oneLineForRepairPlannerLog(MAX_REPAIR_ITEM_TEXT_CHARS)}; updated=${entity.updatedAt}"
+        is MemoryStore.SearchHit.SourceHit -> "- source ${source.id.value}: text=${source.contentText.oneLineForRepairPlannerLog(MAX_REPAIR_SOURCE_TEXT_CHARS)}"
+        is MemoryStore.SearchHit.RunHit -> "- run ${run.id.value}: type=${run.runType.name}; summary=${run.summary.oneLineForRepairPlannerLog(MAX_REPAIR_ITEM_TEXT_CHARS)}"
     }
 
 private fun MemoryNamespaceSnapshot.renderRepairSupportingEvidence(candidateClusters: List<MemoryRepairCandidateCluster>): String {
@@ -245,7 +250,7 @@ private fun MemoryNamespaceSnapshot.renderRepairSupportingEvidence(candidateClus
         .mapNotNull { sourceId -> sourcesById[sourceId] }
         .take(12)
         .joinToString("\n") { source ->
-            "- source ${source.id.value}: ${source.contentText.trim()}"
+            "- source ${source.id.value}: ${source.contentText.oneLineForRepairPlannerLog(MAX_REPAIR_SUPPORTING_SOURCE_TEXT_CHARS)}"
         }
 
     val renderedProfiles = profiles
@@ -337,3 +342,8 @@ private fun String.oneLineForRepairPlannerLog(maxChars: Int): String {
         .replace(Regex("\\s+"), " ")
     return if (oneLine.length <= maxChars) oneLine else oneLine.take(maxChars) + "...[truncated ${oneLine.length - maxChars} chars]"
 }
+
+private const val MAX_REPAIR_RENDERED_ITEMS_PER_CLUSTER = 12
+private const val MAX_REPAIR_ITEM_TEXT_CHARS = 500
+private const val MAX_REPAIR_SOURCE_TEXT_CHARS = 1_200
+private const val MAX_REPAIR_SUPPORTING_SOURCE_TEXT_CHARS = 1_200
