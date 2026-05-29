@@ -1,6 +1,7 @@
 package com.gromozeka.application.service
 
 import com.gromozeka.application.service.memory.MEMORY_ENRICH_CONTEXT_TOOL_NAME
+import com.gromozeka.application.service.memory.MEMORY_EMBEDDING_STATUS_TOOL_NAME
 import com.gromozeka.application.service.memory.MEMORY_LIST_NAMESPACES_TOOL_NAME
 import com.gromozeka.application.service.memory.MEMORY_MAINTENANCE_TOOL_NAME
 import com.gromozeka.application.service.memory.MEMORY_REMEMBER_TOOL_NAME
@@ -457,6 +458,35 @@ class MemoryToolApplicationService(
             maintenanceStatus = memoryMaintenanceQueue.status(),
             embeddingStatus = memoryEmbeddingIndexer.status(),
         )
+
+    suspend fun memoryEmbeddingStatus(
+        conversationIdValue: String? = null,
+        targetTypeValue: String? = null,
+        targetValue: String? = null,
+        projectPathValue: String? = null,
+        runIdValue: String? = null,
+        namespaceValue: String? = null,
+    ): String =
+        runCatching {
+            val target = resolveMaintenanceTarget(
+                conversationIdValue = conversationIdValue,
+                targetTypeValue = targetTypeValue,
+                targetValue = targetValue,
+                projectPathValue = projectPathValue,
+                runIdValue = runIdValue,
+                namespaceValue = namespaceValue,
+            )
+            val context = resolveMaintenanceContext(target)
+            val coverage = memoryEmbeddingIndexer.coverage(context.namespace)
+            MemoryToolResultRenderer.embeddingCoverageResultJsonString(coverage)
+        }.onFailure { error ->
+            log.warn(error) {
+                "Memory tool failed: tool=$MEMORY_EMBEDDING_STATUS_TOOL_NAME " +
+                    "targetType=$targetTypeValue target=$targetValue conversation=$conversationIdValue error=${error.message}"
+            }
+        }.getOrElse { error ->
+            MemoryToolResultRenderer.failureJsonString(error.message ?: "Memory embedding status failed.")
+        }
 
     suspend fun listNamespaces(): String =
         runCatching {

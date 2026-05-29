@@ -35,6 +35,8 @@ interface MemoryEmbeddingIndexer {
         mode: MemoryEmbeddingRebuildMode = MemoryEmbeddingRebuildMode.FULL,
     ): MemoryEmbeddingRebuildResult
 
+    suspend fun coverage(namespace: MemoryNamespace): MemoryEmbeddingCoverage
+
     fun status(): MemoryEmbeddingIndexStatus
 }
 
@@ -74,6 +76,9 @@ object NoOpMemoryEmbeddingIndexer : MemoryEmbeddingIndexer {
             deletedEmbeddings = 0,
             memoryBatch = MemoryUpdateBatch(),
         )
+
+    override suspend fun coverage(namespace: MemoryNamespace): MemoryEmbeddingCoverage =
+        MemoryEmbeddingCoverage(namespace = namespace)
 
     override fun status(): MemoryEmbeddingIndexStatus = MemoryEmbeddingIndexStatus()
 }
@@ -160,6 +165,37 @@ class DefaultMemoryEmbeddingIndexer(
             MemoryEmbeddingRebuildMode.FULL -> rebuildFull(namespace, resolved, batch, entries)
             MemoryEmbeddingRebuildMode.MISSING -> rebuildMissing(namespace, resolved, batch, entries)
         }
+    }
+
+    override suspend fun coverage(namespace: MemoryNamespace): MemoryEmbeddingCoverage {
+        val resolved = resolveEmbeddingRuntime()
+        val snapshot = store.loadNamespaceSnapshot(namespace)
+        val batch = MemoryUpdateBatch(
+            sources = snapshot.sources,
+            entities = snapshot.entities,
+            claims = snapshot.claims,
+            notes = snapshot.notes,
+            tasks = snapshot.tasks,
+            profiles = snapshot.profiles,
+            episodes = snapshot.episodes,
+        )
+        val entries = batch.toEmbeddingInputs(
+            modelConfigurationId = resolved.modelConfigurationId,
+            providerModelId = resolved.providerModelId,
+            maxInputTokens = resolved.maxInputTokens,
+        )
+        val expectedIds = entries.mapTo(mutableSetOf()) { it.embeddingId }
+        val existingIds = store.findEmbeddingIds(namespace, expectedIds)
+        return MemoryEmbeddingCoverage(
+            namespace = namespace,
+            modelConfigurationId = resolved.modelConfigurationId,
+            providerModelId = resolved.providerModelId,
+            dimensions = resolved.dimensions,
+            embeddableItems = batch.embeddableItemCount(),
+            expectedEmbeddings = expectedIds.size,
+            existingEmbeddings = existingIds.size,
+            missingEmbeddings = expectedIds.size - existingIds.size,
+        )
     }
 
     private suspend fun rebuildFull(
@@ -326,6 +362,20 @@ data class MemoryEmbeddingIndexStatus(
     val totalRebuilds: Long = 0,
     val totalFailedRequests: Long = 0,
 )
+
+data class MemoryEmbeddingCoverage(
+    val namespace: MemoryNamespace,
+    val modelConfigurationId: String = "",
+    val providerModelId: String = "",
+    val dimensions: Int = 0,
+    val embeddableItems: Int = 0,
+    val expectedEmbeddings: Int = 0,
+    val existingEmbeddings: Int = 0,
+    val missingEmbeddings: Int = 0,
+) {
+    val coverageRatio: Double =
+        if (expectedEmbeddings == 0) 1.0 else existingEmbeddings.toDouble() / expectedEmbeddings.toDouble()
+}
 
 data class MemoryEmbeddingRebuildResult(
     val namespace: MemoryNamespace,

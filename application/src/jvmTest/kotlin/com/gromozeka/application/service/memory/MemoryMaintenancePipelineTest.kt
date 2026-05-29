@@ -3449,6 +3449,9 @@ private class FixedSearchEmbeddingIndexer : MemoryEmbeddingIndexer {
     ): MemoryEmbeddingRebuildResult =
         NoOpMemoryEmbeddingIndexer.rebuildNamespace(namespace, mode)
 
+    override suspend fun coverage(namespace: MemoryNamespace): MemoryEmbeddingCoverage =
+        NoOpMemoryEmbeddingIndexer.coverage(namespace)
+
     override fun status(): MemoryEmbeddingIndexStatus = MemoryEmbeddingIndexStatus()
 }
 

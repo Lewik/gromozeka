@@ -1,6 +1,7 @@
 package com.gromozeka.server
 
 import com.gromozeka.application.service.memory.MEMORY_QUEUE_STATUS_TOOL_NAME
+import com.gromozeka.application.service.memory.MEMORY_EMBEDDING_STATUS_TOOL_NAME
 import com.gromozeka.application.service.memory.MEMORY_ENRICH_CONTEXT_TOOL_NAME
 import com.gromozeka.application.service.memory.MEMORY_LIST_NAMESPACES_TOOL_NAME
 import com.gromozeka.application.service.memory.MEMORY_MAINTENANCE_TOOL_NAME
@@ -133,6 +134,7 @@ class GromozekaMcpServerFactory(
             MEMORY_LIST_NAMESPACES_TOOL_NAME -> copy(description = MCP_MEMORY_LIST_NAMESPACES_DESCRIPTION)
             MEMORY_MAINTENANCE_TOOL_NAME -> copy(description = MCP_MEMORY_MAINTENANCE_DESCRIPTION)
             MEMORY_REBUILD_EMBEDDINGS_TOOL_NAME -> copy(description = MCP_MEMORY_REBUILD_EMBEDDINGS_DESCRIPTION)
+            MEMORY_EMBEDDING_STATUS_TOOL_NAME -> copy(description = MCP_MEMORY_EMBEDDING_STATUS_DESCRIPTION)
             MEMORY_QUEUE_STATUS_TOOL_NAME -> copy(description = MCP_MEMORY_QUEUE_STATUS_DESCRIPTION)
             MEMORY_RUN_STATUS_TOOL_NAME -> copy(description = MCP_MEMORY_RUN_STATUS_DESCRIPTION)
             else -> this
@@ -254,6 +256,7 @@ class GromozekaMcpServerFactory(
 
             - `memory_run_status`: inspect one memory run by id.
             - `memory_queue_status`: inspect queued/running memory document ingest and maintenance work.
+            - `memory_embedding_status`: inspect vector embedding coverage for a namespace.
             - `memory_maintenance`: schedule maintenance actions such as consolidation, entity maintenance, stale/supersede cleanup, targeted repairs, or embedding rebuild.
             - `memory_rebuild_embeddings`: rebuild vector embeddings for a namespace (`full` reset/replace or `missing` fill-only).
 
@@ -282,6 +285,9 @@ class GromozekaMcpServerFactory(
 
         const val MCP_MEMORY_REBUILD_EMBEDDINGS_DESCRIPTION =
             "Rebuild memory vector embeddings for one target namespace. mode=full generates a fresh complete set and then replaces existing rows; mode=missing inserts only absent rows. Returns a run_id immediately; use memory_run_status or memory_queue_status to observe completion."
+
+        const val MCP_MEMORY_EMBEDDING_STATUS_DESCRIPTION =
+            "Inspect vector embedding coverage for one memory namespace under the currently configured embedding model: embeddable items, expected rows, existing rows, and missing rows. Read-only."
 
         const val MCP_MEMORY_QUEUE_STATUS_DESCRIPTION =
             "Read process-local memory document ingest, maintenance, and synchronous embedding index status."
@@ -357,6 +363,7 @@ internal class GromozekaMcpToolExposure private constructor(
             MEMORY_LIST_NAMESPACES_TOOL_NAME,
             MEMORY_MAINTENANCE_TOOL_NAME,
             MEMORY_REBUILD_EMBEDDINGS_TOOL_NAME,
+            MEMORY_EMBEDDING_STATUS_TOOL_NAME,
             MEMORY_REMEMBER_TOOL_NAME,
             MEMORY_RUN_STATUS_TOOL_NAME,
         )

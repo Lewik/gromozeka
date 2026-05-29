@@ -49,6 +49,11 @@ class MemoryEmbeddingIndexerTest {
         val fullResult = indexer.rebuildNamespace(namespace, MemoryEmbeddingRebuildMode.FULL)
         store.apply(MemoryUpdateBatch(sources = listOf(externalSource("source:two", namespace))))
 
+        val coverageBeforeMissing = indexer.coverage(namespace)
+        assertEquals(2, coverageBeforeMissing.expectedEmbeddings)
+        assertEquals(1, coverageBeforeMissing.existingEmbeddings)
+        assertEquals(1, coverageBeforeMissing.missingEmbeddings)
+
         val missingResult = indexer.rebuildNamespace(namespace, MemoryEmbeddingRebuildMode.MISSING)
         val allIds = (fullResult.memoryBatch.embeddings + missingResult.memoryBatch.embeddings)
             .mapTo(mutableSetOf()) { it.id }

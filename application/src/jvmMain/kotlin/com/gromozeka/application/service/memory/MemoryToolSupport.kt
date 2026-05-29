@@ -19,6 +19,7 @@ const val MEMORY_RUN_STATUS_TOOL_NAME = "memory_run_status"
 const val MEMORY_QUEUE_STATUS_TOOL_NAME = "memory_queue_status"
 const val MEMORY_MAINTENANCE_TOOL_NAME = "memory_maintenance"
 const val MEMORY_REBUILD_EMBEDDINGS_TOOL_NAME = "memory_rebuild_embeddings"
+const val MEMORY_EMBEDDING_STATUS_TOOL_NAME = "memory_embedding_status"
 const val MEMORY_LIST_NAMESPACES_TOOL_NAME = "memory_list_namespaces"
 
 fun List<AiToolCallback>.withoutMemoryManagementTools(): List<AiToolCallback> =
@@ -31,6 +32,7 @@ private val memoryManagementToolNames = setOf(
     MEMORY_QUEUE_STATUS_TOOL_NAME,
     MEMORY_MAINTENANCE_TOOL_NAME,
     MEMORY_REBUILD_EMBEDDINGS_TOOL_NAME,
+    MEMORY_EMBEDDING_STATUS_TOOL_NAME,
     MEMORY_LIST_NAMESPACES_TOOL_NAME,
 )
 
@@ -293,6 +295,23 @@ object MemoryToolResultRenderer {
             put("worker_count", 2)
             put("process_local", true)
             put("durable_resume", false)
+        }.toString()
+
+    fun embeddingCoverageResultJsonString(coverage: MemoryEmbeddingCoverage): String =
+        buildJsonObject {
+            put("status", "completed")
+            put("namespace", coverage.namespace.value)
+            put("model_configuration_id", coverage.modelConfigurationId)
+            put("provider_model_id", coverage.providerModelId)
+            put("dimensions", coverage.dimensions)
+            put("embeddable_items", coverage.embeddableItems)
+            put("expected_embeddings", coverage.expectedEmbeddings)
+            put("existing_embeddings", coverage.existingEmbeddings)
+            put("missing_embeddings", coverage.missingEmbeddings)
+            put("coverage_ratio", coverage.coverageRatio)
+            put("coverage_percent", coverage.coverageRatio * 100.0)
+            put("missing_only_rebuild_available", true)
+            put("stale_detection", "not_checked")
         }.toString()
 
     fun namespaceListResultJsonString(
