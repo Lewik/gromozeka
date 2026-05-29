@@ -5,6 +5,7 @@ import com.gromozeka.domain.model.memory.DirectStructuredMemoryWriteResult
 import com.gromozeka.domain.model.memory.MemoryEntity
 import com.gromozeka.domain.model.memory.MemoryEntityMaintenanceCandidateGroup
 import com.gromozeka.domain.model.memory.MemoryItemRef
+import com.gromozeka.domain.model.memory.MemoryReadSelectorTrace
 import com.gromozeka.domain.model.memory.MemoryReadTrace
 import com.gromozeka.domain.model.memory.MemoryRepairCandidateCluster
 import com.gromozeka.domain.model.memory.MemoryRun
@@ -338,6 +339,7 @@ class PersistentMemoryTraceSink(
                     )
                 }
             }
+            put("selectorTrace", selectorTrace.toTraceJson())
             putJsonArray("selectorDecisions") {
                 selectorDecisions.forEach { decision ->
                     add(
@@ -367,6 +369,42 @@ class PersistentMemoryTraceSink(
                         put("preview", it.preview.oneLineTrace(1200))
                     }
                 )
+            }
+        }
+
+    private fun MemoryReadSelectorTrace.toTraceJson(): JsonObject =
+        buildJsonObject {
+            put("initialCandidateCount", initialCandidateCount)
+            put("finalCandidateCount", finalCandidateCount)
+            put("selectedCount", selectedCount)
+            putJsonArray("stages") {
+                stages.forEach { stage ->
+                    add(
+                        buildJsonObject {
+                            put("mode", stage.mode.name)
+                            put("level", stage.level)
+                            put("batchIndex", stage.batchIndex)
+                            put("batchCount", stage.batchCount)
+                            put("inputCount", stage.inputCount)
+                            put("llmSelectedCount", stage.llmSelectedCount)
+                            put("llmCarriedCount", stage.llmCarriedCount)
+                            put("safetyAddedCount", stage.safetyAddedCount)
+                            put("outputCount", stage.outputCount)
+                            put("inputRefs", stage.inputRefs.toTraceRefsJson())
+                            put("llmSelectedRefs", stage.llmSelectedRefs.toTraceRefsJson())
+                            put("llmCarriedRefs", stage.llmCarriedRefs.toTraceRefsJson())
+                            put("safetyAddedRefs", stage.safetyAddedRefs.toTraceRefsJson())
+                            put("outputRefs", stage.outputRefs.toTraceRefsJson())
+                        }
+                    )
+                }
+            }
+        }
+
+    private fun List<MemoryItemRef>.toTraceRefsJson(): JsonElement =
+        buildJsonArray {
+            this@toTraceRefsJson.forEach { ref ->
+                add(ref.toTraceJson())
             }
         }
 

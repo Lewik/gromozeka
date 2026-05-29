@@ -14,6 +14,7 @@ import com.gromozeka.domain.model.memory.MemoryReadSelectionRequest
 import com.gromozeka.domain.model.memory.MemoryReadSelectionResult
 import com.gromozeka.domain.model.memory.MemoryReadSelector
 import com.gromozeka.domain.model.memory.MemoryReadResult
+import com.gromozeka.domain.model.memory.MemoryReadSelectorTrace
 import com.gromozeka.domain.model.memory.MemoryReadTrace
 import com.gromozeka.domain.model.memory.MemorySemanticType
 import com.gromozeka.domain.model.memory.MemorySource
@@ -60,6 +61,7 @@ class RuntimeMemoryReadPipeline(
         val trace = MemoryReadTrace(
             targetText = targetText,
             searchSteps = searchSteps,
+            selectorTrace = retrieved.selectorTrace,
             selectorDecisions = retrieved.selectorDecisions.toTraceSelectorDecisions(retrieved.selectorCandidateHits),
             selectedHits = hits.toTraceHits(),
             sourceSafety = retrieved.sourceSafety.toTraceSourceSafety(),
@@ -386,6 +388,7 @@ class RuntimeMemoryReadPipeline(
             hits = entityHydratedHits,
             selectorCandidateHits = selectorCandidateHits,
             selectorDecisions = selectorDecisions,
+            selectorTrace = selectionResult.selectorTrace,
             sourceSafety = sourceSafety,
         )
     }
@@ -554,6 +557,7 @@ private data class RuntimeMemoryRetrievedHits(
     val hits: List<MemoryStore.SearchHit>,
     val selectorCandidateHits: List<MemoryStore.SearchHit>,
     val selectorDecisions: List<MemoryReadSelectionResult.Decision>,
+    val selectorTrace: MemoryReadSelectorTrace,
     val sourceSafety: RuntimeMemorySourceSafetyResult,
 )
 

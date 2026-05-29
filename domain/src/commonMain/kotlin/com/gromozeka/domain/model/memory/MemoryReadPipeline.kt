@@ -15,6 +15,7 @@ data class MemoryReadResult(
 data class MemoryReadTrace(
     val targetText: String = "",
     val searchSteps: List<SearchStep> = emptyList(),
+    val selectorTrace: MemoryReadSelectorTrace = MemoryReadSelectorTrace(),
     val selectorDecisions: List<SelectorDecision> = emptyList(),
     val selectedHits: List<Hit> = emptyList(),
     val sourceSafety: SourceSafety = SourceSafety(),
@@ -59,6 +60,35 @@ data class MemoryReadTrace(
     )
 }
 
+data class MemoryReadSelectorTrace(
+    val initialCandidateCount: Int = 0,
+    val finalCandidateCount: Int = 0,
+    val selectedCount: Int = 0,
+    val stages: List<Stage> = emptyList(),
+) {
+    data class Stage(
+        val mode: Mode,
+        val level: Int,
+        val batchIndex: Int,
+        val batchCount: Int,
+        val inputCount: Int,
+        val llmSelectedCount: Int,
+        val llmCarriedCount: Int,
+        val safetyAddedCount: Int,
+        val outputCount: Int,
+        val inputRefs: List<MemoryItemRef> = emptyList(),
+        val llmSelectedRefs: List<MemoryItemRef> = emptyList(),
+        val llmCarriedRefs: List<MemoryItemRef> = emptyList(),
+        val safetyAddedRefs: List<MemoryItemRef> = emptyList(),
+        val outputRefs: List<MemoryItemRef> = emptyList(),
+    )
+
+    enum class Mode {
+        INTERMEDIATE_RECALL,
+        FINAL_SELECTION,
+    }
+}
+
 interface RuntimeMemoryReadService {
     suspend fun read(request: MemoryReadRequest): MemoryReadResult
 }
@@ -78,6 +108,7 @@ data class MemoryReadSelectionResult(
     val selectedHits: List<MemoryStore.SearchHit>,
     val decisions: List<Decision> = emptyList(),
     val summary: String = "",
+    val selectorTrace: MemoryReadSelectorTrace = MemoryReadSelectorTrace(),
 ) {
     data class Decision(
         val ref: MemoryItemRef,

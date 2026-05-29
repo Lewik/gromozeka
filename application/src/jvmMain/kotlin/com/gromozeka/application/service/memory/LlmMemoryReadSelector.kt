@@ -12,6 +12,7 @@ import com.gromozeka.domain.model.memory.MemoryReadRequest
 import com.gromozeka.domain.model.memory.MemoryReadSelectionRequest
 import com.gromozeka.domain.model.memory.MemoryReadSelectionResult
 import com.gromozeka.domain.model.memory.MemoryReadSelector
+import com.gromozeka.domain.model.memory.MemoryReadSelectorTrace
 import com.gromozeka.domain.model.memory.MemoryRetrievalBudget
 import com.gromozeka.domain.model.memory.MemoryStore
 import com.gromozeka.domain.model.memory.MemoryTask
@@ -37,10 +38,30 @@ class LlmMemoryReadSelector(
         }
 
         if (request.candidateHits.size <= READ_SELECTOR_CANDIDATE_BATCH_SIZE) {
-            return selectBatch(
+            val result = selectBatch(
                 request = request,
                 batchLabel = null,
                 passMode = ReadSelectorPassMode.FINAL_SELECTION,
+            )
+            return result.copy(
+                selectorTrace = MemoryReadSelectorTrace(
+                    initialCandidateCount = request.candidateHits.size,
+                    finalCandidateCount = request.candidateHits.size,
+                    selectedCount = result.selectedHits.size,
+                    stages = listOf(
+                        readSelectorTraceStage(
+                            mode = MemoryReadSelectorTrace.Mode.FINAL_SELECTION,
+                            level = 1,
+                            batchIndex = 1,
+                            batchCount = 1,
+                            inputHits = request.candidateHits,
+                            llmSelectedHits = result.selectedHits,
+                            llmCarriedHits = emptyList(),
+                            safetyAddedHits = emptyList(),
+                            outputHits = result.selectedHits,
+                        )
+                    ),
+                ),
             )
         }
 
@@ -56,6 +77,7 @@ class LlmMemoryReadSelector(
         var survivors = request.candidateHits
         var level = 1
         val levelSummaries = mutableListOf<String>()
+        val traceStages = mutableListOf<MemoryReadSelectorTrace.Stage>()
 
         while (survivors.size > READ_SELECTOR_CANDIDATE_BATCH_SIZE) {
             val candidateBatches = survivors.chunked(READ_SELECTOR_CANDIDATE_BATCH_SIZE)
@@ -72,8 +94,22 @@ class LlmMemoryReadSelector(
                 )
                 val selectedSurvivors = batchResult.selectedHits.take(READ_SELECTOR_INTERMEDIATE_LLM_SURVIVORS_PER_BATCH)
                 val safetySurvivors = batch.readSelectorSafetySurvivors(request.plan)
+                val selectedSurvivorRefs = selectedSurvivors.mapTo(mutableSetOf()) { it.toReadSelectorItemRef() }
+                val safetyAddedSurvivors = safetySurvivors
+                    .filterNot { it.toReadSelectorItemRef() in selectedSurvivorRefs }
                 val batchSurvivors = (selectedSurvivors + safetySurvivors)
                     .distinctBy { it.toReadSelectorItemRef() }
+                traceStages += readSelectorTraceStage(
+                    mode = MemoryReadSelectorTrace.Mode.INTERMEDIATE_RECALL,
+                    level = level,
+                    batchIndex = index + 1,
+                    batchCount = candidateBatches.size,
+                    inputHits = batch,
+                    llmSelectedHits = batchResult.selectedHits,
+                    llmCarriedHits = selectedSurvivors,
+                    safetyAddedHits = safetyAddedSurvivors,
+                    outputHits = batchSurvivors,
+                )
                 log.info {
                     "Memory read selector hierarchical batch result: namespace=${request.readRequest.namespace.value} " +
                         "level=$level batch=${index + 1}/${candidateBatches.size} candidates=${batch.size} " +
@@ -110,6 +146,17 @@ class LlmMemoryReadSelector(
             batchLabel = "final candidates=${survivors.size} levels=${levelSummaries.size}",
             passMode = ReadSelectorPassMode.FINAL_SELECTION,
         )
+        traceStages += readSelectorTraceStage(
+            mode = MemoryReadSelectorTrace.Mode.FINAL_SELECTION,
+            level = level,
+            batchIndex = 1,
+            batchCount = 1,
+            inputHits = survivors,
+            llmSelectedHits = finalResult.selectedHits,
+            llmCarriedHits = emptyList(),
+            safetyAddedHits = emptyList(),
+            outputHits = finalResult.selectedHits,
+        )
 
         log.info {
             "Memory read selector hierarchical completed: namespace=${request.readRequest.namespace.value} " +
@@ -119,6 +166,12 @@ class LlmMemoryReadSelector(
 
         return finalResult.copy(
             summary = "Hierarchical selector ${levelSummaries.joinToString("; ")}. Final: ${finalResult.summary}",
+            selectorTrace = MemoryReadSelectorTrace(
+                initialCandidateCount = request.candidateHits.size,
+                finalCandidateCount = survivors.size,
+                selectedCount = finalResult.selectedHits.size,
+                stages = traceStages,
+            ),
         )
     }
 
@@ -439,6 +492,37 @@ private fun List<MemoryStore.SearchHit>.readSelectorSafetySurvivors(plan: Memory
         .take(READ_SELECTOR_SAFETY_SURVIVORS_PER_BATCH)
 }
 
+private fun readSelectorTraceStage(
+    mode: MemoryReadSelectorTrace.Mode,
+    level: Int,
+    batchIndex: Int,
+    batchCount: Int,
+    inputHits: List<MemoryStore.SearchHit>,
+    llmSelectedHits: List<MemoryStore.SearchHit>,
+    llmCarriedHits: List<MemoryStore.SearchHit>,
+    safetyAddedHits: List<MemoryStore.SearchHit>,
+    outputHits: List<MemoryStore.SearchHit>,
+): MemoryReadSelectorTrace.Stage =
+    MemoryReadSelectorTrace.Stage(
+        mode = mode,
+        level = level,
+        batchIndex = batchIndex,
+        batchCount = batchCount,
+        inputCount = inputHits.size,
+        llmSelectedCount = llmSelectedHits.size,
+        llmCarriedCount = llmCarriedHits.size,
+        safetyAddedCount = safetyAddedHits.size,
+        outputCount = outputHits.size,
+        inputRefs = inputHits.toReadSelectorTraceRefs(),
+        llmSelectedRefs = llmSelectedHits.toReadSelectorTraceRefs(),
+        llmCarriedRefs = llmCarriedHits.toReadSelectorTraceRefs(),
+        safetyAddedRefs = safetyAddedHits.toReadSelectorTraceRefs(),
+        outputRefs = outputHits.toReadSelectorTraceRefs(),
+    )
+
+private fun List<MemoryStore.SearchHit>.toReadSelectorTraceRefs(): List<MemoryItemRef> =
+    take(READ_SELECTOR_TRACE_REF_LIMIT).map { it.toReadSelectorItemRef() }
+
 private fun List<MemoryStore.SearchHit>.sortedByReadSelectorStrength(): List<MemoryStore.SearchHit> =
     sortedWith(
         compareByDescending<MemoryStore.SearchHit> { it.score }
@@ -482,3 +566,4 @@ private const val READ_SELECTOR_SAFETY_SURVIVORS_PER_BATCH = 4
 private const val READ_SELECTOR_SCORE_SAFETY_PER_BATCH = 2
 private const val READ_SELECTOR_ACTIVE_TYPED_SAFETY_PER_BATCH = 2
 private const val READ_SELECTOR_HARD_FINAL_SURVIVOR_LIMIT = 20
+private const val READ_SELECTOR_TRACE_REF_LIMIT = 24

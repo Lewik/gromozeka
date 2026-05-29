@@ -12,6 +12,7 @@ import com.gromozeka.domain.model.memory.MemoryNote
 import com.gromozeka.domain.model.memory.MemoryReadPlan
 import com.gromozeka.domain.model.memory.MemoryReadRequest
 import com.gromozeka.domain.model.memory.MemoryReadSelectionRequest
+import com.gromozeka.domain.model.memory.MemoryReadSelectorTrace
 import com.gromozeka.domain.model.memory.MemoryRetrievalBudget
 import com.gromozeka.domain.model.memory.MemoryScope
 import com.gromozeka.domain.model.memory.MemoryStore
@@ -61,6 +62,20 @@ class LlmMemoryReadSelectorTest {
             result.selectedHits.map { (it as MemoryStore.SearchHit.NoteHit).note.id.value },
         )
         assertTrue(result.summary.contains("Hierarchical selector"))
+        assertEquals(45, result.selectorTrace.initialCandidateCount)
+        assertEquals(8, result.selectorTrace.finalCandidateCount)
+        assertEquals(2, result.selectorTrace.selectedCount)
+        assertEquals(
+            listOf(
+                MemoryReadSelectorTrace.Mode.INTERMEDIATE_RECALL,
+                MemoryReadSelectorTrace.Mode.INTERMEDIATE_RECALL,
+                MemoryReadSelectorTrace.Mode.INTERMEDIATE_RECALL,
+                MemoryReadSelectorTrace.Mode.FINAL_SELECTION,
+            ),
+            result.selectorTrace.stages.map { it.mode },
+        )
+        assertEquals(listOf(20, 20, 5, 8), result.selectorTrace.stages.map { it.inputCount })
+        assertEquals(listOf(3, 3, 2, 2), result.selectorTrace.stages.map { it.outputCount })
     }
 
     @Test
@@ -98,6 +113,11 @@ class LlmMemoryReadSelectorTest {
 
         assertEquals(listOf("note-01"), result.selectedHits.map { (it as MemoryStore.SearchHit.NoteHit).note.id.value })
         assertTrue(runtime.finalCandidateIds.single().contains("note-01"))
+        assertTrue(
+            result.selectorTrace.stages
+                .filter { it.mode == MemoryReadSelectorTrace.Mode.INTERMEDIATE_RECALL }
+                .any { stage -> stage.safetyAddedRefs.any { it.id == "note-01" } }
+        )
     }
 
     private class SelectingRuntime(
