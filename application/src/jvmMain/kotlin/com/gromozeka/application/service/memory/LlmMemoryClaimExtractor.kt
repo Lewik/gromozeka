@@ -322,7 +322,7 @@ class LlmMemoryClaimExtractor(
             - Use a predicate from Predicate catalog excerpt whenever it fits the claim meaning.
             - Invent a new predicate only when no active catalog predicate captures the same semantic relation.
             - New predicates must be stable snake_case relations, not wording-specific paraphrases of an existing catalog predicate.
-            - Do not emit generic description or paraphrase predicates such as "is_described_as". If the target only provides descriptive context, return zero claims for that wrapper unless you can extract a specific durable relation.
+            - Do not emit generic description, classification, property-bag, or paraphrase predicates such as "is_described_as", "has_property", "is_a", or "defined_as". If the target only provides descriptive context, return zero claims for that wrapper unless you can extract a specific durable relation.
             - Do not collapse a named current/default/primary/chosen/backend slot into a generic preference, affinity, or usage predicate; use or create the specific slot predicate.
             - Prefer the most specific durable claim that captures the target message's intended memory. Do not also emit a broader paraphrase that is merely entailed by that specific claim.
             - If a message states a current/default/status value, emit that precise state claim instead of an additional generic preference/affinity claim unless the message independently asserts both.

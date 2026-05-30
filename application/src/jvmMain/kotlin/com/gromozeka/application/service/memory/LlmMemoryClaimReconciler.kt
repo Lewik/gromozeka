@@ -156,7 +156,7 @@ class LlmMemoryClaimReconciler(
         - Use an existing predicate from Predicate catalog excerpt when it captures the same semantic relation.
         - If a catalog predicate fits, set canonical_predicate to that exact predicate and copy its cardinality, temporal_policy, and conflict_policy.
         - Invent a new canonical_predicate only when no active catalog predicate captures the relation.
-        - Never canonicalize to generic description or paraphrase predicates such as "is_described_as". Choose a specific durable relation or return noop.
+        - Never canonicalize to generic description, classification, property-bag, or paraphrase predicates such as "is_described_as", "has_property", "is_a", or "defined_as". Choose a specific durable relation or return noop.
         - For ordinary positive preferences, use catalog predicate "prefers"; do not keep category-specific variants such as "prefers_car_brand" unless they represent a named current/default slot.
         - Do not map a named current/default/primary/chosen/backend slot to a generic preference, affinity, status, or usage predicate; use or create the specific slot predicate.
         - If the target source updates or replaces an existing value, keep the semantic slot/family from the replaced claim when the source and context identify that slot.

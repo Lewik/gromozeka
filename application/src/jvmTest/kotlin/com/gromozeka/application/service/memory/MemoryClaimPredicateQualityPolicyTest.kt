@@ -20,6 +20,15 @@ class MemoryClaimPredicateQualityPolicyTest {
     }
 
     @Test
+    fun normalizesGenericBagPredicateSpellingBeforeRejecting() {
+        listOf("HAS-PROPERTY", "is a", "Defined As", "is described as").forEach { predicate ->
+            assertFailsWith<IllegalArgumentException> {
+                MemoryClaimPredicateQualityPolicy.validateCandidates(listOf(candidate(predicate)))
+            }
+        }
+    }
+
+    @Test
     fun rejectsGenericBagPredicatesFromReconciliationWrites() {
         listOf(
             MemoryReconciliationAction.INSERT,
