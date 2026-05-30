@@ -15,7 +15,7 @@ internal object MemoryStructuredResponseFormats {
         description = "Route one target conversation message into a memory write decision.",
         schema = objectSchema(
             "decision" to stringEnumSchema("noop", "direct_structured_write", "note_write", "mixed", "forget_request"),
-            "memory_types" to arraySchema(stringEnumSchema("claim", "note", "task", "profile", "source")),
+            "memory_types" to arraySchema(stringEnumSchema("claim", "note", "action_item", "profile", "source")),
             "salience" to numberSchema(),
             "source_policy" to objectSchema(
                 "allow_structured_extraction" to booleanSchema(),
@@ -35,7 +35,7 @@ internal object MemoryStructuredResponseFormats {
             "forget_actions" to arraySchema(
                 objectSchema(
                     "action" to stringEnumSchema("archive_item", "soft_delete_source", "noop"),
-                    "target_type" to stringEnumSchema("source", "claim", "note", "task", "episode"),
+                    "target_type" to stringEnumSchema("source", "claim", "note", "action_item", "episode"),
                     "target_ids" to arraySchema(stringSchema()),
                     "reason" to stringSchema(),
                 )
@@ -52,7 +52,7 @@ internal object MemoryStructuredResponseFormats {
             "entity_queries" to arraySchema(stringSchema()),
             "text_queries" to arraySchema(stringSchema()),
             "predicate_hints" to arraySchema(stringSchema()),
-            "memory_types" to arraySchema(stringEnumSchema("profile", "claim", "note", "task", "source", "entity")),
+            "memory_types" to arraySchema(stringEnumSchema("profile", "claim", "note", "action_item", "source", "entity")),
             "time_filters" to objectSchema(
                 "from_iso" to nullableStringSchema(),
                 "to_iso" to nullableStringSchema(),
@@ -60,7 +60,7 @@ internal object MemoryStructuredResponseFormats {
             "limits" to objectSchema(
                 "claims" to integerSchema(),
                 "notes" to integerSchema(),
-                "tasks" to integerSchema(),
+                "action_items" to integerSchema(),
                 "sources" to integerSchema(),
             ),
         ),
@@ -229,15 +229,15 @@ internal object MemoryStructuredResponseFormats {
         ),
     )
 
-    val TaskUpdater = AiResponseFormat.JsonSchema(
-        name = "memory_task_updater",
-        description = "Create or update operational memory tasks from explicit commitments.",
+    val ActionItemUpdater = AiResponseFormat.JsonSchema(
+        name = "memory_action_item_updater",
+        description = "Create or update internal memory action items from explicit commitments.",
         schema = objectSchema(
             "operations" to arraySchema(
                 objectSchema(
                     "action" to stringEnumSchema("insert", "update", "close", "cancel", "noop"),
-                    "target_task_id" to nullableStringSchema(),
-                    "task" to nullableObjectSchema(
+                    "target_action_item_id" to nullableStringSchema(),
+                    "action_item" to nullableObjectSchema(
                         "title" to stringSchema(),
                         "description" to nullableStringSchema(),
                         "status" to stringEnumSchema("open", "in_progress", "blocked", "done", "cancelled"),
@@ -293,12 +293,12 @@ internal object MemoryStructuredResponseFormats {
                     "reason" to stringSchema(),
                 )
             ),
-            "task_actions" to arraySchema(
+            "action_item_actions" to arraySchema(
                 objectSchema(
                     "action" to stringEnumSchema("insert", "update", "close", "cancel", "noop"),
-                    "target_task_id" to nullableStringSchema(),
+                    "target_action_item_id" to nullableStringSchema(),
                     "origin_note_id" to nullableStringSchema(),
-                    "task" to nullableObjectSchema(
+                    "action_item" to nullableObjectSchema(
                         "title" to stringSchema(),
                         "description" to nullableStringSchema(),
                         "status" to stringEnumSchema("open", "in_progress", "blocked", "done", "cancelled"),
@@ -357,7 +357,7 @@ internal object MemoryStructuredResponseFormats {
             "repair_actions" to arraySchema(
                 objectSchema(
                     "action" to stringEnumSchema("merge_duplicates", "supersede_item", "archive_item", "refresh_profile", "noop"),
-                    "target_type" to stringEnumSchema("note", "claim", "task", "profile", "entity", "episode"),
+                    "target_type" to stringEnumSchema("note", "claim", "action_item", "profile", "entity", "episode"),
                     "target_ids" to arraySchema(stringSchema()),
                     "reason" to stringSchema(),
                 )
@@ -390,18 +390,18 @@ internal object MemoryStructuredResponseFormats {
         description = "Plan runtime memory retrieval for the current target user request.",
         schema = objectSchema(
             "need_memory" to booleanSchema(),
-            "answer_mode" to stringEnumSchema("factual", "rationale", "task", "mixed"),
-            "core_blocks" to arraySchema(stringEnumSchema("profile", "tasks", "session_summary")),
+            "answer_mode" to stringEnumSchema("factual", "rationale", "action_item", "mixed"),
+            "core_blocks" to arraySchema(stringEnumSchema("profile", "action_items", "session_summary")),
             "retrieval_budget" to objectSchema(
                 "claims" to integerSchema(),
                 "notes" to integerSchema(),
-                "tasks" to integerSchema(),
+                "action_items" to integerSchema(),
                 "sources" to integerSchema(),
                 "episodes" to integerSchema(),
             ),
             "retrieval_requests" to arraySchema(
                 objectSchema(
-                    "memory_type" to stringEnumSchema("claim", "note", "task", "source", "profile", "episode"),
+                    "memory_type" to stringEnumSchema("claim", "note", "action_item", "source", "profile", "episode"),
                     "why" to stringSchema(),
                     "query" to stringSchema(),
                     "top_k" to integerSchema(),
@@ -419,7 +419,7 @@ internal object MemoryStructuredResponseFormats {
         description = "Verify a no-memory read plan and decide whether recall is actually needed.",
         schema = objectSchema(
             "needs_memory" to booleanSchema(),
-            "answer_mode" to stringEnumSchema("factual", "rationale", "task", "mixed"),
+            "answer_mode" to stringEnumSchema("factual", "rationale", "action_item", "mixed"),
             "needs_source" to booleanSchema(),
             "query" to stringSchema(),
             "reason" to stringSchema(),
@@ -432,7 +432,7 @@ internal object MemoryStructuredResponseFormats {
         schema = objectSchema(
             "selected_items" to arraySchema(
                 objectSchema(
-                    "item_type" to stringEnumSchema("source", "entity", "claim", "note", "task", "profile", "episode", "run"),
+                    "item_type" to stringEnumSchema("source", "entity", "claim", "note", "action_item", "profile", "episode", "run"),
                     "item_id" to stringSchema(),
                     "rank" to integerSchema(),
                     "relevance" to stringEnumSchema("direct_answer", "supporting_context", "required_evidence"),
@@ -441,7 +441,7 @@ internal object MemoryStructuredResponseFormats {
             ),
             "rejected_items" to arraySchema(
                 objectSchema(
-                    "item_type" to stringEnumSchema("source", "entity", "claim", "note", "task", "profile", "episode", "run"),
+                    "item_type" to stringEnumSchema("source", "entity", "claim", "note", "action_item", "profile", "episode", "run"),
                     "item_id" to stringSchema(),
                     "reason" to stringSchema(),
                 )

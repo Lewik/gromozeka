@@ -91,7 +91,7 @@ fun GromozekaAppContent(
     var isLoadingComplete by remember(skipLoadingScreen) { mutableStateOf(skipLoadingScreen) }
     var showSettingsPanel by remember { mutableStateOf(false) }
     var showPromptsPanel by remember(showPromptsPanelInitially) { mutableStateOf(showPromptsPanelInitially) }
-    var showMemoryTasksPanel by remember { mutableStateOf(false) }
+    var showMemoryActionItemsPanel by remember { mutableStateOf(false) }
     var refreshTrigger by remember { mutableStateOf(0) }
     var hoveredTabIndex by remember { mutableStateOf(-1) }
 
@@ -219,30 +219,30 @@ fun GromozekaAppContent(
                             showSettingsPanel = visible
                             if (visible && isCompactLayout) {
                                 showPromptsPanel = false
-                                showMemoryTasksPanel = false
+                                showMemoryActionItemsPanel = false
                             }
                         }
                         val setPromptsPanel: (Boolean) -> Unit = { visible ->
                             showPromptsPanel = visible
                             if (visible && isCompactLayout) {
                                 showSettingsPanel = false
-                                showMemoryTasksPanel = false
+                                showMemoryActionItemsPanel = false
                             }
                         }
-                        val setMemoryTasksPanel: (Boolean) -> Unit = { visible ->
-                            showMemoryTasksPanel = visible
+                        val setMemoryActionItemsPanel: (Boolean) -> Unit = { visible ->
+                            showMemoryActionItemsPanel = visible
                             if (visible && isCompactLayout) {
                                 showSettingsPanel = false
                                 showPromptsPanel = false
                             }
                         }
 
-                        LaunchedEffect(isCompactLayout, showSettingsPanel, showPromptsPanel, showMemoryTasksPanel) {
+                        LaunchedEffect(isCompactLayout, showSettingsPanel, showPromptsPanel, showMemoryActionItemsPanel) {
                             if (isCompactLayout) {
                                 when {
                                     showSettingsPanel && showPromptsPanel -> showPromptsPanel = false
-                                    showSettingsPanel && showMemoryTasksPanel -> showMemoryTasksPanel = false
-                                    showPromptsPanel && showMemoryTasksPanel -> showMemoryTasksPanel = false
+                                    showSettingsPanel && showMemoryActionItemsPanel -> showMemoryActionItemsPanel = false
+                                    showPromptsPanel && showMemoryActionItemsPanel -> showMemoryActionItemsPanel = false
                                 }
                             }
                         }
@@ -343,8 +343,8 @@ fun GromozekaAppContent(
                                                         settings = currentSettings,
                                                         showSettingsPanel = showSettingsPanel,
                                                         onShowSettingsPanelChange = setSettingsPanel,
-                                                        showMemoryTasksPanel = showMemoryTasksPanel,
-                                                        onShowMemoryTasksPanelChange = setMemoryTasksPanel,
+                                                        showMemoryActionItemsPanel = showMemoryActionItemsPanel,
+                                                        onShowMemoryActionItemsPanelChange = setMemoryActionItemsPanel,
                                                         onRememberThread = {
                                                             coroutineScope.launch {
                                                                 runCatching { appComponents.appViewModel.rememberCurrentThread() }
@@ -511,15 +511,15 @@ fun GromozekaAppContent(
                             }
 
                             if (!isCompactLayout) currentTab?.let { tabViewModel ->
-                                val refreshKey by tabViewModel.memoryTasksRefreshKey.collectAsState()
-                                Box(modifier = Modifier.testTag(UiTestTag.MemoryTasksPanel.value)) {
-                                    MemoryTasksPanel(
-                                        isVisible = showMemoryTasksPanel,
+                                val refreshKey by tabViewModel.memoryActionItemsRefreshKey.collectAsState()
+                                Box(modifier = Modifier.testTag(UiTestTag.MemoryActionItemsPanel.value)) {
+                                    MemoryActionItemsPanel(
+                                        isVisible = showMemoryActionItemsPanel,
                                         conversationId = tabViewModel.conversationId,
                                         refreshKey = refreshKey,
-                                        memoryTaskService = appComponents.memoryTaskService,
+                                        memoryActionItemService = appComponents.memoryActionItemService,
                                         coroutineScope = coroutineScope,
-                                        onClose = { setMemoryTasksPanel(false) }
+                                        onClose = { setMemoryActionItemsPanel(false) }
                                     )
                                 }
                             }
@@ -579,20 +579,20 @@ fun GromozekaAppContent(
                             }
 
                             currentTab?.let { tabViewModel ->
-                                val refreshKey by tabViewModel.memoryTasksRefreshKey.collectAsState()
+                                val refreshKey by tabViewModel.memoryActionItemsRefreshKey.collectAsState()
                                 Box(
                                     modifier = Modifier
                                         .fillMaxSize()
                                         .zIndex(4f)
-                                        .testTag(UiTestTag.MemoryTasksPanel.value)
+                                        .testTag(UiTestTag.MemoryActionItemsPanel.value)
                                 ) {
-                                    MemoryTasksPanel(
-                                        isVisible = showMemoryTasksPanel,
+                                    MemoryActionItemsPanel(
+                                        isVisible = showMemoryActionItemsPanel,
                                         conversationId = tabViewModel.conversationId,
                                         refreshKey = refreshKey,
-                                        memoryTaskService = appComponents.memoryTaskService,
+                                        memoryActionItemService = appComponents.memoryActionItemService,
                                         coroutineScope = coroutineScope,
-                                        onClose = { setMemoryTasksPanel(false) },
+                                        onClose = { setMemoryActionItemsPanel(false) },
                                         fullScreen = true,
                                         slideFromRight = true
                                     )

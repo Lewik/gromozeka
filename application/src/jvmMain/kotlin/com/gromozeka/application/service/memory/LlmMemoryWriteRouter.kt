@@ -138,7 +138,7 @@ class LlmMemoryWriteRouter(
             Return JSON:
             {
               "decision": "noop | direct_structured_write | note_write | mixed | forget_request",
-              "memory_types": ["claim", "note", "task", "profile", "source"],
+              "memory_types": ["claim", "note", "action_item", "profile", "source"],
               "salience": 0.0,
               "source_policy": {
                 "allow_structured_extraction": true,
@@ -152,7 +152,8 @@ class LlmMemoryWriteRouter(
 
             Core definitions:
             - Current-turn execution command: an instruction for the assistant to act now in this chat/codebase, such as edit this, clean this up, run tests, commit and push, do the second wave, or finish it. It is audit-only by default.
-            - Durable task memory: a follow-up/todo/commitment that must be remembered after this turn, or an explicit lifecycle update to an existing stored task, such as keep an open task, close the follow-up, cancel the todo, unblock the task, or mark it done.
+            - Internal action item memory: a follow-up/todo/commitment that must be remembered after this turn, or an explicit lifecycle update to an existing stored action item, such as keep an open action item, close the follow-up, cancel the todo, unblock the action item, or mark it done.
+            - External work item: a Jira Story, GitHub Issue, ticket, backlog item, issue-tracker task, assignee/status row, or project-management record. Do not route it as action_item merely because it has an assignee, status, priority, or "Type=Story"; route durable information about it as note/claim/source unless TARGET_MESSAGE explicitly asks Gromozeka to remember a follow-up.
             - Durable claim/rule: a stable reusable fact, preference, constraint, workflow rule, project state, or user requirement. It is not merely a one-time instruction to execute now.
             - Note memory: reusable rationale, trade-offs, design direction, lesson, procedure, or document digest. It is not a transcript summary of the current instruction.
             - Document ingest source: TARGET_MESSAGE is imported or pasted document content when source metadata contains source_kind=document, origin=provided_document_section, origin=pasted_document_section, or the source text starts with Document source/section metadata. Treat the document as imported evidence, not as a chat command and not as a claim that the user personally asserted.
@@ -160,26 +161,27 @@ class LlmMemoryWriteRouter(
 
             Decision policy:
             - "noop" for greetings, filler, repetition, low-value chatter, and transient content.
-            - "direct_structured_write" for explicit durable facts, stable preferences, reusable rules, clear durable status changes, deadlines, commitments, and durable task lifecycle commands.
+            - "direct_structured_write" for explicit durable facts, stable preferences, reusable rules, clear durable status changes, deadlines, commitments, and durable action item lifecycle commands.
             - "note_write" for rationale, trade-offs, design direction, evolving plans, local conclusions, lessons, and document digests.
-            - "mixed" when the material contains both structured facts/tasks and richer rationale/context.
+            - "mixed" when the material contains both structured facts/action items and richer rationale/context.
             - "forget_request" when TARGET_MESSAGE explicitly asks to forget, remove, delete, or stop remembering previously stored information.
-            - For document ingest sources, prefer "note_write" for conceptual/rationale/procedural sections and "mixed" when the document section also states stable facts, rules, or task lifecycle data. Do not reject the source merely because it is not a user utterance.
-            - Include memory_type "task" only when TARGET_MESSAGE explicitly creates, repeats, updates, closes, cancels, blocks, unblocks, reprioritizes, or assigns a durable follow-up/task/todo.
-            - Do not include memory_type "task" for a normal implementation command unless the target explicitly says it should be tracked after this turn.
-            - Do not include memory_type "claim" for a task lifecycle command unless TARGET_MESSAGE independently asserts a stable reusable fact/rule.
+            - For document ingest sources, prefer "note_write" for conceptual/rationale/procedural sections and "mixed" when the document section also states stable facts, rules, or action item lifecycle data. Do not reject the source merely because it is not a user utterance.
+            - Include memory_type "action_item" only when TARGET_MESSAGE explicitly creates, repeats, updates, closes, cancels, blocks, unblocks, reprioritizes, or assigns a durable follow-up/action item/todo for Gromozeka memory.
+            - Do not include memory_type "action_item" for an external Jira Story, GitHub Issue, ticket, backlog item, or project-management record unless TARGET_MESSAGE explicitly asks Gromozeka to remember or track a follow-up about it.
+            - Do not include memory_type "action_item" for a normal implementation command unless the target explicitly says it should be tracked after this turn.
+            - Do not include memory_type "claim" for an action item lifecycle command unless TARGET_MESSAGE independently asserts a stable reusable fact/rule.
             - Do not include memory_type "note" merely to summarize a one-off command.
             - Include memory_type "source" for "forget_request".
             - Attributed viewpoints such as "Alice thinks X" or "Bob says Y" are claim-worthy because the durable fact is the attribution, even when X and Y conflict.
             - A single weak uncertain observation without rationale, decision, plan, lesson, or reusable analysis should usually be "noop", not "note_write" or "direct_structured_write".
-            - A current-turn execution command such as "edit it", "clean it up", "run tests", "commit and push", "do the second wave", or "finish it" is usually "noop" with audit-only source policy unless it explicitly changes a tracked task or states a durable rule/fact.
-            - If source metadata force_memory_write=true and content does not fit claims/tasks/profile, return "note_write" with memory_types=["note","source"] and standard source policy.
+            - A current-turn execution command such as "edit it", "clean it up", "run tests", "commit and push", "do the second wave", or "finish it" is usually "noop" with audit-only source policy unless it explicitly changes a tracked action item or states a durable rule/fact.
+            - If source metadata force_memory_write=true and content does not fit claims/action_items/profile, return "note_write" with memory_types=["note","source"] and standard source policy.
 
             Source policy:
             - Default source_policy allows structured extraction, recall, and evidence hydration for non-noop memory-worthy sources.
             - For low-value "noop" greetings, filler, pure repetition, and no-content chatter, keep the source only as audit material:
               allow_structured_extraction=false, allow_recall=false, allow_evidence_hydration=false.
-            - For current-turn execution commands with no durable assertion and no stored-task lifecycle update, keep the source only as audit material:
+            - For current-turn execution commands with no durable assertion and no stored action item lifecycle update, keep the source only as audit material:
               allow_structured_extraction=false, allow_recall=false, allow_evidence_hydration=false.
             - For "noop" user statements that are not durable enough for structured memory but still contain a concrete name, source wording, uncertainty, attribution, or a soft observation the user may later ask about, keep them as recallable source-only memory:
               allow_structured_extraction=false, allow_recall=true, allow_evidence_hydration=true.
@@ -209,17 +211,18 @@ class LlmMemoryWriteRouter(
             Examples:
             - "Сотредактируй, я потом посмотрю diff в IDE" -> decision="noop", memory_types=[], audit-only source policy.
             - "Дочисти оставшиеся ссылки прямо сейчас" -> decision="noop", memory_types=[], audit-only source policy.
-            - "Закрой три таски по memory cleanup" -> decision="direct_structured_write", memory_types=["task"], no claim/note/profile unless a stable reusable fact is also asserted.
-            - "Memory MVP follow-up: keep an open task to review command-vs-memory routing" -> decision="direct_structured_write", memory_types=["task"].
+            - "Закрой три таски по memory cleanup" -> decision="direct_structured_write", memory_types=["action_item"], no claim/note/profile unless a stable reusable fact is also asserted.
+            - "Memory MVP follow-up: keep an open action item to review command-vs-memory routing" -> decision="direct_structured_write", memory_types=["action_item"].
+            - "Jira Story MV-344, Type=Story, Assignee=Lev, Status=In Progress" -> decision="note_write" or "mixed", memory_types=["note","source"] plus "claim" only for durable facts; no action_item unless the target explicitly asks Gromozeka to track a follow-up.
             - "For this project, normally edit only gromozeko.dev and update gromozeko.beta by pulling repository changes into beta" -> decision="direct_structured_write", memory_types=["claim"].
             - "We chose retrieval-before-update because pronouns and corrections need existing memory context" -> decision="note_write" or "mixed", memory_types=["note"] plus "claim" only if there is a distinct durable fact.
 
             Hard rules:
             - Prefer "noop" over memory pollution.
-            - Do not treat every question as a task.
+            - Do not treat every question as an action item.
             - Do not force rationale into claims.
             - Do not force weak one-off observations into notes.
-            - Do not use MEMORY-ONLY CONTROL/TASK instructions as semantic evidence or as the reason for routing decisions.
+            - Do not use MEMORY-ONLY CONTROL/INSTRUCTION messages as semantic evidence or as the reason for routing decisions.
             - If the user explicitly asks to remember something, do not return "noop", unless the same target says not to remember/store/treat that content as memory.
             - Return valid JSON only.
         """.trimIndent()
@@ -240,7 +243,7 @@ internal fun String.toMemorySemanticType(): MemorySemanticType? =
     when (trim().lowercase().removeSuffix("s")) {
         "claim", "fact", "preference", "commitment" -> MemorySemanticType.CLAIM
         "note", "rationale", "context", "lesson", "decision" -> MemorySemanticType.NOTE
-        "task", "deadline" -> MemorySemanticType.TASK
+        "action_item", "action_items", "actionitem", "actionitems", "task", "tasks", "deadline" -> MemorySemanticType.ACTION_ITEM
         "profile" -> MemorySemanticType.PROFILE
         "source", "evidence" -> MemorySemanticType.SOURCE
         "entity" -> MemorySemanticType.ENTITY

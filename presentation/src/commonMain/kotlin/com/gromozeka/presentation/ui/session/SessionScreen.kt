@@ -64,8 +64,8 @@ fun SessionScreen(
     settings: Settings,
     showSettingsPanel: Boolean,
     onShowSettingsPanelChange: (Boolean) -> Unit,
-    showMemoryTasksPanel: Boolean,
-    onShowMemoryTasksPanelChange: (Boolean) -> Unit,
+    showMemoryActionItemsPanel: Boolean,
+    onShowMemoryActionItemsPanelChange: (Boolean) -> Unit,
 
     // Tab Settings Panel
     onShowPromptsPanelChange: (Boolean) -> Unit,
@@ -256,13 +256,13 @@ fun SessionScreen(
 
                         Spacer(modifier = Modifier.width(8.dp))
 
-                        // Memory tasks button
+                        // Memory action items button
                         CompactButton(
-                            onClick = { onShowMemoryTasksPanelChange(!showMemoryTasksPanel) },
-                            modifier = Modifier.testTag(UiTestTag.MemoryTasksButton.value),
-                            tooltip = "Memory tasks"
+                            onClick = { onShowMemoryActionItemsPanelChange(!showMemoryActionItemsPanel) },
+                            modifier = Modifier.testTag(UiTestTag.MemoryActionItemsButton.value),
+                            tooltip = "Memory action items"
                         ) {
-                            Icon(Icons.Default.ListAlt, contentDescription = "Memory tasks")
+                            Icon(Icons.Default.ListAlt, contentDescription = "Memory action items")
                         }
 
                         Spacer(modifier = Modifier.width(8.dp))

@@ -5,7 +5,7 @@
   "timeoutSeconds": 900,
   "preloadedMemory": [
     {
-      "type": "duplicate_tasks",
+      "type": "duplicate_action_items",
       "subjectName": "Memory E2E suite",
       "subjectType": "PROJECT",
       "scopeText": "Memory E2E follow-ups",
@@ -24,10 +24,10 @@
       "repairCandidateClustersMin": 1,
       "repairSuspiciousHitsMin": 2,
       "repairActionsMin": 1,
-      "repairMaterializedTasksMin": 1,
+      "repairMaterializedActionItemsMin": 1,
       "repairMaterializedRunsMin": 1,
       "repairAppliedOpsMin": 1,
-      "containsAll": ["DUPLICATE_TASKS", "MERGE_DUPLICATES", "selector trace"]
+      "containsAll": ["DUPLICATE_ACTION_ITEMS", "MERGE_DUPLICATES", "selector trace"]
     }
   ],
   "recallSessions": [
@@ -43,11 +43,11 @@
           "memoryTraceExpectation": {
             "needMemory": true,
             "injectedPromptPresent": true,
-            "selectedTasksMin": 1,
-            "selectedTasksMax": 1,
+            "selectedActionItemsMin": 1,
+            "selectedActionItemsMax": 1,
             "selectedContainsAll": ["selector trace"],
             "injectedPromptContainsAll": ["title=\"Add selector trace report to memory e2e\""],
-            "requiredSelectedTasks": [
+            "requiredSelectedActionItems": [
               {
                 "titleContainsAll": ["selector trace", "memory e2e"]
               }
@@ -58,12 +58,12 @@
     }
   ],
   "expectedAfterSeeds": {
-    "tasksMin": 1,
-    "tasksMax": 1,
+    "actionItemsMin": 1,
+    "actionItemsMax": 1,
     "sourcesMin": 2,
     "userSourcesMin": 2,
     "runsMin": 1,
-    "requiredTasks": [
+    "requiredActionItems": [
       {
         "statusIn": ["OPEN"],
         "titleContainsAll": ["selector trace", "memory e2e"],
@@ -74,18 +74,18 @@
       {
         "runTypeIn": ["REPAIR_MEMORY"],
         "statusIn": ["SUCCESS"],
-        "containsAll": ["archive_duplicate_task"],
+        "containsAll": ["archive_duplicate_action_item"],
         "appliedOpsMin": 1
       }
     ]
   },
   "expectedFinal": {
-    "tasksMin": 1,
-    "tasksMax": 1,
+    "actionItemsMin": 1,
+    "actionItemsMax": 1,
     "sourcesMin": 3,
     "userSourcesMin": 3,
     "runsMin": 1,
-    "requiredTasks": [
+    "requiredActionItems": [
       {
         "statusIn": ["OPEN"],
         "titleContainsAll": ["selector trace", "memory e2e"],
@@ -96,7 +96,7 @@
       {
         "runTypeIn": ["REPAIR_MEMORY"],
         "statusIn": ["SUCCESS"],
-        "containsAll": ["archive_duplicate_task"],
+        "containsAll": ["archive_duplicate_action_item"],
         "appliedOpsMin": 1
       }
     ]

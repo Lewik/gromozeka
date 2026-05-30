@@ -29,8 +29,8 @@ sealed interface UiTestTag {
     data object PttButton : UiTestTag
     data object PromptsPanel : UiTestTag
     data object AgentButton : UiTestTag
-    data object MemoryTasksButton : UiTestTag
-    data object MemoryTasksPanel : UiTestTag
+    data object MemoryActionItemsButton : UiTestTag
+    data object MemoryActionItemsPanel : UiTestTag
 
     data class SessionTab(val index: Int) : UiTestTag {
         override val suffixParts: List<Any?> = listOf(index)

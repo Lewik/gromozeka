@@ -12,7 +12,7 @@ import com.gromozeka.domain.model.memory.MemoryRepairPlan
 import com.gromozeka.domain.model.memory.MemoryRepairPlanner
 import com.gromozeka.domain.model.memory.MemoryRun
 import com.gromozeka.domain.model.memory.MemoryStore
-import com.gromozeka.domain.model.memory.MemoryTask
+import com.gromozeka.domain.model.memory.MemoryActionItem
 import com.gromozeka.domain.model.memory.MemoryUpdateBatch
 import com.gromozeka.domain.model.memory.resolvePredicateDefinition
 import klog.KLoggers
@@ -85,7 +85,7 @@ class MemoryRepairPipeline(
         log.info {
             "Memory repair completed: namespace=${request.namespace.value} suspiciousHits=${suspiciousHits.size} " +
                 "actions=${plan.repairActions.size} appliedRuns=${memoryBatch.runs.size} appliedClaims=${memoryBatch.claims.size} " +
-                "appliedNotes=${memoryBatch.notes.size} appliedTasks=${memoryBatch.tasks.size} appliedProfiles=${memoryBatch.profiles.size} " +
+                "appliedNotes=${memoryBatch.notes.size} appliedTasks=${memoryBatch.actionItems.size} appliedProfiles=${memoryBatch.profiles.size} " +
                 "summary=${plan.summary.oneLineForRepairPipelineLog(500)}"
         }
 
@@ -139,7 +139,7 @@ class MemoryRepairPipeline(
         val suspiciousRefs = suspiciousRefList.toSet()
         val repairedClaims = mutableMapOf<MemoryClaim.Id, MemoryClaim>()
         val repairedNotes = mutableMapOf<MemoryNote.Id, MemoryNote>()
-        val repairedTasks = mutableMapOf<MemoryTask.Id, MemoryTask>()
+        val repairedActionItems = mutableMapOf<MemoryActionItem.Id, MemoryActionItem>()
         val repairedEpisodes = mutableMapOf<MemoryEpisode.Id, MemoryEpisode>()
         val appliedOps = buildJsonArray {
             plan.repairActions.forEach { action ->
@@ -150,7 +150,7 @@ class MemoryRepairPipeline(
                     suspiciousRefs = suspiciousRefs,
                     repairedClaims = repairedClaims,
                     repairedNotes = repairedNotes,
-                    repairedTasks = repairedTasks,
+                    repairedActionItems = repairedActionItems,
                     repairedEpisodes = repairedEpisodes,
                 )
                 applied.forEach { op ->
@@ -185,7 +185,7 @@ class MemoryRepairPipeline(
             runs = listOf(run),
             claims = repairedClaims.values.toList(),
             notes = repairedNotes.values.toList(),
-            tasks = repairedTasks.values.toList(),
+            actionItems = repairedActionItems.values.toList(),
             episodes = repairedEpisodes.values.toList(),
         )
     }
@@ -197,7 +197,7 @@ class MemoryRepairPipeline(
         suspiciousRefs: Set<MemoryItemRef>,
         repairedClaims: MutableMap<MemoryClaim.Id, MemoryClaim>,
         repairedNotes: MutableMap<MemoryNote.Id, MemoryNote>,
-        repairedTasks: MutableMap<MemoryTask.Id, MemoryTask>,
+        repairedActionItems: MutableMap<MemoryActionItem.Id, MemoryActionItem>,
         repairedEpisodes: MutableMap<MemoryEpisode.Id, MemoryEpisode>,
     ): List<AppliedRepairOp> {
         if (action.action == MemoryRepairPlan.Action.Type.NOOP) {
@@ -215,7 +215,7 @@ class MemoryRepairPipeline(
         return when (action.targetType) {
             MemoryItemRef.Type.CLAIM -> applyClaimAction(action, completedAt, snapshot, repairedClaims)
             MemoryItemRef.Type.NOTE -> applyNoteAction(action, completedAt, snapshot, repairedNotes)
-            MemoryItemRef.Type.TASK -> applyTaskAction(action, completedAt, snapshot, repairedTasks)
+            MemoryItemRef.Type.ACTION_ITEM -> applyTaskAction(action, completedAt, snapshot, repairedActionItems)
             MemoryItemRef.Type.EPISODE -> applyEpisodeAction(action, completedAt, snapshot, repairedEpisodes)
             MemoryItemRef.Type.PROFILE -> applyProfileAction(action)
             MemoryItemRef.Type.ENTITY,
@@ -376,7 +376,7 @@ class MemoryRepairPipeline(
         action: MemoryRepairPlan.Action,
         completedAt: kotlinx.datetime.Instant,
         snapshot: MemoryNamespaceSnapshot,
-        repairedTasks: MutableMap<MemoryTask.Id, MemoryTask>,
+        repairedActionItems: MutableMap<MemoryActionItem.Id, MemoryActionItem>,
     ): List<AppliedRepairOp> {
         if (action.action != MemoryRepairPlan.Action.Type.MERGE_DUPLICATES &&
             action.action != MemoryRepairPlan.Action.Type.ARCHIVE_ITEM
@@ -384,13 +384,13 @@ class MemoryRepairPipeline(
             return emptyList()
         }
 
-        val tasks = action.targetIds.mapNotNull { id -> snapshot.tasks.firstOrNull { it.id.value == id } }
-        val duplicateGroups = tasks.groupBy { it.repairDuplicateKey() }.values.filter { it.size > 1 }
-        return duplicateGroups.flatMap { duplicateTasks ->
-            val keeper = duplicateTasks.maxWith(compareBy<MemoryTask> { it.confidence }.thenBy { it.updatedAt })
-            duplicateTasks.filter { it.id != keeper.id }.map { loser ->
-                repairedTasks[loser.id] = loser.copy(archivedAt = completedAt, updatedAt = completedAt)
-                AppliedRepairOp("archive_duplicate_task", MemoryItemRef.Type.TASK, loser.id.value, action.reason)
+        val actionItems = action.targetIds.mapNotNull { id -> snapshot.actionItems.firstOrNull { it.id.value == id } }
+        val duplicateGroups = actionItems.groupBy { it.repairDuplicateKey() }.values.filter { it.size > 1 }
+        return duplicateGroups.flatMap { duplicateActionItems ->
+            val keeper = duplicateActionItems.maxWith(compareBy<MemoryActionItem> { it.confidence }.thenBy { it.updatedAt })
+            duplicateActionItems.filter { it.id != keeper.id }.map { loser ->
+                repairedActionItems[loser.id] = loser.copy(archivedAt = completedAt, updatedAt = completedAt)
+                AppliedRepairOp("archive_duplicate_action_item", MemoryItemRef.Type.ACTION_ITEM, loser.id.value, action.reason)
             }
         }
     }
@@ -488,19 +488,19 @@ private fun MemoryNamespaceSnapshot.detectRepairCandidateClusters(): List<Memory
             )
         }
 
-    tasks
-        .filter { it.archivedAt == null && it.status in setOf(MemoryTask.Status.OPEN, MemoryTask.Status.IN_PROGRESS, MemoryTask.Status.BLOCKED) }
+    actionItems
+        .filter { it.archivedAt == null && it.status in setOf(MemoryActionItem.Status.OPEN, MemoryActionItem.Status.IN_PROGRESS, MemoryActionItem.Status.BLOCKED) }
         .groupBy { it.repairDuplicateKey() }
         .entries
         .sortedBy { it.key }
         .map { it.value }
         .filter { it.size > 1 }
-        .forEach { duplicateTasks ->
+        .forEach { duplicateActionItems ->
             clusters += MemoryRepairCandidateCluster(
                 id = "repair-cluster-${clusters.size + 1}",
-                kind = MemoryRepairCandidateCluster.Kind.DUPLICATE_TASKS,
-                hits = duplicateTasks.sortedWith(repairTaskComparator).map { MemoryStore.SearchHit.TaskHit(it, score = 0.8) },
-                reason = "Open task-like memory items have the same title, scope, and status.",
+                kind = MemoryRepairCandidateCluster.Kind.DUPLICATE_ACTION_ITEMS,
+                hits = duplicateActionItems.sortedWith(repairTaskComparator).map { MemoryStore.SearchHit.ActionItemHit(it, score = 0.8) },
+                reason = "Open actionItem-like memory items have the same title, scope, and status.",
             )
         }
 
@@ -526,7 +526,7 @@ private fun MemoryNamespaceSnapshot.detectRepairCandidateClusters(): List<Memory
             val latestRelevantUpdate = listOf(
                 claims.filter { it.archivedAt == null && it.subjectEntityId == profile.ownerEntityId }.maxOfOrNull { it.updatedAt },
                 notes.filter { it.archivedAt == null && (it.anchorEntityId == profile.ownerEntityId || it.entityRefs.any { ref -> ref.entityId == profile.ownerEntityId }) }.maxOfOrNull { it.updatedAt },
-                tasks.filter { it.archivedAt == null && (it.ownerEntityId == profile.ownerEntityId || it.relatedEntityIds.contains(profile.ownerEntityId)) }.maxOfOrNull { it.updatedAt },
+                actionItems.filter { it.archivedAt == null && (it.ownerEntityId == profile.ownerEntityId || it.relatedEntityIds.contains(profile.ownerEntityId)) }.maxOfOrNull { it.updatedAt },
             ).filterNotNull().maxOrNull()
             if (latestRelevantUpdate != null && latestRelevantUpdate > profile.updatedAt) {
                 clusters += MemoryRepairCandidateCluster(
@@ -574,7 +574,7 @@ private fun MemoryClaim.repairObjectKey(): String =
 private fun MemoryNote.repairDuplicateKey(): String =
     listOf(noteType.name, title.normalizedRepairKey(), summary.normalizedRepairKey(), scope.text.normalizedRepairKey()).joinToString("|")
 
-private fun MemoryTask.repairDuplicateKey(): String =
+private fun MemoryActionItem.repairDuplicateKey(): String =
     listOf(title.normalizedRepairKey(), scope.text.normalizedRepairKey(), status.name).joinToString("|")
 
 private fun MemoryEpisode.repairDuplicateKey(): String =
@@ -632,7 +632,7 @@ private fun MemoryStore.SearchHit.toRepairPipelineItemRef(): MemoryItemRef =
         is MemoryStore.SearchHit.EntityHit -> MemoryItemRef(MemoryItemRef.Type.ENTITY, entity.id.value)
         is MemoryStore.SearchHit.ClaimHit -> MemoryItemRef(MemoryItemRef.Type.CLAIM, claim.id.value)
         is MemoryStore.SearchHit.NoteHit -> MemoryItemRef(MemoryItemRef.Type.NOTE, note.id.value)
-        is MemoryStore.SearchHit.TaskHit -> MemoryItemRef(MemoryItemRef.Type.TASK, task.id.value)
+        is MemoryStore.SearchHit.ActionItemHit -> MemoryItemRef(MemoryItemRef.Type.ACTION_ITEM, actionItem.id.value)
         is MemoryStore.SearchHit.ProfileHit -> MemoryItemRef(MemoryItemRef.Type.PROFILE, profile.id.value)
         is MemoryStore.SearchHit.EpisodeHit -> MemoryItemRef(MemoryItemRef.Type.EPISODE, episode.id.value)
         is MemoryStore.SearchHit.RunHit -> MemoryItemRef(MemoryItemRef.Type.RUN, run.id.value)
@@ -646,7 +646,7 @@ private fun MemoryStore.SearchHit.repairHitForLog(): String =
     when (this) {
         is MemoryStore.SearchHit.ClaimHit -> "claim:${claim.id.value}:${claim.predicate}:${claim.normalizedText.oneLineForRepairPipelineLog(120)}"
         is MemoryStore.SearchHit.NoteHit -> "note:${note.id.value}:${note.noteType.name}:${note.title.oneLineForRepairPipelineLog(120)}"
-        is MemoryStore.SearchHit.TaskHit -> "task:${task.id.value}:${task.status.name}:${task.title.oneLineForRepairPipelineLog(120)}"
+        is MemoryStore.SearchHit.ActionItemHit -> "actionItem:${actionItem.id.value}:${actionItem.status.name}:${actionItem.title.oneLineForRepairPipelineLog(120)}"
         is MemoryStore.SearchHit.ProfileHit -> "profile:${profile.id.value}:${profile.ownerEntityId.value}"
         is MemoryStore.SearchHit.EpisodeHit -> "episode:${episode.id.value}:${episode.lesson.oneLineForRepairPipelineLog(120)}"
         is MemoryStore.SearchHit.EntityHit -> "entity:${entity.id.value}:${entity.canonicalName.oneLineForRepairPipelineLog(80)}"
@@ -696,7 +696,7 @@ private fun MemoryUpdateBatch.isNotEmptyForRepair(): Boolean =
         entities.isNotEmpty() ||
         claims.isNotEmpty() ||
         notes.isNotEmpty() ||
-        tasks.isNotEmpty() ||
+        actionItems.isNotEmpty() ||
         profiles.isNotEmpty() ||
         episodes.isNotEmpty() ||
         embeddings.isNotEmpty()
@@ -709,21 +709,21 @@ private operator fun MemoryUpdateBatch.plus(other: MemoryUpdateBatch): MemoryUpd
         entities = entities + other.entities,
         claims = claims + other.claims,
         notes = notes + other.notes,
-        tasks = tasks + other.tasks,
+        actionItems = actionItems + other.actionItems,
         profiles = profiles + other.profiles,
         episodes = episodes + other.episodes,
         embeddings = embeddings + other.embeddings,
     )
 
 private fun MemoryNamespaceSnapshot.countsForRepairLog(): String =
-    "sources=${sources.size},runs=${runs.size},entities=${entities.size},claims=${claims.size},notes=${notes.size},tasks=${tasks.size},profiles=${profiles.size},episodes=${episodes.size}"
+    "sources=${sources.size},runs=${runs.size},entities=${entities.size},claims=${claims.size},notes=${notes.size},actionItems=${actionItems.size},profiles=${profiles.size},episodes=${episodes.size}"
 
 private fun MemoryRepairCandidateCluster.Kind.repairPriority(): Int =
     when (this) {
         MemoryRepairCandidateCluster.Kind.CONFLICTING_CLAIMS -> 100
         MemoryRepairCandidateCluster.Kind.DUPLICATE_CLAIMS -> 90
         MemoryRepairCandidateCluster.Kind.DUPLICATE_NOTES -> 80
-        MemoryRepairCandidateCluster.Kind.DUPLICATE_TASKS -> 70
+        MemoryRepairCandidateCluster.Kind.DUPLICATE_ACTION_ITEMS -> 70
         MemoryRepairCandidateCluster.Kind.DUPLICATE_EPISODES -> 60
         MemoryRepairCandidateCluster.Kind.PROFILE_DRIFT -> 50
     }
@@ -734,8 +734,8 @@ private val repairClaimComparator: Comparator<MemoryClaim> =
 private val repairNoteComparator: Comparator<MemoryNote> =
     compareBy<MemoryNote> { it.updatedAt }.thenBy { it.id.value }
 
-private val repairTaskComparator: Comparator<MemoryTask> =
-    compareBy<MemoryTask> { it.updatedAt }.thenBy { it.id.value }
+private val repairTaskComparator: Comparator<MemoryActionItem> =
+    compareBy<MemoryActionItem> { it.updatedAt }.thenBy { it.id.value }
 
 private val repairEpisodeComparator: Comparator<MemoryEpisode> =
     compareBy<MemoryEpisode> { it.updatedAt }.thenBy { it.id.value }
@@ -751,7 +751,7 @@ private fun MemoryStore.SearchHit.repairPipelineSortTime(): kotlinx.datetime.Ins
         is MemoryStore.SearchHit.EntityHit -> entity.updatedAt
         is MemoryStore.SearchHit.ClaimHit -> claim.updatedAt
         is MemoryStore.SearchHit.NoteHit -> note.updatedAt
-        is MemoryStore.SearchHit.TaskHit -> task.updatedAt
+        is MemoryStore.SearchHit.ActionItemHit -> actionItem.updatedAt
         is MemoryStore.SearchHit.ProfileHit -> profile.updatedAt
         is MemoryStore.SearchHit.EpisodeHit -> episode.updatedAt
         is MemoryStore.SearchHit.RunHit -> run.completedAt ?: run.createdAt

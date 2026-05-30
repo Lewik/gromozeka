@@ -349,7 +349,7 @@ class LlmMemoryClaimReconciler(
                 temporalPolicy = explicitTemporalPolicy ?: catalogDefinition?.temporalPolicy ?: MemoryPredicateDefinition.TemporalPolicy.ATEMPORAL,
                 conflictPolicy = explicitConflictPolicy ?: catalogDefinition?.conflictPolicy ?: MemoryPredicateDefinition.ConflictPolicy.COEXIST,
                 profileSync = catalogDefinition?.profileSync == true,
-                taskSync = catalogDefinition?.taskSync == true,
+                actionItemSync = catalogDefinition?.actionItemSync == true,
                 defaultImportance = catalogDefinition?.defaultImportance ?: 5,
             )
 

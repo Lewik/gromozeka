@@ -356,8 +356,8 @@ class LlmMemoryClaimExtractor(
             - If TARGET_MESSAGE only asks a question, asks for provenance, doubts prior memory, or discusses memory mechanics without asserting the fact, return zero claims.
             - A current-turn execution command such as "edit it", "clean it up", "run tests", "commit", "push", "do it now", or "finish it" is not a claim about user/project preferences or goals.
             - Do not create "has_goal", "has_constraint", or similar broad claims from a one-off instruction to the assistant. Create a claim only when the target states a reusable rule, stable constraint, preference, current project fact, or durable workflow.
-            - If TARGET_MESSAGE explicitly creates, updates, closes, cancels, or asks to keep a follow-up/task/todo, do not duplicate that task as a generic "has_goal" or commitment claim; TaskUpdater owns task lifecycle memory.
-            - Emit a claim near a task only when TARGET_MESSAGE also asserts a durable fact independent of the task lifecycle.
+            - If TARGET_MESSAGE explicitly creates, updates, closes, cancels, or asks to keep a follow-up/action item/todo, do not duplicate that action item as a generic "has_goal" or commitment claim; ActionItemUpdater owns action item lifecycle memory.
+            - Emit a claim near an action item only when TARGET_MESSAGE also asserts a durable fact independent of the action item lifecycle.
             - Example zero-claim targets: "Сотредактируй, я потом посмотрю diff", "Дочисти", "Run the tests", "Commit and push".
             - Example claim target: "For this project, normally edit only gromozeko.dev and update gromozeko.beta by pulling changes into beta."
             - If you cannot quote target text that supports the claim, return zero claims.
@@ -384,7 +384,7 @@ private fun List<MemoryStore.SearchHit>.renderRelevantMemory(): String {
             is MemoryStore.SearchHit.NoteHit -> "- note ${hit.note.id.value}: ${hit.note.title}; ${hit.note.summary}"
             is MemoryStore.SearchHit.ClaimHit -> "- claim ${hit.claim.id.value}: ${hit.claim.normalizedText}"
             is MemoryStore.SearchHit.ProfileHit -> "- profile ${hit.profile.id.value}: ${hit.profile.profileText}"
-            is MemoryStore.SearchHit.TaskHit -> "- task ${hit.task.id.value}: ${hit.task.title}; ${hit.task.description ?: "no description"}"
+            is MemoryStore.SearchHit.ActionItemHit -> "- action_item ${hit.actionItem.id.value}: ${hit.actionItem.title}; ${hit.actionItem.description ?: "no description"}"
             is MemoryStore.SearchHit.EpisodeHit -> "- episode ${hit.episode.id.value}: ${hit.episode.situation}; lesson=${hit.episode.lesson}"
             is MemoryStore.SearchHit.SourceHit -> "- source ${hit.source.id.value}: ${hit.source.contentText.limitForMemoryPrompt(700)}"
             is MemoryStore.SearchHit.EntityHit -> null

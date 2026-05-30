@@ -32,8 +32,8 @@ import com.gromozeka.domain.model.memory.MemoryRun
 import com.gromozeka.domain.model.memory.MemoryScope
 import com.gromozeka.domain.model.memory.MemorySource
 import com.gromozeka.domain.model.memory.MemoryStore
-import com.gromozeka.domain.model.memory.MemoryTask
-import com.gromozeka.domain.model.memory.MemoryTaskUpdateOp
+import com.gromozeka.domain.model.memory.MemoryActionItem
+import com.gromozeka.domain.model.memory.MemoryActionItemUpdateOp
 import com.gromozeka.domain.model.memory.MemoryUpdateBatch
 import com.gromozeka.domain.model.memory.NoteConsolidationResult
 import com.gromozeka.domain.service.AiToolProvider
@@ -425,7 +425,7 @@ class MemoryRealModelE2eTest {
         val afterSeedsSnapshot = store.loadNamespaceSnapshot(namespace)
         appendProgress(
             progressPath,
-            "after_seeds_snapshot case=${case.id} namespace=${namespace.value} predicates=${afterSeedsSnapshot.predicateDefinitions.size} sources=${afterSeedsSnapshot.sources.size} entities=${afterSeedsSnapshot.entities.size} claims=${afterSeedsSnapshot.claims.size} notes=${afterSeedsSnapshot.notes.size} tasks=${afterSeedsSnapshot.tasks.size}"
+            "after_seeds_snapshot case=${case.id} namespace=${namespace.value} predicates=${afterSeedsSnapshot.predicateDefinitions.size} sources=${afterSeedsSnapshot.sources.size} entities=${afterSeedsSnapshot.entities.size} claims=${afterSeedsSnapshot.claims.size} notes=${afterSeedsSnapshot.notes.size} actionItems=${afterSeedsSnapshot.actionItems.size}"
         )
 
         val recallResults = mutableListOf<ExecutedRecallTurn>()
@@ -521,7 +521,7 @@ class MemoryRealModelE2eTest {
             entities = batches.flatMap { it.entities },
             claims = batches.flatMap { it.claims },
             notes = batches.flatMap { it.notes },
-            tasks = batches.flatMap { it.tasks },
+            actionItems = batches.flatMap { it.actionItems },
             profiles = batches.flatMap { it.profiles },
             episodes = batches.flatMap { it.episodes },
         )
@@ -543,7 +543,7 @@ class MemoryRealModelE2eTest {
             "conflicting_claims" -> conflictingClaimsBatch(namespace, conversationId, prefix, subject, olderAt, newerAt)
             "duplicate_claims" -> duplicateClaimsBatch(namespace, conversationId, prefix, subject, olderAt, newerAt)
             "duplicate_notes" -> duplicateNotesBatch(namespace, conversationId, prefix, subject, olderAt, newerAt)
-            "duplicate_tasks" -> duplicateTasksBatch(namespace, conversationId, prefix, subject, olderAt, newerAt)
+            "duplicate_action_items" -> duplicateActionItemsBatch(namespace, conversationId, prefix, subject, olderAt, newerAt)
             "duplicate_episodes" -> duplicateEpisodesBatch(namespace, conversationId, prefix, subject, olderAt, newerAt)
             "profile_drift" -> profileDriftBatch(namespace, conversationId, prefix, subject, olderAt, newerAt)
             "source_safety_replacement" -> sourceSafetyReplacementBatch(namespace, conversationId, prefix, subject, olderAt, newerAt)
@@ -802,7 +802,7 @@ class MemoryRealModelE2eTest {
         )
     }
 
-    private fun MemoryE2ePreloadedMemory.duplicateTasksBatch(
+    private fun MemoryE2ePreloadedMemory.duplicateActionItemsBatch(
         namespace: MemoryNamespace,
         conversationId: Conversation.Id,
         prefix: String,
@@ -812,8 +812,8 @@ class MemoryRealModelE2eTest {
     ): MemoryUpdateBatch {
         val firstSourceId = MemorySource.Id("$prefix-source-first")
         val secondSourceId = MemorySource.Id("$prefix-source-second")
-        val title = taskTitle.ifBlank { "Duplicate task fixture" }
-        val description = taskDescription.ifBlank { firstText.ifBlank { "Duplicate task fixture description." } }
+        val title = taskTitle.ifBlank { "Duplicate actionItem fixture" }
+        val description = taskDescription.ifBlank { firstText.ifBlank { "Duplicate actionItem fixture description." } }
 
         return MemoryUpdateBatch(
             entities = listOf(subject),
@@ -821,15 +821,15 @@ class MemoryRealModelE2eTest {
                 preloadedChatSource(namespace, conversationId, firstSourceId, firstText.ifBlank { title }, olderAt),
                 preloadedChatSource(namespace, conversationId, secondSourceId, secondText.ifBlank { title }, newerAt),
             ),
-            tasks = listOf(
-                MemoryTask(
-                    id = MemoryTask.Id("$prefix-task-first"),
+            actionItems = listOf(
+                MemoryActionItem(
+                    id = MemoryActionItem.Id("$prefix-actionItem-first"),
                     namespace = namespace,
                     ownerEntityId = subject.id,
                     title = title,
                     description = description,
-                    status = MemoryTask.Status.OPEN,
-                    priority = MemoryTask.Priority.NORMAL,
+                    status = MemoryActionItem.Status.OPEN,
+                    priority = MemoryActionItem.Priority.NORMAL,
                     scope = MemoryScope.Global(scopeText),
                     relatedEntityIds = listOf(subject.id),
                     confidence = 0.75,
@@ -837,14 +837,14 @@ class MemoryRealModelE2eTest {
                     createdAt = olderAt,
                     updatedAt = olderAt,
                 ),
-                MemoryTask(
-                    id = MemoryTask.Id("$prefix-task-second"),
+                MemoryActionItem(
+                    id = MemoryActionItem.Id("$prefix-actionItem-second"),
                     namespace = namespace,
                     ownerEntityId = subject.id,
                     title = title,
                     description = description,
-                    status = MemoryTask.Status.OPEN,
-                    priority = MemoryTask.Priority.HIGH,
+                    status = MemoryActionItem.Status.OPEN,
+                    priority = MemoryActionItem.Priority.HIGH,
                     scope = MemoryScope.Global(scopeText),
                     relatedEntityIds = listOf(subject.id),
                     confidence = 0.95,
@@ -1278,7 +1278,7 @@ class MemoryRealModelE2eTest {
             errors,
         )
         verifyCount("$label.notes", snapshot.notes.size, expectation.notesMin, expectation.notesMax, errors)
-        verifyCount("$label.tasks", snapshot.tasks.size, expectation.tasksMin, expectation.tasksMax, errors)
+        verifyCount("$label.actionItems", snapshot.actionItems.size, expectation.actionItemsMin, expectation.actionItemsMax, errors)
         verifyCount("$label.profiles", snapshot.profiles.size, expectation.profilesMin, expectation.profilesMax, errors)
         verifyCount("$label.episodes", snapshot.episodes.size, expectation.episodesMin, expectation.episodesMax, errors)
         verifyCount("$label.runs", snapshot.runs.size, expectation.runsMin, expectation.runsMax, errors)
@@ -1318,10 +1318,10 @@ class MemoryRealModelE2eTest {
             }
         }
 
-        expectation.requiredTasks.forEachIndexed { index, expected ->
-            val matches = snapshot.tasks.filter { it.matches(expected, snapshot) }
+        expectation.requiredActionItems.forEachIndexed { index, expected ->
+            val matches = snapshot.actionItems.filter { it.matches(expected, snapshot) }
             if (matches.size < expected.minMatches) {
-                errors += "$label.requiredTasks[$index] expected at least ${expected.minMatches}, found ${matches.size}: ${expected.describe()}"
+                errors += "$label.requiredActionItems[$index] expected at least ${expected.minMatches}, found ${matches.size}: ${expected.describe()}"
             }
         }
 
@@ -1367,10 +1367,10 @@ class MemoryRealModelE2eTest {
             }
         }
 
-        expectation.forbiddenTasks.forEachIndexed { index, expected ->
-            val matches = snapshot.tasks.filter { it.matches(expected, snapshot) }
+        expectation.forbiddenActionItems.forEachIndexed { index, expected ->
+            val matches = snapshot.actionItems.filter { it.matches(expected, snapshot) }
             if (matches.isNotEmpty()) {
-                errors += "$label.forbiddenTasks[$index] matched ${matches.size}: ${matches.joinToString { it.describe(snapshot) }}"
+                errors += "$label.forbiddenActionItems[$index] matched ${matches.size}: ${matches.joinToString { it.describe(snapshot) }}"
             }
         }
 
@@ -1489,14 +1489,14 @@ class MemoryRealModelE2eTest {
             errors,
         )
 
-        val selectedTasks = trace.selectedHits
-            .filter { it.ref.type == MemoryItemRef.Type.TASK }
-            .mapNotNull { selected -> snapshot.tasks.firstOrNull { it.id.value == selected.ref.id } }
+        val selectedActionItems = trace.selectedHits
+            .filter { it.ref.type == MemoryItemRef.Type.ACTION_ITEM }
+            .mapNotNull { selected -> snapshot.actionItems.firstOrNull { it.id.value == selected.ref.id } }
         verifyCount(
-            "$label.trace.selectedTasks",
-            selectedTasks.size,
-            expectation.selectedTasksMin,
-            expectation.selectedTasksMax,
+            "$label.trace.selectedActionItems",
+            selectedActionItems.size,
+            expectation.selectedActionItemsMin,
+            expectation.selectedActionItemsMax,
             errors,
         )
 
@@ -1536,10 +1536,10 @@ class MemoryRealModelE2eTest {
             }
         }
 
-        expectation.requiredSelectedTasks.forEachIndexed { index, expected ->
-            val matches = selectedTasks.filter { it.matches(expected, snapshot) }
+        expectation.requiredSelectedActionItems.forEachIndexed { index, expected ->
+            val matches = selectedActionItems.filter { it.matches(expected, snapshot) }
             if (matches.size < expected.minMatches) {
-                errors += "$label.trace.requiredSelectedTasks[$index] expected at least ${expected.minMatches}, found ${matches.size}: ${expected.describe()}"
+                errors += "$label.trace.requiredSelectedActionItems[$index] expected at least ${expected.minMatches}, found ${matches.size}: ${expected.describe()}"
             }
         }
 
@@ -1571,10 +1571,10 @@ class MemoryRealModelE2eTest {
             }
         }
 
-        expectation.forbiddenSelectedTasks.forEachIndexed { index, expected ->
-            val matches = selectedTasks.filter { it.matches(expected, snapshot) }
+        expectation.forbiddenSelectedActionItems.forEachIndexed { index, expected ->
+            val matches = selectedActionItems.filter { it.matches(expected, snapshot) }
             if (matches.isNotEmpty()) {
-                errors += "$label.trace.forbiddenSelectedTasks[$index] matched ${matches.size}: ${matches.joinToString { it.describe(snapshot) }}"
+                errors += "$label.trace.forbiddenSelectedActionItems[$index] matched ${matches.size}: ${matches.joinToString { it.describe(snapshot) }}"
             }
         }
 
@@ -1711,11 +1711,11 @@ class MemoryRealModelE2eTest {
         verifyCount("$label.write.claimCandidates", result.claimCandidates.size, expectation.claimCandidatesMin, expectation.claimCandidatesMax, errors)
         verifyCount("$label.write.rawClaimOps", result.rawClaimOps.size, expectation.rawClaimOpsMin, expectation.rawClaimOpsMax, errors)
         verifyCount("$label.write.claimOps", result.claimOps.size, expectation.claimOpsMin, expectation.claimOpsMax, errors)
-        verifyCount("$label.write.rawTaskOps", result.rawTaskOps.size, expectation.rawTaskOpsMin, expectation.rawTaskOpsMax, errors)
-        verifyCount("$label.write.taskOps", result.taskOps.size, expectation.taskOpsMin, expectation.taskOpsMax, errors)
+        verifyCount("$label.write.rawActionItemOps", result.rawActionItemOps.size, expectation.rawActionItemOpsMin, expectation.rawActionItemOpsMax, errors)
+        verifyCount("$label.write.actionItemOps", result.actionItemOps.size, expectation.actionItemOpsMin, expectation.actionItemOpsMax, errors)
         verifyCount("$label.write.materializedClaims", result.memoryBatch.claims.size, expectation.materializedClaimsMin, expectation.materializedClaimsMax, errors)
         verifyCount("$label.write.materializedNotes", result.memoryBatch.notes.size, expectation.materializedNotesMin, expectation.materializedNotesMax, errors)
-        verifyCount("$label.write.materializedTasks", result.memoryBatch.tasks.size, expectation.materializedTasksMin, expectation.materializedTasksMax, errors)
+        verifyCount("$label.write.materializedActionItems", result.memoryBatch.actionItems.size, expectation.materializedActionItemsMin, expectation.materializedActionItemsMax, errors)
         verifyCount("$label.write.materializedRuns", result.memoryBatch.runs.size, expectation.materializedRunsMin, expectation.materializedRunsMax, errors)
 
         verifyContains("$label.write", renderMemoryWriteTrace(traceEvent), expectation.containsAll, expectation.containsNone, errors)
@@ -1723,8 +1723,8 @@ class MemoryRealModelE2eTest {
         verifyContains("$label.write.noteOps", result.noteOps.renderNoteOpsForExpectation(), expectation.noteOpsContainsAll, expectation.noteOpsContainsNone, errors)
         verifyContains("$label.write.rawClaimOps", result.rawClaimOps.renderClaimOpsForExpectation(), expectation.rawClaimOpsContainsAll, expectation.rawClaimOpsContainsNone, errors)
         verifyContains("$label.write.claimOps", result.claimOps.renderClaimOpsForExpectation(), expectation.claimOpsContainsAll, expectation.claimOpsContainsNone, errors)
-        verifyContains("$label.write.rawTaskOps", result.rawTaskOps.renderTaskOpsForExpectation(), expectation.rawTaskOpsContainsAll, expectation.rawTaskOpsContainsNone, errors)
-        verifyContains("$label.write.taskOps", result.taskOps.renderTaskOpsForExpectation(), expectation.taskOpsContainsAll, expectation.taskOpsContainsNone, errors)
+        verifyContains("$label.write.rawActionItemOps", result.rawActionItemOps.renderTaskOpsForExpectation(), expectation.rawActionItemOpsContainsAll, expectation.rawActionItemOpsContainsNone, errors)
+        verifyContains("$label.write.actionItemOps", result.actionItemOps.renderTaskOpsForExpectation(), expectation.actionItemOpsContainsAll, expectation.actionItemOpsContainsNone, errors)
     }
 
     private fun evaluateMemoryMaintenanceTrace(
@@ -1767,13 +1767,13 @@ class MemoryRealModelE2eTest {
             verifyCount("$label.maintenance.relatedHits", result.relatedHits.size, expectation.relatedHitsMin, expectation.relatedHitsMax, errors)
             verifyCount("$label.maintenance.rawClaimCandidates", result.rawConsolidationResult.claimCandidates.size, expectation.rawClaimCandidatesMin, expectation.rawClaimCandidatesMax, errors)
             verifyCount("$label.maintenance.finalClaimCandidates", result.consolidationResult.claimCandidates.size, expectation.finalClaimCandidatesMin, expectation.finalClaimCandidatesMax, errors)
-            verifyCount("$label.maintenance.rawTaskActions", result.rawConsolidationResult.taskActions.size, expectation.rawTaskActionsMin, expectation.rawTaskActionsMax, errors)
-            verifyCount("$label.maintenance.finalTaskActions", result.consolidationResult.taskActions.size, expectation.finalTaskActionsMin, expectation.finalTaskActionsMax, errors)
+            verifyCount("$label.maintenance.rawActionItemActions", result.rawConsolidationResult.actionItemActions.size, expectation.rawActionItemActionsMin, expectation.rawActionItemActionsMax, errors)
+            verifyCount("$label.maintenance.finalActionItemActions", result.consolidationResult.actionItemActions.size, expectation.finalActionItemActionsMin, expectation.finalActionItemActionsMax, errors)
             verifyCount("$label.maintenance.rawEpisodeCandidates", result.rawConsolidationResult.episodeCandidates.size, expectation.rawEpisodeCandidatesMin, expectation.rawEpisodeCandidatesMax, errors)
             verifyCount("$label.maintenance.finalEpisodeCandidates", result.consolidationResult.episodeCandidates.size, expectation.finalEpisodeCandidatesMin, expectation.finalEpisodeCandidatesMax, errors)
             verifyCount("$label.maintenance.materializedClaims", result.memoryBatch.claims.size, expectation.materializedClaimsMin, expectation.materializedClaimsMax, errors)
             verifyCount("$label.maintenance.materializedNotes", result.memoryBatch.notes.size, expectation.materializedNotesMin, expectation.materializedNotesMax, errors)
-            verifyCount("$label.maintenance.materializedTasks", result.memoryBatch.tasks.size, expectation.materializedTasksMin, expectation.materializedTasksMax, errors)
+            verifyCount("$label.maintenance.materializedActionItems", result.memoryBatch.actionItems.size, expectation.materializedActionItemsMin, expectation.materializedActionItemsMax, errors)
             verifyCount("$label.maintenance.materializedEpisodes", result.memoryBatch.episodes.size, expectation.materializedEpisodesMin, expectation.materializedEpisodesMax, errors)
             verifyCount("$label.maintenance.materializedRuns", result.memoryBatch.runs.size, expectation.materializedRunsMin, expectation.materializedRunsMax, errors)
             verifyContains(
@@ -1804,7 +1804,7 @@ class MemoryRealModelE2eTest {
             verifyCount("$label.maintenance.repairActions", result.repairPlan.repairActions.size, expectation.repairActionsMin, expectation.repairActionsMax, errors)
             verifyCount("$label.maintenance.repairMaterializedClaims", result.memoryBatch.claims.size, expectation.repairMaterializedClaimsMin, expectation.repairMaterializedClaimsMax, errors)
             verifyCount("$label.maintenance.repairMaterializedNotes", result.memoryBatch.notes.size, expectation.repairMaterializedNotesMin, expectation.repairMaterializedNotesMax, errors)
-            verifyCount("$label.maintenance.repairMaterializedTasks", result.memoryBatch.tasks.size, expectation.repairMaterializedTasksMin, expectation.repairMaterializedTasksMax, errors)
+            verifyCount("$label.maintenance.repairMaterializedActionItems", result.memoryBatch.actionItems.size, expectation.repairMaterializedActionItemsMin, expectation.repairMaterializedActionItemsMax, errors)
             verifyCount("$label.maintenance.repairMaterializedEpisodes", result.memoryBatch.episodes.size, expectation.repairMaterializedEpisodesMin, expectation.repairMaterializedEpisodesMax, errors)
             verifyCount("$label.maintenance.repairMaterializedProfiles", result.memoryBatch.profiles.size, expectation.repairMaterializedProfilesMin, expectation.repairMaterializedProfilesMax, errors)
             verifyCount("$label.maintenance.repairMaterializedRuns", result.memoryBatch.runs.size, expectation.repairMaterializedRunsMin, expectation.repairMaterializedRunsMax, errors)
@@ -1942,7 +1942,7 @@ class MemoryRealModelE2eTest {
         return "${id.value}:${noteType.name}:${status.name}:${title.take(120)} evidence=$evidence"
     }
 
-    private fun MemoryTask.matches(expectation: TaskExpectation, snapshot: MemoryNamespaceSnapshot): Boolean {
+    private fun MemoryActionItem.matches(expectation: ActionItemExpectation, snapshot: MemoryNamespaceSnapshot): Boolean {
         if (expectation.statusIn.isNotEmpty() && status.name !in expectation.statusIn.map { it.uppercase() }) return false
         if (expectation.priorityIn.isNotEmpty() && priority.name !in expectation.priorityIn.map { it.uppercase() }) return false
 
@@ -1984,10 +1984,10 @@ class MemoryRealModelE2eTest {
         return true
     }
 
-    private fun TaskExpectation.describe(): String =
+    private fun ActionItemExpectation.describe(): String =
         "statusIn=$statusIn priorityIn=$priorityIn titleContainsAll=$titleContainsAll descriptionContainsAll=$descriptionContainsAll containsAll=$containsAll"
 
-    private fun MemoryTask.describe(snapshot: MemoryNamespaceSnapshot): String {
+    private fun MemoryActionItem.describe(snapshot: MemoryNamespaceSnapshot): String {
         val evidence = evidenceRefs.mapNotNull { ref ->
             snapshot.sources.firstOrNull { it.id == ref.sourceId }?.contentText?.take(120)
         }
@@ -2358,13 +2358,13 @@ class MemoryRealModelE2eTest {
                     appendLine("relatedHits | ${result.relatedHits.size} ${result.relatedHits.breakdownForReport()}")
                     appendLine("rawClaimCandidates | ${result.rawConsolidationResult.claimCandidates.size}")
                     appendLine("finalClaimCandidates | ${result.consolidationResult.claimCandidates.size}")
-                    appendLine("rawTaskActions | ${result.rawConsolidationResult.taskActions.size} ${result.rawConsolidationResult.taskActions.taskOpsActionBreakdownForReport()}")
-                    appendLine("finalTaskActions | ${result.consolidationResult.taskActions.size} ${result.consolidationResult.taskActions.taskOpsActionBreakdownForReport()}")
+                    appendLine("rawActionItemActions | ${result.rawConsolidationResult.actionItemActions.size} ${result.rawConsolidationResult.actionItemActions.actionItemOpsActionBreakdownForReport()}")
+                    appendLine("finalActionItemActions | ${result.consolidationResult.actionItemActions.size} ${result.consolidationResult.actionItemActions.actionItemOpsActionBreakdownForReport()}")
                     appendLine("rawEpisodeCandidates | ${result.rawConsolidationResult.episodeCandidates.size}")
                     appendLine("finalEpisodeCandidates | ${result.consolidationResult.episodeCandidates.size}")
                     appendLine("rawNoteActions | ${result.rawConsolidationResult.noteActions.size} ${result.rawConsolidationResult.noteActions.noteLifecycleActionBreakdownForReport()}")
                     appendLine("finalNoteActions | ${result.consolidationResult.noteActions.size} ${result.consolidationResult.noteActions.noteLifecycleActionBreakdownForReport()}")
-                    appendLine("materialized | runs=${result.memoryBatch.runs.size} notes=${result.memoryBatch.notes.size} claims=${result.memoryBatch.claims.size} tasks=${result.memoryBatch.tasks.size} episodes=${result.memoryBatch.episodes.size} profiles=${result.memoryBatch.profiles.size}")
+                    appendLine("materialized | runs=${result.memoryBatch.runs.size} notes=${result.memoryBatch.notes.size} claims=${result.memoryBatch.claims.size} actionItems=${result.memoryBatch.actionItems.size} episodes=${result.memoryBatch.episodes.size} profiles=${result.memoryBatch.profiles.size}")
                     appendLine()
                     appendLine("Selected notes:")
                     appendLine(result.selectedNotes.joinToString("\n") { "- ${it.id.value}: ${it.noteType.name}:${it.status.name}/${it.maturity.name}: ${it.title}; ${it.summary}" }.ifBlank { "- none" })
@@ -2384,7 +2384,7 @@ class MemoryRealModelE2eTest {
                     appendLine("candidateClusters | ${result.candidateClusters.size}")
                     appendLine("suspiciousHits | ${result.suspiciousHits.size} ${result.suspiciousHits.breakdownForReport()}")
                     appendLine("actions | ${result.repairPlan.repairActions.size}")
-                    appendLine("materialized | runs=${result.memoryBatch.runs.size} notes=${result.memoryBatch.notes.size} claims=${result.memoryBatch.claims.size} tasks=${result.memoryBatch.tasks.size} episodes=${result.memoryBatch.episodes.size} profiles=${result.memoryBatch.profiles.size}")
+                    appendLine("materialized | runs=${result.memoryBatch.runs.size} notes=${result.memoryBatch.notes.size} claims=${result.memoryBatch.claims.size} actionItems=${result.memoryBatch.actionItems.size} episodes=${result.memoryBatch.episodes.size} profiles=${result.memoryBatch.profiles.size}")
                     appendLine("summary | ${result.repairPlan.summary}")
                     appendLine("Clusters:")
                     appendLine(
@@ -2401,8 +2401,8 @@ class MemoryRealModelE2eTest {
                     appendLine(result.memoryBatch.claims.joinToString("\n") { "- ${it.id.value}: ${it.status.name.lifecycleStatusForReport(it.archivedAt)}:${it.predicate}:${it.normalizedText}" }.ifBlank { "- none" })
                     appendLine("Materialized notes:")
                     appendLine(result.memoryBatch.notes.joinToString("\n") { "- ${it.id.value}: ${it.status.name.lifecycleStatusForReport(it.archivedAt)}:${it.noteType.name}:${it.title}; ${it.summary}" }.ifBlank { "- none" })
-                    appendLine("Materialized tasks:")
-                    appendLine(result.memoryBatch.tasks.joinToString("\n") { "- ${it.id.value}: ${it.status.name.lifecycleStatusForReport(it.archivedAt)}:${it.title}; ${it.description.orEmpty()}" }.ifBlank { "- none" })
+                    appendLine("Materialized actionItems:")
+                    appendLine(result.memoryBatch.actionItems.joinToString("\n") { "- ${it.id.value}: ${it.status.name.lifecycleStatusForReport(it.archivedAt)}:${it.title}; ${it.description.orEmpty()}" }.ifBlank { "- none" })
                     appendLine("Materialized episodes:")
                     appendLine(result.memoryBatch.episodes.joinToString("\n") { "- ${it.id.value}: ${it.archivedAt.episodeLifecycleStatusForReport()}: ${it.lesson}" }.ifBlank { "- none" })
                     appendLine("Materialized profiles:")
@@ -2413,7 +2413,7 @@ class MemoryRealModelE2eTest {
                     val result = payload.result
                     appendLine("candidateGroups | ${result.candidateGroups.size}")
                     appendLine("actions | ${result.maintenancePlan.actions.size}")
-                    appendLine("materialized | runs=${result.memoryBatch.runs.size} entities=${result.memoryBatch.entities.size} notes=${result.memoryBatch.notes.size} claims=${result.memoryBatch.claims.size} tasks=${result.memoryBatch.tasks.size} episodes=${result.memoryBatch.episodes.size} profiles=${result.memoryBatch.profiles.size}")
+                    appendLine("materialized | runs=${result.memoryBatch.runs.size} entities=${result.memoryBatch.entities.size} notes=${result.memoryBatch.notes.size} claims=${result.memoryBatch.claims.size} actionItems=${result.memoryBatch.actionItems.size} episodes=${result.memoryBatch.episodes.size} profiles=${result.memoryBatch.profiles.size}")
                     appendLine("summary | ${result.maintenancePlan.summary}")
                     appendLine(result.maintenancePlan.actions.joinToString("\n") { "- ${it.action.name}: winner=${it.winnerEntityId ?: "null"} losers=${it.loserEntityIds.joinToString(",")} reason=${it.reason}" }.ifBlank { "- none" })
                 }
@@ -2422,7 +2422,7 @@ class MemoryRealModelE2eTest {
                     val result = payload.result
                     appendLine("candidates | ${result.candidates.size} ${result.candidates.breakdownForReport()}")
                     appendLine("actions | ${result.retentionPlan.retentionActions.size}")
-                    appendLine("materialized | runs=${result.memoryBatch.runs.size} notes=${result.memoryBatch.notes.size} claims=${result.memoryBatch.claims.size} tasks=${result.memoryBatch.tasks.size}")
+                    appendLine("materialized | runs=${result.memoryBatch.runs.size} notes=${result.memoryBatch.notes.size} claims=${result.memoryBatch.claims.size} actionItems=${result.memoryBatch.actionItems.size}")
                     appendLine("summary | ${result.retentionPlan.summary}")
                     appendLine(result.retentionPlan.retentionActions.joinToString("\n") { "- ${it.action.name}: ${it.targetType.name}:${it.targetIds.joinToString(",")} reason=${it.reason}" }.ifBlank { "- none" })
                 }
@@ -2454,9 +2454,9 @@ class MemoryRealModelE2eTest {
             appendLine("claimCandidates | ${result.claimCandidates.size}")
             appendLine("rawClaimOps | ${result.rawClaimOps.size} ${result.rawClaimOps.claimOpsActionBreakdownForReport()}")
             appendLine("claimOps | ${result.claimOps.size} ${result.claimOps.claimOpsActionBreakdownForReport()}")
-            appendLine("rawTaskOps | ${result.rawTaskOps.size} ${result.rawTaskOps.taskOpsActionBreakdownForReport()}")
-            appendLine("taskOps | ${result.taskOps.size} ${result.taskOps.taskOpsActionBreakdownForReport()}")
-            appendLine("materialized | runs=${result.memoryBatch.runs.size} entities=${result.memoryBatch.entities.size} notes=${result.memoryBatch.notes.size} claims=${result.memoryBatch.claims.size} tasks=${result.memoryBatch.tasks.size} profiles=${result.memoryBatch.profiles.size}")
+            appendLine("rawActionItemOps | ${result.rawActionItemOps.size} ${result.rawActionItemOps.actionItemOpsActionBreakdownForReport()}")
+            appendLine("actionItemOps | ${result.actionItemOps.size} ${result.actionItemOps.actionItemOpsActionBreakdownForReport()}")
+            appendLine("materialized | runs=${result.memoryBatch.runs.size} entities=${result.memoryBatch.entities.size} notes=${result.memoryBatch.notes.size} claims=${result.memoryBatch.claims.size} actionItems=${result.memoryBatch.actionItems.size} profiles=${result.memoryBatch.profiles.size}")
             appendLine()
             appendLine("Retrieved hits:")
             appendLine(result.retrievedHits.renderHitsForExpectation().ifBlank { "- none" })
@@ -2482,11 +2482,11 @@ class MemoryRealModelE2eTest {
             appendLine("Final claim ops:")
             appendLine(result.claimOps.renderClaimOpsForExpectation().ifBlank { "- none" })
             appendLine()
-            appendLine("Raw task ops:")
-            appendLine(result.rawTaskOps.renderTaskOpsForExpectation().ifBlank { "- none" })
+            appendLine("Raw actionItem ops:")
+            appendLine(result.rawActionItemOps.renderTaskOpsForExpectation().ifBlank { "- none" })
             appendLine()
-            appendLine("Final task ops:")
-            appendLine(result.taskOps.renderTaskOpsForExpectation().ifBlank { "- none" })
+            appendLine("Final actionItem ops:")
+            appendLine(result.actionItemOps.renderTaskOpsForExpectation().ifBlank { "- none" })
         }
     }
 
@@ -2503,7 +2503,7 @@ class MemoryRealModelE2eTest {
                 is MemoryStore.SearchHit.EntityHit -> "entity"
                 is MemoryStore.SearchHit.ClaimHit -> "claim"
                 is MemoryStore.SearchHit.NoteHit -> "note"
-                is MemoryStore.SearchHit.TaskHit -> "task"
+                is MemoryStore.SearchHit.ActionItemHit -> "actionItem"
                 is MemoryStore.SearchHit.ProfileHit -> "profile"
                 is MemoryStore.SearchHit.EpisodeHit -> "episode"
                 is MemoryStore.SearchHit.RunHit -> "run"
@@ -2517,7 +2517,7 @@ class MemoryRealModelE2eTest {
                 is MemoryStore.SearchHit.EntityHit -> "- ENTITY:${hit.entity.id.value}: ${hit.entity.entityType.name}:${hit.entity.canonicalName}"
                 is MemoryStore.SearchHit.ClaimHit -> "- CLAIM:${hit.claim.id.value}: ${hit.claim.predicate}:${hit.claim.normalizedText}"
                 is MemoryStore.SearchHit.NoteHit -> "- NOTE:${hit.note.id.value}: ${hit.note.noteType.name}:${hit.note.title}; ${hit.note.summary}"
-                is MemoryStore.SearchHit.TaskHit -> "- TASK:${hit.task.id.value}: ${hit.task.status.name}:${hit.task.title}"
+                is MemoryStore.SearchHit.ActionItemHit -> "- ACTION_ITEM:${hit.actionItem.id.value}: ${hit.actionItem.status.name}:${hit.actionItem.title}"
                 is MemoryStore.SearchHit.ProfileHit -> "- PROFILE:${hit.profile.id.value}: ${hit.profile.profileText.oneLineForProgressLog(240)}"
                 is MemoryStore.SearchHit.EpisodeHit -> "- EPISODE:${hit.episode.id.value}: ${hit.episode.lesson}"
                 is MemoryStore.SearchHit.RunHit -> "- RUN:${hit.run.id.value}: ${hit.run.runType.name}:${hit.run.summary}"
@@ -2548,19 +2548,19 @@ class MemoryRealModelE2eTest {
             "- ${op.action.name}: target=${op.targetClaimId?.value ?: "null"} candidate=${op.candidate?.let { "${it.predicate}:${it.normalizedText}" } ?: "null"} reason=${op.reason}"
         }
 
-    private fun List<MemoryTaskUpdateOp>.taskOpsActionBreakdownForReport(): String =
+    private fun List<MemoryActionItemUpdateOp>.actionItemOpsActionBreakdownForReport(): String =
         groupingBy { it.action.name }.eachCount().entries.sortedBy { it.key }.joinToString(",") { "${it.key}=${it.value}" }.ifBlank { "none" }
 
-    private fun List<MemoryTaskUpdateOp>.renderTaskOpsForExpectation(): String =
+    private fun List<MemoryActionItemUpdateOp>.renderTaskOpsForExpectation(): String =
         joinToString("\n") { op ->
-            "- ${op.action.name}: target=${op.targetTaskId?.value ?: "null"} task=${op.task?.let { "${it.status.name}:${it.title}; ${it.description ?: ""}" } ?: "null"} reason=${op.reason}"
+            "- ${op.action.name}: target=${op.targetActionItemId?.value ?: "null"} actionItem=${op.actionItem?.let { "${it.status.name}:${it.title}; ${it.description ?: ""}" } ?: "null"} reason=${op.reason}"
         }
 
     private fun NoteConsolidationResult.renderForExpectation(): String = buildString {
         appendLine("Claim candidates:")
         appendLine(claimCandidates.renderClaimCandidatesForExpectation().ifBlank { "- none" })
         appendLine("Task actions:")
-        appendLine(taskActions.renderTaskOpsForExpectation().ifBlank { "- none" })
+        appendLine(actionItemActions.renderTaskOpsForExpectation().ifBlank { "- none" })
         appendLine("Episode candidates:")
         appendLine(episodeCandidates.renderEpisodeCandidatesForExpectation().ifBlank { "- none" })
         appendLine("Note actions:")
@@ -2652,7 +2652,7 @@ class MemoryRealModelE2eTest {
                         temporalPolicy = it.temporalPolicy.name,
                         conflictPolicy = it.conflictPolicy.name,
                         profileSync = it.profileSync,
-                        taskSync = it.taskSync,
+                        actionItemSync = it.actionItemSync,
                         defaultImportance = it.defaultImportance,
                     )
                 },
@@ -2717,19 +2717,19 @@ class MemoryRealModelE2eTest {
                         },
                     )
                 },
-                tasks = snapshot.tasks.map { task ->
+                actionItems = snapshot.actionItems.map { actionItem ->
                     RenderedTask(
-                        id = task.id.value,
-                        status = task.status.name,
-                        priority = task.priority.name,
-                        title = task.title,
-                        description = task.description,
-                        scope = task.scope.text,
-                        dueAt = task.dueAt?.toString(),
-                        acceptanceCriteria = task.acceptanceCriteria,
-                        blockers = task.blockers,
-                        evidenceQuotes = task.evidenceRefs.mapNotNull { it.cachedQuote },
-                        evidenceSourceRoles = task.evidenceRefs.mapNotNull { ref ->
+                        id = actionItem.id.value,
+                        status = actionItem.status.name,
+                        priority = actionItem.priority.name,
+                        title = actionItem.title,
+                        description = actionItem.description,
+                        scope = actionItem.scope.text,
+                        dueAt = actionItem.dueAt?.toString(),
+                        acceptanceCriteria = actionItem.acceptanceCriteria,
+                        blockers = actionItem.blockers,
+                        evidenceQuotes = actionItem.evidenceRefs.mapNotNull { it.cachedQuote },
+                        evidenceSourceRoles = actionItem.evidenceRefs.mapNotNull { ref ->
                             snapshot.sources.firstOrNull { it.id == ref.sourceId }?.speakerRoleName()
                         },
                     )
@@ -2819,8 +2819,8 @@ class MemoryRealModelE2eTest {
         return "route=${result.routeDecision.decision.name} retrieved=${result.retrievedHits.size} " +
             "rawNote=${result.rawNoteOps.noteOpsActionBreakdownForReport()} note=${result.noteOps.noteOpsActionBreakdownForReport()} " +
             "rawClaim=${result.rawClaimOps.claimOpsActionBreakdownForReport()} claim=${result.claimOps.claimOpsActionBreakdownForReport()} " +
-            "rawTask=${result.rawTaskOps.taskOpsActionBreakdownForReport()} task=${result.taskOps.taskOpsActionBreakdownForReport()} " +
-            "batch=notes:${result.memoryBatch.notes.size},claims:${result.memoryBatch.claims.size},tasks:${result.memoryBatch.tasks.size}"
+            "rawTask=${result.rawActionItemOps.actionItemOpsActionBreakdownForReport()} actionItem=${result.actionItemOps.actionItemOpsActionBreakdownForReport()} " +
+            "batch=notes:${result.memoryBatch.notes.size},claims:${result.memoryBatch.claims.size},actionItems:${result.memoryBatch.actionItems.size}"
     }
 
     private fun MemoryMaintenanceTraceEvent.progressSummaryForProgressLog(): String =
@@ -2829,9 +2829,9 @@ class MemoryRealModelE2eTest {
                 val result = payload.result
                 "stage=${stage.name} selected=${result.selectedNotes.size} " +
                     "rawClaims=${result.rawConsolidationResult.claimCandidates.size} finalClaims=${result.consolidationResult.claimCandidates.size} " +
-                    "rawTasks=${result.rawConsolidationResult.taskActions.taskOpsActionBreakdownForReport()} finalTasks=${result.consolidationResult.taskActions.taskOpsActionBreakdownForReport()} " +
+                    "rawTasks=${result.rawConsolidationResult.actionItemActions.actionItemOpsActionBreakdownForReport()} finalTasks=${result.consolidationResult.actionItemActions.actionItemOpsActionBreakdownForReport()} " +
                     "rawEpisodes=${result.rawConsolidationResult.episodeCandidates.size} finalEpisodes=${result.consolidationResult.episodeCandidates.size} " +
-                    "batch=notes:${result.memoryBatch.notes.size},claims:${result.memoryBatch.claims.size},tasks:${result.memoryBatch.tasks.size},episodes:${result.memoryBatch.episodes.size}"
+                    "batch=notes:${result.memoryBatch.notes.size},claims:${result.memoryBatch.claims.size},actionItems:${result.memoryBatch.actionItems.size},episodes:${result.memoryBatch.episodes.size}"
             }
 
             is MemoryMaintenanceTraceEvent.Payload.MemoryRepair ->
@@ -3030,8 +3030,8 @@ private data class SnapshotExpectation(
     val assistantSourcesMax: Int? = null,
     val notesMin: Int? = null,
     val notesMax: Int? = null,
-    val tasksMin: Int? = null,
-    val tasksMax: Int? = null,
+    val actionItemsMin: Int? = null,
+    val actionItemsMax: Int? = null,
     val profilesMin: Int? = null,
     val profilesMax: Int? = null,
     val episodesMin: Int? = null,
@@ -3045,13 +3045,13 @@ private data class SnapshotExpectation(
     val requiredPredicateDefinitions: List<PredicateDefinitionExpectation> = emptyList(),
     val requiredClaims: List<ClaimExpectation> = emptyList(),
     val requiredNotes: List<NoteExpectation> = emptyList(),
-    val requiredTasks: List<TaskExpectation> = emptyList(),
+    val requiredActionItems: List<ActionItemExpectation> = emptyList(),
     val requiredProfiles: List<ProfileExpectation> = emptyList(),
     val requiredEpisodes: List<EpisodeExpectation> = emptyList(),
     val requiredRuns: List<RunExpectation> = emptyList(),
     val forbiddenClaims: List<ClaimExpectation> = emptyList(),
     val forbiddenNotes: List<NoteExpectation> = emptyList(),
-    val forbiddenTasks: List<TaskExpectation> = emptyList(),
+    val forbiddenActionItems: List<ActionItemExpectation> = emptyList(),
     val forbiddenProfiles: List<ProfileExpectation> = emptyList(),
     val forbiddenEpisodes: List<EpisodeExpectation> = emptyList(),
     val allActiveClaimsEvidenceSpeakerRoleIn: List<String> = emptyList(),
@@ -3123,7 +3123,7 @@ private data class NoteExpectation(
 )
 
 @Serializable
-private data class TaskExpectation(
+private data class ActionItemExpectation(
     val statusIn: List<String> = emptyList(),
     val priorityIn: List<String> = emptyList(),
     val titleContainsAll: List<String> = emptyList(),
@@ -3194,16 +3194,16 @@ private data class MemoryWriteTraceExpectation(
     val rawClaimOpsMax: Int? = null,
     val claimOpsMin: Int? = null,
     val claimOpsMax: Int? = null,
-    val rawTaskOpsMin: Int? = null,
-    val rawTaskOpsMax: Int? = null,
-    val taskOpsMin: Int? = null,
-    val taskOpsMax: Int? = null,
+    val rawActionItemOpsMin: Int? = null,
+    val rawActionItemOpsMax: Int? = null,
+    val actionItemOpsMin: Int? = null,
+    val actionItemOpsMax: Int? = null,
     val materializedClaimsMin: Int? = null,
     val materializedClaimsMax: Int? = null,
     val materializedNotesMin: Int? = null,
     val materializedNotesMax: Int? = null,
-    val materializedTasksMin: Int? = null,
-    val materializedTasksMax: Int? = null,
+    val materializedActionItemsMin: Int? = null,
+    val materializedActionItemsMax: Int? = null,
     val materializedRunsMin: Int? = null,
     val materializedRunsMax: Int? = null,
     val containsAll: List<String> = emptyList(),
@@ -3216,10 +3216,10 @@ private data class MemoryWriteTraceExpectation(
     val rawClaimOpsContainsNone: List<String> = emptyList(),
     val claimOpsContainsAll: List<String> = emptyList(),
     val claimOpsContainsNone: List<String> = emptyList(),
-    val rawTaskOpsContainsAll: List<String> = emptyList(),
-    val rawTaskOpsContainsNone: List<String> = emptyList(),
-    val taskOpsContainsAll: List<String> = emptyList(),
-    val taskOpsContainsNone: List<String> = emptyList(),
+    val rawActionItemOpsContainsAll: List<String> = emptyList(),
+    val rawActionItemOpsContainsNone: List<String> = emptyList(),
+    val actionItemOpsContainsAll: List<String> = emptyList(),
+    val actionItemOpsContainsNone: List<String> = emptyList(),
 ) {
     fun hasChecks(): Boolean =
         present != null ||
@@ -3240,16 +3240,16 @@ private data class MemoryWriteTraceExpectation(
             rawClaimOpsMax != null ||
             claimOpsMin != null ||
             claimOpsMax != null ||
-            rawTaskOpsMin != null ||
-            rawTaskOpsMax != null ||
-            taskOpsMin != null ||
-            taskOpsMax != null ||
+            rawActionItemOpsMin != null ||
+            rawActionItemOpsMax != null ||
+            actionItemOpsMin != null ||
+            actionItemOpsMax != null ||
             materializedClaimsMin != null ||
             materializedClaimsMax != null ||
             materializedNotesMin != null ||
             materializedNotesMax != null ||
-            materializedTasksMin != null ||
-            materializedTasksMax != null ||
+            materializedActionItemsMin != null ||
+            materializedActionItemsMax != null ||
             materializedRunsMin != null ||
             materializedRunsMax != null ||
             containsAll.isNotEmpty() ||
@@ -3262,10 +3262,10 @@ private data class MemoryWriteTraceExpectation(
             rawClaimOpsContainsNone.isNotEmpty() ||
             claimOpsContainsAll.isNotEmpty() ||
             claimOpsContainsNone.isNotEmpty() ||
-            rawTaskOpsContainsAll.isNotEmpty() ||
-            rawTaskOpsContainsNone.isNotEmpty() ||
-            taskOpsContainsAll.isNotEmpty() ||
-            taskOpsContainsNone.isNotEmpty()
+            rawActionItemOpsContainsAll.isNotEmpty() ||
+            rawActionItemOpsContainsNone.isNotEmpty() ||
+            actionItemOpsContainsAll.isNotEmpty() ||
+            actionItemOpsContainsNone.isNotEmpty()
 }
 
 @Serializable
@@ -3282,10 +3282,10 @@ private data class MemoryMaintenanceTraceExpectation(
     val rawClaimCandidatesMax: Int? = null,
     val finalClaimCandidatesMin: Int? = null,
     val finalClaimCandidatesMax: Int? = null,
-    val rawTaskActionsMin: Int? = null,
-    val rawTaskActionsMax: Int? = null,
-    val finalTaskActionsMin: Int? = null,
-    val finalTaskActionsMax: Int? = null,
+    val rawActionItemActionsMin: Int? = null,
+    val rawActionItemActionsMax: Int? = null,
+    val finalActionItemActionsMin: Int? = null,
+    val finalActionItemActionsMax: Int? = null,
     val rawEpisodeCandidatesMin: Int? = null,
     val rawEpisodeCandidatesMax: Int? = null,
     val finalEpisodeCandidatesMin: Int? = null,
@@ -3294,8 +3294,8 @@ private data class MemoryMaintenanceTraceExpectation(
     val materializedClaimsMax: Int? = null,
     val materializedNotesMin: Int? = null,
     val materializedNotesMax: Int? = null,
-    val materializedTasksMin: Int? = null,
-    val materializedTasksMax: Int? = null,
+    val materializedActionItemsMin: Int? = null,
+    val materializedActionItemsMax: Int? = null,
     val materializedEpisodesMin: Int? = null,
     val materializedEpisodesMax: Int? = null,
     val materializedRunsMin: Int? = null,
@@ -3310,8 +3310,8 @@ private data class MemoryMaintenanceTraceExpectation(
     val repairMaterializedClaimsMax: Int? = null,
     val repairMaterializedNotesMin: Int? = null,
     val repairMaterializedNotesMax: Int? = null,
-    val repairMaterializedTasksMin: Int? = null,
-    val repairMaterializedTasksMax: Int? = null,
+    val repairMaterializedActionItemsMin: Int? = null,
+    val repairMaterializedActionItemsMax: Int? = null,
     val repairMaterializedEpisodesMin: Int? = null,
     val repairMaterializedEpisodesMax: Int? = null,
     val repairMaterializedProfilesMin: Int? = null,
@@ -3346,10 +3346,10 @@ private data class MemoryMaintenanceTraceExpectation(
             rawClaimCandidatesMax != null ||
             finalClaimCandidatesMin != null ||
             finalClaimCandidatesMax != null ||
-            rawTaskActionsMin != null ||
-            rawTaskActionsMax != null ||
-            finalTaskActionsMin != null ||
-            finalTaskActionsMax != null ||
+            rawActionItemActionsMin != null ||
+            rawActionItemActionsMax != null ||
+            finalActionItemActionsMin != null ||
+            finalActionItemActionsMax != null ||
             rawEpisodeCandidatesMin != null ||
             rawEpisodeCandidatesMax != null ||
             finalEpisodeCandidatesMin != null ||
@@ -3358,8 +3358,8 @@ private data class MemoryMaintenanceTraceExpectation(
             materializedClaimsMax != null ||
             materializedNotesMin != null ||
             materializedNotesMax != null ||
-            materializedTasksMin != null ||
-            materializedTasksMax != null ||
+            materializedActionItemsMin != null ||
+            materializedActionItemsMax != null ||
             materializedEpisodesMin != null ||
             materializedEpisodesMax != null ||
             materializedRunsMin != null ||
@@ -3380,8 +3380,8 @@ private data class MemoryMaintenanceTraceExpectation(
             repairMaterializedClaimsMax != null ||
             repairMaterializedNotesMin != null ||
             repairMaterializedNotesMax != null ||
-            repairMaterializedTasksMin != null ||
-            repairMaterializedTasksMax != null ||
+            repairMaterializedActionItemsMin != null ||
+            repairMaterializedActionItemsMax != null ||
             repairMaterializedEpisodesMin != null ||
             repairMaterializedEpisodesMax != null ||
             repairMaterializedProfilesMin != null ||
@@ -3402,8 +3402,8 @@ private data class MemoryTraceExpectation(
     val selectedClaimsMax: Int? = null,
     val selectedNotesMin: Int? = null,
     val selectedNotesMax: Int? = null,
-    val selectedTasksMin: Int? = null,
-    val selectedTasksMax: Int? = null,
+    val selectedActionItemsMin: Int? = null,
+    val selectedActionItemsMax: Int? = null,
     val selectedProfilesMin: Int? = null,
     val selectedProfilesMax: Int? = null,
     val selectedEpisodesMin: Int? = null,
@@ -3428,8 +3428,8 @@ private data class MemoryTraceExpectation(
     val forbiddenSelectedClaims: List<ClaimExpectation> = emptyList(),
     val requiredSelectedNotes: List<NoteExpectation> = emptyList(),
     val forbiddenSelectedNotes: List<NoteExpectation> = emptyList(),
-    val requiredSelectedTasks: List<TaskExpectation> = emptyList(),
-    val forbiddenSelectedTasks: List<TaskExpectation> = emptyList(),
+    val requiredSelectedActionItems: List<ActionItemExpectation> = emptyList(),
+    val forbiddenSelectedActionItems: List<ActionItemExpectation> = emptyList(),
     val requiredSelectedProfiles: List<ProfileExpectation> = emptyList(),
     val forbiddenSelectedProfiles: List<ProfileExpectation> = emptyList(),
     val requiredSelectedEpisodes: List<EpisodeExpectation> = emptyList(),
@@ -3444,8 +3444,8 @@ private data class MemoryTraceExpectation(
             selectedClaimsMax != null ||
             selectedNotesMin != null ||
             selectedNotesMax != null ||
-            selectedTasksMin != null ||
-            selectedTasksMax != null ||
+            selectedActionItemsMin != null ||
+            selectedActionItemsMax != null ||
             selectedProfilesMin != null ||
             selectedProfilesMax != null ||
             selectedEpisodesMin != null ||
@@ -3470,8 +3470,8 @@ private data class MemoryTraceExpectation(
             forbiddenSelectedClaims.isNotEmpty() ||
             requiredSelectedNotes.isNotEmpty() ||
             forbiddenSelectedNotes.isNotEmpty() ||
-            requiredSelectedTasks.isNotEmpty() ||
-            forbiddenSelectedTasks.isNotEmpty() ||
+            requiredSelectedActionItems.isNotEmpty() ||
+            forbiddenSelectedActionItems.isNotEmpty() ||
             requiredSelectedProfiles.isNotEmpty() ||
             forbiddenSelectedProfiles.isNotEmpty() ||
             requiredSelectedEpisodes.isNotEmpty() ||
@@ -3527,7 +3527,7 @@ private data class RenderedSnapshot(
     val entities: List<RenderedEntity>,
     val claims: List<RenderedClaim>,
     val notes: List<RenderedNote>,
-    val tasks: List<RenderedTask>,
+    val actionItems: List<RenderedTask>,
     val profiles: Int,
     val episodes: List<RenderedEpisode>,
     val runs: Int,
@@ -3544,7 +3544,7 @@ private data class RenderedPredicateDefinition(
     val temporalPolicy: String,
     val conflictPolicy: String,
     val profileSync: Boolean,
-    val taskSync: Boolean,
+    val actionItemSync: Boolean,
     val defaultImportance: Int,
 )
 

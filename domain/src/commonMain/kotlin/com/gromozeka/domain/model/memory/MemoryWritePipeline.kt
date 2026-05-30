@@ -45,8 +45,8 @@ data class DirectStructuredMemoryWriteResult(
     val claimCandidates: List<MemoryClaimCandidate>,
     val rawClaimOps: List<MemoryClaimReconciliationOp> = emptyList(),
     val claimOps: List<MemoryClaimReconciliationOp>,
-    val rawTaskOps: List<MemoryTaskUpdateOp> = emptyList(),
-    val taskOps: List<MemoryTaskUpdateOp> = emptyList(),
+    val rawActionItemOps: List<MemoryActionItemUpdateOp> = emptyList(),
+    val actionItemOps: List<MemoryActionItemUpdateOp> = emptyList(),
     val memoryBatch: MemoryUpdateBatch,
 )
 
@@ -152,16 +152,16 @@ interface MemoryNoteReconciler {
 }
 
 /**
- * Creates or updates operational task memory from explicit commitments and lifecycle changes.
+ * Creates or updates operational action item memory from explicit commitments and lifecycle changes.
  */
-interface MemoryTaskUpdater {
+interface MemoryActionItemUpdater {
     suspend fun update(
         request: DirectStructuredMemoryWriteRequest,
         routeDecision: MemoryRouteDecision,
         retrievalPlan: MemoryWriteRetrievalPlan,
         retrievedHits: List<MemoryStore.SearchHit>,
         entityOps: List<MemoryEntityCanonicalizationOp>,
-    ): List<MemoryTaskUpdateOp>
+    ): List<MemoryActionItemUpdateOp>
 }
 
 /**

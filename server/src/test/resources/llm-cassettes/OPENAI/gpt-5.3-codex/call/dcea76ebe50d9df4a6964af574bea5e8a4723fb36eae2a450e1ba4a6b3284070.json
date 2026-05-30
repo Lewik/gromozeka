@@ -1,0 +1,519 @@
+{
+    "version": 1,
+    "hash": "dcea76ebe50d9df4a6964af574bea5e8a4723fb36eae2a450e1ba4a6b3284070",
+    "provider": "OPENAI",
+    "model": "gpt-5.3-codex",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>/projects/handoff-architecture-document-ingestion",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteReconciler v1.\n        Namespace: project:<0>\n\n        Decide how candidate notes should update active note memory.\n\n        Return JSON:\n        {\n          \"operations\": [\n            {\n              \"action\": \"insert | noop | supersede | retract | update\",\n              \"candidate_index\": 0,\n              \"target_note_id\": \"existing-note-id-or-null\",\n              \"patch\": null,\n              \"links_to_create\": [\n                {\n                  \"to_note_id\": \"existing-note-id\",\n                  \"link_type\": \"supports | contradicts | refines | related | supersedes | derived_from\",\n                  \"link_weight\": 1.0\n                }\n              ],\n              \"reason\": \"short explanation\"\n            }\n          ]\n        }\n\n        Actions:\n        - insert: candidate is new reusable context.\n        - noop: candidate duplicates an existing active note or is lower value.\n        - supersede: candidate is a better current version of target_note_id.\n        - update: patch target_note_id without inserting a new note.\n        - retract: target_note_id should no longer be active because TARGET_SOURCE retracts it.\n\n        Rules:\n        - Compare semantic meaning, not wording.\n        - Do not keep duplicate notes just because titles differ.\n        - Prefer updating or superseding an existing note when the candidate refines the same decision, rationale, plan, or procedure.\n        - Insert when the candidate captures a distinct reusable semantic fragment.\n        - Use noop for summary spam, weak paraphrases, or information already captured by an existing note.\n        - Use links_to_create only for strong semantic relations between notes.\n        - target_note_id must be one of Existing active notes below or null.\n        - candidate_index is zero-based from Candidate notes below.\n        - Return one operation per candidate unless TARGET_SOURCE only retracts or updates an existing note.\n        - Return valid JSON only.\n\n        TARGET_SOURCE:\n        Document title: 01. Architecture\nDocument source: agent_memory_handoff/01_architecture.md\nDocument section: 01. Architecture / 11. Write path .. 12. Read path\nDocument lines: 329-466\n\n## 11. Write path\n\n### Step 1. Persist source\nСохраняем raw input:\n- text\n- source type\n- speaker\n- timestamp\n- namespace\n- thread/conversation ids\n- optional embedding\n\n### Step 2. Route\nRouter решает:\n- `noop`\n- `direct_structured_write`\n- `note_write`\n- `mixed`\n\n### Step 3. Retrieve candidate memories\nПеред extraction достаем:\n- похожие claims\n- похожие notes\n- open tasks\n- existing profile\n- candidate entities / aliases\n- recent evidence\n\n### Step 4. Canonicalize entities\nПривязать mentions к existing entities или создать новые.\n\n### Step 5. Extract\nРазные prompts для:\n- claim extraction\n- note construction\n- task update\n- profile update\n\n### Step 6. Reconcile\nСравниваем candidate items с existing items.\n\n### Step 7. Apply transaction\nОдной транзакцией:\n- upsert entities\n- apply claim ops\n- apply note ops\n- apply task ops\n- update profile projection\n- store memory run log\n\n### Step 8. Schedule maintenance\nПо debounce или cron:\n- note consolidation\n- duplicate merge\n- stale cleanup\n- profile repair\n- alias merge\n- retention / archive\n\n## 12. Read path\n\n### Step 1. Decide whether memory is needed\nMemory search нужен, если вопрос:\n- user-specific\n- history-aware\n- task-aware\n- rationale-heavy\n- temporal\n- high-stakes\n\n### Step 2. Load core blocks\nПодтягиваем:\n- short profile\n- active tasks\n- optional session summary\n\n### Step 3. Choose retrieval mode\n\n#### Claim-first\nДля:\n- factual questions\n- preferences\n- current status\n- short “кто/что/когда”\n\n#### Note-first\nДля:\n- “почему решили?”\n- “к чему склонялись?”\n- “что обсуждали?”\n- “какой паттерн уже был?”\n\n#### Mixed\nДля:\n- factual + rationale\n- history + current state\n- task with supporting discussion\n\n#### Evidence-first / evidence-fallback\nДля:\n- конфликтов\n- запросов на подтверждение / цитату\n- высокой ставки\n\n### Step 4. Respect retrieval budget\n`v3` требует явных budget caps.\n\nРекомендуемый старт:\n\n- `factual`\n  - up to `6 claims`\n  - up to `2 tasks`\n  - up to `2 evidence snippets`\n\n- `rationale`\n  - up to `4 notes`\n  - up to `2 claims`\n  - up to `4 evidence snippets`\n\n- `task`\n  - up to `4 tasks`\n  - up to `2 notes`\n  - up to `2 evidence snippets`\n\n- `mixed`\n  - up to `4 claims`\n  - up to `3 notes`\n  - up to `2 tasks`\n  - up to `3 evidence snippets`\n\n### Step 5. Compose answer\nAnswer composer обязан:\n- различать verified vs provisional\n- учитывать conflicts\n- уважать scope boundaries\n- уметь abstain\n- не выдавать note как hard fact без оговорки\n\n        Candidate notes:\n        [0] type=DOC_DIGEST title=Write path is an 8-step transactional pipeline with retrieval-before-extraction summary=In 01. Architecture, the write path is defined as a strict 8-step flow: persist source, route, retrieve candidate memories before extraction, canonicalize entities, extract typed candidates, reconcile with existing items, apply all mutations in one transaction, then schedule maintenance jobs. scope=Applies to section '01. Architecture / 11. Write path .. 12. Read path' in agent_memory_handoff/01_architecture.md entities=entity:<0> keywords=write path,transaction,reconciliation,entity canonicalization tags=architecture,memory_write,pipeline evidence=### Step 7. Apply transaction\n[1] type=DIRECTION title=Read path uses mode selection plus v3 budget caps and cautious answer composition summary=The read path requires deciding whether memory is needed, loading core blocks, selecting retrieval mode (Claim-first, Note-first, Mixed, Evidence-first/fallback), enforcing explicit v3 per-mode retrieval caps, and composing answers that track verification status, conflicts, scope, abstention, and note-vs-fact distinction. scope=Applies to section '01. Architecture / 11. Write path .. 12. Read path' in agent_memory_handoff/01_architecture.md entities=entity:<1>,entity:<0> keywords=read path,retrieval mode,budget caps,answer composer,v3 tags=architecture,retrieval_policy,answering evidence=`v3` требует явных budget caps.\n\n        Existing active notes:\n        id=hot-path:note:<0> type=DIRECTION status=ACTIVE maturity=FRESH title=Write path must be reconciliation-first, not append-only summary=The architecture defines four mandatory write-time steps: decide whether to store memory, retrieve similar/conflicting items, convert input into typed candidates, and apply a mutation policy (`insert`/`update`/`supersede`/`retract`/`noop`). Skipping retrieval/reconciliation causes duplicate growth, stale preferences, conflicting notes, task explosion, and summary spam. scope=Applies to section '01. Architecture / 9. Главная мысль: update не должен быть append-only' in agent_memory_handoff/01_architecture.md keywords=append-only,reconciliation,retrieval-before-update,mutation policy,summary spam tags=architecture,memory-write-policy,reconciliation useCount=0\nid=hot-path:note:<1> type=DOC_DIGEST status=ACTIVE maturity=FRESH title=Recommended architecture pipeline and component roles summary=The recommended flow routes source inputs through Memory Router and Write-Time Retrieval into Entity Canonicalizer, then branches to Claim/Task/Profile/Note processing with reconciliers writing to Postgres + pgvector; background workers perform consolidation, repair, and retention, while runtime answering uses Read-Time Retrieval Planner and Answer Composer. scope=Applies to section '01. Architecture / 3. Основная модель записи .. 4. Рекомендуемая архитектура' in agent_memory_handoff/01_architecture.md keywords=Memory Router,Entity Canonicalizer,Postgres + pgvector,Read-Time Retrieval Planner tags=architecture_diagram,pipeline,component_roles useCount=0\nid=hot-path:note:<2> type=DOC_DIGEST status=ACTIVE maturity=FRESH title=Five-tier memory model separates prompt context, typed memory, notes, evidence, and indexes summary=The architecture defines five storage tiers: Tier A for minimal in-context prompt blocks, Tier B for typed long-term records (`Entity`, `Claim`, `Profile`, `Task`, `Episode`, `Source`, `MemoryRun`), Tier C for semantic note structures (`Note`, `NoteSource`, `NoteEntity`, `NoteLink`), Tier D for immutable raw evidence, and Tier E for retrieval indexes over stored data. scope=Applies to section '01. Architecture / 5. Storage tiers .. 6. Structured scope' in agent_memory_handoff/01_architecture.md keywords=Storage tiers,Tier A,Tier B,Tier C,Tier D,Tier E tags=architecture,memory_model,storage_tiers useCount=0\nid=hot-path:note:<3> type=DIRECTION status=ACTIVE maturity=FRESH title=Criteria for choosing Claim vs Note vs both summary=The architecture defines a write policy: use Claim for explicit, normalizable, precise, comparable information; use Note for important retrieval-useful context that is too rich or too early for hard facts; and write both when material contains both explicit facts/tasks and rationale/direction. scope=Applies to section '01. Architecture / 7. Когда писать `Claim`, а когда `Note`' in agent_memory_handoff/01_architecture.md keywords=Claim vs Note,write policy,rationale,hard fact tags=memory_architecture,write_path,policy useCount=0\nid=hot-path:note:<4> type=DOC_DIGEST status=ACTIVE maturity=FRESH title=Responsibility split across runtime, memory worker, and storage layer summary=`User-facing runtime` handles dialogue, tool orchestration, read-time retrieval, and cheap routing/escalation, and must avoid heavy reconciliation/repair. `Memory worker / manager` owns routing, retrieval-before-update, canonicalization, extraction, reconciliation, consolidation, repair, and retention. `Storage layer` is responsible for immutable evidence, typed tables, transactional updates, line...[truncated 30 chars] scope=Applies to section '01. Architecture / 10. Разделение ответственности' in agent_memory_handoff/01_architecture.md keywords=User-facing runtime,Memory worker / manager,Storage layer,separation of responsibilities tags=architecture,component-roles,operating-model useCount=0\nid=hot-path:note:<5> type=DOC_DIGEST status=ACTIVE maturity=FRESH title=Two semantic write paths and two maintenance paths define memory flow summary=The architecture explicitly separates memory handling into two semantic write paths (Direct structured path and Note path) and two maintenance paths (Consolidation and Repair), establishing when to store hard structured data versus contextual notes and how quality is maintained over time. scope=Applies to section '01. Architecture / 3. Основная модель записи .. 4. Рекомендуемая архитектура' in agent_memory_handoff/01_architecture.md keywords=Direct structured path,Note path,Consolidation,Repair tags=memory_architecture,write_paths,maintenance_paths useCount=0\nid=hot-path:note:<6> type=DOC_DIGEST status=ACTIVE maturity=FRESH title=Memory layer goals for AI agent continuity and maintainability summary=The memory layer must persist across sessions, store facts/preferences/tasks/rationale/evolving plans, support knowledge updates, preserve provenance, avoid turning every turn into permanent knowledge, and support aging, archiving, and repair. scope=Applies to section '01. Architecture / 1. Цель системы .. 2. Центральная архитектурная идея' in agent_memory_handoff/01_architecture.md keywords=memory layer goals,provenance,knowledge update,archive,repair tags=requirements,architecture,memory_policy useCount=0\nid=hot-path:note:<7> type=DIRECTION status=ACTIVE maturity=FRESH title=v3 requires explicit dual scope representation with minimum scope_json fields summary=Compared with `v2`, `v3` makes scope explicit by requiring both `scope_text` (human boundary explanation) and `scope_json` (machine envelope) with at least `scope_kind`, `project_id`, `environment`, `subject_entity_id`, `conversation_id`, `modality`, and `audience` to improve reconciliation and reduce retrieval overgeneralization or false note conflicts. scope=Applies to section '01. Architecture / 5. Storage tiers .. 6. Structured scope' in agent_memory_handoff/01_architecture.md keywords=v3,structured scope,scope_json,scope_text,reconciliation,retrieval tags=scope,architecture,design_direction useCount=0\nid=hot-path:note:<8> type=DOC_DIGEST status=ACTIVE maturity=FRESH title=v3 memory architecture uses four orthogonal axes summary=In `v3`, the memory system is explicitly designed around four axes—Representation, Lifecycle, Retrieval policy, and Scope and lineage—to avoid collapsing into either a transcript dump or a brittle fact store. scope=Applies to section '01. Architecture / 1. Цель системы .. 2. Центральная архитектурная идея' in agent_memory_handoff/01_architecture.md keywords=v3,four axes,Representation,Lifecycle,Retrieval policy,Scope and lineage tags=architecture,memory_model,design_principle useCount=0\nid=hot-path:note:<9> type=DIRECTION status=ACTIVE maturity=FRESH title=Truth state and retrieval state must remain separate axes summary=The document states that truth status and retrieval hotness are independent: truth state tracks knowledge validity, while retrieval state tracks search/hot-path handling. Items can be resolved or superseded in truth while still warm for rationale or historical retrieval. scope=Applies to section '01. Architecture / 8. Truth state и retrieval state' in agent_memory_handoff/01_architecture.md keywords=truth state,retrieval state,warm,superseded,resolved tags=state_model,retrieval_policy,memory_architecture useCount=0",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Reconcile note candidates against active memory notes.",
+                "name": "memory_note_reconciler",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "operations": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "action": {
+                                        "enum": [
+                                            "insert",
+                                            "noop",
+                                            "supersede",
+                                            "retract",
+                                            "update"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "candidate_index": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
+                                    },
+                                    "links_to_create": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "link_type": {
+                                                    "enum": [
+                                                        "supports",
+                                                        "contradicts",
+                                                        "refines",
+                                                        "related",
+                                                        "supersedes",
+                                                        "derived_from"
+                                                    ],
+                                                    "type": "string"
+                                                },
+                                                "link_weight": {
+                                                    "type": "number"
+                                                },
+                                                "to_note_id": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "to_note_id",
+                                                "link_type",
+                                                "link_weight"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "patch": {
+                                        "anyOf": [
+                                            {
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "maturity": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "fresh",
+                                                                    "stabilizing",
+                                                                    "mature",
+                                                                    "consolidated"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "maturity_score": {
+                                                        "type": "number"
+                                                    },
+                                                    "scope_json": {
+                                                        "anyOf": [
+                                                            {
+                                                                "additionalProperties": false,
+                                                                "properties": {
+                                                                    "basis": {
+                                                                        "enum": [
+                                                                            "explicit",
+                                                                            "inferred",
+                                                                            "summarized",
+                                                                            "imported"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "kind": {
+                                                                        "enum": [
+                                                                            "global",
+                                                                            "conversation",
+                                                                            "entity",
+                                                                            "environment",
+                                                                            "document",
+                                                                            "project"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "text": {
+                                                                        "type": "string"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "kind",
+                                                                    "text",
+                                                                    "basis"
+                                                                ],
+                                                                "type": "object"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "status": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "active",
+                                                                    "superseded",
+                                                                    "retracted",
+                                                                    "resolved",
+                                                                    "stale",
+                                                                    "candidate"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "summary": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "title": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "title",
+                                                    "summary",
+                                                    "scope_json",
+                                                    "status",
+                                                    "maturity",
+                                                    "maturity_score"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    },
+                                    "target_note_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "action",
+                                    "candidate_index",
+                                    "target_note_id",
+                                    "patch",
+                                    "links_to_create",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "operations"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "memoryNamespace": "project:<0>",
+                "memoryNoteReconciler": true,
+                "memorySourceId": "external:document-section:5bc1ee88bf79494e60d9bab270290121"
+            }
+        },
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteReconciler v1.\n        Namespace: project:<0>\n\n        Decide how candidate notes should update active note memory.\n\n        Return JSON:\n        {\n          \"operations\": [\n            {\n              \"action\": \"insert | noop | supersede | retract | update\",\n              \"candidate_index\": 0,\n              \"target_note_id\": \"existing-note-id-or-null\",\n              \"patch\": null,\n              \"links_to_create\": [\n                {\n                  \"to_note_id\": \"existing-note-id\",\n                  \"link_type\": \"supports | contradicts | refines | related | supersedes | derived_from\",\n                  \"link_weight\": 1.0\n                }\n              ],\n              \"reason\": \"short explanation\"\n            }\n          ]\n        }\n\n        Actions:\n        - insert: candidate is new reusable context.\n        - noop: candidate duplicates an existing active note or is lower value.\n        - supersede: candidate is a better current version of target_note_id.\n        - update: patch target_note_id without inserting a new note.\n        - retract: target_note_id should no longer be active because TARGET_SOURCE retracts it.\n\n        Rules:\n        - Compare semantic meaning, not wording.\n        - Do not keep duplicate notes just because titles differ.\n        - Prefer updating or superseding an existing note when the candidate refines the same decision, rationale, plan, or procedure.\n        - Insert when the candidate captures a distinct reusable semantic fragment.\n        - Use noop for summary spam, weak paraphrases, or information already captured by an existing note.\n        - Use links_to_create only for strong semantic relations between notes.\n        - target_note_id must be one of Existing active notes below or null.\n        - candidate_index is zero-based from Candidate notes below.\n        - Return one operation per candidate unless TARGET_SOURCE only retracts or updates an existing note.\n        - Return valid JSON only.\n\n        TARGET_SOURCE:\n        Document title: 01. Architecture\nDocument source: agent_memory_handoff/01_architecture.md\nDocument section: 01. Architecture / 11. Write path .. 12. Read path\nDocument lines: 329-466\n\n## 11. Write path\n\n### Step 1. Persist source\nСохраняем raw input:\n- text\n- source type\n- speaker\n- timestamp\n- namespace\n- thread/conversation ids\n- optional embedding\n\n### Step 2. Route\nRouter решает:\n- `noop`\n- `direct_structured_write`\n- `note_write`\n- `mixed`\n\n### Step 3. Retrieve candidate memories\nПеред extraction достаем:\n- похожие claims\n- похожие notes\n- open tasks\n- existing profile\n- candidate entities / aliases\n- recent evidence\n\n### Step 4. Canonicalize entities\nПривязать mentions к existing entities или создать новые.\n\n### Step 5. Extract\nРазные prompts для:\n- claim extraction\n- note construction\n- task update\n- profile update\n\n### Step 6. Reconcile\nСравниваем candidate items с existing items.\n\n### Step 7. Apply transaction\nОдной транзакцией:\n- upsert entities\n- apply claim ops\n- apply note ops\n- apply task ops\n- update profile projection\n- store memory run log\n\n### Step 8. Schedule maintenance\nПо debounce или cron:\n- note consolidation\n- duplicate merge\n- stale cleanup\n- profile repair\n- alias merge\n- retention / archive\n\n## 12. Read path\n\n### Step 1. Decide whether memory is needed\nMemory search нужен, если вопрос:\n- user-specific\n- history-aware\n- task-aware\n- rationale-heavy\n- temporal\n- high-stakes\n\n### Step 2. Load core blocks\nПодтягиваем:\n- short profile\n- active tasks\n- optional session summary\n\n### Step 3. Choose retrieval mode\n\n#### Claim-first\nДля:\n- factual questions\n- preferences\n- current status\n- short “кто/что/когда”\n\n#### Note-first\nДля:\n- “почему решили?”\n- “к чему склонялись?”\n- “что обсуждали?”\n- “какой паттерн уже был?”\n\n#### Mixed\nДля:\n- factual + rationale\n- history + current state\n- task with supporting discussion\n\n#### Evidence-first / evidence-fallback\nДля:\n- конфликтов\n- запросов на подтверждение / цитату\n- высокой ставки\n\n### Step 4. Respect retrieval budget\n`v3` требует явных budget caps.\n\nРекомендуемый старт:\n\n- `factual`\n  - up to `6 claims`\n  - up to `2 tasks`\n  - up to `2 evidence snippets`\n\n- `rationale`\n  - up to `4 notes`\n  - up to `2 claims`\n  - up to `4 evidence snippets`\n\n- `task`\n  - up to `4 tasks`\n  - up to `2 notes`\n  - up to `2 evidence snippets`\n\n- `mixed`\n  - up to `4 claims`\n  - up to `3 notes`\n  - up to `2 tasks`\n  - up to `3 evidence snippets`\n\n### Step 5. Compose answer\nAnswer composer обязан:\n- различать verified vs provisional\n- учитывать conflicts\n- уважать scope boundaries\n- уметь abstain\n- не выдавать note как hard fact без оговорки\n\n        Candidate notes:\n        [0] type=DOC_DIGEST title=Write path is an 8-step transactional pipeline with retrieval-before-extraction summary=In 01. Architecture, the write path is defined as a strict 8-step flow: persist source, route, retrieve candidate memories before extraction, canonicalize entities, extract typed candidates, reconcile with existing items, apply all mutations in one transaction, then schedule maintenance jobs. scope=Applies to section '01. Architecture / 11. Write path .. 12. Read path' in agent_memory_handoff/01_architecture.md entities=entity:<0> keywords=write path,transaction,reconciliation,entity canonicalization tags=architecture,memory_write,pipeline evidence=### Step 7. Apply transaction\n[1] type=DIRECTION title=Read path uses mode selection plus v3 budget caps and cautious answer composition summary=The read path requires deciding whether memory is needed, loading core blocks, selecting retrieval mode (Claim-first, Note-first, Mixed, Evidence-first/fallback), enforcing explicit v3 per-mode retrieval caps, and composing answers that track verification status, conflicts, scope, abstention, and note-vs-fact distinction. scope=Applies to section '01. Architecture / 11. Write path .. 12. Read path' in agent_memory_handoff/01_architecture.md entities=entity:<1>,entity:<0> keywords=read path,retrieval mode,budget caps,answer composer,v3 tags=architecture,retrieval_policy,answering evidence=`v3` требует явных budget caps.\n\n        Existing active notes:\n        id=hot-path:note:<0> type=DIRECTION status=ACTIVE maturity=FRESH title=Write path must be reconciliation-first, not append-only summary=The architecture defines four mandatory write-time steps: decide whether to store memory, retrieve similar/conflicting items, convert input into typed candidates, and apply a mutation policy (`insert`/`update`/`supersede`/`retract`/`noop`). Skipping retrieval/reconciliation causes duplicate growth, stale preferences, conflicting notes, task explosion, and summary spam. scope=Applies to section '01. Architecture / 9. Главная мысль: update не должен быть append-only' in agent_memory_handoff/01_architecture.md keywords=append-only,reconciliation,retrieval-before-update,mutation policy,summary spam tags=architecture,memory-write-policy,reconciliation useCount=0\nid=hot-path:note:<1> type=DOC_DIGEST status=ACTIVE maturity=FRESH title=Recommended architecture pipeline and component roles summary=The recommended flow routes source inputs through Memory Router and Write-Time Retrieval into Entity Canonicalizer, then branches to Claim/Task/Profile/Note processing with reconciliers writing to Postgres + pgvector; background workers perform consolidation, repair, and retention, while runtime answering uses Read-Time Retrieval Planner and Answer Composer. scope=Applies to section '01. Architecture / 3. Основная модель записи .. 4. Рекомендуемая архитектура' in agent_memory_handoff/01_architecture.md keywords=Memory Router,Entity Canonicalizer,Postgres + pgvector,Read-Time Retrieval Planner tags=architecture_diagram,pipeline,component_roles useCount=0\nid=hot-path:note:<2> type=DOC_DIGEST status=ACTIVE maturity=FRESH title=Five-tier memory model separates prompt context, typed memory, notes, evidence, and indexes summary=The architecture defines five storage tiers: Tier A for minimal in-context prompt blocks, Tier B for typed long-term records (`Entity`, `Claim`, `Profile`, `Task`, `Episode`, `Source`, `MemoryRun`), Tier C for semantic note structures (`Note`, `NoteSource`, `NoteEntity`, `NoteLink`), Tier D for immutable raw evidence, and Tier E for retrieval indexes over stored data. scope=Applies to section '01. Architecture / 5. Storage tiers .. 6. Structured scope' in agent_memory_handoff/01_architecture.md keywords=Storage tiers,Tier A,Tier B,Tier C,Tier D,Tier E tags=architecture,memory_model,storage_tiers useCount=0\nid=hot-path:note:<3> type=DIRECTION status=ACTIVE maturity=FRESH title=Criteria for choosing Claim vs Note vs both summary=The architecture defines a write policy: use Claim for explicit, normalizable, precise, comparable information; use Note for important retrieval-useful context that is too rich or too early for hard facts; and write both when material contains both explicit facts/tasks and rationale/direction. scope=Applies to section '01. Architecture / 7. Когда писать `Claim`, а когда `Note`' in agent_memory_handoff/01_architecture.md keywords=Claim vs Note,write policy,rationale,hard fact tags=memory_architecture,write_path,policy useCount=0\nid=hot-path:note:<4> type=DOC_DIGEST status=ACTIVE maturity=FRESH title=Responsibility split across runtime, memory worker, and storage layer summary=`User-facing runtime` handles dialogue, tool orchestration, read-time retrieval, and cheap routing/escalation, and must avoid heavy reconciliation/repair. `Memory worker / manager` owns routing, retrieval-before-update, canonicalization, extraction, reconciliation, consolidation, repair, and retention. `Storage layer` is responsible for immutable evidence, typed tables, transactional updates, line...[truncated 30 chars] scope=Applies to section '01. Architecture / 10. Разделение ответственности' in agent_memory_handoff/01_architecture.md keywords=User-facing runtime,Memory worker / manager,Storage layer,separation of responsibilities tags=architecture,component-roles,operating-model useCount=0\nid=hot-path:note:<5> type=DOC_DIGEST status=ACTIVE maturity=FRESH title=Two semantic write paths and two maintenance paths define memory flow summary=The architecture explicitly separates memory handling into two semantic write paths (Direct structured path and Note path) and two maintenance paths (Consolidation and Repair), establishing when to store hard structured data versus contextual notes and how quality is maintained over time. scope=Applies to section '01. Architecture / 3. Основная модель записи .. 4. Рекомендуемая архитектура' in agent_memory_handoff/01_architecture.md keywords=Direct structured path,Note path,Consolidation,Repair tags=memory_architecture,write_paths,maintenance_paths useCount=0\nid=hot-path:note:<6> type=DOC_DIGEST status=ACTIVE maturity=FRESH title=Memory layer goals for AI agent continuity and maintainability summary=The memory layer must persist across sessions, store facts/preferences/tasks/rationale/evolving plans, support knowledge updates, preserve provenance, avoid turning every turn into permanent knowledge, and support aging, archiving, and repair. scope=Applies to section '01. Architecture / 1. Цель системы .. 2. Центральная архитектурная идея' in agent_memory_handoff/01_architecture.md keywords=memory layer goals,provenance,knowledge update,archive,repair tags=requirements,architecture,memory_policy useCount=0\nid=hot-path:note:<7> type=DIRECTION status=ACTIVE maturity=FRESH title=v3 requires explicit dual scope representation with minimum scope_json fields summary=Compared with `v2`, `v3` makes scope explicit by requiring both `scope_text` (human boundary explanation) and `scope_json` (machine envelope) with at least `scope_kind`, `project_id`, `environment`, `subject_entity_id`, `conversation_id`, `modality`, and `audience` to improve reconciliation and reduce retrieval overgeneralization or false note conflicts. scope=Applies to section '01. Architecture / 5. Storage tiers .. 6. Structured scope' in agent_memory_handoff/01_architecture.md keywords=v3,structured scope,scope_json,scope_text,reconciliation,retrieval tags=scope,architecture,design_direction useCount=0\nid=hot-path:note:<8> type=DOC_DIGEST status=ACTIVE maturity=FRESH title=v3 memory architecture uses four orthogonal axes summary=In `v3`, the memory system is explicitly designed around four axes—Representation, Lifecycle, Retrieval policy, and Scope and lineage—to avoid collapsing into either a transcript dump or a brittle fact store. scope=Applies to section '01. Architecture / 1. Цель системы .. 2. Центральная архитектурная идея' in agent_memory_handoff/01_architecture.md keywords=v3,four axes,Representation,Lifecycle,Retrieval policy,Scope and lineage tags=architecture,memory_model,design_principle useCount=0\nid=hot-path:note:<9> type=DIRECTION status=ACTIVE maturity=FRESH title=Truth state and retrieval state must remain separate axes summary=The document states that truth status and retrieval hotness are independent: truth state tracks knowledge validity, while retrieval state tracks search/hot-path handling. Items can be resolved or superseded in truth while still warm for rationale or historical retrieval. scope=Applies to section '01. Architecture / 8. Truth state и retrieval state' in agent_memory_handoff/01_architecture.md keywords=truth state,retrieval state,warm,superseded,resolved tags=state_model,retrieval_policy,memory_architecture useCount=0",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "memory_note_reconciler",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "operations": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "action": {
+                                        "enum": [
+                                            "insert",
+                                            "noop",
+                                            "supersede",
+                                            "retract",
+                                            "update"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "candidate_index": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
+                                    },
+                                    "links_to_create": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "link_type": {
+                                                    "enum": [
+                                                        "supports",
+                                                        "contradicts",
+                                                        "refines",
+                                                        "related",
+                                                        "supersedes",
+                                                        "derived_from"
+                                                    ],
+                                                    "type": "string"
+                                                },
+                                                "link_weight": {
+                                                    "type": "number"
+                                                },
+                                                "to_note_id": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "to_note_id",
+                                                "link_type",
+                                                "link_weight"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "patch": {
+                                        "anyOf": [
+                                            {
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "maturity": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "fresh",
+                                                                    "stabilizing",
+                                                                    "mature",
+                                                                    "consolidated"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "maturity_score": {
+                                                        "type": "number"
+                                                    },
+                                                    "scope_json": {
+                                                        "anyOf": [
+                                                            {
+                                                                "additionalProperties": false,
+                                                                "properties": {
+                                                                    "basis": {
+                                                                        "enum": [
+                                                                            "explicit",
+                                                                            "inferred",
+                                                                            "summarized",
+                                                                            "imported"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "kind": {
+                                                                        "enum": [
+                                                                            "global",
+                                                                            "conversation",
+                                                                            "entity",
+                                                                            "environment",
+                                                                            "document",
+                                                                            "project"
+                                                                        ],
+                                                                        "type": "string"
+                                                                    },
+                                                                    "text": {
+                                                                        "type": "string"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "kind",
+                                                                    "text",
+                                                                    "basis"
+                                                                ],
+                                                                "type": "object"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "status": {
+                                                        "anyOf": [
+                                                            {
+                                                                "enum": [
+                                                                    "active",
+                                                                    "superseded",
+                                                                    "retracted",
+                                                                    "resolved",
+                                                                    "stale",
+                                                                    "candidate"
+                                                                ],
+                                                                "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "summary": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    },
+                                                    "title": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "title",
+                                                    "summary",
+                                                    "scope_json",
+                                                    "status",
+                                                    "maturity",
+                                                    "maturity_score"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    },
+                                    "target_note_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "action",
+                                    "candidate_index",
+                                    "target_note_id",
+                                    "patch",
+                                    "links_to_create",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "operations"
+                    ],
+                    "type": "object"
+                },
+                "description": "Reconcile note candidates against active memory notes.",
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "memoryNamespace": "project:<0>",
+                "memoryNoteReconciler": true,
+                "memorySourceId": "external:document-section:5bc1ee88bf79494e60d9bab270290121"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"operations\":[{\"action\":\"update\",\"candidate_index\":0,\"links_to_create\":[{\"link_type\":\"refines\",\"link_weight\":0.9,\"to_note_id\":\"hot-path:note:<1>\"}],\"patch\":{\"maturity\":\"stabilizing\",\"maturity_score\":0.72,\"scope_json\":{\"basis\":\"explicit\",\"kind\":\"document\",\"text\":\"Applies to section '01. Architecture / 11. Write path .. 12. Read path' in agent_memory_handoff/01_architecture.md\"},\"status\":\"active\",\"summary\":\"The write path is a strict 8-step flow: persist source, route (`noop`/`direct_structured_write`/`note_write`/`mixed`), retrieve candidate memories before extraction, canonicalize entities, extract typed candidates, reconcile with existing items, apply all mutations in one transaction, then schedule maintenance jobs.\",\"title\":\"Write path is an 8-step transactional pipeline with retrieval-before-extraction\"},\"reason\":\"Same semantic topic as existing write-path direction, but candidate is a fuller and more precise stepwise version for this section.\",\"target_note_id\":\"hot-path:note:<0>\"},{\"action\":\"insert\",\"candidate_index\":1,\"links_to_create\":[{\"link_type\":\"refines\",\"link_weight\":0.79,\"to_note_id\":\"hot-path:note:<1>\"},{\"link_type\":\"related\",\"link_weight\":0.63,\"to_note_id\":\"hot-path:note:<9>\"}],\"patch\":null,\"reason\":\"Distinct reusable guidance for read-path retrieval mode selection, explicit v3 budget caps, and answer-composition safeguards; not duplicated in active notes.\",\"target_note_id\":null}]}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 3703,
+                "completionTokens": 436,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

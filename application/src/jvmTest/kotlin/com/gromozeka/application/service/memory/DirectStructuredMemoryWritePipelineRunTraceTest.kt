@@ -14,8 +14,8 @@ import com.gromozeka.domain.model.memory.MemoryRun
 import com.gromozeka.domain.model.memory.MemorySemanticType
 import com.gromozeka.domain.model.memory.MemorySource
 import com.gromozeka.domain.model.memory.MemoryStore
-import com.gromozeka.domain.model.memory.MemoryTaskUpdateOp
-import com.gromozeka.domain.model.memory.MemoryTaskUpdater
+import com.gromozeka.domain.model.memory.MemoryActionItemUpdateOp
+import com.gromozeka.domain.model.memory.MemoryActionItemUpdater
 import com.gromozeka.domain.model.memory.MemoryWriteRetrievalPlan
 import com.gromozeka.domain.model.memory.MemoryWriteRetrievalPlanner
 import com.gromozeka.domain.model.memory.MemoryWriteRouter
@@ -54,7 +54,7 @@ class DirectStructuredMemoryWritePipelineRunTraceTest {
             noteReconciler = InsertOnlyMemoryNoteReconciler,
             claimExtractor = FixedMemoryClaimExtractor(),
             claimReconciler = InsertOnlyMemoryClaimReconciler,
-            taskUpdater = FixedMemoryTaskUpdater(),
+            actionItemUpdater = FixedMemoryActionItemUpdater(),
             materializer = DefaultDirectStructuredMemoryWriteMaterializer(SequentialMemoryIdFactory("trace-test")),
             clock = FixedMemoryClock(NOW),
         )
@@ -157,7 +157,7 @@ class DirectStructuredMemoryWritePipelineRunTraceTest {
         val pipeline = branchTestPipeline(
             noteConstructor = RecordingMemoryNoteConstructor(events, "note"),
             claimExtractor = RecordingMemoryClaimExtractor(events, "claim"),
-            taskUpdater = RecordingMemoryTaskUpdater(events, "task"),
+            actionItemUpdater = RecordingMemoryActionItemUpdater(events, "actionItem"),
             branchParallelism = 1,
         )
 
@@ -168,7 +168,7 @@ class DirectStructuredMemoryWritePipelineRunTraceTest {
             )
         )
 
-        assertEquals(listOf("note", "claim", "task"), events.toList())
+        assertEquals(listOf("note", "claim", "actionItem"), events.toList())
     }
 
     @Test
@@ -177,7 +177,7 @@ class DirectStructuredMemoryWritePipelineRunTraceTest {
         val pipeline = branchTestPipeline(
             noteConstructor = CoordinatedMemoryNoteConstructor(probe, "note"),
             claimExtractor = CoordinatedMemoryClaimExtractor(probe, "claim"),
-            taskUpdater = CoordinatedMemoryTaskUpdater(probe, "task"),
+            actionItemUpdater = CoordinatedMemoryActionItemUpdater(probe, "actionItem"),
             branchParallelism = 3,
         )
 
@@ -190,7 +190,7 @@ class DirectStructuredMemoryWritePipelineRunTraceTest {
             )
         }
 
-        assertEquals(setOf("note", "claim", "task"), probe.startedBranches.toSet())
+        assertEquals(setOf("note", "claim", "actionItem"), probe.startedBranches.toSet())
     }
 
     private fun noopRouterPipeline(): DirectStructuredMemoryWritePipeline =
@@ -208,7 +208,7 @@ class DirectStructuredMemoryWritePipelineRunTraceTest {
             noteReconciler = InsertOnlyMemoryNoteReconciler,
             claimExtractor = FixedMemoryClaimExtractor(),
             claimReconciler = InsertOnlyMemoryClaimReconciler,
-            taskUpdater = FixedMemoryTaskUpdater(),
+            actionItemUpdater = FixedMemoryActionItemUpdater(),
             materializer = DefaultDirectStructuredMemoryWriteMaterializer(SequentialMemoryIdFactory("trace-test")),
             clock = FixedMemoryClock(NOW),
         )
@@ -223,7 +223,7 @@ class DirectStructuredMemoryWritePipelineRunTraceTest {
             noteReconciler = InsertOnlyMemoryNoteReconciler,
             claimExtractor = FixedMemoryClaimExtractor(),
             claimReconciler = InsertOnlyMemoryClaimReconciler,
-            taskUpdater = FixedMemoryTaskUpdater(),
+            actionItemUpdater = FixedMemoryActionItemUpdater(),
             materializer = DefaultDirectStructuredMemoryWriteMaterializer(SequentialMemoryIdFactory("trace-test")),
             clock = FixedMemoryClock(NOW),
         )
@@ -231,7 +231,7 @@ class DirectStructuredMemoryWritePipelineRunTraceTest {
     private fun branchTestPipeline(
         noteConstructor: MemoryNoteConstructor,
         claimExtractor: MemoryClaimExtractor,
-        taskUpdater: MemoryTaskUpdater,
+        actionItemUpdater: MemoryActionItemUpdater,
         branchParallelism: Int,
     ): DirectStructuredMemoryWritePipeline =
         DirectStructuredMemoryWritePipeline(
@@ -242,7 +242,7 @@ class DirectStructuredMemoryWritePipelineRunTraceTest {
                     memoryTypes = setOf(
                         MemorySemanticType.NOTE,
                         MemorySemanticType.CLAIM,
-                        MemorySemanticType.TASK,
+                        MemorySemanticType.ACTION_ITEM,
                         MemorySemanticType.ENTITY,
                         MemorySemanticType.SOURCE,
                     ),
@@ -256,7 +256,7 @@ class DirectStructuredMemoryWritePipelineRunTraceTest {
             noteReconciler = InsertOnlyMemoryNoteReconciler,
             claimExtractor = claimExtractor,
             claimReconciler = InsertOnlyMemoryClaimReconciler,
-            taskUpdater = taskUpdater,
+            actionItemUpdater = actionItemUpdater,
             materializer = DefaultDirectStructuredMemoryWriteMaterializer(SequentialMemoryIdFactory("branch-test")),
             clock = FixedMemoryClock(NOW),
             branchParallelism = branchParallelism,
@@ -335,17 +335,17 @@ private class RecordingMemoryClaimExtractor(
     }
 }
 
-private class RecordingMemoryTaskUpdater(
+private class RecordingMemoryActionItemUpdater(
     private val events: MutableList<String>,
     private val branch: String,
-) : MemoryTaskUpdater {
+) : MemoryActionItemUpdater {
     override suspend fun update(
         request: DirectStructuredMemoryWriteRequest,
         routeDecision: MemoryRouteDecision,
         retrievalPlan: MemoryWriteRetrievalPlan,
         retrievedHits: List<MemoryStore.SearchHit>,
         entityOps: List<MemoryEntityCanonicalizationOp>,
-    ): List<MemoryTaskUpdateOp> {
+    ): List<MemoryActionItemUpdateOp> {
         events += branch
         return emptyList()
     }
@@ -384,17 +384,17 @@ private class CoordinatedMemoryClaimExtractor(
     }
 }
 
-private class CoordinatedMemoryTaskUpdater(
+private class CoordinatedMemoryActionItemUpdater(
     private val probe: BranchStartProbe,
     private val branch: String,
-) : MemoryTaskUpdater {
+) : MemoryActionItemUpdater {
     override suspend fun update(
         request: DirectStructuredMemoryWriteRequest,
         routeDecision: MemoryRouteDecision,
         retrievalPlan: MemoryWriteRetrievalPlan,
         retrievedHits: List<MemoryStore.SearchHit>,
         entityOps: List<MemoryEntityCanonicalizationOp>,
-    ): List<MemoryTaskUpdateOp> {
+    ): List<MemoryActionItemUpdateOp> {
         probe.markStarted(branch)
         return emptyList()
     }

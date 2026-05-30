@@ -170,7 +170,7 @@ interface AppLogicVM {
     
     /**
      * Remember current thread in typed long-term memory.
-     * Stores durable conversation facts, notes, tasks, and related memory objects.
+     * Stores durable conversation facts, notes, action items, and related memory objects.
      * This is a TRANSACTIONAL operation from the caller perspective.
      *
      * Safe to call when no tab selected - operation is no-op.

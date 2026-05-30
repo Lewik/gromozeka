@@ -7,7 +7,7 @@ import com.gromozeka.domain.model.memory.MemoryNamespaceSnapshot
 import com.gromozeka.domain.model.memory.MemoryNote
 import com.gromozeka.domain.model.memory.MemorySource
 import com.gromozeka.domain.model.memory.MemoryStore
-import com.gromozeka.domain.model.memory.MemoryTask
+import com.gromozeka.domain.model.memory.MemoryActionItem
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -49,7 +49,7 @@ internal object MemoryReadSelectorCandidateRenderer {
 
             is MemoryStore.SearchHit.ClaimHit -> claim.toClaimCandidateView(score, snapshot)
             is MemoryStore.SearchHit.NoteHit -> note.toNoteCandidateView(score, snapshot)
-            is MemoryStore.SearchHit.TaskHit -> task.toTaskCandidateView(score)
+            is MemoryStore.SearchHit.ActionItemHit -> actionItem.toTaskCandidateView(score)
             is MemoryStore.SearchHit.ProfileHit -> CandidateView(
                 type = "profile",
                 id = profile.id.value,
@@ -206,9 +206,9 @@ internal object MemoryReadSelectorCandidateRenderer {
         )
     }
 
-    private fun MemoryTask.toTaskCandidateView(score: Double): CandidateView =
+    private fun MemoryActionItem.toTaskCandidateView(score: Double): CandidateView =
         CandidateView(
-            type = "task",
+            type = "action_item",
             id = id.value,
             score = score,
             status = status.name,
@@ -216,7 +216,7 @@ internal object MemoryReadSelectorCandidateRenderer {
             title = title.limitForSelectorView(300),
             text = description.orEmpty().limitForSelectorView(700),
             evidence = evidenceRefs.toEvidenceViews(),
-            selectionHint = "Task memory is for open commitments/workflow state; select only when the target asks about work to do or task status.",
+            selectionHint = "Action item memory is for open commitments/workflow state; select only when the target asks about work to do or action item status.",
         )
 
     private fun MemoryEpisode.toEpisodeCandidateView(score: Double): CandidateView =
@@ -238,8 +238,8 @@ internal object MemoryReadSelectorCandidateRenderer {
             notes
                 .filter { note -> note.evidenceRefs.any { it.sourceId == sourceId } }
                 .mapTo(this) { it.toTypedMemoryRef(this@typedRefsSupportedBy) }
-            tasks
-                .filter { task -> task.evidenceRefs.any { it.sourceId == sourceId } }
+            actionItems
+                .filter { actionItem -> actionItem.evidenceRefs.any { it.sourceId == sourceId } }
                 .mapTo(this) { it.toTypedMemoryRef() }
             episodes
                 .filter { episode -> episode.evidenceRefs.any { it.sourceId == sourceId } }
@@ -316,9 +316,9 @@ internal object MemoryReadSelectorCandidateRenderer {
             overriddenByIds = snapshot.activeNoteReplacementsFor(this).map { it.id },
         )
 
-    private fun MemoryTask.toTypedMemoryRef(): TypedMemoryRef =
+    private fun MemoryActionItem.toTypedMemoryRef(): TypedMemoryRef =
         TypedMemoryRef(
-            type = "task",
+            type = "action_item",
             id = id.value,
             status = status.name,
             lifecycleState = status.name.lowercase(),

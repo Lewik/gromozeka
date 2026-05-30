@@ -13,7 +13,7 @@
             "routeDecisionIn": ["DIRECT_STRUCTURED_WRITE", "MIXED"],
             "materializedClaimsMin": 1,
             "materializedClaimsMax": 4,
-            "materializedTasksMax": 0
+            "materializedActionItemsMax": 0
           }
         }
       ]
@@ -22,7 +22,7 @@
   "expectedAfterSeeds": {
     "activeClaimsMin": 1,
     "activeClaimsMax": 4,
-    "tasksMax": 0,
+    "actionItemsMax": 0,
     "userSourcesMin": 1,
     "requiredClaims": [
       {
@@ -30,7 +30,7 @@
         "evidenceSourceSpeakerRoleIn": ["USER"]
       }
     ],
-    "forbiddenTasks": [
+    "forbiddenActionItems": [
       {
         "containsAll": ["gromozeka/dev", "gromozeka/beta"]
       }
@@ -40,7 +40,7 @@
   "expectedFinal": {
     "activeClaimsMin": 1,
     "activeClaimsMax": 4,
-    "tasksMax": 0,
+    "actionItemsMax": 0,
     "userSourcesMin": 1,
     "requiredClaims": [
       {

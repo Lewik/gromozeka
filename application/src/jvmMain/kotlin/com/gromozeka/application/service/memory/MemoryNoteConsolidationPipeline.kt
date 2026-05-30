@@ -13,8 +13,8 @@ import com.gromozeka.domain.model.memory.MemoryNoteConsolidator
 import com.gromozeka.domain.model.memory.MemoryNoteLifecycleOp
 import com.gromozeka.domain.model.memory.MemoryRun
 import com.gromozeka.domain.model.memory.MemoryStore
-import com.gromozeka.domain.model.memory.MemoryTask
-import com.gromozeka.domain.model.memory.MemoryTaskUpdateOp
+import com.gromozeka.domain.model.memory.MemoryActionItem
+import com.gromozeka.domain.model.memory.MemoryActionItemUpdateOp
 import com.gromozeka.domain.model.memory.MemoryUpdateBatch
 import com.gromozeka.domain.model.memory.NoteConsolidationResult
 import com.gromozeka.domain.model.memory.resolvePredicateDefinition
@@ -78,7 +78,7 @@ class MemoryNoteConsolidationPipeline(
             log.info {
                 "Memory note consolidation dedup guard adjusted output: namespace=${request.namespace.value} " +
                     "claims=${rawConsolidation.claimCandidates.size}->${consolidation.claimCandidates.size} " +
-                    "tasks=${rawConsolidation.taskActions.taskActionBreakdownForMaintenanceLog()}->${consolidation.taskActions.taskActionBreakdownForMaintenanceLog()} " +
+                    "actionItems=${rawConsolidation.actionItemActions.taskActionBreakdownForMaintenanceLog()}->${consolidation.actionItemActions.taskActionBreakdownForMaintenanceLog()} " +
                     "episodes=${rawConsolidation.episodeCandidates.size}->${consolidation.episodeCandidates.size} " +
                     "notes=${rawConsolidation.noteActions.noteLifecycleActionBreakdownForMaintenanceLog()}->${consolidation.noteActions.noteLifecycleActionBreakdownForMaintenanceLog()} " +
                     "dedupConsolidatedNotes=${dedup.consolidatedOriginNoteIds.joinToString(",") { it.value }.ifBlank { "none" }}"
@@ -116,10 +116,10 @@ class MemoryNoteConsolidationPipeline(
         log.info {
             "Memory note consolidation completed: namespace=${request.namespace.value} " +
                 "selectedNotes=${selectedNotes.size} rawClaimCandidates=${rawConsolidation.claimCandidates.size} finalClaimCandidates=${consolidation.claimCandidates.size} " +
-                "rawTaskActions=${rawConsolidation.taskActions.size} finalTaskActions=${consolidation.taskActions.size} " +
+                "rawActionItemActions=${rawConsolidation.actionItemActions.size} finalActionItemActions=${consolidation.actionItemActions.size} " +
                 "rawNoteActions=${rawConsolidation.noteActions.size} finalNoteActions=${consolidation.noteActions.size} " +
                 "rawEpisodes=${rawConsolidation.episodeCandidates.size} finalEpisodes=${consolidation.episodeCandidates.size} " +
-                "appliedRuns=${memoryBatch.runs.size} appliedClaims=${memoryBatch.claims.size} appliedTasks=${memoryBatch.tasks.size} " +
+                "appliedRuns=${memoryBatch.runs.size} appliedClaims=${memoryBatch.claims.size} appliedTasks=${memoryBatch.actionItems.size} " +
                 "appliedNotes=${memoryBatch.notes.size} appliedEpisodes=${memoryBatch.episodes.size} appliedProfiles=${memoryBatch.profiles.size} " +
                 "summary=${consolidation.summary.oneLineForMaintenancePipelineLog(500)}"
         }
@@ -155,7 +155,7 @@ class MemoryNoteConsolidationPipeline(
                         scopes = setOf(
                             MemoryStore.SearchScope.CLAIMS,
                             MemoryStore.SearchScope.NOTES,
-                            MemoryStore.SearchScope.TASKS,
+                            MemoryStore.SearchScope.ACTION_ITEMS,
                             MemoryStore.SearchScope.PROFILES,
                             MemoryStore.SearchScope.EPISODES,
                         ),
@@ -184,7 +184,7 @@ class MemoryNoteConsolidationPipeline(
     ): MemoryUpdateBatch {
         val runId = idFactory.newRunId()
         val selectedById = selectedNotes.associateBy { it.id }
-        val existingTasks = snapshot.tasks.filter { it.archivedAt == null }
+        val existingActionItems = snapshot.actionItems.filter { it.archivedAt == null }
 
         val claims = consolidation.claimCandidates.mapNotNull { candidate ->
             candidate.toConsolidatedClaim(
@@ -196,13 +196,13 @@ class MemoryNoteConsolidationPipeline(
             )
         }
 
-        val tasks = consolidation.taskActions.flatMap { op ->
+        val actionItems = consolidation.actionItemActions.flatMap { op ->
             op.toConsolidatedTasks(
                 request = request,
                 runId = runId,
                 completedAt = completedAt,
                 selectedById = selectedById,
-                existingTasks = existingTasks,
+                existingActionItems = existingActionItems,
             )
         }
 
@@ -215,7 +215,7 @@ class MemoryNoteConsolidationPipeline(
             )
         }
 
-        val syntheticConsolidatedNoteActions = (claims.mapNotNull { it.originNoteId } + tasks.mapNotNull { it.originNoteId } + episodes.mapNotNull { it.originNoteId })
+        val syntheticConsolidatedNoteActions = (claims.mapNotNull { it.originNoteId } + actionItems.mapNotNull { it.originNoteId } + episodes.mapNotNull { it.originNoteId })
             .filter { noteId -> consolidation.noteActions.none { it.noteId == noteId } }
             .distinct()
             .map {
@@ -260,12 +260,12 @@ class MemoryNoteConsolidationPipeline(
                         put("predicate", claim.predicate)
                     })
                 }
-                tasks.forEach { task ->
+                actionItems.forEach { actionItem ->
                     add(buildJsonObject {
                         put("op", "upsert_task")
-                        put("task_id", task.id.value)
-                        put("origin_note_id", task.originNoteId?.value ?: "")
-                        put("status", task.status.name)
+                        put("task_id", actionItem.id.value)
+                        put("origin_note_id", actionItem.originNoteId?.value ?: "")
+                        put("status", actionItem.status.name)
                     })
                 }
                 episodes.forEach { episode ->
@@ -292,7 +292,7 @@ class MemoryNoteConsolidationPipeline(
         return MemoryUpdateBatch(
             runs = listOf(run),
             claims = claims,
-            tasks = tasks,
+            actionItems = actionItems,
             notes = notes,
             episodes = episodes,
         )
@@ -339,39 +339,39 @@ class MemoryNoteConsolidationPipeline(
         )
     }
 
-    private fun MemoryTaskUpdateOp.toConsolidatedTasks(
+    private fun MemoryActionItemUpdateOp.toConsolidatedTasks(
         request: MemoryMaintenanceRequest,
         runId: MemoryRun.Id,
         completedAt: Instant,
         selectedById: Map<MemoryNote.Id, MemoryNote>,
-        existingTasks: List<MemoryTask>,
-    ): List<MemoryTask> =
+        existingActionItems: List<MemoryActionItem>,
+    ): List<MemoryActionItem> =
         when (action) {
-            MemoryTaskUpdateOp.Action.INSERT -> {
-                val draft = task ?: return emptyList()
+            MemoryActionItemUpdateOp.Action.INSERT -> {
+                val draft = actionItem ?: return emptyList()
                 val originNote = draft.originNoteId?.let(selectedById::get) ?: return emptyList()
                 listOf(draft.toConsolidatedTask(request, runId, completedAt, originNote))
             }
 
-            MemoryTaskUpdateOp.Action.UPDATE,
-            MemoryTaskUpdateOp.Action.CLOSE,
-            MemoryTaskUpdateOp.Action.CANCEL,
+            MemoryActionItemUpdateOp.Action.UPDATE,
+            MemoryActionItemUpdateOp.Action.CLOSE,
+            MemoryActionItemUpdateOp.Action.CANCEL,
             -> {
-                val target = targetTaskId?.let { id -> existingTasks.firstOrNull { it.id == id } } ?: return emptyList()
+                val target = targetActionItemId?.let { id -> existingActionItems.firstOrNull { it.id == id } } ?: return emptyList()
                 listOf(target.applyTaskUpdate(this, completedAt))
             }
 
-            MemoryTaskUpdateOp.Action.NOOP -> emptyList()
+            MemoryActionItemUpdateOp.Action.NOOP -> emptyList()
         }
 
-    private fun MemoryTaskUpdateOp.Draft.toConsolidatedTask(
+    private fun MemoryActionItemUpdateOp.Draft.toConsolidatedTask(
         request: MemoryMaintenanceRequest,
         runId: MemoryRun.Id,
         completedAt: Instant,
         originNote: MemoryNote,
-    ): MemoryTask =
-        MemoryTask(
-            id = idFactory.newTaskId(),
+    ): MemoryActionItem =
+        MemoryActionItem(
+            id = idFactory.newActionItemId(),
             namespace = request.namespace,
             ownerEntityId = ownerEntityId,
             assigneeEntityId = assigneeEntityId,
@@ -390,7 +390,7 @@ class MemoryNoteConsolidationPipeline(
             evidenceRefs = originNote.evidenceRefs.toDerivedEvidenceRefs(evidenceQuote),
             createdAt = completedAt,
             updatedAt = completedAt,
-            closedAt = if (status == MemoryTask.Status.DONE || status == MemoryTask.Status.CANCELLED) completedAt else null,
+            closedAt = if (status == MemoryActionItem.Status.DONE || status == MemoryActionItem.Status.CANCELLED) completedAt else null,
         )
 
     private fun MemoryEpisodeCandidate.toConsolidatedEpisode(
@@ -430,14 +430,14 @@ class MemoryNoteConsolidationPipeline(
         )
     }
 
-    private fun MemoryTask.applyTaskUpdate(
-        op: MemoryTaskUpdateOp,
+    private fun MemoryActionItem.applyTaskUpdate(
+        op: MemoryActionItemUpdateOp,
         completedAt: Instant,
-    ): MemoryTask {
-        val draft = op.task
+    ): MemoryActionItem {
+        val draft = op.actionItem
         val status = when (op.action) {
-            MemoryTaskUpdateOp.Action.CLOSE -> MemoryTask.Status.DONE
-            MemoryTaskUpdateOp.Action.CANCEL -> MemoryTask.Status.CANCELLED
+            MemoryActionItemUpdateOp.Action.CLOSE -> MemoryActionItem.Status.DONE
+            MemoryActionItemUpdateOp.Action.CANCEL -> MemoryActionItem.Status.CANCELLED
             else -> draft?.status ?: this.status
         }
 
@@ -456,7 +456,7 @@ class MemoryNoteConsolidationPipeline(
             originNoteId = draft?.originNoteId ?: originNoteId,
             confidence = maxOf(confidence, draft?.confidence ?: 0.0),
             updatedAt = completedAt,
-            closedAt = if (status == MemoryTask.Status.DONE || status == MemoryTask.Status.CANCELLED) completedAt else closedAt,
+            closedAt = if (status == MemoryActionItem.Status.DONE || status == MemoryActionItem.Status.CANCELLED) completedAt else closedAt,
         )
     }
 }
@@ -504,11 +504,11 @@ private fun MemoryNamespaceSnapshot.relatedHitsForConsolidation(selectedNotes: L
             .take(24)
             .mapTo(this) { MemoryStore.SearchHit.NoteHit(it, score = 0.8) }
 
-        tasks
+        actionItems
             .filter { it.archivedAt == null }
-            .sortedWith(compareByDescending<MemoryTask> { it.ownerEntityId in selectedEntityIds || it.relatedEntityIds.any { entityId -> entityId in selectedEntityIds } }.thenByDescending { it.updatedAt })
+            .sortedWith(compareByDescending<MemoryActionItem> { it.ownerEntityId in selectedEntityIds || it.relatedEntityIds.any { entityId -> entityId in selectedEntityIds } }.thenByDescending { it.updatedAt })
             .take(24)
-            .mapTo(this) { MemoryStore.SearchHit.TaskHit(it, score = 0.7) }
+            .mapTo(this) { MemoryStore.SearchHit.ActionItemHit(it, score = 0.7) }
 
         profiles
             .filter { selectedEntityIds.isEmpty() || it.ownerEntityId in selectedEntityIds }
@@ -569,7 +569,7 @@ private fun MemoryStore.SearchHit.toMaintenancePipelineItemRef(): MemoryItemRef 
         is MemoryStore.SearchHit.EntityHit -> MemoryItemRef(MemoryItemRef.Type.ENTITY, entity.id.value)
         is MemoryStore.SearchHit.ClaimHit -> MemoryItemRef(MemoryItemRef.Type.CLAIM, claim.id.value)
         is MemoryStore.SearchHit.NoteHit -> MemoryItemRef(MemoryItemRef.Type.NOTE, note.id.value)
-        is MemoryStore.SearchHit.TaskHit -> MemoryItemRef(MemoryItemRef.Type.TASK, task.id.value)
+        is MemoryStore.SearchHit.ActionItemHit -> MemoryItemRef(MemoryItemRef.Type.ACTION_ITEM, actionItem.id.value)
         is MemoryStore.SearchHit.ProfileHit -> MemoryItemRef(MemoryItemRef.Type.PROFILE, profile.id.value)
         is MemoryStore.SearchHit.EpisodeHit -> MemoryItemRef(MemoryItemRef.Type.EPISODE, episode.id.value)
         is MemoryStore.SearchHit.RunHit -> MemoryItemRef(MemoryItemRef.Type.RUN, run.id.value)
@@ -579,7 +579,7 @@ private fun NoteConsolidationResult.toOutputJson(): JsonObject =
     buildJsonObject {
         put("summary", summary)
         put("claim_candidates", claimCandidates.size)
-        put("task_actions", taskActions.size)
+        put("action_item_actions", actionItemActions.size)
         put("profile_patch", profileProjection != null)
         put("episode_candidates", episodeCandidates.size)
         put("note_actions", noteActions.size)
@@ -592,7 +592,7 @@ private fun MemoryUpdateBatch.isNotEmptyForMaintenance(): Boolean =
         entities.isNotEmpty() ||
         claims.isNotEmpty() ||
         notes.isNotEmpty() ||
-        tasks.isNotEmpty() ||
+        actionItems.isNotEmpty() ||
         profiles.isNotEmpty() ||
         episodes.isNotEmpty() ||
         embeddings.isNotEmpty()
@@ -605,16 +605,16 @@ private operator fun MemoryUpdateBatch.plus(other: MemoryUpdateBatch): MemoryUpd
         entities = entities + other.entities,
         claims = claims + other.claims,
         notes = notes + other.notes,
-        tasks = tasks + other.tasks,
+        actionItems = actionItems + other.actionItems,
         profiles = profiles + other.profiles,
         episodes = episodes + other.episodes,
         embeddings = embeddings + other.embeddings,
     )
 
 private fun MemoryNamespaceSnapshot.countsForConsolidationLog(): String =
-    "sources=${sources.size},runs=${runs.size},entities=${entities.size},claims=${claims.size},notes=${notes.size},tasks=${tasks.size},profiles=${profiles.size},episodes=${episodes.size}"
+    "sources=${sources.size},runs=${runs.size},entities=${entities.size},claims=${claims.size},notes=${notes.size},actionItems=${actionItems.size},profiles=${profiles.size},episodes=${episodes.size}"
 
-private fun List<MemoryTaskUpdateOp>.taskActionBreakdownForMaintenanceLog(): String {
+private fun List<MemoryActionItemUpdateOp>.taskActionBreakdownForMaintenanceLog(): String {
     if (isEmpty()) return "none"
     return groupingBy { it.action.name }
         .eachCount()

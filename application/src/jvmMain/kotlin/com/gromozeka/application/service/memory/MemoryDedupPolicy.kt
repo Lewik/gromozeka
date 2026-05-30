@@ -14,8 +14,8 @@ import com.gromozeka.domain.model.memory.MemoryNoteReconciliationOp
 import com.gromozeka.domain.model.memory.MemoryReconciliationAction
 import com.gromozeka.domain.model.memory.MemoryScope
 import com.gromozeka.domain.model.memory.MemoryStore
-import com.gromozeka.domain.model.memory.MemoryTask
-import com.gromozeka.domain.model.memory.MemoryTaskUpdateOp
+import com.gromozeka.domain.model.memory.MemoryActionItem
+import com.gromozeka.domain.model.memory.MemoryActionItemUpdateOp
 import com.gromozeka.domain.model.memory.NoteConsolidationResult
 import kotlinx.datetime.Instant
 import kotlinx.serialization.json.JsonElement
@@ -93,32 +93,32 @@ object MemoryDedupPolicy {
     }
 
     fun deduplicateWriteTaskOps(
-        rawOps: List<MemoryTaskUpdateOp>,
+        rawOps: List<MemoryActionItemUpdateOp>,
         retrievedHits: List<MemoryStore.SearchHit>,
-    ): List<MemoryTaskUpdateOp> {
+    ): List<MemoryActionItemUpdateOp> {
         val activeTasksByKey = retrievedHits
-            .filterIsInstance<MemoryStore.SearchHit.TaskHit>()
-            .map { it.task }
-            .mapNotNull { task -> task.dedupKey()?.let { it to task } }
+            .filterIsInstance<MemoryStore.SearchHit.ActionItemHit>()
+            .map { it.actionItem }
+            .mapNotNull { actionItem -> actionItem.dedupKey()?.let { it to actionItem } }
             .groupBy({ it.first }, { it.second })
 
-        val insertedKeys = mutableSetOf<MemoryTaskDedupKey>()
+        val insertedKeys = mutableSetOf<MemoryActionItemDedupKey>()
         return rawOps.map { op ->
-            if (op.action != MemoryTaskUpdateOp.Action.INSERT) return@map op
-            val draft = op.task ?: return@map op
+            if (op.action != MemoryActionItemUpdateOp.Action.INSERT) return@map op
+            val draft = op.actionItem ?: return@map op
             val key = draft.dedupKey() ?: return@map op
             val existingTask = activeTasksByKey[key]?.firstOrNull()
 
             when {
                 existingTask != null -> op.copy(
-                    action = MemoryTaskUpdateOp.Action.UPDATE,
-                    targetTaskId = existingTask.id,
-                    reason = "Write dedup guard converted duplicate task insert to update of ${existingTask.id.value}: ${op.reason}",
+                    action = MemoryActionItemUpdateOp.Action.UPDATE,
+                    targetActionItemId = existingTask.id,
+                    reason = "Write dedup guard converted duplicate actionItem insert to update of ${existingTask.id.value}: ${op.reason}",
                 )
 
                 !insertedKeys.add(key) -> op.copy(
-                    action = MemoryTaskUpdateOp.Action.NOOP,
-                    reason = "Write dedup guard skipped duplicate task candidate in the same run: ${op.reason}",
+                    action = MemoryActionItemUpdateOp.Action.NOOP,
+                    reason = "Write dedup guard skipped duplicate actionItem candidate in the same run: ${op.reason}",
                 )
 
                 else -> op
@@ -136,7 +136,7 @@ object MemoryDedupPolicy {
             snapshot = snapshot,
             consolidatedOriginNoteIds = consolidatedOriginNoteIds,
         )
-        val finalTaskActions = rawConsolidation.taskActions.deduplicateConsolidatedTaskActions(snapshot)
+        val finalActionItemActions = rawConsolidation.actionItemActions.deduplicateConsolidatedTaskActions(snapshot)
         val finalEpisodeCandidates = rawConsolidation.episodeCandidates.deduplicateConsolidatedEpisodeCandidates(
             snapshot = snapshot,
             selectedById = selectedById,
@@ -147,7 +147,7 @@ object MemoryDedupPolicy {
         return MemoryNoteConsolidationDedupResult(
             result = rawConsolidation.copy(
                 claimCandidates = finalClaimCandidates,
-                taskActions = finalTaskActions,
+                actionItemActions = finalActionItemActions,
                 episodeCandidates = finalEpisodeCandidates,
                 noteActions = finalNoteActions,
             ),
@@ -177,31 +177,31 @@ object MemoryDedupPolicy {
         }
     }
 
-    private fun List<MemoryTaskUpdateOp>.deduplicateConsolidatedTaskActions(
+    private fun List<MemoryActionItemUpdateOp>.deduplicateConsolidatedTaskActions(
         snapshot: MemoryNamespaceSnapshot,
-    ): List<MemoryTaskUpdateOp> {
-        val activeTasksByKey = snapshot.tasks
+    ): List<MemoryActionItemUpdateOp> {
+        val activeTasksByKey = snapshot.actionItems
             .filter { it.archivedAt == null }
-            .mapNotNull { task -> task.dedupKey()?.let { it to task } }
+            .mapNotNull { actionItem -> actionItem.dedupKey()?.let { it to actionItem } }
             .groupBy({ it.first }, { it.second })
-        val insertedKeys = mutableSetOf<MemoryTaskDedupKey>()
+        val insertedKeys = mutableSetOf<MemoryActionItemDedupKey>()
 
         return map { op ->
-            if (op.action != MemoryTaskUpdateOp.Action.INSERT) return@map op
-            val draft = op.task ?: return@map op
+            if (op.action != MemoryActionItemUpdateOp.Action.INSERT) return@map op
+            val draft = op.actionItem ?: return@map op
             val key = draft.dedupKey() ?: return@map op
             val existingTask = activeTasksByKey[key]?.firstOrNull()
 
             when {
                 existingTask != null -> op.copy(
-                    action = MemoryTaskUpdateOp.Action.UPDATE,
-                    targetTaskId = existingTask.id,
-                    reason = "Note consolidation dedup guard converted duplicate task insert to update of ${existingTask.id.value}: ${op.reason}",
+                    action = MemoryActionItemUpdateOp.Action.UPDATE,
+                    targetActionItemId = existingTask.id,
+                    reason = "Note consolidation dedup guard converted duplicate actionItem insert to update of ${existingTask.id.value}: ${op.reason}",
                 )
 
                 !insertedKeys.add(key) -> op.copy(
-                    action = MemoryTaskUpdateOp.Action.NOOP,
-                    reason = "Note consolidation dedup guard skipped duplicate task candidate in the same run: ${op.reason}",
+                    action = MemoryActionItemUpdateOp.Action.NOOP,
+                    reason = "Note consolidation dedup guard skipped duplicate actionItem candidate in the same run: ${op.reason}",
                 )
 
                 else -> op
@@ -344,7 +344,7 @@ private fun List<MemoryNote.EntityRef>.primaryDedupEntityId(): String? =
             it.role == MemoryNote.EntityRef.Role.OWNER
     }?.entityId?.value
 
-private data class MemoryTaskDedupKey(
+private data class MemoryActionItemDedupKey(
     val title: String,
     val scopeKey: String,
     val ownerEntityId: String?,
@@ -352,9 +352,9 @@ private data class MemoryTaskDedupKey(
     val relatedEntityIds: List<String>,
 )
 
-private fun MemoryTask.dedupKey(): MemoryTaskDedupKey? {
+private fun MemoryActionItem.dedupKey(): MemoryActionItemDedupKey? {
     if (status !in activeTaskStatusesForDedup) return null
-    return MemoryTaskDedupKey(
+    return MemoryActionItemDedupKey(
         title = title.normalizeForMemoryDedup(),
         scopeKey = scope.dedupKey(),
         ownerEntityId = ownerEntityId?.value,
@@ -363,9 +363,9 @@ private fun MemoryTask.dedupKey(): MemoryTaskDedupKey? {
     )
 }
 
-private fun MemoryTaskUpdateOp.Draft.dedupKey(): MemoryTaskDedupKey? {
+private fun MemoryActionItemUpdateOp.Draft.dedupKey(): MemoryActionItemDedupKey? {
     if (status !in activeTaskStatusesForDedup) return null
-    return MemoryTaskDedupKey(
+    return MemoryActionItemDedupKey(
         title = title.normalizeForMemoryDedup(),
         scopeKey = scope.dedupKey(),
         ownerEntityId = ownerEntityId?.value,
@@ -375,9 +375,9 @@ private fun MemoryTaskUpdateOp.Draft.dedupKey(): MemoryTaskDedupKey? {
 }
 
 private val activeTaskStatusesForDedup = setOf(
-    MemoryTask.Status.OPEN,
-    MemoryTask.Status.IN_PROGRESS,
-    MemoryTask.Status.BLOCKED,
+    MemoryActionItem.Status.OPEN,
+    MemoryActionItem.Status.IN_PROGRESS,
+    MemoryActionItem.Status.BLOCKED,
 )
 
 private data class MemoryEpisodeDedupKey(

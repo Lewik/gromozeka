@@ -16,7 +16,7 @@
             ],
             "materializedNotesMin": 1,
             "materializedNotesMax": 20,
-            "materializedTasksMax": 0,
+            "materializedActionItemsMax": 0,
             "containsAll": [
               "Source",
               "Entity",
@@ -68,7 +68,7 @@
     "activeClaimsMax": 25,
     "notesMin": 1,
     "notesMax": 20,
-    "tasksMax": 0,
+    "actionItemsMax": 0,
     "userSourcesMin": 1,
     "requiredSources": [
       {
@@ -103,7 +103,7 @@
         ]
       }
     ],
-    "forbiddenTasks": [
+    "forbiddenActionItems": [
       {
         "containsAll": [
           "agent_memory_handoff/02_data_model.md"
@@ -118,7 +118,7 @@
     "activeClaimsMax": 25,
     "notesMin": 1,
     "notesMax": 20,
-    "tasksMax": 0,
+    "actionItemsMax": 0,
     "userSourcesMin": 2,
     "requiredNotes": [
       {

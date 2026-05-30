@@ -1324,9 +1324,9 @@ private val runtimeHumanLabeledInstantRegex = Regex(
     "\\b((?:Document imported at|Imported at|Observed at|Recorded at|Created at|Updated at):\\s*)$INSTANT_PATTERN"
 )
 private val runtimeScopedIdRegex =
-    Regex("\\b(project|chat|memory|source|claim|note|task|entity|episode|profile|run):[A-Za-z0-9][A-Za-z0-9._:-]*")
+    Regex("\\b(project|chat|memory|source|claim|note|actionItem|entity|episode|profile|run):[A-Za-z0-9][A-Za-z0-9._:-]*")
 private val runtimePipelineItemIdRegex =
-    Regex("\\b([a-z][a-z0-9-]*):(run|source|claim|note|task|entity|episode|profile):[A-Za-z0-9][A-Za-z0-9._:-]*")
+    Regex("\\b([a-z][a-z0-9-]*):(run|source|claim|note|actionItem|entity|episode|profile):[A-Za-z0-9][A-Za-z0-9._:-]*")
 private val runtimeTargetMessageIdRegex = Regex("(?m)(Target message id:\\s*)$UUID_PATTERN")
 private val gromozekaE2eDirectoryRegex = Regex("(/[^\\s\"']*)?gromozeka-e2e-[0-9]+")
 

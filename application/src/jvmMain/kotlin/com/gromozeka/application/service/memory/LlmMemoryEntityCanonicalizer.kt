@@ -473,7 +473,7 @@ private fun List<MemoryStore.SearchHit>.renderEntityResolutionContext(): String 
             is MemoryStore.SearchHit.ProfileHit -> "- profile ${hit.profile.id.value}: ${hit.profile.profileText}"
             is MemoryStore.SearchHit.SourceHit -> "- source ${hit.source.id.value}: ${hit.source.contentText.limitForMemoryPrompt(700)}"
             is MemoryStore.SearchHit.NoteHit -> "- note ${hit.note.id.value}: ${hit.note.title}; ${hit.note.summary}"
-            is MemoryStore.SearchHit.TaskHit -> "- task ${hit.task.id.value}: ${hit.task.title}; ${hit.task.description ?: "no description"}"
+            is MemoryStore.SearchHit.ActionItemHit -> "- actionItem ${hit.actionItem.id.value}: ${hit.actionItem.title}; ${hit.actionItem.description ?: "no description"}"
             is MemoryStore.SearchHit.EpisodeHit -> "- episode ${hit.episode.id.value}: ${hit.episode.situation}; lesson=${hit.episode.lesson}"
             is MemoryStore.SearchHit.RunHit -> null
         }

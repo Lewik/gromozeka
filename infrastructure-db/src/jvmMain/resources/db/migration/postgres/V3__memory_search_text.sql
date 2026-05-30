@@ -30,10 +30,10 @@ ALTER TABLE memory_notes
     ADD COLUMN IF NOT EXISTS entity_ids TEXT[] NOT NULL DEFAULT '{}',
     ADD COLUMN IF NOT EXISTS supersedes_note_id TEXT NULL;
 
-ALTER TABLE memory_tasks
+ALTER TABLE memory_action_items
     ADD COLUMN IF NOT EXISTS search_text TEXT NOT NULL DEFAULT '';
 
-ALTER TABLE memory_tasks
+ALTER TABLE memory_action_items
     ADD COLUMN IF NOT EXISTS evidence_source_ids TEXT[] NOT NULL DEFAULT '{}',
     ADD COLUMN IF NOT EXISTS entity_ids TEXT[] NOT NULL DEFAULT '{}';
 
@@ -76,14 +76,14 @@ CREATE INDEX IF NOT EXISTS idx_memory_notes_entity_ids
 CREATE INDEX IF NOT EXISTS idx_memory_notes_supersedes
     ON memory_notes(namespace, supersedes_note_id, status);
 
-CREATE INDEX IF NOT EXISTS idx_memory_tasks_search_text_trgm
-    ON memory_tasks USING GIN(search_text gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_memory_action_items_search_text_trgm
+    ON memory_action_items USING GIN(search_text gin_trgm_ops);
 
-CREATE INDEX IF NOT EXISTS idx_memory_tasks_evidence_sources
-    ON memory_tasks USING GIN(evidence_source_ids);
+CREATE INDEX IF NOT EXISTS idx_memory_action_items_evidence_sources
+    ON memory_action_items USING GIN(evidence_source_ids);
 
-CREATE INDEX IF NOT EXISTS idx_memory_tasks_entity_ids
-    ON memory_tasks USING GIN(entity_ids);
+CREATE INDEX IF NOT EXISTS idx_memory_action_items_entity_ids
+    ON memory_action_items USING GIN(entity_ids);
 
 CREATE INDEX IF NOT EXISTS idx_memory_profiles_search_text_trgm
     ON memory_profiles USING GIN(search_text gin_trgm_ops);

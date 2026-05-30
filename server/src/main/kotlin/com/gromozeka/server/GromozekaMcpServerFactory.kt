@@ -211,11 +211,11 @@ class GromozekaMcpServerFactory(
             - `source`: original evidence text or document section kept as provenance.
             - `claim`: durable reusable fact, preference, constraint, decision, relationship, or project knowledge.
             - `note`: softer contextual memory that is useful but not a clean factual claim.
-            - `task`: remembered work item, todo, follow-up, or tracked intention.
+            - `action_item`: Gromozeka-internal remembered work item, todo, follow-up, or tracked intention.
             - `episode`: event-like memory about something that happened in a specific interaction or period.
             - `entity`: canonical person, project, file/document, technology, concept, organization, place, or other named thing referenced by memories.
 
-            The router decides which typed records are appropriate. Do not force a type from the MCP side unless a tool explicitly asks for it.
+            The router decides which typed records are appropriate. Do not force a type from the MCP side unless a tool explicitly asks for it. External Jira stories, GitHub issues, tickets, or backlog rows are external records; they are not `action_item` memory unless the user explicitly asks Gromozeka to track a follow-up.
 
             ## Namespaces
 
@@ -248,7 +248,7 @@ class GromozekaMcpServerFactory(
 
             - `project memory ingestion pipeline and document chunking`
             - `what I know about Lewik's Toyota RunX`
-            - `current task: debug Bedrock JSON schema errors in memory note constructor`
+            - `current action item: debug Bedrock JSON schema errors in memory note constructor`
 
             The tool returns structured JSON containing a rendered `memory_context` block plus trace/status metadata. Inject the returned `memory_context` into your reasoning or answer only when it is relevant. Treat selected memory as strong remembered context, but still reject it if it is clearly stale, contradicted, irrelevant, or insufficient.
 
@@ -275,7 +275,7 @@ class GromozekaMcpServerFactory(
             "Persist explicit user-approved text or a raw markdown/text document. MCP callers must pass explicit content: text, file_path, or raw_url. Use memory_help for typed-memory concepts, namespaces, and workflow."
 
         const val MCP_MEMORY_ENRICH_CONTEXT_DESCRIPTION =
-            "Retrieve persisted memory relevant to a supplied context. This enriches a topic/task/current turn; it is not a question-answering tool. Use memory_help for interpretation guidance."
+            "Retrieve persisted memory relevant to a supplied context. This enriches a topic/action item/current turn; it is not a question-answering tool. Use memory_help for interpretation guidance."
 
         const val MCP_MEMORY_LIST_NAMESPACES_DESCRIPTION =
             "List readable memory namespaces, item counts, and the configured default namespace."

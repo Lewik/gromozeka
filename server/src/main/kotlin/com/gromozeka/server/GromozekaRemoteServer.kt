@@ -3,7 +3,7 @@ package com.gromozeka.server
 import com.gromozeka.domain.model.MemoryAction
 import com.gromozeka.domain.model.memory.MemoryNamespace
 import com.gromozeka.domain.model.memory.MemoryStore
-import com.gromozeka.domain.model.memory.MemoryTask
+import com.gromozeka.domain.model.memory.MemoryActionItem
 import com.gromozeka.domain.service.AgentDomainService
 import com.gromozeka.domain.service.ConversationDomainService
 import com.gromozeka.domain.service.ConversationNameSearchService
@@ -55,7 +55,7 @@ class GromozekaRemoteServer(
     private val liveInterpreterApplicationService: LiveInterpreterApplicationService,
 ) {
     private val log = KLoggers.logger(this)
-    private val memoryTaskRevisionJson = Json {
+    private val memoryActionItemRevisionJson = Json {
         encodeDefaults = true
         classDiscriminator = "memoryType"
     }
@@ -233,7 +233,7 @@ class GromozekaRemoteServer(
                     conversationRuntimeService.controlExecution(request.conversationId, request.action)
                 )
 
-                is GetMemoryTasksRequest -> loadMemoryTasks(request)
+                is GetMemoryActionItemsRequest -> loadMemoryActionItems(request)
 
                 is TranscribeAudioRequest -> transcribeAudio(request.recording)
                 is SynthesizeSpeechRequest -> synthesizeSpeech(request)
@@ -414,40 +414,40 @@ class GromozekaRemoteServer(
         }
     }
 
-    private suspend fun loadMemoryTasks(request: GetMemoryTasksRequest): MemoryTasksResponse {
+    private suspend fun loadMemoryActionItems(request: GetMemoryActionItemsRequest): MemoryActionItemsResponse {
         val project = conversationDomainService.getProject(request.conversationId)
         val namespace = MemoryNamespace("project:${project.id.value}")
         val snapshot = memoryStore.loadNamespaceSnapshot(namespace)
-        val nonArchivedTasks = snapshot.tasks.filter { it.archivedAt == null }
-        val visibleTasks = nonArchivedTasks
-            .filter { request.includeClosed || it.status !in closedMemoryTaskStatuses }
+        val nonArchivedActionItems = snapshot.actionItems.filter { it.archivedAt == null }
+        val visibleActionItems = nonArchivedActionItems
+            .filter { request.includeClosed || it.status !in closedMemoryActionItemStatuses }
             .sortedWith(
-                compareBy<MemoryTask> { it.status.memoryTaskStatusRank() }
-                    .thenBy { it.priority.memoryTaskPriorityRank() }
+                compareBy<MemoryActionItem> { it.status.memoryActionItemStatusRank() }
+                    .thenBy { it.priority.memoryActionItemPriorityRank() }
                     .thenByDescending { it.updatedAt }
                     .thenBy { it.title.lowercase() }
             )
 
         log.info {
-            "Remote memory tasks loaded: conversation=${request.conversationId.value} namespace=${namespace.value} " +
-                "includeClosed=${request.includeClosed} visible=${visibleTasks.size} total=${nonArchivedTasks.size}"
+            "Remote memory actionItems loaded: conversation=${request.conversationId.value} namespace=${namespace.value} " +
+                "includeClosed=${request.includeClosed} visible=${visibleActionItems.size} total=${nonArchivedActionItems.size}"
         }
 
-        return MemoryTasksResponse(
-            revision = visibleTasks.memoryTaskRevision(),
-            counts = MemoryTaskCounts(
-                open = nonArchivedTasks.count { it.status == MemoryTask.Status.OPEN },
-                inProgress = nonArchivedTasks.count { it.status == MemoryTask.Status.IN_PROGRESS },
-                blocked = nonArchivedTasks.count { it.status == MemoryTask.Status.BLOCKED },
-                done = nonArchivedTasks.count { it.status == MemoryTask.Status.DONE },
-                cancelled = nonArchivedTasks.count { it.status == MemoryTask.Status.CANCELLED },
+        return MemoryActionItemsResponse(
+            revision = visibleActionItems.memoryActionItemRevision(),
+            counts = MemoryActionItemCounts(
+                open = nonArchivedActionItems.count { it.status == MemoryActionItem.Status.OPEN },
+                inProgress = nonArchivedActionItems.count { it.status == MemoryActionItem.Status.IN_PROGRESS },
+                blocked = nonArchivedActionItems.count { it.status == MemoryActionItem.Status.BLOCKED },
+                done = nonArchivedActionItems.count { it.status == MemoryActionItem.Status.DONE },
+                cancelled = nonArchivedActionItems.count { it.status == MemoryActionItem.Status.CANCELLED },
             ),
-            tasks = visibleTasks,
+            actionItems = visibleActionItems,
         )
     }
 
-    private fun List<MemoryTask>.memoryTaskRevision(): String {
-        val json = memoryTaskRevisionJson.encodeToString(ListSerializer(MemoryTask.serializer()), this)
+    private fun List<MemoryActionItem>.memoryActionItemRevision(): String {
+        val json = memoryActionItemRevisionJson.encodeToString(ListSerializer(MemoryActionItem.serializer()), this)
         val digest = MessageDigest.getInstance("SHA-256").digest(json.encodeToByteArray())
         return digest.joinToString("") { byte -> "%02x".format(byte) }
     }
@@ -465,7 +465,7 @@ class GromozekaRemoteServer(
         )
 
     private companion object {
-        val closedMemoryTaskStatuses = setOf(MemoryTask.Status.DONE, MemoryTask.Status.CANCELLED)
+        val closedMemoryActionItemStatuses = setOf(MemoryActionItem.Status.DONE, MemoryActionItem.Status.CANCELLED)
         const val OPENAI_TTS_PCM_SAMPLE_RATE = 24_000
         const val OPENAI_TTS_PCM_CHANNELS = 1
         const val OPENAI_TTS_PCM_BITS_PER_SAMPLE = 16
@@ -492,18 +492,18 @@ private class RemoteSessionSender(
     }
 }
 
-private fun MemoryTask.Status.memoryTaskStatusRank(): Int =
+private fun MemoryActionItem.Status.memoryActionItemStatusRank(): Int =
     when (this) {
-        MemoryTask.Status.BLOCKED -> 0
-        MemoryTask.Status.IN_PROGRESS -> 1
-        MemoryTask.Status.OPEN -> 2
-        MemoryTask.Status.DONE -> 3
-        MemoryTask.Status.CANCELLED -> 4
+        MemoryActionItem.Status.BLOCKED -> 0
+        MemoryActionItem.Status.IN_PROGRESS -> 1
+        MemoryActionItem.Status.OPEN -> 2
+        MemoryActionItem.Status.DONE -> 3
+        MemoryActionItem.Status.CANCELLED -> 4
     }
 
-private fun MemoryTask.Priority.memoryTaskPriorityRank(): Int =
+private fun MemoryActionItem.Priority.memoryActionItemPriorityRank(): Int =
     when (this) {
-        MemoryTask.Priority.HIGH -> 0
-        MemoryTask.Priority.NORMAL -> 1
-        MemoryTask.Priority.LOW -> 2
+        MemoryActionItem.Priority.HIGH -> 0
+        MemoryActionItem.Priority.NORMAL -> 1
+        MemoryActionItem.Priority.LOW -> 2
     }

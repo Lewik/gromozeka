@@ -115,7 +115,7 @@ private fun AiRuntimeRequest.withStructuredRepairMessages(
         createdAt = Clock.System.now(),
     )
     val repairMessage = Conversation.Message(
-        id = Conversation.Message.Id("memory-repair-task:$stageName:${uuid7()}"),
+        id = Conversation.Message.Id("memory-repair-action-item:$stageName:${uuid7()}"),
         conversationId = conversationId,
         role = Conversation.Message.Role.USER,
         content = listOf(

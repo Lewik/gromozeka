@@ -1,0 +1,511 @@
+{
+    "version": 1,
+    "hash": "6b95c09525f6909075474d6923fa696b157a15f0763902057e666a9cbadaf382",
+    "provider": "OPENAI",
+    "model": "gpt-5.3-codex",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>/projects/handoff-architecture-document-ingestion",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteConstructor v1.\n        Current time: <instant>\n        Timezone: Asia/Jerusalem\n        Namespace: project:<0>\n\n        Router decision: NOTE_WRITE\n        Router memory types: NOTE, SOURCE, ENTITY\n        Router reason: Document ingest uses deterministic note/source/entity route; hard claims/actionItems can be produced by later consolidation.\n\n        Stage instructions:\n        You are NoteConstructor v1 for a long-term AI agent.\n\nGoal:\nConstruct reusable semantic notes from TARGET_MESSAGE when the material is contextual rather than a clean atomic fact.\n\nA note is for decisions, rationale, design direction, plans, hypotheses, lessons, trade-offs, troubleshooting procedures, and compact document/context digests.\nA note must add reusable meaning. It must not be a generic summary of the target turn.\n\nReturn JSON:\n{\n  \"notes\": [\n    {\n      \"title\": \"short English title\",\n      \"summary\": \"self-contained English semantic fragment\",\n      \"note_type\": \"decision | direction | hypothesis | plan | lesson | doc_digest | context\",\n      \"scope_json\": {\n        \"kind\": \"global | conversation | entity | environment | document | project\",\n        \"text\": \"human-readable applicability boundary\",\n        \"basis\": \"explicit | inferred | summarized | imported\"\n      },\n      \"entity_refs\": [\n        {\"entity_id\": \"resolved-entity-id\", \"role\": \"primary | secondary | mentioned | owner | subject\"}\n      ],\n      \"keywords\": [\"short search keyword\"],\n      \"tags\": [\"short_tag\"],\n      \"candidate_claim_hints\": [],\n      \"confidence\": 0.0,\n      \"importance\": 1,\n      \"valid_from\": \"ISO-8601 or null\",\n      \"valid_to\": \"ISO-8601 or null\",\n      \"evidence_quote\": \"exact substring from TARGET_MESSAGE\",\n      \"evidence_kind\": \"direct | summarized | imported | inferred | derived_from_note\",\n      \"evidence_reason\": \"why this source supports the note\",\n      \"rationale\": \"why this should be a note, not a claim\"\n    }\n  ]\n}\n\nRules:\n- Write title, summary, keywords, tags, evidence_reason, and rationale in English.\n- Preserve proper names, product names, repo names, file names, exact commands, exact identifiers, dates, and quoted terms.\n- Use only entity IDs listed in Resolved entities.\n- Never write raw labels such as \"user\", \"assistant\", \"project\", or \"document\" into entity_refs. If a note is about the user, use the resolved USER entity id from Resolved entities.\n- For project-level notes without a more specific subject, use the resolved namespace/project subject entity.\n- Use TARGET_MESSAGE as the only evidence. Earlier messages are context only.\n- evidence_quote must be an exact short substring copied from TARGET_MESSAGE source data.\n- Do not construct notes from greetings, phatic chatter, pure questions, one-off commands with no durable rationale, or memory mechanics discussion that contains no reusable project/user decision.\n- Do not construct notes from a single weak uncertain factual observation when source recall is enough and there is no rationale, decision, plan, lesson, or reusable analysis.\n- Do not duplicate a claim candidate as a note when a precise claim is enough.\n- Do use a note when the target captures \"why\", \"how\", \"we decided\", \"current approach\", trade-offs, working agreements, troubleshooting order, or a design direction.\n- If TARGET_MESSAGE is a document or document section, preserve document title/source/section names and create section-scoped notes for important definitions, component roles, workflows, policies, and lists.\n- For dense technical documents and prompt packs, prefer several strong section-scoped notes over one broad document summary. Keep only reusable notes; do not summarize every paragraph.\n- For one document section, return at most two notes. If a section defines one compact component or policy, return one note.\n- If source metadata force_memory_write=true, create a note when the content is reusable context but not a clean claim/action item/profile update.\n- For named components, include the exact component names in title, summary, keywords, or tags so later retrieval can find the component role.\n- A troubleshooting/procedure note is allowed, but do not create an action item unless the target creates a commitment.\n- Keep each note self-contained: future recall should understand it without the original conversation.\n- Keep summary concise: usually one or two sentences.\n- Prefer zero notes over broad summary spam.\n- Return valid JSON only.\n\n        Relevant persisted memory for dedup/context only:\n        - note hot-path:note:<0> DOC_DIGEST; Recommended architecture pipeline and component roles; The recommended flow routes source inputs through Memory Router and Write-Time Retrieval into Entity Canonicalizer, then branches to Claim/Task/Profile/Note processing with reconciliers writing to Postgres + pgvector; background workers perform consolidation, repair, and retention, while runtime answering uses Read-Time Retrieval Planner and Answer Composer.; scope=Applies to section '01. Architecture / 3. Основная модель записи .. 4. Рекомендуемая архитектура' in agent_memory_handoff/01_architecture.md\n- note hot-path:note:<1> DOC_DIGEST; Five-tier memory model separates prompt context, typed memory, notes, evidence, and indexes; The architecture defines five storage tiers: Tier A for minimal in-context prompt blocks, Tier B for typed long-term records (`Entity`, `Claim`, `Profile`, `Task`, `Episode`, `Source`, `MemoryRun`), Tier C for semantic note structures (`Note`, `NoteSource`, `NoteEntity`, `NoteLink`), Tier D for immutable raw evidence, and Tier E for retrieval indexes over stored data.; scope=Applies to section '01. Architecture / 5. Storage tiers .. 6. Structured scope' in agent_memory_handoff/01_architecture.md\n- note hot-path:note:<2> DIRECTION; Criteria for choosing Claim vs Note vs both; The architecture defines a write policy: use Claim for explicit, normalizable, precise, comparable information; use Note for important retrieval-useful context that is too rich or too early for hard facts; and write both when material contains both explicit facts/tasks and rationale/direction.; scope=Applies to section '01. Architecture / 7. Когда писать `Claim`, а когда `Note`' in agent_memory_handoff/01_architecture.md\n- note hot-path:note:<3> DIRECTION; v3 requires explicit dual scope representation with minimum scope_json fields; Compared with `v2`, `v3` makes scope explicit by requiring both `scope_text` (human boundary explanation) and `scope_json` (machine envelope) with at least `scope_kind`, `project_id`, `environment`, `subject_entity_id`, `conversation_id`, `modality`, and `audience` to improve reconciliation and reduce retrieval overgeneralization or false note conflicts.; scope=Applies to section '01. Architecture / 5. Storage tiers .. 6. Structured scope' in agent_memory_handoff/01_architecture.md\n- note hot-path:note:<4> DOC_DIGEST; v3 memory architecture uses four orthogonal axes; In `v3`, the memory system is explicitly designed around four axes—Representation, Lifecycle, Retrieval policy, and Scope and lineage—to avoid collapsing into either a transcript dump or a brittle fact store.; scope=Applies to section '01. Architecture / 1. Цель системы .. 2. Центральная архитектурная идея' in agent_memory_handoff/01_architecture.md\n- note hot-path:note:<5> DIRECTION; Truth state and retrieval state must remain separate axes; The document states that truth status and retrieval hotness are independent: truth state tracks knowledge validity, while retrieval state tracks search/hot-path handling. Items can be resolved or superseded in truth while still warm for rationale or historical retrieval.; scope=Applies to section '01. Architecture / 8. Truth state и retrieval state' in agent_memory_handoff/01_architecture.md\n- note hot-path:note:<6> DOC_DIGEST; Memory layer goals for AI agent continuity and maintainability; The memory layer must persist across sessions, store facts/preferences/tasks/rationale/evolving plans, support knowledge updates, preserve provenance, avoid turning every turn into permanent knowledge, and support aging, archiving, and repair.; scope=Applies to section '01. Architecture / 1. Цель системы .. 2. Центральная архитектурная идея' in agent_memory_handoff/01_architecture.md\n- note hot-path:note:<7> DOC_DIGEST; Two semantic write paths and two maintenance paths define memory flow; The architecture explicitly separates memory handling into two semantic write paths (Direct structured path and Note path) and two maintenance paths (Consolidation and Repair), establishing when to store hard structured data versus contextual notes and how quality is maintained over time.; scope=Applies to section '01. Architecture / 3. Основная модель записи .. 4. Рекомендуемая архитектура' in agent_memory_handoff/01_architecture.md\n\n        Resolved entities:\n        - mention=User-facing runtime; action=CREATE_NEW; id=entity:<0>; type=CONCEPT; name=User-facing runtime; reason=Distinct architectural component described as a responsibility boundary; no safe existing candidate match.\n- mention=Memory worker / manager; action=CREATE_NEW; id=entity:<1>; type=SERVICE; name=Memory worker / manager; reason=Explicit named system component with operational responsibilities; not present among existing entities.\n- mention=Storage layer; action=CREATE_NEW; id=entity:<2>; type=CONCEPT; name=Storage layer; reason=Named architecture layer and durable referent; no existing candidate corresponds to it.\n- mention=v3; action=LINK_EXISTING; id=entity:<3>; type=existing; name=v3; reason=In architecture context, 'v3' clearly refers to existing product entity 'v3 memory architecture'.\n- mention=current project; action=CREATE_NEW; id=entity:<4>; type=PROJECT; name=Current project; reason=Default current-project subject for claims without a more specific resolved subject\n\n        Retrieval plan context:\n        entity_queries=01. Architecture|agent_memory_handoff/01_architecture.md|01. Architecture / 9. Главная мысль: update не должен быть append-only .. 10. Разделение ответственности|MARKDOWN\n        text_queries=01. Architecture agent_memory_handoff/01_architecture.md 01. Architecture / 9. Главная мысль: update не должен быть append-only .. 10. Разделение ответственности MARKDOWN Document title: 01. Architecture Document source: agent_memory_handoff/01_architecture.md Document section: 01. Architecture / 9. Главная мысль: update не должен быть append-only .. 10. Разделение ответственности Document lines: 277-328 ## 9. Главная мысль: update не должен быть append-only На записи у системы четыре обязательные задачи: 1. понять, стоит ли вообще писать память 2. найти похожие или конфликтующие items 3. превратить input в typed candidates 4. применить policy: - `insert` - `update` - `supersede` - `retract` - `noop` Если пропустить retrieval/reconciliation, база быстро зарастает: - дублями - stale preferences - conflicting notes - task explosion - summary spam ## 10. Разделение ответственности ### 10.1 User-facing runtime Делает: - диалог - tool orchestration - read-time retrieval - cheap routing / escalation Он не должен тащить на себе тяжелый reconciliation и repair. ### 10.2 Memory worker / manager Делает: - routing - retrieval-before-update - canonicalization - note/claim extraction - reconciliation - consolidation - repair - retention ### 10.3 Storage layer Отвечает за: - immutable evidence - typed tables - transactional updates - lineage - indexes - audit trail\n        predicate_hints=\n\n        TARGET_MESSAGE source data:\n        [external:document-section:f7225be3206842b25c2333b039e43b0e] EXTERNAL\nSource metadata: source_kind=document; origin=pasted_document_section; document_type=MARKDOWN; source_ref=agent_memory_handoff/01_architecture.md; title=01. Architecture; heading=01. Architecture / 9. Главная мысль: update не должен быть append-only .. 10. Разделение ответственности; imported_at=1970-01-01T00:00:00Z\nDocument title: 01. Architecture\nDocument source: agent_memory_handoff/01_architecture.md\nDocument section: 01. Architecture / 9. Главная мысль: update не должен быть append-only .. 10. Разделение ответственности\nDocument lines: 277-328\n\n## 9. Главная мысль: update не должен быть append-only\n\nНа записи у системы четыре обязательные задачи:\n\n1. понять, стоит ли вообще писать память\n2. найти похожие или конфликтующие items\n3. превратить input в typed candidates\n4. применить policy:\n   - `insert`\n   - `update`\n   - `supersede`\n   - `retract`\n   - `noop`\n\nЕсли пропустить retrieval/reconciliation, база быстро зарастает:\n- дублями\n- stale preferences\n- conflicting notes\n- task explosion\n- summary spam\n\n## 10. Разделение ответственности\n\n### 10.1 User-facing runtime\nДелает:\n- диалог\n- tool orchestration\n- read-time retrieval\n- cheap routing / escalation\n\nОн не должен тащить на себе тяжелый reconciliation и repair.\n\n### 10.2 Memory worker / manager\nДелает:\n- routing\n- retrieval-before-update\n- canonicalization\n- note/claim extraction\n- reconciliation\n- consolidation\n- repair\n- retention\n\n### 10.3 Storage layer\nОтвечает за:\n- immutable evidence\n- typed tables\n- transactional updates\n- lineage\n- indexes\n- audit trail",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Construct contextual memory note candidates from one target message.",
+                "name": "memory_note_constructor",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "notes": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "candidate_claim_hints": {
+                                        "items": {
+                                            "anyOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "number"
+                                                },
+                                                {
+                                                    "type": "integer"
+                                                },
+                                                {
+                                                    "type": "boolean"
+                                                },
+                                                {
+                                                    "type": "null"
+                                                }
+                                            ]
+                                        },
+                                        "type": "array"
+                                    },
+                                    "confidence": {
+                                        "type": "number"
+                                    },
+                                    "entity_refs": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "entity_id": {
+                                                    "type": "string"
+                                                },
+                                                "role": {
+                                                    "enum": [
+                                                        "primary",
+                                                        "secondary",
+                                                        "mentioned",
+                                                        "owner",
+                                                        "subject"
+                                                    ],
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "entity_id",
+                                                "role"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "evidence_kind": {
+                                        "enum": [
+                                            "direct",
+                                            "summarized",
+                                            "imported",
+                                            "inferred",
+                                            "derived_from_note"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "evidence_quote": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "evidence_reason": {
+                                        "type": "string"
+                                    },
+                                    "importance": {
+                                        "type": "integer"
+                                    },
+                                    "keywords": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "note_type": {
+                                        "enum": [
+                                            "decision",
+                                            "direction",
+                                            "hypothesis",
+                                            "plan",
+                                            "lesson",
+                                            "doc_digest",
+                                            "context"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "rationale": {
+                                        "type": "string"
+                                    },
+                                    "scope_json": {
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "basis": {
+                                                "enum": [
+                                                    "explicit",
+                                                    "inferred",
+                                                    "summarized",
+                                                    "imported"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "kind": {
+                                                "enum": [
+                                                    "global",
+                                                    "conversation",
+                                                    "entity",
+                                                    "environment",
+                                                    "document",
+                                                    "project"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "text": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "kind",
+                                            "text",
+                                            "basis"
+                                        ],
+                                        "type": "object"
+                                    },
+                                    "summary": {
+                                        "type": "string"
+                                    },
+                                    "tags": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "title": {
+                                        "type": "string"
+                                    },
+                                    "valid_from": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "valid_to": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "title",
+                                    "summary",
+                                    "note_type",
+                                    "scope_json",
+                                    "entity_refs",
+                                    "keywords",
+                                    "tags",
+                                    "candidate_claim_hints",
+                                    "confidence",
+                                    "importance",
+                                    "valid_from",
+                                    "valid_to",
+                                    "evidence_quote",
+                                    "evidence_kind",
+                                    "evidence_reason",
+                                    "rationale"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "notes"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "memoryNamespace": "project:<0>",
+                "memoryNoteConstructor": true,
+                "memoryRouteDecision": "NOTE_WRITE",
+                "memorySourceId": "external:document-section:f7225be3206842b25c2333b039e43b0e"
+            }
+        },
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: NoteConstructor v1.\n        Current time: <instant>\n        Timezone: Asia/Jerusalem\n        Namespace: project:<0>\n\n        Router decision: NOTE_WRITE\n        Router memory types: NOTE, SOURCE, ENTITY\n        Router reason: Document ingest uses deterministic note/source/entity route; hard claims/actionItems can be produced by later consolidation.\n\n        Stage instructions:\n        You are NoteConstructor v1 for a long-term AI agent.\n\nGoal:\nConstruct reusable semantic notes from TARGET_MESSAGE when the material is contextual rather than a clean atomic fact.\n\nA note is for decisions, rationale, design direction, plans, hypotheses, lessons, trade-offs, troubleshooting procedures, and compact document/context digests.\nA note must add reusable meaning. It must not be a generic summary of the target turn.\n\nReturn JSON:\n{\n  \"notes\": [\n    {\n      \"title\": \"short English title\",\n      \"summary\": \"self-contained English semantic fragment\",\n      \"note_type\": \"decision | direction | hypothesis | plan | lesson | doc_digest | context\",\n      \"scope_json\": {\n        \"kind\": \"global | conversation | entity | environment | document | project\",\n        \"text\": \"human-readable applicability boundary\",\n        \"basis\": \"explicit | inferred | summarized | imported\"\n      },\n      \"entity_refs\": [\n        {\"entity_id\": \"resolved-entity-id\", \"role\": \"primary | secondary | mentioned | owner | subject\"}\n      ],\n      \"keywords\": [\"short search keyword\"],\n      \"tags\": [\"short_tag\"],\n      \"candidate_claim_hints\": [],\n      \"confidence\": 0.0,\n      \"importance\": 1,\n      \"valid_from\": \"ISO-8601 or null\",\n      \"valid_to\": \"ISO-8601 or null\",\n      \"evidence_quote\": \"exact substring from TARGET_MESSAGE\",\n      \"evidence_kind\": \"direct | summarized | imported | inferred | derived_from_note\",\n      \"evidence_reason\": \"why this source supports the note\",\n      \"rationale\": \"why this should be a note, not a claim\"\n    }\n  ]\n}\n\nRules:\n- Write title, summary, keywords, tags, evidence_reason, and rationale in English.\n- Preserve proper names, product names, repo names, file names, exact commands, exact identifiers, dates, and quoted terms.\n- Use only entity IDs listed in Resolved entities.\n- Never write raw labels such as \"user\", \"assistant\", \"project\", or \"document\" into entity_refs. If a note is about the user, use the resolved USER entity id from Resolved entities.\n- For project-level notes without a more specific subject, use the resolved namespace/project subject entity.\n- Use TARGET_MESSAGE as the only evidence. Earlier messages are context only.\n- evidence_quote must be an exact short substring copied from TARGET_MESSAGE source data.\n- Do not construct notes from greetings, phatic chatter, pure questions, one-off commands with no durable rationale, or memory mechanics discussion that contains no reusable project/user decision.\n- Do not construct notes from a single weak uncertain factual observation when source recall is enough and there is no rationale, decision, plan, lesson, or reusable analysis.\n- Do not duplicate a claim candidate as a note when a precise claim is enough.\n- Do use a note when the target captures \"why\", \"how\", \"we decided\", \"current approach\", trade-offs, working agreements, troubleshooting order, or a design direction.\n- If TARGET_MESSAGE is a document or document section, preserve document title/source/section names and create section-scoped notes for important definitions, component roles, workflows, policies, and lists.\n- For dense technical documents and prompt packs, prefer several strong section-scoped notes over one broad document summary. Keep only reusable notes; do not summarize every paragraph.\n- For one document section, return at most two notes. If a section defines one compact component or policy, return one note.\n- If source metadata force_memory_write=true, create a note when the content is reusable context but not a clean claim/action item/profile update.\n- For named components, include the exact component names in title, summary, keywords, or tags so later retrieval can find the component role.\n- A troubleshooting/procedure note is allowed, but do not create an action item unless the target creates a commitment.\n- Keep each note self-contained: future recall should understand it without the original conversation.\n- Keep summary concise: usually one or two sentences.\n- Prefer zero notes over broad summary spam.\n- Return valid JSON only.\n\n        Relevant persisted memory for dedup/context only:\n        - note hot-path:note:<0> DOC_DIGEST; Recommended architecture pipeline and component roles; The recommended flow routes source inputs through Memory Router and Write-Time Retrieval into Entity Canonicalizer, then branches to Claim/Task/Profile/Note processing with reconciliers writing to Postgres + pgvector; background workers perform consolidation, repair, and retention, while runtime answering uses Read-Time Retrieval Planner and Answer Composer.; scope=Applies to section '01. Architecture / 3. Основная модель записи .. 4. Рекомендуемая архитектура' in agent_memory_handoff/01_architecture.md\n- note hot-path:note:<1> DOC_DIGEST; Five-tier memory model separates prompt context, typed memory, notes, evidence, and indexes; The architecture defines five storage tiers: Tier A for minimal in-context prompt blocks, Tier B for typed long-term records (`Entity`, `Claim`, `Profile`, `Task`, `Episode`, `Source`, `MemoryRun`), Tier C for semantic note structures (`Note`, `NoteSource`, `NoteEntity`, `NoteLink`), Tier D for immutable raw evidence, and Tier E for retrieval indexes over stored data.; scope=Applies to section '01. Architecture / 5. Storage tiers .. 6. Structured scope' in agent_memory_handoff/01_architecture.md\n- note hot-path:note:<2> DIRECTION; Criteria for choosing Claim vs Note vs both; The architecture defines a write policy: use Claim for explicit, normalizable, precise, comparable information; use Note for important retrieval-useful context that is too rich or too early for hard facts; and write both when material contains both explicit facts/tasks and rationale/direction.; scope=Applies to section '01. Architecture / 7. Когда писать `Claim`, а когда `Note`' in agent_memory_handoff/01_architecture.md\n- note hot-path:note:<3> DIRECTION; v3 requires explicit dual scope representation with minimum scope_json fields; Compared with `v2`, `v3` makes scope explicit by requiring both `scope_text` (human boundary explanation) and `scope_json` (machine envelope) with at least `scope_kind`, `project_id`, `environment`, `subject_entity_id`, `conversation_id`, `modality`, and `audience` to improve reconciliation and reduce retrieval overgeneralization or false note conflicts.; scope=Applies to section '01. Architecture / 5. Storage tiers .. 6. Structured scope' in agent_memory_handoff/01_architecture.md\n- note hot-path:note:<4> DOC_DIGEST; v3 memory architecture uses four orthogonal axes; In `v3`, the memory system is explicitly designed around four axes—Representation, Lifecycle, Retrieval policy, and Scope and lineage—to avoid collapsing into either a transcript dump or a brittle fact store.; scope=Applies to section '01. Architecture / 1. Цель системы .. 2. Центральная архитектурная идея' in agent_memory_handoff/01_architecture.md\n- note hot-path:note:<5> DIRECTION; Truth state and retrieval state must remain separate axes; The document states that truth status and retrieval hotness are independent: truth state tracks knowledge validity, while retrieval state tracks search/hot-path handling. Items can be resolved or superseded in truth while still warm for rationale or historical retrieval.; scope=Applies to section '01. Architecture / 8. Truth state и retrieval state' in agent_memory_handoff/01_architecture.md\n- note hot-path:note:<6> DOC_DIGEST; Memory layer goals for AI agent continuity and maintainability; The memory layer must persist across sessions, store facts/preferences/tasks/rationale/evolving plans, support knowledge updates, preserve provenance, avoid turning every turn into permanent knowledge, and support aging, archiving, and repair.; scope=Applies to section '01. Architecture / 1. Цель системы .. 2. Центральная архитектурная идея' in agent_memory_handoff/01_architecture.md\n- note hot-path:note:<7> DOC_DIGEST; Two semantic write paths and two maintenance paths define memory flow; The architecture explicitly separates memory handling into two semantic write paths (Direct structured path and Note path) and two maintenance paths (Consolidation and Repair), establishing when to store hard structured data versus contextual notes and how quality is maintained over time.; scope=Applies to section '01. Architecture / 3. Основная модель записи .. 4. Рекомендуемая архитектура' in agent_memory_handoff/01_architecture.md\n\n        Resolved entities:\n        - mention=User-facing runtime; action=CREATE_NEW; id=entity:<0>; type=CONCEPT; name=User-facing runtime; reason=Distinct architectural component described as a responsibility boundary; no safe existing candidate match.\n- mention=Memory worker / manager; action=CREATE_NEW; id=entity:<1>; type=SERVICE; name=Memory worker / manager; reason=Explicit named system component with operational responsibilities; not present among existing entities.\n- mention=Storage layer; action=CREATE_NEW; id=entity:<2>; type=CONCEPT; name=Storage layer; reason=Named architecture layer and durable referent; no existing candidate corresponds to it.\n- mention=v3; action=LINK_EXISTING; id=entity:<3>; type=existing; name=v3; reason=In architecture context, 'v3' clearly refers to existing product entity 'v3 memory architecture'.\n- mention=current project; action=CREATE_NEW; id=entity:<4>; type=PROJECT; name=Current project; reason=Default current-project subject for claims without a more specific resolved subject\n\n        Retrieval plan context:\n        entity_queries=01. Architecture|agent_memory_handoff/01_architecture.md|01. Architecture / 9. Главная мысль: update не должен быть append-only .. 10. Разделение ответственности|MARKDOWN\n        text_queries=01. Architecture agent_memory_handoff/01_architecture.md 01. Architecture / 9. Главная мысль: update не должен быть append-only .. 10. Разделение ответственности MARKDOWN Document title: 01. Architecture Document source: agent_memory_handoff/01_architecture.md Document section: 01. Architecture / 9. Главная мысль: update не должен быть append-only .. 10. Разделение ответственности Document lines: 277-328 ## 9. Главная мысль: update не должен быть append-only На записи у системы четыре обязательные задачи: 1. понять, стоит ли вообще писать память 2. найти похожие или конфликтующие items 3. превратить input в typed candidates 4. применить policy: - `insert` - `update` - `supersede` - `retract` - `noop` Если пропустить retrieval/reconciliation, база быстро зарастает: - дублями - stale preferences - conflicting notes - task explosion - summary spam ## 10. Разделение ответственности ### 10.1 User-facing runtime Делает: - диалог - tool orchestration - read-time retrieval - cheap routing / escalation Он не должен тащить на себе тяжелый reconciliation и repair. ### 10.2 Memory worker / manager Делает: - routing - retrieval-before-update - canonicalization - note/claim extraction - reconciliation - consolidation - repair - retention ### 10.3 Storage layer Отвечает за: - immutable evidence - typed tables - transactional updates - lineage - indexes - audit trail\n        predicate_hints=\n\n        TARGET_MESSAGE source data:\n        [external:document-section:f7225be3206842b25c2333b039e43b0e] EXTERNAL\nSource metadata: source_kind=document; origin=pasted_document_section; document_type=MARKDOWN; source_ref=agent_memory_handoff/01_architecture.md; title=01. Architecture; heading=01. Architecture / 9. Главная мысль: update не должен быть append-only .. 10. Разделение ответственности; imported_at=1970-01-01T00:00:00Z\nDocument title: 01. Architecture\nDocument source: agent_memory_handoff/01_architecture.md\nDocument section: 01. Architecture / 9. Главная мысль: update не должен быть append-only .. 10. Разделение ответственности\nDocument lines: 277-328\n\n## 9. Главная мысль: update не должен быть append-only\n\nНа записи у системы четыре обязательные задачи:\n\n1. понять, стоит ли вообще писать память\n2. найти похожие или конфликтующие items\n3. превратить input в typed candidates\n4. применить policy:\n   - `insert`\n   - `update`\n   - `supersede`\n   - `retract`\n   - `noop`\n\nЕсли пропустить retrieval/reconciliation, база быстро зарастает:\n- дублями\n- stale preferences\n- conflicting notes\n- task explosion\n- summary spam\n\n## 10. Разделение ответственности\n\n### 10.1 User-facing runtime\nДелает:\n- диалог\n- tool orchestration\n- read-time retrieval\n- cheap routing / escalation\n\nОн не должен тащить на себе тяжелый reconciliation и repair.\n\n### 10.2 Memory worker / manager\nДелает:\n- routing\n- retrieval-before-update\n- canonicalization\n- note/claim extraction\n- reconciliation\n- consolidation\n- repair\n- retention\n\n### 10.3 Storage layer\nОтвечает за:\n- immutable evidence\n- typed tables\n- transactional updates\n- lineage\n- indexes\n- audit trail",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "memory_note_constructor",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "notes": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "candidate_claim_hints": {
+                                        "items": {
+                                            "anyOf": [
+                                                {
+                                                    "type": "string"
+                                                },
+                                                {
+                                                    "type": "number"
+                                                },
+                                                {
+                                                    "type": "integer"
+                                                },
+                                                {
+                                                    "type": "boolean"
+                                                },
+                                                {
+                                                    "type": "null"
+                                                }
+                                            ]
+                                        },
+                                        "type": "array"
+                                    },
+                                    "confidence": {
+                                        "type": "number"
+                                    },
+                                    "entity_refs": {
+                                        "items": {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "entity_id": {
+                                                    "type": "string"
+                                                },
+                                                "role": {
+                                                    "enum": [
+                                                        "primary",
+                                                        "secondary",
+                                                        "mentioned",
+                                                        "owner",
+                                                        "subject"
+                                                    ],
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "entity_id",
+                                                "role"
+                                            ],
+                                            "type": "object"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "evidence_kind": {
+                                        "enum": [
+                                            "direct",
+                                            "summarized",
+                                            "imported",
+                                            "inferred",
+                                            "derived_from_note"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "evidence_quote": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "evidence_reason": {
+                                        "type": "string"
+                                    },
+                                    "importance": {
+                                        "type": "integer"
+                                    },
+                                    "keywords": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "note_type": {
+                                        "enum": [
+                                            "decision",
+                                            "direction",
+                                            "hypothesis",
+                                            "plan",
+                                            "lesson",
+                                            "doc_digest",
+                                            "context"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "rationale": {
+                                        "type": "string"
+                                    },
+                                    "scope_json": {
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "basis": {
+                                                "enum": [
+                                                    "explicit",
+                                                    "inferred",
+                                                    "summarized",
+                                                    "imported"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "kind": {
+                                                "enum": [
+                                                    "global",
+                                                    "conversation",
+                                                    "entity",
+                                                    "environment",
+                                                    "document",
+                                                    "project"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "text": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "kind",
+                                            "text",
+                                            "basis"
+                                        ],
+                                        "type": "object"
+                                    },
+                                    "summary": {
+                                        "type": "string"
+                                    },
+                                    "tags": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "title": {
+                                        "type": "string"
+                                    },
+                                    "valid_from": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "valid_to": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "title",
+                                    "summary",
+                                    "note_type",
+                                    "scope_json",
+                                    "entity_refs",
+                                    "keywords",
+                                    "tags",
+                                    "candidate_claim_hints",
+                                    "confidence",
+                                    "importance",
+                                    "valid_from",
+                                    "valid_to",
+                                    "evidence_quote",
+                                    "evidence_kind",
+                                    "evidence_reason",
+                                    "rationale"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "notes"
+                    ],
+                    "type": "object"
+                },
+                "description": "Construct contextual memory note candidates from one target message.",
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "memoryNamespace": "project:<0>",
+                "memoryNoteConstructor": true,
+                "memoryRouteDecision": "NOTE_WRITE",
+                "memorySourceId": "external:document-section:f7225be3206842b25c2333b039e43b0e"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"notes\":[{\"candidate_claim_hints\":[],\"confidence\":0.95,\"entity_refs\":[{\"entity_id\":\"entity:<3>\",\"role\":\"subject\"},{\"entity_id\":\"entity:<4>\",\"role\":\"owner\"}],\"evidence_kind\":\"direct\",\"evidence_quote\":\"На записи у системы четыре обязательные задачи\",\"evidence_reason\":\"The section explicitly prescribes required write-time steps and warns about concrete failure modes if retrieval/reconciliation is omitted.\",\"importance\":5,\"keywords\":[\"append-only\",\"reconciliation\",\"retrieval-before-update\",\"mutation policy\",\"summary spam\"],\"note_type\":\"direction\",\"rationale\":\"This is a reusable architectural rule with rationale and trade-off consequences, not a single atomic fact.\",\"scope_json\":{\"basis\":\"explicit\",\"kind\":\"document\",\"text\":\"Applies to section '01. Architecture / 9. Главная мысль: update не должен быть append-only' in agent_memory_handoff/01_architecture.md\"},\"summary\":\"The architecture defines four mandatory write-time steps: decide whether to store memory, retrieve similar/conflicting items, convert input into typed candidates, and apply a mutation policy (`insert`/`update`/`supersede`/`retract`/`noop`). Skipping retrieval/reconciliation causes duplicate growth, stale preferences, conflicting notes, task explosion, and summary spam.\",\"tags\":[\"architecture\",\"memory-write-policy\",\"reconciliation\"],\"title\":\"Write path must be reconciliation-first, not append-only\",\"valid_from\":\"1970-01-01T00:00:00Z\",\"valid_to\":null},{\"candidate_claim_hints\":[],\"confidence\":0.97,\"entity_refs\":[{\"entity_id\":\"entity:<0>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<1>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<2>\",\"role\":\"primary\"},{\"entity_id\":\"entity:<4>\",\"role\":\"owner\"}],\"evidence_kind\":\"direct\",\"evidence_quote\":\"## 10. Разделение ответственности\",\"evidence_reason\":\"The document section explicitly enumerates per-component responsibilities and boundaries.\",\"importance\":5,\"keywords\":[\"User-facing runtime\",\"Memory worker / manager\",\"Storage layer\",\"separation of responsibilities\"],\"note_type\":\"doc_digest\",\"rationale\":\"This is durable component-role context used for future design and implementation decisions, better captured as semantic notes than isolated claims.\",\"scope_json\":{\"basis\":\"explicit\",\"kind\":\"document\",\"text\":\"Applies to section '01. Architecture / 10. Разделение ответственности' in agent_memory_handoff/01_architecture.md\"},\"summary\":\"`User-facing runtime` handles dialogue, tool orchestration, read-time retrieval, and cheap routing/escalation, and must avoid heavy reconciliation/repair. `Memory worker / manager` owns routing, retrieval-before-update, canonicalization, extraction, reconciliation, consolidation, repair, and retention. `Storage layer` is responsible for immutable evidence, typed tables, transactional updates, lineage, indexes, and audit trail.\",\"tags\":[\"architecture\",\"component-roles\",\"operating-model\"],\"title\":\"Responsibility split across runtime, memory worker, and storage layer\",\"valid_from\":\"1970-01-01T00:00:00Z\",\"valid_to\":null}]}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 3564,
+                "completionTokens": 705,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

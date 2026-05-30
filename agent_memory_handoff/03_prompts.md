@@ -625,7 +625,7 @@ Rules:
 [
   {
     "action": "insert | update | close | cancel | noop",
-    "target_task_id": "uuid-or-null",
+    "target_action_item_id": "uuid-or-null",
     "task": {
       "title": "string",
       "description": "string or null",
@@ -645,7 +645,7 @@ Rules:
 ### Prompt
 
 ```text
-You are TaskUpdater v3.
+You are ActionItemUpdater v3.
 
 Goal:
 Create or update operational tasks from explicit commitments, deadlines, or task lifecycle changes.
@@ -664,7 +664,7 @@ Return JSON array:
 [
   {
     "action": "insert | update | close | cancel | noop",
-    "target_task_id": "uuid-or-null",
+    "target_action_item_id": "uuid-or-null",
     "task": {
       "title": "string",
       "description": "string or null",
@@ -1051,7 +1051,7 @@ Rules:
 2. `WriteTimeRetrievalPlanner`
 3. `ClaimExtractor`
 4. `ClaimReconciler`
-5. `TaskUpdater`
+5. `ActionItemUpdater`
 6. `ProfileUpdater`
 7. `ReadTimeRetrievalPlanner`
 8. `AnswerComposer`

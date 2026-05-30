@@ -216,7 +216,7 @@ internal class MemoryThreadContextCompactor(
 
     private fun memoryCompactionTaskMessage(prompt: String): Conversation.Message =
         Conversation.Message(
-            id = Conversation.Message.Id("memory-context-compaction-task"),
+            id = Conversation.Message.Id("memory-context-compaction-actionItem"),
             conversationId = Conversation.Id("memory-context-compaction"),
             role = Conversation.Message.Role.USER,
             content = listOf(Conversation.Message.ContentItem.UserMessage(prompt)),

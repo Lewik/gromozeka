@@ -63,7 +63,7 @@ object MemoryWritePipelineSmokeScenario {
             noteReconciler = InsertOnlyMemoryNoteReconciler,
             claimExtractor = FixedMemoryClaimExtractor(listOf(claimCandidate)),
             claimReconciler = InsertOnlyMemoryClaimReconciler,
-            taskUpdater = FixedMemoryTaskUpdater(),
+            actionItemUpdater = FixedMemoryActionItemUpdater(),
             materializer = DefaultDirectStructuredMemoryWriteMaterializer(
                 idFactory = SequentialMemoryIdFactory("smoke"),
             ),

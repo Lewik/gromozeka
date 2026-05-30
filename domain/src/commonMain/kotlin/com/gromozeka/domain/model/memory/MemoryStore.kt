@@ -102,7 +102,7 @@ interface MemoryStore {
         val entityIds: Set<MemoryEntity.Id> = emptySet(),
         val claimPredicates: Set<String> = emptySet(),
         val noteTypes: Set<MemoryNote.Type> = emptySet(),
-        val taskStatuses: Set<MemoryTask.Status> = emptySet(),
+        val actionItemStatuses: Set<MemoryActionItem.Status> = emptySet(),
         val scopes: Set<MemoryScope> = emptySet(),
     )
 
@@ -115,7 +115,7 @@ interface MemoryStore {
         ENTITIES,
         CLAIMS,
         NOTES,
-        TASKS,
+        ACTION_ITEMS,
         PROFILES,
         EPISODES,
         RUNS,
@@ -147,8 +147,8 @@ interface MemoryStore {
             override val score: Double,
         ) : SearchHit
 
-        data class TaskHit(
-            val task: MemoryTask,
+        data class ActionItemHit(
+            val actionItem: MemoryActionItem,
             override val score: Double,
         ) : SearchHit
 

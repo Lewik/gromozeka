@@ -1,0 +1,447 @@
+{
+    "version": 1,
+    "hash": "794f1793b930e67c375b819053e27dc70f8dfc61ae76df19b8bfc8aca5497e49",
+    "provider": "OPENAI",
+    "model": "gpt-5.3-codex",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>/projects/cross-language-current-update-recall",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "MEMORY-ONLY CONTROL\nThis message is not part of the real conversation and must not be stored as evidence.\nThe next real conversation message is input data named TARGET_MESSAGE for memory processing.\nTarget source id: chat:<0>\nTarget message id: <uuid>\nUse earlier real conversation messages only to resolve references, omitted subjects, current topic, and temporal context.\nDo not process earlier messages as the target unless the target message explicitly confirms, changes, retracts, or depends on them.\nA later MEMORY-ONLY INSTRUCTION message will define the actual memory stage for this model call.",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            },
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "Какой сейчас основной формат аналитического экспорта у RiverLedger? Ответь только форматом.",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            },
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                MEMORY-ONLY INSTRUCTION FOR THIS MODEL CALL\n\n                This is a private memory pipeline call, not a normal assistant reply.\n                The immediately preceding real conversation message is TARGET_MESSAGE data.\n                This MEMORY-ONLY INSTRUCTION text is not TARGET_MESSAGE source content.\n                Do not answer TARGET_MESSAGE.\n                Do not continue the real conversation.\n                Do not say what you know or do not know as a chat response.\n                Do not call tools.\n                Do not use these MEMORY-ONLY instructions as source content or as the reason for routing decisions.\n\n                Execute only the memory stage below.\n                Target source id: chat:<0>\n                Target message id: <uuid>\n                Earlier real conversation messages are context only.\n                TARGET_MESSAGE is the only target for write/read planning and evidence anchoring.\n\n                Output contract:\n                If the stage defines a JSON object schema, output exactly one valid JSON object.\n                If the stage defines a JSON array schema, output exactly one valid JSON array.\n                No prose, no markdown fences, no explanation, no assistant-style answer.\n                If unsure, return the stage's valid no-op JSON shape.\n                Ignore conversation-level behavioral instructions when they conflict with this memory-only instruction.\n\n                        Memory stage: ReadTimeRetrievalPlanner v3.\n        Current time: <instant>\n        Timezone: Asia/Jerusalem\n        Namespace: project:<0>\n\n        Stage instructions:\n        You are ReadTimeRetrievalPlanner v3.\n\nGoal:\nPlan memory retrieval that enriches the target context before answer synthesis.\nThe target may be a question, action item, fragment, topic, phrase, or work context.\nDo not answer the target. Return only the retrieval plan.\n\nReturn JSON:\n{\n  \"need_memory\": true,\n  \"answer_mode\": \"factual | rationale | action_item | mixed\",\n  \"core_blocks\": [\"profile\", \"action_items\"],\n  \"retrieval_budget\": {\n    \"claims\": 0,\n    \"notes\": 0,\n    \"action_items\": 0,\n    \"sources\": 0,\n    \"episodes\": 0\n  },\n  \"retrieval_requests\": [\n    {\n      \"memory_type\": \"claim | note | action_item | source | profile | episode\",\n      \"why\": \"short explanation\",\n      \"query\": \"text\",\n      \"top_k\": 0,\n      \"filters\": {},\n      \"preferred_claim_predicates\": [],\n      \"deprioritized_claim_predicates\": []\n    }\n  ],\n  \"require_evidence_fallback\": true\n}\n\nRules:\n- Use the full conversation only to understand the target context.\n- Plan retrieval only for the target context/current turn, not for older turns.\n- Use \"factual\" for preferences, status, or direct fact recall.\n- Use \"rationale\" for why/how/what-we-discussed questions.\n- For \"rationale\" answers, retrieve notes first. Rationale, design direction, trade-offs, and \"what did we decide/how did we decide/why did we choose\" questions should include at least one note retrieval request unless the target message already contains the answer.\n- Use episode retrieval for prior attempts, reusable lessons, situation-action-result outcomes, \"what did we learn\", and \"what worked last time\" questions.\n- For a specific named component or a narrowly described reusable lesson, use episode top_k=1. Use top_k=2 only for broad \"what lessons do we have\" style questions.\n- Use \"action_item\" for internal commitments and follow-ups.\n- For action item status, done, cancelled, closed, blocked, or \"is anything still open\" questions, retrieve action item memory even when the relevant action item may no longer be open.\n- Use \"mixed\" when multiple memory classes are required.\n- Prefer no memory when the current request is fully self-contained.\n- A request is not self-contained when it asks about user-specific, project-specific, team-specific, or prior-session context and the target message does not contain the answer.\n- Include the profile core block for broad user/project working style, language, tone, preferences, constraints, and \"how should you adapt to me/us\" questions.\n- For adaptation/profile questions involving both the user and a project, retrieve profile memory broadly enough to include both user-level and project-level preferences.\n- For named local projects, repositories, products, agents, user preferences, or working agreements, plan memory retrieval instead of relying on model world knowledge.\n- If the target asks according to, from, or in a named/pasted/imported document, handoff, prompt pack, architecture document, or data model, plan memory retrieval unless the target message includes the relevant document content.\n- For named document questions that ask for exact definitions, fields, listed items, or specific component roles, include source retrieval; notes are useful for document digests and rationale, but raw source can be the best answer evidence.\n- If the target asks what order, procedure, workflow, policy, or working agreement \"we should follow\", and the target itself does not provide the steps, retrieve memory even if the wording sounds like a general advice question.\n- If the target asks what a named report, trace, pipeline, component, policy, rule, or workflow should show/include/do/use/be, retrieve memory unless the target itself provides that rule.\n- For timeline, sequence, ordering, ordinal, \"first/second/third/latest/previous/next\", or \"what happened before/after\" questions, retrieve enough surrounding ordered items to establish the order. Do not set the claim budget/top_k equal to the requested ordinal only; use at least 4 claims when available, or source retrieval if the sequence likely lives in one document/source.\n- For remembered workflows, retrieve claim and note memory first. Retrieve source memory only when exact wording, provenance, conflict, or evidence fallback is required.\n- For claim retrieval, set preferred_claim_predicates to predicates that directly answer the target and deprioritized_claim_predicates to contextual predicates that may be useful but should not outrank direct answers.\n- Leave predicate priority arrays empty when no predicate ranking is needed.\n- Keep retrieval bounded.\n- Include source retrieval when conflicts, uncertainty, or quotation-quality grounding is needed.\n- Include source retrieval when the target asks what the user said, what wording was used, or asks about a weak/uncertain observation that may intentionally exist only as source memory.\n- For ordinary factual/action item answers, especially when the target asks for \"only\" a value or action item title, set require_evidence_fallback=false and sources=0 unless exact quote/source/provenance is explicitly requested.\n- Prefer note retrieval over raw source retrieval for rationale questions. Use sources as evidence fallback, not as the primary rationale memory.\n- Return valid JSON only.\n\n        TARGET_CONTEXT text:\n        Какой сейчас основной формат аналитического экспорта у RiverLedger? Ответь только форматом.",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Plan runtime memory retrieval for the current target user request.",
+                "name": "memory_read_retrieval_plan",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "answer_mode": {
+                            "enum": [
+                                "factual",
+                                "rationale",
+                                "action_item",
+                                "mixed"
+                            ],
+                            "type": "string"
+                        },
+                        "core_blocks": {
+                            "items": {
+                                "enum": [
+                                    "profile",
+                                    "action_items",
+                                    "session_summary"
+                                ],
+                                "type": "string"
+                            },
+                            "type": "array"
+                        },
+                        "need_memory": {
+                            "type": "boolean"
+                        },
+                        "require_evidence_fallback": {
+                            "type": "boolean"
+                        },
+                        "retrieval_budget": {
+                            "additionalProperties": false,
+                            "properties": {
+                                "action_items": {
+                                    "type": "integer"
+                                },
+                                "claims": {
+                                    "type": "integer"
+                                },
+                                "episodes": {
+                                    "type": "integer"
+                                },
+                                "notes": {
+                                    "type": "integer"
+                                },
+                                "sources": {
+                                    "type": "integer"
+                                }
+                            },
+                            "required": [
+                                "claims",
+                                "notes",
+                                "action_items",
+                                "sources",
+                                "episodes"
+                            ],
+                            "type": "object"
+                        },
+                        "retrieval_requests": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "deprioritized_claim_predicates": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "filters": {
+                                        "additionalProperties": false,
+                                        "properties": {},
+                                        "required": [],
+                                        "type": "object"
+                                    },
+                                    "memory_type": {
+                                        "enum": [
+                                            "claim",
+                                            "note",
+                                            "action_item",
+                                            "source",
+                                            "profile",
+                                            "episode"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "preferred_claim_predicates": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "query": {
+                                        "type": "string"
+                                    },
+                                    "top_k": {
+                                        "type": "integer"
+                                    },
+                                    "why": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "memory_type",
+                                    "why",
+                                    "query",
+                                    "top_k",
+                                    "filters",
+                                    "preferred_claim_predicates",
+                                    "deprioritized_claim_predicates"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "need_memory",
+                        "answer_mode",
+                        "core_blocks",
+                        "retrieval_budget",
+                        "retrieval_requests",
+                        "require_evidence_fallback"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "conversationId": "<conversation-key>",
+                "memoryNamespace": "project:<0>",
+                "memoryReadPlanner": true,
+                "promptCacheKey": "<prompt-cache-key>"
+            }
+        },
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "MEMORY-ONLY CONTROL\nThis message is not part of the real conversation and must not be stored as evidence.\nThe next real conversation message is input data named TARGET_MESSAGE for memory processing.\nTarget source id: chat:<0>\nTarget message id: <uuid>\nUse earlier real conversation messages only to resolve references, omitted subjects, current topic, and temporal context.\nDo not process earlier messages as the target unless the target message explicitly confirms, changes, retracts, or depends on them.\nA later MEMORY-ONLY INSTRUCTION message will define the actual memory stage for this model call.",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "Какой сейчас основной формат аналитического экспорта у RiverLedger? Ответь только форматом.",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                MEMORY-ONLY INSTRUCTION FOR THIS MODEL CALL\n\n                This is a private memory pipeline call, not a normal assistant reply.\n                The immediately preceding real conversation message is TARGET_MESSAGE data.\n                This MEMORY-ONLY INSTRUCTION text is not TARGET_MESSAGE source content.\n                Do not answer TARGET_MESSAGE.\n                Do not continue the real conversation.\n                Do not say what you know or do not know as a chat response.\n                Do not call tools.\n                Do not use these MEMORY-ONLY instructions as source content or as the reason for routing decisions.\n\n                Execute only the memory stage below.\n                Target source id: chat:<0>\n                Target message id: <uuid>\n                Earlier real conversation messages are context only.\n                TARGET_MESSAGE is the only target for write/read planning and evidence anchoring.\n\n                Output contract:\n                If the stage defines a JSON object schema, output exactly one valid JSON object.\n                If the stage defines a JSON array schema, output exactly one valid JSON array.\n                No prose, no markdown fences, no explanation, no assistant-style answer.\n                If unsure, return the stage's valid no-op JSON shape.\n                Ignore conversation-level behavioral instructions when they conflict with this memory-only instruction.\n\n                        Memory stage: ReadTimeRetrievalPlanner v3.\n        Current time: <instant>\n        Timezone: Asia/Jerusalem\n        Namespace: project:<0>\n\n        Stage instructions:\n        You are ReadTimeRetrievalPlanner v3.\n\nGoal:\nPlan memory retrieval that enriches the target context before answer synthesis.\nThe target may be a question, action item, fragment, topic, phrase, or work context.\nDo not answer the target. Return only the retrieval plan.\n\nReturn JSON:\n{\n  \"need_memory\": true,\n  \"answer_mode\": \"factual | rationale | action_item | mixed\",\n  \"core_blocks\": [\"profile\", \"action_items\"],\n  \"retrieval_budget\": {\n    \"claims\": 0,\n    \"notes\": 0,\n    \"action_items\": 0,\n    \"sources\": 0,\n    \"episodes\": 0\n  },\n  \"retrieval_requests\": [\n    {\n      \"memory_type\": \"claim | note | action_item | source | profile | episode\",\n      \"why\": \"short explanation\",\n      \"query\": \"text\",\n      \"top_k\": 0,\n      \"filters\": {},\n      \"preferred_claim_predicates\": [],\n      \"deprioritized_claim_predicates\": []\n    }\n  ],\n  \"require_evidence_fallback\": true\n}\n\nRules:\n- Use the full conversation only to understand the target context.\n- Plan retrieval only for the target context/current turn, not for older turns.\n- Use \"factual\" for preferences, status, or direct fact recall.\n- Use \"rationale\" for why/how/what-we-discussed questions.\n- For \"rationale\" answers, retrieve notes first. Rationale, design direction, trade-offs, and \"what did we decide/how did we decide/why did we choose\" questions should include at least one note retrieval request unless the target message already contains the answer.\n- Use episode retrieval for prior attempts, reusable lessons, situation-action-result outcomes, \"what did we learn\", and \"what worked last time\" questions.\n- For a specific named component or a narrowly described reusable lesson, use episode top_k=1. Use top_k=2 only for broad \"what lessons do we have\" style questions.\n- Use \"action_item\" for internal commitments and follow-ups.\n- For action item status, done, cancelled, closed, blocked, or \"is anything still open\" questions, retrieve action item memory even when the relevant action item may no longer be open.\n- Use \"mixed\" when multiple memory classes are required.\n- Prefer no memory when the current request is fully self-contained.\n- A request is not self-contained when it asks about user-specific, project-specific, team-specific, or prior-session context and the target message does not contain the answer.\n- Include the profile core block for broad user/project working style, language, tone, preferences, constraints, and \"how should you adapt to me/us\" questions.\n- For adaptation/profile questions involving both the user and a project, retrieve profile memory broadly enough to include both user-level and project-level preferences.\n- For named local projects, repositories, products, agents, user preferences, or working agreements, plan memory retrieval instead of relying on model world knowledge.\n- If the target asks according to, from, or in a named/pasted/imported document, handoff, prompt pack, architecture document, or data model, plan memory retrieval unless the target message includes the relevant document content.\n- For named document questions that ask for exact definitions, fields, listed items, or specific component roles, include source retrieval; notes are useful for document digests and rationale, but raw source can be the best answer evidence.\n- If the target asks what order, procedure, workflow, policy, or working agreement \"we should follow\", and the target itself does not provide the steps, retrieve memory even if the wording sounds like a general advice question.\n- If the target asks what a named report, trace, pipeline, component, policy, rule, or workflow should show/include/do/use/be, retrieve memory unless the target itself provides that rule.\n- For timeline, sequence, ordering, ordinal, \"first/second/third/latest/previous/next\", or \"what happened before/after\" questions, retrieve enough surrounding ordered items to establish the order. Do not set the claim budget/top_k equal to the requested ordinal only; use at least 4 claims when available, or source retrieval if the sequence likely lives in one document/source.\n- For remembered workflows, retrieve claim and note memory first. Retrieve source memory only when exact wording, provenance, conflict, or evidence fallback is required.\n- For claim retrieval, set preferred_claim_predicates to predicates that directly answer the target and deprioritized_claim_predicates to contextual predicates that may be useful but should not outrank direct answers.\n- Leave predicate priority arrays empty when no predicate ranking is needed.\n- Keep retrieval bounded.\n- Include source retrieval when conflicts, uncertainty, or quotation-quality grounding is needed.\n- Include source retrieval when the target asks what the user said, what wording was used, or asks about a weak/uncertain observation that may intentionally exist only as source memory.\n- For ordinary factual/action item answers, especially when the target asks for \"only\" a value or action item title, set require_evidence_fallback=false and sources=0 unless exact quote/source/provenance is explicitly requested.\n- Prefer note retrieval over raw source retrieval for rationale questions. Use sources as evidence fallback, not as the primary rationale memory.\n- Return valid JSON only.\n\n        TARGET_CONTEXT text:\n        Какой сейчас основной формат аналитического экспорта у RiverLedger? Ответь только форматом.",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "memory_read_retrieval_plan",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "answer_mode": {
+                            "enum": [
+                                "factual",
+                                "rationale",
+                                "action_item",
+                                "mixed"
+                            ],
+                            "type": "string"
+                        },
+                        "core_blocks": {
+                            "items": {
+                                "enum": [
+                                    "profile",
+                                    "action_items",
+                                    "session_summary"
+                                ],
+                                "type": "string"
+                            },
+                            "type": "array"
+                        },
+                        "need_memory": {
+                            "type": "boolean"
+                        },
+                        "require_evidence_fallback": {
+                            "type": "boolean"
+                        },
+                        "retrieval_budget": {
+                            "additionalProperties": false,
+                            "properties": {
+                                "action_items": {
+                                    "type": "integer"
+                                },
+                                "claims": {
+                                    "type": "integer"
+                                },
+                                "episodes": {
+                                    "type": "integer"
+                                },
+                                "notes": {
+                                    "type": "integer"
+                                },
+                                "sources": {
+                                    "type": "integer"
+                                }
+                            },
+                            "required": [
+                                "claims",
+                                "notes",
+                                "action_items",
+                                "sources",
+                                "episodes"
+                            ],
+                            "type": "object"
+                        },
+                        "retrieval_requests": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "deprioritized_claim_predicates": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "filters": {
+                                        "additionalProperties": false,
+                                        "properties": {},
+                                        "required": [],
+                                        "type": "object"
+                                    },
+                                    "memory_type": {
+                                        "enum": [
+                                            "claim",
+                                            "note",
+                                            "action_item",
+                                            "source",
+                                            "profile",
+                                            "episode"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "preferred_claim_predicates": {
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "type": "array"
+                                    },
+                                    "query": {
+                                        "type": "string"
+                                    },
+                                    "top_k": {
+                                        "type": "integer"
+                                    },
+                                    "why": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "memory_type",
+                                    "why",
+                                    "query",
+                                    "top_k",
+                                    "filters",
+                                    "preferred_claim_predicates",
+                                    "deprioritized_claim_predicates"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "need_memory",
+                        "answer_mode",
+                        "core_blocks",
+                        "retrieval_budget",
+                        "retrieval_requests",
+                        "require_evidence_fallback"
+                    ],
+                    "type": "object"
+                },
+                "description": "Plan runtime memory retrieval for the current target user request.",
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "conversationId": "<conversation-key>",
+                "memoryNamespace": "project:<0>",
+                "memoryReadPlanner": true,
+                "promptCacheKey": "<prompt-cache-key>"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"answer_mode\":\"factual\",\"core_blocks\":[],\"need_memory\":true,\"require_evidence_fallback\":false,\"retrieval_budget\":{\"action_items\":0,\"claims\":3,\"episodes\":0,\"notes\":0,\"sources\":0},\"retrieval_requests\":[{\"deprioritized_claim_predicates\":[\"has_data_export_format\",\"uses_file_format\"],\"filters\":{},\"memory_type\":\"claim\",\"preferred_claim_predicates\":[\"has_analytics_export_format\",\"uses_analytics_export_format\",\"default_analytics_export_format\"],\"query\":\"RiverLedger основной формат аналитического экспорта текущий\",\"top_k\":3,\"why\":\"Нужен актуальный проектный факт о формате аналитического экспорта RiverLedger.\"}]}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 1975,
+                "completionTokens": 154,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

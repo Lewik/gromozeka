@@ -118,7 +118,7 @@ class LlmMemoryForgetPlanner(
           "forget_actions": [
             {
               "action": "archive_item | soft_delete_source | noop",
-              "target_type": "source | claim | note | task | episode",
+              "target_type": "source | claim | note | action_item | episode",
               "target_ids": ["id"],
               "reason": "short explanation"
             }
@@ -129,7 +129,7 @@ class LlmMemoryForgetPlanner(
         Rules:
         - This is an explicit forget request, not a truth correction.
         - Prefer removing matching memory from normal recall, not changing truth status.
-        - Archive matching claims, notes, tasks, and episodes that encode the forgotten content.
+        - Archive matching claims, notes, action items, and episodes that encode the forgotten content.
         - Soft-delete source evidence that directly supports the forgotten content when the source is primarily about the forgotten content.
         - Never soft-delete the current forget request source id ${request.source.id.value}; it is audit evidence for this operation.
         - Do not delete unrelated sources that merely share a word with the forget request.
@@ -178,7 +178,7 @@ private fun List<MemoryStore.SearchHit>.renderForgetCandidates(): String =
             is MemoryStore.SearchHit.SourceHit -> "- source ${hit.source.id.value}: ${hit.source.contentText.oneLineForForgetPlannerLog(MAX_FORGET_SOURCE_TEXT_CHARS)}"
             is MemoryStore.SearchHit.ClaimHit -> "- claim ${hit.claim.id.value}: status=${hit.claim.status.name}; predicate=${hit.claim.predicate}; text=${hit.claim.normalizedText.oneLineForForgetPlannerLog(MAX_FORGET_ITEM_TEXT_CHARS)}; evidence=${hit.claim.evidenceRefs.map { it.sourceId.value }.joinToString("|")}"
             is MemoryStore.SearchHit.NoteHit -> "- note ${hit.note.id.value}: status=${hit.note.status.name}; maturity=${hit.note.maturity.name}; title=${hit.note.title.oneLineForForgetPlannerLog(MAX_FORGET_ITEM_TEXT_CHARS)}; summary=${hit.note.summary.oneLineForForgetPlannerLog(MAX_FORGET_ITEM_TEXT_CHARS)}; evidence=${hit.note.evidenceRefs.map { it.sourceId.value }.joinToString("|")}"
-            is MemoryStore.SearchHit.TaskHit -> "- task ${hit.task.id.value}: status=${hit.task.status.name}; title=${hit.task.title.oneLineForForgetPlannerLog(MAX_FORGET_ITEM_TEXT_CHARS)}; description=${hit.task.description.orEmpty().oneLineForForgetPlannerLog(MAX_FORGET_ITEM_TEXT_CHARS)}; evidence=${hit.task.evidenceRefs.map { it.sourceId.value }.joinToString("|")}"
+            is MemoryStore.SearchHit.ActionItemHit -> "- action_item ${hit.actionItem.id.value}: status=${hit.actionItem.status.name}; title=${hit.actionItem.title.oneLineForForgetPlannerLog(MAX_FORGET_ITEM_TEXT_CHARS)}; description=${hit.actionItem.description.orEmpty().oneLineForForgetPlannerLog(MAX_FORGET_ITEM_TEXT_CHARS)}; evidence=${hit.actionItem.evidenceRefs.map { it.sourceId.value }.joinToString("|")}"
             is MemoryStore.SearchHit.EpisodeHit -> "- episode ${hit.episode.id.value}: situation=${hit.episode.situation.oneLineForForgetPlannerLog(MAX_FORGET_ITEM_TEXT_CHARS)}; lesson=${hit.episode.lesson.oneLineForForgetPlannerLog(MAX_FORGET_ITEM_TEXT_CHARS)}; evidence=${hit.episode.evidenceRefs.map { it.sourceId.value }.joinToString("|")}"
             is MemoryStore.SearchHit.EntityHit -> "- entity ${hit.entity.id.value}: type=${hit.entity.entityType.name}; name=${hit.entity.canonicalName.oneLineForForgetPlannerLog(MAX_FORGET_ITEM_TEXT_CHARS)}; summary=${hit.entity.summary.orEmpty().oneLineForForgetPlannerLog(MAX_FORGET_ITEM_TEXT_CHARS)}"
             is MemoryStore.SearchHit.ProfileHit -> "- profile ${hit.profile.id.value}: owner=${hit.profile.ownerEntityId.value}; text=${hit.profile.profileText.oneLineForForgetPlannerLog(500)}"
@@ -196,7 +196,7 @@ private fun MemoryNamespaceSnapshot.renderForgetSupportingSources(
                 is MemoryStore.SearchHit.SourceHit -> add(hit.source.id)
                 is MemoryStore.SearchHit.ClaimHit -> addAll(hit.claim.evidenceRefs.map { it.sourceId })
                 is MemoryStore.SearchHit.NoteHit -> addAll(hit.note.evidenceRefs.map { it.sourceId })
-                is MemoryStore.SearchHit.TaskHit -> addAll(hit.task.evidenceRefs.map { it.sourceId })
+                is MemoryStore.SearchHit.ActionItemHit -> addAll(hit.actionItem.evidenceRefs.map { it.sourceId })
                 is MemoryStore.SearchHit.EpisodeHit -> addAll(hit.episode.evidenceRefs.map { it.sourceId })
                 is MemoryStore.SearchHit.EntityHit,
                 is MemoryStore.SearchHit.ProfileHit,
@@ -221,7 +221,7 @@ internal fun MemoryStore.SearchHit.toForgetItemRef(): MemoryItemRef =
         is MemoryStore.SearchHit.EntityHit -> MemoryItemRef(MemoryItemRef.Type.ENTITY, entity.id.value)
         is MemoryStore.SearchHit.ClaimHit -> MemoryItemRef(MemoryItemRef.Type.CLAIM, claim.id.value)
         is MemoryStore.SearchHit.NoteHit -> MemoryItemRef(MemoryItemRef.Type.NOTE, note.id.value)
-        is MemoryStore.SearchHit.TaskHit -> MemoryItemRef(MemoryItemRef.Type.TASK, task.id.value)
+        is MemoryStore.SearchHit.ActionItemHit -> MemoryItemRef(MemoryItemRef.Type.ACTION_ITEM, actionItem.id.value)
         is MemoryStore.SearchHit.ProfileHit -> MemoryItemRef(MemoryItemRef.Type.PROFILE, profile.id.value)
         is MemoryStore.SearchHit.EpisodeHit -> MemoryItemRef(MemoryItemRef.Type.EPISODE, episode.id.value)
         is MemoryStore.SearchHit.RunHit -> MemoryItemRef(MemoryItemRef.Type.RUN, run.id.value)
@@ -240,7 +240,7 @@ private fun String.toForgetTargetType(): MemoryItemRef.Type? =
         "source" -> MemoryItemRef.Type.SOURCE
         "claim" -> MemoryItemRef.Type.CLAIM
         "note" -> MemoryItemRef.Type.NOTE
-        "task" -> MemoryItemRef.Type.TASK
+        "action_item", "actionitem", "task" -> MemoryItemRef.Type.ACTION_ITEM
         "episode" -> MemoryItemRef.Type.EPISODE
         else -> null
     }

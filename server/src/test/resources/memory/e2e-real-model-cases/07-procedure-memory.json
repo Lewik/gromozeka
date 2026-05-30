@@ -26,13 +26,13 @@
   ],
   "expectedAfterSeeds": {
     "activeClaimsMax": 2,
-    "tasksMax": 0,
+    "actionItemsMax": 0,
     "userSourcesMin": 1,
     "allActiveClaimsEvidenceSpeakerRoleIn": ["USER"]
   },
   "expectedFinal": {
     "activeClaimsMax": 2,
-    "tasksMax": 0,
+    "actionItemsMax": 0,
     "userSourcesMin": 2,
     "allActiveClaimsEvidenceSpeakerRoleIn": ["USER"]
   }

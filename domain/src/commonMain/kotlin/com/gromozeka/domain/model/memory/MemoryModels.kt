@@ -22,7 +22,7 @@ import kotlin.jvm.JvmInline
  * 3. MemoryClaim stores atomic structured facts about entities.
  * 4. MemoryNote stores richer semantic context: decisions, rationale, plans,
  *    hypotheses, lessons, and document-heavy summaries.
- * 5. MemoryTask, MemoryProfile, and MemoryEpisode are specialized projections:
+ * 5. MemoryActionItem, MemoryProfile, and MemoryEpisode are specialized projections:
  *    future action, compact always-useful context, and reusable experience.
  * 6. MemoryRun, MemoryItemRef, MemoryUpdateBatch, and MemoryNamespaceSnapshot
  *    are service/audit objects used to apply, inspect, and debug memory changes.
@@ -141,7 +141,7 @@ data class MemoryTimeWindow(
 data class MemoryRetrievalBudget(
     val claims: Int = 0,
     val notes: Int = 0,
-    val tasks: Int = 0,
+    val actionItems: Int = 0,
     val sources: Int = 0,
     val episodes: Int = 0,
 )
@@ -149,7 +149,7 @@ data class MemoryRetrievalBudget(
 /**
  * Reference from interpreted memory back to raw source evidence.
  *
- * Claims, notes, tasks, and episodes should not become floating assertions:
+ * Claims, notes, action items, and episodes should not become floating assertions:
  * this object points to the source and optional exact evidence location.
  */
 @Serializable
@@ -188,7 +188,7 @@ data class MemoryEvidenceRef(
  * Domain rule for one structured claim predicate.
  *
  * The catalog tells reconciliation how to treat cardinality, conflicts,
- * temporal validity, and optional synchronization into profile/task views.
+ * temporal validity, and optional synchronization into profile/action item views.
  */
 @Serializable
 data class MemoryPredicateDefinition(
@@ -202,7 +202,7 @@ data class MemoryPredicateDefinition(
     val temporalPolicy: TemporalPolicy = TemporalPolicy.ATEMPORAL,
     val conflictPolicy: ConflictPolicy = ConflictPolicy.COEXIST,
     val profileSync: Boolean = false,
-    val taskSync: Boolean = false,
+    val actionItemSync: Boolean = false,
     val defaultImportance: Int = 5,
     val active: Boolean = true,
 ) {
@@ -474,7 +474,7 @@ sealed interface MemorySource {
 /**
  * Canonical thing the memory graph can talk about.
  *
- * Entities are anchors for claims, notes, tasks, and profiles. They absorb aliases
+ * Entities are anchors for claims, notes, action items, and profiles. They absorb aliases
  * and merges so later recall can connect "Gromozeka", "the project", and similar
  * mentions to the same object.
  */
@@ -705,11 +705,11 @@ data class MemoryNote(
 /**
  * Operational commitment or follow-up extracted from memory.
  *
- * Tasks are separate from notes and claims because they have lifecycle, priority,
+ * Action items are separate from notes and claims because they have lifecycle, priority,
  * blockers, acceptance criteria, and closure semantics.
  */
 @Serializable
-data class MemoryTask(
+data class MemoryActionItem(
     val id: Id,
     val namespace: MemoryNamespace,
     val ownerEntityId: MemoryEntity.Id? = null,
@@ -760,7 +760,7 @@ data class MemoryTask(
  * Compact projection of stable knowledge about one entity.
  *
  * A profile is a cache/read model, not the source of truth. It should be
- * refreshable from claims, notes, episodes, tasks, and evidence refs.
+ * refreshable from claims, notes, episodes, action items, and evidence refs.
  */
 @Serializable
 data class MemoryProfile(
@@ -872,7 +872,7 @@ data class MemoryRun(
         EXTRACT_CLAIMS,
         RECONCILE_CLAIMS,
         UPDATE_PROFILE,
-        UPDATE_TASKS,
+        UPDATE_ACTION_ITEMS,
         CONSOLIDATE_NOTES,
         MAINTAIN_ENTITIES,
         REPAIR_MEMORY,
@@ -920,7 +920,7 @@ data class MemoryItemRef(
         ENTITY,
         CLAIM,
         NOTE,
-        TASK,
+        ACTION_ITEM,
         PROFILE,
         EPISODE,
         RUN,
@@ -973,7 +973,7 @@ data class MemoryUpdateBatch(
     val entities: List<MemoryEntity> = emptyList(),
     val claims: List<MemoryClaim> = emptyList(),
     val notes: List<MemoryNote> = emptyList(),
-    val tasks: List<MemoryTask> = emptyList(),
+    val actionItems: List<MemoryActionItem> = emptyList(),
     val profiles: List<MemoryProfile> = emptyList(),
     val episodes: List<MemoryEpisode> = emptyList(),
     val embeddings: List<MemoryEmbeddingRecord> = emptyList(),
@@ -989,7 +989,7 @@ data class MemoryNamespaceSnapshot(
     val entities: List<MemoryEntity> = emptyList(),
     val claims: List<MemoryClaim> = emptyList(),
     val notes: List<MemoryNote> = emptyList(),
-    val tasks: List<MemoryTask> = emptyList(),
+    val actionItems: List<MemoryActionItem> = emptyList(),
     val profiles: List<MemoryProfile> = emptyList(),
     val episodes: List<MemoryEpisode> = emptyList(),
 )
@@ -1028,12 +1028,12 @@ data class MemoryNamespaceSummary(
         val entities: Int = 0,
         val claims: Int = 0,
         val notes: Int = 0,
-        val tasks: Int = 0,
+        val actionItems: Int = 0,
         val profiles: Int = 0,
         val episodes: Int = 0,
     ) {
         val totalItems: Int
-            get() = predicateDefinitions + sources + runs + entities + claims + notes + tasks + profiles + episodes
+            get() = predicateDefinitions + sources + runs + entities + claims + notes + actionItems + profiles + episodes
     }
 
     companion object {
@@ -1052,7 +1052,7 @@ data class MemoryNamespaceSummary(
                     entities = snapshot.entities.size,
                     claims = snapshot.claims.size,
                     notes = snapshot.notes.size,
-                    tasks = snapshot.tasks.size,
+                    actionItems = snapshot.actionItems.size,
                     profiles = snapshot.profiles.size,
                     episodes = snapshot.episodes.size,
                 ),
@@ -1068,7 +1068,7 @@ private fun MemoryNamespaceSnapshot.lastUpdatedAt(): Instant? =
         entities.mapTo(this) { it.updatedAt }
         claims.mapTo(this) { it.updatedAt }
         notes.mapTo(this) { it.updatedAt }
-        tasks.mapTo(this) { it.updatedAt }
+        actionItems.mapTo(this) { it.updatedAt }
         profiles.mapTo(this) { it.updatedAt }
         episodes.mapTo(this) { it.updatedAt }
     }.maxOrNull()

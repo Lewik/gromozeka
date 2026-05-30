@@ -15,7 +15,7 @@ Storage technology is intentionally secondary to the model itself.
   Atomic truth-bearing proposition with scope, qualifiers, validity, and provenance.
 - `MemoryNote`
   Reusable semantic fragment for rationale, direction, evolving plans, and document-heavy context.
-- `MemoryTask`
+- `MemoryActionItem`
   Operational future-action memory.
 - `MemoryProfile`
   Compact always-in-context projection built from stable facts and selected long-lived context.

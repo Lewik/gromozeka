@@ -5,7 +5,7 @@ import com.gromozeka.domain.model.memory.MemoryEntity
 import com.gromozeka.domain.model.memory.MemoryEpisode
 import com.gromozeka.domain.model.memory.MemoryNote
 import com.gromozeka.domain.model.memory.MemoryRun
-import com.gromozeka.domain.model.memory.MemoryTask
+import com.gromozeka.domain.model.memory.MemoryActionItem
 import java.util.UUID
 
 class UuidMemoryIdFactory(
@@ -20,8 +20,8 @@ class UuidMemoryIdFactory(
     override fun newNoteId(): MemoryNote.Id =
         MemoryNote.Id(newId("note"))
 
-    override fun newTaskId(): MemoryTask.Id =
-        MemoryTask.Id(newId("task"))
+    override fun newActionItemId(): MemoryActionItem.Id =
+        MemoryActionItem.Id(newId("actionItem"))
 
     override fun newEpisodeId(): MemoryEpisode.Id =
         MemoryEpisode.Id(newId("episode"))

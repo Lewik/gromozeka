@@ -25,8 +25,8 @@
           "memoryTraceExpectation": {
             "needMemory": true,
             "injectedPromptPresent": true,
-            "selectedTasksMin": 1,
-            "requiredSelectedTasks": [
+            "selectedActionItemsMin": 1,
+            "requiredSelectedActionItems": [
               {
                 "statusIn": ["CANCELLED"],
                 "containsAll": ["temporary task memory cancellation experiment"],
@@ -42,10 +42,10 @@
   "expectedAfterSeeds": {
     "activeClaimsMax": 2,
     "notesMax": 1,
-    "tasksMin": 1,
-    "tasksMax": 1,
+    "actionItemsMin": 1,
+    "actionItemsMax": 1,
     "userSourcesMin": 2,
-    "requiredTasks": [
+    "requiredActionItems": [
       {
         "statusIn": ["CANCELLED"],
         "containsAll": ["temporary task memory cancellation experiment"],
@@ -57,10 +57,10 @@
   "expectedFinal": {
     "activeClaimsMax": 2,
     "notesMax": 1,
-    "tasksMin": 1,
-    "tasksMax": 1,
+    "actionItemsMin": 1,
+    "actionItemsMax": 1,
     "userSourcesMin": 3,
-    "requiredTasks": [
+    "requiredActionItems": [
       {
         "statusIn": ["CANCELLED"],
         "containsAll": ["temporary task memory cancellation experiment"],

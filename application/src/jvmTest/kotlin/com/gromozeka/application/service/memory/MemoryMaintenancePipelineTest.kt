@@ -43,8 +43,8 @@ import com.gromozeka.domain.model.memory.MemorySemanticType
 import com.gromozeka.domain.model.memory.MemorySource
 import com.gromozeka.domain.model.memory.MemorySourceUsagePolicy
 import com.gromozeka.domain.model.memory.MemoryStore
-import com.gromozeka.domain.model.memory.MemoryTask
-import com.gromozeka.domain.model.memory.MemoryTaskUpdateOp
+import com.gromozeka.domain.model.memory.MemoryActionItem
+import com.gromozeka.domain.model.memory.MemoryActionItemUpdateOp
 import com.gromozeka.domain.model.memory.MemoryThreadContext
 import com.gromozeka.domain.model.memory.MemoryUpdateBatch
 import com.gromozeka.domain.model.memory.MemoryWriteRetrievalPlan
@@ -85,7 +85,7 @@ class MemoryMaintenancePipelineTest {
             noteReconciler = InsertOnlyMemoryNoteReconciler,
             claimExtractor = FixedMemoryClaimExtractor(),
             claimReconciler = InsertOnlyMemoryClaimReconciler,
-            taskUpdater = FixedMemoryTaskUpdater(),
+            actionItemUpdater = FixedMemoryActionItemUpdater(),
             materializer = DefaultDirectStructuredMemoryWriteMaterializer(
                 idFactory = SequentialMemoryIdFactory("noop-question-policy"),
             ),
@@ -163,7 +163,7 @@ class MemoryMaintenancePipelineTest {
             noteReconciler = InsertOnlyMemoryNoteReconciler,
             claimExtractor = FixedMemoryClaimExtractor(),
             claimReconciler = InsertOnlyMemoryClaimReconciler,
-            taskUpdater = FixedMemoryTaskUpdater(),
+            actionItemUpdater = FixedMemoryActionItemUpdater(),
             materializer = DefaultDirectStructuredMemoryWriteMaterializer(
                 idFactory = SequentialMemoryIdFactory("assistant-source-only"),
             ),
@@ -184,7 +184,7 @@ class MemoryMaintenancePipelineTest {
         assertTrue(!result.routeDecision.sourcePolicy.allowEvidenceHydration)
         assertTrue(result.memoryBatch.claims.isEmpty())
         assertTrue(result.memoryBatch.notes.isEmpty())
-        assertTrue(result.memoryBatch.tasks.isEmpty())
+        assertTrue(result.memoryBatch.actionItems.isEmpty())
         assertTrue(!storedSource.usagePolicy.allowStructuredExtraction)
         assertTrue(!storedSource.usagePolicy.allowRecall)
         assertTrue(!storedSource.usagePolicy.allowEvidenceHydration)
@@ -303,15 +303,15 @@ class MemoryMaintenancePipelineTest {
         val supersededClaim = claim("claim-superseded", status = MemoryClaim.Status.SUPERSEDED)
         val activeNote = note("note-active", status = MemoryNote.Status.ACTIVE)
         val resolvedNote = note("note-resolved", status = MemoryNote.Status.RESOLVED)
-        val openTask = task("task-open", status = MemoryTask.Status.OPEN)
-        val doneTask = task("task-done", status = MemoryTask.Status.DONE)
+        val openTask = actionItem("actionItem-open", status = MemoryActionItem.Status.OPEN)
+        val doneTask = actionItem("actionItem-done", status = MemoryActionItem.Status.DONE)
         val store = InMemoryMemoryStore(
             MemoryNamespaceSnapshot(
                 sources = listOf(source()),
                 entities = listOf(entity()),
                 claims = listOf(activeClaim, supersededClaim),
                 notes = listOf(activeNote, resolvedNote),
-                tasks = listOf(openTask, doneTask),
+                actionItems = listOf(openTask, doneTask),
             )
         )
 
@@ -404,16 +404,16 @@ class MemoryMaintenancePipelineTest {
     @Test
     fun repairMergesDuplicateTasksAndArchivesLoser() = runBlocking {
         val title = "Add selector trace report to memory e2e"
-        val weakerTask = task("task-weaker-selector-trace", status = MemoryTask.Status.OPEN).copy(
+        val weakerTask = actionItem("actionItem-weaker-selector-trace", status = MemoryActionItem.Status.OPEN).copy(
             title = title,
             description = "Expose selector decisions in memory e2e reports.",
             confidence = 0.55,
             updatedAt = EARLIER,
         )
-        val strongerTask = task("task-stronger-selector-trace", status = MemoryTask.Status.OPEN).copy(
+        val strongerTask = actionItem("actionItem-stronger-selector-trace", status = MemoryActionItem.Status.OPEN).copy(
             title = title,
             description = "Expose selector decisions in memory e2e reports.",
-            priority = MemoryTask.Priority.HIGH,
+            priority = MemoryActionItem.Priority.HIGH,
             confidence = 0.95,
             updatedAt = NOW,
         )
@@ -421,7 +421,7 @@ class MemoryMaintenancePipelineTest {
             MemoryNamespaceSnapshot(
                 sources = listOf(source()),
                 entities = listOf(entity()),
-                tasks = listOf(weakerTask, strongerTask),
+                actionItems = listOf(weakerTask, strongerTask),
             )
         )
 
@@ -432,24 +432,24 @@ class MemoryMaintenancePipelineTest {
                     repairActions = listOf(
                         MemoryRepairPlan.Action(
                             action = MemoryRepairPlan.Action.Type.MERGE_DUPLICATES,
-                            targetType = MemoryItemRef.Type.TASK,
+                            targetType = MemoryItemRef.Type.ACTION_ITEM,
                             targetIds = listOf(weakerTask.id.value, strongerTask.id.value),
-                            reason = "Duplicate task detected.",
+                            reason = "Duplicate actionItem detected.",
                         )
                     ),
-                    summary = "Merged duplicate selector trace tasks.",
+                    summary = "Merged duplicate selector trace actionItems.",
                 )
             ),
-            idFactory = SequentialMemoryIdFactory("repair-task"),
+            idFactory = SequentialMemoryIdFactory("repair-actionItem"),
             profileUpdater = ProjectionMemoryProfileUpdater(store),
             clock = FixedMemoryClock(NOW),
         ).run(MemoryMaintenanceRequest(TEST_NAMESPACE))
 
         val snapshot = store.loadNamespaceSnapshot(TEST_NAMESPACE, includeArchived = true)
 
-        assertTrue(result.candidateClusters.any { it.kind == MemoryRepairCandidateCluster.Kind.DUPLICATE_TASKS })
-        assertEquals(1, result.memoryBatch.tasks.size)
-        assertEquals(weakerTask.id, result.memoryBatch.tasks.single().id)
+        assertTrue(result.candidateClusters.any { it.kind == MemoryRepairCandidateCluster.Kind.DUPLICATE_ACTION_ITEMS })
+        assertEquals(1, result.memoryBatch.actionItems.size)
+        assertEquals(weakerTask.id, result.memoryBatch.actionItems.single().id)
         assertEquals(NOW, snapshot.taskById(weakerTask.id.value).archivedAt)
         assertNull(snapshot.taskById(strongerTask.id.value).archivedAt)
 
@@ -457,13 +457,13 @@ class MemoryMaintenancePipelineTest {
         val searchHits = store.search(
             MemoryStore.SearchRequest(
                 namespace = TEST_NAMESPACE,
-                scopes = setOf(MemoryStore.SearchScope.TASKS),
+                scopes = setOf(MemoryStore.SearchScope.ACTION_ITEMS),
                 query = "selector trace report",
                 limit = 10,
             )
         )
-        assertTrue(normalSnapshot.tasks.none { it.id == weakerTask.id })
-        assertTrue(normalSnapshot.tasks.any { it.id == strongerTask.id })
+        assertTrue(normalSnapshot.actionItems.none { it.id == weakerTask.id })
+        assertTrue(normalSnapshot.actionItems.any { it.id == strongerTask.id })
         assertTrue(searchHits.none { it.toTestItemRef().id == weakerTask.id.value })
         assertTrue(searchHits.any { it.toTestItemRef().id == strongerTask.id.value })
     }
@@ -795,7 +795,7 @@ class MemoryMaintenancePipelineTest {
                     )
                 )
             ),
-            taskUpdater = FixedMemoryTaskUpdater(),
+            actionItemUpdater = FixedMemoryActionItemUpdater(),
             materializer = DefaultDirectStructuredMemoryWriteMaterializer(
                 idFactory = SequentialMemoryIdFactory("claim-supersede-cascade"),
             ),
@@ -917,7 +917,7 @@ class MemoryMaintenancePipelineTest {
                     )
                 )
             ),
-            taskUpdater = FixedMemoryTaskUpdater(),
+            actionItemUpdater = FixedMemoryActionItemUpdater(),
             materializer = DefaultDirectStructuredMemoryWriteMaterializer(
                 idFactory = SequentialMemoryIdFactory("entity-summary"),
             ),
@@ -990,7 +990,7 @@ class MemoryMaintenancePipelineTest {
             noteReconciler = InsertOnlyMemoryNoteReconciler,
             claimExtractor = FixedMemoryClaimExtractor(listOf(duplicateCandidate)),
             claimReconciler = InsertOnlyMemoryClaimReconciler,
-            taskUpdater = FixedMemoryTaskUpdater(),
+            actionItemUpdater = FixedMemoryActionItemUpdater(),
             materializer = DefaultDirectStructuredMemoryWriteMaterializer(
                 idFactory = SequentialMemoryIdFactory("dedup"),
             ),
@@ -1054,7 +1054,7 @@ class MemoryMaintenancePipelineTest {
             noteReconciler = InsertOnlyMemoryNoteReconciler,
             claimExtractor = FixedMemoryClaimExtractor(listOf(candidate)),
             claimReconciler = InsertOnlyMemoryClaimReconciler,
-            taskUpdater = FixedMemoryTaskUpdater(),
+            actionItemUpdater = FixedMemoryActionItemUpdater(),
             materializer = DefaultDirectStructuredMemoryWriteMaterializer(
                 idFactory = SequentialMemoryIdFactory(prefix),
             ),
@@ -1142,7 +1142,7 @@ class MemoryMaintenancePipelineTest {
             noteReconciler = InsertOnlyMemoryNoteReconciler,
             claimExtractor = FixedMemoryClaimExtractor(),
             claimReconciler = InsertOnlyMemoryClaimReconciler,
-            taskUpdater = FixedMemoryTaskUpdater(),
+            actionItemUpdater = FixedMemoryActionItemUpdater(),
             materializer = DefaultDirectStructuredMemoryWriteMaterializer(
                 idFactory = SequentialMemoryIdFactory("note-dedup"),
             ),
@@ -1165,20 +1165,20 @@ class MemoryMaintenancePipelineTest {
 
     @Test
     fun directWriteDedupGuardConvertsDuplicateTaskInsertToUpdate() = runBlocking {
-        val existingSource = source("source-existing-task", "Remember follow-up: add write trace report to memory e2e.")
-        val duplicateSource = source("source-duplicate-task", "Update the same follow-up: add write trace report to memory e2e with raw and final ops.")
-        val existingTask = task(
-            id = "task-existing-write-trace",
-            status = MemoryTask.Status.OPEN,
+        val existingSource = source("source-existing-actionItem", "Remember follow-up: add write trace report to memory e2e.")
+        val duplicateSource = source("source-duplicate-actionItem", "Update the same follow-up: add write trace report to memory e2e with raw and final ops.")
+        val existingTask = actionItem(
+            id = "actionItem-existing-write-trace",
+            status = MemoryActionItem.Status.OPEN,
         ).copy(
             title = "Add write trace report to memory e2e",
             description = "Expose write pipeline stages in the real-model memory e2e report.",
             evidenceRefs = listOf(evidenceRef(existingSource.id.value, existingSource.contentText)),
         )
-        val duplicateDraft = MemoryTaskUpdateOp.Draft(
+        val duplicateDraft = MemoryActionItemUpdateOp.Draft(
             title = existingTask.title,
             description = "Expose raw and final write operations in the real-model memory e2e report.",
-            status = MemoryTask.Status.OPEN,
+            status = MemoryActionItem.Status.OPEN,
             scope = existingTask.scope,
             ownerEntityId = existingTask.ownerEntityId,
             evidenceQuote = "add write trace report to memory e2e with raw and final ops",
@@ -1189,7 +1189,7 @@ class MemoryMaintenancePipelineTest {
             MemoryNamespaceSnapshot(
                 sources = listOf(existingSource),
                 entities = listOf(entity()),
-                tasks = listOf(existingTask),
+                actionItems = listOf(existingTask),
             )
         )
 
@@ -1198,16 +1198,16 @@ class MemoryMaintenancePipelineTest {
             router = FixedMemoryWriteRouter(
                 MemoryRouteDecision(
                     decision = MemoryRouteDecision.Decision.MIXED,
-                    memoryTypes = setOf(MemorySemanticType.TASK, MemorySemanticType.ENTITY),
+                    memoryTypes = setOf(MemorySemanticType.ACTION_ITEM, MemorySemanticType.ENTITY),
                     salience = 1.0,
-                    reason = "Scripted task write",
+                    reason = "Scripted actionItem write",
                 )
             ),
             retrievalPlanner = FixedMemoryWriteRetrievalPlanner(
                 MemoryWriteRetrievalPlan(
                     needRetrieval = true,
-                    memoryTypes = setOf(MemorySemanticType.TASK, MemorySemanticType.ENTITY),
-                    retrievalBudget = MemoryRetrievalBudget(tasks = 5),
+                    memoryTypes = setOf(MemorySemanticType.ACTION_ITEM, MemorySemanticType.ENTITY),
+                    retrievalBudget = MemoryRetrievalBudget(actionItems = 5),
                 )
             ),
             entityCanonicalizer = FixedMemoryEntityCanonicalizer(),
@@ -1215,17 +1215,17 @@ class MemoryMaintenancePipelineTest {
             noteReconciler = InsertOnlyMemoryNoteReconciler,
             claimExtractor = FixedMemoryClaimExtractor(),
             claimReconciler = InsertOnlyMemoryClaimReconciler,
-            taskUpdater = FixedMemoryTaskUpdater(
+            actionItemUpdater = FixedMemoryActionItemUpdater(
                 listOf(
-                    MemoryTaskUpdateOp(
-                        action = MemoryTaskUpdateOp.Action.INSERT,
-                        task = duplicateDraft,
-                        reason = "Scripted duplicate task insert",
+                    MemoryActionItemUpdateOp(
+                        action = MemoryActionItemUpdateOp.Action.INSERT,
+                        actionItem = duplicateDraft,
+                        reason = "Scripted duplicate actionItem insert",
                     )
                 )
             ),
             materializer = DefaultDirectStructuredMemoryWriteMaterializer(
-                idFactory = SequentialMemoryIdFactory("task-dedup"),
+                idFactory = SequentialMemoryIdFactory("actionItem-dedup"),
             ),
             clock = FixedMemoryClock(NOW),
         ).write(
@@ -1237,10 +1237,10 @@ class MemoryMaintenancePipelineTest {
 
         val snapshot = store.loadNamespaceSnapshot(TEST_NAMESPACE, includeArchived = true)
 
-        assertEquals(MemoryTaskUpdateOp.Action.INSERT, result.rawTaskOps.single().action)
-        assertEquals(MemoryTaskUpdateOp.Action.UPDATE, result.taskOps.single().action)
-        assertEquals(existingTask.id, result.taskOps.single().targetTaskId)
-        assertEquals(listOf(existingTask.id), snapshot.tasks.map { it.id })
+        assertEquals(MemoryActionItemUpdateOp.Action.INSERT, result.rawActionItemOps.single().action)
+        assertEquals(MemoryActionItemUpdateOp.Action.UPDATE, result.actionItemOps.single().action)
+        assertEquals(existingTask.id, result.actionItemOps.single().targetActionItemId)
+        assertEquals(listOf(existingTask.id), snapshot.actionItems.map { it.id })
         assertTrue(snapshot.taskById(existingTask.id.value).description!!.contains("raw and final write operations"))
     }
 
@@ -1275,9 +1275,9 @@ class MemoryMaintenancePipelineTest {
             entityRefs = listOf(MemoryNote.EntityRef(loser.id, MemoryNote.EntityRef.Role.PRIMARY)),
             evidenceRefs = listOf(evidenceRef(source.id.value, source.contentText)),
         )
-        val task = task(
-            id = "task-verifier",
-            status = MemoryTask.Status.OPEN,
+        val actionItem = actionItem(
+            id = "actionItem-verifier",
+            status = MemoryActionItem.Status.OPEN,
             ownerEntityId = loser.id,
             relatedEntityIds = listOf(loser.id),
         )
@@ -1291,7 +1291,7 @@ class MemoryMaintenancePipelineTest {
                 entities = listOf(winner, loser),
                 claims = listOf(claim),
                 notes = listOf(note),
-                tasks = listOf(task),
+                actionItems = listOf(actionItem),
                 episodes = listOf(episode),
             )
         )
@@ -1328,8 +1328,8 @@ class MemoryMaintenancePipelineTest {
         assertEquals(winner.id, snapshot.claimById(claim.id.value).subjectEntityId)
         assertEquals(winner.id, snapshot.noteById(note.id.value).anchorEntityId)
         assertEquals(winner.id, snapshot.noteById(note.id.value).entityRefs.single().entityId)
-        assertEquals(winner.id, snapshot.taskById(task.id.value).ownerEntityId)
-        assertEquals(listOf(winner.id), snapshot.taskById(task.id.value).relatedEntityIds)
+        assertEquals(winner.id, snapshot.taskById(actionItem.id.value).ownerEntityId)
+        assertEquals(listOf(winner.id), snapshot.taskById(actionItem.id.value).relatedEntityIds)
         assertEquals(winner.id, snapshot.episodeById(episode.id.value).ownerEntityId)
         assertTrue(snapshot.runs.any { it.runType == MemoryRun.Type.MAINTAIN_ENTITIES })
     }
@@ -1907,9 +1907,9 @@ class MemoryMaintenancePipelineTest {
 
     @Test
     fun noteConsolidationDedupGuardConvertsDuplicateTaskInsertToUpdate() = runBlocking {
-        val source = source("duplicate-task-source", "Follow-up note: add maintenance trace report to memory e2e.")
+        val source = source("duplicate-actionItem-source", "Follow-up note: add maintenance trace report to memory e2e.")
         val originNote = note(
-            id = "note-duplicate-task",
+            id = "note-duplicate-actionItem",
             title = "Maintenance trace follow-up",
             summary = "Add maintenance trace report to memory e2e.",
             noteType = MemoryNote.Type.DECISION,
@@ -1917,18 +1917,18 @@ class MemoryMaintenancePipelineTest {
             importance = 9,
             evidenceRefs = listOf(evidenceRef(source.id.value, source.contentText)),
         )
-        val existingTask = task(
-            id = "task-maintenance-trace",
-            status = MemoryTask.Status.OPEN,
+        val existingTask = actionItem(
+            id = "actionItem-maintenance-trace",
+            status = MemoryActionItem.Status.OPEN,
         ).copy(
             title = "Add maintenance trace report to memory e2e",
             description = "Expose maintenance pipeline actions in the e2e report.",
             evidenceRefs = listOf(evidenceRef(source.id.value, source.contentText)),
         )
-        val duplicateDraft = MemoryTaskUpdateOp.Draft(
+        val duplicateDraft = MemoryActionItemUpdateOp.Draft(
             title = existingTask.title,
             description = "Expose raw and final maintenance pipeline actions in the e2e report.",
-            status = MemoryTask.Status.OPEN,
+            status = MemoryActionItem.Status.OPEN,
             scope = existingTask.scope,
             ownerEntityId = existingTask.ownerEntityId,
             originNoteId = originNote.id,
@@ -1939,7 +1939,7 @@ class MemoryMaintenancePipelineTest {
                 sources = listOf(source),
                 entities = listOf(entity()),
                 notes = listOf(originNote),
-                tasks = listOf(existingTask),
+                actionItems = listOf(existingTask),
             )
         )
 
@@ -1947,27 +1947,27 @@ class MemoryMaintenancePipelineTest {
             store = store,
             consolidator = FixedNoteConsolidator(
                 NoteConsolidationResult(
-                    taskActions = listOf(
-                        MemoryTaskUpdateOp(
-                            action = MemoryTaskUpdateOp.Action.INSERT,
-                            task = duplicateDraft,
-                            reason = "Scripted duplicate task insert.",
+                    actionItemActions = listOf(
+                        MemoryActionItemUpdateOp(
+                            action = MemoryActionItemUpdateOp.Action.INSERT,
+                            actionItem = duplicateDraft,
+                            reason = "Scripted duplicate actionItem insert.",
                         )
                     ),
-                    summary = "Scripted duplicate task consolidation.",
+                    summary = "Scripted duplicate actionItem consolidation.",
                 )
             ),
-            idFactory = SequentialMemoryIdFactory("task-dedup"),
+            idFactory = SequentialMemoryIdFactory("actionItem-dedup"),
             profileUpdater = ProjectionMemoryProfileUpdater(store),
             clock = FixedMemoryClock(NOW),
         ).run(MemoryMaintenanceRequest(TEST_NAMESPACE))
 
         val snapshot = store.loadNamespaceSnapshot(TEST_NAMESPACE, includeArchived = true)
 
-        assertEquals(MemoryTaskUpdateOp.Action.INSERT, result.rawConsolidationResult.taskActions.single().action)
-        assertEquals(MemoryTaskUpdateOp.Action.UPDATE, result.consolidationResult.taskActions.single().action)
-        assertEquals(existingTask.id, result.consolidationResult.taskActions.single().targetTaskId)
-        assertEquals(listOf(existingTask.id), snapshot.tasks.map { it.id })
+        assertEquals(MemoryActionItemUpdateOp.Action.INSERT, result.rawConsolidationResult.actionItemActions.single().action)
+        assertEquals(MemoryActionItemUpdateOp.Action.UPDATE, result.consolidationResult.actionItemActions.single().action)
+        assertEquals(existingTask.id, result.consolidationResult.actionItemActions.single().targetActionItemId)
+        assertEquals(listOf(existingTask.id), snapshot.actionItems.map { it.id })
         assertTrue(snapshot.taskById(existingTask.id.value).description!!.contains("raw and final maintenance"))
         assertEquals(MemoryNote.Maturity.CONSOLIDATED, snapshot.noteById(originNote.id.value).maturity)
     }
@@ -2828,8 +2828,8 @@ class MemoryMaintenancePipelineTest {
 
     @Test
     fun runtimeTaskPromptLabelsTitleAndDoesNotHydrateEvidenceWithoutFallback() = runBlocking {
-        val taskSource = source("task-source", "Follow-up: add selector trace report to memory e2e.")
-        val task = task("task-selector-trace", status = MemoryTask.Status.OPEN).copy(
+        val taskSource = source("actionItem-source", "Follow-up: add selector trace report to memory e2e.")
+        val actionItem = actionItem("actionItem-selector-trace", status = MemoryActionItem.Status.OPEN).copy(
             title = "Add selector trace report to memory e2e",
             description = "Expose selector decisions in memory e2e reports.",
             evidenceRefs = listOf(evidenceRef(taskSource.id.value, taskSource.contentText)),
@@ -2838,7 +2838,7 @@ class MemoryMaintenancePipelineTest {
             MemoryNamespaceSnapshot(
                 sources = listOf(taskSource),
                 entities = listOf(entity()),
-                tasks = listOf(task),
+                actionItems = listOf(actionItem),
             )
         )
 
@@ -2847,12 +2847,12 @@ class MemoryMaintenancePipelineTest {
             planner = FixedReadPlanner(
                 MemoryReadPlan(
                     needMemory = true,
-                    answerMode = MemoryReadPlan.AnswerMode.TASK,
+                    answerMode = MemoryReadPlan.AnswerMode.ACTION_ITEM,
                     requireEvidenceFallback = false,
-                    retrievalBudget = MemoryRetrievalBudget(tasks = 1, sources = 1),
+                    retrievalBudget = MemoryRetrievalBudget(actionItems = 1, sources = 1),
                     retrievalRequests = listOf(
                         MemoryReadPlan.RetrievalRequest(
-                            memoryType = MemorySemanticType.TASK,
+                            memoryType = MemorySemanticType.ACTION_ITEM,
                             why = "The user asks for the open follow-up title.",
                             query = "memory e2e trace reporting follow-up",
                             topK = 1,
@@ -2860,12 +2860,12 @@ class MemoryMaintenancePipelineTest {
                     ),
                 )
             ),
-        ).read(memoryReadRequest("task-title-target", "Which open follow-up exists for memory e2e trace reporting? Answer with the task title."))
+        ).read(memoryReadRequest("actionItem-title-target", "Which open follow-up exists for memory e2e trace reporting? Answer with the actionItem title."))
 
         val prompt = assertNotNull(result.runtimePrompt)
         val refs = result.retrievedHits.map { it.toTestItemRef() }
 
-        assertTrue(refs.contains(MemoryItemRef(MemoryItemRef.Type.TASK, task.id.value)))
+        assertTrue(refs.contains(MemoryItemRef(MemoryItemRef.Type.ACTION_ITEM, actionItem.id.value)))
         assertTrue(refs.none { it == MemoryItemRef(MemoryItemRef.Type.SOURCE, taskSource.id.value) })
         assertTrue(prompt.contains("title=\"Add selector trace report to memory e2e\""))
         assertTrue(prompt.contains("description=\"Expose selector decisions in memory e2e reports.\""))
@@ -3736,21 +3736,21 @@ private fun note(
         updatedAt = EARLIER,
     )
 
-private fun task(
+private fun actionItem(
     id: String,
-    status: MemoryTask.Status,
+    status: MemoryActionItem.Status,
     ownerEntityId: MemoryEntity.Id? = USER_ENTITY_ID,
     assigneeEntityId: MemoryEntity.Id? = null,
     relatedEntityIds: List<MemoryEntity.Id> = emptyList(),
-): MemoryTask =
-    MemoryTask(
-        id = MemoryTask.Id(id),
+): MemoryActionItem =
+    MemoryActionItem(
+        id = MemoryActionItem.Id(id),
         namespace = TEST_NAMESPACE,
         ownerEntityId = ownerEntityId,
         assigneeEntityId = assigneeEntityId,
-        title = "Memory task $id",
+        title = "Memory actionItem $id",
         status = status,
-        scope = MemoryScope.Global("User-level task"),
+        scope = MemoryScope.Global("User-level actionItem"),
         relatedEntityIds = relatedEntityIds,
         evidenceRefs = listOf(evidenceRef("source", "Task evidence")),
         createdAt = EARLIER,
@@ -3845,7 +3845,7 @@ private fun MemoryStore.SearchHit.toTestItemRef(): MemoryItemRef =
         is MemoryStore.SearchHit.EntityHit -> MemoryItemRef(MemoryItemRef.Type.ENTITY, entity.id.value)
         is MemoryStore.SearchHit.ClaimHit -> MemoryItemRef(MemoryItemRef.Type.CLAIM, claim.id.value)
         is MemoryStore.SearchHit.NoteHit -> MemoryItemRef(MemoryItemRef.Type.NOTE, note.id.value)
-        is MemoryStore.SearchHit.TaskHit -> MemoryItemRef(MemoryItemRef.Type.TASK, task.id.value)
+        is MemoryStore.SearchHit.ActionItemHit -> MemoryItemRef(MemoryItemRef.Type.ACTION_ITEM, actionItem.id.value)
         is MemoryStore.SearchHit.ProfileHit -> MemoryItemRef(MemoryItemRef.Type.PROFILE, profile.id.value)
         is MemoryStore.SearchHit.EpisodeHit -> MemoryItemRef(MemoryItemRef.Type.EPISODE, episode.id.value)
         is MemoryStore.SearchHit.RunHit -> MemoryItemRef(MemoryItemRef.Type.RUN, run.id.value)
@@ -3863,8 +3863,8 @@ private fun MemoryNamespaceSnapshot.claimById(id: String): MemoryClaim =
 private fun MemoryNamespaceSnapshot.noteById(id: String): MemoryNote =
     notes.single { it.id.value == id }
 
-private fun MemoryNamespaceSnapshot.taskById(id: String): MemoryTask =
-    tasks.single { it.id.value == id }
+private fun MemoryNamespaceSnapshot.taskById(id: String): MemoryActionItem =
+    actionItems.single { it.id.value == id }
 
 private fun MemoryNamespaceSnapshot.episodeById(id: String): MemoryEpisode =
     episodes.single { it.id.value == id }

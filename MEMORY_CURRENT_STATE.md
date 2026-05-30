@@ -34,7 +34,7 @@ The current write pipeline shape is:
 6. Reconcile notes with `LlmMemoryNoteReconciler`.
 7. Extract claims with `LlmMemoryClaimExtractor`.
 8. Reconcile claims with `LlmMemoryClaimReconciler`.
-9. Update tasks with `LlmMemoryTaskUpdater`.
+9. Update tasks with `LlmMemoryActionItemUpdater`.
 10. Materialize the resulting batch into `MemoryStore`.
 11. Update projections such as profiles.
 

@@ -120,8 +120,8 @@ class TabViewModel(
     private val _tokenStats = MutableStateFlow<TokenUsageStatistics.ThreadTotals?>(null)
     val tokenStats: StateFlow<TokenUsageStatistics.ThreadTotals?> = _tokenStats.asStateFlow()
 
-    private val _memoryTasksRefreshKey = MutableStateFlow(0)
-    val memoryTasksRefreshKey: StateFlow<Int> = _memoryTasksRefreshKey.asStateFlow()
+    private val _memoryActionItemsRefreshKey = MutableStateFlow(0)
+    val memoryActionItemsRefreshKey: StateFlow<Int> = _memoryActionItemsRefreshKey.asStateFlow()
 
     init {
         _uiState.update { it.copy(isWaitingForResponse = false) }
@@ -258,7 +258,7 @@ class TabViewModel(
 
         soundNotificationService.playReadySound()
         loadTokenStats()
-        notifyMemoryTasksMayHaveChanged()
+        notifyMemoryActionItemsMayHaveChanged()
         log.debug { "Conversation runtime completed" }
         currentRequestJob = null
         lastRuntimeMessage = null
@@ -560,8 +560,8 @@ class TabViewModel(
         )
     }
 
-    fun notifyMemoryTasksMayHaveChanged() {
-        _memoryTasksRefreshKey.update { it + 1 }
+    fun notifyMemoryActionItemsMayHaveChanged() {
+        _memoryActionItemsRefreshKey.update { it + 1 }
     }
 
     fun interrupt() {

@@ -11,7 +11,7 @@ import com.gromozeka.domain.model.Settings
 import com.gromozeka.domain.model.SquashType
 import com.gromozeka.domain.model.TokenUsageStatistics
 import com.gromozeka.domain.model.ai.AiRuntimeSelection
-import com.gromozeka.domain.model.memory.MemoryTask
+import com.gromozeka.domain.model.memory.MemoryActionItem
 import com.gromozeka.domain.service.ConversationRuntimeControlAction
 import com.gromozeka.domain.service.ConversationRuntimeCommand
 import com.gromozeka.domain.service.ConversationRuntimeSnapshot
@@ -293,8 +293,8 @@ data class MemoryActionRequest(
 ) : ClientRequest
 
 @Serializable
-@SerialName("get_memory_tasks")
-data class GetMemoryTasksRequest(
+@SerialName("get_memory_action_items")
+data class GetMemoryActionItemsRequest(
     val conversationId: Conversation.Id,
     val includeClosed: Boolean = false,
 ) : ClientRequest
@@ -562,15 +562,15 @@ data class MemoryActionAcceptedResponse(
 ) : ServerResponse
 
 @Serializable
-@SerialName("memory_tasks")
-data class MemoryTasksResponse(
+@SerialName("memory_action_items")
+data class MemoryActionItemsResponse(
     val revision: String,
-    val counts: MemoryTaskCounts,
-    val tasks: List<MemoryTask>,
+    val counts: MemoryActionItemCounts,
+    val actionItems: List<MemoryActionItem>,
 ) : ServerResponse
 
 @Serializable
-data class MemoryTaskCounts(
+data class MemoryActionItemCounts(
     val open: Int = 0,
     val inProgress: Int = 0,
     val blocked: Int = 0,

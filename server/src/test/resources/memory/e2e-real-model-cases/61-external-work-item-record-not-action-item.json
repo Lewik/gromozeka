@@ -1,0 +1,55 @@
+{
+  "id": "external-work-item-record-not-action-item",
+  "category": "action_item_memory_policy",
+  "description": "An imported Jira/GitHub-style work record with Type, Assignee, Status, and Priority is external project context, not Gromozeka's internal action item memory.",
+  "timeoutSeconds": 700,
+  "seedSessions": [
+    {
+      "id": "seed-a",
+      "turns": [
+        {
+          "text": "Remember this external Jira record as project context, not as an internal Gromozeka follow-up.\n\nJira: MV-344\nType: Story\nTitle: Add Hebrew invoice import validation\nAssignee: Lev\nStatus: In Progress\nPriority: High\nAcceptance criteria: uploaded Hebrew invoices must keep original RTL text and report validation errors with row numbers.",
+          "memoryWriteTraceExpectation": {
+            "routeDecisionIn": ["DIRECT_STRUCTURED_WRITE", "NOTE_WRITE", "MIXED"],
+            "rawActionItemOpsMax": 0,
+            "actionItemOpsMax": 0,
+            "materializedActionItemsMax": 0
+          }
+        }
+      ]
+    }
+  ],
+  "expectedAfterSeeds": {
+    "actionItemsMax": 0,
+    "userSourcesMin": 1,
+    "requiredSources": [
+      {
+        "roleIn": ["USER"],
+        "textContainsAll": ["MV-344", "Type: Story", "Assignee: Lev"],
+        "allowStructuredExtraction": true,
+        "allowRecall": true,
+        "allowEvidenceHydration": true
+      }
+    ],
+    "forbiddenActionItems": [
+      {
+        "containsAll": ["MV-344"]
+      },
+      {
+        "containsAll": ["Hebrew invoice import validation"]
+      }
+    ]
+  },
+  "expectedFinal": {
+    "actionItemsMax": 0,
+    "userSourcesMin": 1,
+    "forbiddenActionItems": [
+      {
+        "containsAll": ["MV-344"]
+      },
+      {
+        "containsAll": ["Hebrew invoice import validation"]
+      }
+    ]
+  }
+}

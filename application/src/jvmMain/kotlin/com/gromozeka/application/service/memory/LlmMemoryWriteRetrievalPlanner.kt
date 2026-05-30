@@ -138,7 +138,7 @@ class LlmMemoryWriteRetrievalPlanner(
                 retrievalBudget = MemoryRetrievalBudget(
                     claims = limits.claims.coerceIn(0, 20),
                     notes = limits.notes.coerceIn(0, 10),
-                    tasks = limits.tasks.coerceIn(0, 10),
+                    actionItems = limits.actionItems.coerceIn(0, 10),
                     sources = limits.sources.coerceIn(0, 8),
                 ),
             )
@@ -165,7 +165,8 @@ class LlmMemoryWriteRetrievalPlanner(
     private data class Limits(
         val claims: Int = 0,
         val notes: Int = 0,
-        val tasks: Int = 0,
+        @SerialName("action_items")
+        val actionItems: Int = 0,
         val sources: Int = 0,
     )
 
@@ -182,7 +183,7 @@ class LlmMemoryWriteRetrievalPlanner(
               "entity_queries": ["..."],
               "text_queries": ["..."],
               "predicate_hints": ["..."],
-              "memory_types": ["profile", "claim", "note", "task", "source", "entity"],
+              "memory_types": ["profile", "claim", "note", "action_item", "source", "entity"],
               "time_filters": {
                 "from_iso": null,
                 "to_iso": null
@@ -190,7 +191,7 @@ class LlmMemoryWriteRetrievalPlanner(
               "limits": {
                 "claims": 20,
                 "notes": 10,
-                "tasks": 10,
+                "action_items": 10,
                 "sources": 8
               }
             }
@@ -201,8 +202,8 @@ class LlmMemoryWriteRetrievalPlanner(
             - Do not invent predicate synonyms in predicate_hints when an existing catalog predicate captures the same relation.
             - Include notes when the material looks rationale-heavy or plan-heavy.
             - Include claims when preferences, status, or factual updates are likely.
-            - Include tasks when TARGET_MESSAGE may create, update, close, cancel, deduplicate, or discuss an explicit follow-up/task/deadline.
-            - Include tasks when TARGET_MESSAGE says a remembered follow-up is done, finished, completed, closed, cancelled, no longer needed, blocked, unblocked, reprioritized, or changed.
+            - Include action_items when TARGET_MESSAGE may create, update, close, cancel, deduplicate, or discuss an explicit remembered follow-up/action item/deadline.
+            - Include action_items when TARGET_MESSAGE says a remembered follow-up is done, finished, completed, closed, cancelled, no longer needed, blocked, unblocked, reprioritized, or changed.
             - Include entity retrieval for concrete people, products, projects, repos, files, technologies, and the stable user subject.
             - Add time filters when the turns mention "now", "before", "used to", "from now on", "no longer", deadlines, or relative dates.
             - Include source retrieval when conflicts or grounding-quality checks are likely to matter.
@@ -225,13 +226,13 @@ private fun Set<MemorySemanticType>.withEntityCandidatesIfTypesWereSelected(
 private fun MemoryWriteRetrievalPlan.withRouteTaskGrounding(
     routeDecision: MemoryRouteDecision,
 ): MemoryWriteRetrievalPlan {
-    if (!needRetrieval || MemorySemanticType.TASK !in routeDecision.memoryTypes) {
+    if (!needRetrieval || MemorySemanticType.ACTION_ITEM !in routeDecision.memoryTypes) {
         return this
     }
 
     return copy(
-        memoryTypes = memoryTypes + MemorySemanticType.TASK + MemorySemanticType.ENTITY,
-        retrievalBudget = retrievalBudget.copy(tasks = maxOf(retrievalBudget.tasks, 8)),
+        memoryTypes = memoryTypes + MemorySemanticType.ACTION_ITEM + MemorySemanticType.ENTITY,
+        retrievalBudget = retrievalBudget.copy(actionItems = maxOf(retrievalBudget.actionItems, 8)),
     )
 }
 

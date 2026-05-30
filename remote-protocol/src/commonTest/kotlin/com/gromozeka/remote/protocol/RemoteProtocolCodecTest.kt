@@ -7,7 +7,7 @@ import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.model.ai.AiRuntimeSelection
 import com.gromozeka.domain.model.memory.MemoryNamespace
 import com.gromozeka.domain.model.memory.MemoryScope
-import com.gromozeka.domain.model.memory.MemoryTask
+import com.gromozeka.domain.model.memory.MemoryActionItem
 import com.gromozeka.domain.service.ConversationRuntimeCommand
 import com.gromozeka.domain.service.ConversationRuntimeControlAction
 import com.gromozeka.domain.service.QueuedMessagePlacement
@@ -331,16 +331,16 @@ class RemoteProtocolCodecTest {
     }
 
     @Test
-    fun cborRoundTripSupportsMemoryTasks() {
-        val task = MemoryTask(
-            id = MemoryTask.Id("task-1"),
+    fun cborRoundTripSupportsMemoryActionItems() {
+        val actionItem = MemoryActionItem(
+            id = MemoryActionItem.Id("actionItem-1"),
             namespace = MemoryNamespace("project:demo"),
-            title = "Check memory task UI",
-            description = "Render current memory tasks in a read-only panel.",
-            status = MemoryTask.Status.IN_PROGRESS,
-            priority = MemoryTask.Priority.HIGH,
+            title = "Check memory actionItem UI",
+            description = "Render current memory actionItems in a read-only panel.",
+            status = MemoryActionItem.Status.IN_PROGRESS,
+            priority = MemoryActionItem.Priority.HIGH,
             scope = MemoryScope.Global("Demo project"),
-            acceptanceCriteria = listOf("Panel shows active tasks"),
+            acceptanceCriteria = listOf("Panel shows active actionItems"),
             blockers = listOf("No blocker"),
             confidence = 0.9,
             createdAt = Instant.parse("2026-05-11T00:00:00Z"),
@@ -348,19 +348,19 @@ class RemoteProtocolCodecTest {
         )
         val envelope = GromozekaServerEnvelope(
             id = "response-2",
-            payload = MemoryTasksResponse(
+            payload = MemoryActionItemsResponse(
                 revision = "revision-1",
-                counts = MemoryTaskCounts(inProgress = 1),
-                tasks = listOf(task)
+                counts = MemoryActionItemCounts(inProgress = 1),
+                actionItems = listOf(actionItem)
             )
         )
 
         val decoded = RemoteProtocolCodec.decodeServerBinary(RemoteProtocolCodec.encodeServerBinary(envelope))
-        val response = decoded.payload as MemoryTasksResponse
+        val response = decoded.payload as MemoryActionItemsResponse
 
         assertEquals("revision-1", response.revision)
-        assertEquals(MemoryTask.Status.IN_PROGRESS, response.tasks.single().status)
-        assertEquals("Check memory task UI", response.tasks.single().title)
+        assertEquals(MemoryActionItem.Status.IN_PROGRESS, response.actionItems.single().status)
+        assertEquals("Check memory actionItem UI", response.actionItems.single().title)
     }
 
     private fun audioEnvelope(bytes: ByteArray): GromozekaClientEnvelope =

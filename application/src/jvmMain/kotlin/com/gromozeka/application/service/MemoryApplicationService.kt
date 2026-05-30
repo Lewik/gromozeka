@@ -224,7 +224,7 @@ class MemoryApplicationService(
         log.info {
             "Memory note consolidation service completed: conversation=${conversationId.value} namespace=${namespace.value} " +
                 "selectedNotes=${result.selectedNotes.size} relatedHits=${result.relatedHits.size} " +
-                "claims=${result.memoryBatch.claims.size} notes=${result.memoryBatch.notes.size} tasks=${result.memoryBatch.tasks.size} profiles=${result.memoryBatch.profiles.size}"
+                "claims=${result.memoryBatch.claims.size} notes=${result.memoryBatch.notes.size} actionItems=${result.memoryBatch.actionItems.size} profiles=${result.memoryBatch.profiles.size}"
         }
         emitMaintenanceTrace(
             MemoryMaintenanceTraceEvent(
@@ -268,7 +268,7 @@ class MemoryApplicationService(
         log.info {
             "Memory repair service completed: conversation=${conversationId.value} namespace=${namespace.value} " +
                 "suspiciousHits=${result.suspiciousHits.size} actions=${result.repairPlan.repairActions.size} " +
-                "claims=${result.memoryBatch.claims.size} notes=${result.memoryBatch.notes.size} tasks=${result.memoryBatch.tasks.size} profiles=${result.memoryBatch.profiles.size}"
+                "claims=${result.memoryBatch.claims.size} notes=${result.memoryBatch.notes.size} actionItems=${result.memoryBatch.actionItems.size} profiles=${result.memoryBatch.profiles.size}"
         }
         emitMaintenanceTrace(
             MemoryMaintenanceTraceEvent(
@@ -313,7 +313,7 @@ class MemoryApplicationService(
             "Memory entity maintenance service completed: conversation=${conversationId.value} namespace=${namespace.value} " +
                 "groups=${result.candidateGroups.size} actions=${result.maintenancePlan.actions.size} " +
                 "entities=${result.memoryBatch.entities.size} claims=${result.memoryBatch.claims.size} notes=${result.memoryBatch.notes.size} " +
-                "tasks=${result.memoryBatch.tasks.size} profiles=${result.memoryBatch.profiles.size} episodes=${result.memoryBatch.episodes.size}"
+                "actionItems=${result.memoryBatch.actionItems.size} profiles=${result.memoryBatch.profiles.size} episodes=${result.memoryBatch.episodes.size}"
         }
         emitMaintenanceTrace(
             MemoryMaintenanceTraceEvent(
@@ -347,7 +347,7 @@ class MemoryApplicationService(
         log.info {
             "Memory retention service completed: conversation=${conversationId.value} namespace=${namespace.value} " +
                 "candidates=${result.candidates.size} actions=${result.retentionPlan.retentionActions.size} " +
-                "claims=${result.memoryBatch.claims.size} notes=${result.memoryBatch.notes.size} tasks=${result.memoryBatch.tasks.size}"
+                "claims=${result.memoryBatch.claims.size} notes=${result.memoryBatch.notes.size} actionItems=${result.memoryBatch.actionItems.size}"
         }
         emitMaintenanceTrace(
             MemoryMaintenanceTraceEvent(

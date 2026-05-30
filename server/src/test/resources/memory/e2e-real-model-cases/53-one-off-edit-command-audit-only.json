@@ -13,10 +13,10 @@
             "routeDecisionIn": ["NOOP"],
             "materializedClaimsMax": 0,
             "materializedNotesMax": 0,
-            "materializedTasksMax": 0,
+            "materializedActionItemsMax": 0,
             "rawClaimOpsMax": 0,
             "rawNoteOpsMax": 0,
-            "rawTaskOpsMax": 0
+            "rawActionItemOpsMax": 0
           }
         }
       ]
@@ -25,7 +25,7 @@
   "expectedAfterSeeds": {
     "activeClaimsMax": 0,
     "notesMax": 0,
-    "tasksMax": 0,
+    "actionItemsMax": 0,
     "profilesMax": 0,
     "userSourcesMin": 1,
     "requiredSources": [
@@ -47,7 +47,7 @@
         "containsAll": ["diff", "IDE"]
       }
     ],
-    "forbiddenTasks": [
+    "forbiddenActionItems": [
       {
         "containsAll": ["diff", "IDE"]
       }
@@ -61,7 +61,7 @@
   "expectedFinal": {
     "activeClaimsMax": 0,
     "notesMax": 0,
-    "tasksMax": 0,
+    "actionItemsMax": 0,
     "profilesMax": 0,
     "userSourcesMin": 1,
     "requiredSources": [

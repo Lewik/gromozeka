@@ -1,0 +1,351 @@
+{
+    "version": 1,
+    "hash": "f7c0bdb2997f55ad6b25081ef5b3097686f750c37e7fd6c34c232cc73ec3a6ef",
+    "provider": "OPENAI",
+    "model": "gpt-5.3-codex",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>/projects/handoff-prompts-document-ingestion",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: EntityCanonicalizer v1.\n        Current time: <instant>\n        Namespace: project:<0>\n\n        Stage instructions:\n        You are EntityCanonicalizer v1.\n\nGoal:\nResolve entity mentions from the latest turns into canonical entities.\n\nReturn JSON object:\n{\n  \"operations\": [\n    {\n      \"mention\": \"text\",\n      \"action\": \"link_existing | create_new | add_alias | noop\",\n      \"entity_id\": \"uuid-or-null\",\n      \"new_entity\": {\n        \"entity_type\": \"user | person | agent | organization | project | repo | file | technology | product | location | concept | document | conversation | service | environment | other\",\n        \"canonical_name\": \"text\",\n        \"summary\": \"text-or-null\"\n      },\n      \"about_file_assertion\": false,\n      \"alias_text\": \"text-or-null\",\n      \"confidence\": 0.0,\n      \"reason\": \"short explanation\"\n    }\n  ]\n}\n\nRules:\n- Prefer precision over recall.\n- Do not merge distinct entities on weak evidence.\n- Create new entities only when no candidate is a safe match.\n- If a candidate safely matches the mention, use \"link_existing\" with that candidate id.\n- Use \"add_alias\" only when the mention is a new surface form for a safe existing candidate.\n- If several candidates share a name, pick by entity type and summary; do not create another same-name entity.\n- Prefer English for entity summaries; keep proper names, product names, repo names, and file names unchanged.\n- Entity summaries must describe identity only, not mutable facts, current status, preferences, ownership, formats, fields, versions, or decisions. Put those facts into claims/notes instead.\n- For USER first-person facts and preferences, resolve the user as the stable namespace-level USER entity named \"User\".\n- For imported document/file_path/raw_url sources, the source path, URL, title, and section heading are source metadata. Do not create DOCUMENT, FILE, or URL-like entities merely to represent the imported source itself. Create a document/file entity only when the document content discusses that document/file as a durable domain object.\n- For imported document sources, do not create FILE entities from incidental code references, stack traces, code blocks, file extensions, or paths such as \"*.kt\". Set action=\"noop\" unless the text states a durable assertion about the file itself and later stages need that file as a claim subject or object.\n- Set about_file_assertion=true only for FILE operations where the target text asserts something about that file itself. Set it false for non-FILE operations and incidental file-like mentions.\n- Do not use raw labels such as \"user\", \"assistant\", \"project\", or \"document\" as entity_id. entity_id must be an existing candidate id, or null when creating a new entity.\n- Use relevant retrieval context to resolve ambiguous target mentions such as pronouns, \"it\", \"that\", \"first one\", \"second one\", and \"from that list\".\n- When TARGET_MESSAGE selects one item from a previously retrieved ordered list, create or link only the selected concrete entity so later stages can write the target claim.\n- Never create chat-specific USER entities such as \"User of chat:...\"; a new chat is not a new user.\n- Return valid JSON only.\n\n        Detected raw mentions:\n        No deterministic mention detector is available in this MVP.\nInfer only concrete reusable referents from the latest turns.\nFor first-person USER statements, create or link a stable USER entity when claims need a subject.\n\n        Candidate existing entities:\n        - id=entity:<0>; type=DOCUMENT; name=03. Prompt Pack; aliases=none; summary=Document named 03. Prompt Pack.\n- id=entity:<1>; type=AGENT; name=MemoryRepairPlanner v1; aliases=none; summary=Agent named MemoryRepairPlanner v1.\n- id=entity:<2>; type=AGENT; name=MemoryRouter v3; aliases=none; summary=Agent named MemoryRouter v3.\n\n        Relevant retrieval context for ambiguous mention resolution:\n        - source external:document-section:95b5fbef7877e859a859be9811d5196e: Document title: 03. Prompt Pack\nDocument source: agent_memory_handoff/03_prompts.md\nDocument section: 03. Prompt Pack / 16. Что обычно ломает memory prompts .. 17. Что я бы включил в первый релиз\nDocument lines: 1035-1064\n\n## 16. Что обычно ломает memory prompts\n\n- один prompt на все стадии сразу\n- отсутствие existing memory в reconcile prompt\n- отсутствие cardinality/conflict rules\n- отсутствие scope и time semantics\n- слишком широкий контекст\n- отсутствие явного `noop`\n- разрешение модели писать свободный prose вместо схемы\n- over-generation notes\n\n## 17. Что я бы включил в первый релиз\n\nЕсли резать до полезного минимума, то сначала я бы взял:\n\n1. `MemoryRouter`\n2. `WriteTimeRetrievalPlann\n[truncated 252 chars]\n- source chat:<0> Memory ingestion source document. Treat the following as a pasted handoff prompt-pack document, not as an immediate task.\n\nFile: agent_memory_handoff/03_prompts.md\n\n# 03. Prompt Pack\n\nНиже — стартовый prompt pack для `v3`.\n\nОн не пытается засунуть весь memory lifecycle в один гигантский prompt.\nНаоборот, идея в том, чтобы держать каждый шаг узким и проверяемым.\n\n## 0. Общие правила для всех memory prompts\n\n### Что обязательно передавать\n- `current_time_iso`\n- `timezone`\n- `namespace_id`\n- `source_ids`\n- `latest_turns` или selected sources\n- только нужный retrieved context, а не весь лог\n- `predicate_catalog_excerpt`, если prompt работает с claims\n- `retrieval_budget`, если prompt планирует ч\n[truncated 24131 chars]\n- note hot-path:note:<0> NoteConsolidator v2 promotes mature notes only under strong signal; In 03. Prompt Pack, NoteConsolidator v2 runs in the background after debounce/batch windows to evaluate mature notes for promotion into durable memory (claims, tasks, episodes, profile updates) and to update note status. Its policy is conservative: only promote when signal is strong, avoid forcing claim conversion, and require clear criteria for task/episode promotion.\n- note hot-path:note:<1> NoteConstructor v2 and NoteReconciler v2 workflow contract; In 03. Prompt Pack, NoteConstructor v2 runs when router selects `note_write` or `mixed` to produce reusable candidate notes (soft, contextual semantic fragments), and NoteReconciler v2 runs afterward to decide note lifecycle actions (`insert | update | supersede | retract | noop`) against existing notes.\n- note hot-path:note:<2> AnswerComposer v3 answer policy prioritizes grounding, conflict handling, and abstention; In 03. Prompt Pack, AnswerComposer v3 runs after retrieval and composes responses using retrieved memory with explicit uncertainty handling: prefer active claims for factual answers, allow notes for rationale with qualification, resolve conflicts via time scope/evidence, and abstain when memory is insufficient.\n- note hot-path:note:<3> ClaimReconciler v3 decision policy for claim lifecycle ops; ClaimReconciler v3 is executed after ClaimExtractor to compare candidate and existing claims and return lifecycle update operations (`insert | update | supersede | retract | noop`), with policy rules favoring coexistence for differing scopes, supersede over silent overwrite, and retract only for clear contradiction.\n- note hot-path:note:<4> ProfileUpdater v3 builds a compact profile projection after memory updates; In 03. Prompt Pack, ProfileUpdater v3 is invoked after claim/task updates (sometimes after note consolidation) to rebuild a short always-in-context profile projection from explicit user instructions, stable claims, and selected long-lived context, prioritizing explicit facts over inference.\n- note hot-path:note:<5> ActionItemUpdater v3 updates tasks only from explicit commitments/deadlines/lifecycle changes; In 03. Prompt Pack, ActionItemUpdater v3 manages task lifecycle operations (`insert | update | close | cancel | noop`) when turns include commitments, deadlines, or task lifecycle updates; it requires conservative task creation rules, including not treating plain requests as commitments and converting relative deadlines to absolute time when possible.\n- note hot-path:note:<6> ClaimExtractor v3 role, timing, and strict atomic-claim schema; In 03. Prompt Pack, ClaimExtractor v3 runs when the router selects `direct_structured_write` or `mixed` (and may also be invoked by a background consolidator) to extract precise atomic claims from recent turns using a strict JSON array schema with scope/qualifier/time fields and conservative extraction rules.\n- note hot-path:note:<7> ReadTimeRetrievalPlanner v3 defines pre-answer retrieval planning contract; In 03. Prompt Pack, ReadTimeRetrievalPlanner v3 is invoked before answer synthesis to decide whether memory retrieval is needed, select answer mode, choose memory types, set bounded retrieval budgets, and require evidence fallback when needed via a strict JSON output schema.\n- note hot-path:note:<8> MemoryRepairPlanner v1 applies conservative hygiene repairs for suspicious memory clusters; In 03. Prompt Pack, MemoryRepairPlanner v1 is a background repair agent invoked for suspicious clusters or after prompt/model changes; it proposes non-destructive repair actions (`merge_duplicates`, `supersede_item`, `archive_item`, `downgrade_retrieval_state`, `refresh_profile`, `noop`) to improve memory hygiene while preserving explainable history.\n- source external:document-section:2ee6f11ace954752bfb8bdd20e2abb4f: Document title: 03. Prompt Pack\nDocument source: agent_memory_handoff/03_prompts.md\nDocument section: 03. Prompt Pack / 2. Write-Time Retrieval Planner v3 .. 3. Entity Canonicalizer v1\nDocument lines: 93-238\n\n## 2. Write-Time Retrieval Planner v3\n\n### Когда вызывать\nПосле router, перед extraction/reconciliation.\n\n### Цель\nСформировать precise retrieval plan для dedupe, contradiction detection, temporal updates и scope alignment.\n\n### Выход\n\n```json\n{\n  \"need_retrieval\": true,\n  \"entity_queries\": [\"...\"],\n  \"text_queries\": [\"...\"],\n  \"predicate_hints\": [\"...\"],\n  \"memory_types\": [\"profile\", \"claim\", \"note\", \"task\", \"source\"],\n  \"time_filters\": {\n    \"from_iso\": null,\n    \"to_iso\": null\n  },\n \n[truncated 2935 chars]\n\n        Retrieval plan context:\n        entity_queries=03. Prompt Pack|agent_memory_handoff/03_prompts.md|03. Prompt Pack / 16. Что обычно ломает memory prompts .. 17. Что я бы включил в первый релиз|MARKDOWN\n        text_queries=03. Prompt Pack agent_memory_handoff/03_prompts.md 03. Prompt Pack / 16. Что обычно ломает memory prompts .. 17. Что я бы включил в первый релиз MARKDOWN Document title: 03. Prompt Pack Document source: agent_memory_handoff/03_prompts.md Document section: 03. Prompt Pack / 16. Что обычно ломает memory prompts .. 17. Что я бы включил в первый релиз Document lines: 1035-1064 ## 16. Что обычно ломает memory prompts - один prompt на все стадии сразу - отсутствие existing memory в reconcile prompt - отсутствие cardinality/conflict rules - отсутствие scope и time semantics - слишком широкий контекст - отсутствие явного `noop` - разрешение модели писать свободный prose вместо схемы - over-generation notes ## 17. Что я бы включил в первый релиз Если резать до полезного минимума, то сначала я бы взял: 1. `MemoryRouter` 2. `WriteTimeRetrievalPlanner` 3. `ClaimExtractor` 4. `ClaimReconciler` 5. `ActionItemUpdater` 6. `ProfileUpdater` 7. `ReadTimeRetrievalPlanner` 8. `AnswerComposer` А затем уже добавлял: 9. `NoteConstructor` 10. `NoteReconciler` 11. `NoteConsolidator` 12. `MemoryRepairPlanner`\n        predicate_hints=\n\n        TARGET_MESSAGE source data:\n        [external:document-section:95b5fbef7877e859a859be9811d5196e] EXTERNAL\nSource metadata: source_kind=document; origin=pasted_document_section; document_type=MARKDOWN; source_ref=agent_memory_handoff/03_prompts.md; title=03. Prompt Pack; heading=03. Prompt Pack / 16. Что обычно ломает memory prompts .. 17. Что я бы включил в первый релиз; imported_at=1970-01-01T00:00:00Z\nDocument title: 03. Prompt Pack\nDocument source: agent_memory_handoff/03_prompts.md\nDocument section: 03. Prompt Pack / 16. Что обычно ломает memory prompts .. 17. Что я бы включил в первый релиз\nDocument lines: 1035-1064\n\n## 16. Что обычно ломает memory prompts\n\n- один prompt на все стадии сразу\n- отсутствие existing memory в reconcile prompt\n- отсутствие cardinality/conflict rules\n- отсутствие scope и time semantics\n- слишком широкий контекст\n- отсутствие явного `noop`\n- разрешение модели писать свободный prose вместо схемы\n- over-generation notes\n\n## 17. Что я бы включил в первый релиз\n\nЕсли резать до полезного минимума, то сначала я бы взял:\n\n1. `MemoryRouter`\n2. `WriteTimeRetrievalPlanner`\n3. `ClaimExtractor`\n4. `ClaimReconciler`\n5. `ActionItemUpdater`\n6. `ProfileUpdater`\n7. `ReadTimeRetrievalPlanner`\n8. `AnswerComposer`\n\nА затем уже добавлял:\n\n9. `NoteConstructor`\n10. `NoteReconciler`\n11. `NoteConsolidator`\n12. `MemoryRepairPlanner`",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Resolve target message mentions into canonical memory entities.",
+                "name": "memory_entity_canonicalizer",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "operations": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "about_file_assertion": {
+                                        "type": "boolean"
+                                    },
+                                    "action": {
+                                        "enum": [
+                                            "link_existing",
+                                            "create_new",
+                                            "add_alias",
+                                            "noop"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "alias_text": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "confidence": {
+                                        "type": "number"
+                                    },
+                                    "entity_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "mention": {
+                                        "type": "string"
+                                    },
+                                    "new_entity": {
+                                        "anyOf": [
+                                            {
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "canonical_name": {
+                                                        "type": "string"
+                                                    },
+                                                    "entity_type": {
+                                                        "enum": [
+                                                            "user",
+                                                            "person",
+                                                            "agent",
+                                                            "organization",
+                                                            "project",
+                                                            "repo",
+                                                            "file",
+                                                            "technology",
+                                                            "product",
+                                                            "location",
+                                                            "concept",
+                                                            "document",
+                                                            "conversation",
+                                                            "service",
+                                                            "environment",
+                                                            "other"
+                                                        ],
+                                                        "type": "string"
+                                                    },
+                                                    "summary": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "entity_type",
+                                                    "canonical_name",
+                                                    "summary"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "mention",
+                                    "action",
+                                    "entity_id",
+                                    "new_entity",
+                                    "about_file_assertion",
+                                    "alias_text",
+                                    "confidence",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "operations"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "memoryEntityCanonicalizer": true,
+                "memoryNamespace": "project:<0>",
+                "memorySourceId": "external:document-section:95b5fbef7877e859a859be9811d5196e"
+            }
+        },
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: EntityCanonicalizer v1.\n        Current time: <instant>\n        Namespace: project:<0>\n\n        Stage instructions:\n        You are EntityCanonicalizer v1.\n\nGoal:\nResolve entity mentions from the latest turns into canonical entities.\n\nReturn JSON object:\n{\n  \"operations\": [\n    {\n      \"mention\": \"text\",\n      \"action\": \"link_existing | create_new | add_alias | noop\",\n      \"entity_id\": \"uuid-or-null\",\n      \"new_entity\": {\n        \"entity_type\": \"user | person | agent | organization | project | repo | file | technology | product | location | concept | document | conversation | service | environment | other\",\n        \"canonical_name\": \"text\",\n        \"summary\": \"text-or-null\"\n      },\n      \"about_file_assertion\": false,\n      \"alias_text\": \"text-or-null\",\n      \"confidence\": 0.0,\n      \"reason\": \"short explanation\"\n    }\n  ]\n}\n\nRules:\n- Prefer precision over recall.\n- Do not merge distinct entities on weak evidence.\n- Create new entities only when no candidate is a safe match.\n- If a candidate safely matches the mention, use \"link_existing\" with that candidate id.\n- Use \"add_alias\" only when the mention is a new surface form for a safe existing candidate.\n- If several candidates share a name, pick by entity type and summary; do not create another same-name entity.\n- Prefer English for entity summaries; keep proper names, product names, repo names, and file names unchanged.\n- Entity summaries must describe identity only, not mutable facts, current status, preferences, ownership, formats, fields, versions, or decisions. Put those facts into claims/notes instead.\n- For USER first-person facts and preferences, resolve the user as the stable namespace-level USER entity named \"User\".\n- For imported document/file_path/raw_url sources, the source path, URL, title, and section heading are source metadata. Do not create DOCUMENT, FILE, or URL-like entities merely to represent the imported source itself. Create a document/file entity only when the document content discusses that document/file as a durable domain object.\n- For imported document sources, do not create FILE entities from incidental code references, stack traces, code blocks, file extensions, or paths such as \"*.kt\". Set action=\"noop\" unless the text states a durable assertion about the file itself and later stages need that file as a claim subject or object.\n- Set about_file_assertion=true only for FILE operations where the target text asserts something about that file itself. Set it false for non-FILE operations and incidental file-like mentions.\n- Do not use raw labels such as \"user\", \"assistant\", \"project\", or \"document\" as entity_id. entity_id must be an existing candidate id, or null when creating a new entity.\n- Use relevant retrieval context to resolve ambiguous target mentions such as pronouns, \"it\", \"that\", \"first one\", \"second one\", and \"from that list\".\n- When TARGET_MESSAGE selects one item from a previously retrieved ordered list, create or link only the selected concrete entity so later stages can write the target claim.\n- Never create chat-specific USER entities such as \"User of chat:...\"; a new chat is not a new user.\n- Return valid JSON only.\n\n        Detected raw mentions:\n        No deterministic mention detector is available in this MVP.\nInfer only concrete reusable referents from the latest turns.\nFor first-person USER statements, create or link a stable USER entity when claims need a subject.\n\n        Candidate existing entities:\n        - id=entity:<0>; type=DOCUMENT; name=03. Prompt Pack; aliases=none; summary=Document named 03. Prompt Pack.\n- id=entity:<1>; type=AGENT; name=MemoryRepairPlanner v1; aliases=none; summary=Agent named MemoryRepairPlanner v1.\n- id=entity:<2>; type=AGENT; name=MemoryRouter v3; aliases=none; summary=Agent named MemoryRouter v3.\n\n        Relevant retrieval context for ambiguous mention resolution:\n        - source external:document-section:95b5fbef7877e859a859be9811d5196e: Document title: 03. Prompt Pack\nDocument source: agent_memory_handoff/03_prompts.md\nDocument section: 03. Prompt Pack / 16. Что обычно ломает memory prompts .. 17. Что я бы включил в первый релиз\nDocument lines: 1035-1064\n\n## 16. Что обычно ломает memory prompts\n\n- один prompt на все стадии сразу\n- отсутствие existing memory в reconcile prompt\n- отсутствие cardinality/conflict rules\n- отсутствие scope и time semantics\n- слишком широкий контекст\n- отсутствие явного `noop`\n- разрешение модели писать свободный prose вместо схемы\n- over-generation notes\n\n## 17. Что я бы включил в первый релиз\n\nЕсли резать до полезного минимума, то сначала я бы взял:\n\n1. `MemoryRouter`\n2. `WriteTimeRetrievalPlann\n[truncated 252 chars]\n- source chat:<0> Memory ingestion source document. Treat the following as a pasted handoff prompt-pack document, not as an immediate task.\n\nFile: agent_memory_handoff/03_prompts.md\n\n# 03. Prompt Pack\n\nНиже — стартовый prompt pack для `v3`.\n\nОн не пытается засунуть весь memory lifecycle в один гигантский prompt.\nНаоборот, идея в том, чтобы держать каждый шаг узким и проверяемым.\n\n## 0. Общие правила для всех memory prompts\n\n### Что обязательно передавать\n- `current_time_iso`\n- `timezone`\n- `namespace_id`\n- `source_ids`\n- `latest_turns` или selected sources\n- только нужный retrieved context, а не весь лог\n- `predicate_catalog_excerpt`, если prompt работает с claims\n- `retrieval_budget`, если prompt планирует ч\n[truncated 24131 chars]\n- note hot-path:note:<0> NoteConsolidator v2 promotes mature notes only under strong signal; In 03. Prompt Pack, NoteConsolidator v2 runs in the background after debounce/batch windows to evaluate mature notes for promotion into durable memory (claims, tasks, episodes, profile updates) and to update note status. Its policy is conservative: only promote when signal is strong, avoid forcing claim conversion, and require clear criteria for task/episode promotion.\n- note hot-path:note:<1> NoteConstructor v2 and NoteReconciler v2 workflow contract; In 03. Prompt Pack, NoteConstructor v2 runs when router selects `note_write` or `mixed` to produce reusable candidate notes (soft, contextual semantic fragments), and NoteReconciler v2 runs afterward to decide note lifecycle actions (`insert | update | supersede | retract | noop`) against existing notes.\n- note hot-path:note:<2> AnswerComposer v3 answer policy prioritizes grounding, conflict handling, and abstention; In 03. Prompt Pack, AnswerComposer v3 runs after retrieval and composes responses using retrieved memory with explicit uncertainty handling: prefer active claims for factual answers, allow notes for rationale with qualification, resolve conflicts via time scope/evidence, and abstain when memory is insufficient.\n- note hot-path:note:<3> ClaimReconciler v3 decision policy for claim lifecycle ops; ClaimReconciler v3 is executed after ClaimExtractor to compare candidate and existing claims and return lifecycle update operations (`insert | update | supersede | retract | noop`), with policy rules favoring coexistence for differing scopes, supersede over silent overwrite, and retract only for clear contradiction.\n- note hot-path:note:<4> ProfileUpdater v3 builds a compact profile projection after memory updates; In 03. Prompt Pack, ProfileUpdater v3 is invoked after claim/task updates (sometimes after note consolidation) to rebuild a short always-in-context profile projection from explicit user instructions, stable claims, and selected long-lived context, prioritizing explicit facts over inference.\n- note hot-path:note:<5> ActionItemUpdater v3 updates tasks only from explicit commitments/deadlines/lifecycle changes; In 03. Prompt Pack, ActionItemUpdater v3 manages task lifecycle operations (`insert | update | close | cancel | noop`) when turns include commitments, deadlines, or task lifecycle updates; it requires conservative task creation rules, including not treating plain requests as commitments and converting relative deadlines to absolute time when possible.\n- note hot-path:note:<6> ClaimExtractor v3 role, timing, and strict atomic-claim schema; In 03. Prompt Pack, ClaimExtractor v3 runs when the router selects `direct_structured_write` or `mixed` (and may also be invoked by a background consolidator) to extract precise atomic claims from recent turns using a strict JSON array schema with scope/qualifier/time fields and conservative extraction rules.\n- note hot-path:note:<7> ReadTimeRetrievalPlanner v3 defines pre-answer retrieval planning contract; In 03. Prompt Pack, ReadTimeRetrievalPlanner v3 is invoked before answer synthesis to decide whether memory retrieval is needed, select answer mode, choose memory types, set bounded retrieval budgets, and require evidence fallback when needed via a strict JSON output schema.\n- note hot-path:note:<8> MemoryRepairPlanner v1 applies conservative hygiene repairs for suspicious memory clusters; In 03. Prompt Pack, MemoryRepairPlanner v1 is a background repair agent invoked for suspicious clusters or after prompt/model changes; it proposes non-destructive repair actions (`merge_duplicates`, `supersede_item`, `archive_item`, `downgrade_retrieval_state`, `refresh_profile`, `noop`) to improve memory hygiene while preserving explainable history.\n- source external:document-section:2ee6f11ace954752bfb8bdd20e2abb4f: Document title: 03. Prompt Pack\nDocument source: agent_memory_handoff/03_prompts.md\nDocument section: 03. Prompt Pack / 2. Write-Time Retrieval Planner v3 .. 3. Entity Canonicalizer v1\nDocument lines: 93-238\n\n## 2. Write-Time Retrieval Planner v3\n\n### Когда вызывать\nПосле router, перед extraction/reconciliation.\n\n### Цель\nСформировать precise retrieval plan для dedupe, contradiction detection, temporal updates и scope alignment.\n\n### Выход\n\n```json\n{\n  \"need_retrieval\": true,\n  \"entity_queries\": [\"...\"],\n  \"text_queries\": [\"...\"],\n  \"predicate_hints\": [\"...\"],\n  \"memory_types\": [\"profile\", \"claim\", \"note\", \"task\", \"source\"],\n  \"time_filters\": {\n    \"from_iso\": null,\n    \"to_iso\": null\n  },\n \n[truncated 2935 chars]\n\n        Retrieval plan context:\n        entity_queries=03. Prompt Pack|agent_memory_handoff/03_prompts.md|03. Prompt Pack / 16. Что обычно ломает memory prompts .. 17. Что я бы включил в первый релиз|MARKDOWN\n        text_queries=03. Prompt Pack agent_memory_handoff/03_prompts.md 03. Prompt Pack / 16. Что обычно ломает memory prompts .. 17. Что я бы включил в первый релиз MARKDOWN Document title: 03. Prompt Pack Document source: agent_memory_handoff/03_prompts.md Document section: 03. Prompt Pack / 16. Что обычно ломает memory prompts .. 17. Что я бы включил в первый релиз Document lines: 1035-1064 ## 16. Что обычно ломает memory prompts - один prompt на все стадии сразу - отсутствие existing memory в reconcile prompt - отсутствие cardinality/conflict rules - отсутствие scope и time semantics - слишком широкий контекст - отсутствие явного `noop` - разрешение модели писать свободный prose вместо схемы - over-generation notes ## 17. Что я бы включил в первый релиз Если резать до полезного минимума, то сначала я бы взял: 1. `MemoryRouter` 2. `WriteTimeRetrievalPlanner` 3. `ClaimExtractor` 4. `ClaimReconciler` 5. `ActionItemUpdater` 6. `ProfileUpdater` 7. `ReadTimeRetrievalPlanner` 8. `AnswerComposer` А затем уже добавлял: 9. `NoteConstructor` 10. `NoteReconciler` 11. `NoteConsolidator` 12. `MemoryRepairPlanner`\n        predicate_hints=\n\n        TARGET_MESSAGE source data:\n        [external:document-section:95b5fbef7877e859a859be9811d5196e] EXTERNAL\nSource metadata: source_kind=document; origin=pasted_document_section; document_type=MARKDOWN; source_ref=agent_memory_handoff/03_prompts.md; title=03. Prompt Pack; heading=03. Prompt Pack / 16. Что обычно ломает memory prompts .. 17. Что я бы включил в первый релиз; imported_at=1970-01-01T00:00:00Z\nDocument title: 03. Prompt Pack\nDocument source: agent_memory_handoff/03_prompts.md\nDocument section: 03. Prompt Pack / 16. Что обычно ломает memory prompts .. 17. Что я бы включил в первый релиз\nDocument lines: 1035-1064\n\n## 16. Что обычно ломает memory prompts\n\n- один prompt на все стадии сразу\n- отсутствие existing memory в reconcile prompt\n- отсутствие cardinality/conflict rules\n- отсутствие scope и time semantics\n- слишком широкий контекст\n- отсутствие явного `noop`\n- разрешение модели писать свободный prose вместо схемы\n- over-generation notes\n\n## 17. Что я бы включил в первый релиз\n\nЕсли резать до полезного минимума, то сначала я бы взял:\n\n1. `MemoryRouter`\n2. `WriteTimeRetrievalPlanner`\n3. `ClaimExtractor`\n4. `ClaimReconciler`\n5. `ActionItemUpdater`\n6. `ProfileUpdater`\n7. `ReadTimeRetrievalPlanner`\n8. `AnswerComposer`\n\nА затем уже добавлял:\n\n9. `NoteConstructor`\n10. `NoteReconciler`\n11. `NoteConsolidator`\n12. `MemoryRepairPlanner`",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "memory_entity_canonicalizer",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "operations": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "about_file_assertion": {
+                                        "type": "boolean"
+                                    },
+                                    "action": {
+                                        "enum": [
+                                            "link_existing",
+                                            "create_new",
+                                            "add_alias",
+                                            "noop"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "alias_text": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "confidence": {
+                                        "type": "number"
+                                    },
+                                    "entity_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "mention": {
+                                        "type": "string"
+                                    },
+                                    "new_entity": {
+                                        "anyOf": [
+                                            {
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "canonical_name": {
+                                                        "type": "string"
+                                                    },
+                                                    "entity_type": {
+                                                        "enum": [
+                                                            "user",
+                                                            "person",
+                                                            "agent",
+                                                            "organization",
+                                                            "project",
+                                                            "repo",
+                                                            "file",
+                                                            "technology",
+                                                            "product",
+                                                            "location",
+                                                            "concept",
+                                                            "document",
+                                                            "conversation",
+                                                            "service",
+                                                            "environment",
+                                                            "other"
+                                                        ],
+                                                        "type": "string"
+                                                    },
+                                                    "summary": {
+                                                        "type": [
+                                                            "string",
+                                                            "null"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "entity_type",
+                                                    "canonical_name",
+                                                    "summary"
+                                                ],
+                                                "type": "object"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "mention",
+                                    "action",
+                                    "entity_id",
+                                    "new_entity",
+                                    "about_file_assertion",
+                                    "alias_text",
+                                    "confidence",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "operations"
+                    ],
+                    "type": "object"
+                },
+                "description": "Resolve target message mentions into canonical memory entities.",
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "memoryEntityCanonicalizer": true,
+                "memoryNamespace": "project:<0>",
+                "memorySourceId": "external:document-section:95b5fbef7877e859a859be9811d5196e"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"operations\":[{\"about_file_assertion\":false,\"action\":\"link_existing\",\"alias_text\":null,\"confidence\":0.99,\"entity_id\":\"entity:<0>\",\"mention\":\"03. Prompt Pack\",\"new_entity\":null,\"reason\":\"Exact match to existing document entity by title and context.\"},{\"about_file_assertion\":false,\"action\":\"add_alias\",\"alias_text\":\"MemoryRepairPlanner\",\"confidence\":0.96,\"entity_id\":\"entity:<1>\",\"mention\":\"MemoryRepairPlanner\",\"new_entity\":null,\"reason\":\"Listed form without version refers to existing agent MemoryRepairPlanner v1.\"},{\"about_file_assertion\":false,\"action\":\"add_alias\",\"alias_text\":\"MemoryRouter\",\"confidence\":0.95,\"entity_id\":\"entity:<2>\",\"mention\":\"MemoryRouter\",\"new_entity\":null,\"reason\":\"Listed form without version refers to existing agent MemoryRouter v3.\"}]}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 3515,
+                "completionTokens": 214,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

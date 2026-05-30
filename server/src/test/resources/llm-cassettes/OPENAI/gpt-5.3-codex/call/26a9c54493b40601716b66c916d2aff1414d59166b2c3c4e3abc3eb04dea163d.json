@@ -1,0 +1,678 @@
+{
+    "version": 1,
+    "hash": "26a9c54493b40601716b66c916d2aff1414d59166b2c3c4e3abc3eb04dea163d",
+    "provider": "OPENAI",
+    "model": "gpt-5.3-codex",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>/projects/task-path-close",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "Memory MVP follow-up: keep an open task to add task memory close-path e2e coverage before declaring lifecycle stable.",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            },
+            {
+                "content": [
+                    {
+                        "call": {
+                            "input": {
+                                "mode": "automatic_hot_path",
+                                "target": "previous_user_message",
+                                "target_message_id": "<uuid>"
+                            },
+                            "name": "memory_remember"
+                        },
+                        "id": "<id>",
+                        "state": "COMPLETE",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolCall"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "ASSISTANT"
+            },
+            {
+                "content": [
+                    {
+                        "isError": false,
+                        "result": [
+                            {
+                                "content": "{\"status\":\"completed\",\"decision\":\"DIRECT_STRUCTURED_WRITE\",\"memory_types\":[\"ACTION_ITEM\"],\"salience\":0.9,\"reason\":\"The message explicitly creates/maintains a durable internal follow-up action item.\",\"source_id\":\"chat:<0>\",\"counts\":{\"predicate_definitions\":0,\"sources\":0,\"runs\":1,\"entities\":3,\"claims\":0,\"notes\":0,\"actionItems\":1,\"profiles\":0,\"episodes\":0,\"embeddings\":0},\"runs\":[{\"id\":\"hot-path:run:<0>\",\"type\":\"UPDATE_ACTION_ITEMS\",\"summary\":\"Direct structured write applied: notes=0, claims=0, actionItems=1, entities=3; noop ops: notes=0, claims=0, actionItems=0\"}],\"claims\":[],\"notes\":[],\"actionItems\":[{\"id\":\"hot-path:actionItem:<0>\",\"status\":\"OPEN\",\"priority\":\"HIGH\",\"title\":\"Add task memory close-path e2e coverage before declaring lifecycle stable\"}],\"entities\":[{\"id\":\"entity:<0>\",\"type\":\"PROJECT\",\"name\":\"Memory MVP\"},{\"id\":\"entity:<1>\",\"type\":\"CONCEPT\",\"name\":\"task memory close-path e2e coverage\"},{\"id\":\"entity:<2>\",\"type\":\"CONCEPT\",\"name\":\"lifecycle stability\"}]}",
+                                "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult.Data.Text"
+                            }
+                        ],
+                        "state": "COMPLETE",
+                        "toolName": "memory_remember",
+                        "toolUseId": "tool-call",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            },
+            {
+                "content": [
+                    {
+                        "call": {
+                            "input": {
+                                "mode": "automatic_runtime_context_enrichment",
+                                "target": "previous_user_message",
+                                "target_message_id": "<uuid>"
+                            },
+                            "name": "memory_enrich_context"
+                        },
+                        "id": "<id>",
+                        "state": "COMPLETE",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolCall"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "ASSISTANT"
+            },
+            {
+                "content": [
+                    {
+                        "isError": false,
+                        "result": [
+                            {
+                                "content": "{\"status\":\"completed\",\"need_memory\":true,\"answer_mode\":\"ACTION_ITEM\",\"retrieved_count\":4,\"usage_guidance\":\"Selected memory is the strongest available remembered context for the target context. Use it unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message. Do not replace selected memory with guesses or general defaults. For exact quote, exact wording, source, or when-said questions, prefer complete source text from memory_context over shorter evidence excerpts.\",\"memory_context\":\"            MEMORY-ONLY CONTEXT\\n            This message is not part of the real conversation and must not be stored as evidence.\\n            The retrieved memory below was selected for the immediately following user request.\\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\\n\\n            Namespace: project:<0>\\n            Answer mode: ACTION_ITEM\\n            Require evidence fallback: false\\n\\n            Retrieved profile:\\n            none\\n\\n            Retrieved action items:\\n            - action_item hot-path:actionItem:<0> [OPEN]: title=\\\"Add task memory close-path e2e coverage before declaring lifecycle stable\\\"; description=\\\"Keep this as an open follow-up in Memory MVP: add end-to-end test coverage for the task memory close-path, and only declare lifecycle stability after this coverage is added.\\\"\\n\\n            Retrieved claims:\\n            none\\n\\n            Retrieved notes:\\n            none\\n\\n            Retrieved evidence:\\n            not requested for this answer mode\\n\\n            Retrieved entities:\\n            - entity entity:<2> [CONCEPT]: lifecycle stability; Concept named lifecycle stability.\\n- entity entity:<1> [CONCEPT]: task memory close-path e2e coverage; Concept named task memory close-path e2e coverage.\\n- entity entity:<0> [PROJECT]: Memory MVP; Project named Memory MVP.\\n\\n            Retrieved episodes:\\n            none\",\"selected_refs\":[{\"type\":\"ACTION_ITEM\",\"id\":\"hot-path:actionItem:<0>\",\"summary\":\"OPEN: Add task memory close-path e2e coverage before declaring lifecycle stable\",\"status\":\"OPEN\"},{\"type\":\"ENTITY\",\"id\":\"entity:<2>\",\"summary\":\"CONCEPT:lifecycle stability\"},{\"type\":\"ENTITY\",\"id\":\"entity:<1>\",\"summary\":\"CONCEPT:task memory close-path e2e coverage\"},{\"type\":\"ENTITY\",\"id\":\"entity:<0>\",\"summary\":\"PROJECT:Memory MVP\"}],\"selector_decisions\":[{\"type\":\"ACTION_ITEM\",\"id\":\"hot-path:actionItem:<0>\",\"selected\":true,\"rank\":1,\"reason\":\"Open action item exactly matches requested follow-up task and status.\"},{\"type\":\"ENTITY\",\"id\":\"entity:<0>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Project label is not needed since the action item already contains sufficient context.\"}]}",
+                                "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult.Data.Text"
+                            }
+                        ],
+                        "state": "COMPLETE",
+                        "toolName": "memory_enrich_context",
+                        "toolUseId": "tool-call",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            },
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "structured": {
+                            "failedToParse": false,
+                            "fullText": "Acknowledged — kept open:\n\n**Add task memory close-path e2e coverage before declaring lifecycle stable.**",
+                            "ttsText": "Got it. I’ll keep that task open until close-path end-to-end coverage is added.",
+                            "voiceTone": "calm, concise"
+                        },
+                        "type": "IntermediateMessage"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "ASSISTANT"
+            },
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "Close the Memory MVP follow-up about task memory close-path e2e coverage: it is done now.",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            },
+            {
+                "content": [
+                    {
+                        "call": {
+                            "input": {
+                                "mode": "automatic_hot_path",
+                                "target": "previous_user_message",
+                                "target_message_id": "<uuid>"
+                            },
+                            "name": "memory_remember"
+                        },
+                        "id": "<id>",
+                        "state": "COMPLETE",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolCall"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "ASSISTANT"
+            },
+            {
+                "content": [
+                    {
+                        "isError": false,
+                        "result": [
+                            {
+                                "content": "{\"status\":\"completed\",\"decision\":\"DIRECT_STRUCTURED_WRITE\",\"memory_types\":[\"ACTION_ITEM\"],\"salience\":0.9,\"reason\":\"Durable action item lifecycle command marking a previously open follow-up as completed.\",\"source_id\":\"chat:<1>\",\"counts\":{\"predicate_definitions\":0,\"sources\":0,\"runs\":1,\"entities\":2,\"claims\":0,\"notes\":0,\"actionItems\":1,\"profiles\":0,\"episodes\":0,\"embeddings\":0},\"runs\":[{\"id\":\"hot-path:run:<1>\",\"type\":\"UPDATE_ACTION_ITEMS\",\"summary\":\"Direct structured write applied: notes=0, claims=0, actionItems=1, entities=2; noop ops: notes=0, claims=0, actionItems=0\"}],\"claims\":[],\"notes\":[],\"actionItems\":[{\"id\":\"hot-path:actionItem:<0>\",\"status\":\"DONE\",\"priority\":\"HIGH\",\"title\":\"Add task memory close-path e2e coverage before declaring lifecycle stable\"}],\"entities\":[{\"id\":\"entity:<0>\",\"type\":\"PROJECT\",\"name\":\"Memory MVP\"},{\"id\":\"entity:<1>\",\"type\":\"CONCEPT\",\"name\":\"task memory close-path e2e coverage\"}]}",
+                                "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult.Data.Text"
+                            }
+                        ],
+                        "state": "COMPLETE",
+                        "toolName": "memory_remember",
+                        "toolUseId": "tool-call",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            },
+            {
+                "content": [
+                    {
+                        "call": {
+                            "input": {
+                                "mode": "automatic_runtime_context_enrichment",
+                                "target": "previous_user_message",
+                                "target_message_id": "<uuid>"
+                            },
+                            "name": "memory_enrich_context"
+                        },
+                        "id": "<id>",
+                        "state": "COMPLETE",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolCall"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "ASSISTANT"
+            },
+            {
+                "content": [
+                    {
+                        "isError": false,
+                        "result": [
+                            {
+                                "content": "{\"status\":\"completed\",\"need_memory\":true,\"answer_mode\":\"ACTION_ITEM\",\"retrieved_count\":4,\"usage_guidance\":\"Selected memory is the strongest available remembered context for the target context. Use it unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message. Do not replace selected memory with guesses or general defaults. For exact quote, exact wording, source, or when-said questions, prefer complete source text from memory_context over shorter evidence excerpts.\",\"memory_context\":\"            MEMORY-ONLY CONTEXT\\n            This message is not part of the real conversation and must not be stored as evidence.\\n            The retrieved memory below was selected for the immediately following user request.\\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\\n\\n            Namespace: project:<0>\\n            Answer mode: ACTION_ITEM\\n            Require evidence fallback: false\\n\\n            Retrieved profile:\\n            none\\n\\n            Retrieved action items:\\n            - action_item hot-path:actionItem:<0> [DONE]: title=\\\"Add task memory close-path e2e coverage before declaring lifecycle stable\\\"; description=\\\"Keep this as an open follow-up in Memory MVP: add end-to-end test coverage for the task memory close-path, and only declare lifecycle stability after this coverage is added.\\\"\\n\\n            Retrieved claims:\\n            none\\n\\n            Retrieved notes:\\n            none\\n\\n            Retrieved evidence:\\n            not requested for this answer mode\\n\\n            Retrieved entities:\\n            - entity entity:<2> [CONCEPT]: lifecycle stability; Concept named lifecycle stability.\\n- entity entity:<1> [CONCEPT]: task memory close-path e2e coverage; Concept named task memory close-path e2e coverage.\\n- entity entity:<0> [PROJECT]: Memory MVP; Project named Memory MVP.\\n\\n            Retrieved episodes:\\n            none\",\"selected_refs\":[{\"type\":\"ACTION_ITEM\",\"id\":\"hot-path:actionItem:<0>\",\"summary\":\"DONE: Add task memory close-path e2e coverage before declaring lifecycle stable\",\"status\":\"DONE\"},{\"type\":\"ENTITY\",\"id\":\"entity:<2>\",\"summary\":\"CONCEPT:lifecycle stability\"},{\"type\":\"ENTITY\",\"id\":\"entity:<1>\",\"summary\":\"CONCEPT:task memory close-path e2e coverage\"},{\"type\":\"ENTITY\",\"id\":\"entity:<0>\",\"summary\":\"PROJECT:Memory MVP\"}],\"selector_decisions\":[{\"type\":\"ACTION_ITEM\",\"id\":\"hot-path:actionItem:<0>\",\"selected\":true,\"rank\":1,\"reason\":\"Exact action item and updated done status directly match close request.\"},{\"type\":\"ENTITY\",\"id\":\"entity:<0>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Project label not needed to answer or update action item status.\"}]}",
+                                "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult.Data.Text"
+                            }
+                        ],
+                        "state": "COMPLETE",
+                        "toolName": "memory_enrich_context",
+                        "toolUseId": "tool-call",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "JSON_SCHEMA",
+            "autoCompactionThreshold": 320000,
+            "maxOutputTokens": 2048,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Structured assistant response for visual UI and optional text-to-speech.",
+                "name": "gromozeka_assistant_response",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "fullText": {
+                            "description": "Complete visible answer. Markdown is allowed.",
+                            "type": "string"
+                        },
+                        "ttsText": {
+                            "description": "Short speakable main answer. Empty string means no automatic TTS.",
+                            "type": "string"
+                        },
+                        "voiceTone": {
+                            "description": "Short English voice style hint. Empty string when ttsText is empty.",
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "fullText",
+                        "ttsText",
+                        "voiceTone"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "auto"
+            },
+            "toolContext": {
+                "aiProvider": "OPENAI",
+                "conversationId": "<conversation-key>",
+                "modelName": "gpt-5.3-codex",
+                "projectPath": "gromozeka-e2e-<id>/projects/task-path-close"
+            }
+        },
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value.",
+            "Return the assistant answer as the configured structured response.\nfullText: complete visible answer, markdown is allowed.\nttsText: short speakable main answer, or empty string when nothing should be spoken.\nvoiceTone: short English voice style hint for TTS, or empty string when ttsText is empty."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value.",
+            "Return the assistant answer as the configured structured response.\nfullText: complete visible answer, markdown is allowed.\nttsText: short speakable main answer, or empty string when nothing should be spoken.\nvoiceTone: short English voice style hint for TTS, or empty string when ttsText is empty."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "Memory MVP follow-up: keep an open task to add task memory close-path e2e coverage before declaring lifecycle stable.",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "ASSISTANT",
+                "content": [
+                    {
+                        "call": {
+                            "input": {
+                                "mode": "automatic_hot_path",
+                                "target": "previous_user_message",
+                                "target_message_id": "<uuid>"
+                            },
+                            "name": "memory_remember"
+                        },
+                        "id": "<id>",
+                        "state": "COMPLETE",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolCall"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {
+                    "synthetic": true,
+                    "syntheticKind": "memory",
+                    "targetMessageId": "<uuid>"
+                },
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "isError": false,
+                        "result": [
+                            {
+                                "content": "{\"status\":\"completed\",\"decision\":\"DIRECT_STRUCTURED_WRITE\",\"memory_types\":[\"ACTION_ITEM\"],\"salience\":0.9,\"reason\":\"The message explicitly creates/maintains a durable internal follow-up action item.\",\"source_id\":\"chat:<0>\",\"counts\":{\"predicate_definitions\":0,\"sources\":0,\"runs\":1,\"entities\":3,\"claims\":0,\"notes\":0,\"actionItems\":1,\"profiles\":0,\"episodes\":0,\"embeddings\":0},\"runs\":[{\"id\":\"hot-path:run:<0>\",\"type\":\"UPDATE_ACTION_ITEMS\",\"summary\":\"Direct structured write applied: notes=0, claims=0, actionItems=1, entities=3; noop ops: notes=0, claims=0, actionItems=0\"}],\"claims\":[],\"notes\":[],\"actionItems\":[{\"id\":\"hot-path:actionItem:<0>\",\"status\":\"OPEN\",\"priority\":\"HIGH\",\"title\":\"Add task memory close-path e2e coverage before declaring lifecycle stable\"}],\"entities\":[{\"id\":\"entity:<0>\",\"type\":\"PROJECT\",\"name\":\"Memory MVP\"},{\"id\":\"entity:<1>\",\"type\":\"CONCEPT\",\"name\":\"task memory close-path e2e coverage\"},{\"id\":\"entity:<2>\",\"type\":\"CONCEPT\",\"name\":\"lifecycle stability\"}]}",
+                                "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult.Data.Text"
+                            }
+                        ],
+                        "state": "COMPLETE",
+                        "toolName": "memory_remember",
+                        "toolUseId": "tool-call",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {
+                    "synthetic": true,
+                    "syntheticKind": "memory",
+                    "targetMessageId": "<uuid>"
+                },
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "ASSISTANT",
+                "content": [
+                    {
+                        "call": {
+                            "input": {
+                                "mode": "automatic_runtime_context_enrichment",
+                                "target": "previous_user_message",
+                                "target_message_id": "<uuid>"
+                            },
+                            "name": "memory_enrich_context"
+                        },
+                        "id": "<id>",
+                        "state": "COMPLETE",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolCall"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {
+                    "synthetic": true,
+                    "syntheticKind": "memory",
+                    "targetMessageId": "<uuid>"
+                },
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "isError": false,
+                        "result": [
+                            {
+                                "content": "{\"status\":\"completed\",\"need_memory\":true,\"answer_mode\":\"ACTION_ITEM\",\"retrieved_count\":4,\"usage_guidance\":\"Selected memory is the strongest available remembered context for the target context. Use it unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message. Do not replace selected memory with guesses or general defaults. For exact quote, exact wording, source, or when-said questions, prefer complete source text from memory_context over shorter evidence excerpts.\",\"memory_context\":\"            MEMORY-ONLY CONTEXT\\n            This message is not part of the real conversation and must not be stored as evidence.\\n            The retrieved memory below was selected for the immediately following user request.\\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\\n\\n            Namespace: project:<0>\\n            Answer mode: ACTION_ITEM\\n            Require evidence fallback: false\\n\\n            Retrieved profile:\\n            none\\n\\n            Retrieved action items:\\n            - action_item hot-path:actionItem:<0> [OPEN]: title=\\\"Add task memory close-path e2e coverage before declaring lifecycle stable\\\"; description=\\\"Keep this as an open follow-up in Memory MVP: add end-to-end test coverage for the task memory close-path, and only declare lifecycle stability after this coverage is added.\\\"\\n\\n            Retrieved claims:\\n            none\\n\\n            Retrieved notes:\\n            none\\n\\n            Retrieved evidence:\\n            not requested for this answer mode\\n\\n            Retrieved entities:\\n            - entity entity:<2> [CONCEPT]: lifecycle stability; Concept named lifecycle stability.\\n- entity entity:<1> [CONCEPT]: task memory close-path e2e coverage; Concept named task memory close-path e2e coverage.\\n- entity entity:<0> [PROJECT]: Memory MVP; Project named Memory MVP.\\n\\n            Retrieved episodes:\\n            none\",\"selected_refs\":[{\"type\":\"ACTION_ITEM\",\"id\":\"hot-path:actionItem:<0>\",\"summary\":\"OPEN: Add task memory close-path e2e coverage before declaring lifecycle stable\",\"status\":\"OPEN\"},{\"type\":\"ENTITY\",\"id\":\"entity:<2>\",\"summary\":\"CONCEPT:lifecycle stability\"},{\"type\":\"ENTITY\",\"id\":\"entity:<1>\",\"summary\":\"CONCEPT:task memory close-path e2e coverage\"},{\"type\":\"ENTITY\",\"id\":\"entity:<0>\",\"summary\":\"PROJECT:Memory MVP\"}],\"selector_decisions\":[{\"type\":\"ACTION_ITEM\",\"id\":\"hot-path:actionItem:<0>\",\"selected\":true,\"rank\":1,\"reason\":\"Open action item exactly matches requested follow-up task and status.\"},{\"type\":\"ENTITY\",\"id\":\"entity:<0>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Project label is not needed since the action item already contains sufficient context.\"}]}",
+                                "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult.Data.Text"
+                            }
+                        ],
+                        "state": "COMPLETE",
+                        "toolName": "memory_enrich_context",
+                        "toolUseId": "tool-call",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {
+                    "synthetic": true,
+                    "syntheticKind": "memory",
+                    "targetMessageId": "<uuid>"
+                },
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "ASSISTANT",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "structured": {
+                            "failedToParse": false,
+                            "fullText": "Acknowledged — kept open:\n\n**Add task memory close-path e2e coverage before declaring lifecycle stable.**",
+                            "ttsText": "Got it. I’ll keep that task open until close-path end-to-end coverage is added.",
+                            "voiceTone": "calm, concise"
+                        },
+                        "type": "IntermediateMessage"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {
+                    "conversationKey": "<conversation-key>",
+                    "messageId": "msg_<id>",
+                    "phase": "final_answer",
+                    "responseId": "resp_<id>"
+                },
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "Close the Memory MVP follow-up about task memory close-path e2e coverage: it is done now.",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "ASSISTANT",
+                "content": [
+                    {
+                        "call": {
+                            "input": {
+                                "mode": "automatic_hot_path",
+                                "target": "previous_user_message",
+                                "target_message_id": "<uuid>"
+                            },
+                            "name": "memory_remember"
+                        },
+                        "id": "<id>",
+                        "state": "COMPLETE",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolCall"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {
+                    "synthetic": true,
+                    "syntheticKind": "memory",
+                    "targetMessageId": "<uuid>"
+                },
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "isError": false,
+                        "result": [
+                            {
+                                "content": "{\"status\":\"completed\",\"decision\":\"DIRECT_STRUCTURED_WRITE\",\"memory_types\":[\"ACTION_ITEM\"],\"salience\":0.9,\"reason\":\"Durable action item lifecycle command marking a previously open follow-up as completed.\",\"source_id\":\"chat:<1>\",\"counts\":{\"predicate_definitions\":0,\"sources\":0,\"runs\":1,\"entities\":2,\"claims\":0,\"notes\":0,\"actionItems\":1,\"profiles\":0,\"episodes\":0,\"embeddings\":0},\"runs\":[{\"id\":\"hot-path:run:<1>\",\"type\":\"UPDATE_ACTION_ITEMS\",\"summary\":\"Direct structured write applied: notes=0, claims=0, actionItems=1, entities=2; noop ops: notes=0, claims=0, actionItems=0\"}],\"claims\":[],\"notes\":[],\"actionItems\":[{\"id\":\"hot-path:actionItem:<0>\",\"status\":\"DONE\",\"priority\":\"HIGH\",\"title\":\"Add task memory close-path e2e coverage before declaring lifecycle stable\"}],\"entities\":[{\"id\":\"entity:<0>\",\"type\":\"PROJECT\",\"name\":\"Memory MVP\"},{\"id\":\"entity:<1>\",\"type\":\"CONCEPT\",\"name\":\"task memory close-path e2e coverage\"}]}",
+                                "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult.Data.Text"
+                            }
+                        ],
+                        "state": "COMPLETE",
+                        "toolName": "memory_remember",
+                        "toolUseId": "tool-call",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {
+                    "synthetic": true,
+                    "syntheticKind": "memory",
+                    "targetMessageId": "<uuid>"
+                },
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "ASSISTANT",
+                "content": [
+                    {
+                        "call": {
+                            "input": {
+                                "mode": "automatic_runtime_context_enrichment",
+                                "target": "previous_user_message",
+                                "target_message_id": "<uuid>"
+                            },
+                            "name": "memory_enrich_context"
+                        },
+                        "id": "<id>",
+                        "state": "COMPLETE",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolCall"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {
+                    "synthetic": true,
+                    "syntheticKind": "memory",
+                    "targetMessageId": "<uuid>"
+                },
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "isError": false,
+                        "result": [
+                            {
+                                "content": "{\"status\":\"completed\",\"need_memory\":true,\"answer_mode\":\"ACTION_ITEM\",\"retrieved_count\":4,\"usage_guidance\":\"Selected memory is the strongest available remembered context for the target context. Use it unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message. Do not replace selected memory with guesses or general defaults. For exact quote, exact wording, source, or when-said questions, prefer complete source text from memory_context over shorter evidence excerpts.\",\"memory_context\":\"            MEMORY-ONLY CONTEXT\\n            This message is not part of the real conversation and must not be stored as evidence.\\n            The retrieved memory below was selected for the immediately following user request.\\n            Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.\\n            Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.\\n            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.\\n            If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.\\n            If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.\\n            If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.\\n            If the user asks how to adapt behavior, answer by explicitly naming the relevant remembered adaptations instead of only demonstrating them.\\n\\n            Namespace: project:<0>\\n            Answer mode: ACTION_ITEM\\n            Require evidence fallback: false\\n\\n            Retrieved profile:\\n            none\\n\\n            Retrieved action items:\\n            - action_item hot-path:actionItem:<0> [DONE]: title=\\\"Add task memory close-path e2e coverage before declaring lifecycle stable\\\"; description=\\\"Keep this as an open follow-up in Memory MVP: add end-to-end test coverage for the task memory close-path, and only declare lifecycle stability after this coverage is added.\\\"\\n\\n            Retrieved claims:\\n            none\\n\\n            Retrieved notes:\\n            none\\n\\n            Retrieved evidence:\\n            not requested for this answer mode\\n\\n            Retrieved entities:\\n            - entity entity:<2> [CONCEPT]: lifecycle stability; Concept named lifecycle stability.\\n- entity entity:<1> [CONCEPT]: task memory close-path e2e coverage; Concept named task memory close-path e2e coverage.\\n- entity entity:<0> [PROJECT]: Memory MVP; Project named Memory MVP.\\n\\n            Retrieved episodes:\\n            none\",\"selected_refs\":[{\"type\":\"ACTION_ITEM\",\"id\":\"hot-path:actionItem:<0>\",\"summary\":\"DONE: Add task memory close-path e2e coverage before declaring lifecycle stable\",\"status\":\"DONE\"},{\"type\":\"ENTITY\",\"id\":\"entity:<2>\",\"summary\":\"CONCEPT:lifecycle stability\"},{\"type\":\"ENTITY\",\"id\":\"entity:<1>\",\"summary\":\"CONCEPT:task memory close-path e2e coverage\"},{\"type\":\"ENTITY\",\"id\":\"entity:<0>\",\"summary\":\"PROJECT:Memory MVP\"}],\"selector_decisions\":[{\"type\":\"ACTION_ITEM\",\"id\":\"hot-path:actionItem:<0>\",\"selected\":true,\"rank\":1,\"reason\":\"Exact action item and updated done status directly match close request.\"},{\"type\":\"ENTITY\",\"id\":\"entity:<0>\",\"selected\":false,\"rank\":2147483647,\"reason\":\"Project label not needed to answer or update action item status.\"}]}",
+                                "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult.Data.Text"
+                            }
+                        ],
+                        "state": "COMPLETE",
+                        "toolName": "memory_enrich_context",
+                        "toolUseId": "tool-call",
+                        "type": "com.gromozeka.domain.model.Conversation.Message.ContentItem.ToolResult"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {
+                    "synthetic": true,
+                    "syntheticKind": "memory",
+                    "targetMessageId": "<uuid>"
+                },
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 2048,
+            "reasoning": null,
+            "autoCompactionThreshold": 320000,
+            "toolChoice": {
+                "type": "auto"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "gromozeka_assistant_response",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "fullText": {
+                            "description": "Complete visible answer. Markdown is allowed.",
+                            "type": "string"
+                        },
+                        "ttsText": {
+                            "description": "Short speakable main answer. Empty string means no automatic TTS.",
+                            "type": "string"
+                        },
+                        "voiceTone": {
+                            "description": "Short English voice style hint. Empty string when ttsText is empty.",
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "fullText",
+                        "ttsText",
+                        "voiceTone"
+                    ],
+                    "type": "object"
+                },
+                "description": "Structured assistant response for visual UI and optional text-to-speech.",
+                "strict": true
+            },
+            "assistantResponseFormat": "JSON_SCHEMA",
+            "toolContext": {
+                "aiProvider": "OPENAI",
+                "conversationId": "<conversation-key>",
+                "modelName": "gpt-5.3-codex",
+                "projectPath": "gromozeka-e2e-<id>/projects/task-path-close"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "Done — I’ve closed it as completed.",
+                                "ttsText": "Done — I’ve closed it as completed.",
+                                "voiceTone": "calm, concise",
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 1691,
+                "completionTokens": 46,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 1280
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

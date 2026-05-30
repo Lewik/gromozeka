@@ -163,12 +163,12 @@ class LlmMemoryReadPlanner(
 
         You are NOT deciding whether the memory store contains the answer.
         You are deciding whether the assistant should search memory to enrich the target context before answering or acting.
-        The target may be a question, task, fragment, topic, phrase, or work context.
+        The target may be a question, action item, fragment, topic, phrase, or work context.
 
         Return JSON:
         {
           "needs_memory": true,
-          "answer_mode": "factual | rationale | task | mixed",
+          "answer_mode": "factual | rationale | action_item | mixed",
           "needs_source": false,
           "query": "short memory search query",
           "reason": "short explanation"
@@ -191,7 +191,7 @@ class LlmMemoryReadPlanner(
 
         Treat these as no-memory:
         - the target is fully self-contained and asks for general reasoning, coding, math, rewriting, or explanation.
-        - the target asks to perform a new task and does not require prior user/project/team context.
+        - the target asks to perform a new immediate action and does not require prior user/project/team context.
         - the target contains all facts needed to answer.
 
         Use needs_source=true only when exact quote, evidence, source, or wording-level grounding is needed.
@@ -232,7 +232,8 @@ class LlmMemoryReadPlanner(
     private data class Budget(
         val claims: Int = 0,
         val notes: Int = 0,
-        val tasks: Int = 0,
+        @SerialName("action_items")
+        val actionItems: Int = 0,
         val sources: Int = 0,
         val episodes: Int = 0,
     ) {
@@ -240,7 +241,7 @@ class LlmMemoryReadPlanner(
             MemoryRetrievalBudget(
                 claims = claims.coerceIn(0, 12),
                 notes = notes.coerceIn(0, 8),
-                tasks = tasks.coerceIn(0, 8),
+                actionItems = actionItems.coerceIn(0, 8),
                 sources = sources.coerceIn(0, 8),
                 episodes = episodes.coerceIn(0, 4),
             )
@@ -297,7 +298,7 @@ class LlmMemoryReadPlanner(
                 retrievalBudget = MemoryRetrievalBudget(
                     claims = 4,
                     notes = 1,
-                    tasks = 1,
+                    actionItems = 1,
                     sources = if (needsSource) 2 else 0,
                     episodes = 1,
                 ),
@@ -324,7 +325,7 @@ class LlmMemoryReadPlanner(
                     )
                     add(
                         MemoryReadPlan.RetrievalRequest(
-                            memoryType = MemorySemanticType.TASK,
+                            memoryType = MemorySemanticType.ACTION_ITEM,
                             why = "Check active commitments if the target asks about ownership or follow-up state.",
                             query = searchQuery,
                             topK = 1,
@@ -356,24 +357,24 @@ class LlmMemoryReadPlanner(
 
             Goal:
             Plan memory retrieval that enriches the target context before answer synthesis.
-            The target may be a question, task, fragment, topic, phrase, or work context.
+            The target may be a question, action item, fragment, topic, phrase, or work context.
             Do not answer the target. Return only the retrieval plan.
 
             Return JSON:
             {
               "need_memory": true,
-              "answer_mode": "factual | rationale | task | mixed",
-              "core_blocks": ["profile", "tasks"],
+              "answer_mode": "factual | rationale | action_item | mixed",
+              "core_blocks": ["profile", "action_items"],
               "retrieval_budget": {
                 "claims": 0,
                 "notes": 0,
-                "tasks": 0,
+                "action_items": 0,
                 "sources": 0,
                 "episodes": 0
               },
               "retrieval_requests": [
                 {
-                  "memory_type": "claim | note | task | source | profile | episode",
+                  "memory_type": "claim | note | action_item | source | profile | episode",
                   "why": "short explanation",
                   "query": "text",
                   "top_k": 0,
@@ -393,8 +394,8 @@ class LlmMemoryReadPlanner(
             - For "rationale" answers, retrieve notes first. Rationale, design direction, trade-offs, and "what did we decide/how did we decide/why did we choose" questions should include at least one note retrieval request unless the target message already contains the answer.
             - Use episode retrieval for prior attempts, reusable lessons, situation-action-result outcomes, "what did we learn", and "what worked last time" questions.
             - For a specific named component or a narrowly described reusable lesson, use episode top_k=1. Use top_k=2 only for broad "what lessons do we have" style questions.
-            - Use "task" for commitments and follow-ups.
-            - For task status, done, cancelled, closed, blocked, or "is anything still open" questions, retrieve task memory even when the relevant task may no longer be open.
+            - Use "action_item" for internal commitments and follow-ups.
+            - For action item status, done, cancelled, closed, blocked, or "is anything still open" questions, retrieve action item memory even when the relevant action item may no longer be open.
             - Use "mixed" when multiple memory classes are required.
             - Prefer no memory when the current request is fully self-contained.
             - A request is not self-contained when it asks about user-specific, project-specific, team-specific, or prior-session context and the target message does not contain the answer.
@@ -412,7 +413,7 @@ class LlmMemoryReadPlanner(
             - Keep retrieval bounded.
             - Include source retrieval when conflicts, uncertainty, or quotation-quality grounding is needed.
             - Include source retrieval when the target asks what the user said, what wording was used, or asks about a weak/uncertain observation that may intentionally exist only as source memory.
-            - For ordinary factual/task answers, especially when the target asks for "only" a value or task title, set require_evidence_fallback=false and sources=0 unless exact quote/source/provenance is explicitly requested.
+            - For ordinary factual/action item answers, especially when the target asks for "only" a value or action item title, set require_evidence_fallback=false and sources=0 unless exact quote/source/provenance is explicitly requested.
             - Prefer note retrieval over raw source retrieval for rationale questions. Use sources as evidence fallback, not as the primary rationale memory.
             - Return valid JSON only.
         """.trimIndent()
@@ -477,14 +478,14 @@ private fun String.toAnswerMode(): MemoryReadPlan.AnswerMode =
     when (trim().lowercase().replace("-", "_")) {
         "factual", "fact" -> MemoryReadPlan.AnswerMode.FACTUAL
         "rationale", "reasoning", "why" -> MemoryReadPlan.AnswerMode.RATIONALE
-        "task", "tasks" -> MemoryReadPlan.AnswerMode.TASK
+        "action_item", "action_items", "actionitem", "actionitems", "task", "tasks" -> MemoryReadPlan.AnswerMode.ACTION_ITEM
         else -> MemoryReadPlan.AnswerMode.MIXED
     }
 
 private fun String.toCoreBlock(): MemoryReadPlan.CoreBlock? =
     when (trim().lowercase().replace("-", "_").removeSuffix("s")) {
         "profile" -> MemoryReadPlan.CoreBlock.PROFILE
-        "task" -> MemoryReadPlan.CoreBlock.TASKS
+        "action_item", "action_items", "actionitem", "actionitems", "task", "tasks" -> MemoryReadPlan.CoreBlock.ACTION_ITEMS
         "session_summary", "summary" -> MemoryReadPlan.CoreBlock.SESSION_SUMMARY
         else -> null
     }

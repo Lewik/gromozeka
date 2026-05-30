@@ -26,7 +26,7 @@ class MemoryEnrichContextToolCallback(
 
     override val definition: AiToolDefinition = AiToolDefinition(
         name = MEMORY_ENRICH_CONTEXT_TOOL_NAME,
-        description = "Enrich a target context with relevant persisted memory. Do not ask this tool a question expecting an answer. Provide the current turn, task context, topic, or phrase that should be enriched; the tool returns memory_context for the assistant to use before answering or acting. Optional namespace is a readable memory boundary such as global, user:lewik, work:hebrew, or project:<project-id>; omit it to use the configured default or current project namespace.",
+        description = "Enrich a target context with relevant persisted memory. Do not ask this tool a question expecting an answer. Provide the current turn, action item context, topic, or phrase that should be enriched; the tool returns memory_context for the assistant to use before answering or acting. Optional namespace is a readable memory boundary such as global, user:lewik, work:hebrew, or project:<project-id>; omit it to use the configured default or current project namespace.",
         inputSchema = """
             {
               "type": "object",
@@ -41,7 +41,7 @@ class MemoryEnrichContextToolCallback(
                 },
                 "context": {
                   "type": "string",
-                  "description": "Standalone target context to enrich when target='provided_context'. This is a topic, phrase, current turn, or task context, not a question to answer."
+                  "description": "Standalone target context to enrich when target='provided_context'. This is a topic, phrase, current turn, or action item context, not a question to answer."
                 },
                 "mode": {
                   "type": "string",

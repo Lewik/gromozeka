@@ -49,7 +49,7 @@ class GromozekaRemoteServices(
     val audioTranscriptionService: RemoteAudioTranscriptionService = RemoteAudioTranscriptionService(client)
     val speechSynthesisService: RemoteSpeechSynthesisService = RemoteSpeechSynthesisService(client)
     val liveInterpreterService: RemoteLiveInterpreterService = RemoteLiveInterpreterService(client)
-    val memoryTaskService: RemoteMemoryTaskService = RemoteMemoryTaskService(client)
+    val memoryActionItemService: RemoteMemoryActionItemService = RemoteMemoryActionItemService(client)
 
     suspend fun initialize() {
         remoteSettingsService.refreshFromServer()

@@ -11,41 +11,41 @@
           "text": "Memory MVP follow-up: keep an open task to add task memory lifecycle e2e coverage before declaring the memory MVP stable.",
           "memoryWriteTraceExpectation": {
             "routeDecisionIn": ["DIRECT_STRUCTURED_WRITE"],
-            "rawTaskOpsMin": 1,
-            "rawTaskOpsMax": 1,
-            "taskOpsMin": 1,
-            "taskOpsMax": 1,
-            "materializedTasksMin": 1,
-            "materializedTasksMax": 1,
-            "rawTaskOpsContainsAll": ["INSERT", "task memory lifecycle"],
-            "taskOpsContainsAll": ["INSERT", "task memory lifecycle"]
+            "rawActionItemOpsMin": 1,
+            "rawActionItemOpsMax": 1,
+            "actionItemOpsMin": 1,
+            "actionItemOpsMax": 1,
+            "materializedActionItemsMin": 1,
+            "materializedActionItemsMax": 1,
+            "rawActionItemOpsContainsAll": ["INSERT", "task memory lifecycle"],
+            "actionItemOpsContainsAll": ["INSERT", "task memory lifecycle"]
           }
         },
         {
           "text": "Same Memory MVP follow-up, no new task: keep the task memory lifecycle e2e coverage task open.",
           "memoryWriteTraceExpectation": {
             "routeDecisionIn": ["DIRECT_STRUCTURED_WRITE"],
-            "rawTaskOpsMin": 1,
-            "rawTaskOpsMax": 1,
-            "taskOpsMin": 1,
-            "taskOpsMax": 1,
-            "materializedTasksMax": 0,
-            "rawTaskOpsContainsAll": ["NOOP"],
-            "taskOpsContainsAll": ["NOOP"]
+            "rawActionItemOpsMin": 1,
+            "rawActionItemOpsMax": 1,
+            "actionItemOpsMin": 1,
+            "actionItemOpsMax": 1,
+            "materializedActionItemsMax": 0,
+            "rawActionItemOpsContainsAll": ["NOOP"],
+            "actionItemOpsContainsAll": ["NOOP"]
           }
         },
         {
           "text": "Update that Memory MVP follow-up: it should verify duplicate follow-ups, task updates, and closing completed tasks.",
           "memoryWriteTraceExpectation": {
             "routeDecisionIn": ["DIRECT_STRUCTURED_WRITE"],
-            "rawTaskOpsMin": 1,
-            "rawTaskOpsMax": 1,
-            "taskOpsMin": 1,
-            "taskOpsMax": 1,
-            "materializedTasksMin": 1,
-            "materializedTasksMax": 1,
-            "rawTaskOpsContainsAll": ["UPDATE", "duplicate follow-up", "task updates", "closing completed tasks"],
-            "taskOpsContainsAll": ["UPDATE", "duplicate follow-up", "task updates", "closing completed tasks"]
+            "rawActionItemOpsMin": 1,
+            "rawActionItemOpsMax": 1,
+            "actionItemOpsMin": 1,
+            "actionItemOpsMax": 1,
+            "materializedActionItemsMin": 1,
+            "materializedActionItemsMax": 1,
+            "rawActionItemOpsContainsAll": ["UPDATE", "duplicate follow-up", "action item updates", "closing completed tasks"],
+            "actionItemOpsContainsAll": ["UPDATE", "duplicate follow-up", "action item updates", "closing completed tasks"]
           }
         }
       ]
@@ -60,18 +60,18 @@
           "answerExpectation": {
             "containsAnyGroups": [
               ["duplicate follow-ups", "duplicate follow-up", "duplicates", "dedup"],
-              ["task updates", "updates"],
+              ["action item updates", "updates"],
               ["closing completed tasks", "closing", "completed tasks"]
             ]
           },
           "memoryTraceExpectation": {
             "needMemory": true,
             "injectedPromptPresent": true,
-            "selectedTasksMin": 1,
-            "selectedTasksMax": 1,
-            "selectorSelectedContainsAll": ["SELECT TASK", "task memory lifecycle"],
+            "selectedActionItemsMin": 1,
+            "selectedActionItemsMax": 1,
+            "selectorSelectedContainsAll": ["SELECT ACTION_ITEM", "task memory lifecycle"],
             "selectorSelectedContainsNone": ["SOURCE", "CLAIM"],
-            "requiredSelectedTasks": [
+            "requiredSelectedActionItems": [
               {
                 "statusIn": ["OPEN"],
                 "containsAll": ["task memory lifecycle", "duplicate", "updates", "closing"],
@@ -87,10 +87,10 @@
   "expectedAfterSeeds": {
     "activeClaimsMax": 2,
     "notesMax": 1,
-    "tasksMin": 1,
-    "tasksMax": 1,
+    "actionItemsMin": 1,
+    "actionItemsMax": 1,
     "userSourcesMin": 3,
-    "requiredTasks": [
+    "requiredActionItems": [
       {
         "statusIn": ["OPEN"],
         "containsAll": ["task memory lifecycle", "duplicate", "updates", "closing"],
@@ -102,10 +102,10 @@
   "expectedFinal": {
     "activeClaimsMax": 2,
     "notesMax": 1,
-    "tasksMin": 1,
-    "tasksMax": 1,
+    "actionItemsMin": 1,
+    "actionItemsMax": 1,
     "userSourcesMin": 4,
-    "requiredTasks": [
+    "requiredActionItems": [
       {
         "statusIn": ["OPEN"],
         "containsAll": ["task memory lifecycle", "duplicate", "updates", "closing"],

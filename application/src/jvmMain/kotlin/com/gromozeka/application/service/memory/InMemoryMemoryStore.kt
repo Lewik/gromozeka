@@ -16,7 +16,7 @@ import com.gromozeka.domain.model.memory.MemoryProfile
 import com.gromozeka.domain.model.memory.MemoryRun
 import com.gromozeka.domain.model.memory.MemorySource
 import com.gromozeka.domain.model.memory.MemoryStore
-import com.gromozeka.domain.model.memory.MemoryTask
+import com.gromozeka.domain.model.memory.MemoryActionItem
 import com.gromozeka.domain.model.memory.MemoryUpdateBatch
 import com.gromozeka.domain.model.memory.activeDefinitions
 import com.gromozeka.domain.model.memory.requireValidEntityIds
@@ -31,7 +31,7 @@ class InMemoryMemoryStore(
     private val entities = initialSnapshot.entities.toMutableList()
     private val claims = initialSnapshot.claims.toMutableList()
     private val notes = initialSnapshot.notes.toMutableList()
-    private val tasks = initialSnapshot.tasks.toMutableList()
+    private val actionItems = initialSnapshot.actionItems.toMutableList()
     private val profiles = initialSnapshot.profiles.toMutableList()
     private val episodes = initialSnapshot.episodes.toMutableList()
     private val embeddings = mutableListOf<MemoryEmbeddingRecord>()
@@ -44,7 +44,7 @@ class InMemoryMemoryStore(
         entities.upsertAll(validBatch.entities) { it.id.value }
         claims.upsertAll(validBatch.claims) { it.id.value }
         notes.upsertAll(validBatch.notes) { it.id.value }
-        tasks.upsertAll(validBatch.tasks) { it.id.value }
+        actionItems.upsertAll(validBatch.actionItems) { it.id.value }
         profiles.upsertAll(validBatch.profiles) { it.id.value }
         episodes.upsertAll(validBatch.episodes) { it.id.value }
         embeddings.upsertAll(validBatch.embeddings) { it.id.value }
@@ -89,10 +89,10 @@ class InMemoryMemoryStore(
                     .filter { request.includeArchived || it.archivedAt == null }
                     .mapTo(this) { MemoryStore.SearchHit.NoteHit(it, score = 1.0) }
             }
-            if (includeAll || request.scopes.contains(MemoryStore.SearchScope.TASKS)) {
-                tasks
+            if (includeAll || request.scopes.contains(MemoryStore.SearchScope.ACTION_ITEMS)) {
+                actionItems
                     .filter { request.namespace == null || it.namespace == request.namespace }
-                    .filter { request.filters.taskStatuses.isEmpty() || it.status in request.filters.taskStatuses }
+                    .filter { request.filters.actionItemStatuses.isEmpty() || it.status in request.filters.actionItemStatuses }
                     .filter {
                         request.filters.entityIds.isEmpty() ||
                             it.ownerEntityId in request.filters.entityIds ||
@@ -101,7 +101,7 @@ class InMemoryMemoryStore(
                     }
                     .filter { request.filters.scopes.isEmpty() || it.scope in request.filters.scopes }
                     .filter { request.includeArchived || it.archivedAt == null }
-                    .mapTo(this) { MemoryStore.SearchHit.TaskHit(it, score = 1.0) }
+                    .mapTo(this) { MemoryStore.SearchHit.ActionItemHit(it, score = 1.0) }
             }
             if (includeAll || request.scopes.contains(MemoryStore.SearchScope.PROFILES)) {
                 profiles
@@ -203,9 +203,9 @@ class InMemoryMemoryStore(
             (directNotes + replacementNotes)
                 .distinctBy { it.id }
                 .mapTo(this) { MemoryStore.SearchHit.NoteHit(it, score = 1.0) }
-            tasks
+            actionItems
                 .filter { it.namespace == namespace && it.archivedAt == null && it.evidenceRefs.any { ref -> ref.sourceId in sourceIds } }
-                .mapTo(this) { MemoryStore.SearchHit.TaskHit(it, score = 1.0) }
+                .mapTo(this) { MemoryStore.SearchHit.ActionItemHit(it, score = 1.0) }
             episodes
                 .filter { it.namespace == namespace && it.archivedAt == null && it.evidenceRefs.any { ref -> ref.sourceId in sourceIds } }
                 .mapTo(this) { MemoryStore.SearchHit.EpisodeHit(it, score = 1.0) }
@@ -279,7 +279,7 @@ class InMemoryMemoryStore(
             entities.mapTo(this) { it.namespace }
             claims.mapTo(this) { it.namespace }
             notes.mapTo(this) { it.namespace }
-            tasks.mapTo(this) { it.namespace }
+            actionItems.mapTo(this) { it.namespace }
             profiles.mapTo(this) { it.namespace }
             episodes.mapTo(this) { it.namespace }
         }
@@ -297,7 +297,7 @@ class InMemoryMemoryStore(
             entities = entities.filter { it.namespace == namespace },
             claims = claims.filter { it.namespace == namespace && (includeArchived || it.archivedAt == null) },
             notes = notes.filter { it.namespace == namespace && (includeArchived || it.archivedAt == null) },
-            tasks = tasks.filter { it.namespace == namespace && (includeArchived || it.archivedAt == null) },
+            actionItems = actionItems.filter { it.namespace == namespace && (includeArchived || it.archivedAt == null) },
             profiles = profiles.filter { it.namespace == namespace },
             episodes = episodes.filter { it.namespace == namespace && (includeArchived || it.archivedAt == null) },
         )
@@ -318,7 +318,7 @@ private fun MemoryStore.SearchHit.toMemoryStoreItemRef(): MemoryItemRef =
         is MemoryStore.SearchHit.EntityHit -> MemoryItemRef(MemoryItemRef.Type.ENTITY, entity.id.value)
         is MemoryStore.SearchHit.ClaimHit -> MemoryItemRef(MemoryItemRef.Type.CLAIM, claim.id.value)
         is MemoryStore.SearchHit.NoteHit -> MemoryItemRef(MemoryItemRef.Type.NOTE, note.id.value)
-        is MemoryStore.SearchHit.TaskHit -> MemoryItemRef(MemoryItemRef.Type.TASK, task.id.value)
+        is MemoryStore.SearchHit.ActionItemHit -> MemoryItemRef(MemoryItemRef.Type.ACTION_ITEM, actionItem.id.value)
         is MemoryStore.SearchHit.ProfileHit -> MemoryItemRef(MemoryItemRef.Type.PROFILE, profile.id.value)
         is MemoryStore.SearchHit.EpisodeHit -> MemoryItemRef(MemoryItemRef.Type.EPISODE, episode.id.value)
         is MemoryStore.SearchHit.RunHit -> MemoryItemRef(MemoryItemRef.Type.RUN, run.id.value)

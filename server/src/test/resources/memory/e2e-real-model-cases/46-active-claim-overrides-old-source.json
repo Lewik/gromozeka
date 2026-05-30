@@ -51,7 +51,7 @@
             "routeDecisionIn": ["NOOP"],
             "materializedClaimsMax": 0,
             "materializedNotesMax": 0,
-            "materializedTasksMax": 0
+            "materializedActionItemsMax": 0
           }
         }
       ]

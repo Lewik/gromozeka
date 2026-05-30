@@ -37,7 +37,7 @@ internal object MemoryContextWindowPolicy {
         AiRuntimeAssignment.Purpose.MEMORY_WRITE_NOTE_RECONCILER,
         AiRuntimeAssignment.Purpose.MEMORY_WRITE_CLAIM_EXTRACTOR,
         AiRuntimeAssignment.Purpose.MEMORY_WRITE_CLAIM_RECONCILER,
-        AiRuntimeAssignment.Purpose.MEMORY_WRITE_TASK_UPDATER,
+        AiRuntimeAssignment.Purpose.MEMORY_WRITE_ACTION_ITEM_UPDATER,
         AiRuntimeAssignment.Purpose.MEMORY_WRITE_FORGET_PLANNER,
     )
 

@@ -91,10 +91,10 @@ data class AiRuntimeAssignment(
             displayName = "Memory write / Claim reconciler",
             description = "Optional override for claim deduplication, contradiction handling, and superseding.",
         ),
-        MEMORY_WRITE_TASK_UPDATER(
+        MEMORY_WRITE_ACTION_ITEM_UPDATER(
             requiredCapabilities = setOf(AiModelCapability.TEXT_GENERATION),
-            displayName = "Memory write / Task updater",
-            description = "Optional override for creating, updating, and closing memory tasks.",
+            displayName = "Memory write / Action item updater",
+            description = "Optional override for creating, updating, and closing memory action items.",
         ),
         MEMORY_WRITE_FORGET_PLANNER(
             requiredCapabilities = setOf(AiModelCapability.TEXT_GENERATION),
@@ -163,7 +163,7 @@ data class AiRuntimeAssignment(
                 MEMORY_WRITE_NOTE_RECONCILER,
                 MEMORY_WRITE_CLAIM_EXTRACTOR,
                 MEMORY_WRITE_CLAIM_RECONCILER,
-                MEMORY_WRITE_TASK_UPDATER,
+                MEMORY_WRITE_ACTION_ITEM_UPDATER,
                 MEMORY_WRITE_FORGET_PLANNER -> MEMORY_WRITE
 
                 MEMORY_MAINTENANCE_NOTE_CONSOLIDATOR,

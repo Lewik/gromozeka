@@ -38,7 +38,7 @@ data class MemoryRouteDecision(
 enum class MemorySemanticType {
     CLAIM,
     NOTE,
-    TASK,
+    ACTION_ITEM,
     PROFILE,
     SOURCE,
     ENTITY,
@@ -49,7 +49,7 @@ enum class MemorySemanticType {
  * Search plan for write-time grounding.
  *
  * Before writing new memory, the system should retrieve nearby entities, claims,
- * notes, and tasks to avoid duplicates and detect contradictions.
+ * notes, and action items to avoid duplicates and detect contradictions.
  */
 @Serializable
 data class MemoryWriteRetrievalPlan(
@@ -212,13 +212,13 @@ data class MemoryNoteReconciliationOp(
 }
 
 /**
- * Write decision for task-like memory.
+ * Write decision for action-item-like memory.
  */
 @Serializable
-data class MemoryTaskUpdateOp(
+data class MemoryActionItemUpdateOp(
     val action: Action,
-    val targetTaskId: MemoryTask.Id? = null,
-    val task: Draft? = null,
+    val targetActionItemId: MemoryActionItem.Id? = null,
+    val actionItem: Draft? = null,
     val reason: String = "",
 ) {
     @Serializable
@@ -237,8 +237,8 @@ data class MemoryTaskUpdateOp(
         val description: String? = null,
         val ownerEntityId: MemoryEntity.Id? = null,
         val assigneeEntityId: MemoryEntity.Id? = null,
-        val status: MemoryTask.Status = MemoryTask.Status.OPEN,
-        val priority: MemoryTask.Priority = MemoryTask.Priority.NORMAL,
+        val status: MemoryActionItem.Status = MemoryActionItem.Status.OPEN,
+        val priority: MemoryActionItem.Priority = MemoryActionItem.Priority.NORMAL,
         val dueAt: Instant? = null,
         val acceptanceCriteria: List<String> = emptyList(),
         val blockers: List<String> = emptyList(),
@@ -285,7 +285,7 @@ data class MemoryWriteCandidates(
     val entityOps: List<MemoryEntityCanonicalizationOp> = emptyList(),
     val claimCandidates: List<MemoryClaimCandidate> = emptyList(),
     val noteCandidates: List<MemoryNoteCandidate> = emptyList(),
-    val taskActions: List<MemoryTaskUpdateOp> = emptyList(),
+    val actionItemActions: List<MemoryActionItemUpdateOp> = emptyList(),
     val profileProjection: MemoryProfileProjection? = null,
 )
 
@@ -311,13 +311,13 @@ data class MemoryNoteLifecycleOp(
 /**
  * Output of note consolidation maintenance.
  *
- * Consolidation turns temporary or broad notes into more durable claims, tasks,
+ * Consolidation turns temporary or broad notes into more durable claims, action items,
  * profiles, episodes, and lifecycle changes for the original notes.
  */
 @Serializable
 data class NoteConsolidationResult(
     val claimCandidates: List<MemoryClaimCandidate> = emptyList(),
-    val taskActions: List<MemoryTaskUpdateOp> = emptyList(),
+    val actionItemActions: List<MemoryActionItemUpdateOp> = emptyList(),
     val profileProjection: MemoryProfileProjection? = null,
     val episodeCandidates: List<MemoryEpisodeCandidate> = emptyList(),
     val noteActions: List<MemoryNoteLifecycleOp> = emptyList(),
@@ -457,14 +457,14 @@ data class MemoryReadPlan(
     enum class AnswerMode {
         FACTUAL,
         RATIONALE,
-        TASK,
+        ACTION_ITEM,
         MIXED,
     }
 
     @Serializable
     enum class CoreBlock {
         PROFILE,
-        TASKS,
+        ACTION_ITEMS,
         SESSION_SUMMARY,
     }
 

@@ -30,7 +30,7 @@ class GromozekaMcpServerFactoryMemoryHelpTest {
 
         val rememberDescription = server.tools.getValue(MEMORY_REMEMBER_TOOL_NAME).tool.description.orEmpty()
         assertContains(rememberDescription, "Use memory_help")
-        assertFalse(rememberDescription.contains("claim/note/task/source"))
+        assertFalse(rememberDescription.contains("claim/note/actionItem/source"))
         assertFalse(rememberDescription.contains("global, user:lewik"))
 
         val result = runBlocking {

@@ -33,9 +33,9 @@ import com.gromozeka.domain.model.memory.MemorySemanticType
 import com.gromozeka.domain.model.memory.MemorySource
 import com.gromozeka.domain.model.memory.MemorySourceUsagePolicy
 import com.gromozeka.domain.model.memory.MemoryStore
-import com.gromozeka.domain.model.memory.MemoryTask
-import com.gromozeka.domain.model.memory.MemoryTaskUpdateOp
-import com.gromozeka.domain.model.memory.MemoryTaskUpdater
+import com.gromozeka.domain.model.memory.MemoryActionItem
+import com.gromozeka.domain.model.memory.MemoryActionItemUpdateOp
+import com.gromozeka.domain.model.memory.MemoryActionItemUpdater
 import com.gromozeka.domain.model.memory.MemoryUpdateBatch
 import com.gromozeka.domain.model.memory.MemoryWriteRetrievalPlan
 import com.gromozeka.domain.model.memory.MemoryWriteRetrievalPlanner
@@ -60,7 +60,7 @@ import kotlinx.serialization.json.putJsonArray
 
 private val memoryRunJson = Json { encodeDefaults = true }
 private val memoryRuntimeSearchIdRegex =
-    Regex("\\b(project|chat|memory|source|claim|note|task|entity|episode|profile|run):[0-9a-fA-F][A-Za-z0-9._:-]*")
+    Regex("\\b(project|chat|memory|source|claim|note|actionItem|entity|episode|profile|run):[0-9a-fA-F][A-Za-z0-9._:-]*")
 
 fun interface MemoryClock {
     fun now(): Instant
@@ -74,7 +74,7 @@ interface MemoryIdFactory {
     fun newEntityId(): MemoryEntity.Id
     fun newClaimId(): MemoryClaim.Id
     fun newNoteId(): MemoryNote.Id
-    fun newTaskId(): MemoryTask.Id
+    fun newActionItemId(): MemoryActionItem.Id
     fun newEpisodeId(): MemoryEpisode.Id
     fun newRunId(): MemoryRun.Id
 }
@@ -103,8 +103,8 @@ data class DirectStructuredMemoryWriteMaterialization(
     val claimCandidates: List<MemoryClaimCandidate>,
     val rawClaimOps: List<MemoryClaimReconciliationOp>,
     val claimOps: List<MemoryClaimReconciliationOp>,
-    val rawTaskOps: List<MemoryTaskUpdateOp>,
-    val taskOps: List<MemoryTaskUpdateOp>,
+    val rawActionItemOps: List<MemoryActionItemUpdateOp>,
+    val actionItemOps: List<MemoryActionItemUpdateOp>,
     val predicateCatalog: MemoryPredicateCatalog,
     val startedAt: Instant,
     val completedAt: Instant,
@@ -113,7 +113,7 @@ data class DirectStructuredMemoryWriteMaterialization(
 private data class MemoryWriteBranchResults(
     val note: MemoryWriteNoteBranchResult,
     val claim: MemoryWriteClaimBranchResult,
-    val task: MemoryWriteTaskBranchResult,
+    val actionItem: MemoryWriteActionItemBranchResult,
 )
 
 private data class MemoryWriteNoteBranchResult(
@@ -128,9 +128,9 @@ private data class MemoryWriteClaimBranchResult(
     val claimOps: List<MemoryClaimReconciliationOp> = emptyList(),
 )
 
-private data class MemoryWriteTaskBranchResult(
-    val rawTaskOps: List<MemoryTaskUpdateOp> = emptyList(),
-    val taskOps: List<MemoryTaskUpdateOp> = emptyList(),
+private data class MemoryWriteActionItemBranchResult(
+    val rawActionItemOps: List<MemoryActionItemUpdateOp> = emptyList(),
+    val actionItemOps: List<MemoryActionItemUpdateOp> = emptyList(),
 )
 
 class DirectStructuredMemoryWritePipeline(
@@ -142,7 +142,7 @@ class DirectStructuredMemoryWritePipeline(
     private val noteReconciler: MemoryNoteReconciler,
     private val claimExtractor: MemoryClaimExtractor,
     private val claimReconciler: MemoryClaimReconciler,
-    private val taskUpdater: MemoryTaskUpdater,
+    private val actionItemUpdater: MemoryActionItemUpdater,
     private val materializer: DirectStructuredMemoryWriteMaterializer,
     private val profileUpdater: MemoryProfileUpdater = NoOpMemoryProfileUpdater,
     private val forgetPipeline: ExplicitMemoryForgetPipeline? = null,
@@ -192,8 +192,8 @@ class DirectStructuredMemoryWritePipeline(
                 claimCandidates = emptyList(),
                 rawClaimOps = emptyList(),
                 claimOps = emptyList(),
-                rawTaskOps = emptyList(),
-                taskOps = emptyList(),
+                rawActionItemOps = emptyList(),
+                actionItemOps = emptyList(),
                 memoryBatch = MemoryUpdateBatch(),
             )
         }
@@ -233,8 +233,8 @@ class DirectStructuredMemoryWritePipeline(
                 claimCandidates = emptyList(),
                 rawClaimOps = emptyList(),
                 claimOps = emptyList(),
-                rawTaskOps = emptyList(),
-                taskOps = emptyList(),
+                rawActionItemOps = emptyList(),
+                actionItemOps = emptyList(),
                 memoryBatch = MemoryUpdateBatch(),
             )
         }
@@ -291,7 +291,7 @@ class DirectStructuredMemoryWritePipeline(
                     "candidates=${forgetResult.candidates.size} actions=${forgetResult.forgetPlan.forgetActions.size} " +
                     "appliedSources=${forgetResult.memoryBatch.sources.size} appliedRuns=${forgetResult.memoryBatch.runs.size} " +
                     "appliedClaims=${forgetResult.memoryBatch.claims.size} appliedNotes=${forgetResult.memoryBatch.notes.size} " +
-                    "appliedTasks=${forgetResult.memoryBatch.tasks.size} appliedProfiles=${forgetResult.memoryBatch.profiles.size}"
+                    "appliedTasks=${forgetResult.memoryBatch.actionItems.size} appliedProfiles=${forgetResult.memoryBatch.profiles.size}"
             }
 
             return DirectStructuredMemoryWriteResult(
@@ -307,8 +307,8 @@ class DirectStructuredMemoryWritePipeline(
                 claimCandidates = emptyList(),
                 rawClaimOps = emptyList(),
                 claimOps = emptyList(),
-                rawTaskOps = emptyList(),
-                taskOps = emptyList(),
+                rawActionItemOps = emptyList(),
+                actionItemOps = emptyList(),
                 memoryBatch = forgetResult.memoryBatch,
             )
         }
@@ -328,8 +328,8 @@ class DirectStructuredMemoryWritePipeline(
                     claimCandidates = emptyList(),
                     rawClaimOps = emptyList(),
                     claimOps = emptyList(),
-                    rawTaskOps = emptyList(),
-                    taskOps = emptyList(),
+                    rawActionItemOps = emptyList(),
+                    actionItemOps = emptyList(),
                     predicateCatalog = emptyList(),
                     startedAt = request.source.createdAt,
                     completedAt = completedAt,
@@ -355,8 +355,8 @@ class DirectStructuredMemoryWritePipeline(
                 claimCandidates = emptyList(),
                 rawClaimOps = emptyList(),
                 claimOps = emptyList(),
-                rawTaskOps = emptyList(),
-                taskOps = emptyList(),
+                rawActionItemOps = emptyList(),
+                actionItemOps = emptyList(),
                 memoryBatch = noopRunBatch,
             )
         }
@@ -427,8 +427,8 @@ class DirectStructuredMemoryWritePipeline(
         val claimCandidates = branchResults.claim.claimCandidates
         val rawClaimOps = branchResults.claim.rawClaimOps
         val claimOps = branchResults.claim.claimOps
-        val rawTaskOps = branchResults.task.rawTaskOps
-        val taskOps = branchResults.task.taskOps
+        val rawActionItemOps = branchResults.actionItem.rawActionItemOps
+        val actionItemOps = branchResults.actionItem.actionItemOps
 
         val completedAt = clock.now()
         val materialization = DirectStructuredMemoryWriteMaterialization(
@@ -443,8 +443,8 @@ class DirectStructuredMemoryWritePipeline(
             claimCandidates = claimCandidates,
             rawClaimOps = rawClaimOps,
             claimOps = claimOps,
-            rawTaskOps = rawTaskOps,
-            taskOps = taskOps,
+            rawActionItemOps = rawActionItemOps,
+            actionItemOps = actionItemOps,
             predicateCatalog = predicateCatalog,
             startedAt = request.source.createdAt,
             completedAt = completedAt,
@@ -467,7 +467,7 @@ class DirectStructuredMemoryWritePipeline(
         log.info {
             "Memory materializer batch: namespace=${request.namespace.value} source=${request.source.id.value} " +
                 "predicates=${structuredMemoryBatch.predicateDefinitions.size} runs=${structuredMemoryBatch.runs.size} entities=${structuredMemoryBatch.entities.size} claims=${structuredMemoryBatch.claims.size} " +
-                "notes=${structuredMemoryBatch.notes.size} tasks=${structuredMemoryBatch.tasks.size} profiles=${structuredMemoryBatch.profiles.size} " +
+                "notes=${structuredMemoryBatch.notes.size} actionItems=${structuredMemoryBatch.actionItems.size} profiles=${structuredMemoryBatch.profiles.size} " +
                 "batch=${structuredMemoryBatch.batchDetailsForLog()}"
         }
 
@@ -495,9 +495,9 @@ class DirectStructuredMemoryWritePipeline(
         log.info {
             "Memory write pipeline completed: namespace=${request.namespace.value} source=${request.source.id.value} " +
                 "route=${structuredRouteDecision.decision.name} retrievalHits=${retrievedHits.size} entityOps=${entityOps.size} " +
-                "noteCandidates=${noteCandidates.size} noteOps=${noteOps.size} claimCandidates=${claimCandidates.size} claimOps=${claimOps.size} taskOps=${taskOps.size} " +
+                "noteCandidates=${noteCandidates.size} noteOps=${noteOps.size} claimCandidates=${claimCandidates.size} claimOps=${claimOps.size} actionItemOps=${actionItemOps.size} " +
                 "appliedSources=${sourceBatch.sources.size} appliedRuns=${memoryBatch.runs.size} appliedEntities=${memoryBatch.entities.size} " +
-                "appliedNotes=${memoryBatch.notes.size} appliedClaims=${memoryBatch.claims.size} appliedTasks=${memoryBatch.tasks.size} " +
+                "appliedNotes=${memoryBatch.notes.size} appliedClaims=${memoryBatch.claims.size} appliedTasks=${memoryBatch.actionItems.size} " +
                 "appliedProfiles=${memoryBatch.profiles.size} appliedEmbeddings=${memoryBatch.embeddings.size}"
         }
 
@@ -514,8 +514,8 @@ class DirectStructuredMemoryWritePipeline(
             claimCandidates = claimCandidates,
             rawClaimOps = rawClaimOps,
             claimOps = claimOps,
-            rawTaskOps = rawTaskOps,
-            taskOps = taskOps,
+            rawActionItemOps = rawActionItemOps,
+            actionItemOps = actionItemOps,
             memoryBatch = memoryBatch,
         )
     }
@@ -545,10 +545,10 @@ class DirectStructuredMemoryWritePipeline(
                 } else {
                     MemoryWriteClaimBranchResult()
                 },
-                task = if (structuredRouteDecision.shouldRunTaskBranch()) {
-                    runTaskBranch(effectiveRequest, structuredRouteDecision, retrievalPlan, retrievedHits, entityOps)
+                actionItem = if (structuredRouteDecision.shouldRunActionItemBranch()) {
+                    runActionItemBranch(effectiveRequest, structuredRouteDecision, retrievalPlan, retrievedHits, entityOps)
                 } else {
-                    MemoryWriteTaskBranchResult()
+                    MemoryWriteActionItemBranchResult()
                 },
             )
         }
@@ -573,10 +573,10 @@ class DirectStructuredMemoryWritePipeline(
             } else {
                 null
             }
-            val task = if (structuredRouteDecision.shouldRunTaskBranch()) {
+            val actionItem = if (structuredRouteDecision.shouldRunActionItemBranch()) {
                 async {
                     semaphore.withPermit {
-                        runTaskBranch(effectiveRequest, structuredRouteDecision, retrievalPlan, retrievedHits, entityOps)
+                        runActionItemBranch(effectiveRequest, structuredRouteDecision, retrievalPlan, retrievedHits, entityOps)
                     }
                 }
             } else {
@@ -586,7 +586,7 @@ class DirectStructuredMemoryWritePipeline(
             MemoryWriteBranchResults(
                 note = note?.await() ?: MemoryWriteNoteBranchResult(),
                 claim = claim?.await() ?: MemoryWriteClaimBranchResult(),
-                task = task?.await() ?: MemoryWriteTaskBranchResult(),
+                actionItem = actionItem?.await() ?: MemoryWriteActionItemBranchResult(),
             )
         }
     }
@@ -709,43 +709,43 @@ class DirectStructuredMemoryWritePipeline(
         )
     }
 
-    private suspend fun runTaskBranch(
+    private suspend fun runActionItemBranch(
         request: DirectStructuredMemoryWriteRequest,
         routeDecision: MemoryRouteDecision,
         retrievalPlan: MemoryWriteRetrievalPlan,
         retrievedHits: List<MemoryStore.SearchHit>,
         entityOps: List<MemoryEntityCanonicalizationOp>,
-    ): MemoryWriteTaskBranchResult {
-        val rawTaskOps = taskUpdater.update(
+    ): MemoryWriteActionItemBranchResult {
+        val rawActionItemOps = actionItemUpdater.update(
             request = request,
             routeDecision = routeDecision,
             retrievalPlan = retrievalPlan,
             retrievedHits = retrievedHits,
             entityOps = entityOps,
         )
-        val taskOps = MemoryDedupPolicy.deduplicateWriteTaskOps(rawTaskOps, retrievedHits)
+        val actionItemOps = MemoryDedupPolicy.deduplicateWriteTaskOps(rawActionItemOps, retrievedHits)
 
-        if (taskOps != rawTaskOps) {
+        if (actionItemOps != rawActionItemOps) {
             log.info {
-                "Memory task dedup guard adjusted ops: namespace=${request.namespace.value} source=${request.source.id.value} " +
-                    "before=${rawTaskOps.taskActionBreakdown()} after=${taskOps.taskActionBreakdown()} " +
-                    "changes=${rawTaskOps.taskDedupChangesForLog(taskOps)}"
+                "Memory actionItem dedup guard adjusted ops: namespace=${request.namespace.value} source=${request.source.id.value} " +
+                    "before=${rawActionItemOps.taskActionBreakdown()} after=${actionItemOps.taskActionBreakdown()} " +
+                    "changes=${rawActionItemOps.taskDedupChangesForLog(actionItemOps)}"
             }
         }
 
         log.info {
-            "Memory task updater result: namespace=${request.namespace.value} source=${request.source.id.value} " +
-                "ops=${taskOps.size} actionBreakdown=${taskOps.taskActionBreakdown()} opsPreview=${taskOps.taskSummary()}"
+            "Memory actionItem updater result: namespace=${request.namespace.value} source=${request.source.id.value} " +
+                "ops=${actionItemOps.size} actionBreakdown=${actionItemOps.taskActionBreakdown()} opsPreview=${actionItemOps.taskSummary()}"
         }
 
         log.info {
-            "Memory task updater details: namespace=${request.namespace.value} source=${request.source.id.value} " +
-                "ops=${taskOps.taskDetailsForLog()}"
+            "Memory actionItem updater details: namespace=${request.namespace.value} source=${request.source.id.value} " +
+                "ops=${actionItemOps.taskDetailsForLog()}"
         }
 
-        return MemoryWriteTaskBranchResult(
-            rawTaskOps = rawTaskOps,
-            taskOps = taskOps,
+        return MemoryWriteActionItemBranchResult(
+            rawActionItemOps = rawActionItemOps,
+            actionItemOps = actionItemOps,
         )
     }
 
@@ -853,7 +853,7 @@ class DirectStructuredMemoryWritePipeline(
     private val idempotentWriteRunTypes = setOf(
         MemoryRun.Type.RECONCILE_CLAIMS,
         MemoryRun.Type.RECONCILE_NOTES,
-        MemoryRun.Type.UPDATE_TASKS,
+        MemoryRun.Type.UPDATE_ACTION_ITEMS,
         MemoryRun.Type.FORGET_MEMORY,
     )
 
@@ -868,7 +868,7 @@ private fun MemorySource.documentIngestRouteDecision(): MemoryRouteDecision? {
         return null
     }
 
-    val reason = "Document ingest uses deterministic note/source/entity route; hard claims/tasks can be produced by later consolidation."
+    val reason = "Document ingest uses deterministic note/source/entity route; hard claims/actionItems can be produced by later consolidation."
     return MemoryRouteDecision(
         decision = MemoryRouteDecision.Decision.NOTE_WRITE,
         memoryTypes = documentIngestMemoryTypes,
@@ -887,9 +887,9 @@ private fun MemoryRouteDecision.shouldRunClaimBranch(): Boolean =
     decision != MemoryRouteDecision.Decision.NOOP &&
         (MemorySemanticType.CLAIM in memoryTypes || MemorySemanticType.PROFILE in memoryTypes)
 
-private fun MemoryRouteDecision.shouldRunTaskBranch(): Boolean =
+private fun MemoryRouteDecision.shouldRunActionItemBranch(): Boolean =
     decision != MemoryRouteDecision.Decision.NOOP &&
-        MemorySemanticType.TASK in memoryTypes
+        MemorySemanticType.ACTION_ITEM in memoryTypes
 
 private fun DirectStructuredMemoryWriteRequest.documentIngestRetrievalPlan(
     routeDecision: MemoryRouteDecision,
@@ -977,7 +977,7 @@ private fun MemoryRouteDecision.withDocumentIngestNoteOnly(source: MemorySource)
         decision = MemoryRouteDecision.Decision.NOTE_WRITE,
         memoryTypes = setOf(MemorySemanticType.NOTE, MemorySemanticType.SOURCE, MemorySemanticType.ENTITY),
         sourceSearchText = sourceSearchText ?: source.defaultIngestSearchText(),
-        reason = "Document ingest is note/source-only in the hot path; hard claims/tasks can be produced by later consolidation. Original router reason: $reason",
+        reason = "Document ingest is note/source-only in the hot path; hard claims/actionItems can be produced by later consolidation. Original router reason: $reason",
     )
 }
 
@@ -1025,7 +1025,7 @@ private fun MemoryStore.SearchHit.label(): String =
         is MemoryStore.SearchHit.EntityHit -> "entity"
         is MemoryStore.SearchHit.ClaimHit -> "claim"
         is MemoryStore.SearchHit.NoteHit -> "note"
-        is MemoryStore.SearchHit.TaskHit -> "task"
+        is MemoryStore.SearchHit.ActionItemHit -> "actionItem"
         is MemoryStore.SearchHit.ProfileHit -> "profile"
         is MemoryStore.SearchHit.EpisodeHit -> "episode"
         is MemoryStore.SearchHit.RunHit -> "run"
@@ -1042,7 +1042,7 @@ private fun List<MemoryStore.SearchHit>.hitSummary(): String {
             is MemoryStore.SearchHit.EntityHit -> "entity:${hit.entity.id.value}:${hit.entity.entityType.name}:${hit.entity.canonicalName}"
             is MemoryStore.SearchHit.ClaimHit -> "claim:${hit.claim.id.value}:${hit.claim.predicate}:${hit.claim.predicateFamily ?: "unknown"}:${hit.claim.normalizedText.oneLineForLog(180)}"
             is MemoryStore.SearchHit.NoteHit -> "note:${hit.note.id.value}:${hit.note.noteType.name}:${hit.note.title.oneLineForLog(120)}"
-            is MemoryStore.SearchHit.TaskHit -> "task:${hit.task.id.value}:${hit.task.status.name}:${hit.task.title.oneLineForLog(120)}"
+            is MemoryStore.SearchHit.ActionItemHit -> "actionItem:${hit.actionItem.id.value}:${hit.actionItem.status.name}:${hit.actionItem.title.oneLineForLog(120)}"
             is MemoryStore.SearchHit.ProfileHit -> "profile:${hit.profile.id.value}:${hit.profile.profileText.oneLineForLog(180)}"
             is MemoryStore.SearchHit.EpisodeHit -> "episode:${hit.episode.id.value}:${hit.episode.lesson.oneLineForLog(180)}"
             is MemoryStore.SearchHit.RunHit -> "run:${hit.run.id.value}:${hit.run.runType.name}:${hit.run.status.name}:${hit.run.summary.oneLineForLog(120)}"
@@ -1286,19 +1286,19 @@ private fun List<MemoryNoteReconciliationOp>.noteReconciliationDetailsForLog(): 
     }
 }
 
-private fun List<MemoryTaskUpdateOp>.taskDedupChangesForLog(
-    deduplicatedOps: List<MemoryTaskUpdateOp>,
+private fun List<MemoryActionItemUpdateOp>.taskDedupChangesForLog(
+    deduplicatedOps: List<MemoryActionItemUpdateOp>,
 ): String =
     zip(deduplicatedOps)
         .mapIndexedNotNull { index, (before, after) ->
             if (before == after) return@mapIndexedNotNull null
-            "[$index] ${before.action.name}->${after.action.name} target=${after.targetTaskId?.value ?: "null"} " +
-                "task=${after.task?.title?.oneLineForLog(140) ?: "null"} reason=${after.reason.oneLineForLog(220)}"
+            "[$index] ${before.action.name}->${after.action.name} target=${after.targetActionItemId?.value ?: "null"} " +
+                "actionItem=${after.actionItem?.title?.oneLineForLog(140) ?: "null"} reason=${after.reason.oneLineForLog(220)}"
         }
         .joinToString("|")
         .ifBlank { "none" }
 
-private fun List<MemoryTaskUpdateOp>.taskActionBreakdown(): String {
+private fun List<MemoryActionItemUpdateOp>.taskActionBreakdown(): String {
     if (isEmpty()) {
         return "none"
     }
@@ -1310,28 +1310,28 @@ private fun List<MemoryTaskUpdateOp>.taskActionBreakdown(): String {
         .joinToString(",") { "${it.key}=${it.value}" }
 }
 
-private fun List<MemoryTaskUpdateOp>.taskSummary(): String {
+private fun List<MemoryActionItemUpdateOp>.taskSummary(): String {
     if (isEmpty()) {
         return "none"
     }
 
     return joinToString("|") { op ->
-        "${op.action.name}:target=${op.targetTaskId?.value ?: "null"}:${op.task?.title?.oneLineForLog(120) ?: "no-task"}:${op.reason.oneLineForLog(180)}"
+        "${op.action.name}:target=${op.targetActionItemId?.value ?: "null"}:${op.actionItem?.title?.oneLineForLog(120) ?: "no-actionItem"}:${op.reason.oneLineForLog(180)}"
     }
 }
 
-private fun List<MemoryTaskUpdateOp>.taskDetailsForLog(): String {
+private fun List<MemoryActionItemUpdateOp>.taskDetailsForLog(): String {
     if (isEmpty()) {
         return "none"
     }
 
     return joinToString("|") { op ->
-        val task = op.task
-        "action=${op.action.name} target=${op.targetTaskId?.value ?: "null"} " +
-            "title=${task?.title?.oneLineForLog(160) ?: "null"} status=${task?.status?.name ?: "null"} priority=${task?.priority?.name ?: "null"} " +
-            "dueAt=${task?.dueAt} scope=${task?.scope?.scopeForLog() ?: "null"} " +
-            "related=${task?.relatedEntityIds?.joinToString(",") { it.value } ?: "none"} " +
-            "evidenceQuote=${task?.evidenceQuote?.oneLineForLog(240) ?: "null"} reason=${op.reason.oneLineForLog(240)}"
+        val actionItem = op.actionItem
+        "action=${op.action.name} target=${op.targetActionItemId?.value ?: "null"} " +
+            "title=${actionItem?.title?.oneLineForLog(160) ?: "null"} status=${actionItem?.status?.name ?: "null"} priority=${actionItem?.priority?.name ?: "null"} " +
+            "dueAt=${actionItem?.dueAt} scope=${actionItem?.scope?.scopeForLog() ?: "null"} " +
+            "related=${actionItem?.relatedEntityIds?.joinToString(",") { it.value } ?: "none"} " +
+            "evidenceQuote=${actionItem?.evidenceQuote?.oneLineForLog(240) ?: "null"} reason=${op.reason.oneLineForLog(240)}"
     }
 }
 
@@ -1343,9 +1343,9 @@ private fun MemoryUpdateBatch.batchDetailsForLog(): String {
     val entities = entities.joinToString("|") { "${it.id.value}:${it.entityType.name}:${it.canonicalName.oneLineForLog(120)}" }.ifBlank { "none" }
     val claims = claims.joinToString("|") { "${it.id.value}:${it.status.name}:${it.subjectEntityId.value}:${it.predicate}:${it.predicateFamily ?: "unknown"}:${it.normalizedText.oneLineForLog(180)}" }.ifBlank { "none" }
     val notes = notes.joinToString("|") { "${it.id.value}:${it.status.name}:${it.noteType.name}:${it.title.oneLineForLog(140)}" }.ifBlank { "none" }
-    val tasks = tasks.joinToString("|") { "${it.id.value}:${it.status.name}:${it.title.oneLineForLog(140)}" }.ifBlank { "none" }
+    val actionItems = actionItems.joinToString("|") { "${it.id.value}:${it.status.name}:${it.title.oneLineForLog(140)}" }.ifBlank { "none" }
     val profilesSummary = profiles.joinToString("|") { "${it.id.value}:${it.ownerEntityId.value}:${it.profileText.oneLineForLog(140)}" }.ifBlank { "none" }
-    return "predicates=[$predicates] runs=[$runs] entities=[$entities] notes=[$notes] claims=[$claims] tasks=[$tasks] profiles=[$profilesSummary] embeddings=${embeddings.size}"
+    return "predicates=[$predicates] runs=[$runs] entities=[$entities] notes=[$notes] claims=[$claims] actionItems=[$actionItems] profiles=[$profilesSummary] embeddings=${embeddings.size}"
 }
 
 private operator fun MemoryUpdateBatch.plus(other: MemoryUpdateBatch): MemoryUpdateBatch =
@@ -1356,7 +1356,7 @@ private operator fun MemoryUpdateBatch.plus(other: MemoryUpdateBatch): MemoryUpd
         entities = entities + other.entities,
         claims = claims + other.claims,
         notes = notes + other.notes,
-        tasks = tasks + other.tasks,
+        actionItems = actionItems + other.actionItems,
         profiles = profiles + other.profiles,
         episodes = episodes + other.episodes,
         embeddings = embeddings + other.embeddings,
@@ -1369,7 +1369,7 @@ private fun MemoryUpdateBatch.isNotEmpty(): Boolean =
         entities.isNotEmpty() ||
         claims.isNotEmpty() ||
         notes.isNotEmpty() ||
-        tasks.isNotEmpty() ||
+        actionItems.isNotEmpty() ||
         profiles.isNotEmpty() ||
         episodes.isNotEmpty() ||
         embeddings.isNotEmpty()
@@ -1580,13 +1580,13 @@ class DefaultDirectStructuredMemoryWriteMaterializer(
             .filter { it.action != MemoryReconciliationAction.NOOP }
             .mapNotNull { it.candidate }
             .flatMap { candidate -> candidate.entityRefs.map { it.entityId } }
-            .toSet() + input.taskOps
-            .filter { it.action != MemoryTaskUpdateOp.Action.NOOP }
-            .mapNotNull { it.task }
-            .flatMap { task ->
+            .toSet() + input.actionItemOps
+            .filter { it.action != MemoryActionItemUpdateOp.Action.NOOP }
+            .mapNotNull { it.actionItem }
+            .flatMap { actionItem ->
                 buildList {
-                    addAll(listOfNotNull(task.ownerEntityId, task.assigneeEntityId))
-                    addAll(task.relatedEntityIds)
+                    addAll(listOfNotNull(actionItem.ownerEntityId, actionItem.assigneeEntityId))
+                    addAll(actionItem.relatedEntityIds)
                 }
             }
             .toSet()
@@ -1602,21 +1602,21 @@ class DefaultDirectStructuredMemoryWriteMaterializer(
             .mergeEntitiesById()
         val notes = input.noteOps.flatMap { it.toNotes(input, runId, idFactory) }
         val claims = input.claimOps.flatMap { it.toClaims(input, runId, idFactory) }
-        val tasks = input.taskOps.flatMap { it.toTasks(input, runId, idFactory) }
+        val actionItems = input.actionItemOps.flatMap { it.toActionItems(input, runId, idFactory) }
         val run = MemoryRun(
             id = runId,
             namespace = input.request.namespace,
             runType = input.runType(
                 notes = notes,
                 claims = claims,
-                tasks = tasks,
+                actionItems = actionItems,
             ),
             triggerMode = input.request.triggerMode,
             parentRunId = input.request.parentRunId,
             summary = input.summary(
                 notes = notes,
                 claims = claims,
-                tasks = tasks,
+                actionItems = actionItems,
                 entities = entities,
             ),
             sourceIds = listOf(input.request.source.id),
@@ -1627,14 +1627,14 @@ class DefaultDirectStructuredMemoryWriteMaterializer(
                 entities = entities,
                 notes = notes,
                 claims = claims,
-                tasks = tasks,
+                actionItems = actionItems,
                 predicateDefinitions = predicateDefinitions,
             ),
             appliedOps = input.toAppliedOps(
                 entities = entities,
                 notes = notes,
                 claims = claims,
-                tasks = tasks,
+                actionItems = actionItems,
                 predicateDefinitions = predicateDefinitions,
             ),
             latencyMs = input.completedAt.toEpochMilliseconds() - input.startedAt.toEpochMilliseconds(),
@@ -1650,7 +1650,7 @@ class DefaultDirectStructuredMemoryWriteMaterializer(
             entities = entities,
             notes = notes,
             claims = claims,
-            tasks = tasks,
+            actionItems = actionItems,
         )
     }
 
@@ -1975,42 +1975,42 @@ class DefaultDirectStructuredMemoryWriteMaterializer(
         )
     }
 
-    private fun MemoryTaskUpdateOp.toTasks(
+    private fun MemoryActionItemUpdateOp.toActionItems(
         input: DirectStructuredMemoryWriteMaterialization,
         runId: MemoryRun.Id,
         idFactory: MemoryIdFactory,
-    ): List<MemoryTask> =
+    ): List<MemoryActionItem> =
         when (action) {
-            MemoryTaskUpdateOp.Action.INSERT -> {
-                val draft = requireNotNull(task) {
-                    "INSERT task op must include task draft"
+            MemoryActionItemUpdateOp.Action.INSERT -> {
+                val draft = requireNotNull(actionItem) {
+                    "INSERT actionItem op must include actionItem draft"
                 }
-                listOf(draft.toTask(input, runId, idFactory))
+                listOf(draft.toActionItem(input, runId, idFactory))
             }
 
-            MemoryTaskUpdateOp.Action.UPDATE -> listOf(patchedTargetTask(input, defaultStatus = null))
-            MemoryTaskUpdateOp.Action.CLOSE -> listOf(patchedTargetTask(input, defaultStatus = MemoryTask.Status.DONE))
-            MemoryTaskUpdateOp.Action.CANCEL -> listOf(patchedTargetTask(input, defaultStatus = MemoryTask.Status.CANCELLED))
-            MemoryTaskUpdateOp.Action.NOOP -> emptyList()
+            MemoryActionItemUpdateOp.Action.UPDATE -> listOf(patchedTargetActionItem(input, defaultStatus = null))
+            MemoryActionItemUpdateOp.Action.CLOSE -> listOf(patchedTargetActionItem(input, defaultStatus = MemoryActionItem.Status.DONE))
+            MemoryActionItemUpdateOp.Action.CANCEL -> listOf(patchedTargetActionItem(input, defaultStatus = MemoryActionItem.Status.CANCELLED))
+            MemoryActionItemUpdateOp.Action.NOOP -> emptyList()
         }
 
-    private fun MemoryTaskUpdateOp.patchedTargetTask(
+    private fun MemoryActionItemUpdateOp.patchedTargetActionItem(
         input: DirectStructuredMemoryWriteMaterialization,
-        defaultStatus: MemoryTask.Status?,
-    ): MemoryTask {
-        val targetId = requireNotNull(targetTaskId) {
-            "$action task op must include targetTaskId"
+        defaultStatus: MemoryActionItem.Status?,
+    ): MemoryActionItem {
+        val targetId = requireNotNull(targetActionItemId) {
+            "$action actionItem op must include targetActionItemId"
         }
         val target = input.retrievedHits
-            .filterIsInstance<MemoryStore.SearchHit.TaskHit>()
-            .map { it.task }
+            .filterIsInstance<MemoryStore.SearchHit.ActionItemHit>()
+            .map { it.actionItem }
             .firstOrNull { it.id == targetId }
 
         requireNotNull(target) {
-            "$action target task ${targetId.value} was not present in retrieved hits"
+            "$action target actionItem ${targetId.value} was not present in retrieved hits"
         }
 
-        val draft = task
+        val draft = actionItem
         val status = defaultStatus ?: draft?.status ?: target.status
         return target.copy(
             ownerEntityId = draft?.ownerEntityId ?: target.ownerEntityId,
@@ -2025,11 +2025,11 @@ class DefaultDirectStructuredMemoryWriteMaterializer(
             blockers = draft?.blockers ?: target.blockers,
             relatedEntityIds = (target.relatedEntityIds + (draft?.relatedEntityIds ?: emptyList())).distinct(),
             confidence = maxOf(target.confidence, draft?.confidence ?: 0.0),
-            evidenceRefs = (target.evidenceRefs + draft.toTaskEvidenceRef(input)).distinctBy {
+            evidenceRefs = (target.evidenceRefs + draft.toActionItemEvidenceRef(input)).distinctBy {
                 "${it.sourceId.value}:${it.cachedQuote}"
             },
             updatedAt = input.completedAt,
-            closedAt = if (status == MemoryTask.Status.DONE || status == MemoryTask.Status.CANCELLED) {
+            closedAt = if (status == MemoryActionItem.Status.DONE || status == MemoryActionItem.Status.CANCELLED) {
                 input.completedAt
             } else {
                 target.closedAt
@@ -2037,21 +2037,21 @@ class DefaultDirectStructuredMemoryWriteMaterializer(
         )
     }
 
-    private fun MemoryTaskUpdateOp.Draft.toTask(
+    private fun MemoryActionItemUpdateOp.Draft.toActionItem(
         input: DirectStructuredMemoryWriteMaterialization,
         runId: MemoryRun.Id,
         idFactory: MemoryIdFactory,
-    ): MemoryTask {
+    ): MemoryActionItem {
         val quote = requireNotNull(evidenceQuote?.takeIf { it.isNotBlank() }) {
-            "INSERT task draft must include evidenceQuote"
+            "INSERT actionItem draft must include evidenceQuote"
         }
         require(input.request.source.contentText.contains(quote, ignoreCase = true)) {
-            "INSERT task evidenceQuote must be copied from the source text"
+            "INSERT actionItem evidenceQuote must be copied from the source text"
         }
 
         val now = input.completedAt
-        return MemoryTask(
-            id = idFactory.newTaskId(),
+        return MemoryActionItem(
+            id = idFactory.newActionItemId(),
             namespace = input.request.namespace,
             ownerEntityId = ownerEntityId,
             assigneeEntityId = assigneeEntityId,
@@ -2076,11 +2076,11 @@ class DefaultDirectStructuredMemoryWriteMaterializer(
             ),
             createdAt = now,
             updatedAt = now,
-            closedAt = if (status == MemoryTask.Status.DONE || status == MemoryTask.Status.CANCELLED) now else null,
+            closedAt = if (status == MemoryActionItem.Status.DONE || status == MemoryActionItem.Status.CANCELLED) now else null,
         )
     }
 
-    private fun MemoryTaskUpdateOp.Draft?.toTaskEvidenceRef(
+    private fun MemoryActionItemUpdateOp.Draft?.toActionItemEvidenceRef(
         input: DirectStructuredMemoryWriteMaterialization,
     ): List<MemoryEvidenceRef> {
         val quote = this?.evidenceQuote?.takeIf { it.isNotBlank() } ?: return emptyList()
@@ -2101,7 +2101,7 @@ private fun DirectStructuredMemoryWriteMaterialization.toRunOutput(
     entities: List<MemoryEntity>,
     notes: List<MemoryNote>,
     claims: List<MemoryClaim>,
-    tasks: List<MemoryTask>,
+    actionItems: List<MemoryActionItem>,
     predicateDefinitions: List<MemoryPredicateDefinition>,
 ): JsonElement =
     buildJsonObject {
@@ -2124,8 +2124,8 @@ private fun DirectStructuredMemoryWriteMaterialization.toRunOutput(
         put("claimCandidates", memoryRunJson.encodeToJsonElement(claimCandidates))
         put("rawClaimOps", memoryRunJson.encodeToJsonElement(rawClaimOps))
         put("claimOps", memoryRunJson.encodeToJsonElement(claimOps))
-        put("rawTaskOps", memoryRunJson.encodeToJsonElement(rawTaskOps))
-        put("taskOps", memoryRunJson.encodeToJsonElement(taskOps))
+        put("rawActionItemOps", memoryRunJson.encodeToJsonElement(rawActionItemOps))
+        put("actionItemOps", memoryRunJson.encodeToJsonElement(actionItemOps))
         putJsonArray("appliedPredicateDefinitionIds") {
             predicateDefinitions.forEach { add(JsonPrimitive(it.id.value)) }
         }
@@ -2139,7 +2139,7 @@ private fun DirectStructuredMemoryWriteMaterialization.toRunOutput(
             claims.forEach { add(JsonPrimitive(it.id.value)) }
         }
         putJsonArray("appliedTaskIds") {
-            tasks.forEach { add(JsonPrimitive(it.id.value)) }
+            actionItems.forEach { add(JsonPrimitive(it.id.value)) }
         }
     }
 
@@ -2147,7 +2147,7 @@ private fun DirectStructuredMemoryWriteMaterialization.toAppliedOps(
     entities: List<MemoryEntity>,
     notes: List<MemoryNote>,
     claims: List<MemoryClaim>,
-    tasks: List<MemoryTask>,
+    actionItems: List<MemoryActionItem>,
     predicateDefinitions: List<MemoryPredicateDefinition>,
 ): JsonArray =
     buildJsonArray {
@@ -2202,13 +2202,13 @@ private fun DirectStructuredMemoryWriteMaterialization.toAppliedOps(
                 }
             )
         }
-        tasks.forEach { task ->
+        actionItems.forEach { actionItem ->
             add(
                 buildJsonObject {
                     put("op", "upsert_task")
-                    put("id", task.id.value)
-                    put("status", task.status.name)
-                    put("title", task.title)
+                    put("id", actionItem.id.value)
+                    put("status", actionItem.status.name)
+                    put("title", actionItem.title)
                 }
             )
         }
@@ -2271,7 +2271,7 @@ private fun MemoryWriteRetrievalPlan.limit(): Int {
     val configuredLimit = listOf(
         retrievalBudget.claims,
         retrievalBudget.notes,
-        retrievalBudget.tasks,
+        retrievalBudget.actionItems,
         retrievalBudget.sources,
         retrievalBudget.episodes,
     ).filter { it > 0 }.sum()
@@ -2283,7 +2283,7 @@ private fun MemorySemanticType.toSearchScope(): MemoryStore.SearchScope? {
     return when (this) {
         MemorySemanticType.CLAIM -> MemoryStore.SearchScope.CLAIMS
         MemorySemanticType.NOTE -> MemoryStore.SearchScope.NOTES
-        MemorySemanticType.TASK -> MemoryStore.SearchScope.TASKS
+        MemorySemanticType.ACTION_ITEM -> MemoryStore.SearchScope.ACTION_ITEMS
         MemorySemanticType.PROFILE -> MemoryStore.SearchScope.PROFILES
         MemorySemanticType.SOURCE -> MemoryStore.SearchScope.SOURCES
         MemorySemanticType.ENTITY -> MemoryStore.SearchScope.ENTITIES
@@ -2297,7 +2297,7 @@ private fun MemoryStore.SearchHit.toItemRef(): MemoryItemRef {
         is MemoryStore.SearchHit.EntityHit -> MemoryItemRef(MemoryItemRef.Type.ENTITY, entity.id.value)
         is MemoryStore.SearchHit.ClaimHit -> MemoryItemRef(MemoryItemRef.Type.CLAIM, claim.id.value)
         is MemoryStore.SearchHit.NoteHit -> MemoryItemRef(MemoryItemRef.Type.NOTE, note.id.value)
-        is MemoryStore.SearchHit.TaskHit -> MemoryItemRef(MemoryItemRef.Type.TASK, task.id.value)
+        is MemoryStore.SearchHit.ActionItemHit -> MemoryItemRef(MemoryItemRef.Type.ACTION_ITEM, actionItem.id.value)
         is MemoryStore.SearchHit.ProfileHit -> MemoryItemRef(MemoryItemRef.Type.PROFILE, profile.id.value)
         is MemoryStore.SearchHit.EpisodeHit -> MemoryItemRef(MemoryItemRef.Type.EPISODE, episode.id.value)
         is MemoryStore.SearchHit.RunHit -> MemoryItemRef(MemoryItemRef.Type.RUN, run.id.value)
@@ -2310,7 +2310,7 @@ private fun MemoryStore.SearchHit.itemKey(): String =
         is MemoryStore.SearchHit.EntityHit -> "entity:${entity.id.value}"
         is MemoryStore.SearchHit.ClaimHit -> "claim:${claim.id.value}"
         is MemoryStore.SearchHit.NoteHit -> "note:${note.id.value}"
-        is MemoryStore.SearchHit.TaskHit -> "task:${task.id.value}"
+        is MemoryStore.SearchHit.ActionItemHit -> "actionItem:${actionItem.id.value}"
         is MemoryStore.SearchHit.ProfileHit -> "profile:${profile.id.value}"
         is MemoryStore.SearchHit.EpisodeHit -> "episode:${episode.id.value}"
         is MemoryStore.SearchHit.RunHit -> "run:${run.id.value}"
@@ -2343,12 +2343,12 @@ private fun MemorySource.requiresStableUserEntity(): Boolean =
 private fun DirectStructuredMemoryWriteMaterialization.summary(
     notes: List<MemoryNote>,
     claims: List<MemoryClaim>,
-    tasks: List<MemoryTask>,
+    actionItems: List<MemoryActionItem>,
     entities: List<MemoryEntity>,
 ): String {
     return when {
         routeDecision.shouldRunDirectStructuredWrite() || routeDecision.shouldRunNoteWrite() ->
-            structuredWriteSummary(notes, claims, tasks, entities)
+            structuredWriteSummary(notes, claims, actionItems, entities)
 
         else -> "Direct structured write skipped by router: ${routeDecision.decision}"
     }
@@ -2357,17 +2357,17 @@ private fun DirectStructuredMemoryWriteMaterialization.summary(
 private fun DirectStructuredMemoryWriteMaterialization.structuredWriteSummary(
     notes: List<MemoryNote>,
     claims: List<MemoryClaim>,
-    tasks: List<MemoryTask>,
+    actionItems: List<MemoryActionItem>,
     entities: List<MemoryEntity>,
 ): String {
     val noops = listOf(
         "notes=${noteOps.count { it.action == MemoryReconciliationAction.NOOP }}",
         "claims=${claimOps.count { it.action == MemoryReconciliationAction.NOOP }}",
-        "tasks=${taskOps.count { it.action == MemoryTaskUpdateOp.Action.NOOP }}",
+        "actionItems=${actionItemOps.count { it.action == MemoryActionItemUpdateOp.Action.NOOP }}",
     ).joinToString(", ")
-    val applied = "notes=${notes.size}, claims=${claims.size}, tasks=${tasks.size}, entities=${entities.size}"
+    val applied = "notes=${notes.size}, claims=${claims.size}, actionItems=${actionItems.size}, entities=${entities.size}"
 
-    return if (notes.isEmpty() && claims.isEmpty() && tasks.isEmpty() && entities.isEmpty()) {
+    return if (notes.isEmpty() && claims.isEmpty() && actionItems.isEmpty() && entities.isEmpty()) {
         "Direct structured write applied no durable changes; noop ops: $noops"
     } else {
         "Direct structured write applied: $applied; noop ops: $noops"
@@ -2377,10 +2377,10 @@ private fun DirectStructuredMemoryWriteMaterialization.structuredWriteSummary(
 private fun DirectStructuredMemoryWriteMaterialization.runType(
     notes: List<MemoryNote>,
     claims: List<MemoryClaim>,
-    tasks: List<MemoryTask>,
+    actionItems: List<MemoryActionItem>,
 ): MemoryRun.Type =
     when {
-        tasks.isNotEmpty() && notes.isEmpty() && claims.isEmpty() -> MemoryRun.Type.UPDATE_TASKS
+        actionItems.isNotEmpty() && notes.isEmpty() && claims.isEmpty() -> MemoryRun.Type.UPDATE_ACTION_ITEMS
 
         notes.isNotEmpty() && claims.isEmpty() -> MemoryRun.Type.RECONCILE_NOTES
 
@@ -2388,7 +2388,7 @@ private fun DirectStructuredMemoryWriteMaterialization.runType(
 
         noteOps.isNotEmpty() -> MemoryRun.Type.RECONCILE_NOTES
 
-        taskOps.isNotEmpty() -> MemoryRun.Type.UPDATE_TASKS
+        actionItemOps.isNotEmpty() -> MemoryRun.Type.UPDATE_ACTION_ITEMS
 
         else -> MemoryRun.Type.ROUTE
     }

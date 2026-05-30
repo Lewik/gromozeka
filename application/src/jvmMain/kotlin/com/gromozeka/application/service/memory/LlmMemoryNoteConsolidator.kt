@@ -16,8 +16,8 @@ import com.gromozeka.domain.model.memory.MemoryNoteLifecycleOp
 import com.gromozeka.domain.model.memory.MemoryProfileProjection
 import com.gromozeka.domain.model.memory.MemoryScope
 import com.gromozeka.domain.model.memory.MemoryStore
-import com.gromozeka.domain.model.memory.MemoryTask
-import com.gromozeka.domain.model.memory.MemoryTaskUpdateOp
+import com.gromozeka.domain.model.memory.MemoryActionItem
+import com.gromozeka.domain.model.memory.MemoryActionItemUpdateOp
 import com.gromozeka.domain.model.memory.NoteConsolidationResult
 import com.gromozeka.domain.service.AiRuntime
 import com.gromozeka.domain.tool.AiToolCallback
@@ -68,7 +68,7 @@ class LlmMemoryNoteConsolidator(
         val selectedById = selectedNotes.associateBy { it.id }
         val allowedEntityIds = snapshot.entities.mapTo(mutableSetOf()) { it.id } +
             selectedNotes.flatMap { note -> note.entityRefs.map { it.entityId } + listOfNotNull(note.anchorEntityId) }
-        val existingTaskIds = snapshot.tasks.mapTo(mutableSetOf()) { it.id }
+        val existingTaskIds = snapshot.actionItems.mapTo(mutableSetOf()) { it.id }
         val entityRefValidator = MemoryEntityRefValidator(
             stageName = "NoteConsolidator",
             allowedEntityIds = allowedEntityIds,
@@ -110,7 +110,7 @@ class LlmMemoryNoteConsolidator(
         val mapped = structuredResult.value
         val result = NoteConsolidationResult(
             claimCandidates = mapped.claimCandidates,
-            taskActions = mapped.taskActions,
+            actionItemActions = mapped.actionItemActions,
             profileProjection = mapped.profileProjection,
             episodeCandidates = mapped.episodeCandidates,
             noteActions = mapped.noteActions,
@@ -119,7 +119,7 @@ class LlmMemoryNoteConsolidator(
 
         log.info {
             "Memory note consolidator mapped result: namespace=${request.namespace.value} " +
-                "claims=${mapped.claimCandidates.size} taskActions=${mapped.taskActions.size} episodes=${mapped.episodeCandidates.size} " +
+                "claims=${mapped.claimCandidates.size} actionItemActions=${mapped.actionItemActions.size} episodes=${mapped.episodeCandidates.size} " +
                 "noteActions=${mapped.noteActions.size} summary=${result.summary.oneLineForMaintenanceLog(500)}"
         }
 
@@ -153,7 +153,7 @@ class LlmMemoryNoteConsolidator(
         Related active notes:
         ${relatedHits.renderRelatedNotesForConsolidation(selectedNotes.mapTo(mutableSetOf()) { it.id })}
 
-        Related tasks:
+        Related action items:
         ${relatedHits.renderRelatedTasksForConsolidation()}
 
         Existing profile:
@@ -162,7 +162,7 @@ class LlmMemoryNoteConsolidator(
         Return JSON:
         {
           "claim_candidates": [],
-          "task_actions": [],
+          "action_item_actions": [],
           "profile_patch": null,
           "episode_candidates": [],
           "note_actions": [
@@ -179,20 +179,20 @@ class LlmMemoryNoteConsolidator(
         - Consolidate only when the signal is strong enough.
         - Do not force every note into a claim.
         - Promote to claim when the meaning is stable, queryable, and precise enough.
-        - Promote to task only when future action is clearly required and already represented by the selected note.
+        - Promote to action_item only when future action is clearly required and already represented by the selected note.
         - Return one episode_candidate for each selected LESSON note that clearly contains a reusable situation-action-result-lesson pattern.
         - Do not collapse several unrelated selected lessons into one episode_candidate.
         - For episode_candidates, owner_entity_id should be the most specific component/service/person/concept the lesson applies to. Use the project entity only when no more specific owner exists.
         - If a selected note is a useful stable rule but not reusable experience, promote it to claim without creating an episode_candidate.
-        - Write claim text, task text, profile text, episode text, and reasons in English.
+        - Write claim text, action item text, profile text, episode text, and reasons in English.
         - Preserve proper names, component names, repo names, exact identifiers, dates, commands, and quoted terms.
         - Every claim candidate must include origin_note_id from Selected notes.
         - Use only entity ids from Entity catalog.
         - If no entity is better, use the selected note anchor entity.
         - Use object_entity_id for entity objects and object_value_json for scalar/string objects, never both.
         - evidence_quote may be null for derived memory; provenance will use the origin note evidence refs.
-        - Existing claims and tasks are dedup/context only.
-        - If a selected note already has a matching active claim or task, prefer note_actions with mark_consolidated or keep_active instead of duplicating memory.
+        - Existing claims and action items are dedup/context only.
+        - If a selected note already has a matching active claim or action item, prefer note_actions with mark_consolidated or keep_active instead of duplicating memory.
         - Use mark_consolidated only when durable memory was created or already exists.
         - Use keep_active for unresolved rationale, hypotheses, weak ideas, or notes that remain useful as notes.
         - Return valid JSON only.
@@ -202,8 +202,8 @@ class LlmMemoryNoteConsolidator(
     private data class NoteConsolidatorResponse(
         @SerialName("claim_candidates")
         val claimCandidates: List<ClaimCandidateResponse> = emptyList(),
-        @SerialName("task_actions")
-        val taskActions: List<TaskActionResponse> = emptyList(),
+        @SerialName("action_item_actions")
+        val actionItemActions: List<TaskActionResponse> = emptyList(),
         @SerialName("profile_patch")
         val profilePatch: ProfilePatchResponse? = null,
         @SerialName("episode_candidates")
@@ -215,7 +215,7 @@ class LlmMemoryNoteConsolidator(
         fun toMappedResult(
             request: MemoryMaintenanceRequest,
             selectedById: Map<MemoryNote.Id, MemoryNote>,
-            existingTaskIds: Set<MemoryTask.Id>,
+            existingTaskIds: Set<MemoryActionItem.Id>,
             entityRefs: MemoryEntityRefValidator,
         ): MappedNoteConsolidationResult =
             MappedNoteConsolidationResult(
@@ -227,13 +227,13 @@ class LlmMemoryNoteConsolidator(
                         candidatePath = "claim_candidates[$index]",
                     )
                 },
-                taskActions = taskActions.mapIndexedNotNull { index, action ->
+                actionItemActions = actionItemActions.mapIndexedNotNull { index, action ->
                     action.toTaskAction(
                         request = request,
                         selectedById = selectedById,
                         existingTaskIds = existingTaskIds,
                         entityRefs = entityRefs,
-                        actionPath = "task_actions[$index]",
+                        actionPath = "action_item_actions[$index]",
                     )
                 },
                 profileProjection = profilePatch?.toProfileProjection(),
@@ -251,7 +251,7 @@ class LlmMemoryNoteConsolidator(
 
     private data class MappedNoteConsolidationResult(
         val claimCandidates: List<MemoryClaimCandidate>,
-        val taskActions: List<MemoryTaskUpdateOp>,
+        val actionItemActions: List<MemoryActionItemUpdateOp>,
         val profileProjection: MemoryProfileProjection?,
         val episodeCandidates: List<MemoryEpisodeCandidate>,
         val noteActions: List<MemoryNoteLifecycleOp>,
@@ -339,66 +339,67 @@ class LlmMemoryNoteConsolidator(
     @Serializable
     private data class TaskActionResponse(
         val action: String,
-        @SerialName("target_task_id")
-        val targetTaskId: String? = null,
+        @SerialName("target_action_item_id")
+        val targetActionItemId: String? = null,
         @SerialName("origin_note_id")
         val originNoteId: String? = null,
-        val task: TaskDraftResponse? = null,
+        @SerialName("action_item")
+        val actionItem: ActionItemDraftResponse? = null,
         val reason: String = "",
     ) {
         fun toTaskAction(
             request: MemoryMaintenanceRequest,
             selectedById: Map<MemoryNote.Id, MemoryNote>,
-            existingTaskIds: Set<MemoryTask.Id>,
+            existingTaskIds: Set<MemoryActionItem.Id>,
             entityRefs: MemoryEntityRefValidator,
             actionPath: String,
-        ): MemoryTaskUpdateOp? {
-            val target = targetTaskId.toMemoryIdOrNull()?.let { MemoryTask.Id(it) }
+        ): MemoryActionItemUpdateOp? {
+            val target = targetActionItemId.toMemoryIdOrNull()?.let { MemoryActionItem.Id(it) }
             if (target != null && target !in existingTaskIds) return null
 
             val originNote = originNoteId.toNoteIdOrNull()?.let(selectedById::get)
-            val draft = task?.toDraft(request, originNote, entityRefs, "$actionPath.task")
+            val draft = actionItem?.toDraft(request, originNote, entityRefs, "$actionPath.action_item")
 
             return when (action.trim().lowercase()) {
                 "insert" -> draft?.let {
-                    MemoryTaskUpdateOp(
-                        action = MemoryTaskUpdateOp.Action.INSERT,
-                        task = it,
-                        reason = reason.trim().ifBlank { "Note consolidation inserted task" },
+                    MemoryActionItemUpdateOp(
+                        action = MemoryActionItemUpdateOp.Action.INSERT,
+                        actionItem = it,
+                        reason = reason.trim().ifBlank { "Note consolidation inserted action item" },
                     )
                 }
 
                 "update" -> target?.let {
-                    MemoryTaskUpdateOp(
-                        action = MemoryTaskUpdateOp.Action.UPDATE,
-                        targetTaskId = it,
-                        task = draft,
-                        reason = reason.trim().ifBlank { "Note consolidation updated task" },
+                    MemoryActionItemUpdateOp(
+                        action = MemoryActionItemUpdateOp.Action.UPDATE,
+                        targetActionItemId = it,
+                        actionItem = draft,
+                        reason = reason.trim().ifBlank { "Note consolidation updated action item" },
                     )
                 }
 
                 "close" -> target?.let {
-                    MemoryTaskUpdateOp(
-                        action = MemoryTaskUpdateOp.Action.CLOSE,
-                        targetTaskId = it,
-                        task = draft,
-                        reason = reason.trim().ifBlank { "Note consolidation closed task" },
+                    MemoryActionItemUpdateOp(
+                        action = MemoryActionItemUpdateOp.Action.CLOSE,
+                        targetActionItemId = it,
+                        actionItem = draft,
+                        reason = reason.trim().ifBlank { "Note consolidation closed action item" },
                     )
                 }
 
                 "cancel" -> target?.let {
-                    MemoryTaskUpdateOp(
-                        action = MemoryTaskUpdateOp.Action.CANCEL,
-                        targetTaskId = it,
-                        task = draft,
-                        reason = reason.trim().ifBlank { "Note consolidation cancelled task" },
+                    MemoryActionItemUpdateOp(
+                        action = MemoryActionItemUpdateOp.Action.CANCEL,
+                        targetActionItemId = it,
+                        actionItem = draft,
+                        reason = reason.trim().ifBlank { "Note consolidation cancelled action item" },
                     )
                 }
 
-                "noop" -> MemoryTaskUpdateOp(
-                    action = MemoryTaskUpdateOp.Action.NOOP,
-                    targetTaskId = target,
-                    task = draft,
+                "noop" -> MemoryActionItemUpdateOp(
+                    action = MemoryActionItemUpdateOp.Action.NOOP,
+                    targetActionItemId = target,
+                    actionItem = draft,
                     reason = reason.trim().ifBlank { "Note consolidation selected noop" },
                 )
 
@@ -408,7 +409,7 @@ class LlmMemoryNoteConsolidator(
     }
 
     @Serializable
-    private data class TaskDraftResponse(
+    private data class ActionItemDraftResponse(
         val title: String,
         val description: String? = null,
         val status: String = "open",
@@ -438,19 +439,19 @@ class LlmMemoryNoteConsolidator(
             request: MemoryMaintenanceRequest,
             originNote: MemoryNote?,
             entityRefs: MemoryEntityRefValidator,
-            taskPath: String,
-        ): MemoryTaskUpdateOp.Draft? {
+            actionItemPath: String,
+        ): MemoryActionItemUpdateOp.Draft? {
             val cleanTitle = title.trim().take(180)
             if (cleanTitle.isBlank()) return null
 
-            val owner = entityRefs.optional(ownerEntityId, "$taskPath.owner_entity_id")
-            val assignee = entityRefs.optional(assigneeEntityId, "$taskPath.assignee_entity_id")
-            val related = entityRefs.optionalList(relatedEntityIds, "$taskPath.related_entity_ids")
+            val owner = entityRefs.optional(ownerEntityId, "$actionItemPath.owner_entity_id")
+            val assignee = entityRefs.optional(assigneeEntityId, "$actionItemPath.assignee_entity_id")
+            val related = entityRefs.optionalList(relatedEntityIds, "$actionItemPath.related_entity_ids")
             val scopeSubject = owner ?: assignee ?: related.firstOrNull() ?: originNote?.anchorEntityId
 
-            return MemoryTaskUpdateOp.Draft(
+            return MemoryActionItemUpdateOp.Draft(
                 title = cleanTitle,
-                scope = scopeJson.toMaintenanceScope(request, scopeSubject, originNote?.scope ?: MemoryScope.Global("Namespace-wide task")),
+                scope = scopeJson.toMaintenanceScope(request, scopeSubject, originNote?.scope ?: MemoryScope.Global("Namespace-wide action item")),
                 description = description.cleanNullableText(1_200),
                 ownerEntityId = owner,
                 assigneeEntityId = assignee,
@@ -563,7 +564,7 @@ private fun maintenanceTaskMessage(
         content = listOf(
             Conversation.Message.ContentItem.UserMessage(
                 """
-                MEMORY-ONLY MAINTENANCE TASK
+                MEMORY-ONLY MAINTENANCE INSTRUCTION
 
                 This is a private memory pipeline call, not a normal assistant reply.
                 Do not answer as a chat assistant.
@@ -626,12 +627,12 @@ private fun List<MemoryStore.SearchHit>.renderRelatedNotesForConsolidation(selec
         }.ifBlank { "none" }
 
 private fun List<MemoryStore.SearchHit>.renderRelatedTasksForConsolidation(): String =
-    filterIsInstance<MemoryStore.SearchHit.TaskHit>()
-        .map { it.task }
+    filterIsInstance<MemoryStore.SearchHit.ActionItemHit>()
+        .map { it.actionItem }
         .filter { it.archivedAt == null }
         .take(24)
-        .joinToString("\n") { task ->
-            "- id=${task.id.value}; status=${task.status.name}; priority=${task.priority.name}; title=${task.title}; description=${task.description ?: "none"}"
+        .joinToString("\n") { actionItem ->
+            "- id=${actionItem.id.value}; status=${actionItem.status.name}; priority=${actionItem.priority.name}; title=${actionItem.title}; description=${actionItem.description ?: "none"}"
         }.ifBlank { "none" }
 
 private fun List<MemoryStore.SearchHit>.renderRelatedProfilesForConsolidation(): String =
@@ -701,20 +702,20 @@ private fun String.toMaintenanceEvidenceKind(): MemoryEvidenceRef.Kind =
         else -> MemoryEvidenceRef.Kind.DIRECT
     }
 
-private fun String.toMaintenanceTaskStatus(): MemoryTask.Status =
+private fun String.toMaintenanceTaskStatus(): MemoryActionItem.Status =
     when (trim().lowercase().replace("-", "_")) {
-        "in_progress", "started" -> MemoryTask.Status.IN_PROGRESS
-        "blocked" -> MemoryTask.Status.BLOCKED
-        "done", "closed", "complete", "completed" -> MemoryTask.Status.DONE
-        "cancelled", "canceled" -> MemoryTask.Status.CANCELLED
-        else -> MemoryTask.Status.OPEN
+        "in_progress", "started" -> MemoryActionItem.Status.IN_PROGRESS
+        "blocked" -> MemoryActionItem.Status.BLOCKED
+        "done", "closed", "complete", "completed" -> MemoryActionItem.Status.DONE
+        "cancelled", "canceled" -> MemoryActionItem.Status.CANCELLED
+        else -> MemoryActionItem.Status.OPEN
     }
 
-private fun String.toMaintenanceTaskPriority(): MemoryTask.Priority =
+private fun String.toMaintenanceTaskPriority(): MemoryActionItem.Priority =
     when (trim().lowercase()) {
-        "high" -> MemoryTask.Priority.HIGH
-        "low" -> MemoryTask.Priority.LOW
-        else -> MemoryTask.Priority.NORMAL
+        "high" -> MemoryActionItem.Priority.HIGH
+        "low" -> MemoryActionItem.Priority.LOW
+        else -> MemoryActionItem.Priority.NORMAL
     }
 
 private fun String?.toMemoryIdOrNull(): String? {
@@ -726,7 +727,8 @@ private fun String?.toMemoryIdOrNull(): String? {
         normalized == "uuid-or-null" ||
         normalized == "note-id" ||
         normalized == "resolved-entity-id-or-null" ||
-        normalized == "existing-task-id-or-null"
+        normalized == "existing-actionitem-id-or-null" ||
+        normalized == "existing-action-item-id-or-null"
     ) {
         return null
     }

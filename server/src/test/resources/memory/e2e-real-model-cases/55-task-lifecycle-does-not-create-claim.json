@@ -11,10 +11,10 @@
           "text": "Memory policy follow-up: keep an open task to review command-vs-memory routing before we call the write policy stable.",
           "memoryWriteTraceExpectation": {
             "routeDecisionIn": ["DIRECT_STRUCTURED_WRITE", "MIXED"],
-            "rawTaskOpsMin": 1,
-            "taskOpsMin": 1,
-            "materializedTasksMin": 1,
-            "materializedTasksMax": 1,
+            "rawActionItemOpsMin": 1,
+            "actionItemOpsMin": 1,
+            "materializedActionItemsMin": 1,
+            "materializedActionItemsMax": 1,
             "materializedClaimsMax": 0
           }
         },
@@ -22,10 +22,10 @@
           "text": "Close the command-vs-memory routing follow-up: it is done now.",
           "memoryWriteTraceExpectation": {
             "routeDecisionIn": ["DIRECT_STRUCTURED_WRITE", "MIXED"],
-            "rawTaskOpsMin": 1,
-            "taskOpsMin": 1,
-            "materializedTasksMin": 1,
-            "materializedTasksMax": 1,
+            "rawActionItemOpsMin": 1,
+            "actionItemOpsMin": 1,
+            "materializedActionItemsMin": 1,
+            "materializedActionItemsMax": 1,
             "materializedClaimsMax": 0
           }
         }
@@ -35,11 +35,11 @@
   "expectedAfterSeeds": {
     "activeClaimsMax": 0,
     "notesMax": 1,
-    "tasksMin": 1,
-    "tasksMax": 1,
+    "actionItemsMin": 1,
+    "actionItemsMax": 1,
     "profilesMax": 1,
     "userSourcesMin": 2,
-    "requiredTasks": [
+    "requiredActionItems": [
       {
         "statusIn": ["DONE"],
         "containsAll": ["command-vs-memory routing"],
@@ -68,11 +68,11 @@
   "expectedFinal": {
     "activeClaimsMax": 0,
     "notesMax": 1,
-    "tasksMin": 1,
-    "tasksMax": 1,
+    "actionItemsMin": 1,
+    "actionItemsMax": 1,
     "profilesMax": 1,
     "userSourcesMin": 2,
-    "requiredTasks": [
+    "requiredActionItems": [
       {
         "statusIn": ["DONE"],
         "containsAll": ["command-vs-memory routing"],

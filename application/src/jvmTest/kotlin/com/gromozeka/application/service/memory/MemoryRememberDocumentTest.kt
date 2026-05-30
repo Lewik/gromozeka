@@ -135,7 +135,7 @@ class MemoryRememberDocumentTest {
     fun importDetectorRecognizesExplicitPastedMarkdownDocument() {
         val detected = MarkdownDocumentImportDetector.detect(
             """
-            Memory ingestion source document. Treat the following as a pasted handoff prompt-pack document, not as an immediate task.
+            Memory ingestion source document. Treat the following as a pasted handoff prompt-pack document, not as an immediate actionItem.
 
             File: agent_memory_handoff/03_prompts.md
 

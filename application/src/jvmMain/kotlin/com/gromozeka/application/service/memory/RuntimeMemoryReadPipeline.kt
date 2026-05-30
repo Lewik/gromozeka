@@ -19,7 +19,7 @@ import com.gromozeka.domain.model.memory.MemoryReadTrace
 import com.gromozeka.domain.model.memory.MemorySemanticType
 import com.gromozeka.domain.model.memory.MemorySource
 import com.gromozeka.domain.model.memory.MemoryStore
-import com.gromozeka.domain.model.memory.MemoryTask
+import com.gromozeka.domain.model.memory.MemoryActionItem
 import com.gromozeka.domain.model.memory.RuntimeMemoryReadService
 import com.gromozeka.domain.model.Conversation
 import klog.KLoggers
@@ -152,19 +152,19 @@ class RuntimeMemoryReadPipeline(
                     }
                 }
 
-                MemoryReadPlan.CoreBlock.TASKS -> {
+                MemoryReadPlan.CoreBlock.ACTION_ITEMS -> {
                     val taskHits = store.search(
                         MemoryStore.SearchRequest(
                             query = request.targetQueryText(),
                             namespace = request.namespace,
-                            scopes = setOf(MemoryStore.SearchScope.TASKS),
+                            scopes = setOf(MemoryStore.SearchScope.ACTION_ITEMS),
                             filters = MemoryStore.SearchFilters(
-                                taskStatuses = setOf(
-                                    MemoryTask.Status.OPEN,
-                                    MemoryTask.Status.IN_PROGRESS,
-                                    MemoryTask.Status.BLOCKED,
+                                actionItemStatuses = setOf(
+                                    MemoryActionItem.Status.OPEN,
+                                    MemoryActionItem.Status.IN_PROGRESS,
+                                    MemoryActionItem.Status.BLOCKED,
                                 ),
-                            ).withTargetEntityIds(MemorySemanticType.TASK, targetEntities.filterEntityIds),
+                            ).withTargetEntityIds(MemorySemanticType.ACTION_ITEM, targetEntities.filterEntityIds),
                             embedding = queryEmbedding(request.targetQueryText(), queryEmbeddings),
                             limit = plan.retrievalBudget.tasksLimit(default = 2),
                         )
@@ -173,7 +173,7 @@ class RuntimeMemoryReadPipeline(
                     searchSteps += MemoryReadTrace.SearchStep(
                         stage = "core:${coreBlock.name}",
                         query = request.targetQueryText(),
-                        scope = MemoryStore.SearchScope.TASKS.name,
+                        scope = MemoryStore.SearchScope.ACTION_ITEMS.name,
                         requestedLimit = plan.retrievalBudget.tasksLimit(default = 2),
                         rawCount = taskHits.size,
                         candidateCount = taskHits.size,
@@ -200,18 +200,28 @@ class RuntimeMemoryReadPipeline(
                 ?: 4
             val resultLimit = limit.coerceIn(1, 12)
             val searchLimit = scope.selectorCandidateSearchLimit(resultLimit, request)
+            val searchFilters = retrievalRequest.memoryType.defaultFilters()
+                .withTargetEntityIds(retrievalRequest.memoryType, targetEntities.filterEntityIds)
 
-            val rawRequestHits = store.search(
+            val scopedRawRequestHits = store.search(
                 MemoryStore.SearchRequest(
                     query = searchQuery,
                     namespace = request.namespace,
                     scopes = setOf(scope),
-                    filters = retrievalRequest.memoryType.defaultFilters()
-                        .withTargetEntityIds(retrievalRequest.memoryType, targetEntities.filterEntityIds),
+                    filters = searchFilters,
                     embedding = queryEmbedding(searchQuery, queryEmbeddings),
                     limit = searchLimit,
                 )
             )
+            val rawRequestHits = scopedRawRequestHits
+                .withRelaxedNoteEntityFilterCandidates(
+                    request = request,
+                    searchQuery = searchQuery,
+                    scope = scope,
+                    searchFilters = searchFilters,
+                    searchLimit = searchLimit,
+                    queryEmbeddings = queryEmbeddings,
+                )
             val currentThreadFilteredHits = rawRequestHits.excludeCurrentThreadSources(request)
             val requestSourceSelection = currentThreadFilteredHits.applySourceRetrievalPolicyFor(retrievalRequest.memoryType)
             val requestHits = requestSourceSelection.hits
@@ -229,9 +239,10 @@ class RuntimeMemoryReadPipeline(
                 selectedTopHits = requestHits.toTraceHits(limit = 5),
             )
             log.info {
-                "Memory read retrieval search: namespace=${request.namespace.value} type=${retrievalRequest.memoryType.name} " +
+                    "Memory read retrieval search: namespace=${request.namespace.value} type=${retrievalRequest.memoryType.name} " +
                     "scope=${scope.name} topK=$resultLimit searchLimit=$searchLimit query=${searchQuery.oneLineForRuntimeMemoryLog(120)} " +
                     "rawHits=${rawRequestHits.size} hits=${requestHits.size} hitBreakdown=${requestHits.breakdownForRuntimeMemoryLog()} " +
+                    "relaxedEntityFilter=${rawRequestHits.size - scopedRawRequestHits.size} " +
                     "currentThreadSourcesDropped=${rawRequestHits.countCurrentThreadSources(request)} " +
                     "sourcePolicy=${requestSourceSelection.summaryForLog()} top=${requestHits.summaryForRuntimeMemoryLog()}"
             }
@@ -448,6 +459,48 @@ class RuntimeMemoryReadPipeline(
         return embedding
     }
 
+    private suspend fun List<MemoryStore.SearchHit>.withRelaxedNoteEntityFilterCandidates(
+        request: MemoryReadRequest,
+        searchQuery: String,
+        scope: MemoryStore.SearchScope,
+        searchFilters: MemoryStore.SearchFilters,
+        searchLimit: Int,
+        queryEmbeddings: MutableMap<String, MemoryStore.SearchEmbedding?>,
+    ): List<MemoryStore.SearchHit> {
+        if (scope != MemoryStore.SearchScope.NOTES) return this
+        if (searchFilters.entityIds.isEmpty()) return this
+        if (size >= searchLimit) return this
+
+        val relaxedHits = store.search(
+            MemoryStore.SearchRequest(
+                query = searchQuery,
+                namespace = request.namespace,
+                scopes = setOf(scope),
+                filters = searchFilters.copy(entityIds = emptySet()),
+                embedding = queryEmbedding(searchQuery, queryEmbeddings),
+                limit = searchLimit,
+            )
+        )
+        if (relaxedHits.isEmpty()) return this
+
+        val seenRefs = mapTo(mutableSetOf()) { it.toItemRef() }
+        val extraHits = relaxedHits
+            .filterNot { it.toItemRef() in seenRefs }
+            .filter { it.isDocumentSectionNoteHit() }
+        if (extraHits.isEmpty()) return this
+
+        log.info {
+            "Memory read relaxed note entity filter: namespace=${request.namespace.value} " +
+                "query=${searchQuery.oneLineForRuntimeMemoryLog(120)} scoped=${size} extra=${extraHits.size} " +
+                "top=${extraHits.summaryForRuntimeMemoryLog()}"
+        }
+        return this + extraHits
+    }
+
+    private fun MemoryStore.SearchHit.isDocumentSectionNoteHit(): Boolean =
+        this is MemoryStore.SearchHit.NoteHit &&
+            note.evidenceRefs.any { it.sourceId.value.startsWith("external:document-section:") }
+
     private suspend fun hydrateLinkedEntities(
         request: MemoryReadRequest,
         hits: List<MemoryStore.SearchHit>,
@@ -621,7 +674,7 @@ object RuntimeMemoryPromptComposer {
             The retrieved memory below was selected for the immediately following user request.
             Treat it as the strongest available remembered context, stronger than guesses, defaults, or general world knowledge.
             Use selected active memory for the answer unless it is clearly irrelevant, insufficient, stale, internally conflicting, or contradicted by the current user message.
-            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and tasks for commitments.
+            Do not claim that raw sources are verified facts; prefer active claims for facts, notes for rationale, and action items for commitments.
             If raw source wording conflicts with active typed memory, trust the active typed memory for current facts.
             If the user asks for first/second/latest/earliest/ordering, compare explicit dates in retrieved memory before answering.
             If the user asks for an exact quote, exact wording, source, or when something was said, prefer the complete source text from Retrieved evidence; evidence quote fields are short excerpts and may be incomplete.
@@ -634,7 +687,7 @@ object RuntimeMemoryPromptComposer {
             Retrieved profile:
             ${hits.renderProfiles()}
 
-            Retrieved tasks:
+            Retrieved action items:
             ${hits.renderTasks()}
 
             Retrieved claims:
@@ -745,7 +798,7 @@ private fun MemorySemanticType.toSearchScope(): MemoryStore.SearchScope? =
     when (this) {
         MemorySemanticType.CLAIM -> MemoryStore.SearchScope.CLAIMS
         MemorySemanticType.NOTE -> MemoryStore.SearchScope.NOTES
-        MemorySemanticType.TASK -> MemoryStore.SearchScope.TASKS
+        MemorySemanticType.ACTION_ITEM -> MemoryStore.SearchScope.ACTION_ITEMS
         MemorySemanticType.PROFILE -> MemoryStore.SearchScope.PROFILES
         MemorySemanticType.SOURCE -> MemoryStore.SearchScope.SOURCES
         MemorySemanticType.ENTITY -> MemoryStore.SearchScope.ENTITIES
@@ -760,7 +813,7 @@ private fun MemoryStore.SearchScope.selectorCandidateSearchLimit(
         MemoryStore.SearchScope.SOURCES -> (resultLimit + request.threadContext.messages.size + 4).coerceAtMost(50)
         MemoryStore.SearchScope.CLAIMS,
         MemoryStore.SearchScope.NOTES,
-        MemoryStore.SearchScope.TASKS,
+        MemoryStore.SearchScope.ACTION_ITEMS,
         MemoryStore.SearchScope.EPISODES,
         -> resultLimit.expandedForSelectorCandidates()
 
@@ -777,7 +830,7 @@ private fun MemorySemanticType.defaultFilters(): MemoryStore.SearchFilters =
             noteStatuses = setOf(MemoryNote.Status.ACTIVE),
         )
 
-        MemorySemanticType.TASK -> MemoryStore.SearchFilters()
+        MemorySemanticType.ACTION_ITEM -> MemoryStore.SearchFilters()
 
         else -> MemoryStore.SearchFilters()
     }
@@ -800,7 +853,7 @@ private fun MemorySemanticType.supportsEntityFilter(): Boolean =
     when (this) {
         MemorySemanticType.CLAIM,
         MemorySemanticType.NOTE,
-        MemorySemanticType.TASK,
+        MemorySemanticType.ACTION_ITEM,
         MemorySemanticType.PROFILE,
         MemorySemanticType.ENTITY,
         MemorySemanticType.EPISODE,
@@ -855,7 +908,7 @@ private fun List<MemoryStore.SearchHit>.currentTruthBearingTypedRefs(): List<Mem
 private fun MemoryReadPlan.defersRawSourcesWhenTypedMemoryExists(): Boolean =
     when (answerMode) {
         MemoryReadPlan.AnswerMode.FACTUAL,
-        MemoryReadPlan.AnswerMode.TASK,
+        MemoryReadPlan.AnswerMode.ACTION_ITEM,
         -> true
 
         MemoryReadPlan.AnswerMode.MIXED,
@@ -867,10 +920,10 @@ private fun MemoryStore.SearchHit.isCurrentTruthBearingTypedHit(): Boolean =
     when (this) {
         is MemoryStore.SearchHit.ClaimHit -> claim.status == MemoryClaim.Status.ACTIVE
         is MemoryStore.SearchHit.NoteHit -> note.status == MemoryNote.Status.ACTIVE
-        is MemoryStore.SearchHit.TaskHit -> task.status in setOf(
-            MemoryTask.Status.OPEN,
-            MemoryTask.Status.IN_PROGRESS,
-            MemoryTask.Status.BLOCKED,
+        is MemoryStore.SearchHit.ActionItemHit -> actionItem.status in setOf(
+            MemoryActionItem.Status.OPEN,
+            MemoryActionItem.Status.IN_PROGRESS,
+            MemoryActionItem.Status.BLOCKED,
         )
 
         is MemoryStore.SearchHit.EpisodeHit -> true
@@ -926,7 +979,7 @@ private fun MemoryStore.SearchHit.isAnswerCandidateForRecall(): Boolean =
     when (this) {
         is MemoryStore.SearchHit.ClaimHit,
         is MemoryStore.SearchHit.NoteHit,
-        is MemoryStore.SearchHit.TaskHit,
+        is MemoryStore.SearchHit.ActionItemHit,
         is MemoryStore.SearchHit.ProfileHit,
         is MemoryStore.SearchHit.EpisodeHit,
         is MemoryStore.SearchHit.SourceHit,
@@ -970,7 +1023,7 @@ private fun com.gromozeka.domain.model.memory.MemoryRetrievalBudget.limitFor(typ
     when (type) {
         MemorySemanticType.CLAIM -> claims
         MemorySemanticType.NOTE -> notes
-        MemorySemanticType.TASK -> tasks
+        MemorySemanticType.ACTION_ITEM -> actionItems
         MemorySemanticType.SOURCE -> sources
         MemorySemanticType.EPISODE -> episodes
         MemorySemanticType.PROFILE -> profilesLimit()
@@ -978,7 +1031,7 @@ private fun com.gromozeka.domain.model.memory.MemoryRetrievalBudget.limitFor(typ
     }.takeIf { it > 0 }
 
 private fun com.gromozeka.domain.model.memory.MemoryRetrievalBudget.tasksLimit(default: Int): Int =
-    tasks.takeIf { it > 0 } ?: default
+    actionItems.takeIf { it > 0 } ?: default
 
 private fun com.gromozeka.domain.model.memory.MemoryRetrievalBudget.profilesLimit(): Int = 2
 
@@ -989,7 +1042,7 @@ private fun List<MemoryStore.SearchHit>.enforceBudget(
     val profiles = mutableListOf<MemoryStore.SearchHit.ProfileHit>()
     val claims = mutableListOf<MemoryStore.SearchHit.ClaimHit>()
     val notes = mutableListOf<MemoryStore.SearchHit.NoteHit>()
-    val tasks = mutableListOf<MemoryStore.SearchHit.TaskHit>()
+    val actionItems = mutableListOf<MemoryStore.SearchHit.ActionItemHit>()
     val sources = mutableListOf<MemoryStore.SearchHit.SourceHit>()
     val episodes = mutableListOf<MemoryStore.SearchHit.EpisodeHit>()
     val entities = mutableListOf<MemoryStore.SearchHit.EntityHit>()
@@ -999,7 +1052,7 @@ private fun List<MemoryStore.SearchHit>.enforceBudget(
             is MemoryStore.SearchHit.ProfileHit -> profiles += hit
             is MemoryStore.SearchHit.ClaimHit -> claims += hit
             is MemoryStore.SearchHit.NoteHit -> notes += hit
-            is MemoryStore.SearchHit.TaskHit -> tasks += hit
+            is MemoryStore.SearchHit.ActionItemHit -> actionItems += hit
             is MemoryStore.SearchHit.SourceHit -> sources += hit
             is MemoryStore.SearchHit.EpisodeHit -> episodes += hit
             is MemoryStore.SearchHit.EntityHit -> entities += hit
@@ -1011,7 +1064,7 @@ private fun List<MemoryStore.SearchHit>.enforceBudget(
         addAll(profiles.take(plan.retrievalBudget.profilesLimit()))
         addAll(claims.take((plan.retrievalBudget.claims.takeIf { it > 0 } ?: 6).maybeExpandForSelector(expandForSelector)))
         addAll(notes.take((plan.retrievalBudget.notes.takeIf { it > 0 } ?: 4).maybeExpandForSelector(expandForSelector)))
-        addAll(tasks.take((plan.retrievalBudget.tasks.takeIf { it > 0 } ?: 3).maybeExpandForSelector(expandForSelector)))
+        addAll(actionItems.take((plan.retrievalBudget.actionItems.takeIf { it > 0 } ?: 3).maybeExpandForSelector(expandForSelector)))
         addAll(sources.take(plan.retrievalBudget.sources.takeIf { it > 0 } ?: 3))
         addAll(episodes.take((plan.retrievalBudget.episodes.takeIf { it > 0 } ?: 2).maybeExpandForSelector(expandForSelector)))
         addAll(entities.take(4))
@@ -1066,9 +1119,9 @@ private fun List<MemoryStore.SearchHit>.renderProfiles(): String =
         .ifBlank { "none" }
 
 private fun List<MemoryStore.SearchHit>.renderTasks(): String =
-    filterIsInstance<MemoryStore.SearchHit.TaskHit>()
+    filterIsInstance<MemoryStore.SearchHit.ActionItemHit>()
         .joinToString("\n") {
-            "- task ${it.task.id.value} [${it.task.status.name}]: title=\"${it.task.title}\"; description=\"${it.task.description ?: "none"}\""
+            "- action_item ${it.actionItem.id.value} [${it.actionItem.status.name}]: title=\"${it.actionItem.title}\"; description=\"${it.actionItem.description ?: "none"}\""
         }
         .ifBlank { "none" }
 
@@ -1088,7 +1141,7 @@ private fun List<MemoryStore.SearchHit>.filterNonRequiredSourcesWhenTypedMemoryA
 
     val shouldPrune = when (plan.answerMode) {
         MemoryReadPlan.AnswerMode.FACTUAL,
-        MemoryReadPlan.AnswerMode.TASK,
+        MemoryReadPlan.AnswerMode.ACTION_ITEM,
         -> true
 
         MemoryReadPlan.AnswerMode.MIXED,
@@ -1216,7 +1269,7 @@ private fun MemoryStore.SearchHit.toItemRef(): MemoryItemRef =
         is MemoryStore.SearchHit.EntityHit -> MemoryItemRef(MemoryItemRef.Type.ENTITY, entity.id.value)
         is MemoryStore.SearchHit.ClaimHit -> MemoryItemRef(MemoryItemRef.Type.CLAIM, claim.id.value)
         is MemoryStore.SearchHit.NoteHit -> MemoryItemRef(MemoryItemRef.Type.NOTE, note.id.value)
-        is MemoryStore.SearchHit.TaskHit -> MemoryItemRef(MemoryItemRef.Type.TASK, task.id.value)
+        is MemoryStore.SearchHit.ActionItemHit -> MemoryItemRef(MemoryItemRef.Type.ACTION_ITEM, actionItem.id.value)
         is MemoryStore.SearchHit.ProfileHit -> MemoryItemRef(MemoryItemRef.Type.PROFILE, profile.id.value)
         is MemoryStore.SearchHit.EpisodeHit -> MemoryItemRef(MemoryItemRef.Type.EPISODE, episode.id.value)
         is MemoryStore.SearchHit.RunHit -> MemoryItemRef(MemoryItemRef.Type.RUN, run.id.value)
@@ -1231,7 +1284,7 @@ private fun MemoryReadPlan.evidenceHydrationSourceLimit(): Int =
         MemoryReadPlan.AnswerMode.RATIONALE -> retrievalBudget.sources.takeIf { it > 0 } ?: 4
         MemoryReadPlan.AnswerMode.MIXED -> if (shouldIncludeSourceEvidence()) retrievalBudget.sources.takeIf { it > 0 } ?: 2 else 0
         MemoryReadPlan.AnswerMode.FACTUAL,
-        MemoryReadPlan.AnswerMode.TASK,
+        MemoryReadPlan.AnswerMode.ACTION_ITEM,
         -> if (shouldIncludeSourceEvidence()) retrievalBudget.sources.takeIf { it > 0 } ?: 2 else 0
     }
 
@@ -1274,8 +1327,8 @@ private fun List<MemoryStore.SearchHit>.toReadPartialSnapshot(namespace: MemoryN
             .map { it.note }
             .filter { it.namespace == namespace }
             .distinctBy { it.id },
-        tasks = filterIsInstance<MemoryStore.SearchHit.TaskHit>()
-            .map { it.task }
+        actionItems = filterIsInstance<MemoryStore.SearchHit.ActionItemHit>()
+            .map { it.actionItem }
             .filter { it.namespace == namespace }
             .distinctBy { it.id },
         profiles = filterIsInstance<MemoryStore.SearchHit.ProfileHit>()
@@ -1400,7 +1453,7 @@ private fun MemoryStore.SearchHit.evidenceRefsForRecall(): List<MemoryEvidenceRe
     when (this) {
         is MemoryStore.SearchHit.ClaimHit -> claim.evidenceRefs
         is MemoryStore.SearchHit.NoteHit -> note.evidenceRefs
-        is MemoryStore.SearchHit.TaskHit -> task.evidenceRefs
+        is MemoryStore.SearchHit.ActionItemHit -> actionItem.evidenceRefs
         is MemoryStore.SearchHit.EpisodeHit -> episode.evidenceRefs
         is MemoryStore.SearchHit.SourceHit,
         is MemoryStore.SearchHit.EntityHit,
@@ -1413,7 +1466,7 @@ private fun MemoryStore.SearchHit.linkedEntityIdsForRecall(): List<com.gromozeka
     when (this) {
         is MemoryStore.SearchHit.ClaimHit -> listOfNotNull(claim.subjectEntityId, claim.objectEntityId)
         is MemoryStore.SearchHit.NoteHit -> (listOfNotNull(note.anchorEntityId) + note.entityRefs.map { it.entityId }).distinct()
-        is MemoryStore.SearchHit.TaskHit -> (listOfNotNull(task.ownerEntityId, task.assigneeEntityId) + task.relatedEntityIds).distinct()
+        is MemoryStore.SearchHit.ActionItemHit -> (listOfNotNull(actionItem.ownerEntityId, actionItem.assigneeEntityId) + actionItem.relatedEntityIds).distinct()
         is MemoryStore.SearchHit.ProfileHit -> listOf(profile.ownerEntityId)
         is MemoryStore.SearchHit.EpisodeHit -> listOfNotNull(episode.ownerEntityId)
         is MemoryStore.SearchHit.SourceHit,
@@ -1484,7 +1537,7 @@ private fun List<MemoryStore.SearchHit>.breakdownForRuntimeMemoryLog(): String {
             is MemoryStore.SearchHit.EntityHit -> "entity"
             is MemoryStore.SearchHit.ClaimHit -> "claim"
             is MemoryStore.SearchHit.NoteHit -> "note"
-            is MemoryStore.SearchHit.TaskHit -> "task"
+            is MemoryStore.SearchHit.ActionItemHit -> "actionItem"
             is MemoryStore.SearchHit.ProfileHit -> "profile"
             is MemoryStore.SearchHit.EpisodeHit -> "episode"
             is MemoryStore.SearchHit.RunHit -> "run"
@@ -1501,7 +1554,7 @@ private fun List<MemoryStore.SearchHit>.summaryForRuntimeMemoryLog(): String {
             is MemoryStore.SearchHit.EntityHit -> "entity:${hit.entity.id.value}:${hit.entity.entityType.name}:${hit.entity.canonicalName.oneLineForRuntimeMemoryLog(80)}"
             is MemoryStore.SearchHit.ClaimHit -> "claim:${hit.claim.id.value}:${hit.claim.predicate}:${hit.claim.predicateFamily ?: "unknown"}:${hit.claim.normalizedText.oneLineForRuntimeMemoryLog(120)}"
             is MemoryStore.SearchHit.NoteHit -> "note:${hit.note.id.value}:${hit.note.noteType.name}:${hit.note.title.oneLineForRuntimeMemoryLog(100)}"
-            is MemoryStore.SearchHit.TaskHit -> "task:${hit.task.id.value}:${hit.task.status.name}:${hit.task.title.oneLineForRuntimeMemoryLog(100)}"
+            is MemoryStore.SearchHit.ActionItemHit -> "actionItem:${hit.actionItem.id.value}:${hit.actionItem.status.name}:${hit.actionItem.title.oneLineForRuntimeMemoryLog(100)}"
             is MemoryStore.SearchHit.ProfileHit -> "profile:${hit.profile.id.value}:${hit.profile.profileText.oneLineForRuntimeMemoryLog(120)}"
             is MemoryStore.SearchHit.EpisodeHit -> "episode:${hit.episode.id.value}:${hit.episode.lesson.oneLineForRuntimeMemoryLog(120)}"
             is MemoryStore.SearchHit.RunHit -> "run:${hit.run.id.value}:${hit.run.runType.name}:${hit.run.summary.oneLineForRuntimeMemoryLog(100)}"
@@ -1565,11 +1618,11 @@ private fun MemoryStore.SearchHit.toTraceHit(): MemoryReadTrace.Hit =
             status = note.status.name,
         )
 
-        is MemoryStore.SearchHit.TaskHit -> MemoryReadTrace.Hit(
+        is MemoryStore.SearchHit.ActionItemHit -> MemoryReadTrace.Hit(
             ref = toItemRef(),
             score = score,
-            summary = "${task.status.name}: ${task.title}".oneLineForRuntimeMemoryLog(220),
-            status = task.status.name,
+            summary = "${actionItem.status.name}: ${actionItem.title}".oneLineForRuntimeMemoryLog(220),
+            status = actionItem.status.name,
         )
 
         is MemoryStore.SearchHit.ProfileHit -> MemoryReadTrace.Hit(
@@ -1601,7 +1654,7 @@ private fun List<MemoryReadTrace.Hit>.summaryForRuntimeMemoryTraceLog(): String 
     }
 
 private fun com.gromozeka.domain.model.memory.MemoryRetrievalBudget.totalDebugLimit(): Int =
-    listOf(claims, notes, tasks, sources, episodes).filter { it > 0 }.sum().takeIf { it > 0 } ?: 0
+    listOf(claims, notes, actionItems, sources, episodes).filter { it > 0 }.sum().takeIf { it > 0 } ?: 0
 
 private fun String.oneLineForRuntimeMemoryLog(maxChars: Int): String {
     val oneLine = trim()

@@ -250,7 +250,7 @@ CREATE INDEX idx_memory_notes_anchor ON memory_notes(namespace, anchor_entity_id
 CREATE INDEX idx_memory_notes_status_type ON memory_notes(namespace, status, note_type);
 CREATE INDEX idx_memory_notes_payload ON memory_notes USING GIN(payload);
 
-CREATE TABLE memory_tasks (
+CREATE TABLE memory_action_items (
     id TEXT PRIMARY KEY,
     namespace TEXT NOT NULL,
     payload JSONB NOT NULL,
@@ -260,11 +260,11 @@ CREATE TABLE memory_tasks (
     updated_at TIMESTAMPTZ NOT NULL
 );
 
-CREATE INDEX idx_memory_tasks_namespace ON memory_tasks(namespace);
-CREATE INDEX idx_memory_tasks_owner ON memory_tasks(namespace, owner_entity_id);
-CREATE INDEX idx_memory_tasks_assignee ON memory_tasks(namespace, assignee_entity_id);
-CREATE INDEX idx_memory_tasks_status ON memory_tasks(namespace, status);
-CREATE INDEX idx_memory_tasks_payload ON memory_tasks USING GIN(payload);
+CREATE INDEX idx_memory_action_items_namespace ON memory_action_items(namespace);
+CREATE INDEX idx_memory_action_items_owner ON memory_action_items(namespace, owner_entity_id);
+CREATE INDEX idx_memory_action_items_assignee ON memory_action_items(namespace, assignee_entity_id);
+CREATE INDEX idx_memory_action_items_status ON memory_action_items(namespace, status);
+CREATE INDEX idx_memory_action_items_payload ON memory_action_items USING GIN(payload);
 
 CREATE TABLE memory_profiles (
     id TEXT PRIMARY KEY,

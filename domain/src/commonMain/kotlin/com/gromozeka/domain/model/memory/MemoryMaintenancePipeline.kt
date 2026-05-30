@@ -44,7 +44,7 @@ data class MemoryRepairCandidateCluster(
         DUPLICATE_CLAIMS,
         CONFLICTING_CLAIMS,
         DUPLICATE_NOTES,
-        DUPLICATE_TASKS,
+        DUPLICATE_ACTION_ITEMS,
         DUPLICATE_EPISODES,
         PROFILE_DRIFT,
     }

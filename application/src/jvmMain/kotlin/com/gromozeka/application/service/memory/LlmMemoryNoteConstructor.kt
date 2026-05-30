@@ -313,9 +313,9 @@ class LlmMemoryNoteConstructor(
             - If TARGET_MESSAGE is a document or document section, preserve document title/source/section names and create section-scoped notes for important definitions, component roles, workflows, policies, and lists.
             - For dense technical documents and prompt packs, prefer several strong section-scoped notes over one broad document summary. Keep only reusable notes; do not summarize every paragraph.
             - For one document section, return at most two notes. If a section defines one compact component or policy, return one note.
-            - If source metadata force_memory_write=true, create a note when the content is reusable context but not a clean claim/task/profile update.
+            - If source metadata force_memory_write=true, create a note when the content is reusable context but not a clean claim/action item/profile update.
             - For named components, include the exact component names in title, summary, keywords, or tags so later retrieval can find the component role.
-            - A troubleshooting/procedure note is allowed, but do not create a task unless the target creates a commitment.
+            - A troubleshooting/procedure note is allowed, but do not create an action item unless the target creates a commitment.
             - Keep each note self-contained: future recall should understand it without the original conversation.
             - Keep summary concise: usually one or two sentences.
             - Prefer zero notes over broad summary spam.
@@ -333,7 +333,7 @@ private fun List<MemoryStore.SearchHit>.renderRelevantNotesAndClaims(): String {
         when (hit) {
             is MemoryStore.SearchHit.NoteHit -> "- note ${hit.note.id.value}: ${hit.note.noteType.name}; ${hit.note.title}; ${hit.note.summary}; scope=${hit.note.scope.text}"
             is MemoryStore.SearchHit.ClaimHit -> "- claim ${hit.claim.id.value}: ${hit.claim.predicate}; ${hit.claim.normalizedText}; scope=${hit.claim.scope.text}"
-            is MemoryStore.SearchHit.TaskHit -> "- task ${hit.task.id.value}: ${hit.task.status.name}; ${hit.task.title}; ${hit.task.description ?: "no description"}"
+            is MemoryStore.SearchHit.ActionItemHit -> "- actionItem ${hit.actionItem.id.value}: ${hit.actionItem.status.name}; ${hit.actionItem.title}; ${hit.actionItem.description ?: "no description"}"
             is MemoryStore.SearchHit.ProfileHit -> "- profile ${hit.profile.id.value}: ${hit.profile.profileText}"
             is MemoryStore.SearchHit.EpisodeHit -> "- episode ${hit.episode.id.value}: ${hit.episode.situation}; lesson=${hit.episode.lesson}"
             is MemoryStore.SearchHit.SourceHit,

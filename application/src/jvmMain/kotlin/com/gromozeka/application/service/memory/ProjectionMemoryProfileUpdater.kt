@@ -10,7 +10,7 @@ import com.gromozeka.domain.model.memory.MemoryPredicateCatalogDefaults
 import com.gromozeka.domain.model.memory.MemoryProfile
 import com.gromozeka.domain.model.memory.MemoryProfileUpdater
 import com.gromozeka.domain.model.memory.MemoryStore
-import com.gromozeka.domain.model.memory.MemoryTask
+import com.gromozeka.domain.model.memory.MemoryActionItem
 import com.gromozeka.domain.model.memory.MemoryUpdateBatch
 import com.gromozeka.domain.model.memory.resolvePredicateDefinition
 import klog.KLoggers
@@ -58,7 +58,7 @@ class ProjectionMemoryProfileUpdater(
         if (appliedBatch.hasProfileRelevantChanges() || force) {
             log.info {
                 "Memory profile updater run: namespace=${namespace.value} $logSubject " +
-                    "force=$force batchClaims=${appliedBatch.claims.size} batchNotes=${appliedBatch.notes.size} batchTasks=${appliedBatch.tasks.size}"
+                    "force=$force batchClaims=${appliedBatch.claims.size} batchNotes=${appliedBatch.notes.size} batchTasks=${appliedBatch.actionItems.size}"
             }
         }
 
@@ -109,11 +109,11 @@ class ProjectionMemoryProfileUpdater(
                     note.maturity != MemoryNote.Maturity.FRESH
             }
 
-        val profileTasks = snapshot.tasks
-            .filter { task ->
-                task.archivedAt == null &&
-                    task.status in liveTaskStatuses &&
-                    task.importanceForProfile() >= 7
+        val profileTasks = snapshot.actionItems
+            .filter { actionItem ->
+                actionItem.archivedAt == null &&
+                    actionItem.status in liveTaskStatuses &&
+                    actionItem.importanceForProfile() >= 7
             }
 
         val ownerIds = buildSet {
@@ -133,10 +133,10 @@ class ProjectionMemoryProfileUpdater(
                 .filter { it.profileOwnerEntityId() == ownerId }
                 .sortedWith(compareByDescending<MemoryNote> { it.importance }.thenByDescending { it.updatedAt })
                 .take(MAX_PROFILE_NOTES)
-            val tasks = profileTasks
+            val actionItems = profileTasks
                 .filter { it.ownerEntityId == ownerId }
-                .sortedWith(compareByDescending<MemoryTask> { it.priority.profileWeight() }.thenByDescending { it.updatedAt })
-                .take(MAX_PROFILE_TASKS)
+                .sortedWith(compareByDescending<MemoryActionItem> { it.priority.profileWeight() }.thenByDescending { it.updatedAt })
+                .take(MAX_PROFILE_ACTION_ITEMS)
 
             buildProfile(
                 namespace = namespace,
@@ -145,7 +145,7 @@ class ProjectionMemoryProfileUpdater(
                 existing = existingProfiles[ownerId],
                 claims = claims,
                 notes = notes,
-                tasks = tasks,
+                actionItems = actionItems,
                 appliedBatch = appliedBatch,
                 completedAt = completedAt,
             )
@@ -159,18 +159,18 @@ class ProjectionMemoryProfileUpdater(
         existing: MemoryProfile?,
         claims: List<MemoryClaim>,
         notes: List<MemoryNote>,
-        tasks: List<MemoryTask>,
+        actionItems: List<MemoryActionItem>,
         appliedBatch: MemoryUpdateBatch,
         completedAt: Instant,
     ): MemoryProfile? {
-        if (claims.isEmpty() && notes.isEmpty() && tasks.isEmpty() && existing == null) {
+        if (claims.isEmpty() && notes.isEmpty() && actionItems.isEmpty() && existing == null) {
             return null
         }
 
         val ownerName = owner?.canonicalName ?: ownerId.value
         val ownerType = owner?.entityType?.name ?: "UNKNOWN"
-        val profileText = renderProfileText(ownerName, ownerType, claims, notes, tasks)
-        val profileJson = buildProfileJson(ownerId, owner, claims, notes, tasks)
+        val profileText = renderProfileText(ownerName, ownerType, claims, notes, actionItems)
+        val profileJson = buildProfileJson(ownerId, owner, claims, notes, actionItems)
         if (existing?.profileText == profileText && existing.profileJson == profileJson) {
             return null
         }
@@ -194,7 +194,7 @@ class ProjectionMemoryProfileUpdater(
         ownerType: String,
         claims: List<MemoryClaim>,
         notes: List<MemoryNote>,
-        tasks: List<MemoryTask>,
+        actionItems: List<MemoryActionItem>,
     ): String {
         val sections = buildList {
             add("Profile for $ownerName ($ownerType).")
@@ -206,11 +206,11 @@ class ProjectionMemoryProfileUpdater(
                 add("Long-lived context:")
                 addAll(notes.map { "- ${it.title.ensureSentence()} ${it.summary.ensureSentence()}" })
             }
-            if (tasks.isNotEmpty()) {
+            if (actionItems.isNotEmpty()) {
                 add("Open commitments:")
-                addAll(tasks.map { "- ${it.status.name}: ${it.title.ensureSentence()}" })
+                addAll(actionItems.map { "- ${it.status.name}: ${it.title.ensureSentence()}" })
             }
-            if (claims.isEmpty() && notes.isEmpty() && tasks.isEmpty()) {
+            if (claims.isEmpty() && notes.isEmpty() && actionItems.isEmpty()) {
                 add("No active profile-synced memory.")
             }
         }
@@ -223,7 +223,7 @@ class ProjectionMemoryProfileUpdater(
         owner: MemoryEntity?,
         claims: List<MemoryClaim>,
         notes: List<MemoryNote>,
-        tasks: List<MemoryTask>,
+        actionItems: List<MemoryActionItem>,
     ): JsonObject = buildJsonObject {
         put("owner_entity_id", JsonPrimitive(ownerId.value))
         put("owner_name", JsonPrimitive(owner?.canonicalName ?: ownerId.value))
@@ -246,12 +246,12 @@ class ProjectionMemoryProfileUpdater(
                 put("importance", JsonPrimitive(note.importance))
             }
         })
-        put("tasks", tasks.mapToJsonArray { task ->
+        put("actionItems", actionItems.mapToJsonArray { actionItem ->
             buildJsonObject {
-                put("id", JsonPrimitive(task.id.value))
-                put("status", JsonPrimitive(task.status.name))
-                put("priority", JsonPrimitive(task.priority.name))
-                put("title", JsonPrimitive(task.title))
+                put("id", JsonPrimitive(actionItem.id.value))
+                put("status", JsonPrimitive(actionItem.status.name))
+                put("priority", JsonPrimitive(actionItem.priority.name))
+                put("title", JsonPrimitive(actionItem.title))
             }
         })
     }
@@ -263,18 +263,18 @@ class ProjectionMemoryProfileUpdater(
                 it.role == MemoryNote.EntityRef.Role.PRIMARY
         }?.entityId
 
-    private fun MemoryTask.importanceForProfile(): Int =
+    private fun MemoryActionItem.importanceForProfile(): Int =
         when (priority) {
-            MemoryTask.Priority.HIGH -> 9
-            MemoryTask.Priority.NORMAL -> 7
-            MemoryTask.Priority.LOW -> 5
+            MemoryActionItem.Priority.HIGH -> 9
+            MemoryActionItem.Priority.NORMAL -> 7
+            MemoryActionItem.Priority.LOW -> 5
         }
 
-    private fun MemoryTask.Priority.profileWeight(): Int =
+    private fun MemoryActionItem.Priority.profileWeight(): Int =
         when (this) {
-            MemoryTask.Priority.HIGH -> 3
-            MemoryTask.Priority.NORMAL -> 2
-            MemoryTask.Priority.LOW -> 1
+            MemoryActionItem.Priority.HIGH -> 3
+            MemoryActionItem.Priority.NORMAL -> 2
+            MemoryActionItem.Priority.LOW -> 1
         }
 
     private fun <T> List<T>.mapToJsonArray(transform: (T) -> JsonObject): JsonArray =
@@ -287,19 +287,19 @@ class ProjectionMemoryProfileUpdater(
             entities.isNotEmpty() ||
             claims.isNotEmpty() ||
             notes.isNotEmpty() ||
-            tasks.isNotEmpty()
+            actionItems.isNotEmpty()
 
     private companion object {
         const val MAX_PROFILE_CLAIMS = 24
         const val MAX_PROFILE_NOTES = 6
-        const val MAX_PROFILE_TASKS = 5
+        const val MAX_PROFILE_ACTION_ITEMS = 5
         const val MAX_PROFILE_TEXT_CHARS = 4_000
         const val MIN_PROFILE_CLAIM_CONFIDENCE = 0.7
 
         val liveTaskStatuses = setOf(
-            MemoryTask.Status.OPEN,
-            MemoryTask.Status.IN_PROGRESS,
-            MemoryTask.Status.BLOCKED,
+            MemoryActionItem.Status.OPEN,
+            MemoryActionItem.Status.IN_PROGRESS,
+            MemoryActionItem.Status.BLOCKED,
         )
     }
 }

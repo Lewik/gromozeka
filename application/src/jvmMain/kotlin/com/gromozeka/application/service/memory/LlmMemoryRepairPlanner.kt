@@ -116,7 +116,7 @@ class LlmMemoryRepairPlanner(
           "repair_actions": [
             {
               "action": "merge_duplicates | supersede_item | archive_item | refresh_profile | noop",
-              "target_type": "note | claim | task | profile | entity | episode",
+              "target_type": "note | claim | action_item | profile | entity | episode",
               "target_ids": ["id"],
               "reason": "short explanation"
             }
@@ -131,8 +131,8 @@ class LlmMemoryRepairPlanner(
         - Use merge_duplicates only for items that are exact or near-exact duplicates.
         - Use archive_item only when an item is stale or duplicate but still explainable.
         - Use supersede_item only when active memory is clearly replaced by a newer active item.
-        - Use refresh_profile when profile text can drift from active claims, notes, or tasks.
-        - For duplicate_claims, duplicate_notes, duplicate_tasks, and duplicate_episodes clusters, use merge_duplicates targeting all duplicate item ids when the cluster items really say the same thing. Do not use archive_item for duplicate clusters unless only one clearly bad item is targeted and a separate active keeper remains.
+        - Use refresh_profile when profile text can drift from active claims, notes, or action items.
+        - For duplicate_claims, duplicate_notes, duplicate_action_items, and duplicate_episodes clusters, use merge_duplicates targeting all duplicate item ids when the cluster items really say the same thing. Do not use archive_item for duplicate clusters unless only one clearly bad item is targeted and a separate active keeper remains.
         - For conflicting_claims clusters, prefer supersede_item targeting the older claim ids that were clearly replaced by newer claims. Do not supersede the newest claim.
         - For profile_drift clusters, prefer refresh_profile targeting the profile id.
         - Do not invent target ids. Use only ids from candidate clusters.
@@ -191,7 +191,7 @@ private fun repairMaintenanceTaskMessage(
         content = listOf(
             Conversation.Message.ContentItem.UserMessage(
                 """
-                MEMORY-ONLY MAINTENANCE TASK
+                MEMORY-ONLY MAINTENANCE INSTRUCTION
 
                 This is a private memory pipeline call, not a normal assistant reply.
                 Do not answer as a chat assistant.
@@ -228,7 +228,7 @@ private fun MemoryStore.SearchHit.renderSuspiciousItemForRepair(): String =
     when (this) {
         is MemoryStore.SearchHit.ClaimHit -> "- claim ${claim.id.value}: status=${claim.status.name}; predicate=${claim.predicate}; family=${claim.predicateFamily ?: "null"}; subject=${claim.subjectEntityId.value}; object=${claim.objectEntityId?.value ?: claim.objectValue?.toString() ?: "null"}; text=${claim.normalizedText.oneLineForRepairPlannerLog(MAX_REPAIR_ITEM_TEXT_CHARS)}; updated=${claim.updatedAt}"
         is MemoryStore.SearchHit.NoteHit -> "- note ${note.id.value}: status=${note.status.name}; maturity=${note.maturity.name}; type=${note.noteType.name}; title=${note.title.oneLineForRepairPlannerLog(MAX_REPAIR_ITEM_TEXT_CHARS)}; summary=${note.summary.oneLineForRepairPlannerLog(MAX_REPAIR_ITEM_TEXT_CHARS)}; updated=${note.updatedAt}"
-        is MemoryStore.SearchHit.TaskHit -> "- task ${task.id.value}: status=${task.status.name}; title=${task.title.oneLineForRepairPlannerLog(MAX_REPAIR_ITEM_TEXT_CHARS)}; updated=${task.updatedAt}"
+        is MemoryStore.SearchHit.ActionItemHit -> "- action_item ${actionItem.id.value}: status=${actionItem.status.name}; title=${actionItem.title.oneLineForRepairPlannerLog(MAX_REPAIR_ITEM_TEXT_CHARS)}; updated=${actionItem.updatedAt}"
         is MemoryStore.SearchHit.ProfileHit -> "- profile ${profile.id.value}: owner=${profile.ownerEntityId.value}; version=${profile.version}; updated=${profile.updatedAt}; text=${profile.profileText.oneLineForRepairPlannerLog(500)}"
         is MemoryStore.SearchHit.EpisodeHit -> "- episode ${episode.id.value}: situation=${episode.situation.oneLineForRepairPlannerLog(MAX_REPAIR_ITEM_TEXT_CHARS)}; lesson=${episode.lesson.oneLineForRepairPlannerLog(MAX_REPAIR_ITEM_TEXT_CHARS)}; updated=${episode.updatedAt}"
         is MemoryStore.SearchHit.EntityHit -> "- entity ${entity.id.value}: type=${entity.entityType.name}; name=${entity.canonicalName.oneLineForRepairPlannerLog(MAX_REPAIR_ITEM_TEXT_CHARS)}; updated=${entity.updatedAt}"
@@ -272,7 +272,7 @@ private fun MemoryStore.SearchHit.toRepairItemRef(): MemoryItemRef =
         is MemoryStore.SearchHit.EntityHit -> MemoryItemRef(MemoryItemRef.Type.ENTITY, entity.id.value)
         is MemoryStore.SearchHit.ClaimHit -> MemoryItemRef(MemoryItemRef.Type.CLAIM, claim.id.value)
         is MemoryStore.SearchHit.NoteHit -> MemoryItemRef(MemoryItemRef.Type.NOTE, note.id.value)
-        is MemoryStore.SearchHit.TaskHit -> MemoryItemRef(MemoryItemRef.Type.TASK, task.id.value)
+        is MemoryStore.SearchHit.ActionItemHit -> MemoryItemRef(MemoryItemRef.Type.ACTION_ITEM, actionItem.id.value)
         is MemoryStore.SearchHit.ProfileHit -> MemoryItemRef(MemoryItemRef.Type.PROFILE, profile.id.value)
         is MemoryStore.SearchHit.EpisodeHit -> MemoryItemRef(MemoryItemRef.Type.EPISODE, episode.id.value)
         is MemoryStore.SearchHit.RunHit -> MemoryItemRef(MemoryItemRef.Type.RUN, run.id.value)
@@ -289,7 +289,7 @@ private fun MemoryStore.SearchHit.repairPlannerSortTime(): kotlinx.datetime.Inst
         is MemoryStore.SearchHit.EntityHit -> entity.updatedAt
         is MemoryStore.SearchHit.ClaimHit -> claim.updatedAt
         is MemoryStore.SearchHit.NoteHit -> note.updatedAt
-        is MemoryStore.SearchHit.TaskHit -> task.updatedAt
+        is MemoryStore.SearchHit.ActionItemHit -> actionItem.updatedAt
         is MemoryStore.SearchHit.ProfileHit -> profile.updatedAt
         is MemoryStore.SearchHit.EpisodeHit -> episode.updatedAt
         is MemoryStore.SearchHit.RunHit -> run.completedAt ?: run.createdAt
@@ -300,7 +300,7 @@ private fun MemoryStore.SearchHit.repairEvidenceSourceIds() =
         is MemoryStore.SearchHit.SourceHit -> listOf(source.id)
         is MemoryStore.SearchHit.ClaimHit -> claim.evidenceRefs.map { it.sourceId }
         is MemoryStore.SearchHit.NoteHit -> note.evidenceRefs.map { it.sourceId }
-        is MemoryStore.SearchHit.TaskHit -> task.evidenceRefs.map { it.sourceId }
+        is MemoryStore.SearchHit.ActionItemHit -> actionItem.evidenceRefs.map { it.sourceId }
         is MemoryStore.SearchHit.EpisodeHit -> episode.evidenceRefs.map { it.sourceId }
         is MemoryStore.SearchHit.EntityHit,
         is MemoryStore.SearchHit.ProfileHit,
@@ -322,7 +322,7 @@ private fun String.toRepairTargetType(): MemoryItemRef.Type? =
     when (trim().lowercase()) {
         "note" -> MemoryItemRef.Type.NOTE
         "claim" -> MemoryItemRef.Type.CLAIM
-        "task" -> MemoryItemRef.Type.TASK
+        "action_item", "actionitem", "task" -> MemoryItemRef.Type.ACTION_ITEM
         "profile" -> MemoryItemRef.Type.PROFILE
         "entity" -> MemoryItemRef.Type.ENTITY
         "episode" -> MemoryItemRef.Type.EPISODE

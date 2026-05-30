@@ -207,7 +207,7 @@ private fun entityMaintenanceTaskMessage(
         content = listOf(
             Conversation.Message.ContentItem.UserMessage(
                 """
-                MEMORY-ONLY MAINTENANCE TASK
+                MEMORY-ONLY MAINTENANCE INSTRUCTION
 
                 This is a private memory pipeline call, not a normal assistant reply.
                 Do not answer as a chat assistant.
@@ -259,10 +259,10 @@ private fun MemoryNamespaceSnapshot.entityUsageCounts(): Map<MemoryEntity.Id, In
             add(note.anchorEntityId)
             note.entityRefs.forEach { add(it.entityId) }
         }
-        tasks.forEach { task ->
-            add(task.ownerEntityId)
-            add(task.assigneeEntityId)
-            task.relatedEntityIds.forEach(::add)
+        actionItems.forEach { actionItem ->
+            add(actionItem.ownerEntityId)
+            add(actionItem.assigneeEntityId)
+            actionItem.relatedEntityIds.forEach(::add)
         }
         profiles.forEach { add(it.ownerEntityId) }
         episodes.forEach { add(it.ownerEntityId) }

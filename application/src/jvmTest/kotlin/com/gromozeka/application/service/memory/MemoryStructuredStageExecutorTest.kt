@@ -32,7 +32,7 @@ class MemoryStructuredStageExecutorTest {
         )
         val request = AiRuntimeRequest(
             systemPrompts = emptyList(),
-            messages = listOf(userMessage("initial memory stage task")),
+            messages = listOf(userMessage("initial memory stage actionItem")),
             options = AiRuntimeOptions(),
         )
 

@@ -15,7 +15,7 @@ import com.gromozeka.domain.model.memory.MemoryReadSelector
 import com.gromozeka.domain.model.memory.MemoryReadSelectorTrace
 import com.gromozeka.domain.model.memory.MemoryRetrievalBudget
 import com.gromozeka.domain.model.memory.MemoryStore
-import com.gromozeka.domain.model.memory.MemoryTask
+import com.gromozeka.domain.model.memory.MemoryActionItem
 import com.gromozeka.domain.service.AiRuntime
 import com.gromozeka.domain.tool.AiToolCallback
 import klog.KLoggers
@@ -269,12 +269,12 @@ class LlmMemoryReadSelector(
         - Prefer active claims for factual answers.
         - Prefer episodes for reusable lessons and "what did we learn" questions.
         - Prefer notes for rationale, decisions, plans, and contextual meaning.
-        - Prefer tasks only for open commitments or workflow state.
+        - Prefer action items only for open commitments or workflow state.
         - Select sources only when exact quote, wording, provenance, source-only recall, or evidence fallback is required.
         - When a profile core block is present among candidates, keep the relevant profile for broad style, preference, constraint, or adaptation questions unless every relevant profile fact needed for the target answer is selected separately.
         - A single specific style claim is not sufficient for a broad adaptation question when the relevant profile also contains language, tone, formatting, or answer-detail preferences.
         - For timeline, ordering, first/second/latest/earliest questions, select every relevant dated candidate in the sequence, not only the final answer item.
-        - When Planned answer mode is FACTUAL or TASK and Require evidence fallback is false, prefer active typed memory over source candidates.
+        - When Planned answer mode is FACTUAL or ACTION_ITEM and Require evidence fallback is false, prefer active typed memory over source candidates.
         - Raw sources are evidence, not current truth. Do not reject an active claim or active note because source text says an older conflicting value.
         - Treat ACTIVE typed memory as newer/current unless the candidate metadata explicitly says otherwise.
         - Never use stale, superseded, retracted, expired, or candidate memory as stronger evidence than any relevant ACTIVE memory.
@@ -293,7 +293,7 @@ class LlmMemoryReadSelector(
         {
           "selected_items": [
             {
-              "item_type": "claim | note | task | profile | source | episode | entity | run",
+              "item_type": "claim | note | action_item | profile | source | episode | entity | run",
               "item_id": "exact candidate id",
               "rank": 1,
               "relevance": "direct_answer | supporting_context | required_evidence",
@@ -302,7 +302,7 @@ class LlmMemoryReadSelector(
           ],
           "rejected_items": [
             {
-              "item_type": "claim | note | task | profile | source | episode | entity | run",
+              "item_type": "claim | note | action_item | profile | source | episode | entity | run",
               "item_id": "exact candidate id",
               "reason": "short reason"
             }
@@ -402,7 +402,7 @@ object PassthroughMemoryReadSelector : MemoryReadSelector {
 }
 
 private fun MemoryRetrievalBudget.renderForReadSelector(): String =
-    "claims=$claims notes=$notes tasks=$tasks sources=$sources episodes=$episodes"
+    "claims=$claims notes=$notes actionItems=$actionItems sources=$sources episodes=$episodes"
 
 private fun MemoryReadRequest.targetTextForReadSelector(): String {
     val target = threadContext.messages.firstOrNull { it.id == threadContext.targetMessageId }
@@ -428,7 +428,7 @@ private fun MemoryStore.SearchHit.toReadSelectorItemRef(): MemoryItemRef =
         is MemoryStore.SearchHit.EntityHit -> MemoryItemRef(MemoryItemRef.Type.ENTITY, entity.id.value)
         is MemoryStore.SearchHit.ClaimHit -> MemoryItemRef(MemoryItemRef.Type.CLAIM, claim.id.value)
         is MemoryStore.SearchHit.NoteHit -> MemoryItemRef(MemoryItemRef.Type.NOTE, note.id.value)
-        is MemoryStore.SearchHit.TaskHit -> MemoryItemRef(MemoryItemRef.Type.TASK, task.id.value)
+        is MemoryStore.SearchHit.ActionItemHit -> MemoryItemRef(MemoryItemRef.Type.ACTION_ITEM, actionItem.id.value)
         is MemoryStore.SearchHit.ProfileHit -> MemoryItemRef(MemoryItemRef.Type.PROFILE, profile.id.value)
         is MemoryStore.SearchHit.EpisodeHit -> MemoryItemRef(MemoryItemRef.Type.EPISODE, episode.id.value)
         is MemoryStore.SearchHit.RunHit -> MemoryItemRef(MemoryItemRef.Type.RUN, run.id.value)
@@ -440,7 +440,7 @@ private fun String.toReadSelectorItemType(): MemoryItemRef.Type? =
         "entity" -> MemoryItemRef.Type.ENTITY
         "claim" -> MemoryItemRef.Type.CLAIM
         "note" -> MemoryItemRef.Type.NOTE
-        "task" -> MemoryItemRef.Type.TASK
+        "action_item", "actionItem" -> MemoryItemRef.Type.ACTION_ITEM
         "profile" -> MemoryItemRef.Type.PROFILE
         "episode" -> MemoryItemRef.Type.EPISODE
         "run" -> MemoryItemRef.Type.RUN
@@ -481,7 +481,7 @@ private fun List<MemoryStore.SearchHit>.readSelectorSafetySurvivors(plan: Memory
     val modeLeaders = when (plan.answerMode) {
         MemoryReadPlan.AnswerMode.RATIONALE -> filterIsInstance<MemoryStore.SearchHit.NoteHit>() +
             filterIsInstance<MemoryStore.SearchHit.EpisodeHit>()
-        MemoryReadPlan.AnswerMode.TASK -> filterIsInstance<MemoryStore.SearchHit.TaskHit>()
+        MemoryReadPlan.AnswerMode.ACTION_ITEM -> filterIsInstance<MemoryStore.SearchHit.ActionItemHit>()
         else -> emptyList()
     }
         .sortedByReadSelectorStrength()
@@ -535,7 +535,7 @@ private fun MemoryStore.SearchHit.isActiveTypedMemory(): Boolean =
     when (this) {
         is MemoryStore.SearchHit.ClaimHit -> claim.status == MemoryClaim.Status.ACTIVE && claim.archivedAt == null
         is MemoryStore.SearchHit.NoteHit -> note.status == MemoryNote.Status.ACTIVE && note.archivedAt == null
-        is MemoryStore.SearchHit.TaskHit -> task.status in setOf(MemoryTask.Status.OPEN, MemoryTask.Status.IN_PROGRESS, MemoryTask.Status.BLOCKED) && task.archivedAt == null
+        is MemoryStore.SearchHit.ActionItemHit -> actionItem.status in setOf(MemoryActionItem.Status.OPEN, MemoryActionItem.Status.IN_PROGRESS, MemoryActionItem.Status.BLOCKED) && actionItem.archivedAt == null
         is MemoryStore.SearchHit.EpisodeHit -> episode.archivedAt == null
         is MemoryStore.SearchHit.ProfileHit -> true
         is MemoryStore.SearchHit.EntityHit -> true
@@ -548,10 +548,10 @@ private fun MemoryStore.SearchHit.readSelectorImportance(): Int =
     when (this) {
         is MemoryStore.SearchHit.ClaimHit -> claim.importance
         is MemoryStore.SearchHit.NoteHit -> note.importance
-        is MemoryStore.SearchHit.TaskHit -> when (task.priority) {
-            MemoryTask.Priority.HIGH -> 9
-            MemoryTask.Priority.NORMAL -> 6
-            MemoryTask.Priority.LOW -> 3
+        is MemoryStore.SearchHit.ActionItemHit -> when (actionItem.priority) {
+            MemoryActionItem.Priority.HIGH -> 9
+            MemoryActionItem.Priority.NORMAL -> 6
+            MemoryActionItem.Priority.LOW -> 3
         }
         is MemoryStore.SearchHit.EpisodeHit -> ((episode.successScore ?: 0.5) * 10).toInt()
         is MemoryStore.SearchHit.ProfileHit -> 7

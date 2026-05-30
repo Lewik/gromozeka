@@ -244,7 +244,7 @@ class MemoryMessageRoutingApplicationService(
                             "route=${sectionResult.routeDecision.decision.name} retrieved=${sectionResult.retrievedHits.size} " +
                             "entityOps=${sectionResult.entityOps.size} " +
                             "notes=${sectionResult.memoryBatch.notes.size} claims=${sectionResult.memoryBatch.claims.size} " +
-                            "tasks=${sectionResult.memoryBatch.tasks.size} runs=${sectionResult.memoryBatch.runs.size}"
+                            "actionItems=${sectionResult.memoryBatch.actionItems.size} runs=${sectionResult.memoryBatch.runs.size}"
                     }
                 }.onFailure { error ->
                     log.warn(error) {
@@ -264,7 +264,7 @@ class MemoryMessageRoutingApplicationService(
                     "splits=${result.splitCount} failures=${result.failedSections.size} results=${result.results.size} " +
                     "notes=${result.results.sumOf { it.memoryBatch.notes.size }} " +
                     "claims=${result.results.sumOf { it.memoryBatch.claims.size }} " +
-                    "tasks=${result.results.sumOf { it.memoryBatch.tasks.size }}"
+                    "actionItems=${result.results.sumOf { it.memoryBatch.actionItems.size }}"
             }
             result
         }
@@ -359,7 +359,7 @@ class MemoryMessageRoutingApplicationService(
             "Memory pasted document routed: $logContext parentRun=${parentRun.id.value} " +
                 "sections=${sections.size} completed=${completedResults.size} " +
                 "adaptiveSplits=$adaptiveSplits failures=${sectionFailures.size} " +
-                "notes=${aggregate.memoryBatch.notes.size} claims=${aggregate.memoryBatch.claims.size} tasks=${aggregate.memoryBatch.tasks.size}"
+                "notes=${aggregate.memoryBatch.notes.size} claims=${aggregate.memoryBatch.claims.size} actionItems=${aggregate.memoryBatch.actionItems.size}"
         }
 
         return aggregate
@@ -464,8 +464,8 @@ class MemoryMessageRoutingApplicationService(
                 runtimeSystemPrompts = runtimeSystemPrompts,
                 runtimeTools = runtimeTools,
             ),
-            taskUpdater = LlmMemoryTaskUpdater(
-                runtime = runtimes.runtimeFor(AiRuntimeAssignment.Purpose.MEMORY_WRITE_TASK_UPDATER),
+            actionItemUpdater = LlmMemoryActionItemUpdater(
+                runtime = runtimes.runtimeFor(AiRuntimeAssignment.Purpose.MEMORY_WRITE_ACTION_ITEM_UPDATER),
                 timezone = TimeZone.currentSystemDefault().id,
                 runtimeSystemPrompts = runtimeSystemPrompts,
                 runtimeTools = runtimeTools,
@@ -507,7 +507,7 @@ class MemoryMessageRoutingApplicationService(
                     "entityOps=${result.entityOps.size} entityActions=${result.entityOps.entityActionsForLog()} " +
                     "noteCandidates=${result.noteCandidates.size} noteOps=${result.noteOps.size} " +
                     "claimCandidates=${result.claimCandidates.size} claimPredicates=${result.claimCandidates.claimPredicatesForLog()} " +
-                    "taskOps=${result.taskOps.size}"
+                    "actionItemOps=${result.actionItemOps.size}"
             }
             traceContext?.let { trace ->
                 writeTraceSinks.forEach { sink ->
@@ -625,8 +625,8 @@ class MemoryMessageRoutingApplicationService(
             claimCandidates = flatMap { it.claimCandidates },
             rawClaimOps = flatMap { it.rawClaimOps },
             claimOps = flatMap { it.claimOps },
-            rawTaskOps = flatMap { it.rawTaskOps },
-            taskOps = flatMap { it.taskOps },
+            rawActionItemOps = flatMap { it.rawActionItemOps },
+            actionItemOps = flatMap { it.actionItemOps },
             memoryBatch = aggregateBatch,
         )
     }
@@ -691,7 +691,7 @@ private fun List<MemoryStore.SearchHit>.breakdownForLog(): String {
             is MemoryStore.SearchHit.EntityHit -> "entity"
             is MemoryStore.SearchHit.ClaimHit -> "claim"
             is MemoryStore.SearchHit.NoteHit -> "note"
-            is MemoryStore.SearchHit.TaskHit -> "task"
+            is MemoryStore.SearchHit.ActionItemHit -> "actionItem"
             is MemoryStore.SearchHit.ProfileHit -> "profile"
             is MemoryStore.SearchHit.EpisodeHit -> "episode"
             is MemoryStore.SearchHit.RunHit -> "run"
@@ -740,7 +740,7 @@ private operator fun MemoryUpdateBatch.plus(other: MemoryUpdateBatch): MemoryUpd
         entities = entities + other.entities,
         claims = claims + other.claims,
         notes = notes + other.notes,
-        tasks = tasks + other.tasks,
+        actionItems = actionItems + other.actionItems,
         profiles = profiles + other.profiles,
         episodes = episodes + other.episodes,
         embeddings = embeddings + other.embeddings,

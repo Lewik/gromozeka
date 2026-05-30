@@ -13,7 +13,7 @@ import com.gromozeka.domain.model.memory.MemoryNamespaceSnapshot
 import com.gromozeka.domain.model.memory.MemoryNote
 import com.gromozeka.domain.model.memory.MemoryRun
 import com.gromozeka.domain.model.memory.MemoryStore
-import com.gromozeka.domain.model.memory.MemoryTask
+import com.gromozeka.domain.model.memory.MemoryActionItem
 import com.gromozeka.domain.model.memory.MemoryUpdateBatch
 import klog.KLoggers
 import kotlinx.datetime.Instant
@@ -85,7 +85,7 @@ class MemoryEntityMaintenancePipeline(
         log.info {
             "Memory entity maintenance completed: namespace=${request.namespace.value} groups=${candidateGroups.size} " +
                 "actions=${plan.actions.size} appliedRuns=${memoryBatch.runs.size} appliedEntities=${memoryBatch.entities.size} " +
-                "appliedClaims=${memoryBatch.claims.size} appliedNotes=${memoryBatch.notes.size} appliedTasks=${memoryBatch.tasks.size} " +
+                "appliedClaims=${memoryBatch.claims.size} appliedNotes=${memoryBatch.notes.size} appliedTasks=${memoryBatch.actionItems.size} " +
                 "appliedProfiles=${memoryBatch.profiles.size} appliedEpisodes=${memoryBatch.episodes.size} " +
                 "summary=${plan.summary.oneLineForEntityMaintenancePipelineLog(500)}"
         }
@@ -196,7 +196,7 @@ class MemoryEntityMaintenancePipeline(
         val entityUpdates = mutableMapOf<MemoryEntity.Id, MemoryEntity>()
         val claimUpdates = mutableMapOf<MemoryClaim.Id, MemoryClaim>()
         val noteUpdates = mutableMapOf<MemoryNote.Id, MemoryNote>()
-        val taskUpdates = mutableMapOf<MemoryTask.Id, MemoryTask>()
+        val taskUpdates = mutableMapOf<MemoryActionItem.Id, MemoryActionItem>()
         val episodeUpdates = mutableMapOf<MemoryEpisode.Id, MemoryEpisode>()
         val mergeMap = mutableMapOf<MemoryEntity.Id, MemoryEntity.Id>()
 
@@ -259,7 +259,7 @@ class MemoryEntityMaintenancePipeline(
             entities = entityUpdates.values.toList(),
             claims = claimUpdates.values.toList(),
             notes = noteUpdates.values.toList(),
-            tasks = taskUpdates.values.toList(),
+            actionItems = taskUpdates.values.toList(),
             episodes = episodeUpdates.values.toList(),
         )
     }
@@ -272,7 +272,7 @@ class MemoryEntityMaintenancePipeline(
         entityUpdates: MutableMap<MemoryEntity.Id, MemoryEntity>,
         claimUpdates: MutableMap<MemoryClaim.Id, MemoryClaim>,
         noteUpdates: MutableMap<MemoryNote.Id, MemoryNote>,
-        taskUpdates: MutableMap<MemoryTask.Id, MemoryTask>,
+        taskUpdates: MutableMap<MemoryActionItem.Id, MemoryActionItem>,
         episodeUpdates: MutableMap<MemoryEpisode.Id, MemoryEpisode>,
         mergeMap: MutableMap<MemoryEntity.Id, MemoryEntity.Id>,
     ): List<AppliedEntityMaintenanceOp> =
@@ -341,7 +341,7 @@ class MemoryEntityMaintenancePipeline(
         entityUpdates: MutableMap<MemoryEntity.Id, MemoryEntity>,
         claimUpdates: MutableMap<MemoryClaim.Id, MemoryClaim>,
         noteUpdates: MutableMap<MemoryNote.Id, MemoryNote>,
-        taskUpdates: MutableMap<MemoryTask.Id, MemoryTask>,
+        taskUpdates: MutableMap<MemoryActionItem.Id, MemoryActionItem>,
         episodeUpdates: MutableMap<MemoryEpisode.Id, MemoryEpisode>,
         mergeMap: MutableMap<MemoryEntity.Id, MemoryEntity.Id>,
     ): List<AppliedEntityMaintenanceOp> {
@@ -479,25 +479,25 @@ private fun relinkTasks(
     loserIds: Set<MemoryEntity.Id>,
     winnerId: MemoryEntity.Id,
     completedAt: Instant,
-    taskUpdates: MutableMap<MemoryTask.Id, MemoryTask>,
+    taskUpdates: MutableMap<MemoryActionItem.Id, MemoryActionItem>,
 ): List<AppliedEntityMaintenanceOp> =
-    snapshot.tasks.mapNotNull { original ->
-        val task = taskUpdates[original.id] ?: original
-        val owner = task.ownerEntityId?.replaceEntity(loserIds, winnerId)
-        val assignee = task.assigneeEntityId?.replaceEntity(loserIds, winnerId)
-        val related = task.relatedEntityIds
+    snapshot.actionItems.mapNotNull { original ->
+        val actionItem = taskUpdates[original.id] ?: original
+        val owner = actionItem.ownerEntityId?.replaceEntity(loserIds, winnerId)
+        val assignee = actionItem.assigneeEntityId?.replaceEntity(loserIds, winnerId)
+        val related = actionItem.relatedEntityIds
             .map { it.replaceEntity(loserIds, winnerId) }
             .distinct()
-        if (owner == task.ownerEntityId && assignee == task.assigneeEntityId && related == task.relatedEntityIds) {
+        if (owner == actionItem.ownerEntityId && assignee == actionItem.assigneeEntityId && related == actionItem.relatedEntityIds) {
             return@mapNotNull null
         }
-        taskUpdates[task.id] = task.copy(
+        taskUpdates[actionItem.id] = actionItem.copy(
             ownerEntityId = owner,
             assigneeEntityId = assignee,
             relatedEntityIds = related,
             updatedAt = completedAt,
         )
-        AppliedEntityMaintenanceOp("relink_task_entity", MemoryItemRef.Type.TASK, task.id.value, "entity merge")
+        AppliedEntityMaintenanceOp("relink_task_entity", MemoryItemRef.Type.ACTION_ITEM, actionItem.id.value, "entity merge")
     }
 
 private fun relinkEpisodes(
@@ -799,7 +799,7 @@ private fun MemoryUpdateBatch.isNotEmptyForEntityMaintenance(): Boolean =
         entities.isNotEmpty() ||
         claims.isNotEmpty() ||
         notes.isNotEmpty() ||
-        tasks.isNotEmpty() ||
+        actionItems.isNotEmpty() ||
         profiles.isNotEmpty() ||
         episodes.isNotEmpty() ||
         embeddings.isNotEmpty()
@@ -812,14 +812,14 @@ private operator fun MemoryUpdateBatch.plus(other: MemoryUpdateBatch): MemoryUpd
         entities = entities + other.entities,
         claims = claims + other.claims,
         notes = notes + other.notes,
-        tasks = tasks + other.tasks,
+        actionItems = actionItems + other.actionItems,
         profiles = profiles + other.profiles,
         episodes = episodes + other.episodes,
         embeddings = embeddings + other.embeddings,
     )
 
 private fun MemoryNamespaceSnapshot.countsForEntityMaintenanceLog(): String =
-    "sources=${sources.size},runs=${runs.size},entities=${entities.size},claims=${claims.size},notes=${notes.size},tasks=${tasks.size},profiles=${profiles.size},episodes=${episodes.size}"
+    "sources=${sources.size},runs=${runs.size},entities=${entities.size},claims=${claims.size},notes=${notes.size},actionItems=${actionItems.size},profiles=${profiles.size},episodes=${episodes.size}"
 
 private fun String.normalizeEntityMaintenanceText(): String =
     splitCamelCaseForEntityMaintenance()

@@ -13,7 +13,7 @@ import com.gromozeka.domain.model.memory.MemoryRouteDecision
 import com.gromozeka.domain.model.memory.MemoryRun
 import com.gromozeka.domain.model.memory.MemorySource
 import com.gromozeka.domain.model.memory.MemoryStore
-import com.gromozeka.domain.model.memory.MemoryTask
+import com.gromozeka.domain.model.memory.MemoryActionItem
 import com.gromozeka.domain.model.memory.MemoryUpdateBatch
 import klog.KLoggers
 import kotlinx.datetime.Instant
@@ -83,7 +83,7 @@ class ExplicitMemoryForgetPipeline(
             "Memory forget completed: namespace=${request.namespace.value} source=${request.source.id.value} " +
                 "candidates=${candidates.size} actions=${plan.forgetActions.size} appliedRuns=${memoryBatch.runs.size} " +
                 "appliedSources=${memoryBatch.sources.size} appliedClaims=${memoryBatch.claims.size} appliedNotes=${memoryBatch.notes.size} " +
-                "appliedTasks=${memoryBatch.tasks.size} appliedProfiles=${memoryBatch.profiles.size} " +
+                "appliedTasks=${memoryBatch.actionItems.size} appliedProfiles=${memoryBatch.profiles.size} " +
                 "summary=${plan.summary.oneLineForForgetPipelineLog(500)}"
         }
 
@@ -116,7 +116,7 @@ class ExplicitMemoryForgetPipeline(
             when (hit) {
                 is MemoryStore.SearchHit.ClaimHit -> hit.claim.evidenceRefs.map { it.sourceId }
                 is MemoryStore.SearchHit.NoteHit -> hit.note.evidenceRefs.map { it.sourceId }
-                is MemoryStore.SearchHit.TaskHit -> hit.task.evidenceRefs.map { it.sourceId }
+                is MemoryStore.SearchHit.ActionItemHit -> hit.actionItem.evidenceRefs.map { it.sourceId }
                 is MemoryStore.SearchHit.EpisodeHit -> hit.episode.evidenceRefs.map { it.sourceId }
                 is MemoryStore.SearchHit.SourceHit -> listOf(hit.source.id)
                 is MemoryStore.SearchHit.EntityHit,
@@ -149,7 +149,7 @@ class ExplicitMemoryForgetPipeline(
         val forgottenSources = mutableMapOf<MemorySource.Id, MemorySource>()
         val forgottenClaims = mutableMapOf<MemoryClaim.Id, MemoryClaim>()
         val forgottenNotes = mutableMapOf<MemoryNote.Id, MemoryNote>()
-        val forgottenTasks = mutableMapOf<MemoryTask.Id, MemoryTask>()
+        val forgottenActionItems = mutableMapOf<MemoryActionItem.Id, MemoryActionItem>()
         val forgottenEpisodes = mutableMapOf<MemoryEpisode.Id, MemoryEpisode>()
 
         val appliedOps = buildJsonArray {
@@ -163,7 +163,7 @@ class ExplicitMemoryForgetPipeline(
                     forgottenSources = forgottenSources,
                     forgottenClaims = forgottenClaims,
                     forgottenNotes = forgottenNotes,
-                    forgottenTasks = forgottenTasks,
+                    forgottenActionItems = forgottenActionItems,
                     forgottenEpisodes = forgottenEpisodes,
                 )
                 applied.forEach { op ->
@@ -197,7 +197,7 @@ class ExplicitMemoryForgetPipeline(
             runs = listOf(run),
             claims = forgottenClaims.values.toList(),
             notes = forgottenNotes.values.toList(),
-            tasks = forgottenTasks.values.toList(),
+            actionItems = forgottenActionItems.values.toList(),
             episodes = forgottenEpisodes.values.toList(),
         )
     }
@@ -211,7 +211,7 @@ class ExplicitMemoryForgetPipeline(
         forgottenSources: MutableMap<MemorySource.Id, MemorySource>,
         forgottenClaims: MutableMap<MemoryClaim.Id, MemoryClaim>,
         forgottenNotes: MutableMap<MemoryNote.Id, MemoryNote>,
-        forgottenTasks: MutableMap<MemoryTask.Id, MemoryTask>,
+        forgottenActionItems: MutableMap<MemoryActionItem.Id, MemoryActionItem>,
         forgottenEpisodes: MutableMap<MemoryEpisode.Id, MemoryEpisode>,
     ): List<AppliedForgetOp> {
         if (action.action == MemoryForgetPlan.Action.Type.NOOP) {
@@ -241,7 +241,7 @@ class ExplicitMemoryForgetPipeline(
                 snapshot = snapshot,
                 forgottenClaims = forgottenClaims,
                 forgottenNotes = forgottenNotes,
-                forgottenTasks = forgottenTasks,
+                forgottenActionItems = forgottenActionItems,
                 forgottenEpisodes = forgottenEpisodes,
             )
 
@@ -272,7 +272,7 @@ class ExplicitMemoryForgetPipeline(
         snapshot: MemoryNamespaceSnapshot,
         forgottenClaims: MutableMap<MemoryClaim.Id, MemoryClaim>,
         forgottenNotes: MutableMap<MemoryNote.Id, MemoryNote>,
-        forgottenTasks: MutableMap<MemoryTask.Id, MemoryTask>,
+        forgottenActionItems: MutableMap<MemoryActionItem.Id, MemoryActionItem>,
         forgottenEpisodes: MutableMap<MemoryEpisode.Id, MemoryEpisode>,
     ): List<AppliedForgetOp> =
         when (action.targetType) {
@@ -290,11 +290,11 @@ class ExplicitMemoryForgetPipeline(
                     AppliedForgetOp("archive_note", MemoryItemRef.Type.NOTE, note.id.value, action.reason)
                 }
 
-            MemoryItemRef.Type.TASK -> action.targetIds.mapNotNull { id -> snapshot.tasks.firstOrNull { it.id.value == id } }
+            MemoryItemRef.Type.ACTION_ITEM -> action.targetIds.mapNotNull { id -> snapshot.actionItems.firstOrNull { it.id.value == id } }
                 .filter { it.archivedAt == null }
-                .map { task ->
-                    forgottenTasks[task.id] = task.copy(archivedAt = completedAt, updatedAt = completedAt)
-                    AppliedForgetOp("archive_task", MemoryItemRef.Type.TASK, task.id.value, action.reason)
+                .map { actionItem ->
+                    forgottenActionItems[actionItem.id] = actionItem.copy(archivedAt = completedAt, updatedAt = completedAt)
+                    AppliedForgetOp("archive_task", MemoryItemRef.Type.ACTION_ITEM, actionItem.id.value, action.reason)
                 }
 
             MemoryItemRef.Type.EPISODE -> action.targetIds.mapNotNull { id -> snapshot.episodes.firstOrNull { it.id.value == id } }
@@ -339,7 +339,7 @@ private fun List<MemoryStore.SearchHit>.sourceIdsForForgetRun() =
         when (hit) {
             is MemoryStore.SearchHit.ClaimHit -> hit.claim.evidenceRefs.map { it.sourceId }
             is MemoryStore.SearchHit.NoteHit -> hit.note.evidenceRefs.map { it.sourceId }
-            is MemoryStore.SearchHit.TaskHit -> hit.task.evidenceRefs.map { it.sourceId }
+            is MemoryStore.SearchHit.ActionItemHit -> hit.actionItem.evidenceRefs.map { it.sourceId }
             is MemoryStore.SearchHit.EpisodeHit -> hit.episode.evidenceRefs.map { it.sourceId }
             is MemoryStore.SearchHit.SourceHit -> listOf(hit.source.id)
             is MemoryStore.SearchHit.EntityHit,
@@ -369,7 +369,7 @@ private fun MemoryStore.SearchHit.forgetHitForLog(): String =
     when (this) {
         is MemoryStore.SearchHit.ClaimHit -> "claim:${claim.id.value}:${claim.status.name}:${claim.predicate}:${claim.normalizedText.oneLineForForgetPipelineLog(120)}"
         is MemoryStore.SearchHit.NoteHit -> "note:${note.id.value}:${note.status.name}/${note.maturity.name}:${note.title.oneLineForForgetPipelineLog(120)}"
-        is MemoryStore.SearchHit.TaskHit -> "task:${task.id.value}:${task.status.name}:${task.title.oneLineForForgetPipelineLog(120)}"
+        is MemoryStore.SearchHit.ActionItemHit -> "actionItem:${actionItem.id.value}:${actionItem.status.name}:${actionItem.title.oneLineForForgetPipelineLog(120)}"
         is MemoryStore.SearchHit.ProfileHit -> "profile:${profile.id.value}:${profile.ownerEntityId.value}"
         is MemoryStore.SearchHit.EpisodeHit -> "episode:${episode.id.value}:${episode.lesson.oneLineForForgetPipelineLog(120)}"
         is MemoryStore.SearchHit.EntityHit -> "entity:${entity.id.value}:${entity.canonicalName.oneLineForForgetPipelineLog(80)}"
@@ -384,7 +384,7 @@ private fun MemoryUpdateBatch.isNotEmptyForForget(): Boolean =
         entities.isNotEmpty() ||
         claims.isNotEmpty() ||
         notes.isNotEmpty() ||
-        tasks.isNotEmpty() ||
+        actionItems.isNotEmpty() ||
         profiles.isNotEmpty() ||
         episodes.isNotEmpty() ||
         embeddings.isNotEmpty()
@@ -397,7 +397,7 @@ private operator fun MemoryUpdateBatch.plus(other: MemoryUpdateBatch): MemoryUpd
         entities = entities + other.entities,
         claims = claims + other.claims,
         notes = notes + other.notes,
-        tasks = tasks + other.tasks,
+        actionItems = actionItems + other.actionItems,
         profiles = profiles + other.profiles,
         episodes = episodes + other.episodes,
         embeddings = embeddings + other.embeddings,

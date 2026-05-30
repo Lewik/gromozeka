@@ -85,13 +85,13 @@ object MemoryToolResultRenderer {
                     })
                 }
             }
-            putJsonArray("tasks") {
-                result.memoryBatch.tasks.take(8).forEach { task ->
+            putJsonArray("actionItems") {
+                result.memoryBatch.actionItems.take(8).forEach { actionItem ->
                     add(buildJsonObject {
-                        put("id", task.id.value)
-                        put("status", task.status.name)
-                        put("priority", task.priority.name)
-                        put("title", task.title.shortForMemoryToolResult())
+                        put("id", actionItem.id.value)
+                        put("status", actionItem.status.name)
+                        put("priority", actionItem.priority.name)
+                        put("title", actionItem.title.shortForMemoryToolResult())
                     })
                 }
             }
@@ -340,7 +340,7 @@ object MemoryToolResultRenderer {
                                 put("entities", summary.counts.entities)
                                 put("claims", summary.counts.claims)
                                 put("notes", summary.counts.notes)
-                                put("tasks", summary.counts.tasks)
+                                put("actionItems", summary.counts.actionItems)
                                 put("profiles", summary.counts.profiles)
                                 put("episodes", summary.counts.episodes)
                             }
@@ -401,7 +401,7 @@ private fun MemoryRun.toStatusJson(
                 buildJsonObject {
                     put("claims", budget.claims)
                     put("notes", budget.notes)
-                    put("tasks", budget.tasks)
+                    put("actionItems", budget.actionItems)
                     put("sources", budget.sources)
                     put("episodes", budget.episodes)
                 }
@@ -444,7 +444,7 @@ private fun List<MemoryUpdateBatch>.aggregateCountsJson() =
         put("entities", sumOf { it.entities.size })
         put("claims", sumOf { it.claims.size })
         put("notes", sumOf { it.notes.size })
-        put("tasks", sumOf { it.tasks.size })
+        put("actionItems", sumOf { it.actionItems.size })
         put("profiles", sumOf { it.profiles.size })
         put("episodes", sumOf { it.episodes.size })
         put("embeddings", sumOf { it.embeddings.size })
@@ -458,7 +458,7 @@ private fun MemoryUpdateBatch.toCountsJson() =
         put("entities", entities.size)
         put("claims", claims.size)
         put("notes", notes.size)
-        put("tasks", tasks.size)
+        put("actionItems", actionItems.size)
         put("profiles", profiles.size)
         put("episodes", episodes.size)
         put("embeddings", embeddings.size)

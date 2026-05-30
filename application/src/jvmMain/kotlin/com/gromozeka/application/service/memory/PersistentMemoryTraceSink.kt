@@ -196,7 +196,7 @@ class PersistentMemoryTraceSink(
     private fun DirectStructuredMemoryWriteResult.writeTraceSummary(): String =
         "Memory write trace: decision=${routeDecision.decision.name} types=${routeDecision.memoryTypes.joinToString("|") { it.name }} " +
             "retrieved=${retrievedHits.size} entities=${entityOps.size} notes=${memoryBatch.notes.size} " +
-            "claims=${memoryBatch.claims.size} tasks=${memoryBatch.tasks.size} profiles=${memoryBatch.profiles.size} episodes=${memoryBatch.episodes.size}"
+            "claims=${memoryBatch.claims.size} actionItems=${memoryBatch.actionItems.size} profiles=${memoryBatch.profiles.size} episodes=${memoryBatch.episodes.size}"
 
     private fun MemoryMaintenanceTraceEvent.maintenanceTraceSummary(): String =
         when (val payload = payload) {
@@ -252,8 +252,8 @@ class PersistentMemoryTraceSink(
             put("claimCandidates", traceJson.encodeToJsonElement(result.claimCandidates))
             put("rawClaimOps", traceJson.encodeToJsonElement(result.rawClaimOps))
             put("claimOps", traceJson.encodeToJsonElement(result.claimOps))
-            put("rawTaskOps", traceJson.encodeToJsonElement(result.rawTaskOps))
-            put("taskOps", traceJson.encodeToJsonElement(result.taskOps))
+            put("rawActionItemOps", traceJson.encodeToJsonElement(result.rawActionItemOps))
+            put("actionItemOps", traceJson.encodeToJsonElement(result.actionItemOps))
             put("memoryBatch", result.memoryBatch.toTraceBatchJson(includeSourcePreviews = false))
         }
 
@@ -468,9 +468,9 @@ class PersistentMemoryTraceSink(
                     put("maturity", note.maturity.name)
                 }
 
-                is MemoryStore.SearchHit.TaskHit -> {
-                    put("status", task.status.name)
-                    put("priority", task.priority.name)
+                is MemoryStore.SearchHit.ActionItemHit -> {
+                    put("status", actionItem.status.name)
+                    put("priority", actionItem.priority.name)
                 }
 
                 is MemoryStore.SearchHit.ProfileHit -> {
@@ -496,7 +496,7 @@ class PersistentMemoryTraceSink(
             is MemoryStore.SearchHit.EntityHit -> listOfNotNull(entity.canonicalName, entity.summary).joinToString(": ").oneLineTrace(900)
             is MemoryStore.SearchHit.ClaimHit -> claim.normalizedText.oneLineTrace(900)
             is MemoryStore.SearchHit.NoteHit -> "${note.title}: ${note.summary}".oneLineTrace(900)
-            is MemoryStore.SearchHit.TaskHit -> "${task.title}: ${task.description.orEmpty()}".oneLineTrace(900)
+            is MemoryStore.SearchHit.ActionItemHit -> "${actionItem.title}: ${actionItem.description.orEmpty()}".oneLineTrace(900)
             is MemoryStore.SearchHit.ProfileHit -> profile.profileText.oneLineTrace(900)
             is MemoryStore.SearchHit.EpisodeHit -> "situation=${episode.situation}; action=${episode.action}; result=${episode.result}; lesson=${episode.lesson}".oneLineTrace(900)
             is MemoryStore.SearchHit.RunHit -> run.summary.oneLineTrace(900)
@@ -508,7 +508,7 @@ class PersistentMemoryTraceSink(
             is MemoryStore.SearchHit.EntityHit -> MemoryItemRef(MemoryItemRef.Type.ENTITY, entity.id.value)
             is MemoryStore.SearchHit.ClaimHit -> MemoryItemRef(MemoryItemRef.Type.CLAIM, claim.id.value)
             is MemoryStore.SearchHit.NoteHit -> MemoryItemRef(MemoryItemRef.Type.NOTE, note.id.value)
-            is MemoryStore.SearchHit.TaskHit -> MemoryItemRef(MemoryItemRef.Type.TASK, task.id.value)
+            is MemoryStore.SearchHit.ActionItemHit -> MemoryItemRef(MemoryItemRef.Type.ACTION_ITEM, actionItem.id.value)
             is MemoryStore.SearchHit.ProfileHit -> MemoryItemRef(MemoryItemRef.Type.PROFILE, profile.id.value)
             is MemoryStore.SearchHit.EpisodeHit -> MemoryItemRef(MemoryItemRef.Type.EPISODE, episode.id.value)
             is MemoryStore.SearchHit.RunHit -> MemoryItemRef(MemoryItemRef.Type.RUN, run.id.value)
@@ -541,7 +541,7 @@ class PersistentMemoryTraceSink(
             put("entities", entities.size)
             put("claims", claims.size)
             put("notes", notes.size)
-            put("tasks", tasks.size)
+            put("actionItems", actionItems.size)
             put("profiles", profiles.size)
             put("episodes", episodes.size)
             put("embeddings", embeddings.size)
@@ -554,7 +554,7 @@ class PersistentMemoryTraceSink(
             putJsonArray("entities") { entities.forEach { add(JsonPrimitive(it.id.value)) } }
             putJsonArray("claims") { claims.forEach { add(JsonPrimitive(it.id.value)) } }
             putJsonArray("notes") { notes.forEach { add(JsonPrimitive(it.id.value)) } }
-            putJsonArray("tasks") { tasks.forEach { add(JsonPrimitive(it.id.value)) } }
+            putJsonArray("actionItems") { actionItems.forEach { add(JsonPrimitive(it.id.value)) } }
             putJsonArray("profiles") { profiles.forEach { add(JsonPrimitive(it.id.value)) } }
             putJsonArray("episodes") { episodes.forEach { add(JsonPrimitive(it.id.value)) } }
             putJsonArray("embeddings") { embeddings.forEach { add(JsonPrimitive(it.id.value)) } }
@@ -577,7 +577,7 @@ class PersistentMemoryTraceSink(
             addMany("entity", entities.map { it.id.value })
             addMany("claim", claims.map { it.id.value })
             addMany("note", notes.map { it.id.value })
-            addMany("task", tasks.map { it.id.value })
+            addMany("actionItem", actionItems.map { it.id.value })
             addMany("profile", profiles.map { it.id.value })
             addMany("episode", episodes.map { it.id.value })
             addMany("embedding", embeddings.map { it.id.value })
@@ -680,7 +680,7 @@ class PersistentMemoryTraceSink(
         }
 
     private fun MemoryUpdateBatch.countsForTraceSummary(): String =
-        "runs=${runs.size} entities=${entities.size} claims=${claims.size} notes=${notes.size} tasks=${tasks.size} profiles=${profiles.size} episodes=${episodes.size} embeddings=${embeddings.size}"
+        "runs=${runs.size} entities=${entities.size} claims=${claims.size} notes=${notes.size} actionItems=${actionItems.size} profiles=${profiles.size} episodes=${episodes.size} embeddings=${embeddings.size}"
 
     private fun String.oneLineTrace(maxChars: Int): String =
         replace(Regex("\\s+"), " ").trim().let { text ->

@@ -142,7 +142,7 @@ object MemoryPredicateCatalogDefaults {
             temporalPolicy = MemoryPredicateDefinition.TemporalPolicy.STATUS_LIKE,
             conflictPolicy = MemoryPredicateDefinition.ConflictPolicy.COEXIST,
             profileSync = true,
-            taskSync = true,
+            actionItemSync = true,
             defaultImportance = 8,
         ),
         definition(
@@ -174,7 +174,7 @@ object MemoryPredicateCatalogDefaults {
             temporalPolicy = MemoryPredicateDefinition.TemporalPolicy.TIME_SCOPED,
             conflictPolicy = MemoryPredicateDefinition.ConflictPolicy.RANGE_SPLIT,
             profileSync = true,
-            taskSync = true,
+            actionItemSync = true,
             defaultImportance = 7,
         ),
         definition(
@@ -250,7 +250,7 @@ object MemoryPredicateCatalogDefaults {
         temporalPolicy: MemoryPredicateDefinition.TemporalPolicy,
         conflictPolicy: MemoryPredicateDefinition.ConflictPolicy,
         profileSync: Boolean = false,
-        taskSync: Boolean = false,
+        actionItemSync: Boolean = false,
         defaultImportance: Int,
     ): MemoryPredicateDefinition =
         MemoryPredicateDefinition(
@@ -262,7 +262,7 @@ object MemoryPredicateCatalogDefaults {
             temporalPolicy = temporalPolicy,
             conflictPolicy = conflictPolicy,
             profileSync = profileSync,
-            taskSync = taskSync,
+            actionItemSync = actionItemSync,
             defaultImportance = defaultImportance,
         )
 }

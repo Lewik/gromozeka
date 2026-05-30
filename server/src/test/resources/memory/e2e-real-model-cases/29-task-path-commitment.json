@@ -27,10 +27,10 @@
           "memoryTraceExpectation": {
             "needMemory": true,
             "injectedPromptPresent": true,
-            "selectedTasksMin": 1,
+            "selectedActionItemsMin": 1,
             "selectedContainsAll": ["task memory", "OPEN"],
             "injectedPromptContainsAll": ["task memory", "memory MVP stable"],
-            "requiredSelectedTasks": [
+            "requiredSelectedActionItems": [
               {
                 "statusIn": ["OPEN"],
                 "containsAll": ["task memory", "e2e", "memory MVP stable"],
@@ -45,10 +45,10 @@
   "expectedAfterSeeds": {
     "activeClaimsMax": 2,
     "notesMax": 1,
-    "tasksMin": 1,
-    "tasksMax": 1,
+    "actionItemsMin": 1,
+    "actionItemsMax": 1,
     "userSourcesMin": 1,
-    "requiredTasks": [
+    "requiredActionItems": [
       {
         "statusIn": ["OPEN"],
         "titleContainsAll": ["task memory"],
@@ -62,10 +62,10 @@
   "expectedFinal": {
     "activeClaimsMax": 2,
     "notesMax": 1,
-    "tasksMin": 1,
-    "tasksMax": 1,
+    "actionItemsMin": 1,
+    "actionItemsMax": 1,
     "userSourcesMin": 2,
-    "requiredTasks": [
+    "requiredActionItems": [
       {
         "statusIn": ["OPEN"],
         "containsAll": ["task memory", "e2e", "memory MVP stable"],

@@ -12,7 +12,7 @@ import com.gromozeka.domain.model.memory.MemoryNote
 import com.gromozeka.domain.model.memory.MemoryProfile
 import com.gromozeka.domain.model.memory.MemorySource
 import com.gromozeka.domain.model.memory.MemoryStore
-import com.gromozeka.domain.model.memory.MemoryTask
+import com.gromozeka.domain.model.memory.MemoryActionItem
 import com.gromozeka.domain.model.memory.MemoryUpdateBatch
 import com.gromozeka.domain.service.AiEmbeddingProvider
 import com.gromozeka.domain.service.AiEmbeddingRequest
@@ -152,7 +152,7 @@ class DefaultMemoryEmbeddingIndexer(
             entities = snapshot.entities,
             claims = snapshot.claims,
             notes = snapshot.notes,
-            tasks = snapshot.tasks,
+            actionItems = snapshot.actionItems,
             profiles = snapshot.profiles,
             episodes = snapshot.episodes,
         )
@@ -175,7 +175,7 @@ class DefaultMemoryEmbeddingIndexer(
             entities = snapshot.entities,
             claims = snapshot.claims,
             notes = snapshot.notes,
-            tasks = snapshot.tasks,
+            actionItems = snapshot.actionItems,
             profiles = snapshot.profiles,
             episodes = snapshot.episodes,
         )
@@ -463,12 +463,12 @@ private fun MemoryUpdateBatch.toEmbeddingInputs(
                 )
             }
         }
-        tasks.mapNotNullTo(this) {
+        actionItems.mapNotNullTo(this) {
             if (it.archivedAt != null) {
                 null
             } else {
                 it.toEmbeddingInput(
-                    ref = MemoryItemRef(MemoryItemRef.Type.TASK, it.id.value),
+                    ref = MemoryItemRef(MemoryItemRef.Type.ACTION_ITEM, it.id.value),
                     modelConfigurationId = modelConfigurationId,
                     providerModelId = providerModelId,
                     text = it.embeddingText(),
@@ -505,7 +505,7 @@ private fun MemoryUpdateBatch.embeddableItemCount(): Int =
         entities.size +
         claims.count { it.archivedAt == null } +
         notes.count { it.archivedAt == null } +
-        tasks.count { it.archivedAt == null } +
+        actionItems.count { it.archivedAt == null } +
         profiles.size +
         episodes.count { it.archivedAt == null }
 
@@ -541,7 +541,7 @@ private fun MemoryNote.toEmbeddingInput(
     maxInputTokens: Int?,
 ): EmbeddingInput? = toEmbeddingInput(namespace, ref, modelConfigurationId, providerModelId, text, maxInputTokens)
 
-private fun MemoryTask.toEmbeddingInput(
+private fun MemoryActionItem.toEmbeddingInput(
     ref: MemoryItemRef,
     modelConfigurationId: String,
     providerModelId: String,
@@ -626,9 +626,9 @@ private fun MemoryNote.embeddingText(): String =
         if (tags.isNotEmpty()) add("tags: ${tags.joinToString()}")
     }.joinToString("\n")
 
-private fun MemoryTask.embeddingText(): String =
+private fun MemoryActionItem.embeddingText(): String =
     buildList {
-        add("task ${status.name} ${priority.name}")
+        add("actionItem ${status.name} ${priority.name}")
         add(title)
         description?.takeIf { it.isNotBlank() }?.let { add(it) }
         add("scope: ${scope.text}")

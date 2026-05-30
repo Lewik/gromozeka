@@ -29,7 +29,7 @@
             "selectedHitsMax": 0,
             "selectedClaimsMax": 0,
             "selectedNotesMax": 0,
-            "selectedTasksMax": 0,
+            "selectedActionItemsMax": 0,
             "selectedContainsNone": ["Redis"],
             "selectorSelectedContainsNone": ["Redis", "Memory Sandbox"],
             "injectedPromptContainsAll": ["No relevant persisted memory"],
@@ -39,7 +39,7 @@
             "routeDecisionIn": ["NOOP"],
             "materializedClaimsMax": 0,
             "materializedNotesMax": 0,
-            "materializedTasksMax": 0
+            "materializedActionItemsMax": 0
           }
         }
       ]

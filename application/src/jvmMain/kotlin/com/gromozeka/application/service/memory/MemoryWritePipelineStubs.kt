@@ -22,9 +22,9 @@ import com.gromozeka.domain.model.memory.MemoryRouteDecision
 import com.gromozeka.domain.model.memory.MemoryRun
 import com.gromozeka.domain.model.memory.MemorySemanticType
 import com.gromozeka.domain.model.memory.MemoryStore
-import com.gromozeka.domain.model.memory.MemoryTask
-import com.gromozeka.domain.model.memory.MemoryTaskUpdateOp
-import com.gromozeka.domain.model.memory.MemoryTaskUpdater
+import com.gromozeka.domain.model.memory.MemoryActionItem
+import com.gromozeka.domain.model.memory.MemoryActionItemUpdateOp
+import com.gromozeka.domain.model.memory.MemoryActionItemUpdater
 import com.gromozeka.domain.model.memory.MemoryWriteRetrievalPlan
 import com.gromozeka.domain.model.memory.MemoryWriteRetrievalPlanner
 import com.gromozeka.domain.model.memory.MemoryWriteRouter
@@ -41,7 +41,7 @@ class SequentialMemoryIdFactory(
 
     override fun newNoteId(): MemoryNote.Id = MemoryNote.Id(nextId("note"))
 
-    override fun newTaskId(): MemoryTask.Id = MemoryTask.Id(nextId("task"))
+    override fun newActionItemId(): MemoryActionItem.Id = MemoryActionItem.Id(nextId("actionItem"))
 
     override fun newEpisodeId(): MemoryEpisode.Id = MemoryEpisode.Id(nextId("episode"))
 
@@ -152,14 +152,14 @@ object InsertOnlyMemoryNoteReconciler : MemoryNoteReconciler {
     }
 }
 
-class FixedMemoryTaskUpdater(
-    private val taskOps: List<MemoryTaskUpdateOp> = emptyList(),
-) : MemoryTaskUpdater {
+class FixedMemoryActionItemUpdater(
+    private val actionItemOps: List<MemoryActionItemUpdateOp> = emptyList(),
+) : MemoryActionItemUpdater {
     override suspend fun update(
         request: DirectStructuredMemoryWriteRequest,
         routeDecision: MemoryRouteDecision,
         retrievalPlan: MemoryWriteRetrievalPlan,
         retrievedHits: List<MemoryStore.SearchHit>,
         entityOps: List<MemoryEntityCanonicalizationOp>,
-    ): List<MemoryTaskUpdateOp> = taskOps
+    ): List<MemoryActionItemUpdateOp> = actionItemOps
 }

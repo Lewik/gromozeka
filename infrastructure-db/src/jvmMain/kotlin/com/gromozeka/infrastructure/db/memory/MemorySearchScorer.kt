@@ -7,7 +7,7 @@ import com.gromozeka.domain.model.memory.MemoryNote
 import com.gromozeka.domain.model.memory.MemoryProfile
 import com.gromozeka.domain.model.memory.MemoryRun
 import com.gromozeka.domain.model.memory.MemorySource
-import com.gromozeka.domain.model.memory.MemoryTask
+import com.gromozeka.domain.model.memory.MemoryActionItem
 
 internal object MemorySearchScorer {
     fun hybridScore(
@@ -86,26 +86,26 @@ internal object MemorySearchScorer {
 
     fun taskScore(
         query: String,
-        task: MemoryTask,
+        actionItem: MemoryActionItem,
         linkedEntities: List<MemoryEntity>,
     ): Double =
         typedScore(
             query = query,
             base = 0.10,
-            importance = when (task.priority) {
-                MemoryTask.Priority.HIGH -> 8
-                MemoryTask.Priority.NORMAL -> 5
-                MemoryTask.Priority.LOW -> 3
+            importance = when (actionItem.priority) {
+                MemoryActionItem.Priority.HIGH -> 8
+                MemoryActionItem.Priority.NORMAL -> 5
+                MemoryActionItem.Priority.LOW -> 3
             },
-            confidence = task.confidence,
-            weighted(task.title, 1.5),
-            weighted(task.description.orEmpty(), 1.2),
-            weighted(task.status.name, 0.5),
-            weighted(task.priority.name, 0.4),
-            weighted(task.acceptanceCriteria.joinToString(" "), 1.0),
-            weighted(task.blockers.joinToString(" "), 0.9),
+            confidence = actionItem.confidence,
+            weighted(actionItem.title, 1.5),
+            weighted(actionItem.description.orEmpty(), 1.2),
+            weighted(actionItem.status.name, 0.5),
+            weighted(actionItem.priority.name, 0.4),
+            weighted(actionItem.acceptanceCriteria.joinToString(" "), 1.0),
+            weighted(actionItem.blockers.joinToString(" "), 0.9),
             weighted(linkedEntities.joinToString(" ") { it.searchText() }, 1.2),
-            weighted(task.scope.text, 0.4),
+            weighted(actionItem.scope.text, 0.4),
         )
 
     fun profileScore(

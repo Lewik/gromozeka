@@ -10,7 +10,7 @@ import com.gromozeka.domain.model.memory.MemoryRetentionPlan
 import com.gromozeka.domain.model.memory.MemoryRetentionPlanner
 import com.gromozeka.domain.model.memory.MemoryRun
 import com.gromozeka.domain.model.memory.MemoryStore
-import com.gromozeka.domain.model.memory.MemoryTask
+import com.gromozeka.domain.model.memory.MemoryActionItem
 import com.gromozeka.domain.model.memory.MemoryUpdateBatch
 import klog.KLoggers
 import kotlinx.datetime.Instant
@@ -59,7 +59,7 @@ class MemoryRetentionPipeline(
         log.info {
             "Memory retention completed: namespace=${request.namespace.value} candidates=${candidates.size} " +
                 "actions=${plan.retentionActions.size} appliedRuns=${batch.runs.size} appliedClaims=${batch.claims.size} " +
-                "appliedNotes=${batch.notes.size} appliedTasks=${batch.tasks.size} " +
+                "appliedNotes=${batch.notes.size} appliedTasks=${batch.actionItems.size} " +
                 "summary=${plan.summary.oneLineForRetentionPipelineLog(500)}"
         }
 
@@ -82,7 +82,7 @@ class MemoryRetentionPipeline(
         val candidateRefs = candidates.mapTo(mutableSetOf()) { it.toRetentionItemRef() }
         val retainedClaims = mutableMapOf<MemoryClaim.Id, MemoryClaim>()
         val retainedNotes = mutableMapOf<MemoryNote.Id, MemoryNote>()
-        val retainedTasks = mutableMapOf<MemoryTask.Id, MemoryTask>()
+        val retainedActionItems = mutableMapOf<MemoryActionItem.Id, MemoryActionItem>()
 
         val appliedOps = buildJsonArray {
             plan.retentionActions.forEach { action ->
@@ -93,7 +93,7 @@ class MemoryRetentionPipeline(
                     candidateRefs = candidateRefs,
                     retainedClaims = retainedClaims,
                     retainedNotes = retainedNotes,
-                    retainedTasks = retainedTasks,
+                    retainedActionItems = retainedActionItems,
                 )
                 applied.forEach { op ->
                     add(buildJsonObject {
@@ -125,7 +125,7 @@ class MemoryRetentionPipeline(
             runs = listOf(run),
             claims = retainedClaims.values.toList(),
             notes = retainedNotes.values.toList(),
-            tasks = retainedTasks.values.toList(),
+            actionItems = retainedActionItems.values.toList(),
         )
     }
 
@@ -136,7 +136,7 @@ class MemoryRetentionPipeline(
         candidateRefs: Set<MemoryItemRef>,
         retainedClaims: MutableMap<MemoryClaim.Id, MemoryClaim>,
         retainedNotes: MutableMap<MemoryNote.Id, MemoryNote>,
-        retainedTasks: MutableMap<MemoryTask.Id, MemoryTask>,
+        retainedActionItems: MutableMap<MemoryActionItem.Id, MemoryActionItem>,
     ): List<AppliedRetentionOp> {
         if (action.action == MemoryRetentionPlan.Action.Type.NOOP ||
             action.action == MemoryRetentionPlan.Action.Type.KEEP
@@ -155,7 +155,7 @@ class MemoryRetentionPipeline(
         return when (action.targetType) {
             MemoryItemRef.Type.CLAIM -> archiveClaimsIfSafe(action, completedAt, snapshot, retainedClaims)
             MemoryItemRef.Type.NOTE -> archiveNotesIfSafe(action, completedAt, snapshot, retainedNotes)
-            MemoryItemRef.Type.TASK -> archiveTasksIfSafe(action, completedAt, snapshot, retainedTasks)
+            MemoryItemRef.Type.ACTION_ITEM -> archiveTasksIfSafe(action, completedAt, snapshot, retainedActionItems)
             MemoryItemRef.Type.PROFILE,
             MemoryItemRef.Type.ENTITY,
             MemoryItemRef.Type.EPISODE,
@@ -195,13 +195,13 @@ class MemoryRetentionPipeline(
         action: MemoryRetentionPlan.Action,
         completedAt: Instant,
         snapshot: MemoryNamespaceSnapshot,
-        retainedTasks: MutableMap<MemoryTask.Id, MemoryTask>,
+        retainedActionItems: MutableMap<MemoryActionItem.Id, MemoryActionItem>,
     ): List<AppliedRetentionOp> =
-        action.targetIds.mapNotNull { id -> snapshot.tasks.firstOrNull { it.id.value == id } }
+        action.targetIds.mapNotNull { id -> snapshot.actionItems.firstOrNull { it.id.value == id } }
             .filter { it.canArchiveByRetention() }
-            .map { task ->
-                retainedTasks[task.id] = task.copy(archivedAt = completedAt, updatedAt = completedAt)
-                AppliedRetentionOp("archive_task", MemoryItemRef.Type.TASK, task.id.value, action.reason)
+            .map { actionItem ->
+                retainedActionItems[actionItem.id] = actionItem.copy(archivedAt = completedAt, updatedAt = completedAt)
+                AppliedRetentionOp("archive_task", MemoryItemRef.Type.ACTION_ITEM, actionItem.id.value, action.reason)
             }
 }
 
@@ -234,12 +234,12 @@ class PolicyMemoryRetentionPlanner : MemoryRetentionPlanner {
                         reason = "Note is resolved, stale, superseded, retracted, or already consolidated.",
                     )
                 }
-                is MemoryStore.SearchHit.TaskHit -> hit.task.takeIf { it.canArchiveByRetention() }?.let {
+                is MemoryStore.SearchHit.ActionItemHit -> hit.actionItem.takeIf { it.canArchiveByRetention() }?.let {
                     MemoryRetentionPlan.Action(
                         action = MemoryRetentionPlan.Action.Type.ARCHIVE_ITEM,
                         targetType = ref.type,
                         targetIds = listOf(ref.id),
-                        reason = "Task is closed and should not participate in normal active recall.",
+                        reason = "Action item is closed and should not participate in normal active recall.",
                     )
                 }
                 is MemoryStore.SearchHit.SourceHit,
@@ -282,10 +282,10 @@ private fun MemoryNamespaceSnapshot.selectRetentionCandidates(): List<MemoryStor
             .sortedBy { it.updatedAt }
             .mapTo(this) { MemoryStore.SearchHit.NoteHit(it, score = 0.9) }
 
-        tasks
+        actionItems
             .filter { it.canArchiveByRetention() }
             .sortedBy { it.updatedAt }
-            .mapTo(this) { MemoryStore.SearchHit.TaskHit(it, score = 0.8) }
+            .mapTo(this) { MemoryStore.SearchHit.ActionItemHit(it, score = 0.8) }
     }.take(100)
 
 private fun MemoryClaim.canArchiveByRetention(): Boolean =
@@ -303,8 +303,8 @@ private fun MemoryNote.canArchiveByRetention(): Boolean =
                 maturity == MemoryNote.Maturity.CONSOLIDATED
             )
 
-private fun MemoryTask.canArchiveByRetention(): Boolean =
-    archivedAt == null && status in setOf(MemoryTask.Status.DONE, MemoryTask.Status.CANCELLED)
+private fun MemoryActionItem.canArchiveByRetention(): Boolean =
+    archivedAt == null && status in setOf(MemoryActionItem.Status.DONE, MemoryActionItem.Status.CANCELLED)
 
 private fun MemoryStore.SearchHit.toRetentionItemRef(): MemoryItemRef =
     when (this) {
@@ -312,7 +312,7 @@ private fun MemoryStore.SearchHit.toRetentionItemRef(): MemoryItemRef =
         is MemoryStore.SearchHit.EntityHit -> MemoryItemRef(MemoryItemRef.Type.ENTITY, entity.id.value)
         is MemoryStore.SearchHit.ClaimHit -> MemoryItemRef(MemoryItemRef.Type.CLAIM, claim.id.value)
         is MemoryStore.SearchHit.NoteHit -> MemoryItemRef(MemoryItemRef.Type.NOTE, note.id.value)
-        is MemoryStore.SearchHit.TaskHit -> MemoryItemRef(MemoryItemRef.Type.TASK, task.id.value)
+        is MemoryStore.SearchHit.ActionItemHit -> MemoryItemRef(MemoryItemRef.Type.ACTION_ITEM, actionItem.id.value)
         is MemoryStore.SearchHit.ProfileHit -> MemoryItemRef(MemoryItemRef.Type.PROFILE, profile.id.value)
         is MemoryStore.SearchHit.EpisodeHit -> MemoryItemRef(MemoryItemRef.Type.EPISODE, episode.id.value)
         is MemoryStore.SearchHit.RunHit -> MemoryItemRef(MemoryItemRef.Type.RUN, run.id.value)
@@ -323,7 +323,7 @@ private fun List<MemoryStore.SearchHit>.sourceIdsForRetentionRun() =
         when (hit) {
             is MemoryStore.SearchHit.ClaimHit -> hit.claim.evidenceRefs.map(MemoryEvidenceRef::sourceId)
             is MemoryStore.SearchHit.NoteHit -> hit.note.evidenceRefs.map(MemoryEvidenceRef::sourceId)
-            is MemoryStore.SearchHit.TaskHit -> hit.task.evidenceRefs.map(MemoryEvidenceRef::sourceId)
+            is MemoryStore.SearchHit.ActionItemHit -> hit.actionItem.evidenceRefs.map(MemoryEvidenceRef::sourceId)
             is MemoryStore.SearchHit.EpisodeHit -> hit.episode.evidenceRefs.map(MemoryEvidenceRef::sourceId)
             is MemoryStore.SearchHit.SourceHit -> listOf(hit.source.id)
             is MemoryStore.SearchHit.EntityHit,
@@ -354,7 +354,7 @@ private fun MemoryStore.SearchHit.retentionHitForLog(): String =
     when (this) {
         is MemoryStore.SearchHit.ClaimHit -> "claim:${claim.id.value}:${claim.status.name}:${claim.predicate}:${claim.normalizedText.oneLineForRetentionPipelineLog(120)}"
         is MemoryStore.SearchHit.NoteHit -> "note:${note.id.value}:${note.status.name}/${note.maturity.name}:${note.title.oneLineForRetentionPipelineLog(120)}"
-        is MemoryStore.SearchHit.TaskHit -> "task:${task.id.value}:${task.status.name}:${task.title.oneLineForRetentionPipelineLog(120)}"
+        is MemoryStore.SearchHit.ActionItemHit -> "actionItem:${actionItem.id.value}:${actionItem.status.name}:${actionItem.title.oneLineForRetentionPipelineLog(120)}"
         is MemoryStore.SearchHit.ProfileHit -> "profile:${profile.id.value}:${profile.ownerEntityId.value}"
         is MemoryStore.SearchHit.EpisodeHit -> "episode:${episode.id.value}:${episode.lesson.oneLineForRetentionPipelineLog(120)}"
         is MemoryStore.SearchHit.EntityHit -> "entity:${entity.id.value}:${entity.canonicalName.oneLineForRetentionPipelineLog(80)}"
@@ -363,7 +363,7 @@ private fun MemoryStore.SearchHit.retentionHitForLog(): String =
     }
 
 private fun MemoryNamespaceSnapshot.countsForRetentionLog(): String =
-    "sources=${sources.size},runs=${runs.size},entities=${entities.size},claims=${claims.size},notes=${notes.size},tasks=${tasks.size},profiles=${profiles.size},episodes=${episodes.size}"
+    "sources=${sources.size},runs=${runs.size},entities=${entities.size},claims=${claims.size},notes=${notes.size},actionItems=${actionItems.size},profiles=${profiles.size},episodes=${episodes.size}"
 
 private fun String.oneLineForRetentionPipelineLog(maxChars: Int): String {
     val oneLine = trim()

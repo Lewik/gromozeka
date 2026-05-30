@@ -32,11 +32,11 @@ fun MemoryUpdateBatch.requireValidEntityIds(): MemoryUpdateBatch {
             ref.entityId.requireValidEntityId("notes[$index].entityRefs[$refIndex].entityId")
         }
     }
-    tasks.forEachIndexed { index, task ->
-        task.ownerEntityId?.requireValidEntityId("tasks[$index].ownerEntityId")
-        task.assigneeEntityId?.requireValidEntityId("tasks[$index].assigneeEntityId")
-        task.relatedEntityIds.forEachIndexed { refIndex, entityId ->
-            entityId.requireValidEntityId("tasks[$index].relatedEntityIds[$refIndex]")
+    actionItems.forEachIndexed { index, actionItem ->
+        actionItem.ownerEntityId?.requireValidEntityId("actionItems[$index].ownerEntityId")
+        actionItem.assigneeEntityId?.requireValidEntityId("actionItems[$index].assigneeEntityId")
+        actionItem.relatedEntityIds.forEachIndexed { refIndex, entityId ->
+            entityId.requireValidEntityId("actionItems[$index].relatedEntityIds[$refIndex]")
         }
     }
     profiles.forEachIndexed { index, profile ->

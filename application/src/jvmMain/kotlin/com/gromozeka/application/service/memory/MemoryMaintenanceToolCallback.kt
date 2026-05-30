@@ -29,7 +29,7 @@ class MemoryMaintenanceToolCallback(
 
     override val definition: AiToolDefinition = AiToolDefinition(
         name = MEMORY_MAINTENANCE_TOOL_NAME,
-        description = "Schedule one explicit maintenance pass over typed memory and return immediately with a run_id. Actions: consolidate promotes mature notes into durable claims/tasks/episodes; repair fixes suspicious duplicate or conflicting memory; maintain_entities normalizes entity aliases/merges/summaries; apply_retention cools, archives, or hides stale memory; rebuild_embeddings rebuilds vector indexes for the target namespace. The caller should pass a target such as project_path, conversation_id, run_id, or namespace. If called inside a conversation with no target, the current conversation is used. Use memory_run_status with the returned run_id or memory_queue_status to observe progress.",
+        description = "Schedule one explicit maintenance pass over typed memory and return immediately with a run_id. Actions: consolidate promotes mature notes into durable claims/actionItems/episodes; repair fixes suspicious duplicate or conflicting memory; maintain_entities normalizes entity aliases/merges/summaries; apply_retention cools, archives, or hides stale memory; rebuild_embeddings rebuilds vector indexes for the target namespace. The caller should pass a target such as project_path, conversation_id, run_id, or namespace. If called inside a conversation with no target, the current conversation is used. Use memory_run_status with the returned run_id or memory_queue_status to observe progress.",
         inputSchema = """
             {
               "type": "object",
