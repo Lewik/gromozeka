@@ -82,21 +82,21 @@ Useful memory docs:
 
 - macOS development machine.
 - JDK 21.
-- Docker, for local PostgreSQL with pgvector.
+- Docker, for local PostgreSQL with pgvector and RabbitMQ runtime work queues.
 - OpenAI subscription auth file in Gromozeka home for the current dogfooding runtime.
 - Microphone permissions if you want to use voice input.
 
 ## Running Locally
 
-PostgreSQL is intentionally explicit. The app should fail fast if Postgres is not available.
+PostgreSQL and RabbitMQ are intentionally explicit. The app should fail fast if either runtime dependency is not available.
 
-The server and UI clients are separate processes. Start Postgres first, then the server, then one of the UI clients.
+The server and UI clients are separate processes. Start local infrastructure first, then the server, then one of the UI clients.
 
-Start Postgres:
+Start local infrastructure:
 
 ```bash
 GROMOZEKA_HOME="$PWD/dev-data/client/.gromozeka" \
-docker compose -f "$PWD/server/src/main/resources/docker-compose.yml" up postgres
+docker compose -f "$PWD/server/src/main/resources/docker-compose.yml" up -d postgres rabbitmq
 ```
 
 Run the server:
@@ -111,6 +111,15 @@ The server defaults to `127.0.0.1:8765`. It prints a line like:
 
 ```bash
 ==== Gromozeka server started: ws://127.0.0.1:8765/ws ====
+```
+
+Runtime workers default to handling conversation turns, LLM calls, tool execution, memory, and media work. To split work across processes later, constrain a server instance with:
+
+```bash
+GROMOZEKA_RUNTIME_WORKER_ID="llm-worker-1" \
+GROMOZEKA_RUNTIME_WORKER_CAPABILITIES="LLM_RUNTIME" \
+GROMOZEKA_RUNTIME_WORKER_AFFINITIES="PROJECT=/path/to/project" \
+./gradlew :server:run
 ```
 
 The current private tailnet endpoint for remote clients is:
@@ -213,10 +222,10 @@ If static files need to be served from a custom directory, set:
 GROMOZEKA_WEB_STATIC_DIR="/absolute/path/to/web/dist"
 ```
 
-Stop Postgres:
+Stop local infrastructure:
 
 ```bash
-docker compose -f "$PWD/server/src/main/resources/docker-compose.yml" stop postgres
+docker compose -f "$PWD/server/src/main/resources/docker-compose.yml" stop postgres rabbitmq
 ```
 
 ## Verification

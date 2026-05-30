@@ -13,7 +13,7 @@ import com.gromozeka.domain.model.TokenUsageStatistics
 import com.gromozeka.domain.model.ai.AiRuntimeSelection
 import com.gromozeka.domain.model.memory.MemoryActionItem
 import com.gromozeka.domain.service.ConversationRuntimeControlAction
-import com.gromozeka.domain.service.ConversationRuntimeCommand
+import com.gromozeka.domain.service.ConversationRuntimeTask
 import com.gromozeka.domain.service.ConversationRuntimeSnapshot
 import com.gromozeka.domain.service.QueuedMessagePlacement
 import kotlinx.serialization.SerialName
@@ -367,6 +367,7 @@ data class RemoteLiveInterpreterDraft(
 data class ObserveConversationCommand(
     val subscriptionId: String,
     val conversationId: Conversation.Id,
+    val afterEventSequence: Long? = null,
 ) : ClientPayload
 
 @Serializable
@@ -611,6 +612,7 @@ data class ConversationRuntimeSnapshotEvent(
     val subscriptionId: String,
     val conversationId: Conversation.Id,
     val snapshot: ConversationRuntimeSnapshot,
+    val cursorSequence: Long? = snapshot.lastEventSequence,
 ) : ServerPayload
 
 @Serializable
@@ -618,8 +620,9 @@ data class ConversationRuntimeSnapshotEvent(
 data class MessageUpsertedEvent(
     val subscriptionId: String,
     val conversationId: Conversation.Id,
-    val commandId: ConversationRuntimeCommand.Id?,
+    val taskId: ConversationRuntimeTask.Id?,
     val message: Conversation.Message,
+    val cursorSequence: Long? = null,
 ) : ServerPayload
 
 @Serializable
@@ -627,6 +630,7 @@ data class MessageUpsertedEvent(
 data class ConversationExecutionCompletedEvent(
     val subscriptionId: String,
     val conversationId: Conversation.Id,
+    val cursorSequence: Long? = null,
 ) : ServerPayload
 
 @Serializable
@@ -636,6 +640,7 @@ data class ConversationExecutionFailedEvent(
     val conversationId: Conversation.Id,
     val message: String,
     val type: String? = null,
+    val cursorSequence: Long? = null,
 ) : ServerPayload
 
 @Serializable

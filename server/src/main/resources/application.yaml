@@ -11,3 +11,19 @@ reranker:
   model: mixedbread-ai/mxbai-rerank-xsmall-v1
   python-version: "3.12"
   startup-timeout-seconds: 120
+
+gromozeka:
+  runtime:
+    rabbit:
+      enabled: ${GROMOZEKA_RUNTIME_RABBIT_ENABLED:true}
+      exchange: gromozeka.runtime.work
+      queue: gromozeka.runtime.work
+      shards: ${GROMOZEKA_RUNTIME_RABBIT_SHARDS:1}
+      dead-letter-exchange: gromozeka.runtime.work.dlx
+      max-retries: ${GROMOZEKA_RUNTIME_RABBIT_MAX_RETRIES:8}
+      events-exchange: gromozeka.runtime.events
+      events-queue-prefix: gromozeka.runtime.events
+    worker:
+      id: ${GROMOZEKA_RUNTIME_WORKER_ID:}
+      capabilities: ${GROMOZEKA_RUNTIME_WORKER_CAPABILITIES:CONVERSATION_TURN,LLM_RUNTIME,TOOL_EXECUTION,LOCAL_AGENT_TOOL,MEMORY_PIPELINE}
+      affinities: ${GROMOZEKA_RUNTIME_WORKER_AFFINITIES:}

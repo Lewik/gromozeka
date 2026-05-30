@@ -588,7 +588,8 @@ class ConversationEngine(
                 val executionResult = parallelToolExecutor.executeParallel(
                     toolCalls = allToolCalls,
                     toolContext = toolContext,
-                    scope = scope
+                    runtimeTaskId = null,
+                    workerId = null,
                 )
                 
                 // Create tool result message

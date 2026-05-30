@@ -12,7 +12,10 @@ interface ConversationRuntimeService {
         agent: AgentDefinition,
     ): Boolean
 
-    fun observeConversation(conversationId: Conversation.Id): Flow<ConversationRuntimeEvent>
+    fun observeConversation(
+        conversationId: Conversation.Id,
+        afterEventSequence: Long? = null,
+    ): Flow<ConversationRuntimeEvent>
 
     suspend fun enqueueMessage(
         conversationId: Conversation.Id,

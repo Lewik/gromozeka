@@ -210,6 +210,9 @@ interface Tool<TRequest, TResponse> {
      * just a brief summary for LLM tool selection.
      */
     val description: String
+
+    val metadata: AiToolMetadata
+        get() = AiToolMetadata()
     
     /**
      * Request parameter class for automatic JSON Schema generation.

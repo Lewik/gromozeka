@@ -1,5 +1,6 @@
 package com.gromozeka.domain.tool.lsp
 
+import com.gromozeka.domain.tool.LocalAgentToolMetadata
 import com.gromozeka.domain.tool.Tool
 import com.gromozeka.domain.tool.ToolExecutionContext
 
@@ -343,6 +344,8 @@ data class LspGetDiagnosticsRequest(
  */
 interface LspGetDiagnosticsTool : Tool<LspGetDiagnosticsRequest, Map<String, Any>> {
     override val name: String get() = "lsp_get_diagnostics"
+
+    override val metadata get() = LocalAgentToolMetadata
 
     override val description: String get() =
         "Get compilation errors, warnings, and hints for a file using Language Server Protocol. Shows syntax " +

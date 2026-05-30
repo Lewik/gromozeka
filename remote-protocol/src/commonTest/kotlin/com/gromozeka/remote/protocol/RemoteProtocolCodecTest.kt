@@ -8,7 +8,7 @@ import com.gromozeka.domain.model.ai.AiRuntimeSelection
 import com.gromozeka.domain.model.memory.MemoryNamespace
 import com.gromozeka.domain.model.memory.MemoryScope
 import com.gromozeka.domain.model.memory.MemoryActionItem
-import com.gromozeka.domain.service.ConversationRuntimeCommand
+import com.gromozeka.domain.service.ConversationRuntimeTask
 import com.gromozeka.domain.service.ConversationRuntimeControlAction
 import com.gromozeka.domain.service.QueuedMessagePlacement
 import kotlinx.datetime.Instant
@@ -271,6 +271,7 @@ class RemoteProtocolCodecTest {
             payload = ObserveConversationCommand(
                 subscriptionId = "subscription-1",
                 conversationId = Conversation.Id("conversation-submit-1"),
+                afterEventSequence = 41,
             )
         )
         val decodedObserve = RemoteProtocolCodec.decodeClientBinary(
@@ -279,14 +280,16 @@ class RemoteProtocolCodecTest {
 
         assertEquals("subscription-1", decodedObserve.subscriptionId)
         assertEquals("conversation-submit-1", decodedObserve.conversationId.value)
+        assertEquals(41, decodedObserve.afterEventSequence)
 
         val messageEnvelope = GromozekaServerEnvelope(
             id = "subscription-1",
             payload = MessageUpsertedEvent(
                 subscriptionId = "subscription-1",
                 conversationId = Conversation.Id("conversation-submit-1"),
-                commandId = ConversationRuntimeCommand.Id("message-submit-1"),
+                taskId = ConversationRuntimeTask.Id("message-submit-1"),
                 message = userMessage,
+                cursorSequence = 42,
             )
         )
         val decodedMessage = RemoteProtocolCodec.decodeServerBinary(
@@ -294,14 +297,16 @@ class RemoteProtocolCodecTest {
         ).payload as MessageUpsertedEvent
 
         assertEquals("subscription-1", decodedMessage.subscriptionId)
-        assertEquals("message-submit-1", decodedMessage.commandId?.value)
+        assertEquals("message-submit-1", decodedMessage.taskId?.value)
         assertEquals("message-submit-1", decodedMessage.message.id.value)
+        assertEquals(42, decodedMessage.cursorSequence)
 
         val completedEnvelope = GromozekaServerEnvelope(
             id = "subscription-1",
             payload = ConversationExecutionCompletedEvent(
                 subscriptionId = "subscription-1",
                 conversationId = Conversation.Id("conversation-submit-1"),
+                cursorSequence = 43,
             )
         )
         val decodedCompleted = RemoteProtocolCodec.decodeServerBinary(
@@ -310,6 +315,7 @@ class RemoteProtocolCodecTest {
 
         assertEquals("subscription-1", decodedCompleted.subscriptionId)
         assertEquals("conversation-submit-1", decodedCompleted.conversationId.value)
+        assertEquals(43, decodedCompleted.cursorSequence)
     }
 
     @Test

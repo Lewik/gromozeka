@@ -1,5 +1,7 @@
 package com.gromozeka.domain.tool
 
+import com.gromozeka.domain.service.ConversationRuntimeWorkerCapability
+
 /**
  * Framework-agnostic executable tool descriptor.
  *
@@ -22,5 +24,6 @@ data class AiToolDefinition(
 )
 
 data class AiToolMetadata(
-    val returnDirect: Boolean = false
+    val returnDirect: Boolean = false,
+    val requiredRuntimeCapabilities: Set<ConversationRuntimeWorkerCapability> = emptySet(),
 )

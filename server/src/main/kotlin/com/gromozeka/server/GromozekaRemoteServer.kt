@@ -255,7 +255,7 @@ class GromozekaRemoteServer(
         encoding: RemoteProtocolEncoding,
     ) {
         try {
-            conversationRuntimeService.observeConversation(command.conversationId)
+            conversationRuntimeService.observeConversation(command.conversationId, command.afterEventSequence)
                 .collect { event ->
                     when (event) {
                         is ConversationRuntimeEvent.SnapshotUpdated -> sender.send(
@@ -264,6 +264,7 @@ class GromozekaRemoteServer(
                                 subscriptionId = command.subscriptionId,
                                 conversationId = event.conversationId,
                                 snapshot = event.snapshot,
+                                cursorSequence = event.cursorSequence,
                             ),
                             encoding,
                         )
@@ -272,14 +273,15 @@ class GromozekaRemoteServer(
                             MessageUpsertedEvent(
                                 subscriptionId = command.subscriptionId,
                                 conversationId = event.conversationId,
-                                commandId = event.commandId,
+                                taskId = event.taskId,
                                 message = event.message,
+                                cursorSequence = event.cursorSequence,
                             ),
                             encoding,
                         )
                         is ConversationRuntimeEvent.ExecutionCompleted -> sender.send(
                             command.subscriptionId,
-                            ConversationExecutionCompletedEvent(command.subscriptionId, event.conversationId),
+                            ConversationExecutionCompletedEvent(command.subscriptionId, event.conversationId, event.cursorSequence),
                             encoding,
                         )
                         is ConversationRuntimeEvent.ExecutionFailed -> sender.send(
@@ -289,6 +291,7 @@ class GromozekaRemoteServer(
                                 conversationId = event.conversationId,
                                 message = event.message,
                                 type = event.type,
+                                cursorSequence = event.cursorSequence,
                             ),
                             encoding,
                         )
@@ -305,6 +308,7 @@ class GromozekaRemoteServer(
                     conversationId = command.conversationId,
                     message = error.message ?: "Unknown conversation observation error",
                     type = error::class.simpleName,
+                    cursorSequence = null,
                 ),
                 encoding,
             )

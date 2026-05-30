@@ -1,5 +1,6 @@
 package com.gromozeka.domain.tool.filesystem
 
+import com.gromozeka.domain.tool.LocalAgentToolMetadata
 import com.gromozeka.domain.tool.Tool
 import com.gromozeka.domain.tool.ToolExecutionContext
 
@@ -43,8 +44,9 @@ data class ExecuteCommandRequest(
  * - Working directory configurable
  * 
  * **Output capture:**
- * - STDOUT and STDERR merged into single output
- * - Returns complete output as string
+ * - STDOUT and STDERR merged into one stream
+ * - Full output is saved to a file under Gromozeka home
+ * - Returned `output` is a bounded preview; large output includes head and tail
  * - Exit code captured for success/failure detection
  * 
  * **Timeout protection:**
@@ -137,10 +139,14 @@ interface GrzExecuteCommandTool : Tool<ExecuteCommandRequest, Map<String, Any>> 
     
     override val name: String
         get() = "grz_execute_command"
+
+    override val metadata
+        get() = LocalAgentToolMetadata
     
     override val description: String
         get() = """
-            Execute shell command and return output. Use with caution - has full system access.
+            Execute shell command and return bounded output preview. Full stdout/stderr is saved to output_file.
+            Use with caution - has full system access.
             
             Common use cases:
             - Search file contents: rg "pattern" --type kt -C 3
@@ -148,6 +154,7 @@ interface GrzExecuteCommandTool : Tool<ExecuteCommandRequest, Map<String, Any>> 
             - List directory: ls -la /path/to/dir
             - Git operations: git status, git diff, git log
             - Build operations: ./gradlew build, npm run build
+            Large command output is truncated in the response; inspect output_file with grz_read_file or rerun a narrower command.
         """.trimIndent()
     
     override val requestType: Class<ExecuteCommandRequest>

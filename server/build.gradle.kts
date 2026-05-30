@@ -31,6 +31,7 @@ dependencies {
     implementation(project(":infrastructure-ai:openai-subscription"))
 
     implementation(libs.spring.boot.starter)
+    implementation(libs.spring.boot.starter.amqp)
     implementation(libs.ktor.server.core)
     implementation(libs.ktor.server.cio)
     implementation(libs.ktor.server.sse)

@@ -1,5 +1,6 @@
 package com.gromozeka.domain.tool.lsp
 
+import com.gromozeka.domain.tool.LocalAgentToolMetadata
 import com.gromozeka.domain.tool.Tool
 import com.gromozeka.domain.tool.ToolExecutionContext
 
@@ -385,6 +386,9 @@ interface LspGetDocumentSymbolsTool : Tool<LspGetDocumentSymbolsRequest, Map<Str
 
     override val name: String
         get() = "lsp_get_document_symbols"
+
+    override val metadata
+        get() = LocalAgentToolMetadata
 
     override val description: String
         get() = """

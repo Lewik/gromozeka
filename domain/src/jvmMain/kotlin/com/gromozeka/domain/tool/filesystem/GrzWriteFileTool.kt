@@ -1,5 +1,6 @@
 package com.gromozeka.domain.tool.filesystem
 
+import com.gromozeka.domain.tool.LocalAgentToolMetadata
 import com.gromozeka.domain.tool.Tool
 import com.gromozeka.domain.tool.ToolExecutionContext
 
@@ -331,6 +332,9 @@ interface GrzWriteFileTool : Tool<WriteFileRequest, Map<String, Any>> {
     
     override val name: String
         get() = "grz_write_file"
+
+    override val metadata
+        get() = LocalAgentToolMetadata
     
     override val description: String
         get() = "Write content to a file. Creates parent directories if needed. Overwrites existing files."

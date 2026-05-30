@@ -3,7 +3,11 @@ package com.gromozeka.server.testsupport.config
 import com.gromozeka.domain.service.AiRuntimeProvider
 import com.gromozeka.domain.service.AiEmbeddingProvider
 import com.gromozeka.domain.service.AudioController
+import com.gromozeka.domain.service.ConversationRuntimeEventBus
+import com.gromozeka.domain.service.ConversationRuntimeWorkQueue
 import com.gromozeka.domain.service.SettingsProvider
+import com.gromozeka.application.service.InMemoryConversationRuntimeEventBus
+import com.gromozeka.application.service.InMemoryConversationRuntimeWorkQueue
 import com.gromozeka.infrastructure.ai.openai.OpenAiSdkEmbeddingProvider
 import com.gromozeka.infrastructure.ai.platform.GlobalHotkeyController
 import com.gromozeka.infrastructure.ai.platform.NoOpGlobalHotkeyController
@@ -76,4 +80,12 @@ class E2eSupportConfig {
     @Bean
     @Primary
     fun globalHotkeyController(): GlobalHotkeyController = NoOpGlobalHotkeyController()
+
+    @Bean
+    @Primary
+    fun conversationRuntimeEventBus(): ConversationRuntimeEventBus = InMemoryConversationRuntimeEventBus()
+
+    @Bean
+    @Primary
+    fun conversationRuntimeWorkQueue(): ConversationRuntimeWorkQueue = InMemoryConversationRuntimeWorkQueue()
 }

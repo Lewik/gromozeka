@@ -4,6 +4,7 @@ import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.Conversation.Message.BlockState
 import com.gromozeka.domain.model.Conversation.Message.ContentItem
+import com.gromozeka.domain.model.AiProvider
 import com.gromozeka.domain.model.Project
 import com.gromozeka.domain.model.TokenUsageStatistics
 import com.gromozeka.application.service.memory.MEMORY_ENRICH_CONTEXT_TOOL_NAME
@@ -18,40 +19,41 @@ import com.gromozeka.domain.model.memory.DirectStructuredMemoryWriteResult
 import com.gromozeka.domain.repository.AiModelSpecRepository
 import com.gromozeka.domain.model.ai.AiRuntimeOptions
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
+import com.gromozeka.domain.model.ai.AiToolChoice
+import com.gromozeka.domain.model.ai.AiUsage
 import com.gromozeka.domain.service.AgentDomainService
+import com.gromozeka.domain.service.AiRuntime
 import com.gromozeka.domain.service.AiRuntimeProvider
 import com.gromozeka.domain.service.AiToolProvider
 import com.gromozeka.domain.service.ConversationDomainService
 import com.gromozeka.domain.service.ConversationExecutionState
 import com.gromozeka.domain.service.ConversationRuntimeControlAction
-import com.gromozeka.domain.service.ConversationRuntimeCommand
+import com.gromozeka.domain.service.ConversationRuntimeTask
 import com.gromozeka.domain.service.ConversationRuntimeCoordinator
 import com.gromozeka.domain.service.ConversationRuntimeEvent
 import com.gromozeka.domain.service.ConversationRuntimeEventBus
 import com.gromozeka.domain.service.ConversationRuntimeService
 import com.gromozeka.domain.service.QueuedMessagePlacement
-import com.gromozeka.domain.repository.ThreadRepository
+import com.gromozeka.domain.service.ConversationRuntimeTaskRequirements
+import com.gromozeka.domain.service.ConversationRuntimeToolExecution
+import com.gromozeka.domain.service.ConversationRuntimeWorkerAffinity
+import com.gromozeka.domain.service.ConversationRuntimeWorkerCapability
+import com.gromozeka.domain.service.ConversationRuntimeWorkerDescriptor
 import com.gromozeka.domain.repository.TokenUsageStatisticsRepository
 import com.gromozeka.domain.tool.AiToolCallback
 import klog.KLoggers
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.CoroutineStart
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 import com.gromozeka.domain.tool.ToolExecutionContext
 import org.springframework.stereotype.Service
 import com.gromozeka.shared.uuid.uuid7
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
-import kotlinx.serialization.json.putJsonArray
-import org.springframework.beans.factory.annotation.Qualifier
+import org.springframework.beans.factory.ObjectProvider
 
 /**
  * LLM-agnostic service for managing conversation with AI using User-Controlled Tool Execution.
@@ -73,10 +75,7 @@ class ConversationEngineService(
     private val toolApprovalService: ToolApprovalService,
     private val parallelToolExecutor: ParallelToolExecutor,
     private val conversationService: ConversationDomainService,
-    private val threadRepository: ThreadRepository,
-    private val threadMessageRepository: com.gromozeka.domain.repository.ThreadMessageRepository,
     private val tokenUsageStatisticsRepository: TokenUsageStatisticsRepository,
-    @Qualifier("supervisorScope") private val coroutineScope: CoroutineScope,
     private val memoryApplicationService: MemoryApplicationService,
     private val memoryMaintenanceQueue: MemoryMaintenanceQueue,
     private val memoryMessageRoutingApplicationService: MemoryMessageRoutingApplicationService,
@@ -85,252 +84,363 @@ class ConversationEngineService(
     private val aiModelSpecRepository: AiModelSpecRepository,
     private val runtimeCoordinator: ConversationRuntimeCoordinator,
     private val runtimeEventBus: ConversationRuntimeEventBus,
-) : ConversationRuntimeService {
+    private val runtimeDispatcher: ConversationRuntimeDispatcher,
+    runtimeWorkerDescriptor: ConversationRuntimeWorkerDescriptor,
+) : ConversationRuntimeService, ConversationRuntimeTaskRunner {
     private val log = KLoggers.logger(this)
-    private val executorJobsLock = Any()
-    private val executorJobsByConversation = mutableMapOf<Conversation.Id, Job>()
+    private val localAgentAffinity = runtimeWorkerDescriptor
+        .affinities
+        .sortedWith(compareBy<ConversationRuntimeWorkerAffinity> { it.kind.localToolPriority() }.thenBy { it.value })
+        .firstOrNull()
 
     override suspend fun enqueueMessage(
         conversationId: Conversation.Id,
         userMessage: Conversation.Message,
         agent: AgentDefinition,
         placement: QueuedMessagePlacement,
-    ): Boolean {
-        val state = runtimeCoordinator.find(conversationId)
-        val pendingCommands = runtimeCoordinator.listPending(conversationId)
-        val canAcceptQueuedCommand = state == null ||
-            state.status == ConversationExecutionState.Status.RUNNING ||
-            state.status == ConversationExecutionState.Status.PAUSE_REQUESTED ||
-            state.status == ConversationExecutionState.Status.PAUSED
-        val canQueue = when (placement) {
-            QueuedMessagePlacement.AFTER_TOOL_RESULT -> canAcceptQueuedCommand && state?.activeCommandId != null
-            QueuedMessagePlacement.END_OF_TURN ->
-                canAcceptQueuedCommand && (state != null || pendingCommands.any { it.placement == QueuedMessagePlacement.END_OF_TURN })
-        }
-        if (!canQueue) {
-            log.info {
-                "Rejected queued message without active runtime: conversation=${conversationId.value} " +
-                    "message=${userMessage.id.value} placement=$placement"
-            }
-            return false
-        }
-
-        val command = queuedRuntimeCommand(conversationId, userMessage, agent, placement)
-        val accepted = submitRuntimeCommand(command)
-        if (accepted) {
-            log.info {
-                "Queued runtime message: conversation=${conversationId.value} message=${userMessage.id.value} placement=$placement"
-            }
-        }
-        return accepted
-    }
+    ): Boolean = runtimeDispatcher.enqueueMessage(conversationId, userMessage, agent, placement)
 
     override suspend fun cancelQueuedMessage(
         conversationId: Conversation.Id,
         messageId: Conversation.Message.Id,
-    ): Boolean {
-        val removed = runtimeCoordinator.cancelByMessageId(conversationId, messageId)
-        if (removed) {
-            publishRuntimeSnapshot(conversationId)
-            log.info { "Cancelled runtime queued message: conversation=${conversationId.value} message=${messageId.value}" }
-        }
-        return removed
-    }
+    ): Boolean = runtimeDispatcher.cancelQueuedMessage(conversationId, messageId)
 
     override suspend fun controlExecution(
         conversationId: Conversation.Id,
         action: ConversationRuntimeControlAction,
-    ): Boolean {
-        val accepted = when (action) {
-            ConversationRuntimeControlAction.PAUSE -> runtimeCoordinator.requestPause(conversationId)
-            ConversationRuntimeControlAction.RESUME -> runtimeCoordinator.requestResume(conversationId).also { accepted ->
-                if (accepted) {
-                    wakeConversationExecutor(conversationId)
-                }
-            }
-            ConversationRuntimeControlAction.STOP -> runtimeCoordinator.requestStop(conversationId).also { accepted ->
-                if (accepted) {
-                    wakeConversationExecutor(conversationId)
-                }
-            }
-            ConversationRuntimeControlAction.INTERRUPT -> {
-                val requested = runtimeCoordinator.requestInterrupt(conversationId)
-                val cancelled = cancelConversationExecutor(conversationId)
-                if (requested && !cancelled) {
-                    wakeConversationExecutor(conversationId)
-                }
-                cancelled || requested
-            }
-        }
-        if (accepted) {
-            publishRuntimeSnapshot(conversationId)
-            log.info { "Runtime execution control accepted: conversation=${conversationId.value} action=$action" }
-        } else {
-            log.info { "Runtime execution control ignored without active turn: conversation=${conversationId.value} action=$action" }
-        }
-        return accepted
-    }
+    ): Boolean = runtimeDispatcher.controlExecution(conversationId, action)
 
     override suspend fun submitMessage(
         conversationId: Conversation.Id,
         userMessage: Conversation.Message,
         agent: AgentDefinition,
-    ): Boolean {
-        val command = queuedRuntimeCommand(conversationId, userMessage, agent, QueuedMessagePlacement.END_OF_TURN)
-        return submitRuntimeCommand(command)
-    }
+    ): Boolean = runtimeDispatcher.submitMessage(conversationId, userMessage, agent)
 
-    override fun observeConversation(conversationId: Conversation.Id): Flow<ConversationRuntimeEvent> = flow {
-        val subscription = runtimeEventBus.subscribe(conversationId)
-        try {
-            emit(runtimeSnapshotEvent(conversationId))
-            subscription.events.collect(::emit)
-        } finally {
-            subscription.close()
-        }
-    }
-
-    private suspend fun submitRuntimeCommand(command: ConversationRuntimeCommand): Boolean {
-        val accepted = runtimeCoordinator.submit(command)
-        if (accepted) {
-            publishRuntimeSnapshot(command.conversationId)
-            if (command.placement == QueuedMessagePlacement.END_OF_TURN) {
-                wakeConversationExecutor(command.conversationId)
-            }
-        }
-        return accepted
-    }
-
-    private fun wakeConversationExecutor(conversationId: Conversation.Id) {
-        lateinit var job: Job
-        job = coroutineScope.launch(start = CoroutineStart.LAZY) {
-            var wakeAgain = false
-            try {
-                wakeAgain = drainConversationRuntime(conversationId)
-            } finally {
-                synchronized(executorJobsLock) {
-                    if (executorJobsByConversation[conversationId] == job) {
-                        executorJobsByConversation.remove(conversationId)
-                    }
-                }
-                if (wakeAgain) {
-                    wakeConversationExecutor(conversationId)
-                }
-            }
-        }
-
-        val shouldStart = synchronized(executorJobsLock) {
-            val existingJob = executorJobsByConversation[conversationId]
-            if (existingJob?.isActive == true) {
-                false
-            } else {
-                executorJobsByConversation[conversationId] = job
-                true
-            }
-        }
-
-        if (shouldStart) {
-            job.start()
-        } else {
-            job.cancel()
-        }
-    }
-
-    private fun cancelConversationExecutor(conversationId: Conversation.Id): Boolean {
-        val job = synchronized(executorJobsLock) {
-            executorJobsByConversation[conversationId]
-        } ?: return false
-        if (!job.isActive) {
-            return false
-        }
-        job.cancel(CancellationException("Conversation runtime interrupted: ${conversationId.value}"))
-        return true
-    }
-
-    private suspend fun drainConversationRuntime(conversationId: Conversation.Id): Boolean {
-        val workerId = uuid7()
-        if (finishRuntimeIfIdle(conversationId)) {
-            runtimeEventBus.publish(ConversationRuntimeEvent.ExecutionCompleted(conversationId))
-            return false
-        }
-        if (!awaitExecutionCanContinue(conversationId)) {
-            finishRuntimeIfIdle(conversationId)
-            runtimeEventBus.publish(ConversationRuntimeEvent.ExecutionCompleted(conversationId))
-            return false
-        }
-
-        val command = runtimeCoordinator.claimNextTurn(
-            conversationId = conversationId,
-            workerId = workerId,
-            leaseUntil = null,
-        )
-        publishRuntimeSnapshot(conversationId)
-
-        if (command == null) {
-            if (finishRuntimeIfIdle(conversationId)) {
-                runtimeEventBus.publish(ConversationRuntimeEvent.ExecutionCompleted(conversationId))
-            }
-            return false
-        }
-
-        try {
-            runtimeEventBus.publish(
-                ConversationRuntimeEvent.MessageEmitted(
-                    conversationId = conversationId,
-                    commandId = command.id,
-                    message = command.userMessage,
-                )
-            )
-            runSingleTurn(command.conversationId, command.userMessage, command.agent).collect { message ->
-                runtimeEventBus.publish(
-                    ConversationRuntimeEvent.MessageEmitted(
-                        conversationId = command.conversationId,
-                        commandId = command.id,
-                        message = message,
-                    )
-                )
-            }
-            runtimeCoordinator.completeActiveTurn(conversationId)
-            publishRuntimeSnapshot(conversationId)
-
-            if (finishRuntimeIfIdle(conversationId)) {
-                runtimeEventBus.publish(ConversationRuntimeEvent.ExecutionCompleted(conversationId))
-                return false
-            }
-            if (!awaitExecutionCanContinue(conversationId)) {
-                finishRuntimeIfIdle(conversationId)
-                runtimeEventBus.publish(ConversationRuntimeEvent.ExecutionCompleted(conversationId))
-                return false
-            }
-            return true
-        } catch (error: CancellationException) {
-            runtimeCoordinator.abort(conversationId)
-            publishRuntimeSnapshot(conversationId)
-            runtimeEventBus.publish(ConversationRuntimeEvent.ExecutionCompleted(conversationId))
-            return false
-        } catch (error: Throwable) {
-            runtimeCoordinator.fail(conversationId)
-            publishRuntimeSnapshot(conversationId)
-            runtimeEventBus.publish(
-                ConversationRuntimeEvent.ExecutionFailed(
-                    conversationId = conversationId,
-                    message = error.message ?: "Unknown conversation runtime error",
-                    type = error::class.simpleName,
-                )
-            )
-            return false
-        }
-    }
-
-    private fun runSingleTurn(
+    override fun observeConversation(
         conversationId: Conversation.Id,
-        userMessage: Conversation.Message,
-        agent: AgentDefinition,
+        afterEventSequence: Long?,
+    ): Flow<ConversationRuntimeEvent> =
+        runtimeDispatcher.observeConversation(conversationId, afterEventSequence)
+
+    override fun runRuntimeTask(
+        task: ConversationRuntimeTask,
+        workerId: String,
+    ): Flow<Conversation.Message> =
+        when (val payload = task.payload) {
+            is ConversationRuntimeTask.Payload.UserTurn -> runUserTurnStep(task, workerId, payload)
+            is ConversationRuntimeTask.Payload.LlmCall -> runLlmCallStep(task, workerId, payload)
+            is ConversationRuntimeTask.Payload.ToolExecution -> runToolExecutionStep(task, workerId, payload)
+        }
+
+    private fun runUserTurnStep(
+        task: ConversationRuntimeTask,
+        workerId: String,
+        payload: ConversationRuntimeTask.Payload.UserTurn,
     ): Flow<Conversation.Message> = flow {
-        markRuntimePhase(conversationId, ConversationExecutionState.Phase.BEFORE_LLM)
+        val conversationId = task.conversationId
+        ensureRuntimeTaskOwner(conversationId, task.id, workerId)
         val conversation = conversationService.findById(conversationId)
             ?: throw IllegalStateException("Conversation not found: $conversationId")
-        val project = conversationService.getProject(conversationId)
+        val context = buildConversationRuntimeContext(payload.agent, conversation)
+        appendUserMessageWithAutomaticMemory(
+            conversationId = conversationId,
+            conversation = conversation,
+            project = context.project,
+            userMessage = payload.userMessage,
+            agent = payload.agent,
+            memorySystemPrompts = context.memorySystemPrompts,
+            memoryPipelineTools = context.memoryPipelineTools,
+            automaticMemoryRememberEnabled = context.automaticMemoryRememberEnabled,
+            automaticMemoryRecallEnabled = context.automaticMemoryRecallEnabled,
+            recallFailureLogPrefix = "Memory runtime recall failed",
+        ).forEach { emit(it) }
+
+        val fixResult = toolCallSequenceFixerService.fixNonSequentialPairs(conversationId)
+        if (fixResult.fixed) {
+            log.info {
+                "Fixed non-sequential ToolCall/ToolResult pairs: " +
+                "added ${fixResult.addedResults} error results, " +
+                "converted ${fixResult.convertedResults} orphaned results"
+            }
+        }
+
+        if (awaitExecutionCanContinue(conversationId)) {
+            submitContinuationTask(
+                llmCallTask(
+                    conversationId = conversationId,
+                    rootUserMessageId = payload.userMessage.id,
+                    agent = payload.agent,
+                    iteration = 1,
+                )
+            )
+        }
+    }
+
+    private fun runLlmCallStep(
+        task: ConversationRuntimeTask,
+        workerId: String,
+        payload: ConversationRuntimeTask.Payload.LlmCall,
+    ): Flow<Conversation.Message> = flow {
+        val conversationId = task.conversationId
+        if (!awaitExecutionCanContinue(conversationId)) {
+            return@flow
+        }
+
+        val conversation = conversationService.findById(conversationId)
+            ?: throw IllegalStateException("Conversation not found: $conversationId")
+        val context = buildConversationRuntimeContext(payload.agent, conversation)
+
+        if (payload.iteration > MAX_TOOL_LOOP_ITERATIONS) {
+            val errorMessage = AiConversationMessageMapper.createErrorMessage(
+                conversationId,
+                "Tool execution loop exceeded maximum iterations ($MAX_TOOL_LOOP_ITERATIONS)",
+                "max_iterations"
+            ).copy(id = runtimeMessageId(task.id, "max-iterations"))
+            val added = addRuntimeMessageIfMissing(conversationId, errorMessage)
+            if (added) {
+                emit(errorMessage)
+            }
+            if (added && context.automaticMemoryRememberEnabled) {
+                routeMessageThroughMemoryRouter(
+                    conversationId,
+                    conversation.currentThread,
+                    errorMessage,
+                    payload.agent,
+                    context.project,
+                    context.memorySystemPrompts,
+                    context.memoryPipelineTools,
+                )
+            }
+            return@flow
+        }
+
+        val currentMessages = conversationService.loadCurrentMessages(conversationId)
+
+        val runtimeRequest = AiRuntimeRequest(
+            systemPrompts = context.runtimeSystemPrompts,
+            messages = currentMessages,
+            tools = context.availableTools,
+            options = AiRuntimeOptions(
+                maxOutputTokens = payload.agent.runtimeOverrides.maxOutputTokens,
+                reasoning = payload.agent.runtimeOverrides.reasoning,
+                autoCompactionThresholdTokens = context.autoCompactionThresholdTokens,
+                toolChoice = AiToolChoice.Auto,
+                responseFormat = AssistantResponseFormatContract.runtimeResponseFormat(context.assistantResponseFormat),
+                assistantResponseFormat = context.assistantResponseFormat,
+                toolContext = mapOf(
+                    "projectPath" to context.project.path,
+                    "conversationId" to conversationId.value,
+                    "aiProvider" to context.provider.name,
+                    "modelName" to context.modelName
+                )
+            )
+        )
+
+        val runtimeResponse = try {
+            log.info { "Calling LLM runtime: model=${context.modelName}, provider=${context.provider}, iteration=${payload.iteration}" }
+            ensureRuntimeTaskOwner(conversationId, task.id, workerId)
+            context.runtime.call(runtimeRequest)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            log.error(e) { "Chat call error" }
+            ensureRuntimeTaskOwner(conversationId, task.id, workerId)
+            val errorMessage = AiConversationMessageMapper
+                .createErrorMessage(conversationId, e.message ?: "Unknown error")
+                .copy(id = runtimeMessageId(task.id, "llm-error"))
+            val added = addRuntimeMessageIfMissing(conversationId, errorMessage)
+            if (added) {
+                emit(errorMessage)
+            }
+            if (added && context.automaticMemoryRememberEnabled) {
+                routeMessageThroughMemoryRouter(
+                    conversationId,
+                    conversation.currentThread,
+                    errorMessage,
+                    payload.agent,
+                    context.project,
+                    context.memorySystemPrompts,
+                    context.memoryPipelineTools,
+                )
+            }
+            return@flow
+        }
+
+        log.info {
+            "Runtime response received: assistantMessages=${runtimeResponse.messages.size}, " +
+                "toolCalls=${runtimeResponse.toolCalls.size}, finishReason=${runtimeResponse.finishReason}"
+        }
+        ensureRuntimeTaskOwner(conversationId, task.id, workerId)
+        if (!awaitExecutionCanContinue(conversationId)) {
+            return@flow
+        }
+
+        if (runtimeResponse.messages.isEmpty() && runtimeResponse.toolCalls.isEmpty()) {
+            log.warn { "Empty response from AI runtime" }
+            return@flow
+        }
+
+        val allToolCalls = runtimeResponse.toolCalls
+        val assistantMessages = AiConversationMessageMapper
+            .toConversationMessages(conversationId, runtimeResponse)
+            .withRuntimeMessageIds(task.id, "assistant")
+        ensureRuntimeTaskOwner(conversationId, task.id, workerId)
+
+        assistantMessages.forEach { message ->
+            ensureRuntimeTaskOwner(conversationId, task.id, workerId)
+            val added = addRuntimeMessageIfMissing(conversationId, message)
+            if (added) {
+                emit(message)
+            }
+            if (added && context.automaticMemoryRememberEnabled) {
+                routeMessageThroughMemoryRouter(
+                    conversationId,
+                    conversation.currentThread,
+                    message,
+                    payload.agent,
+                    context.project,
+                    context.memorySystemPrompts,
+                    context.memoryPipelineTools,
+                )
+            }
+        }
+        saveTokenUsage(conversation, context, assistantMessages.lastOrNull(), runtimeResponse.usage)
+
+        if (allToolCalls.isNotEmpty()) {
+            submitContinuationTask(
+                toolExecutionTask(
+                    conversationId = conversationId,
+                    rootUserMessageId = payload.rootUserMessageId,
+                    agent = payload.agent,
+                    iteration = payload.iteration,
+                    toolCalls = allToolCalls,
+                    availableTools = context.availableTools,
+                )
+            )
+        } else {
+            log.info {
+                "Legacy memory inline ingest disabled: conversation=${conversationId.value} " +
+                    "thread=${conversation.currentThread.value}; router-only per-message pipeline is active"
+            }
+        }
+    }
+
+    private fun runToolExecutionStep(
+        task: ConversationRuntimeTask,
+        workerId: String,
+        payload: ConversationRuntimeTask.Payload.ToolExecution,
+    ): Flow<Conversation.Message> = flow {
+        val conversationId = task.conversationId
+        if (!awaitExecutionCanContinue(conversationId)) {
+            return@flow
+        }
+
+        val conversation = conversationService.findById(conversationId)
+            ?: throw IllegalStateException("Conversation not found: $conversationId")
+        val context = buildConversationRuntimeContext(payload.agent, conversation)
+
+        val approvalResult = toolApprovalService.approve(payload.toolCalls)
+        if (approvalResult is ApprovalResult.Rejected) {
+            log.warn { "Tool calls rejected: ${approvalResult.reason}" }
+            return@flow
+        }
+
+        val toolContext = ToolExecutionContext(
+            mapOf(
+                "projectPath" to context.project.path,
+                "conversationId" to conversationId.value,
+                "aiProvider" to context.provider.name,
+                "modelName" to context.modelName
+            )
+        )
+        ensureRuntimeTaskOwner(conversationId, task.id, workerId)
+        clearRuntimeToolExecutions(conversationId, task.id, workerId)
+        val executionResult = parallelToolExecutor.executeParallel(
+            toolCalls = payload.toolCalls,
+            toolContext = toolContext,
+            runtimeTaskId = task.id,
+            workerId = workerId,
+            onToolExecutionChanged = { execution ->
+                upsertRuntimeToolExecution(conversationId, execution)
+            },
+        )
+        ensureRuntimeTaskOwner(conversationId, task.id, workerId)
+
+        val toolResultMessage = Conversation.Message(
+            id = runtimeMessageId(task.id, "result"),
+            conversationId = conversationId,
+            role = Conversation.Message.Role.USER,
+            content = executionResult.results,
+            createdAt = Clock.System.now()
+        )
+        val toolResultAdded = addRuntimeMessageIfMissing(conversationId, toolResultMessage)
+        if (toolResultAdded) {
+            emit(toolResultMessage)
+        }
+        ensureRuntimeTaskOwner(conversationId, task.id, workerId)
+        clearRuntimeToolExecutions(conversationId, task.id, workerId)
+        if (toolResultAdded && context.automaticMemoryRememberEnabled) {
+            routeMessageThroughMemoryRouter(
+                conversationId,
+                conversation.currentThread,
+                toolResultMessage,
+                payload.agent,
+                context.project,
+                context.memorySystemPrompts,
+                context.memoryPipelineTools,
+            )
+        }
+        if (!awaitExecutionCanContinue(conversationId) || executionResult.returnDirect) {
+            return@flow
+        }
+
+        emitQueuedRuntimeMessagesAtSafePoint(
+            conversationId = conversationId,
+            runtimeTaskId = task.id,
+            workerId = workerId,
+            placement = QueuedMessagePlacement.AFTER_TOOL_RESULT,
+            conversation = conversation,
+            project = context.project,
+            memorySystemPrompts = context.memorySystemPrompts,
+            memoryPipelineTools = context.memoryPipelineTools,
+            automaticMemoryRememberEnabled = context.automaticMemoryRememberEnabled,
+            automaticMemoryRecallEnabled = context.automaticMemoryRecallEnabled,
+        ).forEach { queuedMessage ->
+            emit(queuedMessage)
+        }
+
+        if (awaitExecutionCanContinue(conversationId)) {
+            submitContinuationTask(
+                llmCallTask(
+                    conversationId = conversationId,
+                    rootUserMessageId = payload.rootUserMessageId,
+                    agent = payload.agent,
+                    iteration = payload.iteration + 1,
+                )
+            )
+        }
+    }
+
+    private data class ConversationRuntimeStepContext(
+        val project: Project,
+        val runtime: AiRuntime,
+        val provider: AiProvider,
+        val modelName: String,
+        val availableTools: List<AiToolCallback>,
+        val memoryPipelineTools: List<AiToolCallback>,
+        val memorySystemPrompts: List<String>,
+        val runtimeSystemPrompts: List<String>,
+        val assistantResponseFormat: com.gromozeka.domain.model.ai.AiModelConfiguration.AssistantResponseFormat,
+        val autoCompactionThresholdTokens: Int?,
+        val automaticMemoryRememberEnabled: Boolean,
+        val automaticMemoryRecallEnabled: Boolean,
+    )
+
+    private suspend fun buildConversationRuntimeContext(
+        agent: AgentDefinition,
+        conversation: Conversation,
+    ): ConversationRuntimeStepContext {
+        val project = conversationService.getProject(conversation.id)
         val resolvedRuntime = settingsProvider.resolveAiRuntime(agent.runtimeSelection)
         val provider = resolvedRuntime.connection.kind.provider
         val modelName = resolvedRuntime.modelConfiguration.providerModelId
@@ -338,11 +448,8 @@ class ConversationEngineService(
             "Agent config: name=${agent.name}, modelName=$modelName, provider=$provider, " +
                 "runtimeOverrides=${agent.runtimeOverrides}"
         }
-        
-        val runtime = aiRuntimeProvider.getRuntime(
-            agent.runtimeSelection,
-            project.path
-        )
+
+        val runtime = aiRuntimeProvider.getRuntime(agent.runtimeSelection, project.path)
         val autoCompactionThresholdTokens = if (runtime.capabilities.supportsAutoCompaction) {
             aiModelSpecRepository.find(provider, modelName)?.autoCompactionThresholdTokens.also { threshold ->
                 if (threshold == null) {
@@ -358,21 +465,64 @@ class ConversationEngineService(
         val memoryPipelineTools = availableTools.withoutMemoryManagementTools()
         val baseSystemPrompts = agentDomainService.assembleSystemPrompt(agent, project)
         val assistantResponseFormat = resolvedRuntime.modelConfiguration.assistantResponseFormat
-        val memorySystemPrompts = baseSystemPrompts
         val runtimeSystemPrompts = buildList {
             addAll(baseSystemPrompts)
             AssistantResponseFormatContract.instruction(assistantResponseFormat)?.let(::add)
         }
-        val automaticMemoryRememberEnabled = settingsProvider.userProfile.memorySettings.autoRemember
-        val automaticMemoryRecallEnabled = settingsProvider.userProfile.memorySettings.autoRecall
 
-        // Add user message
-        conversationService.addMessage(conversationId, userMessage)
+        return ConversationRuntimeStepContext(
+            project = project,
+            runtime = runtime,
+            provider = provider,
+            modelName = modelName,
+            availableTools = availableTools,
+            memoryPipelineTools = memoryPipelineTools,
+            memorySystemPrompts = baseSystemPrompts,
+            runtimeSystemPrompts = runtimeSystemPrompts,
+            assistantResponseFormat = assistantResponseFormat,
+            autoCompactionThresholdTokens = autoCompactionThresholdTokens,
+            automaticMemoryRememberEnabled = settingsProvider.userProfile.memorySettings.autoRemember,
+            automaticMemoryRecallEnabled = settingsProvider.userProfile.memorySettings.autoRecall,
+        )
+    }
+
+    private suspend fun appendUserMessageWithAutomaticMemory(
+        conversationId: Conversation.Id,
+        conversation: Conversation,
+        project: Project,
+        userMessage: Conversation.Message,
+        agent: AgentDefinition,
+        memorySystemPrompts: List<String>,
+        memoryPipelineTools: List<AiToolCallback>,
+        automaticMemoryRememberEnabled: Boolean,
+        automaticMemoryRecallEnabled: Boolean,
+        recallFailureLogPrefix: String,
+    ): List<Conversation.Message> {
+        val emittedMessages = mutableListOf<Conversation.Message>()
+        val userMessageAdded = addRuntimeMessageIfMissing(conversationId, userMessage)
+        if (!userMessageAdded) {
+            log.info {
+                "Runtime user message already exists, skipping duplicate side effects: " +
+                    "conversation=${conversationId.value} message=${userMessage.id.value}"
+            }
+            return emptyList()
+        }
+        emittedMessages.add(userMessage)
+
         val writeResult = if (automaticMemoryRememberEnabled) {
-            routeMessageThroughMemoryRouter(conversationId, conversation.currentThread, userMessage, agent, project, memorySystemPrompts, memoryPipelineTools)
+            routeMessageThroughMemoryRouter(
+                conversationId,
+                conversation.currentThread,
+                userMessage,
+                agent,
+                project,
+                memorySystemPrompts,
+                memoryPipelineTools,
+            )
         } else {
             null
         }
+
         if (automaticMemoryRememberEnabled) {
             buildSyntheticMemoryToolPair(
                 conversationId = conversationId,
@@ -385,30 +535,19 @@ class ConversationEngineService(
                 },
                 resultText = MemoryToolResultRenderer.rememberResultJsonString(writeResult)
             ).forEach { syntheticMessage ->
-                emit(syntheticMessage)
-                conversationService.addMessage(conversationId, syntheticMessage)
+                if (addRuntimeMessageIfMissing(conversationId, syntheticMessage)) {
+                    emittedMessages.add(syntheticMessage)
+                }
             }
         }
 
-        // Fix non-sequential ToolCall/ToolResult pairs AFTER adding user message
-        // This ensures ToolResult appears IMMEDIATELY after ToolCall (Anthropic API requirement)
-        val fixResult = toolCallSequenceFixerService.fixNonSequentialPairs(conversationId)
-
-        if (fixResult.fixed) {
-            log.info {
-                "Fixed non-sequential ToolCall/ToolResult pairs: " +
-                "added ${fixResult.addedResults} error results, " +
-                "converted ${fixResult.convertedResults} orphaned results"
-            }
-        }
-
-        val activeConversationAfterWrite = conversationService.findById(conversationId) ?: conversation
+        val activeConversation = conversationService.findById(conversationId) ?: conversation
         val messagesBeforeRecall = conversationService.loadCurrentMessages(conversationId)
         val runtimeMemoryResult = if (automaticMemoryRecallEnabled) {
             runCatching {
                 memoryApplicationService.buildRuntimeMemoryReadResult(
                     conversationId = conversationId,
-                    threadId = activeConversationAfterWrite.currentThread,
+                    threadId = activeConversation.currentThread,
                     targetMessage = userMessage,
                     threadMessages = messagesBeforeRecall,
                     agent = agent,
@@ -417,13 +556,17 @@ class ConversationEngineService(
                     runtimeTools = memoryPipelineTools,
                 )
             }.onFailure { error ->
+                if (error is CancellationException) {
+                    throw error
+                }
                 log.warn(error) {
-                    "Memory runtime recall failed: conversation=${conversationId.value} target=${userMessage.id.value} error=${error.message}"
+                    "$recallFailureLogPrefix: conversation=${conversationId.value} target=${userMessage.id.value} error=${error.message}"
                 }
             }.getOrNull()
         } else {
             null
         }
+
         if (automaticMemoryRecallEnabled) {
             buildSyntheticMemoryToolPair(
                 conversationId = conversationId,
@@ -436,219 +579,129 @@ class ConversationEngineService(
                 },
                 resultText = MemoryToolResultRenderer.enrichContextResultJsonString(runtimeMemoryResult)
             ).forEach { syntheticMessage ->
-                emit(syntheticMessage)
-                conversationService.addMessage(conversationId, syntheticMessage)
+                if (addRuntimeMessageIfMissing(conversationId, syntheticMessage)) {
+                    emittedMessages.add(syntheticMessage)
+                }
             }
         }
-        val finalMessages = conversationService.loadCurrentMessages(conversationId)
+
         log.info {
             "Memory auto wiring: conversation=${conversationId.value} autoRemember=$automaticMemoryRememberEnabled autoRecall=$automaticMemoryRecallEnabled " +
                 "memoryPromptPresent=${!runtimeMemoryResult?.runtimePrompt.isNullOrBlank()} memoryPromptChars=${runtimeMemoryResult?.runtimePrompt?.length ?: 0} " +
-                "systemPrompts=${runtimeSystemPrompts.size} assistantResponseFormat=$assistantResponseFormat " +
-                "rememberTriggered=$automaticMemoryRememberEnabled recallTriggered=$automaticMemoryRecallEnabled"
+                "systemPrompts=${memorySystemPrompts.size} rememberTriggered=$automaticMemoryRememberEnabled recallTriggered=$automaticMemoryRecallEnabled"
         }
+        return emittedMessages
+    }
 
-        var iterationCount = 0
-        val maxIterations = 200
-
-        while (iterationCount < maxIterations) {
-            if (!awaitExecutionCanContinue(conversationId)) {
-                break
-            }
-            iterationCount++
-
-            val currentMessages = if (iterationCount == 1) finalMessages else conversationService.loadCurrentMessages(conversationId)
-
-            val runtimeRequest = AiRuntimeRequest(
-                systemPrompts = runtimeSystemPrompts,
-                messages = currentMessages,
-                tools = availableTools,
-                options = AiRuntimeOptions(
-                    maxOutputTokens = agent.runtimeOverrides.maxOutputTokens,
-                    reasoning = agent.runtimeOverrides.reasoning,
-                    autoCompactionThresholdTokens = autoCompactionThresholdTokens,
-                    responseFormat = AssistantResponseFormatContract.runtimeResponseFormat(assistantResponseFormat),
-                    assistantResponseFormat = assistantResponseFormat,
-                    toolContext = mapOf(
-                        "projectPath" to project.path,
-                        "conversationId" to conversationId.value,
-                        "aiProvider" to provider.name,
-                        "modelName" to modelName
-                    )
-                )
-            )
-
-            val runtimeResponse = try {
-                log.info { "Calling LLM runtime: model=$modelName, provider=$provider, iteration=$iterationCount" }
-                markRuntimePhase(conversationId, ConversationExecutionState.Phase.RUNNING_LLM)
-                runtime.call(runtimeRequest)
-            } catch (e: Exception) {
-                log.error(e) { "Chat call error" }
-                val errorMessage = AiConversationMessageMapper.createErrorMessage(conversationId, e.message ?: "Unknown error")
-                emit(errorMessage)
-                conversationService.addMessage(conversationId, errorMessage)
-                if (automaticMemoryRememberEnabled) {
-                    routeMessageThroughMemoryRouter(conversationId, conversation.currentThread, errorMessage, agent, project, memorySystemPrompts, memoryPipelineTools)
-                }
-                break
-            }
-
+    private suspend fun saveTokenUsage(
+        conversation: Conversation,
+        context: ConversationRuntimeStepContext,
+        lastAssistantMessage: Conversation.Message?,
+        usage: AiUsage?,
+    ) {
+        if (lastAssistantMessage == null || usage == null) {
+            return
+        }
+        runCatching {
+            val totalInputTokens = usage.totalInputTokens
+            val totalOutputTokens = usage.totalOutputTokens
             log.info {
-                "Runtime response received: assistantMessages=${runtimeResponse.messages.size}, " +
-                    "toolCalls=${runtimeResponse.toolCalls.size}, finishReason=${runtimeResponse.finishReason}"
+                "Tokens: prompt=${usage.promptTokens} (new), cache_creation=${usage.cacheCreationTokens}, cache_read=${usage.cacheReadTokens}, " +
+                    "total_input=$totalInputTokens, completion=${usage.completionTokens}, thinking=${usage.thinkingTokens}, " +
+                    "total_output=$totalOutputTokens, total=${totalInputTokens + totalOutputTokens}"
             }
-            markRuntimePhase(conversationId, ConversationExecutionState.Phase.AFTER_LLM)
-            if (runtimeCoordinator.find(conversationId)?.status == ConversationExecutionState.Status.INTERRUPTING) {
-                break
+            if (usage.thinkingTokens > 0) {
+                log.info { "Extended thinking was used: ${usage.thinkingTokens} thinking tokens generated" }
             }
-
-            try {
-                if (runtimeResponse.messages.isEmpty() && runtimeResponse.toolCalls.isEmpty()) {
-                    log.warn { "Empty response from AI runtime" }
-                    break
-                }
-            } catch (e: Exception) {
-                log.error(e) { "Runtime response processing error" }
-                break
-            }
-
-            val allToolCalls = runtimeResponse.toolCalls
-
-            val assistantMessages = AiConversationMessageMapper.toConversationMessages(conversationId, runtimeResponse)
-
-            // Emit and save all assistant messages (thinking, tool calls, text - as separate messages)
-            assistantMessages.forEach { message ->
-                emit(message)
-                conversationService.addMessage(conversationId, message)
-                if (automaticMemoryRememberEnabled) {
-                    routeMessageThroughMemoryRouter(conversationId, conversation.currentThread, message, agent, project, memorySystemPrompts, memoryPipelineTools)
-                }
-            }
-
-            // Save usage statistics with reference to the last assistant message
-            val lastAssistantMessage = assistantMessages.lastOrNull()
-            if (lastAssistantMessage != null) {
-                runtimeResponse.usage?.let { usage ->
-                    try {
-                        val totalInputTokens = usage.totalInputTokens
-                        val totalOutputTokens = usage.totalOutputTokens
-
-                        log.info {
-                            "Tokens: prompt=${usage.promptTokens} (new), cache_creation=${usage.cacheCreationTokens}, cache_read=${usage.cacheReadTokens}, " +
-                                "total_input=$totalInputTokens, completion=${usage.completionTokens}, thinking=${usage.thinkingTokens}, " +
-                                "total_output=$totalOutputTokens, total=${totalInputTokens + totalOutputTokens}"
-                        }
-
-                        if (usage.thinkingTokens > 0) {
-                            log.info { "Extended thinking was used: ${usage.thinkingTokens} thinking tokens generated" }
-                        }
-
-                        tokenUsageStatisticsRepository.save(
-                            TokenUsageStatistics(
-                                id = TokenUsageStatistics.Id(uuid7()),
-                                threadId = conversation.currentThread,
-                                lastMessageId = lastAssistantMessage.id,
-                                timestamp = Clock.System.now(),
-                                promptTokens = usage.promptTokens,
-                                completionTokens = usage.completionTokens,
-                                cacheCreationTokens = usage.cacheCreationTokens,
-                                cacheReadTokens = usage.cacheReadTokens,
-                                thinkingTokens = usage.thinkingTokens,
-                                provider = provider.name,
-                                modelId = modelName
-                            )
-                        )
-                    } catch (e: Exception) {
-                        log.error(e) { "Failed to save token usage statistics" }
-                    }
-                }
-            }
-
-            if (allToolCalls.isNotEmpty()) {
-                val approvalResult = toolApprovalService.approve(allToolCalls)
-                if (approvalResult is ApprovalResult.Rejected) {
-                    log.warn { "Tool calls rejected: ${approvalResult.reason}" }
-                    // Find the message containing tool calls
-                    val messageWithToolCalls = assistantMessages.lastOrNull { msg ->
-                        msg.content.any { it is ContentItem.ToolCall }
-                    }
-                    if (messageWithToolCalls != null) {
-                        val rejectedMessage = messageWithToolCalls.copy(
-                            error = Conversation.Message.GenerationError(
-                                message = "Tool calls rejected: ${approvalResult.reason}",
-                                type = "rejected"
-                            )
-                        )
-                        emit(rejectedMessage)
-                    }
-                    break
-                }
-
-                val toolContext = ToolExecutionContext(
-                    mapOf(
-                        "projectPath" to project.path,
-                        "conversationId" to conversationId.value,
-                        "aiProvider" to provider.name,
-                        "modelName" to modelName
-                    )
-                )
-                markRuntimePhase(conversationId, ConversationExecutionState.Phase.RUNNING_TOOL)
-                val executionResult = parallelToolExecutor.executeParallel(
-                    toolCalls = allToolCalls,
-                    toolContext = toolContext,
-                    scope = coroutineScope
-                )
-
-                val toolResultMessage = Conversation.Message(
-                    id = Conversation.Message.Id(uuid7()),
-                    conversationId = conversationId,
-                    role = Conversation.Message.Role.USER,
-                    content = executionResult.results,
-                    createdAt = Clock.System.now()
-                )
-                emit(toolResultMessage)
-                conversationService.addMessage(conversationId, toolResultMessage)
-                markRuntimePhase(conversationId, ConversationExecutionState.Phase.AFTER_TOOL_RESULT)
-                if (automaticMemoryRememberEnabled) {
-                    routeMessageThroughMemoryRouter(conversationId, conversation.currentThread, toolResultMessage, agent, project, memorySystemPrompts, memoryPipelineTools)
-                }
-                if (!awaitExecutionCanContinue(conversationId)) {
-                    break
-                }
-
-                if (executionResult.returnDirect) {
-                    break
-                }
-
-                emitQueuedRuntimeMessagesAtSafePoint(
-                    conversationId = conversationId,
-                    placement = QueuedMessagePlacement.AFTER_TOOL_RESULT,
-                    conversation = conversation,
-                    project = project,
-                    memorySystemPrompts = memorySystemPrompts,
-                    memoryPipelineTools = memoryPipelineTools,
-                    automaticMemoryRememberEnabled = automaticMemoryRememberEnabled,
-                    automaticMemoryRecallEnabled = automaticMemoryRecallEnabled,
-                ).forEach { queuedMessage ->
-                    emit(queuedMessage)
-                }
-            } else {
+            val statisticsId = TokenUsageStatistics.Id("runtime:${lastAssistantMessage.id.value}:usage")
+            if (tokenUsageStatisticsRepository.getRecentCalls(conversation.currentThread, limit = 100).any { it.id == statisticsId }) {
                 log.info {
-                    "Legacy memory inline ingest disabled: conversation=${conversationId.value} " +
-                        "thread=${conversation.currentThread.value}; router-only per-message pipeline is active"
+                    "Runtime token usage side effect already applied: " +
+                        "thread=${conversation.currentThread.value} message=${lastAssistantMessage.id.value}"
                 }
-                break
+                return@runCatching
             }
-        }
-
-        if (iterationCount >= maxIterations) {
-            val errorMessage = AiConversationMessageMapper.createErrorMessage(
-                conversationId,
-                "Tool execution loop exceeded maximum iterations ($maxIterations)",
-                "max_iterations"
+            tokenUsageStatisticsRepository.save(
+                TokenUsageStatistics(
+                    id = statisticsId,
+                    threadId = conversation.currentThread,
+                    lastMessageId = lastAssistantMessage.id,
+                    timestamp = Clock.System.now(),
+                    promptTokens = usage.promptTokens,
+                    completionTokens = usage.completionTokens,
+                    cacheCreationTokens = usage.cacheCreationTokens,
+                    cacheReadTokens = usage.cacheReadTokens,
+                    thinkingTokens = usage.thinkingTokens,
+                    provider = context.provider.name,
+                    modelId = context.modelName,
+                )
             )
-            emit(errorMessage)
+        }.onFailure { error ->
+            log.error(error) { "Failed to save token usage statistics" }
         }
+    }
+
+    private suspend fun submitContinuationTask(task: ConversationRuntimeTask) {
+        runtimeDispatcher.submitContinuationTask(task)
+    }
+
+    private fun llmCallTask(
+        conversationId: Conversation.Id,
+        rootUserMessageId: Conversation.Message.Id,
+        agent: AgentDefinition,
+        iteration: Int,
+    ): ConversationRuntimeTask =
+        ConversationRuntimeTask(
+            id = ConversationRuntimeTask.Id("${rootUserMessageId.value}:llm:$iteration"),
+            conversationId = conversationId,
+            payload = ConversationRuntimeTask.Payload.LlmCall(
+                rootUserMessageId = rootUserMessageId,
+                agent = agent,
+                iteration = iteration,
+            ),
+            placement = QueuedMessagePlacement.END_OF_TURN,
+            idempotencyKey = "conversation:${conversationId.value}:runtime:${rootUserMessageId.value}:llm:$iteration",
+            requirements = ConversationRuntimeTaskRequirements(
+                capabilities = setOf(ConversationRuntimeWorkerCapability.LLM_RUNTIME),
+            ),
+            createdAt = Clock.System.now(),
+        )
+
+    private fun toolExecutionTask(
+        conversationId: Conversation.Id,
+        rootUserMessageId: Conversation.Message.Id,
+        agent: AgentDefinition,
+        iteration: Int,
+        toolCalls: List<ContentItem.ToolCall>,
+        availableTools: List<AiToolCallback>,
+    ): ConversationRuntimeTask =
+        ConversationRuntimeTask(
+            id = ConversationRuntimeTask.Id("${rootUserMessageId.value}:tools:$iteration"),
+            conversationId = conversationId,
+            payload = ConversationRuntimeTask.Payload.ToolExecution(
+                rootUserMessageId = rootUserMessageId,
+                agent = agent,
+                iteration = iteration,
+                toolCalls = toolCalls,
+            ),
+            placement = QueuedMessagePlacement.END_OF_TURN,
+            idempotencyKey = "conversation:${conversationId.value}:runtime:${rootUserMessageId.value}:tools:$iteration",
+            requirements = toolExecutionRequirements(toolCalls, availableTools),
+            createdAt = Clock.System.now(),
+        )
+
+    private fun toolExecutionRequirements(
+        toolCalls: List<ContentItem.ToolCall>,
+        availableTools: List<AiToolCallback>,
+    ): ConversationRuntimeTaskRequirements =
+        conversationRuntimeToolExecutionRequirements(
+            toolCalls = toolCalls,
+            availableTools = availableTools,
+            localAgentAffinity = localAgentAffinity,
+        )
+
+    private companion object {
+        const val MAX_TOOL_LOOP_ITERATIONS = 200
     }
 
     private suspend fun routeMessageThroughMemoryRouter(
@@ -671,6 +724,9 @@ class ConversationEngineService(
                 runtimeTools = tools,
             )
         }.onFailure { error ->
+            if (error is CancellationException) {
+                throw error
+            }
             val failed = "Memory router trigger failed: conversation=${conversationId.value} message=${message.id.value} role=${message.role} error=${error.message}"
             log.warn(error) { failed }
             println(failed)
@@ -682,33 +738,66 @@ class ConversationEngineService(
 
     private suspend fun popQueuedRuntimeMessages(
         conversationId: Conversation.Id,
+        runtimeTaskId: ConversationRuntimeTask.Id,
+        workerId: String,
         placement: QueuedMessagePlacement,
-    ): List<ConversationRuntimeCommand> {
-        val commands = runtimeCoordinator.takeActiveInsertions(conversationId, placement)
-        if (commands.isNotEmpty()) {
+    ): List<ConversationRuntimeTask> {
+        val tasks = runtimeCoordinator.takeActiveInsertions(conversationId, runtimeTaskId, workerId, placement)
+        if (tasks.isNotEmpty()) {
             publishRuntimeSnapshot(conversationId)
         }
-        return commands
+        return tasks
     }
 
-    private suspend fun markRuntimePhase(
+    private suspend fun ensureRuntimeTaskOwner(
         conversationId: Conversation.Id,
-        phase: ConversationExecutionState.Phase,
+        runtimeTaskId: ConversationRuntimeTask.Id,
+        workerId: String,
     ) {
-        runtimeCoordinator.markPhase(conversationId, phase)
+        val accepted = runtimeCoordinator.confirmActiveTaskOwner(conversationId, runtimeTaskId, workerId)
+        if (!accepted) {
+            throw IllegalStateException(
+                "Conversation runtime task ownership was lost before side effect: " +
+                    "conversation=${conversationId.value} task=${runtimeTaskId.value} worker=$workerId"
+            )
+        }
+    }
+
+    private suspend fun upsertRuntimeToolExecution(
+        conversationId: Conversation.Id,
+        execution: ConversationRuntimeToolExecution,
+    ) {
+        val accepted = runtimeCoordinator.upsertToolExecution(conversationId, execution)
+        if (!accepted) {
+            throw IllegalStateException(
+                "Rejected stale runtime tool execution update: " +
+                    "conversation=${conversationId.value} task=${execution.runtimeTaskId?.value} worker=${execution.workerId}"
+            )
+        }
         publishRuntimeSnapshot(conversationId)
     }
 
-    private suspend fun finishRuntimeIfIdle(conversationId: Conversation.Id): Boolean {
-        val finished = runtimeCoordinator.finishIfIdle(conversationId)
-        if (finished) {
+    private suspend fun clearRuntimeToolExecutions(
+        conversationId: Conversation.Id,
+        runtimeTaskId: ConversationRuntimeTask.Id,
+        workerId: String,
+    ) {
+        if (runtimeCoordinator.clearToolExecutions(conversationId, runtimeTaskId, workerId)) {
             publishRuntimeSnapshot(conversationId)
         }
-        return finished
     }
 
     private suspend fun publishRuntimeSnapshot(conversationId: Conversation.Id) {
-        runtimeEventBus.publish(runtimeSnapshotEvent(conversationId))
+        try {
+            runtimeEventBus.publish(runtimeSnapshotEvent(conversationId))
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Throwable) {
+            log.warn(error) {
+                "Failed to publish live runtime snapshot; clients can recover from snapshot reload: " +
+                    "conversation=${conversationId.value} error=${error.message}"
+            }
+        }
     }
 
     private suspend fun runtimeSnapshotEvent(conversationId: Conversation.Id): ConversationRuntimeEvent.SnapshotUpdated =
@@ -721,12 +810,12 @@ class ConversationEngineService(
         while (true) {
             val state = runtimeCoordinator.find(conversationId) ?: return true
             when {
-                state.status == ConversationExecutionState.Status.STOPPING ||
-                    state.status == ConversationExecutionState.Status.INTERRUPTING -> return false
+                state.controlState == ConversationExecutionState.ControlState.STOPPING ||
+                    state.controlState == ConversationExecutionState.ControlState.INTERRUPTING -> return false
 
-                state.status == ConversationExecutionState.Status.PAUSED -> delay(250)
+                state.controlState == ConversationExecutionState.ControlState.PAUSED -> delay(250)
 
-                state.status == ConversationExecutionState.Status.PAUSE_REQUESTED -> {
+                state.controlState == ConversationExecutionState.ControlState.PAUSE_REQUESTED -> {
                     if (runtimeCoordinator.markPaused(conversationId)) {
                         publishRuntimeSnapshot(conversationId)
                     }
@@ -740,6 +829,8 @@ class ConversationEngineService(
 
     private suspend fun emitQueuedRuntimeMessagesAtSafePoint(
         conversationId: Conversation.Id,
+        runtimeTaskId: ConversationRuntimeTask.Id,
+        workerId: String,
         placement: QueuedMessagePlacement,
         conversation: Conversation,
         project: Project,
@@ -748,7 +839,7 @@ class ConversationEngineService(
         automaticMemoryRememberEnabled: Boolean,
         automaticMemoryRecallEnabled: Boolean,
     ): List<Conversation.Message> {
-        val queuedMessages = popQueuedRuntimeMessages(conversationId, placement)
+        val queuedMessages = popQueuedRuntimeMessages(conversationId, runtimeTaskId, workerId, placement)
         if (queuedMessages.isEmpty()) {
             return emptyList()
         }
@@ -771,17 +862,25 @@ class ConversationEngineService(
         conversationId: Conversation.Id,
         conversation: Conversation,
         project: Project,
-        queued: ConversationRuntimeCommand,
+        queued: ConversationRuntimeTask,
         memorySystemPrompts: List<String>,
         memoryPipelineTools: List<AiToolCallback>,
         automaticMemoryRememberEnabled: Boolean,
         automaticMemoryRecallEnabled: Boolean,
     ): List<Conversation.Message> {
         val emittedMessages = mutableListOf<Conversation.Message>()
-        val userMessage = queued.userMessage
-        val agent = queued.agent
+        val userTurn = queued.requireUserTurn()
+        val userMessage = userTurn.userMessage
+        val agent = userTurn.agent
 
-        conversationService.addMessage(conversationId, userMessage)
+        val userMessageAdded = addRuntimeMessageIfMissing(conversationId, userMessage)
+        if (!userMessageAdded) {
+            log.info {
+                "Queued runtime message already exists, skipping duplicate side effects: " +
+                    "conversation=${conversationId.value} message=${userMessage.id.value}"
+            }
+            return emptyList()
+        }
         emittedMessages.add(userMessage)
         log.info {
             "Accepted queued runtime message at ${queued.placement}: conversation=${conversationId.value} message=${userMessage.id.value}"
@@ -806,8 +905,9 @@ class ConversationEngineService(
                 resultText = MemoryToolResultRenderer.rememberResultJsonString(writeResult)
             )
             rememberMessages.forEach { syntheticMessage ->
-                conversationService.addMessage(conversationId, syntheticMessage)
-                emittedMessages.add(syntheticMessage)
+                if (addRuntimeMessageIfMissing(conversationId, syntheticMessage)) {
+                    emittedMessages.add(syntheticMessage)
+                }
             }
         }
 
@@ -826,6 +926,9 @@ class ConversationEngineService(
                     runtimeTools = memoryPipelineTools,
                 )
             }.onFailure { error ->
+                if (error is CancellationException) {
+                    throw error
+                }
                 log.warn(error) {
                     "Queued message memory recall failed: conversation=${conversationId.value} target=${userMessage.id.value} error=${error.message}"
                 }
@@ -847,8 +950,9 @@ class ConversationEngineService(
                 resultText = MemoryToolResultRenderer.enrichContextResultJsonString(runtimeMemoryResult)
             )
             recallMessages.forEach { syntheticMessage ->
-                conversationService.addMessage(conversationId, syntheticMessage)
-                emittedMessages.add(syntheticMessage)
+                if (addRuntimeMessageIfMissing(conversationId, syntheticMessage)) {
+                    emittedMessages.add(syntheticMessage)
+                }
             }
         }
 
@@ -976,6 +1080,36 @@ class ConversationEngineService(
         }
     }
 
+    private suspend fun addRuntimeMessageIfMissing(
+        conversationId: Conversation.Id,
+        message: Conversation.Message,
+    ): Boolean {
+        val existsInCurrentThread = conversationService.loadCurrentMessages(conversationId).any { it.id == message.id }
+        if (existsInCurrentThread) {
+            log.info {
+                "Runtime message side effect already applied: " +
+                    "conversation=${conversationId.value} message=${message.id.value}"
+            }
+            return false
+        }
+        conversationService.addMessage(conversationId, message)
+        return true
+    }
+
+    private fun runtimeMessageId(
+        taskId: ConversationRuntimeTask.Id,
+        suffix: String,
+    ): Conversation.Message.Id =
+        Conversation.Message.Id("${taskId.value}:$suffix")
+
+    private fun List<Conversation.Message>.withRuntimeMessageIds(
+        taskId: ConversationRuntimeTask.Id,
+        prefix: String,
+    ): List<Conversation.Message> =
+        mapIndexed { index, message ->
+            message.copy(id = runtimeMessageId(taskId, "$prefix:$index"))
+        }
+
     private fun buildSyntheticMemoryToolPair(
         conversationId: Conversation.Id,
         targetMessage: Conversation.Message,
@@ -983,10 +1117,12 @@ class ConversationEngineService(
         arguments: JsonObject,
         resultText: String,
     ): List<Conversation.Message> {
-        val toolCallId = ContentItem.ToolCall.Id("mem_${uuid7().replace("-", "")}")
+        val toolCallId = ContentItem.ToolCall.Id(
+            "mem_${stableIdentifierSlug(targetMessage.id.value)}_${stableIdentifierSlug(toolName)}"
+        )
         val createdAt = Clock.System.now()
         val toolCallMessage = Conversation.Message(
-            id = Conversation.Message.Id(uuid7()),
+            id = Conversation.Message.Id("${targetMessage.id.value}:memory:$toolName:call"),
             conversationId = conversationId,
             role = Conversation.Message.Role.ASSISTANT,
             content = listOf(
@@ -1008,7 +1144,7 @@ class ConversationEngineService(
         )
 
         val toolResultMessage = Conversation.Message(
-            id = Conversation.Message.Id(uuid7()),
+            id = Conversation.Message.Id("${targetMessage.id.value}:memory:$toolName:result"),
             conversationId = conversationId,
             role = Conversation.Message.Role.USER,
             content = listOf(
@@ -1031,18 +1167,15 @@ class ConversationEngineService(
         return listOf(toolCallMessage, toolResultMessage)
     }
 
-    private fun queuedRuntimeCommand(
-        conversationId: Conversation.Id,
-        userMessage: Conversation.Message,
-        agent: AgentDefinition,
-        placement: QueuedMessagePlacement,
-    ): ConversationRuntimeCommand =
-        ConversationRuntimeCommand(
-            id = ConversationRuntimeCommand.Id(userMessage.id.value),
-            conversationId = conversationId,
-            userMessage = userMessage,
-            agent = agent,
-            placement = placement,
-            createdAt = Clock.System.now(),
-        )
+    private fun stableIdentifierSlug(value: String): String =
+        value.filter { it.isLetterOrDigit() }.take(48).ifBlank { "x" }
+
 }
+
+private fun ConversationRuntimeWorkerAffinity.Kind.localToolPriority(): Int =
+    when (this) {
+        ConversationRuntimeWorkerAffinity.Kind.WORKSPACE -> 0
+        ConversationRuntimeWorkerAffinity.Kind.PROJECT -> 1
+        ConversationRuntimeWorkerAffinity.Kind.MACHINE -> 2
+        ConversationRuntimeWorkerAffinity.Kind.USER -> 3
+    }

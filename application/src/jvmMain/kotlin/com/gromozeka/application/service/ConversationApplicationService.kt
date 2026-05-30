@@ -247,16 +247,28 @@ class ConversationApplicationService(
             "Message conversationId mismatch"
         }
 
-        messageRepo.save(message)
+        saveMessageIfAbsent(message)
 
         val conversation = conversationRepo.findById(conversationId)
             ?: throw IllegalStateException("Conversation not found: $conversationId")
 
         val currentThread = threadRepo.findById(conversation.currentThread)!!
+        val existingLinks = threadMessageRepo.getByThread(currentThread.id)
+        if (existingLinks.any { it.messageId == message.id }) {
+            log.debug("Message ${message.id} is already linked to thread ${currentThread.id}")
+            return conversationRepo.findById(conversationId)
+        }
 
         val lastPosition = threadMessageRepo.getMaxPosition(currentThread.id) ?: -1
 
-        threadMessageRepo.add(currentThread.id, message.id, position = lastPosition + 1)
+        runCatching {
+            threadMessageRepo.add(currentThread.id, message.id, position = lastPosition + 1)
+        }.onFailure { error ->
+            val linkedAfterRace = threadMessageRepo.getByThread(currentThread.id).any { it.messageId == message.id }
+            if (!linkedAfterRace) {
+                throw error
+            }
+        }
 
         threadRepo.updateTimestamp(currentThread.id, Clock.System.now())
 
@@ -264,6 +276,36 @@ class ConversationApplicationService(
 
         return conversationRepo.findById(conversationId)
     }
+
+    private suspend fun saveMessageIfAbsent(message: Conversation.Message) {
+        val existing = messageRepo.findById(message.id)
+        if (existing != null) {
+            require(existing.samePersistentBodyAs(message)) {
+                "Message id collision with different content: ${message.id.value}"
+            }
+            return
+        }
+
+        runCatching {
+            messageRepo.save(message)
+        }.onFailure { error ->
+            val savedAfterRace = messageRepo.findById(message.id)
+            if (savedAfterRace == null || !savedAfterRace.samePersistentBodyAs(message)) {
+                throw error
+            }
+        }
+    }
+
+    private fun Conversation.Message.samePersistentBodyAs(other: Conversation.Message): Boolean =
+        conversationId == other.conversationId &&
+            originalIds == other.originalIds &&
+            squashOperationId == other.squashOperationId &&
+            replyTo == other.replyTo &&
+            role == other.role &&
+            content == other.content &&
+            instructions == other.instructions &&
+            providerMetadata == other.providerMetadata &&
+            error == other.error
 
     /**
      * Loads messages from current thread in order.

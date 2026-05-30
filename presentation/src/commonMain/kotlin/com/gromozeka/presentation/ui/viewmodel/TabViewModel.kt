@@ -17,10 +17,12 @@ import com.gromozeka.domain.model.ai.AiRuntimeAssignment
 import com.gromozeka.domain.service.ConversationDomainService
 import com.gromozeka.domain.service.ConversationExecutionState
 import com.gromozeka.domain.service.ConversationRuntimeControlAction
-import com.gromozeka.domain.service.ConversationRuntimeCommand
+import com.gromozeka.domain.service.ConversationRuntimeTask
 import com.gromozeka.domain.service.ConversationRuntimeEvent
 import com.gromozeka.domain.service.ConversationRuntimeSnapshot
 import com.gromozeka.domain.service.ConversationRuntimeService
+import com.gromozeka.domain.service.ConversationRuntimeToolExecution
+import com.gromozeka.domain.service.ConversationRuntimeTraceEntry
 import com.gromozeka.domain.service.ConversationTokenStatsService
 import com.gromozeka.domain.service.MessageSquashGenerationService
 import com.gromozeka.domain.service.QueuedMessagePlacement
@@ -57,6 +59,7 @@ class TabViewModel(
 
     private var currentRequestJob: kotlinx.coroutines.Job? = null
     private var lastRuntimeMessage: Conversation.Message? = null
+    private var lastRuntimeSnapshotRevision = -1L
 
     companion object {
         private const val MID_TURN_STEER_INSTRUCTION_ID = "mid_turn_steer"
@@ -114,6 +117,12 @@ class TabViewModel(
 
     private val _pendingMessages = MutableStateFlow<List<PendingUserMessage>>(emptyList())
     val pendingMessages: StateFlow<List<PendingUserMessage>> = _pendingMessages.asStateFlow()
+    private val _activeToolExecutions = MutableStateFlow<List<ConversationRuntimeToolExecution>>(emptyList())
+    val activeToolExecutions: StateFlow<List<ConversationRuntimeToolExecution>> = _activeToolExecutions.asStateFlow()
+    private val _runtimeTrace = MutableStateFlow<List<ConversationRuntimeTraceEntry>>(emptyList())
+    val runtimeTrace: StateFlow<List<ConversationRuntimeTraceEntry>> = _runtimeTrace.asStateFlow()
+    private val _runtimeSnapshot = MutableStateFlow<ConversationRuntimeSnapshot?>(null)
+    val runtimeSnapshot: StateFlow<ConversationRuntimeSnapshot?> = _runtimeSnapshot.asStateFlow()
     val pendingMessagesCount: StateFlow<Int> = pendingMessages
         .map { it.size }
         .stateIn(scope, SharingStarted.Eagerly, 0)
@@ -131,20 +140,34 @@ class TabViewModel(
         }
 
         scope.launch {
-            loadMessages()
+            loadMessages(preserveRuntimeMessages = true)
             loadTokenStats()
         }
     }
 
-    private suspend fun loadMessages() {
+    private suspend fun loadMessages(preserveRuntimeMessages: Boolean = false) {
         try {
             val messages = conversationService.loadCurrentMessages(conversationId)
-            _allMessages.value = messages
+            if (preserveRuntimeMessages) {
+                mergeLoadedMessages(messages)
+            } else {
+                _allMessages.value = messages
+            }
             collapseVisibleThinkingBlocks(messages, onlyWhenNoManualState = false)
 
             log.debug { "Loaded ${messages.size} messages for conversation $conversationId" }
         } catch (e: Exception) {
             log.error(e) { "Failed to load messages for conversation $conversationId" }
+        }
+    }
+
+    private fun mergeLoadedMessages(loadedMessages: List<Conversation.Message>) {
+        _allMessages.update { currentMessages ->
+            val loadedIds = loadedMessages.map { it.id }.toSet()
+            val runtimeOnlyMessages = currentMessages.filterNot { it.id in loadedIds }
+
+            (loadedMessages + runtimeOnlyMessages)
+                .sortedWith(compareBy<Conversation.Message> { it.createdAt }.thenBy { it.id.value })
         }
     }
 
@@ -181,11 +204,23 @@ class TabViewModel(
     }
 
     private fun applyRuntimeSnapshot(snapshot: ConversationRuntimeSnapshot) {
-        _pendingMessages.value = snapshot.pendingCommands.map { it.toPendingUserMessage() }
-        val status = snapshot.state?.status
-        val isRuntimeActive = snapshot.state != null || snapshot.pendingCommands.isNotEmpty()
-        val isPaused = status == ConversationExecutionState.Status.PAUSED ||
-            status == ConversationExecutionState.Status.PAUSE_REQUESTED
+        if (snapshot.revision < lastRuntimeSnapshotRevision) {
+            log.warn {
+                "Ignoring stale runtime snapshot: conversation=${conversationId.value} " +
+                    "revision=${snapshot.revision} last=$lastRuntimeSnapshotRevision"
+            }
+            return
+        }
+        lastRuntimeSnapshotRevision = snapshot.revision
+
+        _pendingMessages.value = snapshot.pendingTasks.mapNotNull { it.toPendingUserMessageOrNull() }
+        _activeToolExecutions.value = snapshot.toolExecutions
+        _runtimeTrace.value = snapshot.trace
+        _runtimeSnapshot.value = snapshot
+        val controlState = snapshot.state?.controlState
+        val isRuntimeActive = snapshot.state != null || snapshot.pendingTasks.isNotEmpty()
+        val isPaused = controlState == ConversationExecutionState.ControlState.PAUSED ||
+            controlState == ConversationExecutionState.ControlState.PAUSE_REQUESTED
         _isWaitingForResponse.value = isRuntimeActive
         _executionPauseRequested.value = isPaused
         _uiState.update { it.copy(isWaitingForResponse = isRuntimeActive) }
@@ -264,6 +299,8 @@ class TabViewModel(
         lastRuntimeMessage = null
         _isWaitingForResponse.value = false
         _executionPauseRequested.value = false
+        _activeToolExecutions.value = emptyList()
+        _runtimeSnapshot.value = null
         _uiState.update { it.copy(isWaitingForResponse = false) }
     }
 
@@ -567,6 +604,8 @@ class TabViewModel(
     fun interrupt() {
         log.debug { "Interrupting current request for conversation $conversationId" }
         _pendingMessages.value = emptyList()
+        _activeToolExecutions.value = emptyList()
+        _runtimeTrace.value = emptyList()
         _executionPauseRequested.value = false
         scope.launch {
             runCatching {
@@ -617,6 +656,8 @@ class TabViewModel(
             }.getOrDefault(false)
             if (accepted) {
                 _pendingMessages.value = emptyList()
+                _activeToolExecutions.value = emptyList()
+                _runtimeTrace.value = emptyList()
                 _executionPauseRequested.value = false
                 lastRuntimeMessage = null
             }
@@ -1017,9 +1058,11 @@ data class PendingUserMessage(
             .joinToString("\n") { it.text }
 }
 
-private fun ConversationRuntimeCommand.toPendingUserMessage(): PendingUserMessage =
-    PendingUserMessage(
-        userMessage = userMessage,
-        agent = agent,
-        placement = placement,
-    )
+private fun ConversationRuntimeTask.toPendingUserMessageOrNull(): PendingUserMessage? =
+    userTurnOrNull()?.let { userTurn ->
+        PendingUserMessage(
+            userMessage = userTurn.userMessage,
+            agent = userTurn.agent,
+            placement = placement,
+        )
+    }

@@ -68,6 +68,7 @@ anthropic-java-bedrock = { module = "com.anthropic:anthropic-java-bedrock", vers
 aws-sdk-sso = { module = "software.amazon.awssdk:sso", version.ref = "aws-sdk" }
 aws-sdk-ssooidc = { module = "software.amazon.awssdk:ssooidc", version.ref = "aws-sdk" }
 spring-boot-starter = { module = "org.springframework.boot:spring-boot-starter", version.ref = "spring-boot" }
+spring-boot-starter-amqp = { module = "org.springframework.boot:spring-boot-starter-amqp", version.ref = "spring-boot" }
 spring-boot-starter-test = { module = "org.springframework.boot:spring-boot-starter-test", version.ref = "spring-boot" }
 
 # Kotlinx

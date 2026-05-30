@@ -72,6 +72,7 @@ internal class GromozekaWsClient(
     private val pending = mutableMapOf<String, CompletableDeferred<ServerResponse>>()
     private val streams = mutableMapOf<String, Channel<ServerPayload>>()
     private val conversationSubscriptions = mutableMapOf<String, Channel<ServerPayload>>()
+    private val conversationEventSequences = mutableMapOf<Conversation.Id, Long>()
     private val liveInterpreterSessions = mutableMapOf<String, Channel<ServerPayload>>()
 
     suspend fun request(payload: ClientRequest): ServerResponse {
@@ -90,36 +91,58 @@ internal class GromozekaWsClient(
         }
     }
 
-    fun observeConversation(conversationId: Conversation.Id): Flow<ConversationRuntimeEvent> = flow {
+    fun observeConversation(
+        conversationId: Conversation.Id,
+        afterEventSequence: Long? = null,
+    ): Flow<ConversationRuntimeEvent> = flow {
         val subscriptionId = uuid7()
         val channel = Channel<ServerPayload>(Channel.UNLIMITED)
         conversationSubscriptions[subscriptionId] = channel
-        send(ObserveConversationCommand(subscriptionId, conversationId))
+        val replayAfterSequence = listOfNotNull(afterEventSequence, conversationEventSequences[conversationId]).maxOrNull()
+        send(ObserveConversationCommand(
+            subscriptionId = subscriptionId,
+            conversationId = conversationId,
+            afterEventSequence = replayAfterSequence,
+        ))
 
         try {
             for (event in channel) {
+                val cursorSequence = event.cursorSequenceOrNull()
+                if (cursorSequence != null) {
+                    val previousSequence = conversationEventSequences[conversationId] ?: 0L
+                    if (cursorSequence <= previousSequence && event !is ConversationRuntimeSnapshotEvent) {
+                        continue
+                    }
+                    conversationEventSequences[conversationId] = cursorSequence
+                }
                 when (event) {
                     is ConversationRuntimeSnapshotEvent -> emit(
                         ConversationRuntimeEvent.SnapshotUpdated(
                             conversationId = event.conversationId,
                             snapshot = event.snapshot,
+                            cursorSequence = event.cursorSequence,
                         )
                     )
                     is MessageUpsertedEvent -> emit(
                         ConversationRuntimeEvent.MessageEmitted(
                             conversationId = event.conversationId,
-                            commandId = event.commandId,
+                            taskId = event.taskId,
                             message = event.message,
+                            cursorSequence = event.cursorSequence,
                         )
                     )
                     is ConversationExecutionCompletedEvent -> emit(
-                        ConversationRuntimeEvent.ExecutionCompleted(event.conversationId)
+                        ConversationRuntimeEvent.ExecutionCompleted(
+                            conversationId = event.conversationId,
+                            cursorSequence = event.cursorSequence,
+                        )
                     )
                     is ConversationExecutionFailedEvent -> emit(
                         ConversationRuntimeEvent.ExecutionFailed(
                             conversationId = event.conversationId,
                             message = event.message,
                             type = event.type,
+                            cursorSequence = event.cursorSequence,
                         )
                     )
                     else -> Unit
@@ -131,6 +154,15 @@ internal class GromozekaWsClient(
             channel.close()
         }
     }
+
+    private fun ServerPayload.cursorSequenceOrNull(): Long? =
+        when (this) {
+            is ConversationRuntimeSnapshotEvent -> cursorSequence
+            is MessageUpsertedEvent -> cursorSequence
+            is ConversationExecutionCompletedEvent -> cursorSequence
+            is ConversationExecutionFailedEvent -> cursorSequence
+            else -> null
+        }
 
     fun synthesizeSpeech(
         text: String,

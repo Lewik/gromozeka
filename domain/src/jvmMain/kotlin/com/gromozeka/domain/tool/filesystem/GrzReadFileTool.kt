@@ -1,5 +1,6 @@
 package com.gromozeka.domain.tool.filesystem
 
+import com.gromozeka.domain.tool.LocalAgentToolMetadata
 import com.gromozeka.domain.tool.Tool
 import com.gromozeka.domain.tool.ToolExecutionContext
 
@@ -332,6 +333,9 @@ interface GrzReadFileTool : Tool<ReadFileRequest, Map<String, Any>> {
     
     override val name: String
         get() = "grz_read_file"
+
+    override val metadata
+        get() = LocalAgentToolMetadata
     
     override val description: String
         get() = """

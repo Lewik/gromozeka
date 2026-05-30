@@ -29,6 +29,9 @@ import androidx.compose.ui.unit.dp
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.TtsTask
 import com.gromozeka.domain.model.Settings
+import com.gromozeka.domain.service.ConversationRuntimeSnapshot
+import com.gromozeka.domain.service.ConversationRuntimeToolExecution
+import com.gromozeka.domain.service.ConversationRuntimeTraceEntry
 import com.gromozeka.domain.service.QueuedMessagePlacement
 import com.gromozeka.presentation.services.PttEventHandler
 import com.gromozeka.presentation.services.TtsQueue
@@ -100,6 +103,9 @@ fun SessionScreen(
     val executionPauseRequested by viewModel.executionPauseRequested.collectAsState()
     val pendingMessagesCount by viewModel.pendingMessagesCount.collectAsState()
     val pendingMessages by viewModel.pendingMessages.collectAsState()
+    val activeToolExecutions by viewModel.activeToolExecutions.collectAsState()
+    val runtimeTrace by viewModel.runtimeTrace.collectAsState()
+    val runtimeSnapshot by viewModel.runtimeSnapshot.collectAsState()
     val uiState by viewModel.uiState.collectAsState()
     val userInput = uiState.userInput
     val jsonToShow = viewModel.jsonToShow
@@ -527,6 +533,9 @@ fun SessionScreen(
                         isWaitingForResponse = isWaitingForResponse,
                         executionPauseRequested = executionPauseRequested,
                         pendingMessages = pendingMessages,
+                        toolExecutions = activeToolExecutions,
+                        runtimeTrace = runtimeTrace,
+                        runtimeSnapshot = runtimeSnapshot,
                         onPause = viewModel::pauseExecution,
                         onResume = viewModel::resumeExecution,
                         onStop = viewModel::stopExecution,
@@ -738,15 +747,24 @@ private fun ConversationProgressStrip(
     isWaitingForResponse: Boolean,
     executionPauseRequested: Boolean,
     pendingMessages: List<PendingUserMessage>,
+    toolExecutions: List<ConversationRuntimeToolExecution>,
+    runtimeTrace: List<ConversationRuntimeTraceEntry>,
+    runtimeSnapshot: ConversationRuntimeSnapshot?,
     onPause: () -> Unit,
     onResume: () -> Unit,
     onStop: () -> Unit,
     onInterrupt: () -> Unit,
 ) {
     val isReady = !isWaitingForResponse && pendingMessages.isEmpty()
+    val runningTools = toolExecutions
+        .filter { it.status == ConversationRuntimeToolExecution.Status.RUNNING }
+        .map { it.toolName }
+        .distinct()
     val statusText = when {
         executionPauseRequested ->
             "Пауза запрошена. Агент остановится на ближайшей безопасной границе."
+        runningTools.isNotEmpty() ->
+            "Инструменты выполняются: ${runningTools.joinToString(", ")}"
         isWaitingForResponse && pendingMessages.isNotEmpty() ->
             "Агент отвечает. В очереди ${pendingMessages.size}."
         isWaitingForResponse ->
@@ -756,6 +774,8 @@ private fun ConversationProgressStrip(
         else ->
             "Готов к отправке"
     }
+    val traceText = runtimeTrace.lastOrNull()?.runtimeTraceText()
+    val runtimeDetailsText = runtimeSnapshot?.runtimeDetailsText()
     val containerColor = if (isReady) {
         MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.35f)
     } else {
@@ -791,14 +811,25 @@ private fun ConversationProgressStrip(
                 modifier = Modifier.size(16.dp)
             )
             Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = statusText,
-                modifier = Modifier.weight(1f),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                style = MaterialTheme.typography.bodyMedium,
-                color = contentColor
-            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = statusText,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = contentColor
+                )
+                val detailText = runtimeDetailsText?.takeIf { it.isNotBlank() } ?: traceText
+                if (!detailText.isNullOrBlank() && !isReady) {
+                    Text(
+                        text = detailText,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = contentColor.copy(alpha = 0.78f)
+                    )
+                }
+            }
             if (isWaitingForResponse) {
                 if (executionPauseRequested) {
                     TextButton(onClick = onResume) {
@@ -819,6 +850,39 @@ private fun ConversationProgressStrip(
         }
     }
 }
+
+private fun ConversationRuntimeSnapshot.runtimeDetailsText(): String =
+    buildList {
+        state?.let { state ->
+            add("control=${state.controlState.name.lowercase()}")
+            state.activeWorkerId?.takeIf { it.isNotBlank() }?.let { add("worker=$it") }
+            state.activeTaskId?.value?.let { add("task=$it") }
+        }
+        activeTask?.payload?.let { payload ->
+            add(
+                "payload=" + when (payload) {
+                    is com.gromozeka.domain.service.ConversationRuntimeTask.Payload.UserTurn -> "user_turn"
+                    is com.gromozeka.domain.service.ConversationRuntimeTask.Payload.LlmCall -> "llm_call"
+                    is com.gromozeka.domain.service.ConversationRuntimeTask.Payload.ToolExecution -> "tool_execution"
+                }
+            )
+        }
+        if (pendingTasks.isNotEmpty()) {
+            add("pending=${pendingTasks.size}")
+        }
+        if (failedTasks.isNotEmpty()) {
+            add("failed=${failedTasks.size}")
+        }
+    }.joinToString(" · ")
+
+private fun ConversationRuntimeTraceEntry.runtimeTraceText(): String =
+    buildString {
+        append(kind.name.lowercase().replace('_', ' '))
+        message?.takeIf { it.isNotBlank() }?.let {
+            append(": ")
+            append(it)
+        }
+    }
 
 private fun queuePlacementDescription(placement: QueuedMessagePlacement): String =
     when (placement) {

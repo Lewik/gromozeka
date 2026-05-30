@@ -84,10 +84,10 @@ Current high-value commands:
 ./gradlew :server:test --tests 'com.gromozeka.server.MemoryRealModelE2eTest' -Dgromozeka.memory.e2e=true -Dgromozeka.llm.cassette.mode=replay-only -q
 ```
 
-Postgres is intentionally explicit:
+Postgres and RabbitMQ infrastructure is intentionally explicit:
 ```bash
-GROMOZEKA_HOME="$PWD/dev-data/client/.gromozeka" docker compose -f "$PWD/server/src/main/resources/docker-compose.yml" up -d postgres
-docker compose -f "$PWD/server/src/main/resources/docker-compose.yml" stop postgres
+GROMOZEKA_HOME="$PWD/dev-data/client/.gromozeka" docker compose -f "$PWD/server/src/main/resources/docker-compose.yml" up -d postgres rabbitmq
+docker compose -f "$PWD/server/src/main/resources/docker-compose.yml" stop postgres rabbitmq
 ```
 
 ## Tailscale Web Access

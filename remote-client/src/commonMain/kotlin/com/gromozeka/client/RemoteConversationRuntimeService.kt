@@ -28,8 +28,11 @@ internal class RemoteConversationRuntimeService(
             SubmitMessageRequest(conversationId, userMessage, agent)
         ).success
 
-    override fun observeConversation(conversationId: Conversation.Id): Flow<ConversationRuntimeEvent> =
-        client.observeConversation(conversationId)
+    override fun observeConversation(
+        conversationId: Conversation.Id,
+        afterEventSequence: Long?,
+    ): Flow<ConversationRuntimeEvent> =
+        client.observeConversation(conversationId, afterEventSequence)
 
     override suspend fun enqueueMessage(
         conversationId: Conversation.Id,

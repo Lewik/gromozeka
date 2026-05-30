@@ -1,5 +1,6 @@
 package com.gromozeka.domain.tool.lsp
 
+import com.gromozeka.domain.tool.LocalAgentToolMetadata
 import com.gromozeka.domain.tool.Tool
 import com.gromozeka.domain.tool.ToolExecutionContext
 
@@ -316,6 +317,8 @@ data class LspFindDefinitionRequest(
  */
 interface LspFindDefinitionTool : Tool<LspFindDefinitionRequest, Map<String, Any>> {
     override val name: String get() = "lsp_find_definition"
+
+    override val metadata get() = LocalAgentToolMetadata
 
     override val description: String get() =
         "Find symbol definition using Language Server Protocol. Navigate to where functions, classes, " +

@@ -2,11 +2,16 @@ package com.gromozeka.application.service
 
 import com.gromozeka.domain.model.Conversation.Message.ContentItem
 import com.gromozeka.domain.service.AiToolProvider
+import com.gromozeka.domain.service.ConversationRuntimeTask
+import com.gromozeka.domain.service.ConversationRuntimeToolExecution
 import com.gromozeka.domain.tool.AiToolCallback
+import com.gromozeka.domain.tool.ToolCancellationSignal
 import klog.KLoggers
 import kotlinx.coroutines.*
 import com.gromozeka.domain.tool.ToolExecutionContext
+import kotlinx.datetime.Clock
 import org.springframework.stereotype.Service
+import kotlin.coroutines.coroutineContext
 
 /**
  * Result of parallel tool execution.
@@ -34,25 +39,34 @@ class ParallelToolExecutor(
      *
      * @param toolCalls tool calls requested by the model
      * @param toolContext Context to pass to tools (e.g., projectPath)
-     * @param scope Coroutine scope for async execution
      * @return ToolExecutionResult with results and returnDirect flag
      */
     suspend fun executeParallel(
         toolCalls: List<ContentItem.ToolCall>,
         toolContext: ToolExecutionContext,
-        scope: CoroutineScope,
+        runtimeTaskId: ConversationRuntimeTask.Id?,
+        workerId: String?,
+        onToolExecutionChanged: suspend (ConversationRuntimeToolExecution) -> Unit = {},
     ): ToolExecutionResult {
         if (toolCalls.isEmpty()) return ToolExecutionResult(emptyList(), false)
 
         val callbackMap = buildCallbackMap()
 
-        val deferreds: List<Deferred<ContentItem.ToolResult>> = toolCalls.map { toolCall ->
-            scope.async {
-                executeSingleTool(toolCall, callbackMap, toolContext)
+        val results = coroutineScope {
+            val deferreds: List<Deferred<ContentItem.ToolResult>> = toolCalls.map { toolCall ->
+                async {
+                    executeSingleToolWithProgress(
+                        toolCall = toolCall,
+                        callbackMap = callbackMap,
+                        toolContext = toolContext,
+                        runtimeTaskId = runtimeTaskId,
+                        workerId = workerId,
+                        onToolExecutionChanged = onToolExecutionChanged,
+                    )
+                }
             }
+            deferreds.awaitAll()
         }
-
-        val results = deferreds.awaitAll()
 
         // Check if all executed tools have returnDirect=true
         val returnDirect = toolCalls.all { toolCall ->
@@ -60,6 +74,55 @@ class ParallelToolExecutor(
         }
 
         return ToolExecutionResult(results, returnDirect)
+    }
+
+    private suspend fun executeSingleToolWithProgress(
+        toolCall: ContentItem.ToolCall,
+        callbackMap: Map<String, AiToolCallback>,
+        toolContext: ToolExecutionContext,
+        runtimeTaskId: ConversationRuntimeTask.Id?,
+        workerId: String?,
+        onToolExecutionChanged: suspend (ConversationRuntimeToolExecution) -> Unit,
+    ): ContentItem.ToolResult {
+        return try {
+            val started = ConversationRuntimeToolExecution(
+                toolCallId = toolCall.id,
+                toolName = toolCall.call.name,
+                status = ConversationRuntimeToolExecution.Status.RUNNING,
+                runtimeTaskId = runtimeTaskId,
+                workerId = workerId,
+                startedAt = Clock.System.now(),
+            )
+            onToolExecutionChanged(started)
+            val result = executeSingleTool(toolCall, callbackMap, toolContext)
+            onToolExecutionChanged(
+                started.copy(
+                    status = if (result.isError) {
+                        ConversationRuntimeToolExecution.Status.FAILED
+                    } else {
+                        ConversationRuntimeToolExecution.Status.COMPLETED
+                    },
+                    completedAt = Clock.System.now(),
+                    isError = result.isError,
+                )
+            )
+            result
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Throwable) {
+            val failed = ConversationRuntimeToolExecution(
+                toolCallId = toolCall.id,
+                toolName = toolCall.call.name,
+                status = ConversationRuntimeToolExecution.Status.FAILED,
+                runtimeTaskId = runtimeTaskId,
+                workerId = workerId,
+                startedAt = Clock.System.now(),
+                completedAt = Clock.System.now(),
+                isError = true,
+            )
+            onToolExecutionChanged(failed)
+            throw error
+        }
     }
 
     /**
@@ -124,10 +187,21 @@ class ParallelToolExecutor(
             // Log tool call arguments for debugging
             log.info { "Executing tool: $toolName with arguments: $arguments" }
 
+            val parentJob = coroutineContext[Job]
+            val cancellableToolContext = toolContext.withCancellationSignal(
+                ToolCancellationSignal {
+                    if (parentJob?.isActive == false) {
+                        throw CancellationException("Tool execution cancelled: $toolName")
+                    }
+                }
+            )
+
             // Execute on IO dispatcher (blocking call)
             val result = withContext(Dispatchers.IO) {
                 try {
-                    callback.call(arguments, toolContext)
+                    callback.call(arguments, cancellableToolContext)
+                } catch (e: CancellationException) {
+                    throw e
                 } catch (e: Exception) {
                     log.error(e) { "Tool execution error for $toolName with arguments: $arguments" }
                     throw e
@@ -145,6 +219,8 @@ class ParallelToolExecutor(
                 isError = false
             )
 
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             log.error(e) { "Tool execution failed: $toolName" }
             return ContentItem.ToolResult(

@@ -1,5 +1,6 @@
 package com.gromozeka.domain.tool.lsp
 
+import com.gromozeka.domain.tool.LocalAgentToolMetadata
 import com.gromozeka.domain.tool.Tool
 import com.gromozeka.domain.tool.ToolExecutionContext
 
@@ -321,6 +322,8 @@ data class LspFindReferencesRequest(
  */
 interface LspFindReferencesTool : Tool<LspFindReferencesRequest, Map<String, Any>> {
     override val name: String get() = "lsp_find_references"
+
+    override val metadata get() = LocalAgentToolMetadata
 
     override val description: String get() =
         "Find all usages of a symbol across the project using Language Server Protocol. Shows where functions, " +

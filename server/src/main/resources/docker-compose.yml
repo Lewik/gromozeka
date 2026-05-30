@@ -15,3 +15,12 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+
+  rabbitmq:
+    image: rabbitmq:4-management
+    container_name: gromozeka-dev-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - ${GROMOZEKA_HOME:-../../../../dev-data/client/.gromozeka}/rabbitmq:/var/lib/rabbitmq

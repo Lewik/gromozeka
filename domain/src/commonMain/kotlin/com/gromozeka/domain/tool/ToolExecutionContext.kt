@@ -4,7 +4,8 @@ package com.gromozeka.domain.tool
  * Framework-agnostic execution context for AI tools.
  */
 data class ToolExecutionContext(
-    private val values: Map<String, Any?> = emptyMap()
+    private val values: Map<String, Any?> = emptyMap(),
+    val cancellationSignal: ToolCancellationSignal = ToolCancellationSignal.None,
 ) {
     fun get(key: String): Any? = values[key]
 
@@ -13,4 +14,15 @@ data class ToolExecutionContext(
     fun getContext(): Map<String, Any?> = values
 
     fun asMap(): Map<String, Any?> = values
+
+    fun withCancellationSignal(signal: ToolCancellationSignal): ToolExecutionContext =
+        copy(cancellationSignal = signal)
+}
+
+fun interface ToolCancellationSignal {
+    fun throwIfCancellationRequested()
+
+    companion object {
+        val None = ToolCancellationSignal {}
+    }
 }

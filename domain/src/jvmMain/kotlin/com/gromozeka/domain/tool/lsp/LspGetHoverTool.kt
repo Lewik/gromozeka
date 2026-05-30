@@ -1,5 +1,6 @@
 package com.gromozeka.domain.tool.lsp
 
+import com.gromozeka.domain.tool.LocalAgentToolMetadata
 import com.gromozeka.domain.tool.Tool
 import com.gromozeka.domain.tool.ToolExecutionContext
 
@@ -283,6 +284,8 @@ data class LspGetHoverRequest(
  */
 interface LspGetHoverTool : Tool<LspGetHoverRequest, Map<String, Any>> {
     override val name: String get() = "lsp_get_hover"
+
+    override val metadata get() = LocalAgentToolMetadata
 
     override val description: String get() =
         "Get documentation and type information for a symbol using Language Server Protocol. Shows function " +

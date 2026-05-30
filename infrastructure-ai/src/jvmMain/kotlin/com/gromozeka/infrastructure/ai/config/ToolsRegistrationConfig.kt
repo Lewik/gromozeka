@@ -56,6 +56,7 @@ class ToolsRegistrationConfig {
                 description = tool.description,
                 inputSchema = schema,
             )
+            override val metadata = tool.metadata
 
             override fun call(toolInput: String, context: ToolExecutionContext?): String {
                 val request = objectMapper.readValue(toolInput, tool.requestType)

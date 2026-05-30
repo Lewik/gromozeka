@@ -11,17 +11,20 @@ import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import kotlin.test.Test
+import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class AnthropicSdkMessageMapperTest {
 
     @Test
-    fun bedrockDoesNotSendNativeJsonSchemaOutputFormat() {
-        val params = AnthropicSdkMessageMapper(AiConnection.Kind.ANTHROPIC_BEDROCK)
-            .toCreateParams("anthropic.claude-sonnet-4-20250514-v1:0", requestWithJsonSchema())
+    fun bedrockRejectsNativeJsonSchemaOutputFormat() {
+        val error = assertFailsWith<IllegalArgumentException> {
+            AnthropicSdkMessageMapper(AiConnection.Kind.ANTHROPIC_BEDROCK)
+                .toCreateParams("anthropic.claude-sonnet-4-20250514-v1:0", requestWithJsonSchema())
+        }
 
-        assertTrue(params.outputConfig().isEmpty)
+        assertTrue("does not support Anthropic native structured output" in error.message.orEmpty())
     }
 
     @Test

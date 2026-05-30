@@ -6,10 +6,18 @@ import com.gromozeka.domain.model.Prompt
 import com.gromozeka.domain.model.ai.AiModelConfiguration
 import com.gromozeka.domain.model.ai.AiRuntimeSelection
 import com.gromozeka.domain.service.ConversationExecutionState
-import com.gromozeka.domain.service.ConversationRuntimeCommand
+import com.gromozeka.domain.service.ConversationRuntimeEvent
+import com.gromozeka.domain.service.ConversationRuntimeTask
+import com.gromozeka.domain.service.ConversationRuntimeTaskRequirements
+import com.gromozeka.domain.service.ConversationRuntimeToolExecution
+import com.gromozeka.domain.service.ConversationRuntimeWorkItem
+import com.gromozeka.domain.service.ConversationRuntimeWorkerCapability
 import com.gromozeka.domain.service.QueuedMessagePlacement
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import kotlinx.datetime.Clock
+import kotlinx.datetime.Instant
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -29,188 +37,257 @@ class InMemoryConversationRuntimeStoresTest {
     )
 
     @Test
-    fun `coordinator claims one end-of-turn command and exposes active insertions separately`() = runBlocking {
+    fun `coordinator claims only head delivered task pointer`() = runBlocking {
         val coordinator = InMemoryConversationRuntimeCoordinator()
-        val first = command("message-1", QueuedMessagePlacement.END_OF_TURN)
-        val steering = command("message-2", QueuedMessagePlacement.AFTER_TOOL_RESULT)
-        val second = command("message-3", QueuedMessagePlacement.END_OF_TURN)
+        val first = task("message-1", QueuedMessagePlacement.END_OF_TURN)
+        val second = task("message-2", QueuedMessagePlacement.END_OF_TURN)
 
         assertTrue(coordinator.submit(first))
         assertTrue(coordinator.submit(second))
 
-        assertEquals(first, coordinator.claimNextTurn(conversationId, "worker-1", leaseUntil = null))
-        assertTrue(coordinator.submit(steering))
-        assertEquals(
-            listOf(steering.id),
-            coordinator.takeActiveInsertions(conversationId, QueuedMessagePlacement.AFTER_TOOL_RESULT).map { it.id },
+        val firstWork = coordinator.claimUnpublishedWorkItems(
+            workerId = "publisher-1",
+            now = Clock.System.now(),
+            leaseUntil = Instant.fromEpochMilliseconds(10_000),
+            limit = 10,
         )
-        assertNull(coordinator.claimNextTurn(conversationId, "worker-2", leaseUntil = null))
+        assertEquals(listOf(first.id), firstWork.map { it.item.taskId })
+        assertTrue(coordinator.markWorkItemPublished(conversationId, firstWork.single().sequence, "publisher-1", Clock.System.now()))
+        assertNull(coordinator.claimDeliveredTask(conversationId, second.id, "worker-1"))
+        assertEquals(first, coordinator.claimDeliveredTask(conversationId, first.id, "worker-2"))
+        assertTrue(coordinator.confirmActiveTaskOwner(conversationId, first.id, "worker-2"))
+        assertFalse(coordinator.confirmActiveTaskOwner(conversationId, first.id, "worker-1"))
 
-        coordinator.completeActiveTurn(conversationId)
-
-        assertEquals(second, coordinator.claimNextTurn(conversationId, "worker-2", leaseUntil = null))
-        coordinator.completeActiveTurn(conversationId)
-        assertTrue(coordinator.finishIfIdle(conversationId))
-        assertEquals(emptyList(), coordinator.listPending(conversationId))
+        assertTrue(coordinator.completeActiveTask(conversationId, first.id, "worker-2"))
+        val secondWork = coordinator.claimUnpublishedWorkItems(
+            workerId = "publisher-1",
+            now = Instant.fromEpochMilliseconds(10_001),
+            leaseUntil = Instant.fromEpochMilliseconds(20_000),
+            limit = 10,
+        )
+        assertEquals(listOf(second.id), secondWork.map { it.item.taskId })
+        assertEquals(second, coordinator.claimDeliveredTask(conversationId, second.id, "worker-3"))
     }
 
     @Test
-    fun `coordinator replaces command with the same user message id`() = runBlocking {
+    fun `coordinator releases published work while paused and republishes it after resume`() = runBlocking {
         val coordinator = InMemoryConversationRuntimeCoordinator()
-        val active = command("active-message", QueuedMessagePlacement.END_OF_TURN)
-        val original = command("message-1", QueuedMessagePlacement.END_OF_TURN)
-        val steering = original.copy(placement = QueuedMessagePlacement.AFTER_TOOL_RESULT)
+        val task = task("message-1", QueuedMessagePlacement.END_OF_TURN)
+
+        assertTrue(coordinator.submit(task))
+        val work = coordinator.claimUnpublishedWorkItems(
+            workerId = "publisher-1",
+            now = Instant.fromEpochMilliseconds(1_000),
+            leaseUntil = Instant.fromEpochMilliseconds(2_000),
+            limit = 10,
+        ).single()
+        assertTrue(coordinator.markWorkItemPublished(conversationId, work.sequence, "publisher-1", Clock.System.now()))
+        assertTrue(coordinator.releasePublishedWorkItem(conversationId, task.id))
+
+        assertEquals(
+            listOf(task.id),
+            coordinator.claimUnpublishedWorkItems(
+                workerId = "publisher-2",
+                now = Instant.fromEpochMilliseconds(2_001),
+                leaseUntil = Instant.fromEpochMilliseconds(3_000),
+                limit = 10,
+            ).map { it.item.taskId },
+        )
+    }
+
+    @Test
+    fun `coordinator exposes active insertions without letting another task run`() = runBlocking {
+        val coordinator = InMemoryConversationRuntimeCoordinator()
+        val active = task("active-message", QueuedMessagePlacement.END_OF_TURN)
+        val steering = task("steering-message", QueuedMessagePlacement.AFTER_TOOL_RESULT)
 
         assertTrue(coordinator.submit(active))
-        assertEquals(active, coordinator.claimNextTurn(conversationId, "worker-1", leaseUntil = null))
-        coordinator.submit(original)
-        coordinator.submit(steering)
+        assertEquals(active, coordinator.claimDeliveredTask(conversationId, active.id, "worker-1"))
+        assertTrue(coordinator.submit(steering))
 
-        assertEquals(listOf(steering), coordinator.listPending(conversationId))
-    }
-
-    @Test
-    fun `coordinator rejects active insertions without active execution`() = runBlocking {
-        val coordinator = InMemoryConversationRuntimeCoordinator()
-
-        assertFalse(coordinator.submit(command("message-1", QueuedMessagePlacement.AFTER_TOOL_RESULT)))
-        assertEquals(emptyList(), coordinator.listPending(conversationId))
-    }
-
-    @Test
-    fun `coordinator promotes missed active insertions to the next turn`() = runBlocking {
-        val coordinator = InMemoryConversationRuntimeCoordinator()
-        val first = command("message-1", QueuedMessagePlacement.END_OF_TURN)
-        val steering = command("message-2", QueuedMessagePlacement.AFTER_TOOL_RESULT)
-
-        coordinator.submit(first)
-        assertEquals(first, coordinator.claimNextTurn(conversationId, "worker-1", leaseUntil = null))
-        coordinator.submit(steering)
-
-        coordinator.completeActiveTurn(conversationId)
-
-        val next = coordinator.claimNextTurn(conversationId, "worker-2", leaseUntil = null)
-        assertEquals(steering.id, next?.id)
-        assertEquals(QueuedMessagePlacement.END_OF_TURN, next?.placement)
+        assertEquals(
+            listOf(steering.id),
+            coordinator.takeActiveInsertions(
+                conversationId,
+                active.id,
+                "worker-1",
+                QueuedMessagePlacement.AFTER_TOOL_RESULT,
+            ).map { it.id },
+        )
+        assertNull(coordinator.claimDeliveredTask(conversationId, steering.id, "worker-2"))
     }
 
     @Test
     fun `coordinator promotes missed active insertions before ordinary queued turns`() = runBlocking {
         val coordinator = InMemoryConversationRuntimeCoordinator()
-        val active = command("active-message", QueuedMessagePlacement.END_OF_TURN)
-        val queued = command("message-1", QueuedMessagePlacement.END_OF_TURN)
-        val steering = command("message-2", QueuedMessagePlacement.AFTER_TOOL_RESULT)
+        val active = task("active-message", QueuedMessagePlacement.END_OF_TURN)
+        val queued = task("queued-message", QueuedMessagePlacement.END_OF_TURN)
+        val steering = task("steering-message", QueuedMessagePlacement.AFTER_TOOL_RESULT)
 
-        coordinator.submit(active)
-        assertEquals(active, coordinator.claimNextTurn(conversationId, "worker-1", leaseUntil = null))
-        coordinator.submit(queued)
-        coordinator.submit(steering)
+        assertTrue(coordinator.submit(active))
+        assertEquals(active, coordinator.claimDeliveredTask(conversationId, active.id, "worker-1"))
+        assertTrue(coordinator.submit(queued))
+        assertTrue(coordinator.submit(steering))
 
-        coordinator.completeActiveTurn(conversationId)
+        assertTrue(coordinator.completeActiveTask(conversationId, active.id, "worker-1"))
 
-        val next = coordinator.claimNextTurn(conversationId, "worker-2", leaseUntil = null)
-        assertEquals(steering.id, next?.id)
-        assertEquals(QueuedMessagePlacement.END_OF_TURN, next?.placement)
-        coordinator.completeActiveTurn(conversationId)
+        val promoted = coordinator.claimDeliveredTask(conversationId, steering.id, "worker-2")
+        assertEquals(steering.id, promoted?.id)
+        assertEquals(QueuedMessagePlacement.END_OF_TURN, promoted?.placement)
+        assertTrue(coordinator.completeActiveTask(conversationId, promoted!!.id, "worker-2"))
 
-        assertEquals(queued.id, coordinator.claimNextTurn(conversationId, "worker-3", leaseUntil = null)?.id)
+        assertEquals(queued.id, coordinator.claimDeliveredTask(conversationId, queued.id, "worker-3")?.id)
     }
 
     @Test
-    fun `coordinator keeps one active command per conversation and supports controls`() = runBlocking {
+    fun `coordinator gates claim by worker requirements`() = runBlocking {
         val coordinator = InMemoryConversationRuntimeCoordinator()
-        val first = command("message-1", QueuedMessagePlacement.END_OF_TURN)
-        val second = command("message-2", QueuedMessagePlacement.END_OF_TURN)
-
-        coordinator.submit(first)
-        coordinator.submit(second)
-
-        assertEquals(first, coordinator.claimNextTurn(conversationId, "worker-1", leaseUntil = null))
-        assertNull(coordinator.claimNextTurn(conversationId, "worker-2", leaseUntil = null))
-
-        coordinator.markPhase(conversationId, ConversationExecutionState.Phase.RUNNING_TOOL)
-        assertEquals(ConversationExecutionState.Phase.RUNNING_TOOL, coordinator.find(conversationId)?.phase)
-
-        assertTrue(coordinator.requestPause(conversationId))
-        assertEquals(ConversationExecutionState.Status.PAUSE_REQUESTED, coordinator.find(conversationId)?.status)
-        assertTrue(coordinator.markPaused(conversationId))
-        assertEquals(ConversationExecutionState.Status.PAUSED, coordinator.find(conversationId)?.status)
-        assertTrue(coordinator.requestResume(conversationId))
-        assertEquals(ConversationExecutionState.Status.RUNNING, coordinator.find(conversationId)?.status)
-
-        assertTrue(coordinator.requestStop(conversationId))
-        assertEquals(ConversationExecutionState.Status.STOPPING, coordinator.find(conversationId)?.status)
-        assertEquals(emptyList(), coordinator.listPending(conversationId))
-
-        coordinator.completeActiveTurn(conversationId)
-        assertTrue(coordinator.finishIfIdle(conversationId))
-        assertNull(coordinator.find(conversationId))
-    }
-
-    @Test
-    fun `coordinator finishes pause-requested idle execution when no work remains`() = runBlocking {
-        val coordinator = InMemoryConversationRuntimeCoordinator()
-        val first = command("message-1", QueuedMessagePlacement.END_OF_TURN)
-
-        coordinator.submit(first)
-        assertEquals(first, coordinator.claimNextTurn(conversationId, "worker-1", leaseUntil = null))
-
-        assertTrue(coordinator.requestPause(conversationId))
-        coordinator.completeActiveTurn(conversationId)
-
-        assertTrue(coordinator.finishIfIdle(conversationId))
-        assertNull(coordinator.find(conversationId))
-    }
-
-    @Test
-    fun `coordinator stop clears pending commands even without active execution`() = runBlocking {
-        val coordinator = InMemoryConversationRuntimeCoordinator()
-
-        coordinator.submit(command("message-1", QueuedMessagePlacement.END_OF_TURN))
-
-        assertTrue(coordinator.requestStop(conversationId))
-        assertEquals(emptyList(), coordinator.listPending(conversationId))
-        assertEquals(ConversationExecutionState.Status.STOPPING, coordinator.find(conversationId)?.status)
-        assertTrue(coordinator.finishIfIdle(conversationId))
-        assertNull(coordinator.find(conversationId))
-    }
-
-    @Test
-    fun `coordinator interrupt clears pending commands even without active execution`() = runBlocking {
-        val coordinator = InMemoryConversationRuntimeCoordinator()
-
-        coordinator.submit(command("message-1", QueuedMessagePlacement.END_OF_TURN))
-
-        assertTrue(coordinator.requestInterrupt(conversationId))
-        assertEquals(emptyList(), coordinator.listPending(conversationId))
-        assertEquals(ConversationExecutionState.Status.INTERRUPTING, coordinator.find(conversationId)?.status)
-        assertTrue(coordinator.finishIfIdle(conversationId))
-        assertNull(coordinator.find(conversationId))
-    }
-
-    @Test
-    fun `coordinator abort drops active execution and pending commands`() = runBlocking {
-        val coordinator = InMemoryConversationRuntimeCoordinator()
-
-        coordinator.submit(command("message-1", QueuedMessagePlacement.END_OF_TURN))
-        coordinator.submit(command("message-2", QueuedMessagePlacement.END_OF_TURN))
-
-        assertEquals(
-            ConversationRuntimeCommand.Id("message-1"),
-            coordinator.claimNextTurn(conversationId, "worker-1", leaseUntil = null)?.id,
+        val llmTask = task("llm-message", QueuedMessagePlacement.END_OF_TURN).copy(
+            requirements = ConversationRuntimeTaskRequirements(
+                capabilities = setOf(ConversationRuntimeWorkerCapability.LLM_RUNTIME),
+            )
         )
 
-        coordinator.abort(conversationId)
-
-        assertNull(coordinator.find(conversationId))
-        assertEquals(emptyList(), coordinator.listPending(conversationId))
-        assertNull(coordinator.claimNextTurn(conversationId, "worker-2", leaseUntil = null))
+        assertTrue(coordinator.submit(llmTask))
+        assertNull(
+            coordinator.claimDeliveredTask(
+                conversationId = conversationId,
+                taskId = llmTask.id,
+                workerId = "turn-worker",
+                workerCapabilities = setOf(ConversationRuntimeWorkerCapability.CONVERSATION_TURN),
+            )
+        )
+        assertEquals(
+            llmTask,
+            coordinator.claimDeliveredTask(
+                conversationId = conversationId,
+                taskId = llmTask.id,
+                workerId = "llm-worker",
+                workerCapabilities = setOf(ConversationRuntimeWorkerCapability.LLM_RUNTIME),
+            )
+        )
     }
 
-    private fun command(
+    @Test
+    fun `coordinator tracks control state`() = runBlocking {
+        val coordinator = InMemoryConversationRuntimeCoordinator()
+        val task = task("message-1", QueuedMessagePlacement.END_OF_TURN)
+
+        assertTrue(coordinator.submit(task))
+        assertEquals(task, coordinator.claimDeliveredTask(conversationId, task.id, "worker-1"))
+
+        assertTrue(coordinator.requestPause(conversationId))
+        assertEquals(ConversationExecutionState.ControlState.PAUSE_REQUESTED, coordinator.find(conversationId)?.controlState)
+        assertTrue(coordinator.markPaused(conversationId))
+        assertEquals(ConversationExecutionState.ControlState.PAUSED, coordinator.find(conversationId)?.controlState)
+        assertTrue(coordinator.requestResume(conversationId))
+        assertEquals(ConversationExecutionState.ControlState.RUNNING, coordinator.find(conversationId)?.controlState)
+        assertTrue(coordinator.requestStop(conversationId))
+        assertEquals(ConversationExecutionState.ControlState.STOPPING, coordinator.find(conversationId)?.controlState)
+    }
+
+    @Test
+    fun `coordinator records tool execution and snapshots`() = runBlocking {
+        val coordinator = InMemoryConversationRuntimeCoordinator()
+        val task = task("message-1", QueuedMessagePlacement.END_OF_TURN)
+        val execution = ConversationRuntimeToolExecution(
+            toolCallId = Conversation.Message.ContentItem.ToolCall.Id("tool-call-1"),
+            toolName = "read_file",
+            status = ConversationRuntimeToolExecution.Status.RUNNING,
+            runtimeTaskId = task.id,
+            workerId = "worker-1",
+            startedAt = Clock.System.now(),
+        )
+
+        assertTrue(coordinator.submit(task))
+        assertEquals(task, coordinator.claimDeliveredTask(conversationId, task.id, "worker-1"))
+        assertTrue(coordinator.upsertToolExecution(conversationId, execution))
+
+        val snapshot = coordinator.snapshot(conversationId)
+        assertEquals(task.id, snapshot.state?.activeTaskId)
+        assertEquals(listOf(execution), snapshot.toolExecutions)
+        assertTrue(snapshot.trace.isNotEmpty())
+    }
+
+    @Test
+    fun `coordinator records sequenced event log entries`() = runBlocking {
+        val coordinator = InMemoryConversationRuntimeCoordinator()
+        val firstEvent = ConversationRuntimeEvent.ExecutionCompleted(conversationId)
+        val secondEvent = ConversationRuntimeEvent.ExecutionFailed(
+            conversationId = conversationId,
+            message = "boom",
+            type = "TestFailure",
+        )
+
+        val firstEntry = coordinator.recordEvent(firstEvent)
+        val secondEntry = coordinator.recordEvent(secondEvent)
+
+        assertEquals(1, firstEntry.sequence)
+        assertEquals(2, secondEntry.sequence)
+        assertEquals(listOf(secondEntry), coordinator.listEventLogEntries(conversationId, afterSequence = 1, limit = 10))
+        assertEquals(2, coordinator.snapshot(conversationId).lastEventSequence)
+    }
+
+    @Test
+    fun `coordinator leases unpublished event log entries until they are marked published`() = runBlocking {
+        val coordinator = InMemoryConversationRuntimeCoordinator()
+        val event = ConversationRuntimeEvent.ExecutionCompleted(conversationId)
+        val entry = coordinator.recordEvent(event)
+        val now = Instant.fromEpochMilliseconds(1_000)
+
+        val firstLease = coordinator.claimUnpublishedEventLogEntries(
+            workerId = "worker-1",
+            now = now,
+            leaseUntil = Instant.fromEpochMilliseconds(2_000),
+            limit = 10,
+        )
+        assertEquals(listOf(entry.sequence), firstLease.map { it.sequence })
+        assertEquals(
+            emptyList(),
+            coordinator.claimUnpublishedEventLogEntries(
+                workerId = "worker-2",
+                now = Instant.fromEpochMilliseconds(1_500),
+                leaseUntil = Instant.fromEpochMilliseconds(2_500),
+                limit = 10,
+            )
+        )
+        assertEquals(
+            listOf(entry.sequence),
+            coordinator.claimUnpublishedEventLogEntries(
+                workerId = "worker-2",
+                now = Instant.fromEpochMilliseconds(2_001),
+                leaseUntil = Instant.fromEpochMilliseconds(3_000),
+                limit = 10,
+            ).map { it.sequence },
+        )
+        assertFalse(coordinator.markEventLogEntryPublished(conversationId, entry.sequence, "worker-1", Clock.System.now()))
+        assertTrue(coordinator.markEventLogEntryPublished(conversationId, entry.sequence, "worker-2", Clock.System.now()))
+    }
+
+    @Test
+    fun `work queue delivers runtime work items`() = runBlocking {
+        val queue = InMemoryConversationRuntimeWorkQueue()
+        val item = ConversationRuntimeWorkItem(
+            conversationId = conversationId,
+            reason = ConversationRuntimeWorkItem.Reason.TASK_SUBMITTED,
+            taskId = ConversationRuntimeTask.Id("task-1"),
+            requirements = ConversationRuntimeTaskRequirements(
+                capabilities = setOf(ConversationRuntimeWorkerCapability.CONVERSATION_TURN),
+            ),
+            createdAt = Clock.System.now(),
+        )
+
+        queue.submit(item)
+
+        val delivery = withTimeout(1_000) { queue.deliveries.first() }
+        assertEquals(item, delivery.item)
+        delivery.ack()
+    }
+
+    private fun task(
         messageId: String,
         placement: QueuedMessagePlacement,
-    ): ConversationRuntimeCommand {
+    ): ConversationRuntimeTask {
         val message = Conversation.Message(
             id = Conversation.Message.Id(messageId),
             conversationId = conversationId,
@@ -219,12 +296,15 @@ class InMemoryConversationRuntimeStoresTest {
             createdAt = Clock.System.now(),
         )
 
-        return ConversationRuntimeCommand(
-            id = ConversationRuntimeCommand.Id(messageId),
+        return ConversationRuntimeTask(
+            id = ConversationRuntimeTask.Id(messageId),
             conversationId = conversationId,
-            userMessage = message,
-            agent = agent,
+            payload = ConversationRuntimeTask.Payload.UserTurn(
+                userMessage = message,
+                agent = agent,
+            ),
             placement = placement,
+            idempotencyKey = "test:$messageId",
             createdAt = Clock.System.now(),
         )
     }
