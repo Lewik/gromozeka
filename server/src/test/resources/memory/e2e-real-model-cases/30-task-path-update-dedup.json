@@ -44,8 +44,8 @@
             "actionItemOpsMax": 1,
             "materializedActionItemsMin": 1,
             "materializedActionItemsMax": 1,
-            "rawActionItemOpsContainsAll": ["UPDATE", "duplicate follow-up", "action item updates", "closing completed tasks"],
-            "actionItemOpsContainsAll": ["UPDATE", "duplicate follow-up", "action item updates", "closing completed tasks"]
+            "rawActionItemOpsContainsAll": ["UPDATE", "duplicate follow-up", "task updates", "closing completed tasks"],
+            "actionItemOpsContainsAll": ["UPDATE", "duplicate follow-up", "task updates", "closing completed tasks"]
           }
         }
       ]

@@ -69,6 +69,15 @@ tasks.withType<Test> {
     System.getProperty("gromozeka.memory.e2e.modelName")?.let {
         systemProperty("gromozeka.memory.e2e.modelName", it)
     }
+    System.getProperty("gromozeka.memory.e2e.websocketResponseTimeoutMs")?.let {
+        systemProperty("gromozeka.memory.e2e.websocketResponseTimeoutMs", it)
+    }
+    System.getProperty("gromozeka.memory.e2e.websocketTransportTimeoutMs")?.let {
+        systemProperty("gromozeka.memory.e2e.websocketTransportTimeoutMs", it)
+    }
+    System.getProperty("gromozeka.memory.e2e.memoryLlmStageTimeoutMs")?.let {
+        systemProperty("gromozeka.memory.e2e.memoryLlmStageTimeoutMs", it)
+    }
     System.getProperty("gromozeka.llm.cassette.mode")?.let {
         systemProperty("gromozeka.llm.cassette.mode", it)
     }

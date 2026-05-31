@@ -608,8 +608,13 @@ class MemoryMessageRoutingApplicationService(
                 acc + result.sourceBatch
             },
             routeDecision = MemoryRouteDecision(
-                decision = MemoryRouteDecision.Decision.NOTE_WRITE,
-                memoryTypes = setOf(MemorySemanticType.NOTE, MemorySemanticType.SOURCE),
+                decision = MemoryRouteDecision.Decision.MIXED,
+                memoryTypes = setOf(
+                    MemorySemanticType.CLAIM,
+                    MemorySemanticType.NOTE,
+                    MemorySemanticType.SOURCE,
+                    MemorySemanticType.ENTITY,
+                ),
                 salience = 1.0,
                 sourcePolicy = MemorySourceUsagePolicy.STANDARD,
                 sourceSearchText = parentSource.searchText,

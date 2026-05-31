@@ -196,7 +196,7 @@ class TabViewModel(
             }
             is ConversationRuntimeEvent.ExecutionCompleted -> finishRuntimeExecution()
             is ConversationRuntimeEvent.ExecutionFailed -> {
-                log.error { "Conversation runtime failed: ${event.type ?: "unknown"} ${event.message}" }
+                log.error { "Conversation runtime failed: ${event.failureType ?: "unknown"} ${event.message}" }
                 soundNotificationService.playErrorSound()
                 finishRuntimeExecution(playCompletionSound = false)
             }

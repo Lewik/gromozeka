@@ -141,7 +141,7 @@ internal class GromozekaWsClient(
                         ConversationRuntimeEvent.ExecutionFailed(
                             conversationId = event.conversationId,
                             message = event.message,
-                            type = event.type,
+                            failureType = event.type,
                             cursorSequence = event.cursorSequence,
                         )
                     )

@@ -317,7 +317,7 @@ sealed interface ConversationRuntimeEvent {
     data class ExecutionFailed(
         override val conversationId: Conversation.Id,
         val message: String,
-        val type: String? = null,
+        val failureType: String? = null,
         override val cursorSequence: Long? = null,
     ) : ConversationRuntimeEvent
 }

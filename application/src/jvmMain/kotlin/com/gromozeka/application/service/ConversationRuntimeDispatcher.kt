@@ -270,7 +270,7 @@ class ConversationRuntimeDispatcher(
                 ConversationRuntimeEvent.ExecutionFailed(
                     conversationId = item.conversationId,
                     message = message,
-                    type = type,
+                    failureType = type,
                 )
             )
         }
@@ -380,7 +380,7 @@ class ConversationRuntimeDispatcher(
                 ConversationRuntimeEvent.ExecutionFailed(
                     conversationId = task.conversationId,
                     message = error.message ?: "Unknown conversation runtime error",
-                    type = error::class.simpleName,
+                    failureType = error::class.simpleName,
                 )
             )
         }

@@ -80,7 +80,12 @@ class DirectStructuredMemoryWritePipelineRunTraceTest {
 
     @Test
     fun documentIngestSourceBypassesRouterAndRetrievalPlanner() = runBlocking {
-        val result = documentBypassPipeline().write(
+        val events = CopyOnWriteArrayList<String>()
+        val result = documentBypassPipeline(
+            noteConstructor = RecordingMemoryNoteConstructor(events, "note"),
+            claimExtractor = RecordingMemoryClaimExtractor(events, "claim"),
+            actionItemUpdater = RecordingMemoryActionItemUpdater(events, "actionItem"),
+        ).write(
             DirectStructuredMemoryWriteRequest(
                 namespace = NAMESPACE,
                 source = MemorySource.ExternalRecord(
@@ -114,19 +119,20 @@ class DirectStructuredMemoryWritePipelineRunTraceTest {
             )
         )
 
-        assertEquals(MemoryRouteDecision.Decision.NOTE_WRITE, result.routeDecision.decision)
-        assertTrue(result.routeDecision.reason.contains("deterministic note/source/entity route"))
+        assertEquals(MemoryRouteDecision.Decision.MIXED, result.routeDecision.decision)
+        assertTrue(result.routeDecision.reason.contains("deterministic document truth route"))
         assertTrue(result.routeDecision.sourcePolicy.allowStructuredExtraction)
         assertEquals(
-            setOf(MemorySemanticType.NOTE, MemorySemanticType.SOURCE, MemorySemanticType.ENTITY),
+            setOf(MemorySemanticType.CLAIM, MemorySemanticType.NOTE, MemorySemanticType.SOURCE, MemorySemanticType.ENTITY),
             result.routeDecision.memoryTypes,
         )
         val retrievalPlan = assertNotNull(result.retrievalPlan)
         assertEquals(
-            setOf(MemorySemanticType.NOTE, MemorySemanticType.SOURCE, MemorySemanticType.ENTITY),
+            setOf(MemorySemanticType.CLAIM, MemorySemanticType.NOTE, MemorySemanticType.SOURCE, MemorySemanticType.ENTITY),
             retrievalPlan.memoryTypes,
         )
         assertEquals(listOf("Doc", "doc.md", "Architecture", "markdown"), retrievalPlan.entityQueries)
+        assertEquals(listOf("note", "claim"), events.toList())
     }
 
     @Test
@@ -213,17 +219,21 @@ class DirectStructuredMemoryWritePipelineRunTraceTest {
             clock = FixedMemoryClock(NOW),
         )
 
-    private fun documentBypassPipeline(): DirectStructuredMemoryWritePipeline =
+    private fun documentBypassPipeline(
+        noteConstructor: MemoryNoteConstructor = FixedMemoryNoteConstructor(),
+        claimExtractor: MemoryClaimExtractor = FixedMemoryClaimExtractor(),
+        actionItemUpdater: MemoryActionItemUpdater = FixedMemoryActionItemUpdater(),
+    ): DirectStructuredMemoryWritePipeline =
         DirectStructuredMemoryWritePipeline(
             store = InMemoryMemoryStore(),
             router = ThrowingMemoryWriteRouter,
             retrievalPlanner = ThrowingMemoryWriteRetrievalPlanner,
             entityCanonicalizer = FixedMemoryEntityCanonicalizer(),
-            noteConstructor = FixedMemoryNoteConstructor(),
+            noteConstructor = noteConstructor,
             noteReconciler = InsertOnlyMemoryNoteReconciler,
-            claimExtractor = FixedMemoryClaimExtractor(),
+            claimExtractor = claimExtractor,
             claimReconciler = InsertOnlyMemoryClaimReconciler,
-            actionItemUpdater = FixedMemoryActionItemUpdater(),
+            actionItemUpdater = actionItemUpdater,
             materializer = DefaultDirectStructuredMemoryWriteMaterializer(SequentialMemoryIdFactory("trace-test")),
             clock = FixedMemoryClock(NOW),
         )

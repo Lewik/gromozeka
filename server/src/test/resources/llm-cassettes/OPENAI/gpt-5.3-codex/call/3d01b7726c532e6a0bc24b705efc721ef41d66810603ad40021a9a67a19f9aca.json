@@ -1,0 +1,385 @@
+{
+    "version": 1,
+    "hash": "3d01b7726c532e6a0bc24b705efc721ef41d66810603ad40021a9a67a19f9aca",
+    "provider": "OPENAI",
+    "model": "gpt-5.3-codex",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>/projects/handoff-architecture-document-ingestion",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "MEMORY-ONLY CONTROL\nThis message is not part of the real conversation and must not be stored as evidence.\nThe next real conversation message is input data named TARGET_MESSAGE for memory processing.\nTarget source id: chat:<0>\nTarget message id: <uuid>\nUse earlier real conversation messages only to resolve references, omitted subjects, current topic, and temporal context.\nDo not process earlier messages as the target unless the target message explicitly confirms, changes, retracts, or depends on them.\nA later MEMORY-ONLY INSTRUCTION message will define the actual memory stage for this model call.",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            },
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "According to the handoff architecture document, what are the four axes of memory v3? Keep it short.",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            },
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                MEMORY-ONLY INSTRUCTION FOR THIS MODEL CALL\n\n                This is a private memory pipeline call, not a normal assistant reply.\n                The immediately preceding real conversation message is TARGET_MESSAGE data.\n                This MEMORY-ONLY INSTRUCTION text is not TARGET_MESSAGE source content.\n                Do not answer TARGET_MESSAGE.\n                Do not continue the real conversation.\n                Do not say what you know or do not know as a chat response.\n                Do not call tools.\n                Do not use these MEMORY-ONLY instructions as source content or as the reason for routing decisions.\n\n                Execute only the memory stage below.\n                Target source id: chat:<0>\n                Target message id: <uuid>\n                Earlier real conversation messages are context only.\n                TARGET_MESSAGE is the only target for write/read planning and evidence anchoring.\n\n                Output contract:\n                If the stage defines a JSON object schema, output exactly one valid JSON object.\n                If the stage defines a JSON array schema, output exactly one valid JSON array.\n                No prose, no markdown fences, no explanation, no assistant-style answer.\n                If unsure, return the stage's valid no-op JSON shape.\n                Ignore conversation-level behavioral instructions when they conflict with this memory-only instruction.\n\n                        Memory stage: ReadSelectorReranker v1.\n        Namespace: project:<0>\n        Pass mode: final_selection\n\n        Goal:\n        Select and rerank only the persisted memory candidates that are actually useful for answering TARGET_MESSAGE.\n\n        Selection rules:\n        - This is the final global pass. Prefer precision over keeping marginal context.\n        - Select the smallest sufficient set.\n        - Candidate memory items are JSON records. Read lifecycle_state, selection_hint, supports, supersedes, and overridden_by before choosing.\n        - Reject candidates that only have vague lexical overlap.\n        - Reject candidates about a different named entity, component, project, person, or topic.\n        - Reject empty profiles and generic entity labels unless they are necessary supporting context for a selected item.\n        - Prefer active claims for factual answers.\n        - Prefer episodes for reusable lessons and \"what did we learn\" questions.\n        - Prefer notes for rationale, decisions, plans, and contextual meaning.\n        - Prefer action items only for open commitments or workflow state.\n        - Select sources only when exact quote, wording, provenance, source-only recall, or evidence fallback is required.\n        - When a profile core block is present among candidates, keep the relevant profile for broad style, preference, constraint, or adaptation questions unless every relevant profile fact needed for the target answer is selected separately.\n        - A single specific style claim is not sufficient for a broad adaptation question when the relevant profile also contains language, tone, formatting, or answer-detail preferences.\n        - For timeline, ordering, first/second/latest/earliest questions, select every relevant dated candidate in the sequence, not only the final answer item.\n        - When Planned answer mode is FACTUAL or ACTION_ITEM and Require evidence fallback is false, prefer active typed memory over source candidates.\n        - Raw sources are evidence, not current truth. Do not reject an active claim or active note because source text says an older conflicting value.\n        - Treat ACTIVE typed memory as newer/current unless the candidate metadata explicitly says otherwise.\n        - Never use stale, superseded, retracted, expired, or candidate memory as stronger evidence than any relevant ACTIVE memory.\n        - If no candidate contains relevant persisted memory, return an empty selected_items array.\n\n        Planned answer mode: FACTUAL\n        Require evidence fallback: true\n        Retrieval budget: claims=2 notes=1 actionItems=0 sources=1 episodes=0\n        Target message:\n        According to the handoff architecture document, what are the four axes of memory v3? Keep it short.\n\n        Candidate memory items:\n        1. {\"type\":\"claim\",\"id\":\"hot-path:claim:<0>\",\"score\":1.7695,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed fact. Prefer this for relevant factual answers over raw sources.\",\"predicate\":\"has_constraint\",\"predicate_family\":\"has_constraint\",\"subject_entity_id\":\"entity:<0>\",\"text\":\"In v3, the memory architecture is structured around four axes instead of one.\",\"context\":\"Document: 01. Architecture, section 2 (Центральная архитектурная идея).\",\"confidence\":0.99,\"importance\":7,\"evidence\":[{\"source_id\":\"external:document-section:82668d7987491fbde1968226b8d5dcf0\",\"kind\":\"IMPORTED\",\"quote\":\"В `v3` у памяти четыре оси, а не одна\"}]}\n2. {\"type\":\"claim\",\"id\":\"hot-path:claim:<1>\",\"score\":1.0,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed fact. Prefer this for relevant factual answers over raw sources.\",\"predicate\":\"has_constraint\",\"predicate_family\":\"has_constraint\",\"subject_entity_id\":\"entity:<1>\",\"text\":\"Communication between fast and slow paths should use typed handoff objects instead of free text.\",\"context\":\"Section 16 important note about fast/slow path interface.\",\"confidence\":0.96,\"importance\":8,\"evidence\":[{\"source_id\":\"external:document-section:5830e695351ef9d0d5fe11e08b843471\",\"kind\":\"DIRECT\",\"quote\":\"Между fast и slow path лучше гонять **typed handoff objects**, а не свободный текст.\"}]}\n3. {\"type\":\"claim\",\"id\":\"hot-path:claim:<2>\",\"score\":1.0,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed fact. Prefer this for relevant factual answers over raw sources.\",\"predicate\":\"has_constraint\",\"predicate_family\":\"has_constraint\",\"subject_entity_id\":\"entity:<1>\",\"text\":\"In v3 structured scope, both scope_text and scope_json must be stored together.\",\"context\":\"Document section 6 (Structured scope).\",\"confidence\":0.97,\"importance\":8,\"evidence\":[{\"source_id\":\"external:document-section:f5dcd6c9392e5433046cb73719dbe2d9\",\"kind\":\"IMPORTED\",\"quote\":\"Нужно хранить одновременно: - `scope_text` - человеческое объяснение границ - `scope_json` - машинно-обрабатываемый envelope\"}]}\n4. {\"type\":\"claim\",\"id\":\"hot-path:claim:<3>\",\"score\":1.0,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed fact. Prefer this for relevant factual answers over raw sources.\",\"predicate\":\"has_constraint\",\"predicate_family\":\"has_constraint\",\"subject_entity_id\":\"entity:<1>\",\"text\":\"In v3, forgetting is a policy-driven process, not random weakening of retrieval for old memories.\",\"context\":\"Document section 15. Retention / forgetting.\",\"confidence\":0.95,\"importance\":8,\"evidence\":[{\"source_id\":\"external:document-section:5830e695351ef9d0d5fe11e08b843471\",\"kind\":\"DIRECT\",\"quote\":\"В `v3` forgetting — не случайное “пусть старое реже ищется”, а policy.\"}]}\n5. {\"type\":\"claim\",\"id\":\"hot-path:claim:<4>\",\"score\":1.0,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed fact. Prefer this for relevant factual answers over raw sources.\",\"predicate\":\"has_constraint\",\"predicate_family\":\"has_constraint\",\"subject_entity_id\":\"entity:<2>\",\"text\":\"Memory repair targets duplicate notes/claims, contradictory active items, profile drift, stale task states, bad entity merges, note spam, and retrieval budget leakage.\",\"context\":\"Document section 14 (Memory repair) in 01_architecture.md.\",\"confidence\":0.97,\"importance\":8,\"evidence\":[{\"source_id\":\"external:document-section:3ba1fe9fde8041a82c660a92539e97ff\",\"kind\":\"IMPORTED\",\"quote\":\"Что он чинит: - duplicate notes / claims - contradictory active items - profile drift - stale task states - bad entity merges - note spam - budget leakage в retrieval\"}]}\n6. {\"type\":\"claim\",\"id\":\"hot-path:claim:<5>\",\"score\":1.0,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed fact. Prefer this for relevant factual answers over raw sources.\",\"predicate\":\"has_constraint\",\"predicate_family\":\"has_constraint\",\"subject_entity_id\":\"entity:<1>\",\"text\":\"The fast/slow execution path is not mandatory for MVP but is recommended as a next step.\",\"context\":\"Document section 16. Optional fast/slow execution path.\",\"confidence\":0.88,\"importance\":6,\"evidence\":[{\"source_id\":\"external:document-section:5830e695351ef9d0d5fe11e08b843471\",\"kind\":\"DIRECT\",\"quote\":\"Это уже не обязательный MVP, но хороший следующий шаг.\"}]}\n7. {\"type\":\"claim\",\"id\":\"hot-path:claim:<6>\",\"score\":1.0,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed fact. Prefer this for relevant factual answers over raw sources.\",\"predicate\":\"has_constraint\",\"predicate_family\":\"has_constraint\",\"subject_entity_id\":\"entity:<1>\",\"text\":\"The memory system must not convert every turn into permanent knowledge.\",\"context\":\"Document: 01. Architecture, section 1 (Цель системы).\",\"confidence\":0.98,\"importance\":8,\"evidence\":[{\"source_id\":\"external:document-section:82668d7987491fbde1968226b8d5dcf0\",\"kind\":\"IMPORTED\",\"quote\":\"не превращает каждый turn в permanent knowledge\"}]}\n8. {\"type\":\"claim\",\"id\":\"hot-path:claim:<7>\",\"score\":1.0,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed fact. Prefer this for relevant factual answers over raw sources.\",\"predicate\":\"has_constraint\",\"predicate_family\":\"has_constraint\",\"subject_entity_id\":\"entity:<1>\",\"text\":\"The minimum required fields in scope_json are scope_kind, project_id, environment, subject_entity_id, conversation_id, modality, and audience.\",\"context\":\"Document section 6 (Structured scope), minimum schema.\",\"confidence\":0.98,\"importance\":9,\"evidence\":[{\"source_id\":\"external:document-section:f5dcd6c9392e5433046cb73719dbe2d9\",\"kind\":\"IMPORTED\",\"quote\":\"Минимум в `scope_json`: - `scope_kind` - `project_id` - `environment` - `subject_entity_id` - `conversation_id` - `modality` - `audience`\"}]}\n9. {\"type\":\"claim\",\"id\":\"hot-path:claim:<8>\",\"score\":1.0,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed fact. Prefer this for relevant factual answers over raw sources.\",\"predicate\":\"has_constraint\",\"predicate_family\":\"has_constraint\",\"subject_entity_id\":\"entity:<3>\",\"text\":\"The Note path should use a maturity lifecycle with stages fresh, stabilizing, mature, and consolidated.\",\"context\":\"Document section 13 (Note maturity) in 01_architecture.md.\",\"confidence\":0.94,\"importance\":8,\"evidence\":[{\"source_id\":\"external:document-section:3ba1fe9fde8041a82c660a92539e97ff\",\"kind\":\"IMPORTED\",\"quote\":\"Полезный паттерн: - `fresh` - `stabilizing` - `mature` - `consolidated`\"}]}\n10. {\"type\":\"claim\",\"id\":\"hot-path:claim:<9>\",\"score\":1.0,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed fact. Prefer this for relevant factual answers over raw sources.\",\"predicate\":\"has_constraint\",\"predicate_family\":\"has_constraint\",\"subject_entity_id\":\"entity:<4>\",\"text\":\"The retention/forgetting policy defines minimum actions: downgrade retrieval state, archive, soft delete, and hard delete on request.\",\"context\":\"Section 15 lists minimum forgetting actions.\",\"confidence\":0.95,\"importance\":8,\"evidence\":[{\"source_id\":\"external:document-section:5830e695351ef9d0d5fe11e08b843471\",\"kind\":\"DIRECT\",\"quote\":\"Минимальные действия: - downgrade retrieval state - archive - soft delete - hard delete by request\"}]}\n11. {\"type\":\"claim\",\"id\":\"hot-path:claim:<10>\",\"score\":1.0,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed fact. Prefer this for relevant factual answers over raw sources.\",\"predicate\":\"has_constraint\",\"predicate_family\":\"has_constraint\",\"subject_entity_id\":\"entity:<4>\",\"text\":\"The retention/forgetting policy defines minimum triggers: namespace policy, age, low use_count, legal/privacy requests, and explicit user forget/delete commands.\",\"context\":\"Section 15 lists minimum forgetting triggers.\",\"confidence\":0.95,\"importance\":8,\"evidence\":[{\"source_id\":\"external:document-section:5830e695351ef9d0d5fe11e08b843471\",\"kind\":\"DIRECT\",\"quote\":\"Минимальные триггеры: - namespace policy - age - low use_count - legal/privacy request - explicit user forget/delete command\"}]}\n12. {\"type\":\"claim\",\"id\":\"hot-path:claim:<11>\",\"score\":1.0,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed fact. Prefer this for relevant factual answers over raw sources.\",\"predicate\":\"has_constraint\",\"predicate_family\":\"has_constraint\",\"subject_entity_id\":\"entity:<1>\",\"text\":\"Tier A core in-context memory should include a short user profile, active tasks, a very short session summary, and system-level behavior preferences.\",\"context\":\"Document section 5 (Storage tiers), Tier A inclusion guidance.\",\"confidence\":0.96,\"importance\":8,\"evidence\":[{\"source_id\":\"external:document-section:f5dcd6c9392e5433046cb73719dbe2d9\",\"kind\":\"IMPORTED\",\"quote\":\"Что туда класть: - краткий user profile - active tasks - очень короткий session summary - system-level behavior preferences\"}]}\n13. {\"type\":\"note\",\"id\":\"hot-path:note:<0>\",\"score\":1.3959285714285716,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed context. Prefer for rationale, decisions, plans, and contextual meaning.\",\"note_type\":\"DOC_DIGEST\",\"title\":\"`v3` memory architecture uses four axes to avoid brittle or dump-like memory\",\"text\":\"In `v3`, memory is organized along four axes—Representation (Source/Claim/Note/Profile/Task/Episode), Lifecycle (write→reconcile→consolidate→repair→retain/archive/delete), Retrieval policy (claim-first/note-first/mixed/evidence-first with bounded budgets), and Scope & lineage (scope_json/scope_text/source refs/origin note/memory runs). The document states all four are necessary to prevent transcript-dump or brittle fact-store failure modes.\",\"confidence\":0.99,\"importance\":5,\"valid_from\":\"1970-01-01T00:00:00Z\",\"evidence\":[{\"source_id\":\"external:document-section:82668d7987491fbde1968226b8d5dcf0\",\"kind\":\"DIRECT\",\"quote\":\"В `v3` у памяти четыре оси, а не одна: 1. **Representation** - `Source` - `Claim` - `Note` - `Profile` - `Task` - `Episode` 2. **Lifecycle** - write - reconcile - consolidate - repair - retain / archive / delete 3. **Retrieval policy** - `claim-first` - `note-first` - `mixed` - `evidence-first` - bo...[truncated 132 chars]\"}]}\n14. {\"type\":\"note\",\"id\":\"hot-path:note:<1>\",\"score\":0.8170714285714287,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed context. Prefer for rationale, decisions, plans, and contextual meaning.\",\"note_type\":\"DOC_DIGEST\",\"title\":\"Four-path write/maintenance model separates semantic intake from memory hygiene\",\"text\":\"The architecture defines two semantic write paths and two maintenance paths: Direct structured path for safely normalizable items, Note path for important but not-yet-hard facts, plus Consolidation and Repair to evolve and clean memory over time.\",\"confidence\":0.97,\"importance\":4,\"valid_from\":\"1970-01-01T00:00:00Z\",\"evidence\":[{\"source_id\":\"external:document-section:42bd3b1e0eb1763cbd7e31e7d9ba71ff\",\"kind\":\"DIRECT\",\"quote\":\"Теперь у системы два semantic path и два maintenance path.\"}]}\n15. {\"type\":\"note\",\"id\":\"hot-path:note:<2>\",\"score\":0.8017857142857142,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed context. Prefer for rationale, decisions, plans, and contextual meaning.\",\"note_type\":\"DOC_DIGEST\",\"title\":\"Note maturity lifecycle prevents summary-store drift\",\"text\":\"The architecture defines a note maturity lifecycle (`fresh` → `stabilizing` → `mature` → `consolidated`) so `Note` memory remains curated instead of degrading into a summary-store; maturity is raised by reuse, multi-source support, non-conflict with new data, time stability without supersede, and recurring rationale relevance.\",\"confidence\":0.95,\"importance\":4,\"valid_from\":\"1970-01-01T00:00:00Z\",\"evidence\":[{\"source_id\":\"external:document-section:3ba1fe9fde8041a82c660a92539e97ff\",\"kind\":\"DIRECT\",\"quote\":\"Чтобы `Note` не превратился в summary-store, нужен lifecycle зрелости.\"}]}\n16. {\"type\":\"note\",\"id\":\"hot-path:note:<3>\",\"score\":0.7969999999999999,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed context. Prefer for rationale, decisions, plans, and contextual meaning.\",\"note_type\":\"DOC_DIGEST\",\"title\":\"Update path is not append-only and requires retrieval/reconciliation\",\"text\":\"The architecture defines memory writes as an update workflow, not blind append: decide whether to write, retrieve similar/conflicting items, produce typed candidates, and apply policies (`insert`, `update`, `supersede`, `retract`, `noop`). Skipping retrieval/reconciliation causes quality degradation such as duplicates, stale preferences, conflicts, task explosion, and summary spam.\",\"confidence\":0.94,\"importance\":5,\"valid_from\":\"1970-01-01T00:00:00Z\",\"evidence\":[{\"source_id\":\"external:document-section:f7225be3206842b25c2333b039e43b0e\",\"kind\":\"DIRECT\",\"quote\":\"На записи у системы четыре обязательные задачи\"}]}\n17. {\"type\":\"note\",\"id\":\"hot-path:note:<4>\",\"score\":0.6951428571428572,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed context. Prefer for rationale, decisions, plans, and contextual meaning.\",\"note_type\":\"DOC_DIGEST\",\"title\":\"Retention/forgetting in v3 is policy-driven with explicit actions and triggers\",\"text\":\"The architecture defines forgetting in `v3` as an explicit retention policy, not passive decay. It specifies minimum actions (downgrade retrieval state, archive, soft delete, hard delete by request) and minimum triggers (namespace policy, age, low use_count, legal/privacy request, explicit user forget/delete command).\",\"confidence\":0.96,\"importance\":4,\"valid_from\":\"1970-01-01T00:00:00Z\",\"evidence\":[{\"source_id\":\"external:document-section:5830e695351ef9d0d5fe11e08b843471\",\"kind\":\"DIRECT\",\"quote\":\"В `v3` forgetting — не случайное “пусть старое реже ищется”, а policy.\"}]}\n18. {\"type\":\"note\",\"id\":\"hot-path:note:<5>\",\"score\":0.6155714285714287,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed context. Prefer for rationale, decisions, plans, and contextual meaning.\",\"note_type\":\"DOC_DIGEST\",\"title\":\"Storage tiers define a five-layer memory architecture\",\"text\":\"Section 5 defines five storage tiers with distinct roles: Tier A for compact in-context prompt blocks, Tier B for typed long-term records, Tier C for semantic note-layer context, Tier D for immutable raw evidence, and Tier E for retrieval indexes across memory objects.\",\"confidence\":0.94,\"importance\":4,\"valid_from\":\"1970-01-01T00:00:00Z\",\"evidence\":[{\"source_id\":\"external:document-section:f5dcd6c9392e5433046cb73719dbe2d9\",\"kind\":\"DIRECT\",\"quote\":\"## 5. Storage tiers\"}]}\n19. {\"type\":\"note\",\"id\":\"hot-path:note:<6>\",\"score\":0.6127857142857143,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed context. Prefer for rationale, decisions, plans, and contextual meaning.\",\"note_type\":\"DIRECTION\",\"title\":\"Memory layer goals prioritize durable, explainable, and maintainable knowledge\",\"text\":\"The architecture defines a memory layer for an AI agent that must persist across sessions, store facts/preferences/tasks/rationale/evolving plans, support knowledge updates, preserve provenance, avoid turning every turn into permanent memory, and include aging/archiving/repair behaviors.\",\"confidence\":0.97,\"importance\":5,\"valid_from\":\"1970-01-01T00:00:00Z\",\"evidence\":[{\"source_id\":\"external:document-section:82668d7987491fbde1968226b8d5dcf0\",\"kind\":\"DIRECT\",\"quote\":\"## 1. Цель системы Нужна memory layer для AI-агента, которая: - переживает границы одной сессии - умеет хранить факты, preferences, задачи, rationale и evolving plans - поддерживает обновление знаний, а не только накопление - позволяет объяснить, **откуда** взялась память - не превращает каждый turn...[truncated 68 chars]\"}]}\n20. {\"type\":\"note\",\"id\":\"hot-path:note:<7>\",\"score\":0.6017857142857143,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed context. Prefer for rationale, decisions, plans, and contextual meaning.\",\"note_type\":\"DIRECTION\",\"title\":\"Graph DB should not be the default starting point for memory layer\",\"text\":\"The architecture direction is to start with relational/document-vector primitives because `Entity + Claim + NoteLink + scope_json` already provide graph-like semantics; introduce a Graph database only when traversal/path queries become a product requirement.\",\"confidence\":0.95,\"importance\":4,\"valid_from\":\"1970-01-01T00:00:00Z\",\"evidence\":[{\"source_id\":\"external:document-section:9ab04f0af9d4842289e56dca233345ed\",\"kind\":\"DIRECT\",\"quote\":\"Graph DB нужен, когда traversal/path queries становятся частью продукта, а не просто внутренним удобством.\"}]}\n\n        Return JSON:\n        {\n          \"selected_items\": [\n            {\n              \"item_type\": \"claim | note | action_item | profile | source | episode | entity | run\",\n              \"item_id\": \"exact candidate id\",\n              \"rank\": 1,\n              \"relevance\": \"direct_answer | supporting_context | required_evidence\",\n              \"reason\": \"short reason\"\n            }\n          ],\n          \"rejected_items\": [\n            {\n              \"item_type\": \"claim | note | action_item | profile | source | episode | entity | run\",\n              \"item_id\": \"exact candidate id\",\n              \"reason\": \"short reason\"\n            }\n          ],\n          \"summary\": \"one short sentence\"\n        }",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Select and rerank retrieved memory candidates for the current target request.",
+                "name": "memory_read_selector",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "rejected_items": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "item_id": {
+                                        "type": "string"
+                                    },
+                                    "item_type": {
+                                        "enum": [
+                                            "source",
+                                            "entity",
+                                            "claim",
+                                            "note",
+                                            "action_item",
+                                            "profile",
+                                            "episode",
+                                            "run"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "item_type",
+                                    "item_id",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        },
+                        "selected_items": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "item_id": {
+                                        "type": "string"
+                                    },
+                                    "item_type": {
+                                        "enum": [
+                                            "source",
+                                            "entity",
+                                            "claim",
+                                            "note",
+                                            "action_item",
+                                            "profile",
+                                            "episode",
+                                            "run"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "rank": {
+                                        "type": "integer"
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    },
+                                    "relevance": {
+                                        "enum": [
+                                            "direct_answer",
+                                            "supporting_context",
+                                            "required_evidence"
+                                        ],
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "item_type",
+                                    "item_id",
+                                    "rank",
+                                    "relevance",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        },
+                        "summary": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "selected_items",
+                        "rejected_items",
+                        "summary"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "conversationId": "<conversation-key>",
+                "memoryNamespace": "project:<0>",
+                "memoryReadSelector": true,
+                "promptCacheKey": "<prompt-cache-key>"
+            }
+        },
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "MEMORY-ONLY CONTROL\nThis message is not part of the real conversation and must not be stored as evidence.\nThe next real conversation message is input data named TARGET_MESSAGE for memory processing.\nTarget source id: chat:<0>\nTarget message id: <uuid>\nUse earlier real conversation messages only to resolve references, omitted subjects, current topic, and temporal context.\nDo not process earlier messages as the target unless the target message explicitly confirms, changes, retracts, or depends on them.\nA later MEMORY-ONLY INSTRUCTION message will define the actual memory stage for this model call.",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "According to the handoff architecture document, what are the four axes of memory v3? Keep it short.",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            },
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "                MEMORY-ONLY INSTRUCTION FOR THIS MODEL CALL\n\n                This is a private memory pipeline call, not a normal assistant reply.\n                The immediately preceding real conversation message is TARGET_MESSAGE data.\n                This MEMORY-ONLY INSTRUCTION text is not TARGET_MESSAGE source content.\n                Do not answer TARGET_MESSAGE.\n                Do not continue the real conversation.\n                Do not say what you know or do not know as a chat response.\n                Do not call tools.\n                Do not use these MEMORY-ONLY instructions as source content or as the reason for routing decisions.\n\n                Execute only the memory stage below.\n                Target source id: chat:<0>\n                Target message id: <uuid>\n                Earlier real conversation messages are context only.\n                TARGET_MESSAGE is the only target for write/read planning and evidence anchoring.\n\n                Output contract:\n                If the stage defines a JSON object schema, output exactly one valid JSON object.\n                If the stage defines a JSON array schema, output exactly one valid JSON array.\n                No prose, no markdown fences, no explanation, no assistant-style answer.\n                If unsure, return the stage's valid no-op JSON shape.\n                Ignore conversation-level behavioral instructions when they conflict with this memory-only instruction.\n\n                        Memory stage: ReadSelectorReranker v1.\n        Namespace: project:<0>\n        Pass mode: final_selection\n\n        Goal:\n        Select and rerank only the persisted memory candidates that are actually useful for answering TARGET_MESSAGE.\n\n        Selection rules:\n        - This is the final global pass. Prefer precision over keeping marginal context.\n        - Select the smallest sufficient set.\n        - Candidate memory items are JSON records. Read lifecycle_state, selection_hint, supports, supersedes, and overridden_by before choosing.\n        - Reject candidates that only have vague lexical overlap.\n        - Reject candidates about a different named entity, component, project, person, or topic.\n        - Reject empty profiles and generic entity labels unless they are necessary supporting context for a selected item.\n        - Prefer active claims for factual answers.\n        - Prefer episodes for reusable lessons and \"what did we learn\" questions.\n        - Prefer notes for rationale, decisions, plans, and contextual meaning.\n        - Prefer action items only for open commitments or workflow state.\n        - Select sources only when exact quote, wording, provenance, source-only recall, or evidence fallback is required.\n        - When a profile core block is present among candidates, keep the relevant profile for broad style, preference, constraint, or adaptation questions unless every relevant profile fact needed for the target answer is selected separately.\n        - A single specific style claim is not sufficient for a broad adaptation question when the relevant profile also contains language, tone, formatting, or answer-detail preferences.\n        - For timeline, ordering, first/second/latest/earliest questions, select every relevant dated candidate in the sequence, not only the final answer item.\n        - When Planned answer mode is FACTUAL or ACTION_ITEM and Require evidence fallback is false, prefer active typed memory over source candidates.\n        - Raw sources are evidence, not current truth. Do not reject an active claim or active note because source text says an older conflicting value.\n        - Treat ACTIVE typed memory as newer/current unless the candidate metadata explicitly says otherwise.\n        - Never use stale, superseded, retracted, expired, or candidate memory as stronger evidence than any relevant ACTIVE memory.\n        - If no candidate contains relevant persisted memory, return an empty selected_items array.\n\n        Planned answer mode: FACTUAL\n        Require evidence fallback: true\n        Retrieval budget: claims=2 notes=1 actionItems=0 sources=1 episodes=0\n        Target message:\n        According to the handoff architecture document, what are the four axes of memory v3? Keep it short.\n\n        Candidate memory items:\n        1. {\"type\":\"claim\",\"id\":\"hot-path:claim:<0>\",\"score\":1.7695,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed fact. Prefer this for relevant factual answers over raw sources.\",\"predicate\":\"has_constraint\",\"predicate_family\":\"has_constraint\",\"subject_entity_id\":\"entity:<0>\",\"text\":\"In v3, the memory architecture is structured around four axes instead of one.\",\"context\":\"Document: 01. Architecture, section 2 (Центральная архитектурная идея).\",\"confidence\":0.99,\"importance\":7,\"evidence\":[{\"source_id\":\"external:document-section:82668d7987491fbde1968226b8d5dcf0\",\"kind\":\"IMPORTED\",\"quote\":\"В `v3` у памяти четыре оси, а не одна\"}]}\n2. {\"type\":\"claim\",\"id\":\"hot-path:claim:<1>\",\"score\":1.0,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed fact. Prefer this for relevant factual answers over raw sources.\",\"predicate\":\"has_constraint\",\"predicate_family\":\"has_constraint\",\"subject_entity_id\":\"entity:<1>\",\"text\":\"Communication between fast and slow paths should use typed handoff objects instead of free text.\",\"context\":\"Section 16 important note about fast/slow path interface.\",\"confidence\":0.96,\"importance\":8,\"evidence\":[{\"source_id\":\"external:document-section:5830e695351ef9d0d5fe11e08b843471\",\"kind\":\"DIRECT\",\"quote\":\"Между fast и slow path лучше гонять **typed handoff objects**, а не свободный текст.\"}]}\n3. {\"type\":\"claim\",\"id\":\"hot-path:claim:<2>\",\"score\":1.0,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed fact. Prefer this for relevant factual answers over raw sources.\",\"predicate\":\"has_constraint\",\"predicate_family\":\"has_constraint\",\"subject_entity_id\":\"entity:<1>\",\"text\":\"In v3 structured scope, both scope_text and scope_json must be stored together.\",\"context\":\"Document section 6 (Structured scope).\",\"confidence\":0.97,\"importance\":8,\"evidence\":[{\"source_id\":\"external:document-section:f5dcd6c9392e5433046cb73719dbe2d9\",\"kind\":\"IMPORTED\",\"quote\":\"Нужно хранить одновременно: - `scope_text` - человеческое объяснение границ - `scope_json` - машинно-обрабатываемый envelope\"}]}\n4. {\"type\":\"claim\",\"id\":\"hot-path:claim:<3>\",\"score\":1.0,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed fact. Prefer this for relevant factual answers over raw sources.\",\"predicate\":\"has_constraint\",\"predicate_family\":\"has_constraint\",\"subject_entity_id\":\"entity:<1>\",\"text\":\"In v3, forgetting is a policy-driven process, not random weakening of retrieval for old memories.\",\"context\":\"Document section 15. Retention / forgetting.\",\"confidence\":0.95,\"importance\":8,\"evidence\":[{\"source_id\":\"external:document-section:5830e695351ef9d0d5fe11e08b843471\",\"kind\":\"DIRECT\",\"quote\":\"В `v3` forgetting — не случайное “пусть старое реже ищется”, а policy.\"}]}\n5. {\"type\":\"claim\",\"id\":\"hot-path:claim:<4>\",\"score\":1.0,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed fact. Prefer this for relevant factual answers over raw sources.\",\"predicate\":\"has_constraint\",\"predicate_family\":\"has_constraint\",\"subject_entity_id\":\"entity:<2>\",\"text\":\"Memory repair targets duplicate notes/claims, contradictory active items, profile drift, stale task states, bad entity merges, note spam, and retrieval budget leakage.\",\"context\":\"Document section 14 (Memory repair) in 01_architecture.md.\",\"confidence\":0.97,\"importance\":8,\"evidence\":[{\"source_id\":\"external:document-section:3ba1fe9fde8041a82c660a92539e97ff\",\"kind\":\"IMPORTED\",\"quote\":\"Что он чинит: - duplicate notes / claims - contradictory active items - profile drift - stale task states - bad entity merges - note spam - budget leakage в retrieval\"}]}\n6. {\"type\":\"claim\",\"id\":\"hot-path:claim:<5>\",\"score\":1.0,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed fact. Prefer this for relevant factual answers over raw sources.\",\"predicate\":\"has_constraint\",\"predicate_family\":\"has_constraint\",\"subject_entity_id\":\"entity:<1>\",\"text\":\"The fast/slow execution path is not mandatory for MVP but is recommended as a next step.\",\"context\":\"Document section 16. Optional fast/slow execution path.\",\"confidence\":0.88,\"importance\":6,\"evidence\":[{\"source_id\":\"external:document-section:5830e695351ef9d0d5fe11e08b843471\",\"kind\":\"DIRECT\",\"quote\":\"Это уже не обязательный MVP, но хороший следующий шаг.\"}]}\n7. {\"type\":\"claim\",\"id\":\"hot-path:claim:<6>\",\"score\":1.0,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed fact. Prefer this for relevant factual answers over raw sources.\",\"predicate\":\"has_constraint\",\"predicate_family\":\"has_constraint\",\"subject_entity_id\":\"entity:<1>\",\"text\":\"The memory system must not convert every turn into permanent knowledge.\",\"context\":\"Document: 01. Architecture, section 1 (Цель системы).\",\"confidence\":0.98,\"importance\":8,\"evidence\":[{\"source_id\":\"external:document-section:82668d7987491fbde1968226b8d5dcf0\",\"kind\":\"IMPORTED\",\"quote\":\"не превращает каждый turn в permanent knowledge\"}]}\n8. {\"type\":\"claim\",\"id\":\"hot-path:claim:<7>\",\"score\":1.0,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed fact. Prefer this for relevant factual answers over raw sources.\",\"predicate\":\"has_constraint\",\"predicate_family\":\"has_constraint\",\"subject_entity_id\":\"entity:<1>\",\"text\":\"The minimum required fields in scope_json are scope_kind, project_id, environment, subject_entity_id, conversation_id, modality, and audience.\",\"context\":\"Document section 6 (Structured scope), minimum schema.\",\"confidence\":0.98,\"importance\":9,\"evidence\":[{\"source_id\":\"external:document-section:f5dcd6c9392e5433046cb73719dbe2d9\",\"kind\":\"IMPORTED\",\"quote\":\"Минимум в `scope_json`: - `scope_kind` - `project_id` - `environment` - `subject_entity_id` - `conversation_id` - `modality` - `audience`\"}]}\n9. {\"type\":\"claim\",\"id\":\"hot-path:claim:<8>\",\"score\":1.0,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed fact. Prefer this for relevant factual answers over raw sources.\",\"predicate\":\"has_constraint\",\"predicate_family\":\"has_constraint\",\"subject_entity_id\":\"entity:<3>\",\"text\":\"The Note path should use a maturity lifecycle with stages fresh, stabilizing, mature, and consolidated.\",\"context\":\"Document section 13 (Note maturity) in 01_architecture.md.\",\"confidence\":0.94,\"importance\":8,\"evidence\":[{\"source_id\":\"external:document-section:3ba1fe9fde8041a82c660a92539e97ff\",\"kind\":\"IMPORTED\",\"quote\":\"Полезный паттерн: - `fresh` - `stabilizing` - `mature` - `consolidated`\"}]}\n10. {\"type\":\"claim\",\"id\":\"hot-path:claim:<9>\",\"score\":1.0,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed fact. Prefer this for relevant factual answers over raw sources.\",\"predicate\":\"has_constraint\",\"predicate_family\":\"has_constraint\",\"subject_entity_id\":\"entity:<4>\",\"text\":\"The retention/forgetting policy defines minimum actions: downgrade retrieval state, archive, soft delete, and hard delete on request.\",\"context\":\"Section 15 lists minimum forgetting actions.\",\"confidence\":0.95,\"importance\":8,\"evidence\":[{\"source_id\":\"external:document-section:5830e695351ef9d0d5fe11e08b843471\",\"kind\":\"DIRECT\",\"quote\":\"Минимальные действия: - downgrade retrieval state - archive - soft delete - hard delete by request\"}]}\n11. {\"type\":\"claim\",\"id\":\"hot-path:claim:<10>\",\"score\":1.0,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed fact. Prefer this for relevant factual answers over raw sources.\",\"predicate\":\"has_constraint\",\"predicate_family\":\"has_constraint\",\"subject_entity_id\":\"entity:<4>\",\"text\":\"The retention/forgetting policy defines minimum triggers: namespace policy, age, low use_count, legal/privacy requests, and explicit user forget/delete commands.\",\"context\":\"Section 15 lists minimum forgetting triggers.\",\"confidence\":0.95,\"importance\":8,\"evidence\":[{\"source_id\":\"external:document-section:5830e695351ef9d0d5fe11e08b843471\",\"kind\":\"DIRECT\",\"quote\":\"Минимальные триггеры: - namespace policy - age - low use_count - legal/privacy request - explicit user forget/delete command\"}]}\n12. {\"type\":\"claim\",\"id\":\"hot-path:claim:<11>\",\"score\":1.0,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed fact. Prefer this for relevant factual answers over raw sources.\",\"predicate\":\"has_constraint\",\"predicate_family\":\"has_constraint\",\"subject_entity_id\":\"entity:<1>\",\"text\":\"Tier A core in-context memory should include a short user profile, active tasks, a very short session summary, and system-level behavior preferences.\",\"context\":\"Document section 5 (Storage tiers), Tier A inclusion guidance.\",\"confidence\":0.96,\"importance\":8,\"evidence\":[{\"source_id\":\"external:document-section:f5dcd6c9392e5433046cb73719dbe2d9\",\"kind\":\"IMPORTED\",\"quote\":\"Что туда класть: - краткий user profile - active tasks - очень короткий session summary - system-level behavior preferences\"}]}\n13. {\"type\":\"note\",\"id\":\"hot-path:note:<0>\",\"score\":1.3959285714285716,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed context. Prefer for rationale, decisions, plans, and contextual meaning.\",\"note_type\":\"DOC_DIGEST\",\"title\":\"`v3` memory architecture uses four axes to avoid brittle or dump-like memory\",\"text\":\"In `v3`, memory is organized along four axes—Representation (Source/Claim/Note/Profile/Task/Episode), Lifecycle (write→reconcile→consolidate→repair→retain/archive/delete), Retrieval policy (claim-first/note-first/mixed/evidence-first with bounded budgets), and Scope & lineage (scope_json/scope_text/source refs/origin note/memory runs). The document states all four are necessary to prevent transcript-dump or brittle fact-store failure modes.\",\"confidence\":0.99,\"importance\":5,\"valid_from\":\"1970-01-01T00:00:00Z\",\"evidence\":[{\"source_id\":\"external:document-section:82668d7987491fbde1968226b8d5dcf0\",\"kind\":\"DIRECT\",\"quote\":\"В `v3` у памяти четыре оси, а не одна: 1. **Representation** - `Source` - `Claim` - `Note` - `Profile` - `Task` - `Episode` 2. **Lifecycle** - write - reconcile - consolidate - repair - retain / archive / delete 3. **Retrieval policy** - `claim-first` - `note-first` - `mixed` - `evidence-first` - bo...[truncated 132 chars]\"}]}\n14. {\"type\":\"note\",\"id\":\"hot-path:note:<1>\",\"score\":0.8170714285714287,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed context. Prefer for rationale, decisions, plans, and contextual meaning.\",\"note_type\":\"DOC_DIGEST\",\"title\":\"Four-path write/maintenance model separates semantic intake from memory hygiene\",\"text\":\"The architecture defines two semantic write paths and two maintenance paths: Direct structured path for safely normalizable items, Note path for important but not-yet-hard facts, plus Consolidation and Repair to evolve and clean memory over time.\",\"confidence\":0.97,\"importance\":4,\"valid_from\":\"1970-01-01T00:00:00Z\",\"evidence\":[{\"source_id\":\"external:document-section:42bd3b1e0eb1763cbd7e31e7d9ba71ff\",\"kind\":\"DIRECT\",\"quote\":\"Теперь у системы два semantic path и два maintenance path.\"}]}\n15. {\"type\":\"note\",\"id\":\"hot-path:note:<2>\",\"score\":0.8017857142857142,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed context. Prefer for rationale, decisions, plans, and contextual meaning.\",\"note_type\":\"DOC_DIGEST\",\"title\":\"Note maturity lifecycle prevents summary-store drift\",\"text\":\"The architecture defines a note maturity lifecycle (`fresh` → `stabilizing` → `mature` → `consolidated`) so `Note` memory remains curated instead of degrading into a summary-store; maturity is raised by reuse, multi-source support, non-conflict with new data, time stability without supersede, and recurring rationale relevance.\",\"confidence\":0.95,\"importance\":4,\"valid_from\":\"1970-01-01T00:00:00Z\",\"evidence\":[{\"source_id\":\"external:document-section:3ba1fe9fde8041a82c660a92539e97ff\",\"kind\":\"DIRECT\",\"quote\":\"Чтобы `Note` не превратился в summary-store, нужен lifecycle зрелости.\"}]}\n16. {\"type\":\"note\",\"id\":\"hot-path:note:<3>\",\"score\":0.7969999999999999,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed context. Prefer for rationale, decisions, plans, and contextual meaning.\",\"note_type\":\"DOC_DIGEST\",\"title\":\"Update path is not append-only and requires retrieval/reconciliation\",\"text\":\"The architecture defines memory writes as an update workflow, not blind append: decide whether to write, retrieve similar/conflicting items, produce typed candidates, and apply policies (`insert`, `update`, `supersede`, `retract`, `noop`). Skipping retrieval/reconciliation causes quality degradation such as duplicates, stale preferences, conflicts, task explosion, and summary spam.\",\"confidence\":0.94,\"importance\":5,\"valid_from\":\"1970-01-01T00:00:00Z\",\"evidence\":[{\"source_id\":\"external:document-section:f7225be3206842b25c2333b039e43b0e\",\"kind\":\"DIRECT\",\"quote\":\"На записи у системы четыре обязательные задачи\"}]}\n17. {\"type\":\"note\",\"id\":\"hot-path:note:<4>\",\"score\":0.6951428571428572,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed context. Prefer for rationale, decisions, plans, and contextual meaning.\",\"note_type\":\"DOC_DIGEST\",\"title\":\"Retention/forgetting in v3 is policy-driven with explicit actions and triggers\",\"text\":\"The architecture defines forgetting in `v3` as an explicit retention policy, not passive decay. It specifies minimum actions (downgrade retrieval state, archive, soft delete, hard delete by request) and minimum triggers (namespace policy, age, low use_count, legal/privacy request, explicit user forget/delete command).\",\"confidence\":0.96,\"importance\":4,\"valid_from\":\"1970-01-01T00:00:00Z\",\"evidence\":[{\"source_id\":\"external:document-section:5830e695351ef9d0d5fe11e08b843471\",\"kind\":\"DIRECT\",\"quote\":\"В `v3` forgetting — не случайное “пусть старое реже ищется”, а policy.\"}]}\n18. {\"type\":\"note\",\"id\":\"hot-path:note:<5>\",\"score\":0.6155714285714287,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed context. Prefer for rationale, decisions, plans, and contextual meaning.\",\"note_type\":\"DOC_DIGEST\",\"title\":\"Storage tiers define a five-layer memory architecture\",\"text\":\"Section 5 defines five storage tiers with distinct roles: Tier A for compact in-context prompt blocks, Tier B for typed long-term records, Tier C for semantic note-layer context, Tier D for immutable raw evidence, and Tier E for retrieval indexes across memory objects.\",\"confidence\":0.94,\"importance\":4,\"valid_from\":\"1970-01-01T00:00:00Z\",\"evidence\":[{\"source_id\":\"external:document-section:f5dcd6c9392e5433046cb73719dbe2d9\",\"kind\":\"DIRECT\",\"quote\":\"## 5. Storage tiers\"}]}\n19. {\"type\":\"note\",\"id\":\"hot-path:note:<6>\",\"score\":0.6127857142857143,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed context. Prefer for rationale, decisions, plans, and contextual meaning.\",\"note_type\":\"DIRECTION\",\"title\":\"Memory layer goals prioritize durable, explainable, and maintainable knowledge\",\"text\":\"The architecture defines a memory layer for an AI agent that must persist across sessions, store facts/preferences/tasks/rationale/evolving plans, support knowledge updates, preserve provenance, avoid turning every turn into permanent memory, and include aging/archiving/repair behaviors.\",\"confidence\":0.97,\"importance\":5,\"valid_from\":\"1970-01-01T00:00:00Z\",\"evidence\":[{\"source_id\":\"external:document-section:82668d7987491fbde1968226b8d5dcf0\",\"kind\":\"DIRECT\",\"quote\":\"## 1. Цель системы Нужна memory layer для AI-агента, которая: - переживает границы одной сессии - умеет хранить факты, preferences, задачи, rationale и evolving plans - поддерживает обновление знаний, а не только накопление - позволяет объяснить, **откуда** взялась память - не превращает каждый turn...[truncated 68 chars]\"}]}\n20. {\"type\":\"note\",\"id\":\"hot-path:note:<7>\",\"score\":0.6017857142857143,\"status\":\"ACTIVE\",\"lifecycle_state\":\"current\",\"selection_hint\":\"Current typed context. Prefer for rationale, decisions, plans, and contextual meaning.\",\"note_type\":\"DIRECTION\",\"title\":\"Graph DB should not be the default starting point for memory layer\",\"text\":\"The architecture direction is to start with relational/document-vector primitives because `Entity + Claim + NoteLink + scope_json` already provide graph-like semantics; introduce a Graph database only when traversal/path queries become a product requirement.\",\"confidence\":0.95,\"importance\":4,\"valid_from\":\"1970-01-01T00:00:00Z\",\"evidence\":[{\"source_id\":\"external:document-section:9ab04f0af9d4842289e56dca233345ed\",\"kind\":\"DIRECT\",\"quote\":\"Graph DB нужен, когда traversal/path queries становятся частью продукта, а не просто внутренним удобством.\"}]}\n\n        Return JSON:\n        {\n          \"selected_items\": [\n            {\n              \"item_type\": \"claim | note | action_item | profile | source | episode | entity | run\",\n              \"item_id\": \"exact candidate id\",\n              \"rank\": 1,\n              \"relevance\": \"direct_answer | supporting_context | required_evidence\",\n              \"reason\": \"short reason\"\n            }\n          ],\n          \"rejected_items\": [\n            {\n              \"item_type\": \"claim | note | action_item | profile | source | episode | entity | run\",\n              \"item_id\": \"exact candidate id\",\n              \"reason\": \"short reason\"\n            }\n          ],\n          \"summary\": \"one short sentence\"\n        }",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "memory_read_selector",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "rejected_items": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "item_id": {
+                                        "type": "string"
+                                    },
+                                    "item_type": {
+                                        "enum": [
+                                            "source",
+                                            "entity",
+                                            "claim",
+                                            "note",
+                                            "action_item",
+                                            "profile",
+                                            "episode",
+                                            "run"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "item_type",
+                                    "item_id",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        },
+                        "selected_items": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "item_id": {
+                                        "type": "string"
+                                    },
+                                    "item_type": {
+                                        "enum": [
+                                            "source",
+                                            "entity",
+                                            "claim",
+                                            "note",
+                                            "action_item",
+                                            "profile",
+                                            "episode",
+                                            "run"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "rank": {
+                                        "type": "integer"
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    },
+                                    "relevance": {
+                                        "enum": [
+                                            "direct_answer",
+                                            "supporting_context",
+                                            "required_evidence"
+                                        ],
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "item_type",
+                                    "item_id",
+                                    "rank",
+                                    "relevance",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        },
+                        "summary": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "selected_items",
+                        "rejected_items",
+                        "summary"
+                    ],
+                    "type": "object"
+                },
+                "description": "Select and rerank retrieved memory candidates for the current target request.",
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "conversationId": "<conversation-key>",
+                "memoryNamespace": "project:<0>",
+                "memoryReadSelector": true,
+                "promptCacheKey": "<prompt-cache-key>"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"rejected_items\":[{\"item_id\":\"hot-path:claim:<1>\",\"item_type\":\"claim\",\"reason\":\"About typed handoff objects, not the four axes list.\"},{\"item_id\":\"hot-path:claim:<2>\",\"item_type\":\"claim\",\"reason\":\"Structured scope storage detail, not the four axes question.\"},{\"item_id\":\"hot-path:claim:<3>\",\"item_type\":\"claim\",\"reason\":\"Forgetting policy point, unrelated to naming all four axes.\"},{\"item_id\":\"hot-path:claim:<4>\",\"item_type\":\"claim\",\"reason\":\"Memory repair targets, different topic.\"},{\"item_id\":\"hot-path:claim:<5>\",\"item_type\":\"claim\",\"reason\":\"Fast/slow path recommendation, different topic.\"},{\"item_id\":\"hot-path:claim:<6>\",\"item_type\":\"claim\",\"reason\":\"System goal constraint, not the four axes names.\"},{\"item_id\":\"hot-path:claim:<7>\",\"item_type\":\"claim\",\"reason\":\"scope_json schema fields, not asked.\"},{\"item_id\":\"hot-path:claim:<8>\",\"item_type\":\"claim\",\"reason\":\"Note maturity stages, not the four axes.\"},{\"item_id\":\"hot-path:claim:<9>\",\"item_type\":\"claim\",\"reason\":\"Forgetting actions detail, different topic.\"},{\"item_id\":\"hot-path:claim:<10>\",\"item_type\":\"claim\",\"reason\":\"Forgetting triggers detail, different topic.\"},{\"item_id\":\"hot-path:claim:<11>\",\"item_type\":\"claim\",\"reason\":\"Tier A guidance, not the asked axes.\"},{\"item_id\":\"hot-path:note:<1>\",\"item_type\":\"note\",\"reason\":\"Write/maintenance paths summary, not axes list.\"},{\"item_id\":\"hot-path:note:<2>\",\"item_type\":\"note\",\"reason\":\"Note maturity lifecycle only, partial unrelated detail.\"},{\"item_id\":\"hot-path:note:<3>\",\"item_type\":\"note\",\"reason\":\"Update workflow quality note, not axes names.\"},{\"item_id\":\"hot-path:note:<4>\",\"item_type\":\"note\",\"reason\":\"Retention/forgetting policy digest, different focus.\"},{\"item_id\":\"hot-path:note:<5>\",\"item_type\":\"note\",\"reason\":\"Storage tiers overview, not four axes.\"},{\"item_id\":\"hot-path:note:<6>\",\"item_type\":\"note\",\"reason\":\"High-level goals, does not provide four axes list.\"},{\"item_id\":\"hot-path:note:<7>\",\"item_type\":\"note\",\"reason\":\"Graph DB direction, unrelated to question.\"}],\"selected_items\":[{\"item_id\":\"hot-path:note:<0>\",\"item_type\":\"note\",\"rank\":1,\"reason\":\"Explicitly lists all four axes of memory v3 in one item.\",\"relevance\":\"direct_answer\"},{\"item_id\":\"hot-path:claim:<0>\",\"item_type\":\"claim\",\"rank\":2,\"reason\":\"Confirms that v3 has four axes, reinforcing factual framing.\",\"relevance\":\"supporting_context\"}],\"summary\":\"Select the axes digest note plus one confirming claim; reject all other topic-adjacent but non-answer items.\"}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 6066,
+                "completionTokens": 1048,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

@@ -16,6 +16,7 @@ import com.gromozeka.domain.model.memory.MemoryReadSelector
 import com.gromozeka.domain.model.memory.MemoryReadResult
 import com.gromozeka.domain.model.memory.MemoryReadSelectorTrace
 import com.gromozeka.domain.model.memory.MemoryReadTrace
+import com.gromozeka.domain.model.memory.MemoryScope
 import com.gromozeka.domain.model.memory.MemorySemanticType
 import com.gromozeka.domain.model.memory.MemorySource
 import com.gromozeka.domain.model.memory.MemoryStore
@@ -265,7 +266,9 @@ class RuntimeMemoryReadPipeline(
             val sourceFallbackSelection = rawSourceFallbackHits
                 .excludeCurrentThreadSources(request)
                 .applySourceRetrievalPolicyFor(MemorySemanticType.SOURCE)
-            val sourceFallbackHits = sourceFallbackSelection.hits.take(sourceFallbackLimit)
+            val sourceFallbackHits = sourceFallbackSelection.hits
+                .sortedForRuntimeMemoryRead()
+                .take(sourceFallbackLimit)
             hits += sourceFallbackHits
             searchSteps += MemoryReadTrace.SearchStep(
                 stage = "fallback:${MemorySemanticType.SOURCE.name}",
@@ -292,13 +295,14 @@ class RuntimeMemoryReadPipeline(
             .distinctBy { it.toItemRef() }
             .excludeCurrentThreadSources(request)
             .filterNot { it.isEmptyProfileHit() }
+            .sortedForRuntimeMemoryRead()
         val sourceSelection = MemorySourceRetrievalPolicy.apply(
             hits = distinctHits,
             useCase = plan.sourceRetrievalUseCase(),
         )
         val activeTypedRefsBeforeSourceSupport = sourceSelection.hits.currentTruthBearingTypedRefs()
         val sourceTypedSupportHits = sourceSelection.hits
-            .withTypedEvidenceSupport(request.namespace)
+            .withTypedEvidenceSupport(request, plan)
         val rawSourceDeferral = sourceTypedSupportHits.deferRawSourceCandidatesToEvidenceHydration(
             plan = plan,
             activeTypedRefs = activeTypedRefsBeforeSourceSupport,
@@ -313,9 +317,24 @@ class RuntimeMemoryReadPipeline(
         }
         val budgetedHits = rawSourceDeferral.hits
             .enforceBudget(plan, expandForSelector = true)
-        val selectorCandidateHits = budgetedHits
-            .withTypedEvidenceSupport(request.namespace)
-        val selectorSnapshot = selectorCandidateHits.toReadPartialSnapshot(request.namespace)
+        val rawSelectorCandidateHits = budgetedHits
+            .withTypedEvidenceSupport(request, plan)
+            .enforceBudget(plan, expandForSelector = true)
+            .sortedForRuntimeMemoryRead()
+        val selectorSnapshot = rawSelectorCandidateHits.toReadPartialSnapshot(request.namespace)
+        val selectorCandidateSourceSafety = rawSelectorCandidateHits.applyActiveTypedMemorySourceSafety(
+            snapshot = selectorSnapshot,
+            candidateHits = rawSelectorCandidateHits,
+        )
+        if (selectorCandidateSourceSafety.changed) {
+            log.info {
+                "Memory read source freshness guard before selector: namespace=${request.namespace.value} " +
+                    "suppressedSources=${selectorCandidateSourceSafety.suppressedSourceIds.size} " +
+                    "suppressedSourceIds=${selectorCandidateSourceSafety.suppressedSourceIds.joinToString { it.value }} " +
+                    "restoredTypedRefs=${selectorCandidateSourceSafety.restoredTypedRefs.joinToString { "${it.type.name.lowercase()}:${it.id}" }}"
+            }
+        }
+        val selectorCandidateHits = selectorCandidateSourceSafety.hits.sortedForRuntimeMemoryRead()
         val selectionResult = selector.select(
             MemoryReadSelectionRequest(
                 readRequest = request,
@@ -348,7 +367,8 @@ class RuntimeMemoryReadPipeline(
                     "droppedSourceIds=${sourceFilteredHits.droppedSources.joinToString("|") { it.source.id.value }}"
             }
         }
-        val sourceSafety = sourceFilteredHits.hits.applyActiveTypedMemorySourceSafety(selectorSnapshot, selectorCandidateHits)
+        val selectedSourceSafety = sourceFilteredHits.hits.applyActiveTypedMemorySourceSafety(selectorSnapshot, selectorCandidateHits)
+        val sourceSafety = selectedSourceSafety.withCandidateSourceSafety(selectorCandidateSourceSafety)
         if (sourceSafety.changed) {
             log.info {
                 "Memory read source freshness guard: namespace=${request.namespace.value} " +
@@ -357,9 +377,11 @@ class RuntimeMemoryReadPipeline(
                     "restoredTypedRefs=${sourceSafety.restoredTypedRefs.joinToString { "${it.type.name.lowercase()}:${it.id}" }}"
             }
         }
-        val selectedHits = sourceSafety.hits
+        val selectedHits = sourceSafety.hits.sortedForRuntimeMemoryRead()
         val evidenceHydratedHits = hydrateEvidenceSources(request, plan, selectedHits, selectorSnapshot)
+            .sortedForRuntimeMemoryRead()
         val entityHydratedHits = hydrateLinkedEntities(request, evidenceHydratedHits)
+            .sortedForRuntimeMemoryRead()
         searchSteps += MemoryReadTrace.SearchStep(
             stage = "selector",
             query = request.targetQueryText(),
@@ -424,7 +446,13 @@ class RuntimeMemoryReadPipeline(
                     MemoryStore.SearchHit.EntityHit(hit.entity, score)
                 }
             }
-            .sortedWith(compareByDescending<MemoryStore.SearchHit.EntityHit> { it.score }.thenByDescending { it.entity.updatedAt })
+            .sortedWith(
+                compareByDescending<MemoryStore.SearchHit.EntityHit> { it.score }
+                    .thenBy { it.entity.entityType.name }
+                    .thenBy { it.entity.normalizedName }
+                    .thenBy { it.entity.canonicalName }
+                    .thenBy { it.entity.id.value }
+            )
         val subjectHits = queryHits.filter { it.entity.entityType.isSubjectAnchorType() }
         val profileAnchorHits = if (plan.requestsProfileContext() && query.hasFirstPersonSingularReference()) {
             store.search(
@@ -531,7 +559,7 @@ class RuntimeMemoryReadPipeline(
                 "found=${entityHits.size} entities=${entityHits.summaryForRuntimeMemoryLog()}"
         }
 
-        return hits + entityHits
+        return hits + entityHits.sortedForRuntimeMemoryRead()
     }
 
     private suspend fun hydrateEvidenceSources(
@@ -561,6 +589,7 @@ class RuntimeMemoryReadPipeline(
             .take(sourceLimit)
 
         if (sourceIds.isEmpty()) return hits.keepLinkedEvidenceSources(evidenceSourceIds)
+            .sortedForRuntimeMemoryRead()
 
         val sourceById = store.findSourcesByIds(sourceIds)
             .filter { it.namespace == request.namespace }
@@ -583,22 +612,26 @@ class RuntimeMemoryReadPipeline(
         }
 
         return (hits + sourceHits).keepLinkedEvidenceSources(evidenceSourceIds)
+            .sortedForRuntimeMemoryRead()
     }
 
     private suspend fun List<MemoryStore.SearchHit>.withTypedEvidenceSupport(
-        namespace: MemoryNamespace,
+        request: MemoryReadRequest,
+        plan: MemoryReadPlan,
     ): List<MemoryStore.SearchHit> {
         val sourceIds = filterIsInstance<MemoryStore.SearchHit.SourceHit>()
             .mapTo(mutableSetOf()) { it.source.id }
         if (sourceIds.isEmpty()) return this
 
         val existingRefs = mapTo(mutableSetOf()) { it.toItemRef() }
-        val supportHits = store.findTypedMemoryByEvidenceSourceIds(namespace, sourceIds)
+        val supportHits = store.findTypedMemoryByEvidenceSourceIds(request.namespace, sourceIds)
             .filterNot { it.toItemRef() in existingRefs }
+            .map { it.withRuntimeEvidenceSupportScore(request, plan) }
+            .sortedForRuntimeMemoryRead()
         if (supportHits.isEmpty()) return this
 
         log.info {
-            "Memory read source typed support: namespace=${namespace.value} sources=${sourceIds.size} " +
+            "Memory read source typed support: namespace=${request.namespace.value} sources=${sourceIds.size} " +
                 "support=${supportHits.breakdownForRuntimeMemoryLog()} refs=${supportHits.summaryForRuntimeMemoryLog()}"
         }
 
@@ -632,6 +665,17 @@ private data class RuntimeMemorySourceSafetyResult(
     val restoredTypedRefs: Set<MemoryItemRef> = restoredTypedHits.mapTo(mutableSetOf()) { it.toItemRef() }
     val changed: Boolean = suppressedSourceIds.isNotEmpty() || restoredTypedRefs.isNotEmpty()
 }
+
+private fun RuntimeMemorySourceSafetyResult.withCandidateSourceSafety(
+    candidateSafety: RuntimeMemorySourceSafetyResult,
+): RuntimeMemorySourceSafetyResult =
+    RuntimeMemorySourceSafetyResult(
+        hits = hits,
+        suppressedSourceHits = (candidateSafety.suppressedSourceHits + suppressedSourceHits)
+            .distinctBy { it.source.id },
+        restoredTypedHits = (candidateSafety.restoredTypedHits + restoredTypedHits)
+            .distinctBy { it.toItemRef() },
+    )
 
 private data class RuntimeMemoryRawSourceDeferralResult(
     val hits: List<MemoryStore.SearchHit>,
@@ -740,6 +784,164 @@ private fun MemoryReadPlan.requestsProfileContext(): Boolean =
 
 private fun String.hasFirstPersonSingularReference(): Boolean =
     Regex("""\b(i|me|my|mine|myself)\b""").containsMatchIn(this)
+
+private fun MemoryStore.SearchHit.withRuntimeEvidenceSupportScore(
+    request: MemoryReadRequest,
+    plan: MemoryReadPlan,
+): MemoryStore.SearchHit =
+    when (this) {
+        is MemoryStore.SearchHit.ClaimHit -> copy(
+            score = runtimeEvidenceSupportScore(
+                request = request,
+                plan = plan,
+                textParts = listOf(
+                    claim.normalizedText,
+                    claim.contextText.orEmpty(),
+                    claim.predicate,
+                    claim.predicateFamily.orEmpty(),
+                    claim.scope.text,
+                ),
+            )
+        )
+
+        is MemoryStore.SearchHit.NoteHit -> copy(
+            score = runtimeEvidenceSupportScore(
+                request = request,
+                plan = plan,
+                textParts = listOf(
+                    note.title,
+                    note.summary,
+                    note.scope.text,
+                    note.noteType.name,
+                    note.keywords.joinToString(" "),
+                    note.tags.joinToString(" "),
+                ),
+            )
+        )
+
+        is MemoryStore.SearchHit.ActionItemHit -> copy(
+            score = runtimeEvidenceSupportScore(
+                request = request,
+                plan = plan,
+                textParts = listOf(
+                    actionItem.title,
+                    actionItem.description.orEmpty(),
+                    actionItem.status.name,
+                    actionItem.priority.name,
+                    actionItem.scope.text,
+                ),
+            )
+        )
+
+        is MemoryStore.SearchHit.EpisodeHit -> copy(
+            score = runtimeEvidenceSupportScore(
+                request = request,
+                plan = plan,
+                textParts = listOf(
+                    episode.situation,
+                    episode.action,
+                    episode.result,
+                    episode.lesson,
+                    episode.tags.joinToString(" "),
+                ),
+            )
+        )
+
+        is MemoryStore.SearchHit.ProfileHit,
+        is MemoryStore.SearchHit.SourceHit,
+        is MemoryStore.SearchHit.EntityHit,
+        is MemoryStore.SearchHit.RunHit,
+        -> this
+    }
+
+private fun runtimeEvidenceSupportScore(
+    request: MemoryReadRequest,
+    plan: MemoryReadPlan,
+    textParts: List<String>,
+): Double {
+    val queryTerms = request.runtimeEvidenceSupportQuery(plan).runtimeEvidenceSupportTerms()
+    if (queryTerms.isEmpty()) return 0.35
+
+    val normalizedText = textParts.joinToString(" ").normalizedEntityResolutionText()
+    val textTerms = normalizedText.runtimeEvidenceSupportTerms().toSet()
+    val matchedTerms = queryTerms.count { it in textTerms }
+    val matchedAnchors = queryTerms.count { it in runtimeEvidenceSupportAnchorTerms && it in textTerms }
+    val lexicalScore = matchedTerms.toDouble() / queryTerms.size * 0.45
+    val anchorScore = matchedAnchors * 0.22
+    val purposeScore = if (normalizedText.hasRuntimeEvidencePurposeSignal()) 0.18 else 0.0
+    val negativePenalty = if (normalizedText.hasRuntimeEvidenceNegativeSignal()) 0.18 else 0.0
+    return (0.35 + lexicalScore + anchorScore + purposeScore - negativePenalty).coerceIn(0.05, 0.98)
+}
+
+private fun MemoryReadRequest.runtimeEvidenceSupportQuery(plan: MemoryReadPlan): String =
+    buildList {
+        add(targetQueryText())
+        plan.retrievalRequests
+            .map { it.query }
+            .distinct()
+            .forEach(::add)
+    }.joinToString("\n").trim()
+
+private val runtimeEvidenceSupportStopWords = setOf(
+    "about",
+    "according",
+    "also",
+    "and",
+    "brief",
+    "for",
+    "from",
+    "how",
+    "keep",
+    "please",
+    "short",
+    "that",
+    "the",
+    "this",
+    "what",
+    "when",
+    "where",
+    "which",
+    "with",
+)
+
+private val runtimeEvidenceSupportAnchorTerms = setOf(
+    "action",
+    "claim",
+    "entity",
+    "episode",
+    "memory",
+    "note",
+    "profile",
+    "source",
+    "task",
+)
+
+private fun String.runtimeEvidenceSupportTerms(): List<String> =
+    split(" ")
+        .map { it.trim() }
+        .filter { it.length >= 3 }
+        .filterNot { it in runtimeEvidenceSupportStopWords }
+        .distinct()
+
+private fun String.hasRuntimeEvidencePurposeSignal(): Boolean =
+    listOf(
+        " evidence ",
+        " layer ",
+        " primary ",
+        " purpose ",
+        " role ",
+        " stores ",
+        " supports ",
+        " used ",
+    ).any { phrase -> " $this ".contains(phrase) }
+
+private fun String.hasRuntimeEvidenceNegativeSignal(): Boolean =
+    listOf(
+        " is not ",
+        " not ",
+        " never ",
+        " without ",
+    ).any { phrase -> " $this ".contains(phrase) }
 
 private fun MemoryEntity.Type.isSubjectAnchorType(): Boolean =
     when (this) {
@@ -876,6 +1078,146 @@ private fun List<MemoryStore.SearchHit>.applySourceRetrievalPolicyFor(
         )
     }
 
+private fun List<MemoryStore.SearchHit>.sortedForRuntimeMemoryRead(): List<MemoryStore.SearchHit> =
+    sortedWith(runtimeMemorySearchHitComparator)
+
+private val runtimeMemorySearchHitComparator: Comparator<MemoryStore.SearchHit> =
+    compareByDescending<MemoryStore.SearchHit> { it.score }
+        .thenByDescending { it.runtimeImportance() }
+        .thenBy { it.runtimeTypeRank() }
+        .thenBy { it.runtimeStableSortKey() }
+        .thenBy { it.toItemRef().id }
+
+private fun MemoryStore.SearchHit.runtimeImportance(): Int =
+    when (this) {
+        is MemoryStore.SearchHit.ClaimHit -> claim.importance
+        is MemoryStore.SearchHit.NoteHit -> note.importance
+        is MemoryStore.SearchHit.ActionItemHit -> when (actionItem.priority) {
+            MemoryActionItem.Priority.HIGH -> 9
+            MemoryActionItem.Priority.NORMAL -> 5
+            MemoryActionItem.Priority.LOW -> 1
+        }
+        is MemoryStore.SearchHit.EpisodeHit -> (episode.successScore ?: 0.0).times(10).toInt()
+        is MemoryStore.SearchHit.ProfileHit,
+        is MemoryStore.SearchHit.SourceHit,
+        is MemoryStore.SearchHit.EntityHit,
+        is MemoryStore.SearchHit.RunHit,
+        -> 0
+    }
+
+private fun MemoryStore.SearchHit.runtimeTypeRank(): Int =
+    when (this) {
+        is MemoryStore.SearchHit.ProfileHit -> 0
+        is MemoryStore.SearchHit.ClaimHit -> 1
+        is MemoryStore.SearchHit.NoteHit -> 2
+        is MemoryStore.SearchHit.ActionItemHit -> 3
+        is MemoryStore.SearchHit.SourceHit -> 4
+        is MemoryStore.SearchHit.EpisodeHit -> 5
+        is MemoryStore.SearchHit.EntityHit -> 6
+        is MemoryStore.SearchHit.RunHit -> 7
+    }
+
+private fun MemoryStore.SearchHit.runtimeStableSortKey(): String =
+    when (this) {
+        is MemoryStore.SearchHit.SourceHit -> source.runtimeStableSortKey()
+        is MemoryStore.SearchHit.EntityHit -> listOf(
+            entity.entityType.name,
+            entity.normalizedName,
+            entity.canonicalName,
+            entity.id.value,
+        ).joinToString("|")
+        is MemoryStore.SearchHit.ClaimHit -> listOf(
+            claim.predicate,
+            claim.normalizedText,
+            claim.contextText.orEmpty(),
+            claim.scope.runtimeStableSortKey(),
+            claim.id.value,
+        ).joinToString("|")
+        is MemoryStore.SearchHit.NoteHit -> listOf(
+            note.noteType.name,
+            note.title,
+            note.summary,
+            note.scope.runtimeStableSortKey(),
+            note.id.value,
+        ).joinToString("|")
+        is MemoryStore.SearchHit.ActionItemHit -> listOf(
+            actionItem.status.name,
+            actionItem.priority.name,
+            actionItem.title,
+            actionItem.description.orEmpty(),
+            actionItem.scope.runtimeStableSortKey(),
+            actionItem.id.value,
+        ).joinToString("|")
+        is MemoryStore.SearchHit.ProfileHit -> listOf(
+            profile.ownerEntityId.value,
+            profile.profileText,
+            profile.id.value,
+        ).joinToString("|")
+        is MemoryStore.SearchHit.EpisodeHit -> listOf(
+            episode.situation,
+            episode.action,
+            episode.result,
+            episode.lesson,
+            episode.id.value,
+        ).joinToString("|")
+        is MemoryStore.SearchHit.RunHit -> listOf(
+            run.runType.name,
+            run.status.name,
+            run.summary,
+            run.id.value,
+        ).joinToString("|")
+    }.lowercase()
+
+private fun MemorySource.runtimeStableSortKey(): String =
+    when (this) {
+        is MemorySource.ChatTurn -> listOf(
+            "chat",
+            conversationId.value,
+            threadId?.value.orEmpty(),
+            sourceMessageId?.value.orEmpty(),
+            speakerRole.name,
+            contentHash,
+            id.value,
+        ).joinToString("|")
+        is MemorySource.ToolOutput -> listOf(
+            "tool",
+            conversationId?.value.orEmpty(),
+            threadId?.value.orEmpty(),
+            sourceMessageId?.value.orEmpty(),
+            toolName.orEmpty(),
+            contentHash,
+            id.value,
+        ).joinToString("|")
+        is MemorySource.ImportedNote -> listOf(
+            "imported",
+            importRef.orEmpty(),
+            contentHash,
+            id.value,
+        ).joinToString("|")
+        is MemorySource.ExternalRecord -> listOf(
+            "external",
+            recordRef,
+            contentHash,
+            id.value,
+        ).joinToString("|")
+    }
+
+private fun MemoryScope.runtimeStableSortKey(): String =
+    when (this) {
+        is MemoryScope.Global -> listOf("global", text, basis.name)
+        is MemoryScope.Project -> listOf("project", projectId.value, text, basis.name)
+        is MemoryScope.Conversation -> listOf(
+            "conversation",
+            conversationId.value,
+            projectId?.value.orEmpty(),
+            text,
+            basis.name,
+        )
+        is MemoryScope.Entity -> listOf("entity", subjectEntityId.value, text, basis.name)
+        is MemoryScope.Environment -> listOf("environment", environment, text, basis.name)
+        is MemoryScope.Document -> listOf("document", documentRef, text, basis.name)
+    }.joinToString("|")
+
 private fun List<MemoryStore.SearchHit>.deferRawSourceCandidatesToEvidenceHydration(
     plan: MemoryReadPlan,
     activeTypedRefs: List<MemoryItemRef>,
@@ -937,14 +1279,18 @@ private fun MemoryStore.SearchHit.isCurrentTruthBearingTypedHit(): Boolean =
 private fun List<MemoryStore.SearchHit>.prioritizeForReadRequest(
     retrievalRequest: MemoryReadPlan.RetrievalRequest,
 ): List<MemoryStore.SearchHit> {
-    if (retrievalRequest.memoryType != MemorySemanticType.CLAIM) return this
+    if (retrievalRequest.memoryType != MemorySemanticType.CLAIM) return sortedForRuntimeMemoryRead()
     if (retrievalRequest.preferredClaimPredicates.isEmpty() && retrievalRequest.deprioritizedClaimPredicates.isEmpty()) {
-        return this
+        return sortedForRuntimeMemoryRead()
     }
 
     return sortedWith(
         compareByDescending<MemoryStore.SearchHit> { it.claimPredicatePriority(retrievalRequest) }
             .thenByDescending { it.score }
+            .thenByDescending { it.runtimeImportance() }
+            .thenBy { it.runtimeTypeRank() }
+            .thenBy { it.runtimeStableSortKey() }
+            .thenBy { it.toItemRef().id }
     )
 }
 
@@ -1061,14 +1407,19 @@ private fun List<MemoryStore.SearchHit>.enforceBudget(
     }
 
     return buildList {
-        addAll(profiles.take(plan.retrievalBudget.profilesLimit()))
-        addAll(claims.take((plan.retrievalBudget.claims.takeIf { it > 0 } ?: 6).maybeExpandForSelector(expandForSelector)))
-        addAll(notes.take((plan.retrievalBudget.notes.takeIf { it > 0 } ?: 4).maybeExpandForSelector(expandForSelector)))
-        addAll(actionItems.take((plan.retrievalBudget.actionItems.takeIf { it > 0 } ?: 3).maybeExpandForSelector(expandForSelector)))
-        addAll(sources.take(plan.retrievalBudget.sources.takeIf { it > 0 } ?: 3))
-        addAll(episodes.take((plan.retrievalBudget.episodes.takeIf { it > 0 } ?: 2).maybeExpandForSelector(expandForSelector)))
-        addAll(entities.take(4))
+        addAll(profiles.sortedForRuntimeMemoryRead().take(plan.retrievalBudget.profilesLimit()))
+        addAll(claims.sortedForRuntimeMemoryRead().take(plan.retrievalBudget.claims.budgetLimit(default = 6, expandForSelector = expandForSelector)))
+        addAll(notes.sortedForRuntimeMemoryRead().take(plan.retrievalBudget.notes.budgetLimit(default = 4, expandForSelector = expandForSelector)))
+        addAll(actionItems.sortedForRuntimeMemoryRead().take(plan.retrievalBudget.actionItems.budgetLimit(default = 3, expandForSelector = expandForSelector)))
+        addAll(sources.sortedForRuntimeMemoryRead().take(plan.retrievalBudget.sources.takeIf { it > 0 } ?: 3))
+        addAll(episodes.sortedForRuntimeMemoryRead().take(plan.retrievalBudget.episodes.budgetLimit(default = 2, expandForSelector = expandForSelector)))
+        addAll(entities.sortedForRuntimeMemoryRead().take(4))
     }
+}
+
+private fun Int.budgetLimit(default: Int, expandForSelector: Boolean): Int {
+    val requested = takeIf { it > 0 } ?: return default
+    return requested.maybeExpandForSelector(expandForSelector)
 }
 
 private fun Int.maybeExpandForSelector(expand: Boolean): Int =

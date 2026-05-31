@@ -740,7 +740,7 @@ class PostgresConversationRuntimeCoordinator(
         }
 
     private fun Connection.lockAllRecords(): List<RuntimeRecord> =
-        prepareStatement("SELECT record_json FROM conversation_runtime_records FOR UPDATE").use { statement ->
+        prepareStatement("SELECT record_json FROM conversation_runtime_records ORDER BY conversation_id FOR UPDATE").use { statement ->
             statement.executeQuery().use { result ->
                 buildList {
                     while (result.next()) {

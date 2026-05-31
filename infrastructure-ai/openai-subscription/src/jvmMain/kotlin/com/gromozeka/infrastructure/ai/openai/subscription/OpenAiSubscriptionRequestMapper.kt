@@ -43,7 +43,11 @@ class OpenAiSubscriptionRequestMapper {
         conversationKey: String,
     ): OpenAiSubscriptionResponsesRequest {
         val replayWindow = request.messages.toReplayWindow()
-        val sortedTools = request.tools.sortedBy { it.definition.name }
+        val effectiveTools = if (request.options.toolChoice is AiToolChoice.None) {
+            emptyList()
+        } else {
+            request.tools.sortedBy { it.definition.name }
+        }
         val inputItems = replayWindow.messages.flatMapIndexed { index, message ->
             toInputItems(
                 message = message,
@@ -56,8 +60,8 @@ class OpenAiSubscriptionRequestMapper {
             input = inputItems,
             instructions = instructions,
             contextManagement = buildContextManagement(request.options.autoCompactionThresholdTokens),
-            tools = sortedTools.map { tool -> tool.toToolJson() },
-            toolChoice = request.options.toolChoice.toToolChoiceJson().takeIf { sortedTools.isNotEmpty() },
+            tools = effectiveTools.map { tool -> tool.toToolJson() },
+            toolChoice = request.options.toolChoice.toToolChoiceJson().takeIf { effectiveTools.isNotEmpty() },
             text = buildTextConfig(request.options.responseFormat),
             reasoning = buildReasoning(request.options.reasoning),
             promptCacheKey = conversationKey,
@@ -67,7 +71,7 @@ class OpenAiSubscriptionRequestMapper {
             request = request,
             requestPayload = requestPayload,
             replayWindow = replayWindow,
-            sortedTools = sortedTools,
+            effectiveTools = effectiveTools,
             conversationKey = conversationKey,
         )
 
@@ -601,7 +605,7 @@ class OpenAiSubscriptionRequestMapper {
         request: AiRuntimeRequest,
         requestPayload: OpenAiSubscriptionResponsesRequest,
         replayWindow: ReplayWindow,
-        sortedTools: List<AiToolCallback>,
+        effectiveTools: List<AiToolCallback>,
         conversationKey: String,
     ) {
         val itemTypeCounts = requestPayload.input
@@ -620,7 +624,7 @@ class OpenAiSubscriptionRequestMapper {
         val payloadChars = runCatching {
             json.encodeToString(OpenAiSubscriptionResponsesRequest.serializer(), requestPayload).length
         }.getOrNull()
-        val toolSignature = sortedTools.joinToString(",") { it.definition.name }.hashCode()
+        val toolSignature = effectiveTools.joinToString(",") { it.definition.name }.hashCode()
 
         log.info(
             "OpenAI subscription request layout: " +
@@ -633,7 +637,7 @@ class OpenAiSubscriptionRequestMapper {
                 "itemTypes=$itemTypeCounts, " +
                 "messageRoles=$messageRoleCounts, " +
                 "messageContentShapes=$messageContentShapeCounts, " +
-                "tools=${sortedTools.size}, " +
+                "tools=${effectiveTools.size}, " +
                 "toolChoice=${requestPayload.toolChoice?.toString()?.take(80) ?: "omitted"}, " +
                 "toolSignature=${toolSignature.toUInt().toString(16)}, " +
                 "autoCompactionThreshold=${request.options.autoCompactionThresholdTokens ?: "omitted"}, " +

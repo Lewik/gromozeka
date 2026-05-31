@@ -290,7 +290,7 @@ class GromozekaRemoteServer(
                                 subscriptionId = command.subscriptionId,
                                 conversationId = event.conversationId,
                                 message = event.message,
-                                type = event.type,
+                                type = event.failureType,
                                 cursorSequence = event.cursorSequence,
                             ),
                             encoding,

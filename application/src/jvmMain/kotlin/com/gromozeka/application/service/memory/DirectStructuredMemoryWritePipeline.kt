@@ -241,8 +241,7 @@ class DirectStructuredMemoryWritePipeline(
 
         val routeDecision = requestForCapture.source.documentIngestRouteDecision()
             ?: router.route(requestForCapture)
-                .withForcedOrDocumentIngestFallback(requestForCapture.source)
-                .withDocumentIngestNoteOnly(requestForCapture.source)
+                .withForcedMemoryWriteFallback(requestForCapture.source)
                 .withSafeNoopSourcePolicy()
         val effectiveSource = sourceForCapture
             .withUsagePolicy(routeDecision.sourcePolicy)
@@ -858,6 +857,7 @@ class DirectStructuredMemoryWritePipeline(
     )
 
 private val documentIngestMemoryTypes = setOf(
+    MemorySemanticType.CLAIM,
     MemorySemanticType.NOTE,
     MemorySemanticType.SOURCE,
     MemorySemanticType.ENTITY,
@@ -868,9 +868,9 @@ private fun MemorySource.documentIngestRouteDecision(): MemoryRouteDecision? {
         return null
     }
 
-    val reason = "Document ingest uses deterministic note/source/entity route; hard claims/actionItems can be produced by later consolidation."
+    val reason = "Document ingest uses deterministic document truth route; stable document facts are extracted as claims, notes/sources keep richer context, and action items stay explicit-only."
     return MemoryRouteDecision(
-        decision = MemoryRouteDecision.Decision.NOTE_WRITE,
+        decision = MemoryRouteDecision.Decision.MIXED,
         memoryTypes = documentIngestMemoryTypes,
         salience = if (isForcedMemoryWriteSource()) 0.95 else 0.85,
         sourcePolicy = MemorySourceUsagePolicy.STANDARD.copy(reason = reason),
@@ -909,7 +909,7 @@ private fun DirectStructuredMemoryWriteRequest.documentIngestRetrievalPlan(
         entityQueries = source.documentIngestSearchHints(),
         textQueries = listOf(sourceSearchText).filter { it.isNotBlank() },
         memoryTypes = documentIngestMemoryTypes,
-        retrievalBudget = MemoryRetrievalBudget(notes = 8, sources = 6),
+        retrievalBudget = MemoryRetrievalBudget(claims = 8, notes = 8, sources = 6),
     )
 }
 
@@ -938,46 +938,24 @@ private fun MemoryRouteDecision.withSafeNoopSourcePolicy(): MemoryRouteDecision 
     )
 }
 
-private fun MemoryRouteDecision.withForcedOrDocumentIngestFallback(source: MemorySource): MemoryRouteDecision {
+private fun MemoryRouteDecision.withForcedMemoryWriteFallback(source: MemorySource): MemoryRouteDecision {
     if (decision != MemoryRouteDecision.Decision.NOOP) {
         return this
     }
 
-    val forced = source.isForcedMemoryWriteSource()
-    val document = source.isDocumentIngestSource()
-    if (!forced && !document) {
+    if (!source.isForcedMemoryWriteSource()) {
         return this
     }
 
-    val fallbackReason = when {
-        forced && document -> "Forced document memory write overrode router NOOP."
-        forced -> "Forced memory write overrode router NOOP."
-        else -> "Document ingest source overrode router NOOP."
-    }
+    val fallbackReason = "Forced memory write overrode router NOOP."
 
     return copy(
         decision = MemoryRouteDecision.Decision.NOTE_WRITE,
         memoryTypes = setOf(MemorySemanticType.NOTE, MemorySemanticType.SOURCE),
-        salience = salience.coerceAtLeast(if (forced) 0.95 else 0.85),
+        salience = salience.coerceAtLeast(0.95),
         sourcePolicy = MemorySourceUsagePolicy.STANDARD.copy(reason = fallbackReason),
         sourceSearchText = sourceSearchText ?: source.defaultIngestSearchText(),
         reason = "$fallbackReason Original router reason: $reason",
-    )
-}
-
-private fun MemoryRouteDecision.withDocumentIngestNoteOnly(source: MemorySource): MemoryRouteDecision {
-    if (!source.isDocumentIngestSource()) {
-        return this
-    }
-    if (decision == MemoryRouteDecision.Decision.NOOP || decision == MemoryRouteDecision.Decision.FORGET_REQUEST) {
-        return this
-    }
-
-    return copy(
-        decision = MemoryRouteDecision.Decision.NOTE_WRITE,
-        memoryTypes = setOf(MemorySemanticType.NOTE, MemorySemanticType.SOURCE, MemorySemanticType.ENTITY),
-        sourceSearchText = sourceSearchText ?: source.defaultIngestSearchText(),
-        reason = "Document ingest is note/source-only in the hot path; hard claims/actionItems can be produced by later consolidation. Original router reason: $reason",
     )
 }
 

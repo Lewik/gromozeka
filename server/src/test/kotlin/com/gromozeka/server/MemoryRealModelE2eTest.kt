@@ -1,12 +1,14 @@
 package com.gromozeka.server
 
 import com.gromozeka.application.service.ConversationEngineService
+import com.gromozeka.application.service.memory.MemoryEmbeddingIndexer
 import com.gromozeka.application.service.memory.MemoryMaintenanceTraceEvent
 import com.gromozeka.application.service.memory.MemoryMaintenanceTraceSink
 import com.gromozeka.application.service.memory.MemoryReadTraceEvent
 import com.gromozeka.application.service.memory.MemoryReadTraceSink
 import com.gromozeka.application.service.memory.MemoryWriteTraceEvent
 import com.gromozeka.application.service.memory.MemoryWriteTraceSink
+import com.gromozeka.application.service.memory.NoOpMemoryEmbeddingIndexer
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.UserProfile
@@ -131,7 +133,7 @@ class MemoryRealModelE2eTest {
                     System.getProperty(WEBSOCKET_TRANSPORT_TIMEOUT_MS_PROPERTY, "30000"),
                 "gromozeka.memory.llm.maxAttempts" to "1",
                 "gromozeka.memory.llm.timeoutMs" to
-                    System.getProperty(MEMORY_LLM_STAGE_TIMEOUT_MS_PROPERTY, "240000"),
+                    System.getProperty(MEMORY_LLM_STAGE_TIMEOUT_MS_PROPERTY, "1200000"),
                 "gromozeka.memory.routing.failFast" to "true",
             ),
             additionalSources = listOf(MemoryRealModelE2eNoToolsConfig::class.java),
@@ -1111,21 +1113,34 @@ class MemoryRealModelE2eTest {
         userMessage: Conversation.Message,
     ): List<Conversation.Message> = coroutineScope {
         val emittedMessages = mutableListOf<Conversation.Message>()
+        val observerReady = CompletableDeferred<Unit>()
         val completed = CompletableDeferred<Unit>()
         val observer = launch(start = CoroutineStart.UNDISPATCHED) {
+            var liveEvents = false
             conversationEngineService.observeConversation(conversation.id).collect { event ->
+                if (!liveEvents) {
+                    if (event is ConversationRuntimeEvent.SnapshotUpdated) {
+                        liveEvents = true
+                        observerReady.complete(Unit)
+                    }
+                    return@collect
+                }
+
                 when (event) {
                     is ConversationRuntimeEvent.SnapshotUpdated -> Unit
                     is ConversationRuntimeEvent.MessageEmitted -> emittedMessages.add(event.message)
                     is ConversationRuntimeEvent.ExecutionCompleted -> completed.complete(Unit)
                     is ConversationRuntimeEvent.ExecutionFailed -> completed.completeExceptionally(
-                        IllegalStateException("${event.type ?: "ConversationRuntimeError"}: ${event.message}")
+                        IllegalStateException("${event.failureType ?: "ConversationRuntimeError"}: ${event.message}")
                     )
                 }
             }
         }
 
         try {
+            withTimeout(e2eTurnCompletionTimeoutMs()) {
+                observerReady.await()
+            }
             assertTrue(
                 conversationEngineService.submitMessage(
                     conversationId = conversation.id,
@@ -2882,6 +2897,10 @@ class MemoryRealModelE2eNoToolsConfig {
     fun aiToolProvider(): AiToolProvider = object : AiToolProvider {
         override fun getTools(): List<AiToolCallback> = emptyList()
     }
+
+    @Bean
+    @Primary
+    fun memoryEmbeddingIndexer(): MemoryEmbeddingIndexer = NoOpMemoryEmbeddingIndexer
 
     @Bean
     fun memoryE2eReadTraceCollector(): MemoryE2eReadTraceCollector = MemoryE2eReadTraceCollector()

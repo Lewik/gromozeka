@@ -1,7 +1,9 @@
 package com.gromozeka.infrastructure.ai.openai.subscription
 
 import klog.KLoggers
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
@@ -38,7 +40,7 @@ class OpenAiSubscriptionResponsesClient(
     private val responsesUrl: String,
     @Value("\${gromozeka.ai.openai-subscription.websocket-idle-ms:300000}")
     private val websocketIdleMs: Long,
-    @Value("\${gromozeka.ai.openai-subscription.websocket-response-timeout-ms:300000}")
+    @Value("\${gromozeka.ai.openai-subscription.websocket-response-timeout-ms:1200000}")
     private val websocketResponseTimeoutMs: Long,
     @Value("\${gromozeka.ai.openai-subscription.websocket-transport-timeout-ms:30000}")
     private val websocketTransportTimeoutMs: Long,
@@ -384,10 +386,12 @@ class OpenAiSubscriptionResponsesClient(
             )
 
             val parsed = try {
+                val coroutineContext = currentCoroutineContext()
                 sendAndAwait(
                     requestBody = outboundRequest,
                     json = json,
                     responseMapper = responseMapper,
+                    ensureActive = { coroutineContext.ensureActive() },
                 )
             } catch (error: Throwable) {
                 close("request_failure")
@@ -568,6 +572,7 @@ class OpenAiSubscriptionResponsesClient(
             requestBody: OpenAiSubscriptionResponsesRequest,
             json: Json,
             responseMapper: OpenAiSubscriptionResponseMapper,
+            ensureActive: () -> Unit,
         ): OpenAiSubscriptionParsedResponse {
             val socket = webSocket
                 ?: throw OpenAiSubscriptionTransportException("OpenAI subscription websocket session is not open")
@@ -598,6 +603,7 @@ class OpenAiSubscriptionResponsesClient(
 
             val responseStartedAt = System.nanoTime()
             while (true) {
+                ensureActive()
                 val remainingTimeoutMs = remainingResponseTimeoutMs(responseStartedAt)
                 if (remainingTimeoutMs <= 0L) {
                     throw OpenAiSubscriptionTransportException(
@@ -605,12 +611,9 @@ class OpenAiSubscriptionResponsesClient(
                     )
                 }
 
-                when (val event = inboundEvents.poll(remainingTimeoutMs, TimeUnit.MILLISECONDS)) {
-                    null -> {
-                        throw OpenAiSubscriptionTransportException(
-                            "Timed out waiting for OpenAI subscription websocket response"
-                        )
-                    }
+                val pollTimeoutMs = remainingTimeoutMs.coerceAtMost(WEBSOCKET_RESPONSE_POLL_SLICE_MS)
+                when (val event = inboundEvents.poll(pollTimeoutMs, TimeUnit.MILLISECONDS)) {
+                    null -> Unit
 
                     is WebSocketInboundEvent.Text -> {
                         collector.accept(payload = event.payload)
@@ -713,6 +716,8 @@ class OpenAiSubscriptionResponsesClient(
         }
     }
 }
+
+private const val WEBSOCKET_RESPONSE_POLL_SLICE_MS = 1_000L
 
 data class OpenAiSubscriptionParsedResponse(
     val outputItems: List<JsonObject>,

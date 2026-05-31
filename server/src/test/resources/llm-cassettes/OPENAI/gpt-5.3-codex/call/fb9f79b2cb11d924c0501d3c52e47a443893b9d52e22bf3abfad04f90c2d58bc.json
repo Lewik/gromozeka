@@ -1,0 +1,403 @@
+{
+    "version": 1,
+    "hash": "fb9f79b2cb11d924c0501d3c52e47a443893b9d52e22bf3abfad04f90c2d58bc",
+    "provider": "OPENAI",
+    "model": "gpt-5.3-codex",
+    "operation": "call",
+    "recordedAt": "1970-01-01T00:00:00Z",
+    "projectPath": "gromozeka-e2e-<id>/projects/handoff-prompts-document-ingestion",
+    "canonicalRequest": {
+        "messages": [
+            {
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: ClaimReconciler v1.\n        Current time: <instant>\n        Timezone: Asia/Jerusalem\n        Namespace: project:<0>\n\n        Decide how candidate claims should update active memory and assign predicate policy.\n\n        Return JSON:\n        {\n          \"operations\": [\n            {\n              \"action\": \"insert | noop | supersede | retract | update\",\n              \"candidate_index\": 0,\n              \"target_claim_id\": \"existing-claim-id-or-null\",\n              \"canonical_predicate\": \"stable_snake_case_predicate_or_null\",\n              \"predicate_family\": \"stable_conceptual_family_or_null\",\n              \"predicate_description\": \"short policy meaning or null\",\n              \"object_kind\": \"entity | string | number | boolean | json | null\",\n              \"cardinality\": \"single | multi | null\",\n              \"temporal_policy\": \"atemporal | time_scoped | status_like | null\",\n              \"conflict_policy\": \"replace | coexist | range_split | null\",\n              \"reason\": \"short explanation\"\n            }\n          ]\n        }\n\n        Actions:\n        - insert: candidate is new durable information.\n        - noop: candidate is duplicate, low-value, or should not become active memory.\n        - supersede: candidate is the new current value and target_claim_id is the old active claim it replaces.\n        - retract: target_claim_id should stop being active because the target message retracts it without a replacement candidate.\n        - update: target_claim_id should be patched without adding a new candidate; use sparingly.\n\n        Predicate policy fields:\n        - canonical_predicate: normalized predicate to store for the candidate. Reuse an existing predicate only if it is the same semantic relation; otherwise choose a concise snake_case relation.\n        - predicate_family: stable conceptual family used for future reconciliation.\n        - cardinality: single if one subject can have only one active value in this family and scope; multi if several values can coexist.\n        - temporal_policy: atemporal for timeless facts, time_scoped for facts true in explicit time windows, status_like for current states, current preferences, decisions, and other evolving values.\n        - conflict_policy: replace when a new value invalidates the old active value, coexist when both can remain true, range_split when old and new values are both temporally meaningful.\n\n        Rules:\n        - Use the target source and full thread context to understand corrections, replacements, pronouns, temporal meaning, and scope.\n        - Do not decide by literal predicate names. Infer the semantic predicate family from the claim meaning, subject, object, qualifiers, evidence, scope, and temporal fields.\n        - Use an existing predicate from Predicate catalog excerpt when it captures the same semantic relation.\n        - If a catalog predicate fits, set canonical_predicate to that exact predicate and copy its cardinality, temporal_policy, and conflict_policy.\n        - Invent a new canonical_predicate only when no active catalog predicate captures the relation.\n        - Never canonicalize to generic description, classification, property-bag, or paraphrase predicates such as \"is_described_as\", \"has_property\", \"is_a\", or \"defined_as\". Choose a specific durable relation or return noop.\n        - For ordinary positive preferences, use catalog predicate \"prefers\"; do not keep category-specific variants such as \"prefers_car_brand\" unless they represent a named current/default slot.\n        - Do not map a named current/default/primary/chosen/backend slot to a generic preference, affinity, status, or usage predicate; use or create the specific slot predicate.\n        - If the target source updates or replaces an existing value, keep the semantic slot/family from the replaced claim when the source and context identify that slot.\n        - If multiple candidates from the same target source express the same durable point at different abstraction levels, keep the most specific/actionable candidate and return noop for weaker broader candidates.\n        - If one candidate captures the target source's explicit current/default/status value and another candidate is only a generic preference or affinity inferred from the same words, return noop for the generic candidate unless the target source independently asserts it.\n        - Do not insert redundant broader candidates merely because they use a different predicate or family.\n        - For exclusive current/default/status values in the same subject, scope, and environment, use cardinality=single and conflict_policy=replace unless simultaneous active values are explicitly allowed.\n        - For dated observations or historical phase facts, use temporal_policy=time_scoped; they can coexist with later current-state claims when scopes differ by time, phase, or environment.\n        - If the candidate is equivalent to an existing active claim in the same semantic family and scope, return noop.\n        - If predicate policy says replace and the candidate conflicts with an older active value in the same family and scope, supersede the old claim.\n        - If predicate policy says coexist, insert the candidate unless it is a duplicate.\n        - If predicate policy says range_split, insert the candidate and supersede only an old current-state claim that should no longer be retrieved as current.\n        - Attributed viewpoints, independent owners, independent events, and historical facts usually coexist unless the target source explicitly retracts them.\n        - Use catalog predicate \"believes\" for third-party viewpoints such as \"Alice thinks X\"; do not canonicalize those claims to \"prefers\" or \"avoids\" unless the source explicitly asserts preference or avoidance.\n        - Prefer insert over destructive actions when policy or evidence is unclear.\n        - Return one operation for each candidate unless the right action is a target-only retract/update.\n        - candidate_index is zero-based from Candidate claims below.\n        - target_claim_id must be one of Existing active claims below or null.\n        - Fill predicate policy fields for every operation with a candidate, including noop.\n        - Return valid JSON only.\n\n        TARGET_SOURCE:\n        Document title: 03. Prompt Pack\nDocument source: agent_memory_handoff/03_prompts.md\nDocument section: 03. Prompt Pack / 10. Note Consolidator v2 .. 11. Memory Repair Planner v1\nDocument lines: 690-820\n\n## 10. Note Consolidator v2\n\n### Когда вызывать\nВ фоне, после debounce или batch window.\n\n### Цель\nПонять, можно ли mature notes превратить в durable structured memory.\n\n### Выход\n\n```json\n{\n  \"claim_candidates\": [],\n  \"action_item_actions\": [],\n  \"profile_patch\": null,\n  \"episode_candidates\": [],\n  \"note_actions\": [],\n  \"summary\": \"short summary\"\n}\n```\n\n### Prompt\n\n```text\nYou are NoteConsolidator v2.\n\nGoal:\nReview mature notes and decide whether any of them should now produce durable structured memory.\n\nCurrent time: {{current_time_iso}}\nTimezone: {{timezone}}\nNamespace: {{namespace_id}}\n\nSelected notes:\n{{selected_notes}}\n\nRelated active claims:\n{{related_claims}}\n\nRelated tasks:\n{{related_tasks}}\n\nExisting profile:\n{{existing_profile_json}}\n\nReturn JSON:\n{\n  \"claim_candidates\": [],\n  \"action_item_actions\": [],\n  \"profile_patch\": null,\n  \"episode_candidates\": [],\n  \"note_actions\": [\n    {\n      \"note_id\": \"uuid\",\n      \"action\": \"keep_active | mark_resolved | mark_stale | supersede | mark_consolidated\",\n      \"reason\": \"short explanation\"\n    }\n  ],\n  \"summary\": \"short summary\"\n}\n\nRules:\n- Consolidate only when the signal is strong enough.\n- Do not force every note into a claim.\n- Promote to claim when the meaning is stable, queryable, and precise enough.\n- Promote to task only when future action is clearly required.\n- Promote to episode only when there is a reusable lesson.\n- Return valid JSON only.\n```\n\n## 11. Memory Repair Planner v1\n\n### Когда вызывать\nВ фоне, для suspicious clusters или после prompt/model changes.\n\n### Цель\nПредложить repair ops для деградировавшей памяти.\n\n### Выход\n\n```json\n{\n  \"repair_actions\": [\n    {\n      \"action\": \"merge_duplicates | supersede_item | archive_item | downgrade_retrieval_state | refresh_profile | noop\",\n      \"target_type\": \"note | claim | task | profile | entity\",\n      \"target_ids\": [\"uuid\"],\n      \"reason\": \"short explanation\"\n    }\n  ],\n  \"summary\": \"short summary\"\n}\n```\n\n### Prompt\n\n```text\nYou are MemoryRepairPlanner v1.\n\nGoal:\nReview suspicious memory clusters and propose conservative repair actions that improve memory hygiene without destroying useful history.\n\nCurrent time: {{current_time_iso}}\nNamespace: {{namespace_id}}\n\nSuspicious items:\n{{suspicious_items}}\n\nSupporting evidence:\n{{supporting_evidence}}\n\nReturn JSON:\n{\n  \"repair_actions\": [\n    {\n      \"action\": \"merge_duplicates | supersede_item | archive_item | downgrade_retrieval_state | refresh_profile | noop\",\n      \"target_type\": \"note | claim | task | profile | entity\",\n      \"target_ids\": [\"uuid\"],\n      \"reason\": \"short explanation\"\n    }\n  ],\n  \"summary\": \"short summary\"\n}\n\nRules:\n- Be conservative.\n- Prefer preserving history with links/status changes over destructive edits.\n- Use archive/downgrade when an item is stale but still explainable.\n- Return valid JSON only.\n```\n\n        Candidate claims:\n        - candidate[0] subject=entity:<0> predicate=has_goal object=\"Review mature notes and decide whether any of them should now produce durable structured memory.\" scope=Applies to the imported document section describing NoteConsolidator v2. validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=NoteConsolidator v2 reviews mature notes to decide whether they should produce durable structured memory. evidence=Review mature notes and decide whether any of them should now produce durable structured memory.\n- candidate[1] subject=entity:<0> predicate=has_constraint object=\"Consolidate only when the signal is strong enough.\" scope=Applies to NoteConsolidator v2 behavior in the imported prompt pack. validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=NoteConsolidator v2 should consolidate notes only when the signal is strong enough. evidence=Consolidate only when the signal is strong enough.\n- candidate[2] subject=entity:<0> predicate=has_constraint object=\"Do not force every note into a claim.\" scope=Applies to NoteConsolidator v2 behavior in the imported prompt pack. validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=NoteConsolidator v2 must not force every note into a claim. evidence=Do not force every note into a claim.\n- candidate[3] subject=entity:<0> predicate=has_constraint object=\"Promote to claim when the meaning is stable, queryable, and precise enough.\" scope=Applies to NoteConsolidator v2 behavior in the imported prompt pack. validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=NoteConsolidator v2 should promote a note to a claim only when meaning is stable, queryable, and precise enough. evidence=Promote to claim when the meaning is stable, queryable, and precise enough.\n- candidate[4] subject=entity:<0> predicate=has_constraint object=\"Promote to task only when future action is clearly required.\" scope=Applies to NoteConsolidator v2 behavior in the imported prompt pack. validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=NoteConsolidator v2 should promote a note to a task only when future action is clearly required. evidence=Promote to task only when future action is clearly required.\n- candidate[5] subject=entity:<0> predicate=has_constraint object=\"Promote to episode only when there is a reusable lesson.\" scope=Applies to NoteConsolidator v2 behavior in the imported prompt pack. validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=NoteConsolidator v2 should promote a note to an episode only when there is a reusable lesson. evidence=Promote to episode only when there is a reusable lesson.\n- candidate[6] subject=entity:<0> predicate=has_constraint object=\"Return valid JSON only.\" scope=Applies to NoteConsolidator v2 output requirements in the imported prompt pack. validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=NoteConsolidator v2 must return valid JSON only. evidence=Return valid JSON only.\n- candidate[7] subject=entity:<1> predicate=has_goal object=\"Review suspicious memory clusters and propose conservative repair actions that improve memory hygiene without destroying useful history.\" scope=Applies to the imported document section describing MemoryRepairPlanner v1. validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=MemoryRepairPlanner v1 reviews suspicious memory clusters and proposes conservative repair actions that improve memory hygiene without destroying useful history. evidence=Review suspicious memory clusters and propose conservative repair actions that improve memory hygiene without destroying useful history.\n- candidate[8] subject=entity:<1> predicate=has_constraint object=\"Be conservative.\" scope=Applies to MemoryRepairPlanner v1 behavior in the imported prompt pack. validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=MemoryRepairPlanner v1 should be conservative. evidence=Be conservative.\n- candidate[9] subject=entity:<1> predicate=has_constraint object=\"Prefer preserving history with links/status changes over destructive edits.\" scope=Applies to MemoryRepairPlanner v1 behavior in the imported prompt pack. validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=MemoryRepairPlanner v1 should prefer preserving history with links or status changes over destructive edits. evidence=Prefer preserving history with links/status changes over destructive edits.\n- candidate[10] subject=entity:<1> predicate=has_constraint object=\"Use archive/downgrade when an item is stale but still explainable.\" scope=Applies to MemoryRepairPlanner v1 behavior in the imported prompt pack. validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=MemoryRepairPlanner v1 should use archive or downgrade when an item is stale but still explainable. evidence=Use archive/downgrade when an item is stale but still explainable.\n- candidate[11] subject=entity:<1> predicate=has_constraint object=\"Return valid JSON only.\" scope=Applies to MemoryRepairPlanner v1 output requirements in the imported prompt pack. validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=MemoryRepairPlanner v1 must return valid JSON only. evidence=Return valid JSON only.\n\n        Existing active claims:\n        - id=hot-path:claim:<0> subject=entity:<2> predicate=has_constraint object=\"All memory prompts must include current_time_iso, timezone, namespace_id, source_ids, latest_turns or selected sources, and only the necessary retrieved context; include predicate_catalog_excerpt for claim prompts and retrieval_budget when planning reads.\" family=has_constraint policy=cardinality=MULTI,temporal=STATUS_LIKE,conflict=COEXIST scope=Applies to the document section '03. Prompt Pack / 0. Общие правила для всех memory prompts .. 1. Memory Router v3'. status=ACTIVE validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=The prompt pack requires specific mandatory input fields for memory prompts, including current_time_iso, timezone, namespace_id, source_ids, latest_turns or selected sources, scoped retrieved context, predicate_catalog_excerpt for claim pro...[truncated 47 chars]\n- id=hot-path:claim:<1> subject=entity:<3> predicate=has_constraint object=\"A plain user request is not automatically a commitment.\" family=has_constraint policy=cardinality=MULTI,temporal=STATUS_LIKE,conflict=COEXIST scope=Applies to ActionItemUpdater v3 behavior in 03. Prompt Pack. status=ACTIVE validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=ActionItemUpdater v3 must not treat a plain user request as an automatic commitment.\n- id=hot-path:claim:<2> subject=entity:<3> predicate=has_constraint object=\"Return valid JSON only.\" family=has_constraint policy=cardinality=MULTI,temporal=STATUS_LIKE,conflict=COEXIST scope=Applies to output format requirements in both prompts within this section. status=ACTIVE validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=Note Constructor v2 and Note Reconciler v2 require returning valid JSON only.\n- id=hot-path:claim:<3> subject=entity:<3> predicate=has_constraint object=\"Use \\\"supersede\\\" when the new note replaces an earlier direction or plan.\" family=has_constraint policy=cardinality=MULTI,temporal=STATUS_LIKE,conflict=COEXIST scope=Applies to reconciliation decisions in Note Reconciler v2. status=ACTIVE validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=NoteReconciler v2 requires using supersede when a new note replaces an earlier direction or plan.\n- id=hot-path:claim:<4> subject=entity:<3> predicate=has_constraint object=\"Use \\\"noop\\\" for near-duplicates with no meaningful improvement.\" family=has_constraint policy=cardinality=MULTI,temporal=STATUS_LIKE,conflict=COEXIST scope=Applies to reconciliation decisions in Note Reconciler v2. status=ACTIVE validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=NoteReconciler v2 requires using noop for near-duplicate notes without meaningful improvement.\n- id=hot-path:claim:<5> subject=entity:<2> predicate=has_constraint object=\"Memory prompts should enforce structured output/JSON schema, use low temperature, strictly validate outputs, retry invalid JSON with validator feedback, and use explicit versioning labels such as router_v3 and claim_extract_v3.\" family=has_constraint policy=cardinality=MULTI,temporal=STATUS_LIKE,conflict=COEXIST scope=Applies to the document section '03. Prompt Pack / 0. Общие правила для всех memory prompts .. 1. Memory Router v3'. status=ACTIVE validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=The prompt pack defines technical rules requiring structured output enforcement, low temperature, strict validation, retry on invalid JSON with validator feedback, and prompt versioning.\n- id=hot-path:claim:<6> subject=entity:<3> predicate=has_goal object=\"Compare candidate notes against existing notes and decide the correct update operation.\" family=has_goal policy=cardinality=MULTI,temporal=STATUS_LIKE,conflict=COEXIST scope=Applies to Note Reconciler v2 in the 03. Prompt Pack document section. status=ACTIVE validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=NoteReconciler v2 aims to compare candidate notes against existing notes and decide the correct update operation.\n- id=hot-path:claim:<7> subject=entity:<3> predicate=has_constraint object=\"Use \\\"update\\\" when the same note becomes clearer without changing core meaning.\" family=has_constraint policy=cardinality=MULTI,temporal=STATUS_LIKE,conflict=COEXIST scope=Applies to reconciliation decisions in Note Reconciler v2. status=ACTIVE validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=NoteReconciler v2 requires using update when a note becomes clearer without changing its core meaning.\n- id=hot-path:claim:<8> subject=entity:<3> predicate=has_constraint object=\"ProfileUpdater v3 should not include rationale notes in the profile unless they are clearly stable and operationally useful.\" family=has_constraint policy=cardinality=MULTI,temporal=STATUS_LIKE,conflict=COEXIST scope=Applies to ProfileUpdater v3 behavior in 03. Prompt Pack. status=ACTIVE validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=ProfileUpdater v3 should not include rationale notes in the profile unless they are clearly stable and operationally useful.\n- id=hot-path:claim:<9> subject=entity:<3> predicate=has_constraint object=\"ActionItemUpdater v3 should convert relative deadlines to absolute time when possible.\" family=has_constraint policy=cardinality=MULTI,temporal=STATUS_LIKE,conflict=COEXIST scope=Applies to ActionItemUpdater v3 behavior in 03. Prompt Pack. status=ACTIVE validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=ActionItemUpdater v3 should convert relative deadlines to absolute time when possible.\n- id=hot-path:claim:<10> subject=entity:<3> predicate=has_constraint object=\"ActionItemUpdater v3 should prefer one clear task over several vague tasks.\" family=has_constraint policy=cardinality=MULTI,temporal=STATUS_LIKE,conflict=COEXIST scope=Applies to ActionItemUpdater v3 behavior in 03. Prompt Pack. status=ACTIVE validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=ActionItemUpdater v3 should prefer one clear task over several vague tasks.\n- id=hot-path:claim:<11> subject=entity:<3> predicate=has_goal object=\"Create reusable semantic notes from the latest turns.\" family=has_goal policy=cardinality=MULTI,temporal=STATUS_LIKE,conflict=COEXIST scope=Applies to Note Constructor v2 in the 03. Prompt Pack document section. status=ACTIVE validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=NoteConstructor v2 aims to create reusable semantic notes from the latest turns.\n- id=hot-path:claim:<12> subject=entity:<3> predicate=has_goal object=\"Create or update operational tasks from explicit commitments, deadlines, or task lifecycle changes.\" family=has_goal policy=cardinality=MULTI,temporal=STATUS_LIKE,conflict=COEXIST scope=Applies within the documented ActionItemUpdater v3 specification in 03. Prompt Pack. status=ACTIVE validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=ActionItemUpdater v3 aims to create or update operational tasks from explicit commitments, deadlines, or task lifecycle changes.\n\n        Predicate catalog excerpt:\n        - avoids: Negative preference, exclusion, or avoid instruction; subject=any; object=ENTITY; cardinality=MULTI; temporal=STATUS_LIKE; conflict=COEXIST; importance=7\n- believes: Attributed belief, opinion, or viewpoint held by the subject; subject=any; object=STRING; cardinality=MULTI; temporal=STATUS_LIKE; conflict=COEXIST; importance=7\n- has_constraint: Stable user or project constraint; subject=any; object=STRING; cardinality=MULTI; temporal=STATUS_LIKE; conflict=COEXIST; importance=8\n- has_experience_with: Experience with a technology or domain; subject=PERSON; object=ENTITY; cardinality=MULTI; temporal=ATEMPORAL; conflict=COEXIST; importance=6\n- has_goal: Active or declared goal; subject=any; object=STRING; cardinality=MULTI; temporal=STATUS_LIKE; conflict=COEXIST; importance=8\n- owns_vehicle: Vehicle owned or used by the subject; subject=PERSON; object=ENTITY; cardinality=MULTI; temporal=STATUS_LIKE; conflict=COEXIST; importance=6\n- preferred_name: Preferred display name for the subject; subject=PERSON; object=STRING; cardinality=SINGLE; temporal=ATEMPORAL; conflict=REPLACE; importance=8\n- prefers: Generic positive preference when no named current/default/primary/chosen slot predicate is more precise; subject=PERSON; object=ENTITY; cardinality=MULTI; temporal=STATUS_LIKE; conflict=COEXIST; importance=7\n- prefers_answer_detail: Preferred answer detail level; subject=PERSON; object=STRING; cardinality=SINGLE; temporal=STATUS_LIKE; conflict=REPLACE; importance=8\n- prefers_code_comment_language: Preferred language for code comments; subject=PERSON; object=STRING; cardinality=SINGLE; temporal=STATUS_LIKE; conflict=REPLACE; importance=9\n- prefers_framework: Preferred framework or library; subject=PERSON; object=ENTITY; cardinality=MULTI; temporal=STATUS_LIKE; conflict=COEXIST; importance=6\n- prefers_response_language: Preferred language for assistant responses; subject=PERSON; object=STRING; cardinality=SINGLE; temporal=STATUS_LIKE; conflict=REPLACE; importance=9\n- prefers_storage: Preferred storage solution; subject=PERSON; object=ENTITY; cardinality=MULTI; temporal=STATUS_LIKE; conflict=COEXIST; importance=7\n- prefers_tone: Preferred response tone; subject=PERSON; object=STRING; cardinality=SINGLE; temporal=STATUS_LIKE; conflict=REPLACE; importance=7\n- primary_storage_backend: Primary storage or persistence backend for a project or service; subject=PROJECT; object=ENTITY; cardinality=SINGLE; temporal=STATUS_LIKE; conflict=REPLACE; importance=8\n- responsible_for: Subject owns or is responsible for a workstream, component, process, account duty, or operational area; subject=any; object=ENTITY; cardinality=MULTI; temporal=STATUS_LIKE; conflict=COEXIST; importance=8\n- speaks_language: Language known or used by the subject; subject=PERSON; object=STRING; cardinality=MULTI; temporal=ATEMPORAL; conflict=COEXIST; importance=7\n- timezone: Timezone of the subject; subject=PERSON; object=STRING; cardinality=SINGLE; temporal=STATUS_LIKE; conflict=REPLACE; importance=7\n- uses_persistence_database: Persistence database used by a project or service in a specific environment, phase, or time window; subject=PROJECT; object=ENTITY; cardinality=MULTI; temporal=TIME_SCOPED; conflict=RANGE_SPLIT; importance=6\n- uses_search_backend: Search backend used by a project or service in a specific environment, phase, or time window; subject=any; object=ENTITY; cardinality=SINGLE; temporal=TIME_SCOPED; conflict=RANGE_SPLIT; importance=7\n- works_on_project: Association with a project when no more specific role, responsibility, ownership, or project-state predicate is available; subject=PERSON; object=ENTITY; cardinality=MULTI; temporal=TIME_SCOPED; conflict=RANGE_SPLIT; importance=7\n- works_with: Current or ongoing technology/tool usage; subject=PERSON; object=ENTITY; cardinality=MULTI; temporal=STATUS_LIKE; conflict=COEXIST; importance=7",
+                        "type": "Message"
+                    }
+                ],
+                "conversationId": null,
+                "createdAt": null,
+                "error": null,
+                "id": null,
+                "instructions": [],
+                "providerMetadata": null,
+                "role": "USER"
+            }
+        ],
+        "options": {
+            "assistantResponseFormat": "TEXT",
+            "autoCompactionThreshold": null,
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "responseFormat": {
+                "description": "Reconcile claim candidates against active memory claims.",
+                "name": "memory_claim_reconciler",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "operations": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "action": {
+                                        "enum": [
+                                            "insert",
+                                            "noop",
+                                            "supersede",
+                                            "retract",
+                                            "update"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "candidate_index": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
+                                    },
+                                    "canonical_predicate": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "cardinality": {
+                                        "anyOf": [
+                                            {
+                                                "enum": [
+                                                    "single",
+                                                    "multi"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "conflict_policy": {
+                                        "anyOf": [
+                                            {
+                                                "enum": [
+                                                    "replace",
+                                                    "coexist",
+                                                    "range_split"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "object_kind": {
+                                        "anyOf": [
+                                            {
+                                                "enum": [
+                                                    "entity",
+                                                    "string",
+                                                    "number",
+                                                    "boolean",
+                                                    "json"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "predicate_description": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "predicate_family": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    },
+                                    "target_claim_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "temporal_policy": {
+                                        "anyOf": [
+                                            {
+                                                "enum": [
+                                                    "atemporal",
+                                                    "time_scoped",
+                                                    "status_like"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "action",
+                                    "candidate_index",
+                                    "target_claim_id",
+                                    "canonical_predicate",
+                                    "predicate_family",
+                                    "predicate_description",
+                                    "object_kind",
+                                    "cardinality",
+                                    "temporal_policy",
+                                    "conflict_policy",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "operations"
+                    ],
+                    "type": "object"
+                },
+                "strict": true,
+                "type": "json_schema"
+            },
+            "toolChoice": {
+                "type": "none"
+            },
+            "toolContext": {
+                "memoryClaimReconciler": true,
+                "memoryNamespace": "project:<0>",
+                "memorySourceId": "external:document-section:d7325db18c6ce476c9da278a8fda0af9"
+            }
+        },
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value."
+        ],
+        "tools": []
+    },
+    "debugRequest": {
+        "systemPrompts": [
+            "You are a concise assistant inside a Gromozeka memory e2e test.\nAnswer user questions directly.\nDo not use tools.\nIf the question asks for only a short value, return only that value."
+        ],
+        "messages": [
+            {
+                "id": "msg_<id>",
+                "conversationId": "<conversation-key>",
+                "createdAt": "1970-01-01T00:00:00Z",
+                "role": "USER",
+                "content": [
+                    {
+                        "state": "COMPLETE",
+                        "text": "        Memory stage: ClaimReconciler v1.\n        Current time: <instant>\n        Timezone: Asia/Jerusalem\n        Namespace: project:<0>\n\n        Decide how candidate claims should update active memory and assign predicate policy.\n\n        Return JSON:\n        {\n          \"operations\": [\n            {\n              \"action\": \"insert | noop | supersede | retract | update\",\n              \"candidate_index\": 0,\n              \"target_claim_id\": \"existing-claim-id-or-null\",\n              \"canonical_predicate\": \"stable_snake_case_predicate_or_null\",\n              \"predicate_family\": \"stable_conceptual_family_or_null\",\n              \"predicate_description\": \"short policy meaning or null\",\n              \"object_kind\": \"entity | string | number | boolean | json | null\",\n              \"cardinality\": \"single | multi | null\",\n              \"temporal_policy\": \"atemporal | time_scoped | status_like | null\",\n              \"conflict_policy\": \"replace | coexist | range_split | null\",\n              \"reason\": \"short explanation\"\n            }\n          ]\n        }\n\n        Actions:\n        - insert: candidate is new durable information.\n        - noop: candidate is duplicate, low-value, or should not become active memory.\n        - supersede: candidate is the new current value and target_claim_id is the old active claim it replaces.\n        - retract: target_claim_id should stop being active because the target message retracts it without a replacement candidate.\n        - update: target_claim_id should be patched without adding a new candidate; use sparingly.\n\n        Predicate policy fields:\n        - canonical_predicate: normalized predicate to store for the candidate. Reuse an existing predicate only if it is the same semantic relation; otherwise choose a concise snake_case relation.\n        - predicate_family: stable conceptual family used for future reconciliation.\n        - cardinality: single if one subject can have only one active value in this family and scope; multi if several values can coexist.\n        - temporal_policy: atemporal for timeless facts, time_scoped for facts true in explicit time windows, status_like for current states, current preferences, decisions, and other evolving values.\n        - conflict_policy: replace when a new value invalidates the old active value, coexist when both can remain true, range_split when old and new values are both temporally meaningful.\n\n        Rules:\n        - Use the target source and full thread context to understand corrections, replacements, pronouns, temporal meaning, and scope.\n        - Do not decide by literal predicate names. Infer the semantic predicate family from the claim meaning, subject, object, qualifiers, evidence, scope, and temporal fields.\n        - Use an existing predicate from Predicate catalog excerpt when it captures the same semantic relation.\n        - If a catalog predicate fits, set canonical_predicate to that exact predicate and copy its cardinality, temporal_policy, and conflict_policy.\n        - Invent a new canonical_predicate only when no active catalog predicate captures the relation.\n        - Never canonicalize to generic description, classification, property-bag, or paraphrase predicates such as \"is_described_as\", \"has_property\", \"is_a\", or \"defined_as\". Choose a specific durable relation or return noop.\n        - For ordinary positive preferences, use catalog predicate \"prefers\"; do not keep category-specific variants such as \"prefers_car_brand\" unless they represent a named current/default slot.\n        - Do not map a named current/default/primary/chosen/backend slot to a generic preference, affinity, status, or usage predicate; use or create the specific slot predicate.\n        - If the target source updates or replaces an existing value, keep the semantic slot/family from the replaced claim when the source and context identify that slot.\n        - If multiple candidates from the same target source express the same durable point at different abstraction levels, keep the most specific/actionable candidate and return noop for weaker broader candidates.\n        - If one candidate captures the target source's explicit current/default/status value and another candidate is only a generic preference or affinity inferred from the same words, return noop for the generic candidate unless the target source independently asserts it.\n        - Do not insert redundant broader candidates merely because they use a different predicate or family.\n        - For exclusive current/default/status values in the same subject, scope, and environment, use cardinality=single and conflict_policy=replace unless simultaneous active values are explicitly allowed.\n        - For dated observations or historical phase facts, use temporal_policy=time_scoped; they can coexist with later current-state claims when scopes differ by time, phase, or environment.\n        - If the candidate is equivalent to an existing active claim in the same semantic family and scope, return noop.\n        - If predicate policy says replace and the candidate conflicts with an older active value in the same family and scope, supersede the old claim.\n        - If predicate policy says coexist, insert the candidate unless it is a duplicate.\n        - If predicate policy says range_split, insert the candidate and supersede only an old current-state claim that should no longer be retrieved as current.\n        - Attributed viewpoints, independent owners, independent events, and historical facts usually coexist unless the target source explicitly retracts them.\n        - Use catalog predicate \"believes\" for third-party viewpoints such as \"Alice thinks X\"; do not canonicalize those claims to \"prefers\" or \"avoids\" unless the source explicitly asserts preference or avoidance.\n        - Prefer insert over destructive actions when policy or evidence is unclear.\n        - Return one operation for each candidate unless the right action is a target-only retract/update.\n        - candidate_index is zero-based from Candidate claims below.\n        - target_claim_id must be one of Existing active claims below or null.\n        - Fill predicate policy fields for every operation with a candidate, including noop.\n        - Return valid JSON only.\n\n        TARGET_SOURCE:\n        Document title: 03. Prompt Pack\nDocument source: agent_memory_handoff/03_prompts.md\nDocument section: 03. Prompt Pack / 10. Note Consolidator v2 .. 11. Memory Repair Planner v1\nDocument lines: 690-820\n\n## 10. Note Consolidator v2\n\n### Когда вызывать\nВ фоне, после debounce или batch window.\n\n### Цель\nПонять, можно ли mature notes превратить в durable structured memory.\n\n### Выход\n\n```json\n{\n  \"claim_candidates\": [],\n  \"action_item_actions\": [],\n  \"profile_patch\": null,\n  \"episode_candidates\": [],\n  \"note_actions\": [],\n  \"summary\": \"short summary\"\n}\n```\n\n### Prompt\n\n```text\nYou are NoteConsolidator v2.\n\nGoal:\nReview mature notes and decide whether any of them should now produce durable structured memory.\n\nCurrent time: {{current_time_iso}}\nTimezone: {{timezone}}\nNamespace: {{namespace_id}}\n\nSelected notes:\n{{selected_notes}}\n\nRelated active claims:\n{{related_claims}}\n\nRelated tasks:\n{{related_tasks}}\n\nExisting profile:\n{{existing_profile_json}}\n\nReturn JSON:\n{\n  \"claim_candidates\": [],\n  \"action_item_actions\": [],\n  \"profile_patch\": null,\n  \"episode_candidates\": [],\n  \"note_actions\": [\n    {\n      \"note_id\": \"uuid\",\n      \"action\": \"keep_active | mark_resolved | mark_stale | supersede | mark_consolidated\",\n      \"reason\": \"short explanation\"\n    }\n  ],\n  \"summary\": \"short summary\"\n}\n\nRules:\n- Consolidate only when the signal is strong enough.\n- Do not force every note into a claim.\n- Promote to claim when the meaning is stable, queryable, and precise enough.\n- Promote to task only when future action is clearly required.\n- Promote to episode only when there is a reusable lesson.\n- Return valid JSON only.\n```\n\n## 11. Memory Repair Planner v1\n\n### Когда вызывать\nВ фоне, для suspicious clusters или после prompt/model changes.\n\n### Цель\nПредложить repair ops для деградировавшей памяти.\n\n### Выход\n\n```json\n{\n  \"repair_actions\": [\n    {\n      \"action\": \"merge_duplicates | supersede_item | archive_item | downgrade_retrieval_state | refresh_profile | noop\",\n      \"target_type\": \"note | claim | task | profile | entity\",\n      \"target_ids\": [\"uuid\"],\n      \"reason\": \"short explanation\"\n    }\n  ],\n  \"summary\": \"short summary\"\n}\n```\n\n### Prompt\n\n```text\nYou are MemoryRepairPlanner v1.\n\nGoal:\nReview suspicious memory clusters and propose conservative repair actions that improve memory hygiene without destroying useful history.\n\nCurrent time: {{current_time_iso}}\nNamespace: {{namespace_id}}\n\nSuspicious items:\n{{suspicious_items}}\n\nSupporting evidence:\n{{supporting_evidence}}\n\nReturn JSON:\n{\n  \"repair_actions\": [\n    {\n      \"action\": \"merge_duplicates | supersede_item | archive_item | downgrade_retrieval_state | refresh_profile | noop\",\n      \"target_type\": \"note | claim | task | profile | entity\",\n      \"target_ids\": [\"uuid\"],\n      \"reason\": \"short explanation\"\n    }\n  ],\n  \"summary\": \"short summary\"\n}\n\nRules:\n- Be conservative.\n- Prefer preserving history with links/status changes over destructive edits.\n- Use archive/downgrade when an item is stale but still explainable.\n- Return valid JSON only.\n```\n\n        Candidate claims:\n        - candidate[0] subject=entity:<0> predicate=has_goal object=\"Review mature notes and decide whether any of them should now produce durable structured memory.\" scope=Applies to the imported document section describing NoteConsolidator v2. validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=NoteConsolidator v2 reviews mature notes to decide whether they should produce durable structured memory. evidence=Review mature notes and decide whether any of them should now produce durable structured memory.\n- candidate[1] subject=entity:<0> predicate=has_constraint object=\"Consolidate only when the signal is strong enough.\" scope=Applies to NoteConsolidator v2 behavior in the imported prompt pack. validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=NoteConsolidator v2 should consolidate notes only when the signal is strong enough. evidence=Consolidate only when the signal is strong enough.\n- candidate[2] subject=entity:<0> predicate=has_constraint object=\"Do not force every note into a claim.\" scope=Applies to NoteConsolidator v2 behavior in the imported prompt pack. validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=NoteConsolidator v2 must not force every note into a claim. evidence=Do not force every note into a claim.\n- candidate[3] subject=entity:<0> predicate=has_constraint object=\"Promote to claim when the meaning is stable, queryable, and precise enough.\" scope=Applies to NoteConsolidator v2 behavior in the imported prompt pack. validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=NoteConsolidator v2 should promote a note to a claim only when meaning is stable, queryable, and precise enough. evidence=Promote to claim when the meaning is stable, queryable, and precise enough.\n- candidate[4] subject=entity:<0> predicate=has_constraint object=\"Promote to task only when future action is clearly required.\" scope=Applies to NoteConsolidator v2 behavior in the imported prompt pack. validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=NoteConsolidator v2 should promote a note to a task only when future action is clearly required. evidence=Promote to task only when future action is clearly required.\n- candidate[5] subject=entity:<0> predicate=has_constraint object=\"Promote to episode only when there is a reusable lesson.\" scope=Applies to NoteConsolidator v2 behavior in the imported prompt pack. validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=NoteConsolidator v2 should promote a note to an episode only when there is a reusable lesson. evidence=Promote to episode only when there is a reusable lesson.\n- candidate[6] subject=entity:<0> predicate=has_constraint object=\"Return valid JSON only.\" scope=Applies to NoteConsolidator v2 output requirements in the imported prompt pack. validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=NoteConsolidator v2 must return valid JSON only. evidence=Return valid JSON only.\n- candidate[7] subject=entity:<1> predicate=has_goal object=\"Review suspicious memory clusters and propose conservative repair actions that improve memory hygiene without destroying useful history.\" scope=Applies to the imported document section describing MemoryRepairPlanner v1. validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=MemoryRepairPlanner v1 reviews suspicious memory clusters and proposes conservative repair actions that improve memory hygiene without destroying useful history. evidence=Review suspicious memory clusters and propose conservative repair actions that improve memory hygiene without destroying useful history.\n- candidate[8] subject=entity:<1> predicate=has_constraint object=\"Be conservative.\" scope=Applies to MemoryRepairPlanner v1 behavior in the imported prompt pack. validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=MemoryRepairPlanner v1 should be conservative. evidence=Be conservative.\n- candidate[9] subject=entity:<1> predicate=has_constraint object=\"Prefer preserving history with links/status changes over destructive edits.\" scope=Applies to MemoryRepairPlanner v1 behavior in the imported prompt pack. validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=MemoryRepairPlanner v1 should prefer preserving history with links or status changes over destructive edits. evidence=Prefer preserving history with links/status changes over destructive edits.\n- candidate[10] subject=entity:<1> predicate=has_constraint object=\"Use archive/downgrade when an item is stale but still explainable.\" scope=Applies to MemoryRepairPlanner v1 behavior in the imported prompt pack. validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=MemoryRepairPlanner v1 should use archive or downgrade when an item is stale but still explainable. evidence=Use archive/downgrade when an item is stale but still explainable.\n- candidate[11] subject=entity:<1> predicate=has_constraint object=\"Return valid JSON only.\" scope=Applies to MemoryRepairPlanner v1 output requirements in the imported prompt pack. validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=MemoryRepairPlanner v1 must return valid JSON only. evidence=Return valid JSON only.\n\n        Existing active claims:\n        - id=hot-path:claim:<0> subject=entity:<2> predicate=has_constraint object=\"All memory prompts must include current_time_iso, timezone, namespace_id, source_ids, latest_turns or selected sources, and only the necessary retrieved context; include predicate_catalog_excerpt for claim prompts and retrieval_budget when planning reads.\" family=has_constraint policy=cardinality=MULTI,temporal=STATUS_LIKE,conflict=COEXIST scope=Applies to the document section '03. Prompt Pack / 0. Общие правила для всех memory prompts .. 1. Memory Router v3'. status=ACTIVE validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=The prompt pack requires specific mandatory input fields for memory prompts, including current_time_iso, timezone, namespace_id, source_ids, latest_turns or selected sources, scoped retrieved context, predicate_catalog_excerpt for claim pro...[truncated 47 chars]\n- id=hot-path:claim:<1> subject=entity:<3> predicate=has_constraint object=\"A plain user request is not automatically a commitment.\" family=has_constraint policy=cardinality=MULTI,temporal=STATUS_LIKE,conflict=COEXIST scope=Applies to ActionItemUpdater v3 behavior in 03. Prompt Pack. status=ACTIVE validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=ActionItemUpdater v3 must not treat a plain user request as an automatic commitment.\n- id=hot-path:claim:<2> subject=entity:<3> predicate=has_constraint object=\"Return valid JSON only.\" family=has_constraint policy=cardinality=MULTI,temporal=STATUS_LIKE,conflict=COEXIST scope=Applies to output format requirements in both prompts within this section. status=ACTIVE validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=Note Constructor v2 and Note Reconciler v2 require returning valid JSON only.\n- id=hot-path:claim:<3> subject=entity:<3> predicate=has_constraint object=\"Use \\\"supersede\\\" when the new note replaces an earlier direction or plan.\" family=has_constraint policy=cardinality=MULTI,temporal=STATUS_LIKE,conflict=COEXIST scope=Applies to reconciliation decisions in Note Reconciler v2. status=ACTIVE validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=NoteReconciler v2 requires using supersede when a new note replaces an earlier direction or plan.\n- id=hot-path:claim:<4> subject=entity:<3> predicate=has_constraint object=\"Use \\\"noop\\\" for near-duplicates with no meaningful improvement.\" family=has_constraint policy=cardinality=MULTI,temporal=STATUS_LIKE,conflict=COEXIST scope=Applies to reconciliation decisions in Note Reconciler v2. status=ACTIVE validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=NoteReconciler v2 requires using noop for near-duplicate notes without meaningful improvement.\n- id=hot-path:claim:<5> subject=entity:<2> predicate=has_constraint object=\"Memory prompts should enforce structured output/JSON schema, use low temperature, strictly validate outputs, retry invalid JSON with validator feedback, and use explicit versioning labels such as router_v3 and claim_extract_v3.\" family=has_constraint policy=cardinality=MULTI,temporal=STATUS_LIKE,conflict=COEXIST scope=Applies to the document section '03. Prompt Pack / 0. Общие правила для всех memory prompts .. 1. Memory Router v3'. status=ACTIVE validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=The prompt pack defines technical rules requiring structured output enforcement, low temperature, strict validation, retry on invalid JSON with validator feedback, and prompt versioning.\n- id=hot-path:claim:<6> subject=entity:<3> predicate=has_goal object=\"Compare candidate notes against existing notes and decide the correct update operation.\" family=has_goal policy=cardinality=MULTI,temporal=STATUS_LIKE,conflict=COEXIST scope=Applies to Note Reconciler v2 in the 03. Prompt Pack document section. status=ACTIVE validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=NoteReconciler v2 aims to compare candidate notes against existing notes and decide the correct update operation.\n- id=hot-path:claim:<7> subject=entity:<3> predicate=has_constraint object=\"Use \\\"update\\\" when the same note becomes clearer without changing core meaning.\" family=has_constraint policy=cardinality=MULTI,temporal=STATUS_LIKE,conflict=COEXIST scope=Applies to reconciliation decisions in Note Reconciler v2. status=ACTIVE validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=NoteReconciler v2 requires using update when a note becomes clearer without changing its core meaning.\n- id=hot-path:claim:<8> subject=entity:<3> predicate=has_constraint object=\"ProfileUpdater v3 should not include rationale notes in the profile unless they are clearly stable and operationally useful.\" family=has_constraint policy=cardinality=MULTI,temporal=STATUS_LIKE,conflict=COEXIST scope=Applies to ProfileUpdater v3 behavior in 03. Prompt Pack. status=ACTIVE validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=ProfileUpdater v3 should not include rationale notes in the profile unless they are clearly stable and operationally useful.\n- id=hot-path:claim:<9> subject=entity:<3> predicate=has_constraint object=\"ActionItemUpdater v3 should convert relative deadlines to absolute time when possible.\" family=has_constraint policy=cardinality=MULTI,temporal=STATUS_LIKE,conflict=COEXIST scope=Applies to ActionItemUpdater v3 behavior in 03. Prompt Pack. status=ACTIVE validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=ActionItemUpdater v3 should convert relative deadlines to absolute time when possible.\n- id=hot-path:claim:<10> subject=entity:<3> predicate=has_constraint object=\"ActionItemUpdater v3 should prefer one clear task over several vague tasks.\" family=has_constraint policy=cardinality=MULTI,temporal=STATUS_LIKE,conflict=COEXIST scope=Applies to ActionItemUpdater v3 behavior in 03. Prompt Pack. status=ACTIVE validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=ActionItemUpdater v3 should prefer one clear task over several vague tasks.\n- id=hot-path:claim:<11> subject=entity:<3> predicate=has_goal object=\"Create reusable semantic notes from the latest turns.\" family=has_goal policy=cardinality=MULTI,temporal=STATUS_LIKE,conflict=COEXIST scope=Applies to Note Constructor v2 in the 03. Prompt Pack document section. status=ACTIVE validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=NoteConstructor v2 aims to create reusable semantic notes from the latest turns.\n- id=hot-path:claim:<12> subject=entity:<3> predicate=has_goal object=\"Create or update operational tasks from explicit commitments, deadlines, or task lifecycle changes.\" family=has_goal policy=cardinality=MULTI,temporal=STATUS_LIKE,conflict=COEXIST scope=Applies within the documented ActionItemUpdater v3 specification in 03. Prompt Pack. status=ACTIVE validFrom=1970-01-01T00:00:00Z validTo=1970-01-01T00:00:00Z qualifiers={} text=ActionItemUpdater v3 aims to create or update operational tasks from explicit commitments, deadlines, or task lifecycle changes.\n\n        Predicate catalog excerpt:\n        - avoids: Negative preference, exclusion, or avoid instruction; subject=any; object=ENTITY; cardinality=MULTI; temporal=STATUS_LIKE; conflict=COEXIST; importance=7\n- believes: Attributed belief, opinion, or viewpoint held by the subject; subject=any; object=STRING; cardinality=MULTI; temporal=STATUS_LIKE; conflict=COEXIST; importance=7\n- has_constraint: Stable user or project constraint; subject=any; object=STRING; cardinality=MULTI; temporal=STATUS_LIKE; conflict=COEXIST; importance=8\n- has_experience_with: Experience with a technology or domain; subject=PERSON; object=ENTITY; cardinality=MULTI; temporal=ATEMPORAL; conflict=COEXIST; importance=6\n- has_goal: Active or declared goal; subject=any; object=STRING; cardinality=MULTI; temporal=STATUS_LIKE; conflict=COEXIST; importance=8\n- owns_vehicle: Vehicle owned or used by the subject; subject=PERSON; object=ENTITY; cardinality=MULTI; temporal=STATUS_LIKE; conflict=COEXIST; importance=6\n- preferred_name: Preferred display name for the subject; subject=PERSON; object=STRING; cardinality=SINGLE; temporal=ATEMPORAL; conflict=REPLACE; importance=8\n- prefers: Generic positive preference when no named current/default/primary/chosen slot predicate is more precise; subject=PERSON; object=ENTITY; cardinality=MULTI; temporal=STATUS_LIKE; conflict=COEXIST; importance=7\n- prefers_answer_detail: Preferred answer detail level; subject=PERSON; object=STRING; cardinality=SINGLE; temporal=STATUS_LIKE; conflict=REPLACE; importance=8\n- prefers_code_comment_language: Preferred language for code comments; subject=PERSON; object=STRING; cardinality=SINGLE; temporal=STATUS_LIKE; conflict=REPLACE; importance=9\n- prefers_framework: Preferred framework or library; subject=PERSON; object=ENTITY; cardinality=MULTI; temporal=STATUS_LIKE; conflict=COEXIST; importance=6\n- prefers_response_language: Preferred language for assistant responses; subject=PERSON; object=STRING; cardinality=SINGLE; temporal=STATUS_LIKE; conflict=REPLACE; importance=9\n- prefers_storage: Preferred storage solution; subject=PERSON; object=ENTITY; cardinality=MULTI; temporal=STATUS_LIKE; conflict=COEXIST; importance=7\n- prefers_tone: Preferred response tone; subject=PERSON; object=STRING; cardinality=SINGLE; temporal=STATUS_LIKE; conflict=REPLACE; importance=7\n- primary_storage_backend: Primary storage or persistence backend for a project or service; subject=PROJECT; object=ENTITY; cardinality=SINGLE; temporal=STATUS_LIKE; conflict=REPLACE; importance=8\n- responsible_for: Subject owns or is responsible for a workstream, component, process, account duty, or operational area; subject=any; object=ENTITY; cardinality=MULTI; temporal=STATUS_LIKE; conflict=COEXIST; importance=8\n- speaks_language: Language known or used by the subject; subject=PERSON; object=STRING; cardinality=MULTI; temporal=ATEMPORAL; conflict=COEXIST; importance=7\n- timezone: Timezone of the subject; subject=PERSON; object=STRING; cardinality=SINGLE; temporal=STATUS_LIKE; conflict=REPLACE; importance=7\n- uses_persistence_database: Persistence database used by a project or service in a specific environment, phase, or time window; subject=PROJECT; object=ENTITY; cardinality=MULTI; temporal=TIME_SCOPED; conflict=RANGE_SPLIT; importance=6\n- uses_search_backend: Search backend used by a project or service in a specific environment, phase, or time window; subject=any; object=ENTITY; cardinality=SINGLE; temporal=TIME_SCOPED; conflict=RANGE_SPLIT; importance=7\n- works_on_project: Association with a project when no more specific role, responsibility, ownership, or project-state predicate is available; subject=PERSON; object=ENTITY; cardinality=MULTI; temporal=TIME_SCOPED; conflict=RANGE_SPLIT; importance=7\n- works_with: Current or ongoing technology/tool usage; subject=PERSON; object=ENTITY; cardinality=MULTI; temporal=STATUS_LIKE; conflict=COEXIST; importance=7",
+                        "type": "Message"
+                    }
+                ],
+                "instructions": [],
+                "providerMetadata": {},
+                "error": null
+            }
+        ],
+        "tools": [],
+        "options": {
+            "maxOutputTokens": 64000,
+            "reasoning": null,
+            "autoCompactionThreshold": null,
+            "toolChoice": {
+                "type": "none"
+            },
+            "responseFormat": {
+                "type": "json_schema",
+                "name": "memory_claim_reconciler",
+                "schema": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "operations": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "action": {
+                                        "enum": [
+                                            "insert",
+                                            "noop",
+                                            "supersede",
+                                            "retract",
+                                            "update"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "candidate_index": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ]
+                                    },
+                                    "canonical_predicate": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "cardinality": {
+                                        "anyOf": [
+                                            {
+                                                "enum": [
+                                                    "single",
+                                                    "multi"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "conflict_policy": {
+                                        "anyOf": [
+                                            {
+                                                "enum": [
+                                                    "replace",
+                                                    "coexist",
+                                                    "range_split"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "object_kind": {
+                                        "anyOf": [
+                                            {
+                                                "enum": [
+                                                    "entity",
+                                                    "string",
+                                                    "number",
+                                                    "boolean",
+                                                    "json"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "predicate_description": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "predicate_family": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    },
+                                    "target_claim_id": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "temporal_policy": {
+                                        "anyOf": [
+                                            {
+                                                "enum": [
+                                                    "atemporal",
+                                                    "time_scoped",
+                                                    "status_like"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "action",
+                                    "candidate_index",
+                                    "target_claim_id",
+                                    "canonical_predicate",
+                                    "predicate_family",
+                                    "predicate_description",
+                                    "object_kind",
+                                    "cardinality",
+                                    "temporal_policy",
+                                    "conflict_policy",
+                                    "reason"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "operations"
+                    ],
+                    "type": "object"
+                },
+                "description": "Reconcile claim candidates against active memory claims.",
+                "strict": true
+            },
+            "assistantResponseFormat": "TEXT",
+            "toolContext": {
+                "memoryClaimReconciler": true,
+                "memoryNamespace": "project:<0>",
+                "memorySourceId": "external:document-section:d7325db18c6ce476c9da278a8fda0af9"
+            }
+        }
+    },
+    "responses": [
+        {
+            "messages": [
+                {
+                    "content": [
+                        {
+                            "type": "IntermediateMessage",
+                            "structured": {
+                                "fullText": "{\"operations\":[{\"action\":\"insert\",\"candidate_index\":0,\"canonical_predicate\":\"has_goal\",\"cardinality\":\"multi\",\"conflict_policy\":\"coexist\",\"object_kind\":\"string\",\"predicate_description\":\"Goal of NoteConsolidator v2\",\"predicate_family\":\"has_goal\",\"reason\":\"New tool-specific goal; not duplicate of existing goals.\",\"target_claim_id\":null,\"temporal_policy\":\"status_like\"},{\"action\":\"insert\",\"candidate_index\":1,\"canonical_predicate\":\"has_constraint\",\"cardinality\":\"multi\",\"conflict_policy\":\"coexist\",\"object_kind\":\"string\",\"predicate_description\":\"Consolidate only with strong signal\",\"predicate_family\":\"has_constraint\",\"reason\":\"New constraint for NoteConsolidator v2.\",\"target_claim_id\":null,\"temporal_policy\":\"status_like\"},{\"action\":\"insert\",\"candidate_index\":2,\"canonical_predicate\":\"has_constraint\",\"cardinality\":\"multi\",\"conflict_policy\":\"coexist\",\"object_kind\":\"string\",\"predicate_description\":\"Do not force every note into a claim\",\"predicate_family\":\"has_constraint\",\"reason\":\"Distinct behavioral constraint, no conflict.\",\"target_claim_id\":null,\"temporal_policy\":\"status_like\"},{\"action\":\"insert\",\"candidate_index\":3,\"canonical_predicate\":\"has_constraint\",\"cardinality\":\"multi\",\"conflict_policy\":\"coexist\",\"object_kind\":\"string\",\"predicate_description\":\"Promote to claim only when stable/queryable/precise\",\"predicate_family\":\"has_constraint\",\"reason\":\"Specific promotion rule for claims; durable and queryable.\",\"target_claim_id\":null,\"temporal_policy\":\"status_like\"},{\"action\":\"insert\",\"candidate_index\":4,\"canonical_predicate\":\"has_constraint\",\"cardinality\":\"multi\",\"conflict_policy\":\"coexist\",\"object_kind\":\"string\",\"predicate_description\":\"Promote to task only when future action is clearly required\",\"predicate_family\":\"has_constraint\",\"reason\":\"Specific promotion threshold for tasks; new and non-duplicate.\",\"target_claim_id\":null,\"temporal_policy\":\"status_like\"},{\"action\":\"insert\",\"candidate_index\":5,\"canonical_predicate\":\"has_constraint\",\"cardinality\":\"multi\",\"conflict_policy\":\"coexist\",\"object_kind\":\"string\",\"predicate_description\":\"Promote to episode only with reusable lesson\",\"predicate_family\":\"has_constraint\",\"reason\":\"Specific promotion rule for episodes; new and compatible.\",\"target_claim_id\":null,\"temporal_policy\":\"status_like\"},{\"action\":\"insert\",\"candidate_index\":6,\"canonical_predicate\":\"has_constraint\",\"cardinality\":\"multi\",\"conflict_policy\":\"coexist\",\"object_kind\":\"string\",\"predicate_description\":\"Output must be valid JSON\",\"predicate_family\":\"has_constraint\",\"reason\":\"Same wording exists for other components but different subject/scope; should coexist.\",\"target_claim_id\":null,\"temporal_policy\":\"status_like\"},{\"action\":\"insert\",\"candidate_index\":7,\"canonical_predicate\":\"has_goal\",\"cardinality\":\"multi\",\"conflict_policy\":\"coexist\",\"object_kind\":\"string\",\"predicate_description\":\"Goal of MemoryRepairPlanner v1\",\"predicate_family\":\"has_goal\",\"reason\":\"New tool-specific goal; not duplicate for this subject.\",\"target_claim_id\":null,\"temporal_policy\":\"status_like\"},{\"action\":\"insert\",\"candidate_index\":8,\"canonical_predicate\":\"has_constraint\",\"cardinality\":\"multi\",\"conflict_policy\":\"coexist\",\"object_kind\":\"string\",\"predicate_description\":\"Planner should be conservative\",\"predicate_family\":\"has_constraint\",\"reason\":\"New explicit constraint for MemoryRepairPlanner v1.\",\"target_claim_id\":null,\"temporal_policy\":\"status_like\"},{\"action\":\"insert\",\"candidate_index\":9,\"canonical_predicate\":\"has_constraint\",\"cardinality\":\"multi\",\"conflict_policy\":\"coexist\",\"object_kind\":\"string\",\"predicate_description\":\"Prefer history-preserving edits over destructive edits\",\"predicate_family\":\"has_constraint\",\"reason\":\"Distinct conservative repair policy; no conflict.\",\"target_claim_id\":null,\"temporal_policy\":\"status_like\"},{\"action\":\"insert\",\"candidate_index\":10,\"canonical_predicate\":\"has_constraint\",\"cardinality\":\"multi\",\"conflict_policy\":\"coexist\",\"object_kind\":\"string\",\"predicate_description\":\"Use archive/downgrade for stale but explainable items\",\"predicate_family\":\"has_constraint\",\"reason\":\"Specific operational constraint, new for this subject.\",\"target_claim_id\":null,\"temporal_policy\":\"status_like\"},{\"action\":\"insert\",\"candidate_index\":11,\"canonical_predicate\":\"has_constraint\",\"cardinality\":\"multi\",\"conflict_policy\":\"coexist\",\"object_kind\":\"string\",\"predicate_description\":\"Output must be valid JSON\",\"predicate_family\":\"has_constraint\",\"reason\":\"Applies to different component subject/scope; keep as separate active claim.\",\"target_claim_id\":null,\"temporal_policy\":\"status_like\"}]}",
+                                "ttsText": null,
+                                "voiceTone": null,
+                                "failedToParse": false
+                            },
+                            "state": "COMPLETE"
+                        }
+                    ],
+                    "metadata": {
+                        "messageId": "msg_<id>",
+                        "phase": "final_answer"
+                    }
+                }
+            ],
+            "usage": {
+                "promptTokens": 6272,
+                "completionTokens": 948,
+                "thinkingTokens": 0,
+                "cacheCreationTokens": 0,
+                "cacheReadTokens": 0
+            },
+            "finishReason": "completed",
+            "providerMetadata": {
+                "conversationKey": "<conversation-key>",
+                "responseId": "resp_<id>"
+            }
+        }
+    ]
+}

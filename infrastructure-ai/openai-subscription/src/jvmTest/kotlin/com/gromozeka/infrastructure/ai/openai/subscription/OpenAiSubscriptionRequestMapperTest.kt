@@ -3,6 +3,9 @@ package com.gromozeka.infrastructure.ai.openai.subscription
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.ai.AiRuntimeOptions
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
+import com.gromozeka.domain.model.ai.AiToolChoice
+import com.gromozeka.domain.tool.AiToolCallback
+import com.gromozeka.domain.tool.AiToolDefinition
 import kotlinx.datetime.Instant
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
@@ -104,6 +107,39 @@ class OpenAiSubscriptionRequestMapperTest {
         )
 
         assertNull(request.contextManagement)
+    }
+
+    @Test
+    fun omitsToolsWhenToolChoiceIsNone() {
+        val request = mapper.toRequest(
+            request = AiRuntimeRequest(
+                systemPrompts = emptyList(),
+                messages = emptyList(),
+                tools = listOf(testTool("memory_remember")),
+                options = AiRuntimeOptions(toolChoice = AiToolChoice.None),
+            ),
+            modelName = "gpt-5.5",
+            conversationKey = "test-conversation",
+        )
+
+        assertEquals(emptyList(), request.tools)
+        assertNull(request.toolChoice)
+    }
+
+    @Test
+    fun includesToolsWhenToolChoiceAllowsTools() {
+        val request = mapper.toRequest(
+            request = AiRuntimeRequest(
+                systemPrompts = emptyList(),
+                messages = emptyList(),
+                tools = listOf(testTool("memory_remember")),
+                options = AiRuntimeOptions(toolChoice = AiToolChoice.Auto),
+            ),
+            modelName = "gpt-5.5",
+            conversationKey = "test-conversation",
+        )
+
+        assertEquals(1, request.tools.size)
     }
 
     @Test
@@ -214,6 +250,18 @@ class OpenAiSubscriptionRequestMapperTest {
             error = if (isError) Conversation.Message.GenerationError(message = text, type = "api") else null,
             createdAt = createdAt,
         )
+
+    private fun testTool(name: String): AiToolCallback =
+        object : AiToolCallback {
+            override val definition = AiToolDefinition(
+                name = name,
+                description = "Test tool",
+                inputSchema = """{"type":"object","properties":{}}""",
+            )
+
+            override fun call(toolInput: String, context: com.gromozeka.domain.tool.ToolExecutionContext?): String =
+                "ok"
+        }
 
     private fun JsonObject.string(key: String): String? =
         this[key]?.jsonPrimitive?.contentOrNull
