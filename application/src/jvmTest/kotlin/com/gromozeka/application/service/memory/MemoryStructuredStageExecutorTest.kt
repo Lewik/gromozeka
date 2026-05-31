@@ -25,8 +25,8 @@ class MemoryStructuredStageExecutorTest {
         val runtime = SequencedRuntime(
             responses = ArrayDeque(
                 listOf(
-                    """{"value": """,
-                    """{"value": "ok"}""",
+                    listOf("""{"value": """),
+                    listOf("""{"value": "ok"}"""),
                 )
             )
         )
@@ -52,8 +52,88 @@ class MemoryStructuredStageExecutorTest {
         assertTrue(repairMessages[1].plainText().contains("Output only the required JSON"))
     }
 
+    @Test
+    fun parsesStructuredJsonSplitAcrossAssistantBlocks() = runBlocking {
+        val runtime = SequencedRuntime(
+            responses = ArrayDeque(
+                listOf(
+                    listOf("""{"value": """, """"ok"}"""),
+                )
+            )
+        )
+        val request = AiRuntimeRequest(
+            systemPrompts = emptyList(),
+            messages = listOf(userMessage("initial memory stage actionItem")),
+            options = AiRuntimeOptions(),
+        )
+
+        val result = runtime.callMemoryStructuredStage(
+            request = request,
+            stageName = "test-stage",
+            logContext = "test=true",
+            parse = { json.decodeFromString<TestEnvelope>(it) },
+        )
+
+        assertEquals("ok", result.value.value)
+        assertEquals(1, runtime.requests.size)
+    }
+
+    @Test
+    fun collapsesDuplicateStructuredJsonRoots() = runBlocking {
+        val runtime = SequencedRuntime(
+            responses = ArrayDeque(
+                listOf(
+                    listOf("""{"value": "ok"}""", """{"value": "ok"}"""),
+                )
+            )
+        )
+        val request = AiRuntimeRequest(
+            systemPrompts = emptyList(),
+            messages = listOf(userMessage("initial memory stage actionItem")),
+            options = AiRuntimeOptions(),
+        )
+
+        val result = runtime.callMemoryStructuredStage(
+            request = request,
+            stageName = "test-stage",
+            logContext = "test=true",
+            parse = { json.decodeFromString<TestEnvelope>(it) },
+        )
+
+        assertEquals("ok", result.value.value)
+        assertEquals(1, runtime.requests.size)
+    }
+
+    @Test
+    fun repairsDistinctStructuredJsonRoots() = runBlocking {
+        val runtime = SequencedRuntime(
+            responses = ArrayDeque(
+                listOf(
+                    listOf("""{"value": "first"}""", """{"value": "second"}"""),
+                    listOf("""{"value": "ok"}"""),
+                )
+            )
+        )
+        val request = AiRuntimeRequest(
+            systemPrompts = emptyList(),
+            messages = listOf(userMessage("initial memory stage actionItem")),
+            options = AiRuntimeOptions(),
+        )
+
+        val result = runtime.callMemoryStructuredStage(
+            request = request,
+            stageName = "test-stage",
+            logContext = "test=true",
+            parse = { json.decodeFromString<TestEnvelope>(it) },
+        )
+
+        assertEquals("ok", result.value.value)
+        assertEquals(2, runtime.requests.size)
+        assertTrue(runtime.requests[1].messages.last().plainText().contains("distinct object JSON roots"))
+    }
+
     private class SequencedRuntime(
-        private val responses: ArrayDeque<String>,
+        private val responses: ArrayDeque<List<String>>,
     ) : AiRuntime {
         val requests = mutableListOf<AiRuntimeRequest>()
         override val capabilities: AiRuntimeCapabilities = AiRuntimeCapabilities()
@@ -65,15 +145,15 @@ class MemoryStructuredStageExecutorTest {
 
         override fun stream(request: AiRuntimeRequest): Flow<AiRuntimeResponse> = emptyFlow()
 
-        private fun response(text: String): AiRuntimeResponse =
+        private fun response(texts: List<String>): AiRuntimeResponse =
             AiRuntimeResponse(
                 messages = listOf(
                     AiAssistantMessage(
-                        content = listOf(
+                        content = texts.map { text ->
                             Conversation.Message.ContentItem.AssistantMessage(
                                 structured = Conversation.Message.StructuredText(text),
                             )
-                        )
+                        }
                     )
                 )
             )

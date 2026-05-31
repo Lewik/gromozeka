@@ -451,24 +451,6 @@ internal object MemoryStructuredResponseFormats {
     )
 }
 
-internal fun String.extractJsonObject(): String? {
-    val fenced = Regex("```(?:json)?\\s*(\\{.*})\\s*```", setOf(RegexOption.DOT_MATCHES_ALL))
-        .find(this)
-        ?.groupValues
-        ?.getOrNull(1)
-    if (fenced != null) {
-        return fenced.trim()
-    }
-
-    val start = indexOf('{')
-    val end = lastIndexOf('}')
-    if (start >= 0 && end > start) {
-        return substring(start, end + 1)
-    }
-
-    return null
-}
-
 private fun objectSchema(vararg properties: Pair<String, JsonElement>): JsonObject =
     buildJsonObject {
         put("type", "object")

@@ -74,11 +74,17 @@ object AiConversationMessageMapper {
     }
 
     fun extractAssistantText(response: AiRuntimeResponse): String {
+        return extractAssistantTexts(response)
+            .joinToString("\n")
+            .trim()
+    }
+
+    fun extractAssistantTexts(response: AiRuntimeResponse): List<String> {
         return response.messages
             .flatMap { it.content }
             .filterIsInstance<Conversation.Message.ContentItem.AssistantMessage>()
-            .joinToString("\n") { it.structured.fullText }
-            .trim()
+            .map { it.structured.fullText.trim() }
+            .filter { it.isNotBlank() }
     }
 
     private fun toJsonObject(metadata: Map<String, Any?>): JsonObject {

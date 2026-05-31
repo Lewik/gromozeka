@@ -216,7 +216,7 @@ class InMemoryConversationRuntimeStoresTest {
         val secondEvent = ConversationRuntimeEvent.ExecutionFailed(
             conversationId = conversationId,
             message = "boom",
-            type = "TestFailure",
+            failureType = "TestFailure",
         )
 
         val firstEntry = coordinator.recordEvent(firstEvent)
