@@ -26,6 +26,7 @@ import kotlinx.coroutines.launch
 fun CustomTabRow(
     selectedTabIndex: Int,
     showTabsAtBottom: Boolean,
+    isCompactLayout: Boolean = false,
     tabs: List<TabViewModel>,
     hoveredTabIndex: Int,
     onTabSelect: (Int?) -> Unit,
@@ -98,8 +99,10 @@ fun CustomTabRow(
                     text = {
                         Row(verticalAlignment = Alignment.Companion.CenterVertically) {
                             Icon(Icons.Default.Settings, contentDescription = "Settings")
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("Настройки")
+                            if (!isCompactLayout) {
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Настройки")
+                            }
                         }
                     }
                 )
@@ -117,8 +120,10 @@ fun CustomTabRow(
                     text = {
                         Row(verticalAlignment = Alignment.Companion.CenterVertically) {
                             Icon(Icons.Default.Mic, contentDescription = "Live")
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("Live")
+                            if (!isCompactLayout) {
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Live")
+                            }
                         }
                     }
                 )
@@ -162,8 +167,10 @@ fun CustomTabRow(
                                     contentDescription = null,
                                     modifier = Modifier.size(16.dp)
                                 )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(getTabDisplayName(tabUiState, index))
+                                if (!isCompactLayout) {
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(getTabDisplayName(tabUiState, index))
+                                }
                             }
 
                             // Edit button (pencil) - appears on hover

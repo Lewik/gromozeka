@@ -159,11 +159,13 @@ fun GromozekaAppContent(
     val currentUiSettings = currentSettings.userDeviceSettings.uiSettings
     val platformDensity = LocalDensity.current
     val effectiveUiScale = (currentUiSettings.uiScale * uiScaleMultiplier).coerceIn(0.5f, 3.0f)
+    val baseDensity = if (clientPlatform.usePlatformDensity) platformDensity.density else 1.0f
+    val baseFontScale = if (clientPlatform.usePlatformDensity) platformDensity.fontScale else 1.0f
 
     CompositionLocalProvider(
         LocalDensity provides Density(
-            density = platformDensity.density * effectiveUiScale,
-            fontScale = platformDensity.fontScale * currentUiSettings.fontScale,
+            density = baseDensity * effectiveUiScale,
+            fontScale = baseFontScale * currentUiSettings.fontScale,
         ),
     ) {
         Box(
@@ -216,10 +218,14 @@ fun GromozekaAppContent(
                 else -> {
                     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
                         val scaledDensity = LocalDensity.current
-                        val unscaledMaxWidth = with(platformDensity) {
-                            with(scaledDensity) { maxWidth.toPx() }.toDp()
+                        val baseMaxWidth = if (clientPlatform.usePlatformDensity) {
+                            with(platformDensity) {
+                                with(scaledDensity) { maxWidth.toPx() }.toDp()
+                            }
+                        } else {
+                            maxWidth
                         }
-                        val isCompactLayout = forceCompactLayout || unscaledMaxWidth < 700.dp
+                        val isCompactLayout = forceCompactLayout || baseMaxWidth < 700.dp
                         val contentPadding = if (isCompactLayout) 8.dp else 16.dp
                         val setSettingsPanel: (Boolean) -> Unit = { visible ->
                             showSettingsPanel = visible
@@ -267,6 +273,7 @@ fun GromozekaAppContent(
                                     CustomTabRow(
                                         selectedTabIndex = selectedTabIndex,
                                         showTabsAtBottom = currentUiSettings.showTabsAtBottom,
+                                        isCompactLayout = isCompactLayout,
                                         tabs = tabs,
                                         hoveredTabIndex = hoveredTabIndex,
                                         onTabSelect = { tabIndex ->

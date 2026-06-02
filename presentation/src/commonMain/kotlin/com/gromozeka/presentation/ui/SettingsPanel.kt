@@ -706,10 +706,9 @@ fun SettingsPanel(
                             }
                         )
 
-                        // UI Scale slider
                         SliderSettingItem(
                             label = "UI Scale",
-                            description = "Adjust interface size (0.5 = tiny, 1.0 = normal, 3.0 = huge). Auto-detected on first launch.",
+                            description = "Adjust interface size (0.5 = tiny, 1.0 = normal, 3.0 = huge).",
                             value = uiSettings.uiScale,
                             min = 0.5f,
                             max = 3.0f,
@@ -720,7 +719,6 @@ fun SettingsPanel(
                             }
                         )
 
-                        // Font Scale slider
                         SliderSettingItem(
                             label = "Font Scale",
                             description = "Adjust text size (0.5 = small, 1.0 = normal, 2.0 = large)",
@@ -731,6 +729,15 @@ fun SettingsPanel(
                             valueFormat = "${(uiSettings.fontScale * 100).toInt()}%",
                             onValueChange = {
                                 onSettingsChange(settings.updateUiSettings { copy(fontScale = it) })
+                            }
+                        )
+
+                        ButtonSettingItem(
+                            label = "Reset Scale",
+                            description = "Restore interface and text scale to 100%.",
+                            buttonText = "Reset scale",
+                            onClick = {
+                                onSettingsChange(settings.updateUiSettings { copy(uiScale = 1.0f, fontScale = 1.0f) })
                             }
                         )
                     }

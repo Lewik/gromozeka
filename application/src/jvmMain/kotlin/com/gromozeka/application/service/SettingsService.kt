@@ -14,8 +14,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.serialization.json.Json
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
-import java.awt.GraphicsEnvironment
-import java.awt.Toolkit
 import java.io.File
 import java.nio.file.Path
 import java.util.Locale
@@ -138,8 +136,6 @@ class SettingsService : com.gromozeka.domain.service.SettingsService {
     }
 
     private fun createDefaultSettings(): Settings {
-        val detectedScale = detectOptimalUIScale()
-
         val defaults = Settings(
             userProfile = UserProfile(
                 speechSettings = UserProfile.SpeechSettings(
@@ -148,7 +144,7 @@ class SettingsService : com.gromozeka.domain.service.SettingsService {
                 ),
             ),
             userDeviceSettings = UserDeviceSettings.Desktop(
-                uiSettings = UserDeviceSettings.UiSettings(uiScale = detectedScale),
+                uiSettings = UserDeviceSettings.UiSettings(),
                 inputSettings = UserDeviceSettings.DesktopInputSettings(autoSend = true),
             ),
         )
@@ -223,52 +219,6 @@ class SettingsService : com.gromozeka.domain.service.SettingsService {
     private fun validateTtsSpeed(speed: Float) {
         require(speed in 0.25f..4.0f) {
             "Invalid TTS speed: $speed. Must be between 0.25 (slowest) and 4.0 (fastest). Default: 1.0"
-        }
-    }
-
-    private fun detectOptimalUIScale(): Float {
-        return try {
-            val toolkit = Toolkit.getDefaultToolkit()
-            val screenResolution = toolkit.screenResolution
-
-            val systemScale = try {
-                val gfxEnv = GraphicsEnvironment.getLocalGraphicsEnvironment()
-                val defaultScreen = gfxEnv.defaultScreenDevice
-                val defaultConfig = defaultScreen.defaultConfiguration
-                defaultConfig.defaultTransform.scaleX.toFloat()
-            } catch (e: Exception) {
-                1.0f
-            }
-
-            val osName = System.getProperty("os.name").lowercase()
-            val detectedScale = when {
-                osName.contains("mac") -> when {
-                    systemScale >= 2.0f -> 1.5f
-                    screenResolution >= 150 -> 1.3f
-                    else -> 1.0f
-                }
-
-                osName.contains("windows") -> when {
-                    systemScale >= 2.0f -> 1.7f
-                    systemScale >= 1.5f -> 1.4f
-                    systemScale >= 1.25f -> 1.2f
-                    else -> 1.0f
-                }
-
-                osName.contains("linux") -> when {
-                    screenResolution >= 180 -> 1.3f
-                    screenResolution >= 120 -> 1.1f
-                    else -> 1.0f
-                }
-
-                else -> 1.0f
-            }
-
-            log.info("Auto-detected UI scale: $detectedScale (OS: $osName, DPI: $screenResolution, SystemScale: $systemScale)")
-            detectedScale
-        } catch (e: Exception) {
-            log.info("Failed to auto-detect UI scale, using default: ${e.message}")
-            1.0f
         }
     }
 
