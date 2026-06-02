@@ -157,11 +157,13 @@ fun GromozekaAppContent(
     }
     val onRemoteClientSettingsChange = appComponents.remoteClientSettingsService::saveSettings
     val currentUiSettings = currentSettings.userDeviceSettings.uiSettings
+    val platformDensity = LocalDensity.current
+    val effectiveUiScale = (currentUiSettings.uiScale * uiScaleMultiplier).coerceIn(0.5f, 3.0f)
 
     CompositionLocalProvider(
         LocalDensity provides Density(
-            density = (currentUiSettings.uiScale * uiScaleMultiplier).coerceIn(0.5f, 3.0f),
-            fontScale = currentUiSettings.fontScale,
+            density = platformDensity.density * effectiveUiScale,
+            fontScale = platformDensity.fontScale * currentUiSettings.fontScale,
         ),
     ) {
         Box(
@@ -213,7 +215,11 @@ fun GromozekaAppContent(
 
                 else -> {
                     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-                        val isCompactLayout = forceCompactLayout || maxWidth < 700.dp
+                        val scaledDensity = LocalDensity.current
+                        val unscaledMaxWidth = with(platformDensity) {
+                            with(scaledDensity) { maxWidth.toPx() }.toDp()
+                        }
+                        val isCompactLayout = forceCompactLayout || unscaledMaxWidth < 700.dp
                         val contentPadding = if (isCompactLayout) 8.dp else 16.dp
                         val setSettingsPanel: (Boolean) -> Unit = { visible ->
                             showSettingsPanel = visible
