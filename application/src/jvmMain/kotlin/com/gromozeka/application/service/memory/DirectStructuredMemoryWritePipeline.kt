@@ -1615,6 +1615,7 @@ class DefaultDirectStructuredMemoryWriteMaterializer(
                 actionItems = actionItems,
                 predicateDefinitions = predicateDefinitions,
             ),
+            llmCalls = currentMemoryRunLlmCalls(),
             latencyMs = input.completedAt.toEpochMilliseconds() - input.startedAt.toEpochMilliseconds(),
             status = MemoryRun.Status.SUCCESS,
             createdAt = input.startedAt,

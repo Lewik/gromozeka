@@ -3,20 +3,22 @@ package com.gromozeka.application.service.memory
 import com.gromozeka.domain.model.ai.AiRuntimeRequest
 import com.gromozeka.domain.model.ai.AiRuntimeResponse
 import com.gromozeka.domain.model.ai.AiUsage
+import com.gromozeka.domain.model.memory.MemoryRun
 import com.gromozeka.domain.service.AiRuntime
 import klog.KLoggers
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withTimeout
+import kotlinx.datetime.Clock
 
 private val memoryLlmRetryLog = KLoggers.logger("MemoryLlmRuntimeRetry")
 
 internal class MemoryLlmOutputTruncatedException(
     stageName: String,
-    finishReason: String?,
+    val finishReason: String?,
     logContext: String,
-    usage: AiUsage?,
+    val usage: AiUsage?,
 ) : IllegalStateException(
     "Memory LLM stage output was truncated: stage=$stageName finishReason=${finishReason ?: "unknown"} " +
         "${usage?.memoryUsageSummary().orEmpty()} $logContext".trim()
@@ -34,30 +36,77 @@ internal suspend fun AiRuntime.callMemoryStageWithRetry(
 
     while (true) {
         val attemptStartedAt = System.nanoTime()
+        val attemptWallStartedAt = Clock.System.now()
         try {
             val response = withTimeout(timeoutMs) {
                 call(request)
             }
+            val elapsedMs = attemptStartedAt.elapsedMs()
+            val completedAt = Clock.System.now()
             memoryLlmRetryLog.info {
                 response.memoryStageUsageLogLine(
                     stageName = stageName,
                     attempt = attempt,
-                    elapsedMs = attemptStartedAt.elapsedMs(),
+                    elapsedMs = elapsedMs,
                     logContext = logContext,
                 )
             }
             response.throwIfOutputTruncated(stageName, logContext)
+            recordCurrentMemoryRunLlmCall(
+                stageName = stageName,
+                attempt = attempt,
+                status = MemoryRun.LlmCallStatus.SUCCESS,
+                startedAt = attemptWallStartedAt,
+                completedAt = completedAt,
+                latencyMs = elapsedMs,
+                timeoutMs = timeoutMs,
+                finishReason = response.finishReason,
+                usage = response.usage,
+                logContext = logContext,
+            )
             return response
         } catch (error: Throwable) {
+            val elapsedMs = attemptStartedAt.elapsedMs()
+            val completedAt = Clock.System.now()
             if (error is CancellationException && error !is TimeoutCancellationException) {
+                recordCurrentMemoryRunLlmCall(
+                    stageName = stageName,
+                    attempt = attempt,
+                    status = MemoryRun.LlmCallStatus.CANCELLED,
+                    startedAt = attemptWallStartedAt,
+                    completedAt = completedAt,
+                    latencyMs = elapsedMs,
+                    timeoutMs = timeoutMs,
+                    finishReason = null,
+                    usage = null,
+                    logContext = logContext,
+                    errorText = error.message ?: error::class.simpleName.orEmpty(),
+                )
                 throw error
             }
 
             val retryable = error.isRetryableMemoryLlmFailure()
+            recordCurrentMemoryRunLlmCall(
+                stageName = stageName,
+                attempt = attempt,
+                status = if (!retryable || attempt >= maxAttempts) {
+                    MemoryRun.LlmCallStatus.FAILED
+                } else {
+                    MemoryRun.LlmCallStatus.RETRYING
+                },
+                startedAt = attemptWallStartedAt,
+                completedAt = completedAt,
+                latencyMs = elapsedMs,
+                timeoutMs = timeoutMs,
+                finishReason = (error as? MemoryLlmOutputTruncatedException)?.finishReason,
+                usage = (error as? MemoryLlmOutputTruncatedException)?.usage,
+                logContext = logContext,
+                errorText = error.message ?: error::class.simpleName.orEmpty(),
+            )
             if (!retryable || attempt >= maxAttempts) {
                 memoryLlmRetryLog.warn(error) {
                     "Memory LLM stage failed permanently: stage=$stageName attempt=$attempt maxAttempts=$maxAttempts " +
-                        "elapsedMs=${attemptStartedAt.elapsedMs()} timeoutMs=$timeoutMs $logContext " +
+                        "elapsedMs=$elapsedMs timeoutMs=$timeoutMs $logContext " +
                         "retryable=$retryable error=${error.message}"
                 }
                 throw error
@@ -65,7 +114,7 @@ internal suspend fun AiRuntime.callMemoryStageWithRetry(
 
             memoryLlmRetryLog.warn(error) {
                 "Memory LLM stage failed, retrying: stage=$stageName attempt=$attempt nextAttempt=${attempt + 1} " +
-                    "elapsedMs=${attemptStartedAt.elapsedMs()} delayMs=$delayMs timeoutMs=$timeoutMs " +
+                    "elapsedMs=$elapsedMs delayMs=$delayMs timeoutMs=$timeoutMs " +
                     "$logContext error=${error.message}"
             }
             delay(delayMs)

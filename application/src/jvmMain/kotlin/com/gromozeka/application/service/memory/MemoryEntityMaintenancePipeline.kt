@@ -249,8 +249,11 @@ class MemoryEntityMaintenancePipeline(
             output = plan.toEntityMaintenanceOutputJson(),
             repairActions = plan.toEntityMaintenanceActionsJson(),
             appliedOps = appliedOps,
+            llmCalls = currentMemoryRunLlmCalls(),
+            latencyMs = completedAt.toEpochMilliseconds() - startedAt.toEpochMilliseconds(),
             status = MemoryRun.Status.SUCCESS,
             createdAt = startedAt,
+            startedAt = startedAt,
             completedAt = completedAt,
         )
 

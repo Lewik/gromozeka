@@ -176,8 +176,11 @@ class MemoryRepairPipeline(
             output = plan.toRepairOutputJson(candidateClusters),
             repairActions = plan.toRepairActionsJson(),
             appliedOps = appliedOps,
+            llmCalls = currentMemoryRunLlmCalls(),
+            latencyMs = completedAt.toEpochMilliseconds() - startedAt.toEpochMilliseconds(),
             status = MemoryRun.Status.SUCCESS,
             createdAt = startedAt,
+            startedAt = startedAt,
             completedAt = completedAt,
         )
 

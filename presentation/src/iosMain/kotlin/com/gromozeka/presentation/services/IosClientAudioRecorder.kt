@@ -11,12 +11,14 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import platform.AVFAudio.AVAudioRecorder
 import platform.AVFAudio.AVAudioSession
 import platform.AVFAudio.AVAudioSessionCategoryRecord
+import platform.AVFAudio.AVAudioSessionSetActiveOptionNotifyOthersOnDeactivation
 import platform.AVFAudio.AVFormatIDKey
 import platform.AVFAudio.AVLinearPCMBitDepthKey
 import platform.AVFAudio.AVLinearPCMIsBigEndianKey
 import platform.AVFAudio.AVLinearPCMIsFloatKey
 import platform.AVFAudio.AVNumberOfChannelsKey
 import platform.AVFAudio.AVSampleRateKey
+import platform.AVFAudio.setActive
 import platform.Foundation.NSFileManager
 import platform.Foundation.NSTemporaryDirectory
 import platform.Foundation.NSURL
@@ -37,12 +39,17 @@ class IosClientAudioRecorder : ClientAudioRecorder {
             error("Microphone permission denied")
         }
 
-        AVAudioSession.sharedInstance().setCategory(AVAudioSessionCategoryRecord, null)
+        configureAudioSession()
         val fileUrl = NSURL.fileURLWithPath("${NSTemporaryDirectory()}gromozeka-${uuid7()}.wav")
-        val recorder = createRecorder(fileUrl)
-        check(recorder.record()) { "Failed to start iOS audio recorder" }
-
-        return IosClientAudioRecordingSession(recorder, fileUrl)
+        try {
+            val recorder = createRecorder(fileUrl)
+            check(recorder.record()) { "Failed to start iOS audio recorder" }
+            return IosClientAudioRecordingSession(recorder, fileUrl)
+        } catch (error: Throwable) {
+            deactivateAudioSession()
+            runCatching { NSFileManager.defaultManager.removeItemAtURL(fileUrl, null) }
+            throw error
+        }
     }
 
     private suspend fun requestMicrophonePermission(): Boolean =
@@ -68,6 +75,20 @@ class IosClientAudioRecorder : ClientAudioRecorder {
         return AVAudioRecorder(fileUrl, settings, null)
             ?: error("Failed to create iOS audio recorder")
     }
+
+    private fun configureAudioSession() {
+        val session = AVAudioSession.sharedInstance()
+        session.setCategory(AVAudioSessionCategoryRecord, null)
+        check(session.setActive(active = true, error = null)) { "Failed to activate iOS recording audio session" }
+    }
+
+    private fun deactivateAudioSession() {
+        AVAudioSession.sharedInstance().setActive(
+            active = false,
+            withOptions = AVAudioSessionSetActiveOptionNotifyOthersOnDeactivation,
+            error = null,
+        )
+    }
 }
 
 @OptIn(ExperimentalForeignApi::class)
@@ -77,6 +98,7 @@ private class IosClientAudioRecordingSession(
 ) : ClientAudioRecordingSession {
     override suspend fun stop(): ClientRecordedAudio {
         recorder.stop()
+        deactivateAudioSession()
         val path = fileUrl.path ?: error("Recorded iOS audio file path is missing")
         val data = readFileBytes(path)
         runCatching { NSFileManager.defaultManager.removeItemAtURL(fileUrl, null) }
@@ -94,7 +116,16 @@ private class IosClientAudioRecordingSession(
 
     override fun cancel() {
         recorder.stop()
+        deactivateAudioSession()
         runCatching { NSFileManager.defaultManager.removeItemAtURL(fileUrl, null) }
+    }
+
+    private fun deactivateAudioSession() {
+        AVAudioSession.sharedInstance().setActive(
+            active = false,
+            withOptions = AVAudioSessionSetActiveOptionNotifyOthersOnDeactivation,
+            error = null,
+        )
     }
 }
 

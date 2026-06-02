@@ -11,6 +11,8 @@ import kotlinx.coroutines.withContext
 import platform.AVFAudio.AVAudioPlayer
 import platform.AVFAudio.AVAudioSession
 import platform.AVFAudio.AVAudioSessionCategoryPlayback
+import platform.AVFAudio.AVAudioSessionSetActiveOptionNotifyOthersOnDeactivation
+import platform.AVFAudio.setActive
 import platform.Foundation.NSFileManager
 import platform.Foundation.NSTemporaryDirectory
 import platform.Foundation.NSURL
@@ -57,10 +59,10 @@ class IosClientAudioPlayer : ClientAudioPlayer {
     }
 
     private suspend fun playAudioFile(data: ByteArray, fileExtension: String) {
-        configureAudioSession()
         val fileUrl = NSURL.fileURLWithPath("${NSTemporaryDirectory()}gromozeka-tts-${kotlin.random.Random.nextLong()}.$fileExtension")
         writeFileBytes(fileUrl.path ?: error("iOS audio temp file path is missing"), data)
         try {
+            configureAudioSession()
             val player = AVAudioPlayer(fileUrl, null) ?: error("Failed to create iOS audio player")
             activePlayer = player
             player.prepareToPlay()
@@ -70,6 +72,7 @@ class IosClientAudioPlayer : ClientAudioPlayer {
             }
         } finally {
             activePlayer = null
+            deactivateAudioSession()
             runCatching { NSFileManager.defaultManager.removeItemAtURL(fileUrl, null) }
         }
     }
@@ -82,6 +85,15 @@ class IosClientAudioPlayer : ClientAudioPlayer {
     private fun configureAudioSession() {
         val session = AVAudioSession.sharedInstance()
         session.setCategory(AVAudioSessionCategoryPlayback, null)
+        check(session.setActive(active = true, error = null)) { "Failed to activate iOS playback audio session" }
+    }
+
+    private fun deactivateAudioSession() {
+        AVAudioSession.sharedInstance().setActive(
+            active = false,
+            withOptions = AVAudioSessionSetActiveOptionNotifyOthersOnDeactivation,
+            error = null,
+        )
     }
 }
 

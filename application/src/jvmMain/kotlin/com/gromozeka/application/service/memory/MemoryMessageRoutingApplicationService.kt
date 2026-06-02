@@ -409,7 +409,8 @@ class MemoryMessageRoutingApplicationService(
         logContext: String,
         traceContext: MemoryWriteTraceContext?,
         throwOnError: Boolean = false,
-    ): DirectStructuredMemoryWriteResult? {
+    ): DirectStructuredMemoryWriteResult? = collectMemoryRunTimings { timingCollector ->
+        val startedAt = Clock.System.now()
         val runtimes = MemoryWriteStageRuntimes(project)
         val focusedThreadContext = threadContext?.let {
             MemoryThreadContextCompactor(
@@ -488,7 +489,7 @@ class MemoryMessageRoutingApplicationService(
             embeddingIndexer = embeddingIndexer,
         )
 
-        return runCatching {
+        runCatching {
             pipeline.write(
                 DirectStructuredMemoryWriteRequest(
                     namespace = namespace,
@@ -498,6 +499,8 @@ class MemoryMessageRoutingApplicationService(
                 )
             )
         }.onSuccess { result ->
+            val completedAt = Clock.System.now()
+            val latencyMs = completedAt.toEpochMilliseconds() - startedAt.toEpochMilliseconds()
             log.info {
                 "Memory router routed: $logContext decision=${result.routeDecision.decision.name} " +
                     "types=${result.routeDecision.memoryTypes.joinToString { it.name }} " +
@@ -519,6 +522,10 @@ class MemoryMessageRoutingApplicationService(
                                 threadId = trace.threadId,
                                 targetMessageId = trace.targetMessageId,
                                 result = result,
+                                startedAt = startedAt,
+                                completedAt = completedAt,
+                                latencyMs = latencyMs,
+                                llmCalls = timingCollector.snapshot(),
                             )
                         )
                     }.onFailure { error ->

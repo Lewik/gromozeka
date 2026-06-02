@@ -37,7 +37,6 @@ class PersistentMemoryTraceSink(
     private val traceJson = Json { encodeDefaults = true }
 
     override fun onMemoryRead(event: MemoryReadTraceEvent) {
-        val now = Clock.System.now()
         persist(
             run = MemoryRun(
                 id = idFactory.newRunId(),
@@ -50,9 +49,12 @@ class PersistentMemoryTraceSink(
                 promptName = "RuntimeMemoryReadPipeline",
                 promptVersion = "trace-v1",
                 output = event.toTraceOutput(),
+                llmCalls = event.llmCalls,
+                latencyMs = event.latencyMs,
                 status = MemoryRun.Status.SUCCESS,
-                createdAt = now,
-                completedAt = now,
+                createdAt = event.startedAt,
+                startedAt = event.startedAt,
+                completedAt = event.completedAt,
             ),
             kind = "read",
             conversationId = event.conversationId,
@@ -80,9 +82,12 @@ class PersistentMemoryTraceSink(
                     promptVersion = "trace-v1",
                     output = event.toTraceOutput(),
                     appliedOps = event.result.memoryBatch.toAppliedTraceOps(),
+                    llmCalls = event.llmCalls,
+                    latencyMs = event.latencyMs,
                     status = MemoryRun.Status.SUCCESS,
-                    createdAt = now,
-                    completedAt = now,
+                    createdAt = event.startedAt ?: now,
+                    startedAt = event.startedAt,
+                    completedAt = event.completedAt ?: now,
                 )
             )
         }
@@ -112,6 +117,7 @@ class PersistentMemoryTraceSink(
                     promptVersion = "trace-v1",
                     output = event.toTraceOutput(),
                     appliedOps = event.maintenanceAppliedTraceOps(),
+                    llmCalls = event.llmCalls,
                     status = MemoryRun.Status.SUCCESS,
                     createdAt = now,
                     completedAt = now,
@@ -168,6 +174,10 @@ class PersistentMemoryTraceSink(
             promptVersion = promptVersion ?: "trace-v1",
             output = output ?: event.toTraceOutput(),
             appliedOps = if (appliedOps.isEmpty()) event.result.memoryBatch.toAppliedTraceOps() else appliedOps,
+            llmCalls = llmCalls.ifEmpty { event.llmCalls },
+            latencyMs = latencyMs ?: event.latencyMs,
+            startedAt = startedAt ?: event.startedAt,
+            completedAt = completedAt ?: event.completedAt,
         )
 
     private fun MemoryRun.withMaintenanceTrace(event: MemoryMaintenanceTraceEvent): MemoryRun =
@@ -178,6 +188,7 @@ class PersistentMemoryTraceSink(
             promptVersion = promptVersion ?: "trace-v1",
             output = output ?: event.toTraceOutput(),
             appliedOps = if (appliedOps.isEmpty()) event.maintenanceAppliedTraceOps() else appliedOps,
+            llmCalls = llmCalls.ifEmpty { event.llmCalls },
         )
 
     private fun MemoryMaintenanceTraceEvent.memoryBatchRuns(): List<MemoryRun> =

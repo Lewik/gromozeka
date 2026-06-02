@@ -25,6 +25,7 @@ import com.gromozeka.application.service.memory.PolicyMemoryRetentionPlanner
 import com.gromozeka.application.service.memory.ProjectionMemoryProfileUpdater
 import com.gromozeka.application.service.memory.RuntimeMemoryReadPipeline
 import com.gromozeka.application.service.memory.UuidMemoryIdFactory
+import com.gromozeka.application.service.memory.collectMemoryRunTimings
 import com.gromozeka.domain.model.AgentDefinition
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.Project
@@ -41,6 +42,7 @@ import com.gromozeka.domain.service.AiRuntimeProvider
 import com.gromozeka.domain.service.SettingsProvider
 import com.gromozeka.domain.tool.AiToolCallback
 import klog.KLoggers
+import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonPrimitive
@@ -96,7 +98,8 @@ class MemoryApplicationService(
         runtimeSystemPrompts: List<String>,
         runtimeTools: List<AiToolCallback>,
         namespaceOverride: MemoryNamespace? = null,
-    ): MemoryReadResult {
+    ): MemoryReadResult = collectMemoryRunTimings { timingCollector ->
+        val startedAt = Clock.System.now()
         val memoryContextMessages = threadMessages.filterNot { it.isSyntheticMemoryRuntimeMessage() }
         val targetIndex = memoryContextMessages.indexOfFirst { it.id == targetMessage.id }
         val contextMessages = if (targetIndex >= 0) {
@@ -148,10 +151,12 @@ class MemoryApplicationService(
             )
         )
 
+        val completedAt = Clock.System.now()
+        val latencyMs = completedAt.toEpochMilliseconds() - startedAt.toEpochMilliseconds()
         log.info {
             "Memory runtime recall completed: conversation=${conversationId.value} thread=${threadId.value} " +
                 "target=${targetMessage.id.value} need=${result.plan.needMemory} mode=${result.plan.answerMode.name} " +
-                "hits=${result.retrievedHits.size} promptChars=${result.runtimePrompt?.length ?: 0}"
+                "hits=${result.retrievedHits.size} promptChars=${result.runtimePrompt?.length ?: 0} latencyMs=$latencyMs"
         }
         readTraceSinks.forEach { sink ->
             runCatching {
@@ -162,6 +167,10 @@ class MemoryApplicationService(
                         threadId = threadId,
                         targetMessageId = targetMessage.id,
                         result = result,
+                        startedAt = startedAt,
+                        completedAt = completedAt,
+                        latencyMs = latencyMs,
+                        llmCalls = timingCollector.snapshot(),
                     )
                 )
             }.onFailure { error ->
@@ -172,7 +181,7 @@ class MemoryApplicationService(
             }
         }
 
-        return result
+        result
     }
 
     private inner class MemoryServiceStageRuntimes(
@@ -199,7 +208,7 @@ class MemoryApplicationService(
         runtimeSystemPrompts: List<String>,
         runtimeTools: List<AiToolCallback>,
         namespace: MemoryNamespace = project.defaultMemoryNamespace(),
-    ): MemoryNoteConsolidationPipelineResult {
+    ): MemoryNoteConsolidationPipelineResult = collectMemoryRunTimings { timingCollector ->
         val runtimes = MemoryServiceStageRuntimes(project)
         val pipeline = MemoryNoteConsolidationPipeline(
             store = store,
@@ -232,9 +241,10 @@ class MemoryApplicationService(
                 conversationId = conversationId,
                 stage = MemoryMaintenanceTraceEvent.Stage.NOTE_CONSOLIDATION,
                 payload = MemoryMaintenanceTraceEvent.Payload.NoteConsolidation(result),
+                llmCalls = timingCollector.snapshot(),
             )
         )
-        return result
+        result
     }
 
     suspend fun runMemoryRepair(
@@ -244,7 +254,7 @@ class MemoryApplicationService(
         runtimeSystemPrompts: List<String>,
         runtimeTools: List<AiToolCallback>,
         namespace: MemoryNamespace = project.defaultMemoryNamespace(),
-    ): MemoryRepairPipelineResult {
+    ): MemoryRepairPipelineResult = collectMemoryRunTimings { timingCollector ->
         val runtimes = MemoryServiceStageRuntimes(project)
         val pipeline = MemoryRepairPipeline(
             store = store,
@@ -276,9 +286,10 @@ class MemoryApplicationService(
                 conversationId = conversationId,
                 stage = MemoryMaintenanceTraceEvent.Stage.MEMORY_REPAIR,
                 payload = MemoryMaintenanceTraceEvent.Payload.MemoryRepair(result),
+                llmCalls = timingCollector.snapshot(),
             )
         )
-        return result
+        result
     }
 
     suspend fun runEntityMaintenance(
@@ -288,7 +299,7 @@ class MemoryApplicationService(
         runtimeSystemPrompts: List<String>,
         runtimeTools: List<AiToolCallback>,
         namespace: MemoryNamespace = project.defaultMemoryNamespace(),
-    ): MemoryEntityMaintenancePipelineResult {
+    ): MemoryEntityMaintenancePipelineResult = collectMemoryRunTimings { timingCollector ->
         val runtimes = MemoryServiceStageRuntimes(project)
         val pipeline = MemoryEntityMaintenancePipeline(
             store = store,
@@ -321,9 +332,10 @@ class MemoryApplicationService(
                 conversationId = conversationId,
                 stage = MemoryMaintenanceTraceEvent.Stage.ENTITY_MAINTENANCE,
                 payload = MemoryMaintenanceTraceEvent.Payload.EntityMaintenance(result),
+                llmCalls = timingCollector.snapshot(),
             )
         )
-        return result
+        result
     }
 
     suspend fun runRetention(

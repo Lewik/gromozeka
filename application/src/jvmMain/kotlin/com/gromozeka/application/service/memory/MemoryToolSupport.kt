@@ -420,6 +420,35 @@ private fun MemoryRun.toStatusJson(
         latencyMs?.let { put("latency_ms", it) }
         tokenInput?.let { put("token_input", it) }
         tokenOutput?.let { put("token_output", it) }
+        if (llmCalls.isNotEmpty()) {
+            put("llm_calls_count", llmCalls.size)
+            put("llm_latency_ms", llmCalls.sumOf { it.latencyMs })
+            putJsonArray("slowest_llm_calls") {
+                llmCalls.sortedByDescending { it.latencyMs }
+                    .take(10)
+                    .forEach { call ->
+                        add(
+                            buildJsonObject {
+                                put("stage", call.stageName)
+                                put("attempt", call.attempt)
+                                put("status", call.status.name)
+                                put("latency_ms", call.latencyMs)
+                                put("started_at", call.startedAt.toString())
+                                put("completed_at", call.completedAt.toString())
+                                call.timeoutMs?.let { put("timeout_ms", it) }
+                                call.finishReason?.let { put("finish_reason", it) }
+                                call.totalInputTokens?.let { put("total_input_tokens", it) }
+                                call.totalOutputTokens?.let { put("total_output_tokens", it) }
+                                call.totalTokens?.let { put("total_tokens", it) }
+                                if (call.logContext.isNotBlank()) {
+                                    put("context", call.logContext.shortForMemoryToolResult(500))
+                                }
+                                call.errorText?.let { put("error", it.shortForMemoryToolResult(500)) }
+                            }
+                        )
+                    }
+            }
+        }
         errorText?.let { put("error_text", it.shortForMemoryToolResult(1_000)) }
         put("created_at", createdAt.toString())
         startedAt?.let { put("started_at", it.toString()) }

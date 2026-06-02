@@ -284,8 +284,11 @@ class MemoryNoteConsolidationPipeline(
                     })
                 }
             },
+            llmCalls = currentMemoryRunLlmCalls(),
+            latencyMs = completedAt.toEpochMilliseconds() - startedAt.toEpochMilliseconds(),
             status = MemoryRun.Status.SUCCESS,
             createdAt = startedAt,
+            startedAt = startedAt,
             completedAt = completedAt,
         )
 

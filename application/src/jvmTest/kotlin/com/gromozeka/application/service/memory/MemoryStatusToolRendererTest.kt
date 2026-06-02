@@ -38,6 +38,26 @@ class MemoryStatusToolRendererTest {
             triggerMode = MemoryRun.TriggerMode.MANUAL,
             parentRunId = parent.id,
             summary = "Created note",
+            llmCalls = listOf(
+                MemoryRun.LlmCallTiming(
+                    stageName = "claim-extractor",
+                    attempt = 1,
+                    status = MemoryRun.LlmCallStatus.SUCCESS,
+                    startedAt = createdAt,
+                    completedAt = createdAt,
+                    latencyMs = 1200,
+                    totalTokens = 42,
+                    logContext = "section=1/2",
+                ),
+                MemoryRun.LlmCallTiming(
+                    stageName = "claim-reconciler",
+                    attempt = 1,
+                    status = MemoryRun.LlmCallStatus.SUCCESS,
+                    startedAt = createdAt,
+                    completedAt = createdAt,
+                    latencyMs = 700,
+                ),
+            ),
             status = MemoryRun.Status.SUCCESS,
             createdAt = createdAt,
             completedAt = createdAt,
@@ -55,6 +75,13 @@ class MemoryStatusToolRendererTest {
         assertEquals("2", run.getValue("progress").jsonObject.getValue("total_units").jsonPrimitive.content)
         assertEquals("hot-path:run:child", children.single().jsonObject.getValue("id").jsonPrimitive.content)
         assertEquals("document-ingest:run:parent", children.single().jsonObject.getValue("parent_run_id").jsonPrimitive.content)
+        assertEquals("2", children.single().jsonObject.getValue("llm_calls_count").jsonPrimitive.content)
+        assertEquals("1900", children.single().jsonObject.getValue("llm_latency_ms").jsonPrimitive.content)
+        assertEquals(
+            "claim-extractor",
+            children.single().jsonObject.getValue("slowest_llm_calls").jsonArray
+                .first().jsonObject.getValue("stage").jsonPrimitive.content,
+        )
     }
 
     @Test

@@ -839,6 +839,7 @@ data class MemoryRun(
     val metadata: JsonObject = JsonObject(emptyMap()),
     val appliedOps: JsonArray = JsonArray(emptyList()),
     val repairActions: JsonArray = JsonArray(emptyList()),
+    val llmCalls: List<LlmCallTiming> = emptyList(),
     val latencyMs: Long? = null,
     val tokenInput: Int? = null,
     val tokenOutput: Int? = null,
@@ -860,6 +861,36 @@ data class MemoryRun(
         val currentUnitLabel: String? = null,
         val currentSourceId: MemorySource.Id? = null,
     )
+
+    @Serializable
+    data class LlmCallTiming(
+        val stageName: String,
+        val attempt: Int,
+        val status: LlmCallStatus,
+        val startedAt: Instant,
+        val completedAt: Instant,
+        val latencyMs: Long,
+        val timeoutMs: Long? = null,
+        val finishReason: String? = null,
+        val promptTokens: Int? = null,
+        val completionTokens: Int? = null,
+        val thinkingTokens: Int? = null,
+        val cacheCreationTokens: Int? = null,
+        val cacheReadTokens: Int? = null,
+        val totalInputTokens: Int? = null,
+        val totalOutputTokens: Int? = null,
+        val totalTokens: Int? = null,
+        val logContext: String = "",
+        val errorText: String? = null,
+    )
+
+    @Serializable
+    enum class LlmCallStatus {
+        SUCCESS,
+        RETRYING,
+        FAILED,
+        CANCELLED,
+    }
 
     @Serializable
     enum class Type {

@@ -187,8 +187,11 @@ class ExplicitMemoryForgetPipeline(
             retrievedItemRefs = candidateRefs.toList(),
             output = plan.toForgetOutputJson(routeDecision),
             appliedOps = appliedOps,
+            llmCalls = currentMemoryRunLlmCalls(),
+            latencyMs = completedAt.toEpochMilliseconds() - startedAt.toEpochMilliseconds(),
             status = MemoryRun.Status.SUCCESS,
             createdAt = startedAt,
+            startedAt = startedAt,
             completedAt = completedAt,
         )
 

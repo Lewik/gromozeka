@@ -2,6 +2,7 @@ package com.gromozeka.application.service.memory
 
 import com.gromozeka.domain.model.Conversation
 import com.gromozeka.domain.model.memory.MemoryNamespace
+import com.gromozeka.domain.model.memory.MemoryRun
 
 interface MemoryMaintenanceTraceSink {
     fun onMemoryMaintenance(event: MemoryMaintenanceTraceEvent)
@@ -12,6 +13,7 @@ data class MemoryMaintenanceTraceEvent(
     val conversationId: Conversation.Id,
     val stage: Stage,
     val payload: Payload,
+    val llmCalls: List<MemoryRun.LlmCallTiming> = emptyList(),
 ) {
     enum class Stage {
         NOTE_CONSOLIDATION,
