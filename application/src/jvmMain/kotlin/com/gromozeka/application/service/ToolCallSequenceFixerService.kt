@@ -170,6 +170,18 @@ class ToolCallSequenceFixerService(
                 .filter { it.toolUseId in pendingToolCalls.keys }
                 .mapTo(mutableSetOf()) { it.toolUseId }
 
+            if (pendingToolCalls.isNotEmpty() && matchedResultIds.isEmpty()) {
+                pendingToolCalls.values.forEach { toolCall ->
+                    log.debug {
+                        "Inserting error ToolResult for orphaned ToolCall before message ${message.id.value}: " +
+                            "${toolCall.call.name} (id=${toolCall.id.value})"
+                    }
+                    fixedMessages += createErrorToolResult(conversationId, toolCall)
+                    addedResults++
+                }
+                pendingToolCalls = emptyMap()
+            }
+
             val remainingContent = if (unmatchedResults.isEmpty()) {
                 message.content
             } else {
