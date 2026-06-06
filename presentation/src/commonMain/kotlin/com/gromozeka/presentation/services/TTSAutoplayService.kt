@@ -10,8 +10,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
-import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant
 
 class TTSAutoplayService(
     private val appViewModel: AppViewModel,
@@ -22,8 +20,7 @@ class TTSAutoplayService(
     private val log = KLoggers.logger(this)
 
     private var currentTabJob: Job? = null
-    private var subscriptionTimestamp: Instant? = null
-    private var lastProcessedMessageIndex: Int = -1
+    private val seenMessageIds = mutableSetOf<Conversation.Message.Id>()
 
     fun start() {
         log.info("Starting auto TTS service")
@@ -32,7 +29,6 @@ class TTSAutoplayService(
             .onEach { tab ->
                 currentTabJob?.cancel()
                 currentTabJob = null
-                lastProcessedMessageIndex = -1
 
                 if (tab != null) {
                     subscribeToTab(tab)
@@ -42,24 +38,29 @@ class TTSAutoplayService(
     }
 
     private fun subscribeToTab(tab: com.gromozeka.presentation.ui.viewmodel.TabViewModel) {
-        subscriptionTimestamp = Clock.System.now()
+        var historySnapshotSeen = false
 
         currentTabJob = tab.allMessages
             .onEach { messages ->
-                val newMessages = messages.drop(lastProcessedMessageIndex + 1)
-
-                newMessages.forEach { message ->
-                    if (shouldConsiderAutoTTS(message)) {
-                        val messageTime = message.createdAt
-                        val subscribeTime = subscriptionTimestamp
-                        if (subscribeTime == null || messageTime >= subscribeTime) {
-                            playAutoTTS(message)
-                        }
+                if (!historySnapshotSeen) {
+                    if (messages.isEmpty()) {
+                        return@onEach
                     }
+
+                    historySnapshotSeen = true
+                    seenMessageIds += messages.map { it.id }
+                    log.info("Auto TTS history snapshot skipped: messages=${messages.size}")
+                    return@onEach
                 }
 
-                if (messages.isNotEmpty()) {
-                    lastProcessedMessageIndex = messages.size - 1
+                messages.forEach { message ->
+                    if (!seenMessageIds.add(message.id)) {
+                        return@forEach
+                    }
+
+                    if (shouldConsiderAutoTTS(message)) {
+                        playAutoTTS(message)
+                    }
                 }
             }
             .launchIn(scope)
