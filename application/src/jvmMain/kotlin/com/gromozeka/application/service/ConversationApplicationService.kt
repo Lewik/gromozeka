@@ -271,6 +271,7 @@ class ConversationApplicationService(
         }
 
         threadRepo.updateTimestamp(currentThread.id, Clock.System.now())
+        conversationRepo.touch(conversationId)
 
         log.debug("Appended message ${message.id} to thread ${currentThread.id} at position ${lastPosition + 1}")
 

@@ -67,6 +67,12 @@ class ExposedConversationRepository : ConversationRepository {
         }
     }
 
+    override suspend fun touch(id: Conversation.Id): Unit = dbQuery {
+        Conversations.update({ Conversations.id eq id.value }) {
+            it[updatedAt] = Clock.System.now().toKotlin()
+        }
+    }
+
     private fun ResultRow.toConversation() = Conversation(
         id = Conversation.Id(this[Conversations.id]),
         projectId = Project.Id(this[Conversations.projectId]),

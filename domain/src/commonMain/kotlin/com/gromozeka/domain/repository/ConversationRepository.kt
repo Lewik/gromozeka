@@ -95,4 +95,6 @@ interface ConversationRepository {
      */
     suspend fun updateAgentDefinition(id: Conversation.Id, agentDefinitionId: com.gromozeka.domain.model.AgentDefinition.Id)
 
+    suspend fun touch(id: Conversation.Id)
+
 }
