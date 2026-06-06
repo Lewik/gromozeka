@@ -518,6 +518,28 @@ data class Conversation(
                 override fun toXmlLine() = "<user-instruction>${serializeContent()}</user-instruction>"
             }
 
+            @Serializable
+            @SerialName("message_input_context")
+            data class MessageInputRuntimeContext(
+                val context: MessageInputContext,
+            ) : Instruction() {
+                override val title = "Message input context"
+                override val description = "How this user message entered Gromozeka"
+                override fun serializeContent() = context.toXml()
+                override fun toXmlLine() = serializeContent()
+            }
+
+            @Serializable
+            @SerialName("user_situation_context")
+            data class UserSituationRuntimeContext(
+                val context: UserSituationContext,
+            ) : Instruction() {
+                override val title = "User situation context"
+                override val description = "Runtime facts about the user's current situation"
+                override fun serializeContent() = context.toXml()
+                override fun toXmlLine() = serializeContent()
+            }
+
             /**
              * Response expected instruction for inter-agent communication.
              *
