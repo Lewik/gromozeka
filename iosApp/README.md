@@ -10,6 +10,7 @@ xcodebuild \
   -target iosApp \
   -configuration Debug \
   -sdk iphonesimulator26.2 \
+  ARCHS=arm64 \
   build
 ```
 
@@ -21,9 +22,24 @@ xcodebuild \
   -target iosApp \
   -configuration Debug \
   -sdk iphoneos26.2 \
+  ARCHS=arm64 \
   -allowProvisioningUpdates \
   build
 ```
+
+Install the freshly built physical-device app:
+
+```bash
+xcrun devicectl device install app \
+  --device <device-uuid> \
+  iosApp/build/Debug-iphoneos/Gromozeka.app
+```
+
+Important: use `iosApp/build/Debug-iphoneos/Gromozeka.app` after command-line
+builds. Do not install a `DerivedData/.../Gromozeka.app` unless you have just
+verified its embedded `GromozekaPresentation.framework` timestamp; DerivedData
+can keep stale Kotlin frameworks and make the phone look like it is running old
+UI code.
 
 Install/run from Xcode after signing is configured:
 

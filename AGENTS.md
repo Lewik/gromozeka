@@ -153,6 +153,34 @@ npx --yes @playwright/cli@latest -s=gromozeka-iphone15 run-code 'async page => {
 }'
 ```
 
+## iOS Local Build And Install
+
+For command-line iPhone builds, pass `ARCHS=arm64`; otherwise KMP/Compose iOS
+resource tasks may fail to infer target architecture:
+```bash
+xcodebuild \
+  -project iosApp/iosApp.xcodeproj \
+  -target iosApp \
+  -configuration Debug \
+  -sdk iphoneos26.2 \
+  -destination 'id=<device-uuid>' \
+  ARCHS=arm64 \
+  -allowProvisioningUpdates \
+  build
+```
+
+Install the freshly built app from the project build directory:
+```bash
+xcrun devicectl device install app \
+  --device <device-uuid> \
+  iosApp/build/Debug-iphoneos/Gromozeka.app
+```
+
+Do not install `DerivedData/.../Gromozeka.app` unless you verified the embedded
+`GromozekaPresentation.framework` timestamp. DerivedData can keep stale Kotlin
+frameworks while `iosApp/build/Debug-iphoneos/Gromozeka.app` contains the actual
+fresh command-line build.
+
 ## Your Approach
 
 1. User tells you what's broken
