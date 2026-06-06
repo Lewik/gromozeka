@@ -77,14 +77,24 @@ class ConversationRuntimeDispatcher(
     ): Boolean {
         val state = runtimeCoordinator.find(conversationId)
         val pendingTasks = runtimeCoordinator.listPending(conversationId)
+        val effectivePlacement = if (placement == QueuedMessagePlacement.AFTER_TOOL_RESULT && state?.activeTaskId == null) {
+            QueuedMessagePlacement.END_OF_TURN
+        } else {
+            placement
+        }
         val canAcceptQueuedTask = state == null ||
             state.controlState == ConversationExecutionState.ControlState.RUNNING ||
             state.controlState == ConversationExecutionState.ControlState.PAUSE_REQUESTED ||
             state.controlState == ConversationExecutionState.ControlState.PAUSED
-        val canQueue = when (placement) {
+        val canQueue = when (effectivePlacement) {
             QueuedMessagePlacement.AFTER_TOOL_RESULT -> canAcceptQueuedTask && state?.activeTaskId != null
             QueuedMessagePlacement.END_OF_TURN ->
-                canAcceptQueuedTask && (state != null || pendingTasks.any { it.placement == QueuedMessagePlacement.END_OF_TURN })
+                canAcceptQueuedTask &&
+                    (
+                        placement == QueuedMessagePlacement.AFTER_TOOL_RESULT ||
+                            state != null ||
+                            pendingTasks.any { it.placement == QueuedMessagePlacement.END_OF_TURN }
+                    )
         }
         if (!canQueue) {
             log.info {
@@ -94,11 +104,12 @@ class ConversationRuntimeDispatcher(
             return false
         }
 
-        val task = queuedRuntimeTask(conversationId, userMessage, agent, placement)
+        val task = queuedRuntimeTask(conversationId, userMessage, agent, effectivePlacement)
         val accepted = submitRuntimeTask(task)
         if (accepted) {
             log.info {
-                "Queued runtime message: conversation=${conversationId.value} message=${userMessage.id.value} placement=$placement"
+                "Queued runtime message: conversation=${conversationId.value} message=${userMessage.id.value} " +
+                    "placement=$effectivePlacement requestedPlacement=$placement"
             }
         }
         return accepted

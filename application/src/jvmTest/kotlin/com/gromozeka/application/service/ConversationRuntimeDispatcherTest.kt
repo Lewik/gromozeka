@@ -53,6 +53,32 @@ class ConversationRuntimeDispatcherTest {
     )
 
     @Test
+    fun `dispatcher starts idle conversation for after tool result message`() = runBlocking {
+        val harness = dispatcherHarness()
+        try {
+            val message = userMessage("message-1")
+
+            assertTrue(
+                harness.dispatcher.enqueueMessage(
+                    conversationId = conversationId,
+                    userMessage = message,
+                    agent = agent,
+                    placement = QueuedMessagePlacement.AFTER_TOOL_RESULT,
+                )
+            )
+
+            val startedTask = harness.runner.awaitStarted()
+            assertEquals(message.id.value, startedTask.id.value)
+            assertEquals(QueuedMessagePlacement.END_OF_TURN, startedTask.placement)
+
+            harness.runner.releaseCurrentTask()
+            waitUntil { harness.coordinator.find(conversationId) == null }
+        } finally {
+            harness.close()
+        }
+    }
+
+    @Test
     fun `dispatcher stop clears queued turns and finishes after active task completes`() = runBlocking {
         val harness = dispatcherHarness()
         try {
