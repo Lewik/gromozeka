@@ -129,36 +129,18 @@ fun MessageItem(
                     val isContentCollapsed = contentIndex in collapsedContentItems
                     when (content) {
                         is Conversation.Message.ContentItem.UserMessage -> {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
+                            Column(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalArrangement = Arrangement.spacedBy(6.dp),
                             ) {
-                                Column(
-                                    modifier = Modifier.weight(1f),
-                                    verticalArrangement = Arrangement.Center,
-                                ) {
-                                    GromozekaMarkdown(content = content.text)
-                                }
-                                DisableSelection {
-                                    FlowRow(
-                                        modifier = Modifier.align(Alignment.Top),
-                                        maxItemsInEachRow = 4,
-                                        verticalArrangement = Arrangement.Top,
-                                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                    ) {
-                                        message.instructions.forEach { instruction ->
-                                            AssistChip(
-                                                onClick = {},
-                                                label = {
-                                                    Text(
-                                                        text = instruction.title,
-                                                        style = MaterialTheme.typography.labelSmall
-                                                    )
-                                                },
-                                                colors = AssistChipDefaults.assistChipColors(),
-                                            )
-                                        }
-                                    }
-                                }
+                                GromozekaMarkdown(
+                                    content = content.text,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                                InstructionChips(
+                                    instructions = message.instructions,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
                             }
                         }
 
@@ -379,6 +361,38 @@ fun MessageItem(
                 }
             }
         }
+}
+
+@Composable
+private fun InstructionChips(
+    instructions: List<Conversation.Message.Instruction>,
+    modifier: Modifier = Modifier,
+) {
+    if (instructions.isEmpty()) {
+        return
+    }
+
+    DisableSelection {
+        FlowRow(
+            modifier = modifier,
+            maxItemsInEachRow = 4,
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            instructions.forEach { instruction ->
+                AssistChip(
+                    onClick = {},
+                    label = {
+                        Text(
+                            text = instruction.title,
+                            style = MaterialTheme.typography.labelSmall
+                        )
+                    },
+                    colors = AssistChipDefaults.assistChipColors(),
+                )
+            }
+        }
+    }
 }
 
 private val prettyJson = Json {
