@@ -322,19 +322,7 @@ class RuntimeMemoryReadPipeline(
             .enforceBudget(plan, expandForSelector = true)
             .sortedForRuntimeMemoryRead()
         val selectorSnapshot = rawSelectorCandidateHits.toReadPartialSnapshot(request.namespace)
-        val selectorCandidateSourceSafety = rawSelectorCandidateHits.applyActiveTypedMemorySourceSafety(
-            snapshot = selectorSnapshot,
-            candidateHits = rawSelectorCandidateHits,
-        )
-        if (selectorCandidateSourceSafety.changed) {
-            log.info {
-                "Memory read source freshness guard before selector: namespace=${request.namespace.value} " +
-                    "suppressedSources=${selectorCandidateSourceSafety.suppressedSourceIds.size} " +
-                    "suppressedSourceIds=${selectorCandidateSourceSafety.suppressedSourceIds.joinToString { it.value }} " +
-                    "restoredTypedRefs=${selectorCandidateSourceSafety.restoredTypedRefs.joinToString { "${it.type.name.lowercase()}:${it.id}" }}"
-            }
-        }
-        val selectorCandidateHits = selectorCandidateSourceSafety.hits.sortedForRuntimeMemoryRead()
+        val selectorCandidateHits = rawSelectorCandidateHits.sortedForRuntimeMemoryRead()
         val selectionResult = selector.select(
             MemoryReadSelectionRequest(
                 readRequest = request,
@@ -368,7 +356,7 @@ class RuntimeMemoryReadPipeline(
             }
         }
         val selectedSourceSafety = sourceFilteredHits.hits.applyActiveTypedMemorySourceSafety(selectorSnapshot, selectorCandidateHits)
-        val sourceSafety = selectedSourceSafety.withCandidateSourceSafety(selectorCandidateSourceSafety)
+        val sourceSafety = selectedSourceSafety
         if (sourceSafety.changed) {
             log.info {
                 "Memory read source freshness guard: namespace=${request.namespace.value} " +
@@ -665,17 +653,6 @@ private data class RuntimeMemorySourceSafetyResult(
     val restoredTypedRefs: Set<MemoryItemRef> = restoredTypedHits.mapTo(mutableSetOf()) { it.toItemRef() }
     val changed: Boolean = suppressedSourceIds.isNotEmpty() || restoredTypedRefs.isNotEmpty()
 }
-
-private fun RuntimeMemorySourceSafetyResult.withCandidateSourceSafety(
-    candidateSafety: RuntimeMemorySourceSafetyResult,
-): RuntimeMemorySourceSafetyResult =
-    RuntimeMemorySourceSafetyResult(
-        hits = hits,
-        suppressedSourceHits = (candidateSafety.suppressedSourceHits + suppressedSourceHits)
-            .distinctBy { it.source.id },
-        restoredTypedHits = (candidateSafety.restoredTypedHits + restoredTypedHits)
-            .distinctBy { it.toItemRef() },
-    )
 
 private data class RuntimeMemoryRawSourceDeferralResult(
     val hits: List<MemoryStore.SearchHit>,
@@ -1411,7 +1388,7 @@ private fun List<MemoryStore.SearchHit>.enforceBudget(
         addAll(claims.sortedForRuntimeMemoryRead().take(plan.retrievalBudget.claims.budgetLimit(default = 6, expandForSelector = expandForSelector)))
         addAll(notes.sortedForRuntimeMemoryRead().take(plan.retrievalBudget.notes.budgetLimit(default = 4, expandForSelector = expandForSelector)))
         addAll(actionItems.sortedForRuntimeMemoryRead().take(plan.retrievalBudget.actionItems.budgetLimit(default = 3, expandForSelector = expandForSelector)))
-        addAll(sources.sortedForRuntimeMemoryRead().take(plan.retrievalBudget.sources.takeIf { it > 0 } ?: 3))
+        addAll(sources.sortedForRuntimeMemoryRead().take(plan.retrievalBudget.sources.budgetLimit(default = 3, expandForSelector = expandForSelector)))
         addAll(episodes.sortedForRuntimeMemoryRead().take(plan.retrievalBudget.episodes.budgetLimit(default = 2, expandForSelector = expandForSelector)))
         addAll(entities.sortedForRuntimeMemoryRead().take(4))
     }
