@@ -217,7 +217,6 @@ private fun Throwable.isRetryableMemoryLlmFailure(): Boolean {
         "transport",
         "connection reset",
         "connection closed",
-        "stream failed",
         "429",
         "500",
         "502",

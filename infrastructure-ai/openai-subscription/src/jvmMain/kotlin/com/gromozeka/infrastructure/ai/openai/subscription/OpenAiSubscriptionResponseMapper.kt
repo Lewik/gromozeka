@@ -48,13 +48,17 @@ class OpenAiSubscriptionResponseMapper {
     }
 
     fun extractErrorMessage(body: String): String {
-        val payload = runCatching { json.parseToJsonElement(body).jsonObject }.getOrNull() ?: return body.trim()
-        val errorObject = payload["error"]?.jsonObject
+        val trimmed = body.trim()
+        val payload = runCatching { json.parseToJsonElement(trimmed).jsonObject }.getOrNull() ?: return trimmed
+        val errorObject = payload["error"] as? JsonObject
         val code = errorObject?.get("code")?.jsonPrimitive?.contentOrNull
         val message = errorObject?.get("message")?.jsonPrimitive?.contentOrNull
-        return listOfNotNull(code, message)
+        val detail = payload["detail"]?.textOrNull()
+        val topLevelMessage = payload["message"]?.textOrNull()
+        val errorText = payload["error"]?.textOrNull()
+        return listOfNotNull(code, message, detail, topLevelMessage, errorText)
             .joinToString(": ")
-            .ifBlank { body.trim() }
+            .ifBlank { trimmed }
     }
 
     private fun toAssistantMessage(
@@ -221,4 +225,7 @@ class OpenAiSubscriptionResponseMapper {
             cacheReadTokens = cachedTokens,
         )
     }
+
+    private fun JsonElement.textOrNull(): String? =
+        (this as? JsonPrimitive)?.contentOrNull?.trim()?.takeIf { it.isNotBlank() }
 }

@@ -6,10 +6,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.contentOrNull
-import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
@@ -164,7 +162,7 @@ class OpenAiSubscriptionResponsesClient(
     }
 
     private fun parseEventStream(inputStream: InputStream): OpenAiSubscriptionParsedResponse {
-        val collector = ResponseEventCollector(
+        val collector = OpenAiSubscriptionResponseEventCollector(
             json = json,
             responseMapper = responseMapper,
             log = log,
@@ -236,85 +234,6 @@ class OpenAiSubscriptionResponsesClient(
             uri.query,
             uri.fragment,
         ).toString()
-    }
-
-    private class ResponseEventCollector(
-        private val json: Json,
-        private val responseMapper: OpenAiSubscriptionResponseMapper,
-        private val log: klog.KLogger,
-    ) {
-        private val outputItems = mutableListOf<JsonObject>()
-        private var completed: OpenAiSubscriptionCompletedResponse? = null
-        private var responseId: String? = null
-        val isCompleted: Boolean
-            get() = completed != null
-
-        fun accept(
-            payload: String,
-            eventName: String? = null,
-        ) {
-            if (payload.isBlank() || payload == "[DONE]") return
-
-            val envelope = runCatching {
-                json.decodeFromString<OpenAiSubscriptionSseEnvelope>(payload)
-            }.getOrElse { error ->
-                log.debug("Skipping unparseable OpenAI subscription event for event $eventName: ${error.message}")
-                return
-            }
-
-            when (eventName ?: envelope.type) {
-                "response.created" -> {
-                    responseId = envelope.response
-                        ?.get("id")
-                        ?.jsonPrimitive
-                        ?.contentOrNull
-                }
-
-                "response.output_item.done" -> {
-                    envelope.item?.let { item ->
-                        val itemType = item["type"]?.jsonPrimitive?.contentOrNull
-                        if (itemType == "compaction" || itemType == "compaction_summary") {
-                            log.info(
-                                "OpenAI subscription auto-compaction item received: " +
-                                    "type=$itemType, responseEvent=${eventName ?: envelope.type}"
-                            )
-                        }
-                        outputItems += item
-                    }
-                }
-
-                "response.completed" -> {
-                    completed = envelope.response?.let(responseMapper::parseCompletedResponse)
-                    responseId = completed?.id ?: responseId
-                }
-
-                "response.failed" -> {
-                    val body = envelope.response?.toString().orEmpty()
-                    throw OpenAiSubscriptionRequestException(
-                        statusCode = 400,
-                        message = "OpenAI subscription stream failed: ${responseMapper.extractErrorMessage(body)}",
-                    )
-                }
-
-                "response.incomplete" -> {
-                    throw OpenAiSubscriptionRequestException(
-                        statusCode = 400,
-                        message = "OpenAI subscription stream returned an incomplete response",
-                    )
-                }
-            }
-        }
-
-        fun toParsedResponse(): OpenAiSubscriptionParsedResponse {
-            if (outputItems.isEmpty()) {
-                completed?.output?.takeIf { it.isNotEmpty() }?.let(outputItems::addAll)
-            }
-
-            return OpenAiSubscriptionParsedResponse(
-                outputItems = outputItems.toList(),
-                completed = completed?.copy(id = responseId ?: completed!!.id),
-            )
-        }
     }
 
     private sealed interface WebSocketInboundEvent {
@@ -578,7 +497,7 @@ class OpenAiSubscriptionResponsesClient(
                 ?: throw OpenAiSubscriptionTransportException("OpenAI subscription websocket session is not open")
 
             inboundEvents.clear()
-            val collector = ResponseEventCollector(
+            val collector = OpenAiSubscriptionResponseEventCollector(
                 json = json,
                 responseMapper = responseMapper,
                 log = log,

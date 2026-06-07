@@ -75,6 +75,9 @@ tasks.withType<Test> {
     System.getProperty("gromozeka.memory.e2e.websocketTransportTimeoutMs")?.let {
         systemProperty("gromozeka.memory.e2e.websocketTransportTimeoutMs", it)
     }
+    System.getProperty("gromozeka.memory.e2e.turnCompletionTimeoutMs")?.let {
+        systemProperty("gromozeka.memory.e2e.turnCompletionTimeoutMs", it)
+    }
     System.getProperty("gromozeka.memory.e2e.memoryLlmStageTimeoutMs")?.let {
         systemProperty("gromozeka.memory.e2e.memoryLlmStageTimeoutMs", it)
     }

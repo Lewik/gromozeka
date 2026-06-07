@@ -2880,7 +2880,7 @@ class MemoryRealModelE2eTest {
         const val TURN_COMPLETION_TIMEOUT_MS_PROPERTY = "gromozeka.memory.e2e.turnCompletionTimeoutMs"
         const val MEMORY_LLM_STAGE_TIMEOUT_MS_PROPERTY = "gromozeka.memory.e2e.memoryLlmStageTimeoutMs"
         const val MEMORY_ROUTING_FAIL_FAST_PROPERTY = "gromozeka.memory.routing.failFast"
-        const val DEFAULT_MODEL_NAME = "gpt-5.3-codex"
+        const val DEFAULT_MODEL_NAME = "gpt-5.5"
 
         val json = Json {
             ignoreUnknownKeys = true

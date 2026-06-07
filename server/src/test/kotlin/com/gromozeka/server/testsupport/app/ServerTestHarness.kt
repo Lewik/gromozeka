@@ -118,7 +118,7 @@ class ServerTestHarness(
 
     companion object {
         fun defaultSettings(): Settings = Settings(
-            userProfile = openAiSubscriptionProfile("gpt-5.3-codex"),
+            userProfile = openAiSubscriptionProfile("gpt-5.5"),
         )
 
         fun openAiSubscriptionRuntimeSelection(): AiRuntimeSelection =
