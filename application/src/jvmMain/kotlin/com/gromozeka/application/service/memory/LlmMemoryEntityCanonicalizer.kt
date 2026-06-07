@@ -202,8 +202,7 @@ class LlmMemoryEntityCanonicalizer(
             return null
         }
 
-        val stableKey =
-            "${request.namespace.value}|${newEntity.entityType.entityMergeFamilyKey()}|${newEntity.canonicalName.normalizeCanonicalMemoryText()}"
+        val stableKey = request.entityIdentityStableKey(newEntity.canonicalName)
         val hash = MessageDigest
             .getInstance("SHA-256")
             .digest(stableKey.toByteArray())
@@ -289,7 +288,9 @@ class LlmMemoryEntityCanonicalizer(
             - Create new entities only when no candidate is a safe match.
             - If a candidate safely matches the mention, use "link_existing" with that candidate id.
             - Use "add_alias" only when the mention is a new surface form for a safe existing candidate.
-            - If several candidates share a name, pick by entity type and summary; do not create another same-name entity.
+            - Canonical names are identity keys inside a namespace: the same canonical_name is treated as the same entity even if the entity_type differs.
+            - If distinct referents share the same surface form, disambiguate the canonical_name, for example "Java (programming language)" vs "Java (island)".
+            - If several candidates share a name, pick by entity type and summary; do not create another same-name entity just because the type differs.
             - Prefer English for entity summaries; keep proper names, product names, repo names, and file names unchanged.
             - Entity summaries must describe identity only, not mutable facts, current status, preferences, ownership, formats, fields, versions, or decisions. Put those facts into claims/notes instead.
             - For USER first-person facts and preferences, resolve the user as the stable namespace-level USER entity named "User".
@@ -348,7 +349,7 @@ private fun List<MemoryEntityCanonicalizationOp>.normalizeStableUserOps(
 private fun MemoryEntityCanonicalizationOp.NewEntity.provisionalEntityId(
     request: DirectStructuredMemoryWriteRequest,
 ): MemoryEntity.Id {
-    val stableKey = "${request.namespace.value}|${entityType.entityMergeFamilyKey()}|${canonicalName.normalizeCanonicalMemoryText()}"
+    val stableKey = request.entityIdentityStableKey(canonicalName)
     val hash = MessageDigest
         .getInstance("SHA-256")
         .digest(stableKey.toByteArray())
@@ -357,6 +358,9 @@ private fun MemoryEntityCanonicalizationOp.NewEntity.provisionalEntityId(
 
     return MemoryEntity.Id("entity:$hash")
 }
+
+private fun DirectStructuredMemoryWriteRequest.entityIdentityStableKey(canonicalName: String): String =
+    "${namespace.value}|${canonicalName.normalizeCanonicalMemoryText()}"
 
 private fun String?.toMemoryIdTextOrNull(): String? {
     val value = this?.trim()?.takeIf { it.isNotBlank() } ?: return null

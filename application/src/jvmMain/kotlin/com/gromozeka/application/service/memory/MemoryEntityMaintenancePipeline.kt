@@ -359,7 +359,6 @@ class MemoryEntityMaintenancePipeline(
         val winner = entityUpdates[winnerId] ?: candidateEntities[winnerId] ?: return emptyList()
         val losers = loserIds.mapNotNull { id -> entityUpdates[id] ?: candidateEntities[id] }
             .filter { it.status == MemoryEntity.Status.ACTIVE }
-            .filter { it.entityType.isEntityMergeCompatibleWith(winner.entityType) }
         if (winner.status != MemoryEntity.Status.ACTIVE || losers.isEmpty()) {
             return emptyList()
         }
@@ -534,14 +533,16 @@ private fun MemoryNamespaceSnapshot.detectEntityMaintenanceCandidateGroups(): Li
     }
 
     activeEntities
-        .flatMap { entity -> entity.entityMaintenanceCompactKeys().map { key -> "${entity.entityType.entityMergeFamilyKey()}:$key" to entity } }
+        .flatMap { entity -> entity.entityMaintenanceCompactKeys().map { key -> key to entity } }
         .groupBy({ it.first }, { it.second })
         .values
         .filter { it.map { entity -> entity.id }.distinct().size > 1 }
         .forEach { group ->
             val distinct = group.distinctBy { it.id }
             distinct.forEachIndexed { index, first ->
-                distinct.drop(index + 1).forEach { second -> link(first, second, "same normalized surface form") }
+                distinct.drop(index + 1).forEach { second ->
+                    link(first, second, first.sameSurfaceEntityMaintenanceReason(second))
+                }
             }
         }
 
@@ -593,6 +594,13 @@ private fun MemoryNamespaceSnapshot.detectEntityMaintenanceCandidateGroups(): Li
         .sortedWith(compareByDescending<MemoryEntityMaintenanceCandidateGroup> { it.entities.size }.thenBy { it.id })
         .take(MAX_ENTITY_MAINTENANCE_GROUPS)
 }
+
+private fun MemoryEntity.sameSurfaceEntityMaintenanceReason(other: MemoryEntity): String =
+    if (entityType.isEntityMergeCompatibleWith(other.entityType)) {
+        "same normalized surface form"
+    } else {
+        "same normalized surface form across entity types"
+    }
 
 private fun List<MemoryEntityMaintenanceCandidateGroup>.mergeEntityMaintenanceCandidateGroups(): List<MemoryEntityMaintenanceCandidateGroup> {
     if (isEmpty()) return emptyList()

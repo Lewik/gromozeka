@@ -69,6 +69,20 @@ class LlmMemoryEntityCanonicalizerTest {
     }
 
     @Test
+    fun createNewUsesCanonicalNameAsIdentityAcrossEntityTypes() = runBlocking {
+        val personId = canonicalizedNewEntityId(
+            entityType = "person",
+            canonicalName = "Mira",
+        )
+        val serviceId = canonicalizedNewEntityId(
+            entityType = "service",
+            canonicalName = "Mira",
+        )
+
+        assertEquals(personId, serviceId)
+    }
+
+    @Test
     fun linkExistingRestoresStrippedEntityPrefixFromCandidateId() = runBlocking {
         val candidateId = MemoryEntity.Id("entity:0cdfb4d3913a9344")
         val canonicalizer = LlmMemoryEntityCanonicalizer(
@@ -207,6 +221,44 @@ class LlmMemoryEntityCanonicalizerTest {
         assertEquals(MemoryEntityCanonicalizationOp.Action.NOOP, ops.single().action)
         assertEquals(2, runtime.requests.size)
         assertEquals(true, runtime.requests.last().options.toolContext["memoryStageRepair"])
+    }
+
+    private suspend fun canonicalizedNewEntityId(
+        entityType: String,
+        canonicalName: String,
+    ): MemoryEntity.Id {
+        val canonicalizer = LlmMemoryEntityCanonicalizer(
+            runtime = FixedJsonRuntime(
+                """
+                {
+                  "operations": [
+                    {
+                      "mention": "$canonicalName",
+                      "action": "create_new",
+                      "entity_id": null,
+                      "new_entity": {
+                        "entity_type": "$entityType",
+                        "canonical_name": "$canonicalName",
+                        "summary": "A test entity."
+                      },
+                      "confidence": 0.9,
+                      "reason": "Concrete reusable referent."
+                    }
+                  ]
+                }
+                """.trimIndent()
+            ),
+            runtimeSystemPrompts = emptyList(),
+            runtimeTools = emptyList(),
+        )
+
+        val ops = canonicalizer.canonicalize(
+            request = request("$canonicalName owns the token rotation."),
+            retrievalPlan = MemoryWriteRetrievalPlan(),
+            retrievedHits = emptyList(),
+        )
+
+        return requireNotNull(ops.single().entityId)
     }
 
     private suspend fun captureEntityCanonicalizerPrompt(

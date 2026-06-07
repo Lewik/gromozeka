@@ -1384,6 +1384,67 @@ class MemoryMaintenancePipelineTest {
     }
 
     @Test
+    fun entityMaintenanceCanMergeSameNameAcrossTypeFamiliesWhenPlannerConfirmsMisclassification() = runBlocking {
+        val person = entity(
+            id = MemoryEntity.Id("entity-mira-person"),
+            entityType = MemoryEntity.Type.PERSON,
+            canonicalName = "Mira",
+            normalizedName = "mira",
+            summary = "Person named Mira.",
+        )
+        val service = entity(
+            id = MemoryEntity.Id("entity-mira-service"),
+            entityType = MemoryEntity.Type.SERVICE,
+            canonicalName = "Mira",
+            normalizedName = "mira",
+            summary = "Misclassified service emitted for Mira.",
+        )
+        val claim = claim(
+            id = "claim-mira",
+            subjectEntityId = service.id,
+            predicate = "owns_component",
+            normalizedText = "Mira owns the memory ingestion pipeline.",
+        )
+        val store = InMemoryMemoryStore(
+            MemoryNamespaceSnapshot(
+                entities = listOf(person, service),
+                claims = listOf(claim),
+            )
+        )
+
+        val result = MemoryEntityMaintenancePipeline(
+            store = store,
+            planner = FixedEntityMaintenancePlanner(
+                MemoryEntityMaintenancePlan(
+                    actions = listOf(
+                        MemoryEntityMaintenancePlan.Action(
+                            action = MemoryEntityMaintenancePlan.Action.Type.MERGE,
+                            winnerEntityId = person.id.value,
+                            loserEntityIds = listOf(service.id.value),
+                            reason = "The service entity is a misclassified duplicate of the person.",
+                        )
+                    ),
+                    summary = "Merged cross-family same-name misclassification.",
+                )
+            ),
+            idFactory = SequentialMemoryIdFactory("entity-maintenance"),
+            profileUpdater = ProjectionMemoryProfileUpdater(store),
+            clock = FixedMemoryClock(NOW),
+        ).run(MemoryMaintenanceRequest(TEST_NAMESPACE))
+
+        val snapshot = store.loadNamespaceSnapshot(TEST_NAMESPACE, includeArchived = true)
+        val updatedPerson = snapshot.entityById(person.id.value)
+
+        assertEquals(1, result.candidateGroups.size)
+        assertTrue(result.candidateGroups.single().reason.contains("across entity types"))
+        assertEquals(MemoryEntity.Status.ACTIVE, updatedPerson.status)
+        assertEquals(MemoryEntity.Status.MERGED, snapshot.entityById(service.id.value).status)
+        assertEquals(person.id, snapshot.entityById(service.id.value).mergedIntoEntityId)
+        assertEquals(person.id, snapshot.claimById(claim.id.value).subjectEntityId)
+        assertEquals(setOf(MemoryEntity.Type.PERSON, MemoryEntity.Type.SERVICE), updatedPerson.observedTypes)
+    }
+
+    @Test
     fun entityMaintenanceMergesCompatibleTechnicalTypesAndPreservesObservedTypes() = runBlocking {
         val winner = entity(
             id = MemoryEntity.Id("entity-convention-plugins-tech"),
@@ -1531,7 +1592,12 @@ class MemoryMaintenancePipelineTest {
             clock = FixedMemoryClock(NOW),
         ).run(MemoryMaintenanceRequest(TEST_NAMESPACE))
 
-        assertEquals(0, result.candidateGroups.size)
+        val snapshot = store.loadNamespaceSnapshot(TEST_NAMESPACE, includeArchived = true)
+
+        assertEquals(1, result.candidateGroups.size)
+        assertTrue(result.candidateGroups.single().reason.contains("across entity types"))
+        assertEquals(MemoryEntity.Status.ACTIVE, snapshot.entityById(project.id.value).status)
+        assertEquals(MemoryEntity.Status.ACTIVE, snapshot.entityById(document.id.value).status)
     }
 
     @Test

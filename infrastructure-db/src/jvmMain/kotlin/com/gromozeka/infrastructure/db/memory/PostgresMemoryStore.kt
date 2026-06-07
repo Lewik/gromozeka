@@ -529,20 +529,33 @@ class PostgresMemoryStore(
             ),
         )
 
-    private fun Connection.upsertEntity(item: MemoryEntity) =
+    private fun Connection.upsertEntity(item: MemoryEntity) {
+        lockMemoryEntityUpsert(item.id)
+        val existing = selectPayloadById("memory_entities", item.id.value)
+            ?.let { json.decodeFromString<MemoryEntity>(it) }
+        val mergedItem = existing?.let { item.mergeExistingEntityForUpsert(it) } ?: item
+
         upsertJson(
             tableName = "memory_entities",
-            id = item.id.value,
-            namespace = item.namespace.value,
-            payload = json.encodeToString(item),
+            id = mergedItem.id.value,
+            namespace = mergedItem.namespace.value,
+            payload = json.encodeToString(mergedItem),
             columns = mapOf(
-                "normalized_name" to item.normalizedName,
-                "entity_type" to item.entityType.name,
-                "status" to item.status.name,
-                "search_text" to item.searchTextForStore(),
-                "updated_at" to item.updatedAt,
+                "normalized_name" to mergedItem.normalizedName,
+                "entity_type" to mergedItem.entityType.name,
+                "status" to mergedItem.status.name,
+                "search_text" to mergedItem.searchTextForStore(),
+                "updated_at" to mergedItem.updatedAt,
             ),
         )
+    }
+
+    private fun Connection.lockMemoryEntityUpsert(id: MemoryEntity.Id) {
+        prepareStatement("SELECT pg_advisory_xact_lock(hashtext(?))").use { statement ->
+            statement.setString(1, id.value)
+            statement.executeQuery().use { }
+        }
+    }
 
     private fun Connection.upsertClaim(item: MemoryClaim) =
         upsertJson(
@@ -1243,6 +1256,46 @@ private fun MemorySource.searchTextForStore(): String =
 
 private fun MemoryRun.searchTextForStore(): String =
     searchProjection(runType.name, status.name, summary)
+
+private fun MemoryEntity.mergeExistingEntityForUpsert(existing: MemoryEntity): MemoryEntity {
+    val mergedStatus = if (existing.status == MemoryEntity.Status.MERGED && status == MemoryEntity.Status.ACTIVE) {
+        existing.status
+    } else {
+        status
+    }
+    val mergedInto = if (mergedStatus == MemoryEntity.Status.MERGED) {
+        mergedIntoEntityId ?: existing.mergedIntoEntityId
+    } else {
+        mergedIntoEntityId
+    }
+
+    return copy(
+        observedTypes = observedTypes + entityType + existing.observedTypes + existing.entityType,
+        summary = summary ?: existing.summary,
+        status = mergedStatus,
+        mergedIntoEntityId = mergedInto,
+        aliases = (aliases + existing.aliases + existing.canonicalAliasWhenDifferentFrom(this))
+            .distinctBy { it.normalizedText },
+        firstSeenAt = minOf(firstSeenAt, existing.firstSeenAt),
+        lastSeenAt = maxOf(lastSeenAt, existing.lastSeenAt),
+        createdAt = minOf(createdAt, existing.createdAt),
+        updatedAt = maxOf(updatedAt, existing.updatedAt),
+    )
+}
+
+private fun MemoryEntity.canonicalAliasWhenDifferentFrom(other: MemoryEntity): List<MemoryEntity.Alias> =
+    if (normalizedName == other.normalizedName) {
+        emptyList()
+    } else {
+        listOf(
+            MemoryEntity.Alias(
+                text = canonicalName,
+                normalizedText = normalizedName,
+                confidence = 1.0,
+                createdAt = createdAt,
+            )
+        )
+    }
 
 private fun MemoryEntity.searchTextForStore(): String =
     searchProjection(
